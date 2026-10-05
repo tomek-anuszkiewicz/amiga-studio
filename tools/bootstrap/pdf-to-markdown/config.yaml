@@ -8,7 +8,7 @@ llm:
   timeout_seconds: 180
   concurrency: 1
   stages:
-    01_preprocess: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    00_text_layer: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     02_page_segmentation: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     04_stream_reduction: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     06_detect_continuations: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

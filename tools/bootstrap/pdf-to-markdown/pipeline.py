@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-pipeline.py: Master CLI Orchestrator for the 14-Stage PDF-to-Markdown Pipeline.
+pipeline.py: Master CLI Orchestrator for PDF-to-Markdown Stages 00-14.
 """
 
 import argparse
@@ -13,22 +13,35 @@ import time
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 import yaml
+import pymupdf
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from conversion.config import load_config as parse_config, validate_config, PDF_STAGES, selection
 from conversion.transport import CodexTransport
 from conversion.lineage import read_state, write_state, file_hash, stage_identity, validate_prefix, restore_shared, complete_stage, first_incomplete_stage
+from conversion.pdf_artifacts import validate_text_layer
+from conversion.pdf_selection import parse_page_ranges, selected_pages
 
 MANUAL_TASKS = {"06": "continuations", "07": "tables", "08": "graphics", "09": "prose"}
 
 STAGE_REGISTRY: List[Dict[str, Any]] = [
     {
+        "id": "00",
+        "dir": "00_text_layer",
+        "script": "prepare_text_layer.py",
+        "desc": "Prepare and validate a separate PDF with native/OCR text provenance",
+        "targets": ["00_text_layer"],
+        "inspect": ("text_layer_manifest.json", "text-layer manifest"),
+        "artifact_contract": "pdf_text_layer",
+    },
+    {
         "id": "01",
         "dir": "01_preprocess",
         "script": "preprocess.py",
-        "desc": "Deconstruct PDF into pages, PNGs, and text blocks (with auto-OCR)",
+        "desc": "Extract positioned text and matching PNGs from the prepared PDF",
         "targets": ["01_preprocess", "pages_manifest.json"],
         "inspect": ("*.png", "rendered PNGs"),
+        "artifact_contract": "pdf_preprocess",
     },
     {
         "id": "02",
@@ -238,8 +251,15 @@ def run_stage(
     ]
 
     # Stage-specific standard parameter injection
-    if stage_num == "01":
+    if stage_num == "00":
+        if pdf_path is None:
+            raise ValueError("--pdf is required to regenerate Stage 00")
         cmd.extend(["--pdf", str(pdf_path)])
+        if page_ranges:
+            cmd.extend(["--page-ranges", str(page_ranges)])
+    elif stage_num == "01":
+        _, prepared_pdf = validate_text_layer(workspace_dir, require_completion=True)
+        cmd.extend(["--pdf", str(prepared_pdf)])
         if page_ranges:
             cmd.extend(["--page-ranges", str(page_ranges)])
     elif stage_num == "11":
@@ -382,6 +402,12 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Optional[Path]):
 
 
 def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], start_idx: int, status_file: Path, *, keep_tasks_for=None):
+    def remove_directory(path, anchor):
+        resolved, root = path.resolve(), anchor.resolve()
+        if resolved == root or not resolved.is_relative_to(root):
+            raise ValueError("Cleanup directory escapes its conversion workspace/output")
+        shutil.rmtree(path)
+
     stages_to_clean = [s["id"] for s in STAGE_REGISTRY[start_idx:]]
     print(f"[*] Invalidation: Wiping intermediate and output artifacts from Stage {stages_to_clean[0]} onwards...")
     for s in STAGE_REGISTRY[start_idx:]:
@@ -389,7 +415,7 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], sta
         if s_id in MANUAL_TASKS and s_id != keep_tasks_for:
             task_dir = workspace_dir / "tasks" / MANUAL_TASKS[s_id]
             if task_dir.exists():
-                shutil.rmtree(task_dir)
+                remove_directory(task_dir, workspace_dir)
             (workspace_dir / "tasks/.lineage" / f"{s_id}.json").unlink(missing_ok=True)
         (workspace_dir / s["dir"] / ".metrics.json").unlink(missing_ok=True)
         (workspace_dir / f".stage_{s_id}_metrics.json").unlink(missing_ok=True)
@@ -399,11 +425,21 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], sta
                     for f in output_dir.glob("*.md"):
                         f.unlink(missing_ok=True)
                     if (output_dir / "assets").exists():
-                        shutil.rmtree(output_dir / "assets")
+                        remove_directory(output_dir / "assets", output_dir)
             else:
                 p = workspace_dir / target
                 if p.is_dir():
-                    shutil.rmtree(p)
+                    if s_id == "00":
+                        # Partial OCR results are reusable only after Stage 00
+                        # checks source/image/procedure/configuration identities.
+                        for child in p.iterdir():
+                            if child.name != "recovery":
+                                if child.is_dir():
+                                    remove_directory(child, workspace_dir)
+                                else:
+                                    child.unlink()
+                    else:
+                        remove_directory(p, workspace_dir)
                 elif p.is_file():
                     p.unlink(missing_ok=True)
 
@@ -420,7 +456,8 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], sta
 
 def complete_pipeline_stage(state, stage, identity, workspace, output):
     if stage["id"] in ("05", "06"):
-        previous_dir = STAGE_REGISTRY[int(stage["id"])-2]["dir"]
+        position = next(index for index, item in enumerate(STAGE_REGISTRY) if item["id"] == stage["id"])
+        previous_dir = STAGE_REGISTRY[position - 1]["dir"]
         assets = workspace / previous_dir / "assets"
         if assets.is_dir():
             shutil.copytree(assets, workspace / stage["dir"] / "assets", dirs_exist_ok=True)
@@ -428,7 +465,7 @@ def complete_pipeline_stage(state, stage, identity, workspace, output):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Master 14-Stage PDF-to-Markdown Pipeline Orchestrator")
+    parser = argparse.ArgumentParser(description="PDF-to-Markdown Pipeline Orchestrator (Stages 00-14)")
     parser.add_argument("--pdf", type=Path, help="Source PDF or directory containing exactly one PDF")
     parser.add_argument("--workspace", type=Path)
     parser.add_argument("--output-dir", type=Path)
@@ -442,7 +479,7 @@ def main():
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--prepare-stage")
     parser.add_argument("--apply-stage")
-    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (03, 05, 11, 14)")
+    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (01, 03, 05, 11, 14)")
     args = parser.parse_args()
     skill_dir = Path(__file__).resolve().parent
     config_source = args.config.resolve()
@@ -473,12 +510,12 @@ def main():
     elif args.run_deterministic:
         start = completed
         end = start
-        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("03", "05", "11", "14"):
+        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("01", "03", "05", "11", "14"):
             raise ValueError("Next stage requires inference; use an explicit stage interval")
     elif args.resume:
         start, end = completed, len(STAGE_REGISTRY)-1
-        if not state.get("source"):
-            raise ValueError("Legacy/unverified workspace cannot resume; explicitly regenerate from Stage 01")
+        if not state.get("source") or state.get("stages") and "00" not in state["stages"]:
+            raise ValueError("Legacy/unverified workspace cannot resume; use --pdf <source.pdf> --from-stage 00")
     else:
         start = resolve_stage_idx(args.from_stage) if args.from_stage else 0
         end = resolve_stage_idx(args.to_stage) if args.to_stage else len(STAGE_REGISTRY)-1
@@ -488,9 +525,7 @@ def main():
     if not source:
         raise ValueError("--pdf is required for a new conversion")
     source = dict(source)
-    if args.page_ranges:
-        sys.path.insert(0, str(skill_dir / "stages/01_preprocess"))
-        from detect_and_ocr import parse_page_ranges
+    if args.page_ranges is not None:
         source["pages"] = parse_page_ranges(args.page_ranges)
         if not source["pages"] or min(source["pages"]) < 1:
             raise ValueError("Invalid physical PDF page selection")
@@ -498,13 +533,18 @@ def main():
         source["pages"] = None
     else:
         source["pages"] = state.get("source", {}).get("pages")
+    if pdf:
+        with pymupdf.open(pdf) as document:
+            selected_pages(",".join(map(str, source["pages"])) if source["pages"] is not None else None, len(document))
+    if pdf and pdf.is_relative_to(workspace):
+        raise ValueError("Keep the original source PDF outside the conversion workspace")
     predecessor = validate_prefix(state, STAGE_REGISTRY, start, config, source, skill_dir, workspace, output)
     if start == len(STAGE_REGISTRY):
         restore_shared(state, STAGE_REGISTRY, start, workspace)
         print("[+] All PDF stages have validated completion records.")
         return
     if start == 0 and pdf is None:
-        raise ValueError("--pdf is required to regenerate Stage 01")
+        raise ValueError("--pdf is required to regenerate Stage 00")
     selected = STAGE_REGISTRY[start:end+1]
     required = {stage["dir"] for stage in selected if stage["dir"] in PDF_STAGES}
     validate_config(config, PDF_STAGES, required)
@@ -512,7 +552,7 @@ def main():
         transport = CodexTransport()
         try:
             for stage in required:
-                transport.validate(selection(config, stage), images=stage[:2] in ("01", "02", "04", "07", "08", "09"))
+                transport.validate(selection(config, stage), images=stage[:2] in ("00", "02", "04", "07", "08", "09"))
         finally:
             transport.close()
     stage = STAGE_REGISTRY[start]
@@ -550,6 +590,8 @@ def main():
         return
     print(f"[*] PDF source: {source['name']}; selected pages: {source['pages']}; stages: {[stage['id'] for stage in selected]}")
     for stage in selected:
+        position = next(index for index, item in enumerate(STAGE_REGISTRY) if item["id"] == stage["id"])
+        predecessor = validate_prefix(state, STAGE_REGISTRY, position, config, source, skill_dir, workspace, output)
         identity = stage_identity(stage, config, source, predecessor, skill_dir)
         page_ranges = ",".join(map(str, source["pages"])) if source["pages"] else None
         if not run_stage(stage, skill_dir, workspace, pdf, output, config_path, args.verbose, page_ranges):

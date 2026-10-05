@@ -1,60 +1,41 @@
-# Stage 01: Preprocess
+# Stage 01: Positioned Text and PNGs
 
-## Objective
-Deconstructs a physical input PDF into atomic, per-page representations to serve as clean ground truth for all downstream stages.
+Stage 01 deterministically renders and extracts text from the separate, validated
+[Stage 00 PDF](../00_text_layer/README.md). It performs no OCR and needs no model
+selection. Missing, incomplete, modified or incompatible Stage 00 artifacts stop
+execution; preprocessing never falls back to the original PDF.
 
-Stage 01 handles both digital and physical documents through two unified processing pathways:
-1. **Born-Digital PDF Pathway (Direct Extraction):**
-   - Renders 300 DPI PNGs and extracts native text blocks and page dimensions via PyMuPDF (`fitz.get_text("blocks")`).
-   - Runs deterministically with zero network calls and sub-second latency.
-2. **Scanned / Visual PDF Pathway (Codex Vision OCR):**
-   - Automatically detects pages lacking healthy native text (`total_chars < threshold`, default 20, or 0 text blocks).
-   - Triggers Codex Vision OCR worker (`detect_and_ocr.py`) using a single-pass 3-way triage prompt (`prompt_ocr.md`: `text_page`, `pure_graphic`, `blank`).
-   - Extracts structured text blocks with normalized integer millirange coordinates `box_2d: [ymin, xmin, ymax, xmax]` in range `[0..1000]`.
+For each selected physical page it writes `01_preprocess/page_XXXX.png` and
+`page_XXXX.json`, including legitimate blank pages. `XXXX` remains the physical
+1-based source page number; `source_index` is zero-based. JSON contains schema
+version, stable page ID, prepared-PDF hash, dimensions, rotation, MediaBox,
+CropBox, provenance, page classification/evidence and ordered text blocks with
+IDs, text, `bbox` and `bbox_norm`. Only text blocks enter this collection; the
+worker does not claim word-level geometry or reconstruct semantic reading order.
+OCR text is extracted from the reopened PDF, never copied from cached model JSON.
 
-> [!IMPORTANT]
-> **Uniform Artifact Contracts:**  
-> Regardless of whether a page is processed via born-digital text extraction or scanned Codex Vision OCR, Stage 01 outputs the **exact same uniform artifact contracts** in `workspace/01_preprocess/`. Downstream stages (02 through 13) are completely agnostic to whether the source page was a vector PDF or a paper scan.
+Bounding boxes use PDF points, top-left origin, x right/y down, `[x0,y0,x1,y1]`
+in the displayed-page frame. `geometry.extraction_to_display` records rotation
+from PyMuPDF's crop-relative, unrotated extraction frame; `pdf_to_extraction`
+records its PDF transformation. `raster.display_to_pixels` records the actual
+render transform, raster origin and outward floor/ceil pixel bounds. Actual PNG
+dimensions are persisted; exported coordinates are not rounded. Nonfinite,
+inverted or materially out-of-page boxes fail validation.
 
----
+`pages_manifest.json` records document versus selected page counts, exact
+selection, prepared PDF identity and relative PNG/JSON paths with hashes.
+It is published only when every required pair passes coverage, content, geometry
+and image-dimension validation. Completion snapshots it through shared lineage;
+downstream conversion validates pairs before cleanup or requests.
 
-## File Structure
+Run preparation and preprocessing together for a new workspace:
 
-```text
-stages/01_preprocess/
-├── preprocess.py          # Main entry point: deconstruction, page extraction, and auto-OCR orchestration
-├── detect_and_ocr.py      # Internal OCR helper: detect_and_ocr_pages() called by preprocess.py
-├── prompt_ocr.md          # Multimodal triage & OCR prompt
-└── README.md              # Stage documentation and contracts
-```
-
----
-
-## Inputs
-- `<manual.pdf>`: Source PDF document passed via `--pdf`.
-- `config.yaml`: Global rendering and OCR threshold configuration.
-- `stages/01_preprocess/prompt_ocr.md`: Vision prompt (used if scanned pages trigger OCR).
-
-## Outputs
-- `workspace/01_preprocess/page_XXXX.png`: Raster page at the configured DPI (default 300), used for vision classification and all downstream visual crops.
-- `workspace/01_preprocess/page_XXXX.json`: Text geometry extraction with word spans, bounding boxes (`box_2d` and `bbox_norm`), and page classification (`text_page`, `pure_graphic`, `blank`).
-- `workspace/pages_manifest.json`: Document index, dimensions, block counts, and page list.
-
-Stage 01 reads the source PDF directly and writes no single-page PDFs. Downstream stages use PNG pixels and JSON text/geometry; visual crops retain the rendered resolution rather than native PDF vectors.
-
----
-
-## Invocation (via Pipeline Orchestrator)
-
-> [!IMPORTANT]
-> Always invoke Stage 01 through the main orchestrator (`pipeline.py`) rather than calling `preprocess.py` directly.
-
-### Standard Preprocessing (with automatic scan detection & OCR):
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "path/to/manual.pdf" --workspace "workspace" --from-stage 01 --to-stage 01
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config tools/bootstrap/pdf-to-markdown/config.yaml --page-ranges "1-5,7" --from-stage 00 --to-stage 01
 ```
 
-### Targeted Pages or Page Ranges:
-```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "path/to/manual.pdf" --workspace "workspace" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01
-```
+For a workspace with a validated Stage 00, restart with `--from-stage 01
+--to-stage 01`, or run `--run-deterministic` when 01 is the next ready stage.
+Stage 00 and the original source are retained. Selection cannot change without
+restarting preparation. Legacy workspaces require explicit restart at 00 with
+the source PDF; old page JSON receives no invented text-layer provenance.

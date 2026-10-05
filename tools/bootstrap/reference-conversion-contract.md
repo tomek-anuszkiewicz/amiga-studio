@@ -40,4 +40,20 @@ Each PDF workspace owns one source/page selection and its intermediate conversio
 
 HTML and PDF use the shared Codex transport and strict stage configuration. PDF completion records validate predecessor artifacts and source/configuration/procedure identities; prepared manual tasks carry matching identity records. Existing migration evidence is the basis for proceeding with the separate roadmap work under the development workflow above. Do not treat arbitrary existing artifacts as validated predecessors.
 
-Roadmap 1.1–1.5 remain pending: Stage 00 text provenance, PNG-to-Markdown redesign, visual reclip, the new description stage and bulk conversion/indexing. Current source-fidelity requirements remain criteria for conversion work, not a claim that all legacy workers already enforce them. Fragment selection and any expansion follow the user's requested scope.
+PDF Stage 00 now publishes a separate validated `- OCR.pdf` and text-layer manifest;
+Stage 01 reads only this PDF and persists positioned text JSON with matching PNGs.
+Native spans are preserved regardless of length; textless pages use configured OCR
+triage. Blank and graphic-only classifications have explicit empty text and physical
+page identities. Publication checks reopened text/positions, source hashes, page
+geometry, retained source streams/native text and identical selected-page renders.
+Fragment coverage never certifies unselected pages. Schema/coverage checks supplement
+hashes before downstream cleanup and requests; restart at 01 retains Stage 00, while
+restart at 00 invalidates dependents and validates retained OCR recovery data before
+reuse. Legacy workspaces require explicit regeneration from 00 with the original PDF.
+
+Roadmap 1.1 retains acceptance on source categories absent from the requested scanned
+fragment. Roadmap 1.2–1.5 remain pending: PNG-to-Markdown redesign, visual reclip,
+the new description stage and bulk conversion/indexing. Current source-fidelity
+requirements remain criteria for conversion work, not a claim that all legacy
+workers already enforce them. Fragment selection and any expansion follow the
+user's requested scope.

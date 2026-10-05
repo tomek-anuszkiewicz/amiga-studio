@@ -4,11 +4,9 @@
 
 Prepare source-faithful Markdown and searchable assets once, before routine emulator development. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
-- **1.1: PDF Text Layer and Positioned Text JSON**
-  - Add a text-layer preparation stage before preprocessing. Always create a separate `<source stem> - OCR.pdf`: add OCR only where pages lack text layers, or copy the source when OCR is unnecessary. Preserve the source, native text, page order, dimensions, and visuals; distinguish blank pages and publish the validated output with per-page native/OCR provenance.
-  - Use this validated `- OCR.pdf` as the sole PDF input to preprocessing for both native-text and scanned documents; both then follow the same downstream path. Extract persisted per-page JSON from its text layer, containing page identifiers, text blocks, bounding boxes, coordinate conventions, dimensions, and provenance, and preserve alignment between the rendered PNGs and text JSON.
-  - Each stage consumes validated predecessor artifacts. Missing, stale, incomplete, or mismatched artifacts block downstream conversion; blank pages and resumed runs retain explicit page identity.
-  - **Gate:** Native, scanned, mixed, and blank-page samples verify creation and downstream use of the separate `- OCR.pdf`, written text JSON, provenance, positions, unchanged source and page geometry; invalid handoffs block conversion and resumed runs preserve page identity.
+- **1.1: PDF Text-Layer Acceptance**
+  - On user-selected/requested fragments, verify native-copy, mixed native/scanned and blank/graphic-only paths, plus positioned-text alignment on any rotated/cropped pages in those fragments. Preserve source/native content, full page identity and geometry; certify only selected preparation coverage.
+  - **Gate:** The remaining source categories demonstrate byte-identical separate output when OCR is unnecessary, selective OCR, reopened-PDF text JSON, explicit no-text classification and PNG alignment. Complete repository milestone gates, semantic parity review and diary/document closure before removing this point. Fragment selection and content assessment follow the developer-led conversion workflow.
 
 - **1.2: PNG-to-Markdown and Crops with OCR Text JSON**
   - For every page-conversion request, supply Codex Vision with both the source-page PNG and its matching text-layer JSON from Step 1.1, including OCR-derived text and positions. Use the JSON to support accurate transcription and the PNG to verify layout, reading order, table structure, crop boundaries, and conflicting text.

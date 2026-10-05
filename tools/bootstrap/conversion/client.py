@@ -80,9 +80,10 @@ class CodexClient:
         images = image_path if isinstance(image_path, (list, tuple)) else [image_path]
         return self._generate(prompt, images, validator=validator)
 
-    def generate_json(self, prompt, *, schema, image_path=None):
+    def generate_json(self, prompt, *, schema, image_path=None, validator=None):
         images = [] if image_path is None else (image_path if isinstance(image_path, (list, tuple)) else [image_path])
-        return json.loads(self._generate(prompt, images, schema))
+        checked = (lambda text: validator(json.loads(text))) if validator is not None else None
+        return json.loads(self._generate(prompt, images, schema, checked))
 
     def close(self):
         self.transport.close()

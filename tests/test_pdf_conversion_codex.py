@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import pymupdf
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap"))
@@ -24,6 +25,10 @@ class PdfRestartTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("pdf_pipeline", ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py")
         self.pipeline = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.pipeline)
+        # These fixtures prove restart orchestration, not PDF content validity.
+        contracts = patch("conversion.pdf_artifacts.validate_stage_artifacts")
+        contracts.start()
+        self.addCleanup(contracts.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.workspace = Path(self.tmp.name) / "workspace"
@@ -31,7 +36,10 @@ class PdfRestartTests(unittest.TestCase):
         self.output = self.workspace / "14_link_toc"
         self.config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml", known_stages=PDF_STAGES, required_stages=PDF_STAGES)
         self.pdf = Path(self.tmp.name) / "sample.pdf"
-        self.pdf.write_bytes(b"PDF transport is mocked in this orchestration test")
+        with pymupdf.open() as document:
+            for _ in range(10):
+                document.new_page()
+            document.save(self.pdf)
         self.source = {"name": self.pdf.name, "sha256": file_hash(self.pdf), "pages": list(range(5, 11))}
         self.state = {"source": self.source, "stages": {}}
         previous = None
@@ -56,6 +64,9 @@ class PdfRestartTests(unittest.TestCase):
         if stage["id"] in ("05", "10"):
             (self.workspace / "chapters_manifest.json").write_text(json.dumps({"writer": stage["id"]}))
 
+    def stage_idx(self, stage_id):
+        return next(index for index, stage in enumerate(self.pipeline.STAGE_REGISTRY) if stage["id"] == stage_id)
+
     def run_pipeline(self, flags, worker, *, page_ranges="5-10"):
         argv = ["pipeline.py", "--workspace", str(self.workspace), "--config", str(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")]
         if page_ranges:
@@ -72,7 +83,7 @@ class PdfRestartTests(unittest.TestCase):
         other_output.write_text("Independent conversion")
         def worker(stage, *args):
             self.assertEqual(stage["id"], "05")
-            for dependent in self.pipeline.STAGE_REGISTRY[4:]:
+            for dependent in self.pipeline.STAGE_REGISTRY[self.stage_idx("05"):]:
                 self.assertFalse((self.workspace / dependent["dir"]).exists())
             self.assertFalse((self.workspace / "tasks/tables/old.md").exists())
             self.assertFalse((self.workspace / "tasks/.lineage/07.json").exists())
@@ -83,7 +94,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual((self.workspace / "04_stream_reduction/artifact.json").read_bytes(), before)
         self.assertEqual(other_output.read_text(), "Independent conversion")
         state = json.loads((self.workspace / ".conversion-state.json").read_text())
-        self.assertEqual(list(state["stages"]), ["01", "02", "03", "04", "05"])
+        self.assertEqual(list(state["stages"]), ["00", "01", "02", "03", "04", "05"])
 
     def test_missing_current_manifest_is_restored_from_preserved_snapshot(self):
         (self.workspace / "pages_manifest.json").unlink()
@@ -101,10 +112,10 @@ class PdfRestartTests(unittest.TestCase):
             self.write_artifacts(stage)
             return True
         self.run_pipeline(["--resume"], worker)
-        self.assertEqual(executed, [stage["id"] for stage in self.pipeline.STAGE_REGISTRY[4:]])
+        self.assertEqual(executed, [stage["id"] for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("05"):]])
 
     def test_changed_page_range_rejects_before_cleanup(self):
-        with self.assertRaisesRegex(ValueError, "Stage 01"):
+        with self.assertRaisesRegex(ValueError, "Stage 00"):
             self.run_pipeline(["--from-stage", "5", "--to-stage", "5", "--page-ranges", "6-10"], lambda *args: self.fail("Worker must not run"))
         self.assertTrue((self.workspace / "14_link_toc/artifact.json").exists())
 
@@ -112,7 +123,7 @@ class PdfRestartTests(unittest.TestCase):
         asset = self.workspace / "04_stream_reduction/assets/source.png.txt"
         asset.parent.mkdir()
         asset.write_text("Preserved source evidence")
-        self.pipeline.clean_downstream_stages(self.workspace, self.output, 7, self.workspace / "stage_status.json")
+        self.pipeline.clean_downstream_stages(self.workspace, self.output, self.stage_idx("08"), self.workspace / "stage_status.json")
         self.assertTrue(asset.exists())
 
     def test_output_defaults_to_selected_workspace_even_with_pdf(self):
@@ -134,7 +145,6 @@ class PdfRestartTests(unittest.TestCase):
     def test_resume_missing_preprocess_retains_selected_pages(self):
         (self.workspace / "01_preprocess/artifact.json").unlink()
         pdf = Path(self.tmp.name) / "sample.pdf"
-        pdf.write_bytes(b"PDF transport is mocked in this orchestration test")
         executed = []
         def worker(stage, *args):
             executed.append(stage["id"])
@@ -167,17 +177,53 @@ class PdfRestartTests(unittest.TestCase):
         def apply(command, **kwargs):
             self.assertEqual(command[-1], "--apply")
             self.assertEqual((self.workspace / "tasks/tables/accepted.md").read_text(), "Accepted manual edit")
-            self.write_artifacts(self.pipeline.STAGE_REGISTRY[6])
+            self.write_artifacts(self.pipeline.STAGE_REGISTRY[self.stage_idx("07")])
         with patch.object(self.pipeline.subprocess, "run", side_effect=apply):
             self.run_pipeline(["--apply-stage", "7"], lambda *args: self.fail("Automatic worker must not run"))
         state = json.loads((self.workspace / ".conversion-state.json").read_text())
-        validate_prefix(state, self.pipeline.STAGE_REGISTRY, 7, self.config, self.source, ROOT / "tools/bootstrap/pdf-to-markdown", self.workspace, self.output)
+        validate_prefix(state, self.pipeline.STAGE_REGISTRY, self.stage_idx("07") + 1, self.config, self.source, ROOT / "tools/bootstrap/pdf-to-markdown", self.workspace, self.output)
 
 
 class PdfConfigurationTests(unittest.TestCase):
+    def test_invisible_text_preserves_wrapped_source_streams(self):
+        from conversion.pdf_geometry import insert_ocr
+        script = ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py"
+        spec = importlib.util.spec_from_file_location("text_layer_worker", script)
+        worker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(worker)
+        with tempfile.TemporaryDirectory() as directory:
+            source, candidate = Path(directory) / "source.pdf", Path(directory) / "candidate.pdf"
+            with pymupdf.open() as document:
+                page = document.new_page(width=200, height=200)
+                page.draw_rect(pymupdf.Rect(20, 20, 80, 80))
+                # A valid unwrapped source stream makes PyMuPDF insert q/Q
+                # wrappers around it when an overlay is added.
+                document.update_stream(page.get_contents()[0], b"20 20 80 80 re S\n")
+                document.save(source)
+            with pymupdf.open(source) as document:
+                lines = insert_ocr(document[0], {"page_type": "text_page", "caption": None,
+                                               "blocks": [{"text": "A", "box_2d": [100, 100, 200, 200]}]})
+                document.save(candidate)
+            entry = {"page": 1, "provenance": "ocr", "ocr_lines": lines}
+            worker.verify_candidate(source, candidate, [entry], 72)
+
+    def test_preprocess_rejects_missing_text_layer_before_worker(self):
+        spec = importlib.util.spec_from_file_location("handoff_pipeline", ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py")
+        pipeline = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pipeline)
+        with tempfile.TemporaryDirectory() as directory, patch.object(pipeline.subprocess, "run") as worker:
+            workspace = Path(directory)
+            stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "01")
+            with self.assertRaisesRegex(ValueError, "Stage 00"):
+                pipeline.run_stage(stage, ROOT / "tools/bootstrap/pdf-to-markdown", workspace,
+                                   workspace / "original.pdf", workspace / "output", workspace / "config.yaml")
+            worker.assert_not_called()
+
     def test_all_inference_stage_pairs_are_explicit(self):
         config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml", known_stages=PDF_STAGES, required_stages=PDF_STAGES)
         self.assertEqual(set(config["llm"]["stages"]), PDF_STAGES)
+        self.assertIn("00_text_layer", PDF_STAGES)
+        self.assertNotIn("01_preprocess", PDF_STAGES)
 
     def test_duplicate_stage_selection_is_rejected_before_cleanup(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -217,8 +263,9 @@ class LineageTests(unittest.TestCase):
         self.workspace = Path(self.tmp.name) / "workspace"
         self.workspace.mkdir()
         self.skill = Path(self.tmp.name) / "skill"
-        self.registry = [{"id": "01", "dir": "01_preprocess"}, {"id": "02", "dir": "02_page_segmentation"}]
-        self.config = {"llm": {"stages": {stage["dir"]: {"model": "gpt-6.1-sol", "reasoning_effort": "medium"} for stage in self.registry}}}
+        self.registry = [{"id": "00", "dir": "00_text_layer"}, {"id": "01", "dir": "01_preprocess"}, {"id": "02", "dir": "02_page_segmentation"}]
+        self.config = {"llm": {"stages": {stage["dir"]: {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}
+                                          for stage in self.registry if stage["dir"] in PDF_STAGES}}}
         self.source = {"name": "sample.pdf", "sha256": "source-identity", "pages": [19]}
         self.state = {"source": self.source, "stages": {}}
         previous = None
@@ -234,7 +281,7 @@ class LineageTests(unittest.TestCase):
             previous = complete_stage(self.state, stage, identity, self.workspace, None)
 
     def validate(self):
-        return validate_prefix(self.state, self.registry, 2, self.config, self.source, self.skill, self.workspace, None)
+        return validate_prefix(self.state, self.registry, len(self.registry), self.config, self.source, self.skill, self.workspace, None)
 
     def test_unchanged_predecessors_validate(self):
         self.assertEqual(self.validate(), self.state["stages"]["02"]["completion"])
@@ -250,7 +297,7 @@ class LineageTests(unittest.TestCase):
             self.validate()
 
     def test_shared_manifest_snapshot_restores_original(self):
-        restore_shared(self.state, self.registry, 1, self.workspace)
+        restore_shared(self.state, self.registry, 2, self.workspace)
         self.assertEqual(json.loads((self.workspace / "pages_manifest.json").read_text()), {"pages": [19]})
 
 

@@ -70,6 +70,8 @@ def validate_prefix(state, registry, count, config, source, skill_dir, workspace
             path = base / name if base is not None else None
             if path is None or not path.is_file() or file_hash(path) != expected_hash:
                 raise ValueError(f"Changed/missing Stage {stage['id']} artifact: {name}")
+        from .pdf_artifacts import validate_stage_artifacts
+        validate_stage_artifacts(stage, workspace, source, snapshot=True)
         shared_outputs.update(record.get("shared_outputs", {}))
         previous = record["completion"]
     current_shared = {}
@@ -96,6 +98,8 @@ def restore_shared(state, registry, count, workspace):
 
 
 def complete_stage(state, stage, identity, workspace, output):
+    from .pdf_artifacts import validate_stage_artifacts
+    validate_stage_artifacts(stage, workspace, identity["source"])
     paths = []
     directory = workspace / stage["dir"]
     shared_outputs = {}

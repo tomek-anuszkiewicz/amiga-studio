@@ -25,6 +25,7 @@ if str(SKILL_ROOT) not in sys.path:
 
 from conversion import CodexClient
 from conversion import pdf_schemas
+from conversion.pdf_artifacts import validate_preprocess
 
 
 def classify_page_with_codex(page_data: dict, png_path: Optional[Path], codex: CodexClient) -> list:
@@ -167,6 +168,8 @@ def classify_page_with_codex(page_data: dict, png_path: Optional[Path], codex: C
 
 
 def process_segmentation(workspace_dir: Path, config: dict):
+    # Validate every pair before deleting outputs or creating model requests.
+    manifest = validate_preprocess(workspace_dir)
     pages_dir = workspace_dir / "01_preprocess"
 
     segments_dir = workspace_dir / "02_page_segmentation"
@@ -177,9 +180,6 @@ def process_segmentation(workspace_dir: Path, config: dict):
     manifest_path = workspace_dir / "pages_manifest.json"
     if not manifest_path.exists():
         raise FileNotFoundError(f"Missing pages_manifest.json in {workspace_dir}")
-
-    with open(manifest_path, "r", encoding="utf-8") as f:
-        manifest = json.load(f)
 
     total_pages = manifest["total_pages"]
     with CodexClient(config, stage="02_page_segmentation", images=True) as codex:

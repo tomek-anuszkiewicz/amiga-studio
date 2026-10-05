@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""Prepare a separate validated PDF; publish no manifest on incomplete OCR."""
+
+import argparse
+from contextlib import ExitStack
+from pathlib import Path
+import shutil
+import sys
+import pymupdf
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from conversion import CodexClient, pdf_schemas
+from conversion.cache import digest
+from conversion.config import load_config, PDF_STAGES
+from conversion.lineage import file_hash, read_state, stage_identity
+from conversion.pdf_artifacts import write_json, read_json, require, validate_text_layer
+from conversion.pdf_geometry import (SCHEMA_VERSION, GEOMETRY_TOLERANCE, page_geometry,
+                                     text_blocks, validate_ocr, insert_ocr, validate_inserted)
+from conversion.pdf_selection import selected_pages
+
+
+def verify_candidate(source_path, candidate, entries, dpi):
+    selected = {entry["page"]: entry for entry in entries}
+    with pymupdf.open(source_path) as original, pymupdf.open(candidate) as prepared:
+        require(len(original) == len(prepared), "Preparation changed the source page tree")
+        for number in range(len(original)):
+            before, after = original[number], prepared[number]
+            require(page_geometry(before) == page_geometry(after), "Preparation changed page geometry")
+            old_streams = [original.xref_stream(xref) for xref in before.get_contents()]
+            new_streams = [prepared.xref_stream(xref) for xref in after.get_contents()]
+            # PyMuPDF adds q/Q wrappers around unwrapped source content. Require
+            # byte-identical source streams in their original order, allowing
+            # those wrappers and the appended invisible text streams.
+            cursor = 0
+            for stream in old_streams:
+                match = next((i for i in range(cursor, len(new_streams)) if new_streams[i] == stream), None)
+                require(match is not None, "Preparation changed source content streams")
+                cursor = match + 1
+            entry = selected.get(number + 1)
+            if entry and entry["provenance"] == "ocr":
+                validate_inserted(after, entry["ocr_lines"])
+            else:
+                require(before.get_text("rawdict") == after.get_text("rawdict"), "Preparation changed retained native content")
+                require(old_streams == new_streams, "Preparation changed a page outside OCR coverage")
+            if entry:
+                left, right = before.get_pixmap(dpi=dpi), after.get_pixmap(dpi=dpi)
+                require((left.x, left.y, left.width, left.height, left.n, left.samples)
+                        == (right.x, right.y, right.width, right.height, right.n, right.samples),
+                        f"Preparation changed visible content on page {number + 1}")
+                entry["text_digest"] = digest(text_blocks(after))
+
+
+def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
+    pdf_path, workspace = Path(pdf_path).resolve(), Path(workspace).resolve()
+    stage_dir = workspace / "00_text_layer"
+    require(not pdf_path.is_relative_to(stage_dir), "Original PDF cannot live inside Stage 00 outputs")
+    source_hash = file_hash(pdf_path)
+    source = {"name": pdf_path.name, "sha256": source_hash, "pages": None}
+    dpi = config.get("render", {}).get("dpi", 300)
+    require(type(dpi) is int and dpi > 0, "render.dpi must be a positive integer")
+    prompt_path = Path(__file__).with_name("prompt_ocr.md")
+    prompt = prompt_path.read_text(encoding="utf-8")
+    with pymupdf.open(pdf_path) as document, ExitStack() as stack:
+        require(document.is_pdf and not document.needs_pass, "Only readable, unencrypted PDFs are supported")
+        pages = selected_pages(page_ranges, len(document))
+        source["pages"] = pages if page_ranges is not None else None
+        state_source = read_state(workspace).get("source")
+        require(state_source is None or state_source == source, "Stage 00 source does not match workspace selection")
+        stage_dir.mkdir(parents=True, exist_ok=True)
+        manifest_path = stage_dir / "text_layer_manifest.json"
+        manifest_path.unlink(missing_ok=True)
+        output = stage_dir / f"{pdf_path.stem} - OCR.pdf"
+        candidate = stage_dir / ".candidate.pdf"
+        candidate.unlink(missing_ok=True)
+        recovery = stage_dir / "recovery"
+        recovery.mkdir(exist_ok=True)
+        procedure = stage_identity({"id": "00", "dir": "00_text_layer"}, config, source, None, Path(__file__).resolve().parents[2])
+        entries, client, added_text = [], None, False
+        try:
+            for number in pages:
+                page = document[number - 1]
+                entry = {"page": number, "page_id": f"page_{number:04d}", "source_index": number - 1,
+                         "geometry": page_geometry(page)}
+                if text_blocks(page):
+                    entry.update(provenance="native", page_type="text_page", classification_basis="inferred_from_native_spans")
+                    print(f"[native] {entry['page_id']}: retained existing text spans")
+                else:
+                    image = stage_dir / ".request.png"
+                    page.get_pixmap(dpi=dpi).save(image)
+                    identity = {"source": source, "page": number, "image_sha256": file_hash(image),
+                                "geometry": entry["geometry"], "schema": pdf_schemas.OCR, "procedure": procedure,
+                                "prompt_sha256": file_hash(prompt_path), "pymupdf": pymupdf.__version__}
+                    if client is None:
+                        client = stack.enter_context(CodexClient(config, stage="00_text_layer", images=True))
+                    recovery_file = recovery / f"{entry['page_id']}.json"
+                    response = None
+                    if recovery_file.is_file():
+                        retained = read_json(recovery_file)
+                        require(retained.get("digest") == digest({k: v for k, v in retained.items() if k != "digest"}),
+                                "Modified per-page OCR recovery record")
+                        if retained.get("identity") == identity:
+                            response = validate_ocr(retained["response"])
+                            print(f"[recovery] {entry['page_id']}: compatible validated OCR result")
+                    if response is None:
+                        response = client.generate_json(prompt, image_path=image, schema=pdf_schemas.OCR, validator=validate_ocr)
+                        record = {"identity": identity, "response": response}
+                        record["digest"] = digest(record)
+                        write_json(recovery_file, record)
+                    image.unlink()
+                    entry.update(page_type=response["page_type"], caption=response["caption"],
+                                 classification_basis="observed_by_codex", provenance="ocr" if response["blocks"] else "none")
+                    if response["blocks"]:
+                        entry["ocr_lines"] = insert_ocr(page, response)
+                        added_text = True
+                    print(f"[{entry['provenance']}] {entry['page_id']}: {entry['page_type']}")
+                entries.append(entry)
+            if added_text:
+                document.save(candidate, deflate=True)
+            else:
+                shutil.copyfile(pdf_path, candidate)
+            verify_candidate(pdf_path, candidate, entries, dpi)
+            require(file_hash(pdf_path) == source_hash, "Source PDF changed during preparation")
+            manifest = {"schema_version": SCHEMA_VERSION, "source": source, "source_page_count": len(document),
+                        "selected_pages": pages, "pdf_file": output.relative_to(workspace).as_posix(),
+                        "pdf_sha256": file_hash(candidate), "pages": entries, "ocr_procedure": procedure,
+                        "publication_validation": {"dpi": dpi, "selected_page_renders": "identical",
+                                                   "all_page_geometry": "identical", "source_streams": "retained",
+                                                   "text_geometry_tolerance_points": GEOMETRY_TOLERANCE,
+                                                   "unselected_pages": "unchanged; outside preparation coverage"}}
+            candidate.replace(output)
+            write_json(manifest_path, manifest)
+            validate_text_layer(workspace, source)
+        except BaseException:
+            manifest_path.unlink(missing_ok=True)
+            candidate.unlink(missing_ok=True)
+            raise
+        finally:
+            (stage_dir / ".request.png").unlink(missing_ok=True)
+    print(f"[+] Stage 00 published {output.name}; validated physical pages: {pages}")
+    return manifest
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Stage 00: prepare a validated, separate OCR PDF")
+    parser.add_argument("--pdf", type=Path, required=True)
+    parser.add_argument("--workspace", type=Path, required=True)
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--page-ranges")
+    args = parser.parse_args()
+    config = load_config(args.config, known_stages=PDF_STAGES, required_stages={"00_text_layer"})
+    prepare_text_layer(args.pdf, args.workspace, config, args.page_ranges)
+
+
+if __name__ == "__main__":
+    main()

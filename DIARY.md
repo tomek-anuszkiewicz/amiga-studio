@@ -1216,3 +1216,38 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite: 18 passed and 1 failed on 62 existing broken Design-to-Reference links
   - Graphify AST refresh passed
   - All conversion checks used fake transport and temporary directories with no live inference
+---
+
+### [2026-10-06 01:03 CEST] — Prepare validated OCR PDFs and persist positioned text (PDF-TEXT-1.1-A/B/C)
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/`
+  - `tools/bootstrap/pdf-to-markdown/`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tests/test_conversion_codex.py`
+  - `ROADMAP.md`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add Stage 00 with separate OCR PDF publication and native/OCR/no-text provenance
+  - Route deterministic Stage 01 exclusively through validated preparation and persist physical page IDs with displayed text geometry and PNG transforms
+  - Enforce artifact contents and exact coverage in lineage plus Stage 02 input validation
+  - Adapt registry positions and configuration and preserve compatible OCR recovery on restart
+  - Add focused missing-handoff and q/Q source-stream regressions and extend the existing invalid-cache test with inverted OCR boxes
+  - Synchronize converter documentation and retain only outstanding source-category acceptance in roadmap 1.1
+- **Architectural Rationale & Trade-Offs**:
+  - Keep source/native content intact and make reopened prepared PDFs authoritative
+  - Validate serialization and rendered fidelity before publication rather than accepting cached model JSON as the final text layer
+  - Keep dependent stage and configuration changes in one atomic implementation without redesigning Stage 02 requests or expanding fragment scope
+- **Verification & Test Results**:
+  - Reproduced missing Stage 00 rejection failure and source-stream wrapper rejection before repair
+  - Reproduced schema-valid inverted OCR caching before moving semantic validation inside cache checks
+  - PDF suite 19/19 and shared client suite 19/19 passed
+  - Quick preflight and pipeline help passed
+  - Authorized TestBook page 64 matched source-manual page 5 by render and completed stages 00-01 with actual OCR and 20 reopened-PDF text blocks
+  - Original source hash and all 160 page geometries/native or unselected content retained with selected-page render and PNG equality
+  - One live OCR request total and compatible response cache reuse on successful reruns with zero Stage 01 inference
+  - Restart at 01 retained the prepared PDF and physical selection and modified retained JSON was rejected
+  - Disposable Unicode serializer probe verified positions for all four rotations with nonzero crop offset
+  - Converter semantic parity review and Graphify refresh completed and all 26 tracked emulator specs remain within audit tolerance
+  - Architecture gate 18/19 failed on 62 existing broken Design-to-Reference links with no task diff in those notes or the test
+  - Native-copy mixed blank/graphic-only and real rotated/cropped fragment acceptance remain unverified
+  - No full-book conversion RAG indexing milestone gate or diary compaction performed
