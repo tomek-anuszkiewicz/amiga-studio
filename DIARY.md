@@ -647,3 +647,16 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Quick pre-flight passed
   - architecture suite passed 20 tests
+---
+
+### [2026-10-05 21:48 CEST] — Remove retired project-side RAG search stub
+- **Affected Subsystems**:
+  - `tools/harness`
+- **What Was Changed (The Concrete Reality)**:
+  - Deleted the retired rag_search.py command that only printed MCP migration guidance and exited with failure
+- **Architectural Rationale & Trade-Offs**:
+  - No tracked callers reference the retired script. Supported retrieval remains available through the Amiga RAG MCP adapter and canonical CLI
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture suite passed 20 tests
+  - Full documentation audit reports 8 remaining findings: 7 direct-reference findings and 1 unregistered diary rule
