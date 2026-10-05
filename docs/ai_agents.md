@@ -182,47 +182,32 @@ the staged scan. Invoke validation explicitly; use no lifecycle or Git hooks.
 
 ## 5. Native Codex Agents (`.codex/agents/`)
 
-Codex discovers standalone agent TOML files in `.codex/agents/`. Each defines `name`, `description`, and `developer_instructions`. All seven project agents explicitly select `gpt-6.1-sol` and set `model_reasoning_effort`: `high` for `code_reviewer`, `cpu_verifier`, and `image_analyst`; `medium` for `doc_curator`, `doc_ingestor`, `tech_writer`, and `vision_analyst`. Tools and permissions inherit from the parent session unless a role configures an override; `image_analyst` sets `sandbox_mode = "workspace-write"` for assigned output assets. Delegate when the user or applicable project/skill instructions request it. These instructions define responsibilities, not executable tool allowlists. Verify effective model and effort in a fresh client session after changing these files before claiming runtime activation.
+Codex discovers standalone agent TOML files in `.codex/agents/`. Each defines `name`, `description`, and `developer_instructions`. All four project agents explicitly select `gpt-6.1-sol` and set `model_reasoning_effort`: `high` for `code_reviewer`, `cpu_verifier`, and `image_analyst`; `medium` for `doc_curator`. Tools and permissions inherit from the parent session unless a role configures an override; `image_analyst` sets `sandbox_mode = "workspace-write"` for assigned output assets. Delegate when the user or applicable project/skill instructions request it. These instructions define responsibilities, not executable tool allowlists. Verify effective model and effort in a fresh client session after changing these files before claiming runtime activation.
 
-Subagents run in their own **isolated context windows**, shielding the main architect
-session from token-heavy bulk processing (OCR floods, multi-page markdown dumps, graph
-traversals). Each subagent is invoked by the parent session and returns only a compact,
-high-signal verdict or diff.
+Subagents run in their own **isolated context windows** for assigned engineering
+tasks. The parent invokes each agent with an explicit scope and receives a compact
+verdict or diff. Scripted document conversion manages its own stage inputs, model
+calls, and persisted outputs.
 
 | Subagent | File | Context Profile | Primary Responsibility |
 | :--- | :--- | :--- | :--- |
 | **`cpu_verifier`** | [`cpu_verifier.toml`](../.codex/agents/cpu_verifier.toml) | 🔬 Precision / Low volume | Tom Harte single-step silicon test execution, cycle-exact ALU/CCR verification, and timing regression isolation. |
 | **`code_reviewer`** | [`code_reviewer.toml`](../.codex/agents/code_reviewer.toml) | 🔍 Adversarial / Medium volume | 18-point pre-commit and architectural compliance audit against AGENTS.md rules, file size limits, and inlining policy. |
-| **`vision_analyst`** | [`vision_analyst.toml`](../.codex/agents/vision_analyst.toml) | 🖼️ Multimodal / Medium volume | Circuit schematic interpretation, timing diagram analysis, and `egui` visual layout debugging via multimodal vision. |
 | **`image_analyst`** | [`image_analyst.toml`](../.codex/agents/image_analyst.toml) | Illustration / Scoped assets | Detailed descriptions of assigned illustrations, schematics, and diagrams; explicitly assigned lossless crop extraction and technical sidecars. |
 | **`doc_curator`** | [`doc_curator.toml`](../.codex/agents/doc_curator.toml) | 📐 Structural / Low volume | Semantic parity between `Obsidian/Amiga/Design/` specs and Rust code, vault graph integrity, ROADMAP.md pruning, DIARY.md compaction. |
-| **`doc_ingestor`** | [`doc_ingestor.toml`](../.codex/agents/doc_ingestor.toml) | 📦 Heavy data / Isolated | PDF/HTML → Markdown conversion of reference manuals, circuit schematic vision sidecars, and Qdrant vector reindexing. |
-| **`tech_writer`** | [`tech_writer.toml`](../.codex/agents/tech_writer.toml) | ✍️ Narrative / Medium volume | Long-form retrospective essays, engineering devlogs, and methodology documents under `docs/` using practitioner voice and 6-layer Inverted Pyramid. |
 
-For document illustrations, assign `image_analyst` the source image, any crop region, and the requested description format. Assign output paths when requesting description files or crop assets. Crop coordinates are integer pixels on the original image, measured from the top left with exclusive upper bounds. The agent preserves the source and verifies saved crops; the parent integrates text, descriptions, and assets into the document. Use `vision_analyst` for GUI layout and hardware-behavior analysis. Page OCR remains with the parent or the conversion toolchain.
+For separately assigned document illustrations, give `image_analyst` the source image, any crop region, and the requested description format. Assign output paths when requesting description files or crop assets. Crop coordinates are integer pixels on the original image, measured from the top left with exclusive upper bounds. The agent preserves the source and verifies saved crops; the parent integrates text, descriptions, and assets into the document. The parent handles GUI inspection through [egui-vision-debugger](../.agents/skills/egui-vision-debugger/SKILL.md).
 
-### Documentation Subagent Split: Why Two Agents?
+### Documentation and Conversion Workflows
 
-The `doc_curator` / `doc_ingestor` split is a deliberate context isolation boundary:
-
-```
-Main Session (Lead Architect)
-    │
-    ├─▶ doc_curator   ← Semantic spec sync, vault links, ROADMAP, DIARY
-    │      Context: structural & precision-oriented; low raw text volume
-    │
-    ├─▶ doc_ingestor  ← PDF/HTML conversion, schematic sidecars, RAG reindex
-    │      Context: token-heavy bulk processing (OCR, multi-page markdown)
-    │               isolated entirely in its own window
-    │
-    └─▶ tech_writer   ← Retrospective essays, devlogs, methodology docs
-           Context: narrative prose; mines DIARY.md for architectural history
-```
-
-**Rule of thumb:**
-- Reasoning about *existing* architectural specs → `doc_curator`.
-- *Transforming raw external data* (manuals, PDFs, HTML archives) → `doc_ingestor`.
-- *Narrating architectural decisions* as long-form prose for human readers → `tech_writer`.
+Use `doc_curator` for assigned design-specification maintenance. The parent authors
+articles and devlogs through [author-methodology-doc](../.agents/skills/author-methodology-doc/SKILL.md).
+PDF/HTML conversion runs through the [standalone bootstrap programs](developers.md#processing-raw-documents-into-markdown),
+whose stages control model invocation, artifact handoffs, and conversion-time descriptions.
+The PDF [config.yaml](../tools/bootstrap/pdf-to-markdown/config.yaml) currently selects
+models by role (`vision`, `prose`, `table`, `fast`) and thinking budgets per stage;
+it still uses Gemini. Migration to Codex Vision is planned in [ROADMAP.md](../ROADMAP.md).
+Validated documentation is indexed through [index-amiga-rag](../.agents/skills/index-amiga-rag/SKILL.md).
 
 ## 6. Configuration and Explicit Validation
 

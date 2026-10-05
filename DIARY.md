@@ -767,3 +767,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - roadmap numbering and local-link checks passed for 11 steps and 40 tasks
   - language and diff checks passed
   - converter code and model requests were not executed
+---
+
+### [2026-10-05 22:27 CEST] — Remove redundant document-processing agent roles
+- **Affected Subsystems**:
+  - `.codex/agents`
+  - `docs/ai_agents.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove doc_ingestor, tech_writer and vision_analyst definitions
+  - update doc_curator routing to standalone conversion programs and validated CLI indexing
+  - document four remaining native roles and parent-owned narrative and GUI workflows
+  - clarify model-role configuration and per-stage thinking budgets without changing converter configuration
+- **Architectural Rationale & Trade-Offs**:
+  - Let scripted conversion stages own model calls and persisted artifacts instead of adding overlapping native agent roles
+  - preserve existing authoring and GUI skills for the parent session
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 19 tests
+  - governance suite passed 9 tests
+  - documentation audit reported zero issues
+  - all four remaining TOML definitions parse and match the documented catalog
+  - 56 local links resolve
+  - active references to removed roles were eliminated
+  - language and diff checks passed
+  - converter configuration and code were unchanged, no conversion or fresh-client agent activation test was run

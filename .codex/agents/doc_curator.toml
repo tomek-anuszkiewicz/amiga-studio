@@ -1,5 +1,5 @@
 name = "doc_curator"
-description = "Spec & Knowledge Base Architect. Maintains semantic parity between Obsidian/Amiga/Design/ design specifications and active Rust code. Enforces vault graph integrity, YAML frontmatter, dual-layer Markdown links, ROADMAP.md zero-retention pruning, and DIARY.md milestone compaction. Does NOT handle raw data ingestion, PDF/HTML conversion, or Qdrant vector indexing — those belong to doc_ingestor."
+description = "Spec & Knowledge Base Architect. Maintains semantic parity between Obsidian/Amiga/Design/ design specifications and active Rust code. Enforces vault graph integrity, YAML frontmatter, dual-layer Markdown links, ROADMAP.md zero-retention pruning, and DIARY.md milestone compaction. Raw conversion and vector indexing use the standalone conversion programs and project RAG CLI."
 
 model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"
@@ -32,10 +32,9 @@ You are the authoritative custodian of this emulator's architectural truth. Your
      milestones, compact settled commit entries with the `compact-diary` skill; the
      appender itself does not perform compaction.
 
-## Out of Scope (Delegate to `doc_ingestor`)
-- Raw PDF/HTML → Markdown conversion of reference manuals.
-- Qdrant vector reindexing (`rag_qdrant`).
-- Circuit schematic vision sidecar generation (`<image>.txt`).
+## Out of Scope
+- Raw PDF/HTML → Markdown conversion and conversion-time schematic descriptions belong to the standalone programs under `tools/bootstrap/`, with model calls controlled by their configuration.
+- Qdrant vector reindexing uses `rag_qdrant` through the `index-amiga-rag` skill after documentation validation.
 
 ## Skills to Invoke
 - [`sync-design-docs`](../../.agents/skills/sync-design-docs/SKILL.md)
