@@ -3,8 +3,8 @@
 stages/03_build_raw_stream/extract_initial_assets.py:
 For every table and graphic node:
 1. Crops visual assets (SVG vector clip if available, or 300 DPI raster PNG with a 10% safety margin).
-2. Extracts all underlying PDF text within the bounding box area into workspace/assets/asset_{node_id}.txt.
-3. Annotates the node with file paths in raw_stream.json.
+2. Annotates the node with visual file paths in raw_stream.json.
+Raw text remains in each node's raw_text field; no separate text dumps are written.
 """
 
 import json
@@ -40,7 +40,7 @@ def extract_assets_for_nodes(
     padding_px = round(0.5 * letter_height_inches * dpi)  # 21 pixels at 300 DPI
     padding_pt = padding_px * 72.0 / dpi                   # ~5.04 points at 300 DPI
 
-    print(f"[*] Extracting visual and text assets for tables & graphics (typographic padding: {padding_pt:.2f} pt / {padding_px} px at {dpi} DPI)...")
+    print(f"[*] Extracting visual assets for tables & graphics (typographic padding: {padding_pt:.2f} pt / {padding_px} px at {dpi} DPI)...")
 
     # Group nodes by page for efficient PDF access
     nodes_by_page = {}
@@ -89,23 +89,12 @@ def extract_assets_for_nodes(
                 if ob[3] <= bbox[1] + 1.0:
                     padded_bbox[1] = max(padded_bbox[1], min(bbox[1], ob[3] + 1.0))
 
-            # 1. Extract Raw PDF Text Asset within the bounding box
-            txt_filename = f"asset_{node_id}.txt"
-            txt_path = assets_dir / txt_filename
-            extracted_text = ""
+            # Bound visual clips to the page.
             clip_rect = pymupdf.Rect(*padded_bbox).normalize()
             if page:
                 clip_rect = clip_rect.intersect(page.rect)
-                if not clip_rect.is_empty and clip_rect.width > 0 and clip_rect.height > 0:
-                    try:
-                        extracted_text = page.get_text("text", clip=clip_rect)
-                    except Exception:
-                        extracted_text = ""
-            with open(txt_path, "w", encoding="utf-8") as f:
-                f.write(extracted_text.strip() + "\n")
-            node["raw_text_path"] = f"{rel_prefix}/{txt_filename}"
 
-            # 2. Extract Vector SVG Clip if supported
+            # 1. Extract Vector SVG Clip if supported
             svg_filename = f"asset_{node_id}.svg"
             svg_path = assets_dir / svg_filename
             has_vector = False
@@ -120,7 +109,7 @@ def extract_assets_for_nodes(
                 except Exception:
                     has_vector = False
 
-            # 3. Extract Raster PNG Clip (at configured DPI) with safety margin
+            # 2. Extract Raster PNG Clip (at configured DPI) with safety margin
             png_filename = f"asset_{node_id}.png"
             png_path = assets_dir / png_filename
             if page and not clip_rect.is_empty and clip_rect.width > 2 and clip_rect.height > 2:

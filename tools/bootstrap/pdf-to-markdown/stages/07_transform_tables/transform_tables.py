@@ -151,7 +151,6 @@ def process_tables(workspace_dir: Path, config: dict):
                                     pass
                     node["png_path"] = None
                     node["svg_path"] = None
-                    node["raw_text_path"] = None
                 else:
                     asset_ref = node.get("svg_path") or node.get("png_path") or ""
                     node["rendered_markdown"] = f"![Table]({asset_ref})\n"
@@ -218,7 +217,6 @@ def prepare_table_tasks(workspace_dir: Path) -> int:
                 "merged_nodes": node.get("merged_nodes"),
                 "svg_path": node.get("svg_path"),
                 "png_path": node.get("png_path"),
-                "raw_text_path": node.get("raw_text_path"),
                 "raw_text": raw_text,
             }
 
@@ -303,7 +301,6 @@ def apply_table_tasks(workspace_dir: Path) -> int:
                                     pass
                     node["png_path"] = None
                     node["svg_path"] = None
-                    node["raw_text_path"] = None
 
         purged_nodes = [
             n for n in nodes

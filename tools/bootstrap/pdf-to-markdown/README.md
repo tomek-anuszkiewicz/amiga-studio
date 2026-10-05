@@ -65,7 +65,7 @@ tools/bootstrap/pdf-to-markdown/
     │
     ├── 03_build_raw_stream/
     │   ├── build_stream.py                  # Merges segmented pages into global raw_stream.json
-    │   ├── extract_initial_assets.py        # Extracts SVG/PNG clips (10% margin) + raw text asset per table/graphic
+    │   ├── extract_initial_assets.py        # Extracts SVG/PNG clips; raw text stays in node JSON
     │   └── README.md
     │
     ├── 04_stream_reduction/

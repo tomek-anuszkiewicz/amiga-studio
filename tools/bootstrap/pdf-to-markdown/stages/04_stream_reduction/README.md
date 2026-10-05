@@ -15,7 +15,7 @@ Performs sequential normalization across the global node stream:
 
 ## Outputs
 - `workspace/04_stream_reduction/reduced_stream.json`: Normalized, welded node stream.
-- `workspace/04_stream_reduction/assets/`: Consolidated visual and text assets (`asset_node_XXXXX.png`, `.txt`, `.svg`).
+- `workspace/04_stream_reduction/assets/`: Consolidated visual assets (`asset_node_XXXXX.png`, `.svg`); raw text remains in the node JSON.
 
 ## Invocation Through the Orchestrator
 ```powershell

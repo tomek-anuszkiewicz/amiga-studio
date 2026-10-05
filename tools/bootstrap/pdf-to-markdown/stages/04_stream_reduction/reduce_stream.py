@@ -178,7 +178,7 @@ def reduce_contiguous_graphics(
                     for old_node in run:
                         old_id = old_node.get("node_id")
                         if old_id:
-                            for ext in [".png", ".txt", ".svg", ".png.txt"]:
+                            for ext in [".png", ".svg", ".png.txt", ".svg.txt"]:
                                 f_asset = reduced_assets_dir / f"asset_{old_id}{ext}"
                                 try:
                                     f_asset.unlink(missing_ok=True)
@@ -284,7 +284,7 @@ def reduce_contiguous_tables(
                     for old_node in run:
                         old_id = old_node.get("node_id")
                         if old_id:
-                            for ext in [".png", ".txt", ".svg", ".png.txt"]:
+                            for ext in [".png", ".svg", ".png.txt", ".svg.txt"]:
                                 f_asset = reduced_assets_dir / f"asset_{old_id}{ext}"
                                 try:
                                     f_asset.unlink(missing_ok=True)
@@ -381,7 +381,7 @@ def reduce_stream(workspace_dir: Path, config: dict):
                     shutil.copy2(asset_f, reduced_assets_dir / asset_f.name)
 
         for n in active_nodes:
-            for k in ("png_path", "svg_path", "raw_text_path"):
+            for k in ("png_path", "svg_path"):
                 val = n.get(k)
                 if val and "03_build_raw_stream/assets" in val:
                     n[k] = val.replace("03_build_raw_stream/assets", "04_stream_reduction/assets")

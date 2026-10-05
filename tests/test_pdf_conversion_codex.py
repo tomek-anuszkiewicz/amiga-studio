@@ -17,6 +17,50 @@ from conversion.lineage import complete_stage, validate_prefix, restore_shared, 
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class PdfAssetTests(unittest.TestCase):
+    def test_raw_stream_keeps_text_in_json_and_emits_only_visual_crops(self):
+        import pymupdf
+        from PIL import Image
+
+        stage_dir = ROOT / "tools/bootstrap/pdf-to-markdown/stages/03_build_raw_stream"
+        with patch.object(sys, "path", [str(stage_dir), *sys.path]):
+            spec = importlib.util.spec_from_file_location("pdf_build_stream", stage_dir / "build_stream.py")
+            stage = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(stage)
+
+        for native_text in (False, True):
+            with self.subTest(native_text=native_text), tempfile.TemporaryDirectory() as directory:
+                workspace = Path(directory)
+                pages = workspace / "01_preprocess"
+                segments = workspace / "02_page_segmentation"
+                pages.mkdir()
+                segments.mkdir()
+                with pymupdf.open() as doc:
+                    page = doc.new_page(width=200, height=200)
+                    if native_text:
+                        page.insert_text((30, 45), "PDF labels")
+                    else:
+                        image = Image.new("RGB", (200, 200), "white")
+                        image_path = workspace / "scan.png"
+                        image.save(image_path)
+                        page.insert_image(page.rect, filename=str(image_path))
+                    doc.save(pages / "page_0001.pdf")
+                raw_text = "Extracted table labels\nVALUE 42"
+                (segments / "page_0001_segments.json").write_text(json.dumps({
+                    "page": 1, "segments": [{"type": "table", "bbox": [20, 20, 180, 100],
+                                              "bbox_norm": [0.1, 0.1, 0.9, 0.5], "raw_text": raw_text}]
+                }), encoding="utf-8")
+
+                stage.build_raw_stream(workspace, {"render": {"dpi": 72}})
+
+                output = workspace / "03_build_raw_stream"
+                nodes = json.loads((output / "raw_stream.json").read_text(encoding="utf-8"))
+                self.assertEqual(nodes[0]["raw_text"], raw_text)
+                self.assertTrue((workspace / nodes[0]["png_path"]).is_file())
+                self.assertEqual(list((output / "assets").glob("*.txt")), [])
+                self.assertNotIn("raw_text_path", nodes[0])
+
+
 class PdfRestartTests(unittest.TestCase):
     def setUp(self):
         spec = importlib.util.spec_from_file_location("pdf_pipeline", ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py")

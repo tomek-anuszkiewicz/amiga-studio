@@ -141,7 +141,7 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
                             head_node["continuation_group_id"] = group_id
                             head_node["merged_nodes"] = [head_node["node_id"]]
                             head_node["merged_assets"] = []
-                            for p in ("svg_path", "png_path", "raw_text_path"):
+                            for p in ("svg_path", "png_path"):
                                 if head_node.get(p):
                                     head_node["merged_assets"].append(head_node[p])
 
@@ -153,7 +153,7 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
                             head_node["merged_nodes"].append(cap_node["node_id"])
 
                         head_node["merged_nodes"].append(candidate["node_id"])
-                        for p in ("svg_path", "png_path", "raw_text_path"):
+                        for p in ("svg_path", "png_path"):
                             if candidate.get(p):
                                 head_node["merged_assets"].append(candidate[p])
 
@@ -308,7 +308,7 @@ def apply_continuation_tasks(workspace_dir: Path) -> int:
                 head_n["merged_nodes"] = merged
 
                 merged_assets = []
-                for p in ("svg_path", "png_path", "raw_text_path"):
+                for p in ("svg_path", "png_path"):
                     if head_n.get(p):
                         merged_assets.append(head_n[p])
                     if tail_n.get(p):

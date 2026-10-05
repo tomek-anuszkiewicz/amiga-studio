@@ -1009,3 +1009,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite remains 18 passed and 1 failed due to 62 missing Reference links
   - Graphify code refresh passed
   - Staged English scanner false-positive on standard-library copytree was verified manually
+---
+
+### [2026-10-05 23:52 CEST] — Remove redundant PDF raw text assets
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Stop writing raw asset_node text dumps and remove raw_text_path from reduction and continuation handling and table task metadata
+  - Keep raw_text in node JSON and retain image description sidecars
+  - Update converter stage documentation
+  - Remove 379 empty legacy dumps and their references from the selected manual workspace without changing raw_text or remaining non-JSON artifacts
+- **Architectural Rationale & Trade-Offs**:
+  - Automatic conversion consumes raw_text from JSON and visual crops
+  - Separate raw PDF text dumps have no downstream reader
+- **Verification & Test Results**:
+  - Focused regression failed on both scanned and native-text PDF fixtures before the change and passed afterward
+  - All 33 offline conversion tests passed
+  - Quick pre-flight passed
+  - Architecture suite: 18 passed and 1 failed on 62 unrelated broken design-document Markdown links
+  - Workspace cleanup verified raw_text equality and unchanged hashes for all remaining non-JSON artifacts
+  - git diff --cached --check passed
+  - Graphify AST refresh completed
