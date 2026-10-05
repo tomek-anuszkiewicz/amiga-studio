@@ -587,3 +587,21 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Invariants**:
   - `python tools/harness/pre_flight.py --quick` passed cleanly.
   - `cargo test -p test_runner --test test_architecture_rules` passed (20/20).
+---
+
+### [2026-10-05 21:34 CEST] — Clarify RAG context retrieval and MCP search guidance
+- **Affected Subsystems**:
+  - `.agents/rules/amiga-rag.md`
+  - `tools/amiga-rag-mcp-server`
+- **What Was Changed (The Concrete Reality)**:
+  - Shortened retrieval guidance and delegated indexing to the existing skill
+  - documented source selection, bounded results, and read-only behavior in MCP metadata
+- **Architectural Rationale & Trade-Offs**:
+  - Use a concise rule and tool metadata for focused context retrieval without adding a redundant search skill
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 20 tests
+  - RAG adapter suite passed 9 tests
+  - Codex MCP launch regression passed
+  - published search metadata verified
+  - Graphify update found no topology changes
