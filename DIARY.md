@@ -859,3 +859,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick pre-flight passed
   - architecture suite passed all 19 tests
   - no SDK installation, live inference, production migration, conversion or indexing was performed
+---
+
+### [2026-10-05 22:47 CEST] — Bound roadmap 1.1 SDK pilots to individual test-book pages
+- **Affected Subsystems**:
+  - `.agent/tasks/codex-document-conversion.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Confirm Python SDK as the selected Codex transport
+  - record the supplied test-book PDF and tracker using repository-relative paths
+  - require incremental single-page pilots with concurrency 1 and usage review before further calls
+- **Architectural Rationale & Trade-Offs**:
+  - Keep migration validation source-grounded and limit subscription token usage through focused live samples
+- **Verification & Test Results**:
+  - Source PDF exists and metadata confirms 160 pages
+  - plan links and YAML examples validated
+  - English and portable-path checks passed
+  - quick pre-flight passed
+  - architecture suite passed all 19 tests
+  - no inference, SDK installation or book conversion was run
