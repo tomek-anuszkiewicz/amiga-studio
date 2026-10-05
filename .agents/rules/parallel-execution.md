@@ -49,8 +49,8 @@ This rule governs how the agent executes tests, validation suites, and long-runn
 
 ## 3. Multi-Session & Workflow Task Separation
 
-1. **Specialized Workflows via Slash Commands**:
-   - When initiating comprehensive audits, use the `/audit-code-quality` workflow to inspect git diffs (Section 4), architecture compliance, and documentation pruning in a clean, focused context.
+1. **Specialized Procedures via Skills**:
+   - When initiating comprehensive audits, use the `$audit-code-quality` skill to inspect git diffs (its manual diff checklist reference), architecture compliance, and documentation pruning in a clean, focused context.
    - For long-running or autonomous goal-directed implementations, suggest `/goal` so the platform orchestrates thorough multi-step execution.
 
 2. **Multi-Session Task Separation**:

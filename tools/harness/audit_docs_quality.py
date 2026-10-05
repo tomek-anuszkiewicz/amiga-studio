@@ -18,8 +18,8 @@ Audits nine critical documentation and agent governance dimensions across the re
 5. Two-Way Script Locality & Harness Governance:
    - Enforces single-consumer scripts reside in `.agents/skills/<skill>/scripts/`.
    - Enforces multi-consumer shared scripts are promoted to `tools/harness/`.
-6. Workflow, Skill & Rule Governance:
-   - Enforces two-way symmetry between `.agents/workflows/`, `.agents/skills/`, and `.agents/rules/`.
+6. Skill & Rule Governance:
+   - Verifies native skill entrypoints and companion coverage for active remediation rules.
 7. Frontmatter & Inverted Pyramid Specification Compliance:
    - Verifies YAML frontmatter metadata in `Obsidian/Amiga/Design/` (tags, tracked_paths, last_synced_commit).
 8. Design Docs Reflection in Rules:
@@ -446,11 +446,25 @@ def check_skills_catalog_sync():
 # Pillar 5: Two-Way Script Locality & Harness Governance
 # ---------------------------------------------------------------------------
 
+def skill_script_consumers(skills_dir, script_name):
+    """Count each owning skill once, including its Markdown references."""
+    consumers = set()
+    if not skills_dir.exists():
+        return consumers
+    for skill_dir in sorted(skills_dir.iterdir()):
+        if not skill_dir.is_dir() or not (skill_dir / "SKILL.md").exists():
+            continue
+        for document in skill_dir.rglob("*.md"):
+            if script_name in document.read_text(encoding="utf-8", errors="ignore"):
+                consumers.add(skill_dir.name)
+                break
+    return consumers
+
+
 def check_script_locality_and_governance():
-    """Audits two-way script placement governance between tools/harness/ and skills."""
+    """Audit script placement using skills and their supporting references."""
     harness_dir = REPO_ROOT / "tools" / "harness"
     skills_dir = REPO_ROOT / ".agents" / "skills"
-    workflows_dir = REPO_ROOT / ".agents" / "workflows"
 
     UNIVERSAL_HARNESS_SCRIPTS = {
         "pre_flight.py",
@@ -473,38 +487,17 @@ def check_script_locality_and_governance():
                 continue
 
             script_name = script.name
-            referencing_skills = set()
-            referencing_workflows = set()
-
-            if skills_dir.exists():
-                for sf in skills_dir.rglob("*.md"):
-                    if sf.name == "SKILL.md":
-                        try:
-                            content = sf.read_text(encoding="utf-8", errors="ignore")
-                            if script_name in content:
-                                referencing_skills.add(sf.parent.name)
-                        except Exception:
-                            pass
-
-            if workflows_dir.exists():
-                for wf in workflows_dir.glob("*.md"):
-                    try:
-                        content = wf.read_text(encoding="utf-8", errors="ignore")
-                        if script_name in content:
-                            referencing_workflows.add(wf.stem)
-                    except Exception:
-                        pass
-
-            total_consumers = len(referencing_skills) + len(referencing_workflows)
+            referencing_skills = skill_script_consumers(skills_dir, script_name)
+            total_consumers = len(referencing_skills)
             if total_consumers <= 1:
                 target_skill = next(iter(referencing_skills), None)
-                target_desc = f".agents/skills/{target_skill}/scripts/" if target_skill else "the consuming skill/workflow"
+                target_desc = f".agents/skills/{target_skill}/scripts/" if target_skill else "the consuming skill"
                 issues.append({
                     "type": "isolate_to_skill",
                     "script": script.name,
                     "location": f"tools/harness/{script.name}",
-                    "consumers": list(referencing_skills | referencing_workflows),
-                    "recommendation": f"Relocate to {target_desc} (used by only {total_consumers} consumer: {', '.join(referencing_skills | referencing_workflows) or 'none'})",
+                    "consumers": list(referencing_skills),
+                    "recommendation": f"Relocate to {target_desc} (used by only {total_consumers} consumer: {', '.join(referencing_skills) or 'none'})",
                 })
 
     # 2. Audit .agents/skills/*/scripts/ for multi-consumer promotion candidates
@@ -513,31 +506,9 @@ def check_script_locality_and_governance():
             owning_skill = script.parent.parent.name
             script_name = script.name
 
-            foreign_skills = set()
-            referencing_workflows = set()
-
-            for sf in skills_dir.rglob("*.md"):
-                if sf.name == "SKILL.md":
-                    skill_name = sf.parent.name
-                    if skill_name != owning_skill:
-                        try:
-                            content = sf.read_text(encoding="utf-8", errors="ignore")
-                            if script_name in content:
-                                foreign_skills.add(skill_name)
-                        except Exception:
-                            pass
-
-            if workflows_dir.exists():
-                for wf in workflows_dir.glob("*.md"):
-                    try:
-                        content = wf.read_text(encoding="utf-8", errors="ignore")
-                        if script_name in content:
-                            referencing_workflows.add(wf.stem)
-                    except Exception:
-                        pass
-
-            if len(foreign_skills) > 0 or len(referencing_workflows) > 1:
-                all_external = foreign_skills | referencing_workflows
+            foreign_skills = skill_script_consumers(skills_dir, script_name) - {owning_skill}
+            if foreign_skills:
+                all_external = foreign_skills
                 issues.append({
                     "type": "promote_to_harness",
                     "script": script.name,
@@ -550,55 +521,15 @@ def check_script_locality_and_governance():
     return issues
 
 # ---------------------------------------------------------------------------
-# Pillar 6: Workflow, Skill & Rule Governance (Two-Way Alignment)
+# Pillar 6: Skill & Rule Governance
 # ---------------------------------------------------------------------------
 
-def check_workflow_and_skill_governance():
-    """Audits two-way alignment between workflows, skills, and rules."""
-    workflows_dir = REPO_ROOT / ".agents" / "workflows"
+def check_skill_and_rule_governance():
+    """Audit native skill availability and active/passive rule coverage."""
     skills_dir = REPO_ROOT / ".agents" / "skills"
     rules_dir = REPO_ROOT / ".agents" / "rules"
-
-    workflow_files = sorted(workflows_dir.glob("*.md")) if workflows_dir.exists() else []
     skill_dirs = [p for p in sorted(skills_dir.iterdir()) if p.is_dir() and (p / "SKILL.md").exists()] if skills_dir.exists() else []
     skill_names = {p.name for p in skill_dirs}
-
-    workflow_issues = []
-    for wf in workflow_files:
-        wf_name = wf.stem
-        has_exact_skill = wf_name in skill_names
-        try:
-            content = wf.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            content = ""
-        referenced_skills = [s for s in skill_names if s in content]
-
-        if not has_exact_skill and not referenced_skills:
-            workflow_issues.append({
-                "type": "orphan_workflow",
-                "workflow": wf.name,
-                "message": f"Workflow `{wf.name}` has no corresponding skill in .agents/skills/{wf_name}/ and references no known skills.",
-            })
-
-    PROCEDURAL_MILESTONE_SKILLS = {
-        "compact-diary": "Milestone diary synthesis and compaction procedure",
-        "sync-design-docs": "Design specification synchronization with git commit history",
-        "roadmap-maintenance": "Milestone scorecard pruning and substrate-first roadmap update",
-        "index-amiga-rag": "Qdrant vector database indexing through the public CLI",
-        "audit-code-quality": "Rust codebase quality, dead code, visibility, and SRP audit",
-        "audit-docs-quality": "Documentation, vault linking, and governance quality audit",
-        "audit-hardware-quality": "Hardware architectural bus topology and silicon compliance audit",
-        "audit-semantic-parity": "Inference-driven bidirectional code-to-docs and docs-to-code semantic parity audit",
-    }
-
-    active_workflow_stems = {wf.stem for wf in workflow_files}
-    promotion_candidates = []
-    for skill_name, reason in sorted(PROCEDURAL_MILESTONE_SKILLS.items()):
-        if skill_name in skill_names and skill_name not in active_workflow_stems:
-            promotion_candidates.append({
-                "skill": skill_name,
-                "reason": reason,
-            })
 
     ACTIVE_RULE_COMPANIONS = {
         "amiga-rag.md": {"index-amiga-rag"},
@@ -658,12 +589,9 @@ def check_workflow_and_skill_governance():
                 })
 
     return {
-        "workflow_count": len(workflow_files),
         "skill_count": len(skill_names),
         "active_rule_count": len(ACTIVE_RULE_COMPANIONS),
         "passive_rule_count": len(PASSIVE_INVARIANT_RULES),
-        "workflow_issues": workflow_issues,
-        "promotion_candidates": promotion_candidates,
         "rule_issues": rule_issues,
     }
 
@@ -1122,30 +1050,30 @@ def check_semantic_sync():
 REGISTERED_RULE_AUDITS = {
     "amiga-rag.md": ["rag_qdrant", "audit_docs_quality.py (Pillar 5)"],
     "asset-descriptions.md": ["audit_docs_quality.py (Pillars 6 & 10)", "test_architecture_rules.rs (rule registry)"],
-    "audio-transcription.md": ["workflows (Conscience Check 1)"],
+    "audio-transcription.md": ["skills (Conscience Check 1)"],
     "clean-break-refactoring.md": ["test_architecture_rules.rs (test_zero_backward_compatibility_shims_and_stale_aliases)"],
     "docs-maintenance.md": ["audit_docs_quality.py (Pillar 1 code drift)"],
     "egui-best-practices.md": ["crates/gui/tests/test_interactions.rs"],
     "file-size-and-cohesion.md": ["test_architecture_rules.rs (test_file_size_limits)"],
     "git-commits.md": ["tools/harness/pre_flight.py", "tools/harness/check_polish.py"],
-    "git-merge-commits.md": [".agents/workflows/git-resolve-merge.md"],
+    "git-merge-commits.md": [".agents/skills/git-resolve-merge/SKILL.md"],
     "graphify.md": ["audit_docs_quality.py (Pillar 6 graphify skill)"],
     "hardware-bus-topology.md": ["audit_hardware_quality.py (Pillars 1 & 2)"],
     "information-hierarchy.md": ["test_architecture_rules.rs (test_rule_files_size_limit...)", "audit_docs_quality.py (Pillars 3 & 7)"],
     "language-policy.md": ["tools/harness/check_polish.py (language-policy check)"],
     "method-inlining.md": ["test_architecture_rules.rs (test_inlining_guidelines_compliance)"],
-    "model-reasoning-advisory.md": ["workflows (Conscience Check 1)"],
+    "model-reasoning-advisory.md": ["skills (Conscience Check 1)"],
     "no-external-paths.md": ["test_architecture_rules.rs (test_no_external_hardcoded_paths)"],
     "opcode-naming.md": ["test_architecture_rules.rs (test_idle_microstep_naming...)", "audit_hardware_quality.py (Pillar 4)"],
-    "parallel-execution.md": ["workflows (parallel execution)"],
+    "parallel-execution.md": ["skills (parallel execution)"],
     "performance-and-readability.md": ["test_architecture_rules.rs (test_zero_user_defined_macros)", "audit_code_quality.py (Pillar 3 condition soup)"],
-    "practitioner-voice-and-tone.md": ["workflows (Conscience Checks 4 & 5)"],
+    "practitioner-voice-and-tone.md": ["skills (Conscience Checks 4 & 5)"],
     "repro-first.md": ["tools/harness/check_test_coupling.py"],
     "roadmap-maintenance.md": ["audit_docs_quality.py (Pillar 10 roadmap zero-retention)"],
     "rust-best-practices.md": ["test_architecture_rules.rs (test_zero_runtime_panics_or_unwraps)", "audit_code_quality.py (Pillars 1, 2, & 4)"],
-    "spec-compliance.md": ["test_architecture_rules.rs (test_golden_hash_anti_tamper_policy_compliance)", "workflows (Conscience Check 2)"],
-    "strict-scope-discipline.md": ["test_architecture_rules.rs", "workflows (Conscience Check)"],
-    "structural-root-cause.md": ["workflows (Conscience Check 3)"],
+    "spec-compliance.md": ["test_architecture_rules.rs (test_golden_hash_anti_tamper_policy_compliance)", "skills (Conscience Check 2)"],
+    "strict-scope-discipline.md": ["test_architecture_rules.rs", "skills (Conscience Check)"],
+    "structural-root-cause.md": ["skills (Conscience Check 3)"],
     "unit-testing-policy.md": ["test_architecture_rules.rs (test_every_crate_has_dedicated_external_tests_suite)", "audit_hardware_quality.py (Pillar 5)"],
     "vault-linking-and-graph-integrity.md": ["test_architecture_rules.rs (test_obsidian_design_docs_links_integrity)", "audit_docs_quality.py (Pillars 2 & 7)"],
     "workspace-structure-and-reexports.md": ["test_architecture_rules.rs (test_named_crate_roots_and_zero_generic_lib_rs)", "audit_docs_quality.py (Pillar 9)"],
@@ -1236,7 +1164,7 @@ def main():
     parser.add_argument("--size-limits", action="store_true", help="Audit AGENTS.md and rule file size ceilings")
     parser.add_argument("--skills", action="store_true", help="Audit agent skills catalog synchronization in docs/ai_agents.md")
     parser.add_argument("--scripts", action="store_true", help="Audit two-way script locality and harness placement governance")
-    parser.add_argument("--governance", action="store_true", help="Audit workflow-skill parity and active rule companion skills")
+    parser.add_argument("--governance", action="store_true", help="Audit native skills and active rule companion coverage")
     parser.add_argument("--frontmatter", action="store_true", help="Audit YAML frontmatter properties in design specs")
     parser.add_argument("--rules-delegation", action="store_true", help="Audit that design specifications are reflected and delegated in agent rules")
     parser.add_argument("--semantic-sync", action="store_true", help="Audit semantic consistency between documentation and code (Double-Check engine)")
@@ -1357,31 +1285,12 @@ def main():
         else:
             print("  - Status: [PASS] All harness scripts are shared/universal, and all skill scripts are private.")
 
-    # 6. Governance Symmetry
+    # 6. Skill and rule coverage
     if run_all or args.governance:
-        print("\n[6. WORKFLOW & SKILL GOVERNANCE (TWO-WAY ALIGNMENT)]")
-        gov_res = check_workflow_and_skill_governance()
-        wf_issues = gov_res["workflow_issues"]
-        promo_candidates = gov_res["promotion_candidates"]
+        print("\n[6. SKILL & RULE GOVERNANCE]")
+        gov_res = check_skill_and_rule_governance()
         rule_issues = gov_res["rule_issues"]
-
-        print(f"  - Active Workflows (.agents/workflows/): {gov_res['workflow_count']}")
         print(f"  - Active Skills (.agents/skills/): {gov_res['skill_count']}")
-
-        if wf_issues:
-            total_issues += len(wf_issues)
-            print(f"  - Workflows: [ORPHAN] {len(wf_issues)} workflow(s) lack backing skills:")
-            for wi in wf_issues:
-                print(f"    * {wi['message']}")
-        else:
-            print("  - Workflows: [PASS] All workflows have backing specialized skills.")
-
-        if promo_candidates:
-            print(f"  - Promotion Candidates: {len(promo_candidates)} procedural skill(s) eligible for /slash-command:")
-            for cand in promo_candidates:
-                print(f"    * `{cand['skill']}`: {cand['reason']}")
-        else:
-            print("  - Promotion Candidates: None (all procedural skills have matching workflows).")
 
         if rule_issues:
             total_issues += len(rule_issues)

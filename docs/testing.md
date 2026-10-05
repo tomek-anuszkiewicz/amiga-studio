@@ -97,10 +97,10 @@ cargo run -p test_runner -- --suite ADD.b
 
 ## 5. Autonomous Testing Workflows & Slash Commands
 
-For interactive pair-programming sessions with the AI Agent in the IDE chat, three specialized slash command workflows drive the testing lifecycle:
+For interactive pair-programming sessions with the AI Agent in the IDE chat, three repository skills drive the testing lifecycle:
 
-| Slash Command | Role in Verification Lifecycle | When to Trigger |
+| Skill | Role in Verification Lifecycle | When to Trigger |
 | :--- | :--- | :--- |
-| [`/test-runner`](../.agents/workflows/test-runner.md) | **Execution & Telemetry Engine** | Run tests across tiers, update snapshots in `.test_results/`, and report red/green regression diffs. |
-| [`/integration-test-sprint`](../.agents/workflows/integration-test-sprint.md) | **Cascading Verification Protocol** | Drive multi-chip test sweeps (Tier 2 machine loop & Tier 4 vAmigaTS), filter non-runnable tests, and cluster failures with a 2–3 attempt cap. |
-| [`/synthesize-test-fixes`](../.agents/workflows/synthesize-test-fixes.md) | **Root-Cause Consolidation** | Audit recent commits or git diff, construct the 3-column diagnostic matrix (`[Symptom] \| [Location] \| [Mechanism]`), find the shared hardware law (common denominator), and strip local ad-hoc patches. |
+| [`$test-runner`](../.agents/skills/test-runner/SKILL.md) | **Execution & Telemetry Engine** | Run tests across tiers, update snapshots in `.test_results/`, and report red/green regression diffs. |
+| [`$integration-test-sprint`](../.agents/skills/integration-test-sprint/SKILL.md) | **Cascading Verification Protocol** | Drive multi-chip test sweeps (Tier 2 machine loop & Tier 4 vAmigaTS), filter non-runnable tests, and cluster failures with a 2–3 attempt cap. |
+| [`$synthesize-test-fixes`](../.agents/skills/synthesize-test-fixes/SKILL.md) | **Root-Cause Consolidation** | Audit recent commits or git diff, construct the 3-column diagnostic matrix (`[Symptom] \| [Location] \| [Mechanism]`), find the shared hardware law (common denominator), and strip local ad-hoc patches. |

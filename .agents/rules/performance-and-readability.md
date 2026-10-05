@@ -3,7 +3,7 @@ trigger: always_on
 description: >
   Zero-allocation hot paths, zero macro_rules!, zero const-generic handlers,
   no cascaded runtime branches, intelligent inlining, and self-documenting
-  boolean logic. Full audit checklist in audit-code-quality workflow;
+  boolean logic. Full audit checklist in audit-code-quality skill;
   CPU micro-step CCK details in add-m68k-instruction skill.
 ---
 
@@ -41,5 +41,5 @@ invariance, and IDLE constant naming apply exclusively to `crates/cpu/`. Consult
 [`add-m68k-instruction`](../skills/add-m68k-instruction/SKILL.md) skill when working there.
 
 ## Code Review Checklist
-Full performance & readability audit checklist → [`/audit-code-quality`](../workflows/audit-code-quality.md) workflow (Section 4).
+Full performance & readability audit checklist → [`$audit-code-quality`](../skills/audit-code-quality/SKILL.md) skill ([manual diff checklist](../skills/audit-code-quality/references/manual-diff-checklist.md)).
 Benchmarking specs → `Obsidian/Amiga/Design/CPU Instruction Benchmarking.md`.

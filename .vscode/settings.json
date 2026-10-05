@@ -12,9 +12,7 @@
   },
   "workbench.editorAssociations": {
     "**/.agents/rules/**/*.md": "default",
-    "**/.agents/workflows/**/*.md": "default",
-    "**/_agents/rules/**/*.md": "default",
-    "**/_agents/workflows/**/*.md": "default",
-    "**/.gemini/**/global_workflows/*.md": "default"
+    "**/.agents/skills/**/*.md": "default",
+    "**/_agents/rules/**/*.md": "default"
   }
 }

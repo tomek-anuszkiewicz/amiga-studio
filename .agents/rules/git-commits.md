@@ -56,6 +56,6 @@ cargo test -p test_runner --test test_architecture_rules
 
 ---
 
-## 5. On-Demand Review: `/audit-code-quality`
+## 5. On-Demand Review: `$audit-code-quality`
 
-Run [`/audit-code-quality`](../workflows/audit-code-quality.md) (Section 4: Manual Diff Checklist) only when explicitly requested or before a major branch merge.
+Run [`$audit-code-quality`](../skills/audit-code-quality/SKILL.md) ([manual diff checklist](../skills/audit-code-quality/references/manual-diff-checklist.md)) only when explicitly requested or before a major branch merge.

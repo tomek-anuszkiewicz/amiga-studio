@@ -62,6 +62,7 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`audit-hardware-quality`](../.agents/skills/audit-hardware-quality/SKILL.md): Comprehensive hardware architectural and silicon fidelity audit covering bus topology, Agnus DMA mastership, passive chip latching, CCK timing, and silicon invariants.
 
 ### B. Quality Assurance, Performance & Refactoring
+- [`code-review`](../.agents/skills/code-review/SKILL.md): Independent code, architecture, and specification compliance review against repository rules.
 - [`test-runner`](../.agents/skills/test-runner/SKILL.md): Standardized test execution across all 4 tiers, `.test_results/` snapshot management, and automated differential regression telemetry.
 - [`integration-test-sprint`](../.agents/skills/integration-test-sprint/SKILL.md): 4-Iteration Cascading Verification Protocol runbook for multi-chip integration test suites, failure clustering, and 2–3 attempt limits.
 - [`synthesize-test-fixes`](../.agents/skills/synthesize-test-fixes/SKILL.md): Post-facto root-cause consolidation using the 3-Column Diagnostic Matrix (`[Symptom] | [Location] | [Mechanism]`) to replace scattered local workarounds with a unified upstream hardware model.
@@ -80,6 +81,7 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`index-amiga-rag`](../.agents/skills/index-amiga-rag/SKILL.md): CLI-first guidance for project Markdown retrieval and incremental indexing.
 - [`author-methodology-doc`](../.agents/skills/author-methodology-doc/SKILL.md): Author, audit, or restructure narrative articles, methodology documents, essays, and retrospective devlogs (e.g. `docs/how_this_emulator_was_written.md`) using the 6-layer Inverted Pyramid hierarchy.
 - [`html-to-markdown`](../.agents/skills/html-to-markdown/SKILL.md): Standardized toolchain for converting legacy Word HTML, vintage web documentation, and technical HTML articles into clean, publication-grade Obsidian Markdown with asset extraction, layout unnesting, and anchor link validation.
+- [`describe-diagram-assets`](../.agents/skills/describe-diagram-assets/SKILL.md): One-time visual-asset preparation for source-faithful HTML/PDF conversions, RAG sidecars, and collapsible text fallbacks.
 - [`graphify`](../.agents/skills/graphify/SKILL.md): Persistent code knowledge graph navigation, call hierarchy tracing, and scoped subtree updates (`crates/` vs `ref_src/`).
 - [`audit-docs-quality`](../.agents/skills/audit-docs-quality/SKILL.md): Comprehensive documentation, Obsidian vault linking, constitutional size limits, and agent governance quality audit playbook.
 - [`audit-semantic-parity`](../.agents/skills/audit-semantic-parity/SKILL.md): Inference-driven bidirectional semantic audit evaluating code-to-docs parity (blind spots, undocumented code) and docs-to-code parity (hallucinations, ghost features, spec drift).
@@ -90,24 +92,19 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 
 ---
 
-## 4. Interactive Slash Command Workflows (`.agents/workflows/`)
+## 4. Invoking Skills in Codex
 
-Developers trigger high-level orchestration directly in the IDE chat UI using slash commands:
+Codex discovers repository skills from `.agents/skills/`, loading each skill's
+name and description first and its full instructions when selected. Use `$` to
+mention a skill (for example, `$audit-code-quality` or `$test-runner`), or `/skills`
+to select one. Codex may also select a skill when a task matches its description.
 
-| Slash Command | Workflow File | Primary Purpose |
-| :--- | :--- | :--- |
-| **`/audit-code-quality`** | [`audit-code-quality.md`](../.agents/workflows/audit-code-quality.md) | Full-workspace Rust code quality audit (dead code, zombies, visibility, SRP, inlining, test parity) + on-demand manual diff checklist (endianness, WASM portability, Serde save-state, defect retrospection). |
-| **`/audit-docs-quality`** | [`audit-docs-quality.md`](../.agents/workflows/audit-docs-quality.md) | Full-repository documentation and governance audit (design sync, vault links, size limits, skills catalog). |
-| **`/audit-semantic-parity`** | [`audit-semantic-parity.md`](../.agents/workflows/audit-semantic-parity.md) | Inference-driven bidirectional code-to-docs and docs-to-code semantic parity audit. |
-| **`/audit-hardware-quality`** | [`audit-hardware-quality.md`](../.agents/workflows/audit-hardware-quality.md) | Full-workspace hardware architectural audit (bus topology, Agnus DMA mastership, passive latching, CCK). |
-| **`/test-runner`** | [`test-runner.md`](../.agents/workflows/test-runner.md) | Standardized test suite execution, `.test_results/` snapshot rotation, and automated regression diffing. |
-| **`/integration-test-sprint`** | [`integration-test-sprint.md`](../.agents/workflows/integration-test-sprint.md) | 4-iteration cascading verification sweep, failure clustering, and 2–3 attempt time-boxing. |
-| **`/synthesize-test-fixes`** | [`synthesize-test-fixes.md`](../.agents/workflows/synthesize-test-fixes.md) | Post-facto git diff audit, 3-column diagnostic matrix construction, and root-cause consolidation into upstream substrate crates. |
-| **`/graphify`** | [`graphify.md`](../.agents/workflows/graphify.md) | AST knowledge graph queries, call hierarchy extraction, and scoped subtree re-indexing. |
-| **`/compact-diary`** | [`compact-diary.md`](../.agents/workflows/compact-diary.md) | Milestone synthesis and compaction of historical chronological entries in DIARY.md. |
-| **`/sync-design-docs`** | [`sync-design-docs.md`](../.agents/workflows/sync-design-docs.md) | Audit and synchronize Obsidian design specifications with active Rust code commits and bump checkpoints. |
-| **`/roadmap-maintenance`** | [`roadmap-maintenance.md`](../.agents/workflows/roadmap-maintenance.md) | Prune completed steps from ROADMAP.md (zero retention) and apply substrate-first causal renumbering. |
-| **`/index-amiga-rag`** | [`index-amiga-rag.md`](../.agents/workflows/index-amiga-rag.md) | Incremental vector re-indexing of Amiga hardware manuals and Obsidian notes into local Qdrant database. |
+The procedures in Section 3 include execution ordering, targeted commands,
+verification, and reporting. Conditional detail is linked from the owning skill,
+such as the [manual diff checklist](../.agents/skills/audit-code-quality/references/manual-diff-checklist.md).
+
+See [OpenAI's skill documentation](https://learn.chatgpt.com/docs/build-skills)
+for discovery and invocation behavior.
 
 ---
 

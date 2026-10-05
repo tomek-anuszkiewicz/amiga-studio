@@ -23,13 +23,13 @@ This skill guides post-facto root-cause consolidation across recent test fixes. 
    - Step back from individual chip logic and trace backwards along the data lifecycle and clock edges.
    - Formulate a single physical hardware rule in the central substrate (`memory_bus`, `machine_loop`, `agnus`) that satisfies all cases naturally.
 4. **Eradication of Ad-Hoc Protections:**
-   - The consolidation is only complete when all temporary downstream patches and special-case branches are deleted, leaving clean code that passes `/test-runner`.
+   - The consolidation is only complete when all temporary downstream patches and special-case branches are deleted, leaving clean code that passes `$test-runner`.
 
 ---
 
 ## 2. Invocation & Zero-Parameter Execution
 
-When invoked without parameters (e.g. via `/synthesize-test-fixes`):
+When invoked without parameters (e.g. via `$synthesize-test-fixes`):
 1. **Automatic Scope Detection:**
    - If the working tree is dirty: inspect `git diff`.
    - If the working tree is clean: inspect recent commits (default: `git log -n 5 --oneline` and `git diff HEAD~5..HEAD`).
@@ -46,7 +46,7 @@ flowchart TD
     A["1. Inspect Git Diff / Commit History\n(git diff HEAD~5..HEAD)"] --> B["2. Build 3-Column Diagnostic Matrix\n(Symptom | Location | Mechanism)"]
     B --> C["3. Identify Upstream Common Denominator\n(Analyze clock phases, bus cycles, signal delays)"]
     C --> D["4. Refactor Upstream & Strip Downstream Patches\n(Implement clean hardware rule; delete ad-hoc if branches)"]
-    D --> E["5. Verify Non-Regression with /test-runner\n(Confirm 100% pass rate maintained)"]
+    D --> E["5. Verify Non-Regression with $test-runner\n(Confirm 100% pass rate maintained)"]
 ```
 
 ### Step 1: Extract Git History / Diff
@@ -82,7 +82,7 @@ Evaluate the matrix against the physical hardware architecture:
    - Remove ad-hoc `if` conditions and test-specific branches.
 
 ### Step 5: Verify Non-Regression
-Execute the test runner workflow:
+Execute the [`$test-runner`](../test-runner/SKILL.md) skill:
 ```powershell
 cargo run -p test_runner -- --diff
 python tools/harness/run_tests.py --unit
@@ -103,4 +103,4 @@ Conclude the synthesis execution with a structured report:
 - **Identified Common Denominator:** Concise physical hardware law.
 - **Upstream Implementation:** File and method where the root cause was solved.
 - **Eliminated Downstream Patches:** List of deleted local workarounds.
-- **Verification Results:** Regression diff output from `/test-runner`.
+- **Verification Results:** Regression diff output from `$test-runner`.

@@ -28,7 +28,7 @@ You are the authoritative custodian of this emulator's architectural truth. Your
    - Audit specifications against active Rust code; prune obsolete draft proposals.
    - Update register offset tables, timing diagrams, and `last_verified_commit` checkpoint
      hashes in YAML frontmatter after verifying against the current HEAD commit.
-   - Run `/audit-semantic-parity` and `/audit-docs-quality` to detect spec drift and
+   - Run `$audit-semantic-parity` and `$audit-docs-quality` to detect spec drift and
      hallucinated features (docs referencing code that no longer exists).
 
 2. **Obsidian Vault & Graph Integrity**:

@@ -24,7 +24,7 @@ Whenever creating, updating, summarizing, or refactoring notes, design specifica
    - The practitioner voice standard applies across **all** repository artifacts:
      - Design documentation (`Obsidian/Amiga/Design/*.md`)
      - Agent rules (`.agents/rules/*.md`, `AGENTS.md`)
-     - Skills and workflows (`.agents/skills/*`, `.agents/workflows/*`)
+     - Skills and their supporting references (`.agents/skills/*`)
      - Agent responses, plans, walkthroughs, and prompt rationales
      - Git commit messages and engineering diary entries (`DIARY.md`)
    - **Zero Rule Justification Exemption**: When authoring, updating, or explaining a rule or instruction, you must **never** justify it using pseudo-academic buzzwords (e.g. claiming a structure provides *"maximum signal and top-down cognitive clarity"*). Rules that mandate plain engineering voice must themselves strictly embody the plain engineering voice standard.
@@ -164,4 +164,3 @@ Before finalizing any response, generating an implementation plan, creating a ru
    - Does any sentence contain `paradigm`, `thesis`, `epistemic`, `teleological`, `ontological`, `nexus`, `desiderata`, or `holistic`?
 2. **Action on Match**:
    - If any of these words appear in descriptive prose, stop immediately. Rewrite the passage using plain, concrete engineering English from the substitutions table in Section 3.
-

@@ -1,6 +1,6 @@
 ---
 name: audit-code-quality
-description: Deep architectural code quality audit and remediation covering dead code, test-only zombies, minimum visibility leaks, SRP cohesion, inlining, and test parity across workspace crates.
+description: Audit Rust workspace code quality, dead code, test-only zombies, visibility, cohesion, inlining, test parity, and requested manual diffs.
 ---
 
 # Recipe: Architectural Code Quality Auditor & Pruning Playbook
@@ -12,7 +12,7 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 ## 1. When to Trigger This Skill
 
 - **Major Milestone Completion:** Mandatory clean-up after completing milestones in [ROADMAP.md](../../../ROADMAP.md) to purge superseded scaffolding, unreferenced helpers, and test zombies.
-- **Pre-Review Quality Gate:** Run prior to executing [`/code-review`](../../workflows/code-review.md) to eliminate cognitive clutter and visibility leaks before architectural reviews.
+- **Pre-Review Quality Gate:** Run prior to executing [`$code-review`](../code-review/SKILL.md) to eliminate cognitive clutter and visibility leaks before architectural reviews.
 - **Refactoring Sprints:** Run whenever restructuring crate boundaries, decomposing oversized files, or auditing information hiding.
 
 ---
@@ -66,6 +66,21 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 
 ---
 
+## Default Execution
+
+When invoked as `$audit-code-quality` without a narrower scope, run the full audit,
+workspace Clippy, and pre-flight gate in that order:
+
+```powershell
+python tools/harness/audit_code_quality.py --all
+cargo clippy --workspace --all-targets
+python tools/harness/pre_flight.py
+```
+
+Use the targeted commands in Section 3 for a requested crate or audit dimension.
+For an explicitly requested diff review or a major architectural branch merge,
+read [the manual diff checklist](references/manual-diff-checklist.md).
+
 ## 3. CLI Audit Workflow
 
 ```powershell
@@ -113,3 +128,30 @@ For each symbol reported under `[TEST-ONLY ZOMBIES]`:
 2. Delete orphaned test assertions/functions in `crates/<crate>/tests/`.
 3. Run `cargo check --workspace` to verify zero unbroken callers remain.
 4. Run `python tools/harness/pre_flight.py` to confirm workspace compiles cleanly.
+
+
+## 5. The Verbal Double-Check (Self-Audit & Heuristic Verification)
+
+Beyond mechanical script passes, explicitly review the **5 Non-Negotiable Conscience Questions**:
+1. 🧠 **Spec Freshness Review:** Did code refactoring or pruning introduce behavior changes not yet updated in `Obsidian/Amiga/Design/*.md`?
+2. 🚫 **Anti-Nudge Review (`structural-root-cause.md`):** Are all clock delays, cycle counts, and beam offsets silicon-verified rather than empirical $\pm 1$ / $\pm 2$ symptom nudges?
+3. 🔬 **Assertion Density & Genuine Test Review (`unit-testing-policy.md`):** Do unit tests genuinely verify chip behavior and state changes, or do they only assert trivial boilerplate?
+4. 📢 **Spec Conflict Escalation (`spec-compliance.md`):** Were any conflicts between reference test suites and internal design specs escalated to the user before changing code?
+5. 🧹 **Clean-Break Refactoring (`clean-break-refactoring.md`):** Were old methods, legacy aliases, and temporary shims completely deleted rather than left behind?
+
+## 6. Output Contract
+Conclude with the standardized summary report:
+Report observed results and counts; mark checks that were not run instead of copying the example PASS values.
+```markdown
+### 🛡️ Code Quality Audit & Pruning Report
+- **Scope Scanned:** Workspace (all crates)
+- **Dead Code Pruned:** <count> symbols
+- **Test-Only Zombies Handled:** <count> retained (Host I/O) / <count> pruned
+- **Visibility Demoted:** <count> symbols (`pub` -> `pub(crate)` / private)
+- **Condition Soup Anomalies:** <count> compound conditions
+- **Method Naming & Accessor Conventions:** [PASS | <count> violations]
+- **Workspace Clippy & Compiler Lints:** [PASS | <count> violations]
+- **Architecture Rules (`test_architecture_rules`):** [PASS | <passed>/<total> tests passed]
+- **Verbal Double-Check Conscience Review:** [CONFIRMED - 5/5 heuristics verified]
+- **Verification:** `pre_flight.py` (PASS), `cargo clippy` (PASS)
+```

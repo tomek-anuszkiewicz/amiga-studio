@@ -82,12 +82,19 @@ When auditing a subsystem, inspect its corresponding Rust crate and Obsidian des
 
 ---
 
+## Invocation & Target Selection
+
+Invoke `$audit-semantic-parity <subsystem>` using the mapping above (`m68000`
+maps to `crates/cpu`). With no target, use `git status` and `git diff --stat` to
+select recently modified subsystems; if none are modified, inspect a primary
+coordinator (`paula` or `agnus`) and state the selected scope.
+
 ## 4. Step-by-Step Execution Protocol
 
 When executing an audit:
 
 1. **Step 1: Extract Code Signatures:**
-   - Read `crates/<crate>/src/<crate>.rs` and key submodules.
+   - Query Graphify first, then read the identified definitions in the crate root and key submodules.
    - Note all public structs, fields, constants, bitmasks, and hardware action methods (`step_cck`, `write_*`, `read_*`, `poll_*`).
 2. **Step 2: Extract Specification Claims:**
    - Read `Obsidian/Amiga/Design/<Spec>.md`.
@@ -98,7 +105,11 @@ When executing an audit:
 4. **Step 4: Emit Standardized Parity Report:**
    - Render the report using the standard template in Section 5.
 5. **Step 5: Propose Actionable Remediation:**
-   - Provide concrete Markdown additions or code adjustments to achieve 100% parity.
+   - Provide concrete Markdown additions or code adjustments to achieve parity.
+   - For `NEEDS_DOCS_ENRICHMENT`, reconcile the specification and use
+     [`$audit-docs-quality`](../audit-docs-quality/SKILL.md) to verify links and checkpoints.
+   - For `NEEDS_CODE_ALIGNMENT` or `SPEC_DIVERGENCE`, escalate before changing
+     production code per [`spec-compliance.md`](../../rules/spec-compliance.md).
 
 ---
 

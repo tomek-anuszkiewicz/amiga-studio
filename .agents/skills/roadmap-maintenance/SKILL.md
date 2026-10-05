@@ -13,10 +13,18 @@ This skill provides the mandatory procedure for maintaining and pruning [`ROADMA
 
 Activate this skill whenever:
 - Finishing any task, milestone, or sub-step documented in [`ROADMAP.md`](../../../ROADMAP.md).
-- Running the `/code-review` workflow to verify that [`ROADMAP.md`](../../../ROADMAP.md) contains zero completed task descriptions.
+- Running the [`$code-review`](../code-review/SKILL.md) skill to verify that [`ROADMAP.md`](../../../ROADMAP.md) contains zero completed task descriptions.
 - Re-aligning project priorities and renumbering remaining backlog steps.
 
 ---
+
+## Completion Evidence
+
+Before pruning a step, confirm its implementation is complete and relevant tests
+pass. For a milestone, run `python tools/harness/pre_flight.py`,
+`python tools/harness/run_tests.py --unit`, and
+`python tools/harness/run_tests.py --integration`. For a major milestone, update
+the concise baseline deliverables in Section 1 as well as pruning Section 2.
 
 ## 2. Core Principle: Zero Retention of Completed Backlog Items
 
@@ -71,3 +79,15 @@ If a sub-suite milestone was finished or global timing changed:
 ### Step 6: Verify Cleanliness
 1. Search [`ROADMAP.md`](../../../ROADMAP.md) for any stray occurrences of `COMPLETED` or `Completed:` in Section 2:
    Ensure zero matches in the active backlog.
+
+
+## 4. Output Contract
+Conclude with the standardized summary report:
+```markdown
+### 🗺️ Roadmap Maintenance Summary
+- **Completed Steps Purged:** <list of purged step titles>
+- **Section 1 Baseline Deliverable Added/Updated:** <deliverable title or N/A>
+- **Remaining Backlog Items Renumbered:** <count> active steps
+- **Substrate Causality Verified:** [PASS (Layer 0 -> Layer 4)]
+- **Zero Completed Tasks In Section 2:** [PASS]
+```

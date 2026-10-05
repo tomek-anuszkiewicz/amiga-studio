@@ -72,7 +72,8 @@ If crate dependencies were added or altered in any `Cargo.toml`:
 ### Step 6: Validate Links & Graph Integrity
 Verify YAML frontmatter properties and ensure zero broken links:
 ```powershell
-cargo test -p test_runner --test test_architecture_rules -- test_obsidian_design_docs_links_integrity
+python tools/harness/pre_flight.py
+cargo test -p test_runner --test test_architecture_rules -- --quiet
 ```
 
 ### Step 7: Stamp the Git Checkpoint & Commit Atomically
@@ -90,6 +91,8 @@ python tools/harness/audit_docs_quality.py --design-bump Denise.md
 
 ```markdown
 ### 📚 Design Documentation Sync Report
+- **Total Specifications Tracked:** <count>
+- **Drifted Specifications Reconciled:** <count>
 - **Documents Updated & Bumped:**
   | Design Document | Subsystem / Topic | Changes Applied | Checkpoint Bumped |
   | :--- | :--- | :--- | :--- |

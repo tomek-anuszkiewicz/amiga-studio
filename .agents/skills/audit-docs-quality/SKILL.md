@@ -5,7 +5,7 @@ description: Comprehensive documentation, Obsidian vault linking, constitutional
 
 # Recipe: Documentation & Agent Governance Quality Auditor Playbook
 
-This skill provides on-demand verification across the repository's documentation ecosystem: synchronizing design specs with Rust commits, validating Obsidian vault graph integrity, enforcing constitutional size limits (`AGENTS.md` <= 14KB, rules <= 23KB), and verifying agent governance symmetry.
+This skill provides on-demand verification across the repository's documentation ecosystem: synchronizing design specs with Rust commits, validating Obsidian vault graph integrity, enforcing constitutional size limits (`AGENTS.md` <= 14KB, rules <= 23KB), and verifying skill and rule governance.
 
 ---
 
@@ -39,15 +39,14 @@ This skill provides on-demand verification across the repository's documentation
 
 ### Pillar 5: Two-Way Script Locality & Harness Governance (`--scripts`)
 - **Harness Reservation:** `tools/harness/` is reserved strictly for universal, shared infrastructure used across multiple subsystems (pre-flight gates, git hooks, universal test runners, global rules).
-- **Rule A (Specialized Locality):** Any script in `tools/harness/` referenced by $\le 1$ skill or workflow (and not part of global pre-commit/pre-flight) must be relocated to `.agents/skills/<skill>/scripts/`.
-- **Rule B (Shared Promotion):** Any script inside `.agents/skills/<skill>/scripts/` referenced by $> 1$ distinct skills or workflows must be promoted into `tools/harness/` to avoid cross-skill leakage.
+- **Rule A (Specialized Locality):** Any script in `tools/harness/` referenced by $\le 1$ skill (and not part of global pre-commit/pre-flight) must be relocated to `.agents/skills/<skill>/scripts/`.
+- **Rule B (Shared Promotion):** Any script inside `.agents/skills/<skill>/scripts/` referenced by $> 1$ distinct skills must be promoted into `tools/harness/` to avoid cross-skill leakage.
 
-### Pillar 6: Workflow, Skill & Rule Governance (`--governance`)
-- **Workflow-to-Skill Backing:** Every workflow in `.agents/workflows/` must have a companion specialized skill in `.agents/skills/` or explicitly declare its underlying skills.
-- **Skill-to-Workflow Promotion Candidates:** Milestone, batch, or multi-step maintenance procedures that operate across the repository are candidate workflows deserving dedicated `/slash-command` entrypoints in `.agents/workflows/`.
-- **Rule-to-Skill Governance:**
-  - Active remediation rules must have corresponding executable skills in `.agents/skills/`.
-  - Passive invariant rules must remain lean architectural constraints without redundant companion skills.
+### Pillar 6: Skill & Rule Governance (`--governance`)
+- Reusable procedures live in `.agents/skills/<name>/SKILL.md`, with `name` and `description` in YAML frontmatter.
+- Invoke them as `$skill-name` or let Codex select them from the task and description.
+- Active remediation rules require corresponding skills; passive invariants remain lean rules.
+- Supporting references belong to their owning skill and count as the same script consumer.
 
 ### Pillar 7: Frontmatter & Inverted Pyramid Structure (`--frontmatter`)
 - **Line 1 Frontmatter:** Every specification under `Obsidian/Amiga/Design/` must define YAML frontmatter starting on Line 1 with `tags: [spec, ...]`.
@@ -78,6 +77,20 @@ Automated Python scripts guarantee syntactic and boundary correctness, but canno
 
 ---
 
+## Default Execution
+
+When invoked without a narrower scope, run:
+
+```powershell
+python tools/harness/audit_docs_quality.py --all
+python tools/harness/pre_flight.py
+```
+
+Only after both checks succeed, use [`$index-amiga-rag`](../index-amiga-rag/SKILL.md)
+to index the accepted documentation. Do not index failed audits or stale drafts.
+For remediation, reconcile design diffs before bumping checkpoints, repair vault
+links, maintain the skill catalog, and apply the script placement rules above.
+
 ## 4. CLI Audit Workflow
 
 ```powershell
@@ -105,7 +118,7 @@ python tools/harness/audit_docs_quality.py --skills
 # Audit script placement governance
 python tools/harness/audit_docs_quality.py --scripts
 
-# Audit workflow and skill governance
+# Audit skill and rule governance
 python tools/harness/audit_docs_quality.py --governance
 
 # Audit design docs reflection and delegation in agent rules
@@ -113,4 +126,23 @@ python tools/harness/audit_docs_quality.py --rules-delegation
 
 # Audit semantic documentation-to-code parity (The Double-Check Engine)
 python tools/harness/audit_docs_quality.py --semantic-sync
+```
+
+
+## 5. Output Contract
+Conclude with the standardized summary report:
+Report observed results; mark checks that were not run instead of copying the example PASS values.
+```markdown
+### 📚 Documentation & Governance Quality Audit Report
+- **Design Specs Sync:** [PASS | <count> drifted]
+- **Vault Linking & Graph Integrity:** [PASS | <count> broken links] (verified <count> links)
+- **Constitutional Size Limits:** [PASS | <count> violations] (`AGENTS.md` <= 14KB, rules <= 23KB)
+- **Skills Catalog Sync:** [PASS | <count> discrepancies]
+- **Script Locality & Harness Governance:** [PASS | <count> anomalies]
+- **Skill & Rule Governance:** [PASS | <count> issues]
+- **Frontmatter Compliance:** [PASS | <count> missing frontmatter]
+- **Design Docs to Rules Reflection:** [PASS | <count> unreflected] (verified <count> specs)
+- **Semantic Documentation-to-Code:** [PASS | <count> discrepancies] (registers, memory map, crate topology, signals, quirks)
+- **Verbal Double-Check Conscience Review:** [CONFIRMED - 5/5 heuristics verified]
+- **Verification:** `pre_flight.py` (PASS), `test_architecture_rules` (PASS)
 ```

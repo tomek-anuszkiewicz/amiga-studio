@@ -25,10 +25,13 @@ This skill guides the systematic execution, triage, and convergence of multi-chi
 
 ## 2. Invocation & Zero-Parameter Execution
 
-When invoked without parameters (e.g. via `/integration-test-sprint` or a general request to run an integration sprint):
+When invoked without parameters (e.g. via `$integration-test-sprint` or a general request to run an integration sprint):
 1. **Detect Current Sprint Phase:**
    - Inspect `git status` and `git log -n 5 --oneline`.
-   - If the working tree is clean: begin **Iteration 1 (Discovery Sweep)** or ask which category/subsystem to target.
+   - If a new baseline is needed: begin **Iteration 1 (Discovery Sweep)**.
+   - If central bottleneck fixes are ready: continue **Iteration 2 (Systemic Cascades)**.
+   - If near-match clusters remain (< 1% diff): continue **Iteration 3 (Geometry & Video Convergence)**.
+   - Use the requested subsystem/category when supplied; state the selected phase.
    - If changes have accumulated from exploratory fixes: begin the **Anti-Patchwork Synthesis (Section 4)**.
 2. **Autonomous Execution Sequence:**
    - Execute the current iteration, present structured metrics, and propose the next concrete step.
@@ -139,3 +142,12 @@ Review all modifications across the diff and ask:
 - [ ] Full regression check passed cleanly with zero regressions.
 - [ ] Changes committed atomically per [`.agents/rules/git-commits.md`](../../rules/git-commits.md).
 - [ ] Quantitative results recorded in [`DIARY.md`](../../../DIARY.md).
+
+
+## 6. Output Contract
+Conclude every sprint round or synthesis step with an executive summary:
+- **Active Iteration:** `Iteration [1 | 2 | 3 | 4 | Anti-Patchwork Synthesis]`
+- **Subsystem Evaluated:** `<subsystem_or_category>`
+- **Pass Rate Delta:** `+X passed, -Y regressed (Total: Z / N, P%)`
+- **Common Denominator Identified:** `<concise physical hardware explanation>`
+- **Next Action Proposed:** `<concrete next step or commit readiness>`

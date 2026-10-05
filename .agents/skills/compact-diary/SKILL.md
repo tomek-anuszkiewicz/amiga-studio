@@ -94,6 +94,7 @@ Compacting `DIARY.md` is an intelligent, selective synthesis — **not an arbitr
 ## 5. Step-by-Step Execution Workflow
 
 1. **Analyze Current Diary Structure:**
+   - Record the current line count and byte size.
    - Read [DIARY.md](../../../DIARY.md) Section 10 to identify the boundary between settled past milestones and active/recent work.
    - Catalog all distinct major milestone themes present in the uncompacted block.
 2. **Draft Individual Milestone Digests:**
@@ -106,3 +107,17 @@ Compacting `DIARY.md` is an intelligent, selective synthesis — **not an arbitr
 5. **Log Compaction Action:**
    - Append a brief chronological note in `DIARY.md` recording that historical milestone entries were compacted per this skill.
 
+
+
+## 6. Output Contract
+Conclude with the standardized summary report:
+```markdown
+### 📔 Diary Compaction Summary
+- **Target Milestones Compacted:** `<milestone_name_and_dates>`
+- **Active Entries Retained:** <count> granular entries
+- **Original Size:** <lines_before> lines (<kb_before> KB)
+- **Compacted Size:** <lines_after> lines (<kb_after> KB)
+- **Size Reduction:** <percent>% by bytes; label any token estimate explicitly
+- **Key Architectural Digests Preserved:** <bullet list of digest sections>
+- **Verification:** `pre_flight.py` (PASS)
+```

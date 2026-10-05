@@ -32,7 +32,7 @@ Test executions maintain rotating state to detect regressions across runs:
 
 ## 3. Invocation & Zero-Parameter Execution
 
-When invoked without parameters (e.g. `/test-runner`):
+When invoked without parameters (e.g. `$test-runner`):
 1. Runs the quick regression gate:
    ```powershell
    cargo run -p test_runner -- --diff
@@ -41,7 +41,13 @@ When invoked without parameters (e.g. `/test-runner`):
    ```powershell
    cargo run -p test_runner -- --summary
    ```
-3. If no snapshots exist, runs a Tier 1 + Tier 2 smoke sweep to establish the initial baseline snapshot.
+3. If the working tree is dirty or no snapshots exist, run Tier 1 and machine
+   integration verification:
+   ```powershell
+   python tools/harness/run_tests.py --unit
+   cargo test -p machine_loop
+   ```
+   Establish an initial snapshot when none exists; report freshness of existing results.
 
 ---
 
@@ -68,4 +74,5 @@ Conclude every test run with a concise executive summary:
 - **Total Tests:** `<total_run>`
 - **Pass Rate:** `<passed> / <total> (<percentage>%)`
 - **Diff vs Baseline:** `+<fixed> improved, -<broken> regressions`
+- **Regression Alert:** Identify newly failing tests immediately.
 - **Action Required:** `[CLEAN | REGRESSIONS NEED TRIAGE]`

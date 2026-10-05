@@ -11,7 +11,7 @@ This skill defines the Amiga project workflow for indexing technical Markdown th
 
 ## 1. When to Trigger This Skill
 
-- **Trigger:** Immediately after a successful `audit-docs-quality` run under the same conditions: major milestone completion, specification updates, or a documentation/governance review.
+- **Trigger:** Immediately after a successful [`$audit-docs-quality`](../audit-docs-quality/SKILL.md) run in the current maintenance sequence under the same conditions: major milestone completion, specification updates, or a documentation/governance review.
 - **Order:** Repair and validate the documentation first; then run this skill to index the resulting accepted Markdown.
 - **Goal:** Preserve accurate project Markdown so the Amiga RAG MCP can retrieve trustworthy `amiga` context after its normal ingestion lifecycle.
 
@@ -50,4 +50,15 @@ files removed below an indexed root are removed from the collection.
 rag_qdrant --status --index-json $env:RAG_INDEX_JSON --json
 rag_qdrant --list-sources --index-json $env:RAG_INDEX_JSON --json
 rag_qdrant search "<distinctive heading or phrase>" --source amiga --limit 2 --index-json $env:RAG_INDEX_JSON --json
+```
+
+
+## 4. Output Contract
+Conclude with the standardized summary report:
+```markdown
+### 📚 Amiga RAG Ingestion Report
+- **Target Knowledge Source:** `amiga` (Commodore HRM, M68000 PRM, Obsidian specs)
+- **Files Re-indexed / Modified:** <count> files
+- **Unchanged Files Skipped:** <count> files (SHA256 cache)
+- **Qdrant Collection Status:** [HEALTHY | <points_count> vectors]
 ```

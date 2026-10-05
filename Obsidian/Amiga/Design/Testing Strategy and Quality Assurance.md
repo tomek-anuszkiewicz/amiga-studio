@@ -188,7 +188,7 @@ graph TD
    - Log all newly passed tests and quantitative pass rates in [DIARY.md](../../../DIARY.md).
 
 > [!TIP]
-> **Interactive Sprint Workflow:** The 4-iteration cascading protocol is driven interactively via the [`/integration-test-sprint`](../../../.agents/workflows/integration-test-sprint.md) slash command (backed by the [`integration-test-sprint` skill](../../../.agents/skills/integration-test-sprint/SKILL.md)), interfacing with [`/test-runner`](../../../.agents/workflows/test-runner.md) for execution telemetry and automated regression diffs.
+> **Interactive Sprint Skill:** The 4-iteration cascading protocol is driven via [`$integration-test-sprint`](../../../.agents/skills/integration-test-sprint/SKILL.md), using [`$test-runner`](../../../.agents/skills/test-runner/SKILL.md) for execution telemetry and automated regression diffs.
 
 ---
 
@@ -231,7 +231,7 @@ To isolate the common denominator without getting lost in granular file diffs, p
    - Re-verify that all passing tests continue to pass without a single special-case conditional.
 
 > [!TIP]
-> **Interactive Synthesis Workflow:** The Anti-Patchwork Protocol and 3-column matrix synthesis is automated via the [`/synthesize-test-fixes`](../../../.agents/workflows/synthesize-test-fixes.md) slash command and backed by the [`synthesize-test-fixes` skill](../../../.agents/skills/synthesize-test-fixes/SKILL.md).
+> **Interactive Synthesis Skill:** The Anti-Patchwork Protocol and 3-column matrix synthesis are performed with [`$synthesize-test-fixes`](../../../.agents/skills/synthesize-test-fixes/SKILL.md).
 
 ---
 
@@ -279,9 +279,9 @@ When building, extending, or refactoring any part of the emulator, execute tests
 | [`tools/harness/check_test_coupling.py`](../../../tools/harness/check_test_coupling.py) | Verifies that changes to `crates/<crate>/src/` are coupled with changes to `crates/<crate>/tests/`. | Git pre-commit hook |
 | [`tools/harness/audit_api_coverage.py`](../../../tools/harness/audit_api_coverage.py) | Statically verifies that public functions (`pub fn`) are referenced and tested in unit/integration suites. | Pre-flight gate (`--strict`) |
 | [`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs) | 20 automated tests validating architectural rules, test naming, and multi-module parity. | `cargo test` & pre-flight gate |
-| [`/test-runner`](../../../.agents/workflows/test-runner.md) | Standardized execution runner across tiers, writing snapshots to `.test_results/` and diffing regressions. | Developer slash command & CI |
-| [`/integration-test-sprint`](../../../.agents/workflows/integration-test-sprint.md) | Orchestrates the 4-iteration cascading verification sweep and failure cluster triage. | Developer slash command |
-| [`/synthesize-test-fixes`](../../../.agents/workflows/synthesize-test-fixes.md) | Audits recent test patches, builds the 3-column diagnostic matrix, and synthesizes root causes into upstream crates. | Developer slash command |
+| [`$test-runner`](../../../.agents/skills/test-runner/SKILL.md) | Standardized execution runner across tiers, writing snapshots to `.test_results/` and diffing regressions. | Codex skill |
+| [`$integration-test-sprint`](../../../.agents/skills/integration-test-sprint/SKILL.md) | Orchestrates the 4-iteration cascading verification sweep and failure cluster triage. | Codex skill |
+| [`$synthesize-test-fixes`](../../../.agents/skills/synthesize-test-fixes/SKILL.md) | Audits recent test patches, builds the 3-column diagnostic matrix, and synthesizes root causes into upstream crates. | Codex skill |
 
 ---
 

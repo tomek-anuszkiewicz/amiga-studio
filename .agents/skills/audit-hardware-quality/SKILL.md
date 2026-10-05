@@ -55,6 +55,20 @@ This skill provides a systematic audit of the emulator core against the physical
 
 ---
 
+## Default Execution
+
+When invoked as `$audit-hardware-quality` without a narrower scope, run:
+
+```powershell
+python tools/harness/audit_hardware_quality.py --all
+python tools/harness/pre_flight.py
+```
+
+Remediate confirmed violations through the motherboard and memory bus: remove
+cross-chip calls, preserve Agnus DMA address ownership and passive latching,
+correct CCK stepping and memory invariants, and add missing machine integration
+tests in `crates/machine_loop/tests/`. Respect specification conflict escalation.
+
 ## 3. CLI Audit Workflow
 
 ```powershell
@@ -75,4 +89,18 @@ python tools/harness/audit_hardware_quality.py --silicon-invariants
 
 # Audit Tier 2 whole-machine loop integration test coverage
 python tools/harness/audit_hardware_quality.py --tier2-coverage
+```
+
+
+## 4. Output Contract
+Conclude with the standardized summary report:
+Report observed results; mark checks that were not run instead of copying the example PASS values.
+```markdown
+### ⚡ Hardware Architecture & Silicon Fidelity Audit Report
+- **Bus Topology & Signal Isolation:** [PASS | <count> violations] (zero direct cross-chip calls)
+- **Agnus DMA Mastership & Passive Latching:** [PASS | <count> violations] (Denise & Paula passive)
+- **Color Clock (CCK) Stepping:** [PASS | <count> violations]
+- **Silicon Quirks & Memory Architecture:** [PASS | <count> violations] (open bus $FF, dual staging addr1/addr2)
+- **Whole-Machine Loop Tier 2 Integration:** [PASS | <count> missing suites]
+- **Verification:** `pre_flight.py` (PASS)
 ```

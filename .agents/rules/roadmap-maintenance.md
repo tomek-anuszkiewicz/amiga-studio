@@ -28,7 +28,7 @@ Whenever completing a minor roadmap step (e.g. Step 1.1, 1.2, 2.1) or major mile
 1. **Milestone Quality Gate (`pre_flight.py --milestone`):**
    - Run `python tools/harness/pre_flight.py --milestone` to verify all 11 quality gates (Clippy, Architecture Rules, Code Quality Pillars 1–4, Hardware Quality Pillars 1–5, and Docs Quality 10 pillars).
 2. **Semantic Parity Audit (`audit-semantic-parity`):**
-   - Run `/audit-semantic-parity` on modified subsystems to verify forward and reverse parity against living design specs.
+   - Run `$audit-semantic-parity` on modified subsystems to verify forward and reverse parity against living design specs.
 3. **Design Documentation Synchronization:**
    - Update affected design documents under `Obsidian/Amiga/Design/` and stamp Git checkpoints (`audit_docs_quality.py --design-bump <doc>`) per [`docs-maintenance.md`](docs-maintenance.md).
 4. **Milestone Engineering Diary Logging:**
