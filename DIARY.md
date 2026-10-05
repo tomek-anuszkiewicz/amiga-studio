@@ -1338,3 +1338,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture rules passed 18/19 with 15 pre-existing broken Reference links
   - Graphify AST update completed
   - no live downloads or model requests run
+---
+
+### [2026-10-06 01:38 CET] — Remove bootstrap switch aliases
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap.ps1`
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `tools/bootstrap/bootstrap_sources.ps1`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove all explicit switch aliases and their help text
+  - remove remaining-argument help compatibility handling
+  - retain canonical switches and native PowerShell parameter binding
+- **Architectural Rationale & Trade-Offs**:
+  - Use one documented switch name consistently across the bootstrap scripts
+- **Verification & Test Results**:
+  - PowerShell parsing and canonical help checks passed for all three scripts
+  - removed Qdrant Convert Process AllMirrors aliases and positional help rejected
+  - native parameter abbreviations and double-dash Help binding remain available
+  - bootstrap contract tests passed 4/4
+  - quick preflight passed all six gates
+  - architecture suite passed 18/19 with 15 pre-existing broken Reference links
+  - Graphify AST update completed
+  - git diff check passed

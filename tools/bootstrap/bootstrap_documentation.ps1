@@ -12,7 +12,7 @@
 
     Features:
     - Multi-source resilience: 2-3 verified mirrors per document with automated failover.
-    - All-sources mode (-AllSources / -AllMirrors): downloads from all available mirrors
+    - All-sources mode (-AllSources): downloads from all available mirrors
       for comprehensive testing or archival redundancy.
     - Full web crawling for multi-page articles (e.g. Kuba Winnicki's 16-page 'Achtung! Amiga').
     - Clear error reporting if all mirror sources for an item are unavailable.
@@ -25,7 +25,7 @@
 
 .PARAMETER AllSources
     Downloads from ALL mirrors and sources for each document, rather than stopping after
-    the first successful mirror. Alias: -AllMirrors.
+    the first successful mirror.
 
 .PARAMETER Force
     Forces re-download even if target file already exists and byte size matches.
@@ -33,7 +33,6 @@
 .PARAMETER Markdown
     Processes downloaded reference documentation (PDF scans, microarchitectural guides,
     and HTML crawls) into publication-grade Markdown within their staging workspaces.
-    Aliases: -Convert, -Process.
 
 .PARAMETER Publish
     With -Markdown, copies finished Markdown and assets to the sibling book directory
@@ -58,7 +57,7 @@
     Processes only Kuba Winnicki's Undocumented Features of OCS, ECS, and AGA.
 
 .PARAMETER Help
-    Displays usage instructions and parameter descriptions. Aliases: -h, -?, --help.
+    Displays usage instructions and parameter descriptions.
 
 .EXAMPLE
     .\tools\bootstrap_documentation.ps1 -List
@@ -85,11 +84,9 @@
 param(
     [switch]$All,
     [string]$Destination,
-    [Alias("AllMirrors")]
     [switch]$AllSources,
     [switch]$Force,
     [switch]$List,
-    [Alias("Convert", "Process")]
     [switch]$Markdown,
     [switch]$Publish,
     [switch]$Hrm,
@@ -98,10 +95,7 @@ param(
     [switch]$Um,
     [switch]$Prefetch,
     [switch]$Undocumented,
-    [Alias("h", "?")]
-    [switch]$Help,
-    [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$RemainingArgs
+    [switch]$Help
 )
 
 # -----------------------------------------------------------------------------
@@ -317,7 +311,7 @@ function Show-Usage {
     Write-Host "Available Parameters:" -ForegroundColor White
     Write-Host "  -List                    : Display catalog of reference documents and mirrors"
     Write-Host "  -All                     : Process all reference materials in the catalog"
-    Write-Host "  -Markdown                : Convert downloaded documents to publication-grade Markdown (aliases: -Convert, -Process)"
+    Write-Host "  -Markdown                : Convert downloaded documents to publication-grade Markdown"
     Write-Host "  -Publish                 : With -Markdown, copy finished output to an empty sibling book directory"
     Write-Host "  -Hrm                     : Process only Hardware Reference Manual"
     Write-Host "  -Trm                     : Process only A500 A2000 Technical Reference Manual"
@@ -326,9 +320,9 @@ function Show-Usage {
     Write-Host "  -Prefetch                : Process only Instruction Prefetch study"
     Write-Host "  -Undocumented            : Process only Undocumented features of OCS, ECS, AGA"
     Write-Host "  -Destination <path>      : Custom destination directory (defaults to Obsidian/Amiga/Reference)"
-    Write-Host "  -AllSources              : Download from all mirrors for redundancy (alias: -AllMirrors)"
+    Write-Host "  -AllSources              : Download from all mirrors for redundancy"
     Write-Host "  -Force                   : Re-download even if target file already exists"
-    Write-Host "  -Help                    : Display this usage and parameter list (aliases: -h, -?, --help)"
+    Write-Host "  -Help                    : Display this usage and parameter list"
     Write-Host ""
 }
 
@@ -698,9 +692,8 @@ function Convert-ToMarkdown {
 # Main Execution Logic
 # -----------------------------------------------------------------------------
 
-# Handle help request explicitly (-Help, -h, -?, --help)
-$IsHelpRequested = $Help -or ($RemainingArgs -contains "--help") -or ($RemainingArgs -contains "-help") -or ($RemainingArgs -contains "help") -or ($RemainingArgs -contains "-h") -or ($RemainingArgs -contains "-?")
-if ($IsHelpRequested) {
+# Handle the canonical help switch.
+if ($Help) {
     Show-Usage
     exit 0
 }

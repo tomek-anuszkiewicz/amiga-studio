@@ -23,12 +23,12 @@
 .PARAMETER Graphify
     Generates and updates the AST-level code knowledge graph in graphify-out/ for
     structural queries, call hierarchies, and architectural navigation.
-    Delegates to tools/bootstrap_graphify.ps1. Alias: -Graph.
+    Delegates to tools/bootstrap_graphify.ps1.
 
 .PARAMETER Rag
     Indexes Commodore hardware reference manuals, PRMs, and Obsidian architecture
     notes into the local Qdrant vector database (http://localhost:6333, collection: amiga).
-    Delegates to tools/bootstrap_rag.ps1. Alias: -Qdrant.
+    Delegates to tools/bootstrap_rag.ps1.
 
 .PARAMETER Documentation
     Provisions raw external reference documentation (PDF scans, microarchitectural guides,
@@ -38,7 +38,6 @@
 .PARAMETER Markdown
     When bootstrapping documentation (-Documentation), converts downloaded
     reference scans and crawls into Markdown and assets inside staging workspaces.
-    Aliases: -Convert, -Process.
 
 .PARAMETER Publish
     With -Markdown, copies finished output into an empty sibling book directory without -tmp.
@@ -75,12 +74,9 @@
 [CmdletBinding()]
 param(
     [switch]$Sources,
-    [Alias("Graph")]
     [switch]$Graphify,
-    [Alias("Qdrant")]
     [switch]$Rag,
     [switch]$Documentation,
-    [Alias("Convert", "Process")]
     [switch]$Markdown,
     [switch]$Publish,
     [switch]$All
@@ -105,11 +101,11 @@ function Show-Usage {
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
     Write-Host "  -Sources                 : Verify & unpack SingleStepTests 68000 test vectors"
-    Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
+    Write-Host "  -Graphify                : Update AST code knowledge graph"
     Write-Host "  -Documentation           : Download external reference materials into Reference/"
-    Write-Host "  -Markdown                : Convert downloaded materials into publication-grade Markdown (aliases: -Convert, -Process)"
+    Write-Host "  -Markdown                : Convert downloaded materials into publication-grade Markdown"
     Write-Host "  -Publish                 : With -Markdown, copy output into an empty sibling book directory"
-    Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (alias: -Qdrant)"
+    Write-Host "  -Rag                     : Index Obsidian docs into Qdrant"
     Write-Host "  -All                     : Run all 4 tiers in causal order (-Sources, -Graphify, -Documentation, -Rag)"
     Write-Host ""
 }

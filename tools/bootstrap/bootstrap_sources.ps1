@@ -34,7 +34,7 @@
     Provisions all external test sources (default behavior).
 
 .PARAMETER Help
-    Displays usage instructions and parameter descriptions. Aliases: -h, -?, --help.
+    Displays usage instructions and parameter descriptions.
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap_sources.ps1
@@ -62,10 +62,7 @@ param(
     [switch]$VAmiga,
     [switch]$VAmigaTS,
     [switch]$All,
-    [Alias("h", "?")]
-    [switch]$Help,
-    [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$RemainingArgs
+    [switch]$Help
 )
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls13
@@ -182,7 +179,7 @@ function Show-Usage {
     Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1              : Download, verify & provision all external test sources"
     Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -List        : Show catalog and local status of upstream sources"
     Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -Force       : Force re-download and re-extraction of all sources"
-    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -Help        : Display this help message (aliases: -h, -?, --help)"
+    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -Help        : Display this help message"
     Write-Host ""
     Write-Host "Available Parameters:" -ForegroundColor White
     Write-Host "  -List                    : Display catalog of upstream sources and local presence"
@@ -192,7 +189,7 @@ function Show-Usage {
     Write-Host "  -VAmiga                  : Provision only vAmiga C++ reference emulator sources"
     Write-Host "  -VAmigaTS                : Provision only vAmigaTS chipset regression suites"
     Write-Host "  -All                     : Provision all external test sources (default behavior)"
-    Write-Host "  -Help                    : Display this usage and parameter list (aliases: -h, -?, --help)"
+    Write-Host "  -Help                    : Display this usage and parameter list"
     Write-Host ""
 }
 
@@ -345,9 +342,8 @@ function Canonicalize-SingleStepDirs {
 # Main Execution Logic
 # -----------------------------------------------------------------------------
 
-# Handle help request explicitly (-Help, -h, -?, --help)
-$IsHelpRequested = $Help -or ($RemainingArgs -contains "--help") -or ($RemainingArgs -contains "-help") -or ($RemainingArgs -contains "help") -or ($RemainingArgs -contains "-h") -or ($RemainingArgs -contains "-?")
-if ($IsHelpRequested) {
+# Handle the canonical help switch.
+if ($Help) {
     Show-Usage
     exit 0
 }
@@ -358,7 +354,7 @@ if ($List) {
 }
 
 # When invoked without parameters, also display the parameter list before provisioning
-if ($PSBoundParameters.Count -eq 0 -and (-not $RemainingArgs -or $RemainingArgs.Count -eq 0)) {
+if ($PSBoundParameters.Count -eq 0) {
     Show-Usage
 }
 
