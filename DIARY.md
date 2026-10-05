@@ -877,3 +877,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick pre-flight passed
   - architecture suite passed all 19 tests
   - no inference, SDK installation or book conversion was run
+---
+
+### [2026-10-05 22:49 CEST] — Point roadmap 1.1 pilots at the Codex test-book directory
+- **Affected Subsystems**:
+  - `.agent/tasks/codex-document-conversion.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the test dataset directory with Test Book example-4567-codex
+- **Architectural Rationale & Trade-Offs**:
+  - Use the user-selected Codex test dataset for the existing single-page pilot plan
+- **Verification & Test Results**:
+  - PDF and tracker exist in the new directory
+  - metadata confirms 160 PDF pages
+  - quick pre-flight passed
+  - architecture suite passed all 19 tests
+  - no inference or conversion was run
