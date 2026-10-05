@@ -2,11 +2,18 @@
 
 This Python command-line program converts HTML documents (Microsoft Word exports, vintage web pages, and downloaded multi-page manuals) into Markdown for Obsidian and GitHub documentation. It prepares the initial reference knowledge base; subsequent project work uses the generated Markdown and assets.
 
-`pipeline.py` orchestrates file processing and calls Gemini through `google-genai`. The workflow is defined in Python, while LLM transcription results are not guaranteed to be deterministic. Conversion instructions used by the program live in [`references/llm-transcription-prompt.md`](references/llm-transcription-prompt.md).
+`pipeline.py` orchestrates file processing and calls Codex through the shared [conversion client](../conversion/client.py). LLM transcription results are not guaranteed to be deterministic. Conversion instructions live in [`references/llm-transcription-prompt.md`](references/llm-transcription-prompt.md).
 
 ## Quick Start
 
-Run from the repository root with Python, `google-genai`, `python-dotenv`, and `PyYAML` installed, and `GEMINI_API_KEY` available in the environment or project `.env`:
+Install the pinned SDK/runtime and dependencies, then sign in to Codex with ChatGPT. API-key mode is rejected:
+
+```powershell
+python -m pip install -r tools/bootstrap/conversion/requirements.txt
+codex login
+```
+
+Run from the repository root:
 
 ```powershell
 python tools/bootstrap/html-to-markdown/pipeline.py `
@@ -15,7 +22,9 @@ python tools/bootstrap/html-to-markdown/pipeline.py `
   --document-name "<DOCUMENT_TITLE>"
 ```
 
-The input is a local HTML file or an already downloaded crawl directory. Output consists of Markdown and referenced images in `assets/`. Omitting `--output-dir` writes beside the input file or inside the input directory. The program loads its adjacent `config.yaml` for model, thinking budget, and timeout settings; the HTML CLI has no `--config` option. Sampling uses the provider defaults. LLM responses use the persistent disk cache in `llm_cache.py`.
+The input is a local HTML file or an already downloaded crawl directory. Output consists of Markdown and referenced images in `assets/`. Omitting `--output-dir` writes beside the source. The adjacent `config.yaml` selects `llm.stages.html_to_markdown.model` and `reasoning_effort`, with separate timeout and concurrency settings. Use `--config` for another explicit YAML file and `--cache-dir` for a disposable pilot cache. The baseline is `gpt-6.1-sol` / `medium`, concurrency 1. Invalid configuration, authentication and inference failures stop conversion; no PDF configuration or DOM result substitutes for Codex.
+
+The shared client caches only completed, validated responses under `Reference/.cache/codex` and writes `.conversion-metrics.json` beside the output. Cached usage belongs to the original request. See the [conversion contract](../reference-conversion-contract.md) for source fidelity and transport boundaries. One small text/code/table HTML pilot has been inspected; full crawls and image recovery still require validation.
 
 Optional rendering and comparison tools require Chrome, Chromium, or Edge; page rasterization also requires PyMuPDF, and comparison images require Pillow. See the operational workflow below for these tools and link validation.
 
@@ -39,8 +48,6 @@ tools/bootstrap/html-to-markdown/
 ├── README.md                              # Program usage and conversion conventions
 ├── config.yaml                            # Program configuration (models, budget, timeout)
 ├── pipeline.py                            # Master conversion orchestrator
-├── llm_cache.py                           # Content-addressable persistent disk cache (.cache/gemini)
-├── llm_client.py                          # Gemini LLM client with automatic cache checking & retry
 ├── scripts/
 │   ├── download_assets.py                 # Scans HTML, copies/downloads images to assets/, creates .txt sidecars
 │   ├── html_to_pages.py                   # Headless Chrome HTML-to-PDF & PyMuPDF page PNG rasterizer

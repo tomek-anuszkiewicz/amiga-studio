@@ -1,8 +1,7 @@
 # Configuration for the HTML-to-Markdown reference pipeline
 
 llm:
-  provider: "google-genai"
-  model_prose: "gemini-3.8-flash"
-  model_vision: "gemini-3.8-flash"
-  default_thinking_budget: 0
-  timeout_seconds: 60
+  stages:
+    html_to_markdown: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+  timeout_seconds: 180
+  concurrency: 1

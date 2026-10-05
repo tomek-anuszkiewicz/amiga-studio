@@ -1,0 +1,6 @@
+openai-codex==0.160.1
+PyYAML==6.0.3
+jsonschema==4.26.0
+beautifulsoup4==4.15.0
+Pillow==12.3.0
+PyMuPDF==1.28.2

@@ -226,7 +226,7 @@ For multi-page web publications, the bootstrapper incorporates an autonomous cra
 <a id="processing-raw-documents-into-markdown"></a>
 ##### Processing Raw Documents into Markdown
 
-The bootstrap converters prepare the initial reference knowledge base from raw scans and downloaded HTML. Each program has a Python CLI and calls Gemini for LLM processing; later project work consumes the generated Markdown and assets. The dispatcher is [`bootstrap_documentation.ps1`](../tools/bootstrap/bootstrap_documentation.ps1).
+The bootstrap converters prepare the initial reference knowledge base from raw scans and downloaded HTML. Each program has a Python CLI; later project work consumes the generated Markdown and assets. HTML uses the pinned Codex SDK with ChatGPT authentication and explicit stage model/effort settings. PDF migration is in progress; its existing pipeline still uses Gemini until its callers and recovery contracts migrate together. Install the HTML dependencies with `python -m pip install -r tools/bootstrap/conversion/requirements.txt` and sign in using `codex login`. API-key mode is rejected by the Codex client. The dispatcher is [`bootstrap_documentation.ps1`](../tools/bootstrap/bootstrap_documentation.ps1); source fidelity is defined in the [conversion contract](../tools/bootstrap/reference-conversion-contract.md).
 
 1. **PDF Scans to Markdown ([`pdf-to-markdown`](../tools/bootstrap/pdf-to-markdown/README.md)):**
    - Leverages Gemini multimodal reasoning to analyze document structure and partition into logical chapters.

@@ -1,13 +1,22 @@
 # Roadmap 1.1: Codex Conversion and Stage Configuration
 
-Status: planned; implementation and live inference are pending.
+Status: active. The shared Codex client and HTML migration are implemented; PDF transport piloting has started. Roadmap 1.1 is not complete.
+
+## Current execution evidence
+
+- Installed and pinned Python SDK and bundled runtime 0.160.1 in a disposable environment. Verified ChatGPT authentication, runtime model catalog, explicit `gpt-6.1-sol` / `medium`, fresh ephemeral read-only threads, no repository instruction sources, and disabled inherited tools. An empty MCP override merges with user configuration, so the client explicitly disables inherited server names and verifies the effective configuration.
+- HTML now uses the shared stage-bound client, strict YAML parser and isolated Codex cache. Removed duplicated Gemini files and silent configuration/DOM substitutions. A single small HTML page preserved prose, code and a table; unchanged replay hit the cache. Offline regressions cover selection, error propagation, JSON/cache validation, image detail, fresh threads and timeout closure.
+- PDF pilot used only physical page 16 from the supplied 160-page book, rendered at 300 DPI and visually inspected. One image-plus-schema request with `detail: original` produced a Markdown transcription preserving all three sections, signal overbars, footer and the incomplete final sentence. It took 14.63 seconds; reported usage was 17,197 input tokens, 737 output tokens (61 reasoning tokens). This is transport/source-fidelity evidence for one prose page, not a completed PDF stage or full-book validation.
+- Inputs, source hashes, requests, responses, metrics and page image are under `.agent/tmp/codex-conversion-pilot/`. The source PDF and tracker were not changed. Initial transport pilots included one text request and one schema request. HTML integration used one aborted request, two completed requests after transport corrections and one cache replay; PDF used one completed image/schema request. No bulk conversion or indexing ran.
+- Pending: migrate PDF configurations and all callers together, audit predecessor fallbacks, enforce config-aware resume/manual handoffs, expand offline PDF coverage, and run only additional minimal feature samples justified by unresolved cases. Milestone review, checkpoint synchronization, diary compaction and roadmap pruning remain pending.
+
 
 Replace Gemini inference in both bootstrap converters with Codex, using the user's ChatGPT sign-in. Give every inference stage one explicit model and reasoning-effort entry. Keep the existing conversion pipeline usable until its clients, configuration readers, and callers migrate together.
 
 ## Scope and Decisions
 
 - Own [roadmap item 1.1](../../ROADMAP.md), the [PDF converter](../../tools/bootstrap/pdf-to-markdown/README.md), and the [HTML converter](../../tools/bootstrap/html-to-markdown/README.md).
-- Use the Python `openai-codex` SDK and local app-server as the selected transport, confirmed by the user. Verify the installed SDK/runtime, authentication reuse, image handling, and schema support before production integration. Package installation and inference have not been performed for this plan.
+- Use the Python `openai-codex` SDK and local app-server as the selected transport, confirmed by the user. SDK/runtime 0.160.1, authentication reuse, original-detail image input and schema output have now been piloted; broader PDF integration and recovery remain pending.
 - Preserve ChatGPT subscription authentication. API-key billing is a different mode and is not a fallback.
 - Use Codex exclusively. Remove the configurable `provider` field and Gemini dependencies, credentials, role models, hardcoded model fallbacks, and numeric thinking-budget logic from the converter execution paths. Do not introduce a provider router.
 - Keep two YAML files with the same `llm.stages` schema. Every inference stage has a complete `{model, reasoning_effort}` entry; no global model/effort default, role indirection, positional slash syntax, or silent substitution.
@@ -19,9 +28,9 @@ Replace Gemini inference in both bootstrap converters with Codex, using the user
 
 Roadmap 1.2-1.6 remain separate pending work. This task prepares the transport and configuration needed by those steps; it does not implement Stage 00 OCR/text provenance, PNG-to-Markdown redesign, `02b_reclip`, the new description stage, bulk conversion, or RAG indexing. Do not create configuration entries for stages that do not yet exist.
 
-## Current Evidence and Workflow Map
+## Migration Baseline and Workflow Map
 
-The current clients and caches are duplicated in the two converter directories. Both YAML files still select Gemini; temperature has already been removed. PDF paths and table/segmentation heuristics have already been removed as unused settings. The existing code, not the YAML role names, determines which model is actually called.
+At the migration baseline, clients and caches were duplicated in the two converter directories and both YAML files selected Gemini. HTML now uses the shared Codex client and stage schema; PDF retains its original client/configuration until its callers and recovery migrate together. Temperature and unused PDF paths/table/segmentation settings were removed before this task. The following map describes the existing PDF workflow and audited baseline gaps, not completed migration evidence.
 
 Paths below are relative to the selected workspace. This is a current workflow inventory, not proof that artifact lineage is validated. Several workers select the first available older directory; migration must audit these fallbacks and reject incompatible predecessor artifacts instead of treating an existing file as sufficient evidence.
 
@@ -55,7 +64,7 @@ All branches within an inference stage use its configured pair: text, vision, JS
 
 ## Target Configuration
 
-Keep rendering, markers, and other consumed non-model settings in their existing sections. The examples below show model selection only. They are a target schema, not YAML already supported by the current Gemini clients.
+Keep rendering, markers, and other consumed non-model settings in their existing sections. The examples below show model selection only. HTML supports this schema; PDF migration to it remains pending.
 
 PDF:
 

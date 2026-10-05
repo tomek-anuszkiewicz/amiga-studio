@@ -934,3 +934,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick pre-flight passed
   - all 19 architecture tests passed
   - no inference or conversion run
+---
+
+### [2026-10-05 23:09 CET] — Migrate HTML reference transcription to Codex and start a one-page PDF pilot
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/html-to-markdown`
+  - `conversion task plan`
+- **What Was Changed (The Concrete Reality)**:
+  - Add pinned subscription-authenticated stage-bound Codex transport, strict YAML configuration and isolated completed-response cache
+  - remove HTML Gemini clients and silent DOM/configuration substitutions
+  - verify source transcription on one HTML page and physical PDF page 16
+  - retain PDF production migration and artifact lineage as pending
+- **Architectural Rationale & Trade-Offs**:
+  - Roadmap task 1.1.A-B and HTML part of 1.1.C: establish the Codex boundary before migrating PDF workers
+  - keep pilot page and live-call counts small
+- **Verification & Test Results**:
+  - 15 conversion contract tests and 4 bootstrap contract tests passed
+  - quick pre-flight and 19 architecture tests passed
+  - live text, JSON and original-detail image/schema pilots completed with ChatGPT auth at gpt-6.1-sol/medium
+  - one HTML cache replay avoided inference
+  - PDF pilot used one physical page and one request
+  - full PDF pipeline, resume/manual lineage and milestone gates not completed
