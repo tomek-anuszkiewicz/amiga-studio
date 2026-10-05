@@ -1306,3 +1306,35 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture rules passed 18/19 with the link-integrity test reporting 18 missing Reference targets outside this change
   - Graphify AST update completed
   - live downloads and conversion not run
+---
+
+### [2026-10-06 01:35 CEST] — Publish converted books only to empty destinations
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `tools/bootstrap/bootstrap.ps1`
+  - `tools/bootstrap/conversion/publication.py`
+  - `HTML and PDF pipeline CLIs`
+  - `converter documentation`
+  - `tests/test_conversion_publish.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove output-dir from both public pipeline CLIs
+  - retain PDF results in workspace/14_link_toc and HTML results in workspace/html_to_markdown
+  - add explicit Publish switches and boolean converter forwarding
+  - reject all occupied book destinations before download or inference and recheck before atomic publication
+  - copy Markdown and assets without overwriting book files
+  - remove automatic HTML parent mirrors
+  - retain working sources and metrics
+- **Architectural Rationale & Trade-Offs**:
+  - Make publication explicit and protect existing books from cleanup and overwrite
+  - share destination validation and prepared-copy publication across both converters
+- **Verification & Test Results**:
+  - Publication safeguards and CLI tests passed 10/10
+  - shared Codex tests passed 19/19
+  - PDF orchestration tests passed 19/19
+  - bootstrap contract tests passed 4/4
+  - PowerShell parsing and local routing checks passed all catalog cases plus crawl fallback
+  - coordinator Publish forwarding and both pipeline help commands passed
+  - quick preflight passed all six checks
+  - architecture rules passed 18/19 with 15 pre-existing broken Reference links
+  - Graphify AST update completed
+  - no live downloads or model requests run

@@ -214,16 +214,23 @@ When external test sources are provisioned via `.\tools\bootstrap\bootstrap.ps1 
 Provisions original PDF scans, OEM technical manuals, and archival web articles for developers inspecting raw schematics or re-running OCR pipelines:
 
 Each book's downloads go into `Obsidian/Amiga/Reference/<Document_Name>-tmp/`
-(or `<Destination>/<Document_Name>-tmp/` with a custom destination). PDF conversion
-keeps its `workspace/` there. With `-Markdown`, the dispatcher reads these sources
-and writes finished Markdown and assets to the sibling `<Document_Name>/` directory
-without the suffix. Existing downloads in unsuffixed directories are not moved or
+(or `<Destination>/<Document_Name>-tmp/` with a custom destination). Conversion
+keeps its `workspace/` there. `-Markdown` leaves final results in that workspace:
+`14_link_toc/` for PDF and `html_to_markdown/` for HTML. Add `-Publish` to copy
+finished Markdown and assets to the sibling `<Document_Name>/` directory without
+the suffix. The destination must be absent or empty; existing files, hidden entries
+and links cause an error before downloads or conversion. The converter checks again
+before publishing and never replaces an occupied directory. Existing downloads in
+unsuffixed directories are not moved or
 reused automatically; the `-tmp` directories remain available for inspection and
-resuming conversion. The HTML converter also retains its existing behavior of
-mirroring the Markdown file into the parent when the output's parent is named `Reference`.
+resuming conversion. Neither pipeline accepts `--output-dir` or automatically
+mirrors HTML into `Reference`. Direct CLI publication uses the boolean `--publish`
+and derives the book destination from its enclosing `<Document_Name>-tmp/` directory.
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Documentation
+# Convert locally, then optionally publish to an empty book directory:
+.\tools\bootstrap\bootstrap.ps1 -Documentation -Markdown -Publish
 ```
 
 <a id="multi-page-web-crawling-engine"></a>

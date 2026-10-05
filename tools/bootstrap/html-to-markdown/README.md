@@ -20,11 +20,22 @@ Run from the repository root:
 ```powershell
 python tools/bootstrap/html-to-markdown/pipeline.py `
   --input "<HTML_FILE_OR_CRAWL_DIRECTORY>" `
-  --output-dir "<OUTPUT_DIRECTORY>" `
   --document-name "<DOCUMENT_TITLE>"
 ```
 
-The input is a local HTML file or an already downloaded crawl directory. Output consists of Markdown and referenced images in `assets/`. Omitting `--output-dir` writes beside the source. The adjacent `config.yaml` selects `llm.stages.html_to_markdown.model` and `reasoning_effort`, with separate timeout and concurrency settings. Use `--config` for another explicit YAML file and `--cache-dir` for a disposable pilot cache. The baseline is `gpt-6.1-sol` / `medium`, concurrency 1. Invalid configuration, authentication and inference failures stop conversion; no PDF configuration or DOM result substitutes for Codex.
+The input is a local HTML file or an already downloaded crawl directory. Markdown
+and referenced images stay in `<source-directory>/workspace/html_to_markdown/`.
+For a bootstrap crawl under `<book>-tmp/live/`, this workspace belongs to `<book>-tmp/`.
+The pipeline no longer accepts `--output-dir` or mirrors Markdown into `Reference`.
+Add `--publish` to copy finished Markdown and assets into the sibling book directory
+without `-tmp`. Publishing requires an absent or empty destination; occupied
+directories and links are rejected before inference and checked again before copying.
+Metrics and downloaded sources remain in staging. The adjacent `config.yaml` selects
+`llm.stages.html_to_markdown.model` and `reasoning_effort`, with separate timeout and
+concurrency settings. Use `--config` for another explicit YAML file and `--cache-dir`
+for a disposable pilot cache. The baseline is `gpt-6.1-sol` / `medium`, concurrency 1.
+Invalid configuration, authentication and inference failures stop conversion; no PDF
+configuration or DOM result substitutes for Codex.
 
 The shared client caches only completed, validated responses under `Reference/.cache/codex` and writes `.conversion-metrics.json` beside the output. Cached usage belongs to the original request. See the [conversion contract](../reference-conversion-contract.md) for source fidelity and transport boundaries; development runs use the fragment requested by the user.
 

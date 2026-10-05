@@ -37,8 +37,11 @@
 
 .PARAMETER Markdown
     When bootstrapping documentation (-Documentation), converts downloaded
-    reference scans and crawls into publication-grade Markdown and assets in sibling
-    <Document_Name>/ directories without -tmp. Aliases: -Convert, -Process.
+    reference scans and crawls into Markdown and assets inside staging workspaces.
+    Aliases: -Convert, -Process.
+
+.PARAMETER Publish
+    With -Markdown, copies finished output into an empty sibling book directory without -tmp.
 
 .PARAMETER All
     Executes all 4 bootstrap tiers in physical causal order:
@@ -79,6 +82,7 @@ param(
     [switch]$Documentation,
     [Alias("Convert", "Process")]
     [switch]$Markdown,
+    [switch]$Publish,
     [switch]$All
 )
 
@@ -104,11 +108,13 @@ function Show-Usage {
     Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
     Write-Host "  -Documentation           : Download external reference materials into Reference/"
     Write-Host "  -Markdown                : Convert downloaded materials into publication-grade Markdown (aliases: -Convert, -Process)"
+    Write-Host "  -Publish                 : With -Markdown, copy output into an empty sibling book directory"
     Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (alias: -Qdrant)"
     Write-Host "  -All                     : Run all 4 tiers in causal order (-Sources, -Graphify, -Documentation, -Rag)"
     Write-Host ""
 }
 
+if ($Publish -and -not $Markdown) { throw "-Publish requires -Markdown" }
 if ($Markdown) { $Documentation = $true }
 
 if (-not $Rag -and -not $Sources -and -not $Graphify -and -not $Documentation -and -not $All) {
@@ -173,6 +179,9 @@ if ($Documentation -or $All) {
         $DocParams = @{ All = $true }
         if ($Markdown) {
             $DocParams["Markdown"] = $true
+        }
+        if ($Publish) {
+            $DocParams["Publish"] = $true
         }
         & $DocScript @DocParams
     }

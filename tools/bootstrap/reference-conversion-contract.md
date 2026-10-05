@@ -36,7 +36,18 @@ The Codex cache is separate from legacy Gemini data. Its identity includes engin
 
 ## Implementation and pending scope
 
-Each PDF workspace owns one source/page selection and its intermediate conversion state. Explicit restart from stage N validates stages before N, clears all outputs/status/manual tasks from N onward, and restores predecessor manifest snapshots. Final output defaults to the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored; modified retained artifacts are rejected rather than automatically repaired. Broader manual content editing and conversion quality remain separate work.
+Each PDF workspace owns one source/page selection and its intermediate conversion state. Explicit restart from stage N validates stages before N, clears all outputs/status/manual tasks from N onward, and restores predecessor manifest snapshots. Final output stays in the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored; modified retained artifacts are rejected rather than automatically repaired. Broader manual content editing and conversion quality remain separate work.
+
+The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
+in the source book's `workspace/html_to_markdown/`; PDF output stays in `workspace/14_link_toc/`.
+Bootstrap downloads sources into `<book>-tmp/`; `-Markdown` only converts locally.
+Its separate `-Publish` switch passes the boolean `--publish` to the converter,
+which copies completed Markdown and assets to the sibling `<book>/` directory.
+Publication requires the staging suffix and an absent or empty destination.
+Bootstrap checks every selected destination before downloading; converters check
+before execution and again after preparing the publication copy. A directory rename
+publishes the prepared copy without overwriting an occupied directory. Source files,
+working state and metrics are retained. HTML no longer creates an automatic parent mirror.
 
 HTML and PDF use the shared Codex transport and strict stage configuration. PDF completion records validate predecessor artifacts and source/configuration/procedure identities; prepared manual tasks carry matching identity records. Existing migration evidence is the basis for proceeding with the separate roadmap work under the development workflow above. Do not treat arbitrary existing artifacts as validated predecessors.
 

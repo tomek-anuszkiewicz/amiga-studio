@@ -7,8 +7,8 @@
     guides, and multi-page HTML crawls) into:
         Obsidian/Amiga/Reference/<Document_Name>-tmp/
 
-    PDF conversion workspaces stay with the downloaded sources. With -Markdown,
-    finished Markdown and assets are written to <Document_Name>/ without the suffix.
+    Conversion workspaces stay with the downloaded sources. With -Markdown -Publish,
+    finished Markdown and assets are copied to an empty <Document_Name>/ directory.
 
     Features:
     - Multi-source resilience: 2-3 verified mirrors per document with automated failover.
@@ -32,8 +32,12 @@
 
 .PARAMETER Markdown
     Processes downloaded reference documentation (PDF scans, microarchitectural guides,
-    and HTML crawls) into publication-grade Markdown in sibling directories without -tmp.
+    and HTML crawls) into publication-grade Markdown within their staging workspaces.
     Aliases: -Convert, -Process.
+
+.PARAMETER Publish
+    With -Markdown, copies finished Markdown and assets to the sibling book directory
+    without -tmp. An existing nonempty destination causes an error without overwriting it.
 
 .PARAMETER Hrm
     Processes only the Commodore Amiga Hardware Reference Manual.
@@ -87,6 +91,7 @@ param(
     [switch]$List,
     [Alias("Convert", "Process")]
     [switch]$Markdown,
+    [switch]$Publish,
     [switch]$Hrm,
     [switch]$Trm,
     [switch]$Prm,
@@ -299,7 +304,7 @@ function Show-Usage {
     Write-Host "==========================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "NOTE: Downloads raw sources into Obsidian/Amiga/Reference/<Document_Name>-tmp/." -ForegroundColor Yellow
-    Write-Host "      With -Markdown, finished output goes into <Document_Name>/ without -tmp."
+    Write-Host "      -Markdown keeps output in staging; -Publish copies it to an empty <Document_Name>/."
     Write-Host "      Reference files are ignored by Git and do not affect emulator execution."
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
@@ -313,6 +318,7 @@ function Show-Usage {
     Write-Host "  -List                    : Display catalog of reference documents and mirrors"
     Write-Host "  -All                     : Process all reference materials in the catalog"
     Write-Host "  -Markdown                : Convert downloaded documents to publication-grade Markdown (aliases: -Convert, -Process)"
+    Write-Host "  -Publish                 : With -Markdown, copy finished output to an empty sibling book directory"
     Write-Host "  -Hrm                     : Process only Hardware Reference Manual"
     Write-Host "  -Trm                     : Process only A500 A2000 Technical Reference Manual"
     Write-Host "  -Prm                     : Process only 68000 Programmer's Reference Manual"
@@ -335,7 +341,7 @@ function Show-CatalogList {
         Write-Host "[$($item.Id)] $($item.Name)" -ForegroundColor Green
         Write-Host "    Description : $($item.Description)" -ForegroundColor White
         Write-Host "    Sources     : Reference\$($item.Folder)-tmp\" -ForegroundColor DarkGray
-        Write-Host "    Markdown    : Reference\$($item.Folder)\" -ForegroundColor DarkGray
+        Write-Host "    Publication : Reference\$($item.Folder)\ (only with -Publish)" -ForegroundColor DarkGray
         Write-Host "    Mirrors ($($item.Mirrors.Count) configured):" -ForegroundColor Yellow
         $idx = 1
         foreach ($m in $item.Mirrors) {
@@ -359,11 +365,11 @@ function Ensure-StagingReadme {
         $Content = @'
 # Temporary External Reference Staging Directory
 
-This book's `-tmp` directory contains raw reference materials downloaded by `tools/bootstrap/bootstrap_documentation.ps1` (or `tools/bootstrap/bootstrap.ps1 -Doc`) and its PDF conversion `workspace/`.
+This book's `-tmp` directory contains raw reference materials downloaded by `tools/bootstrap/bootstrap_documentation.ps1` (or `tools/bootstrap/bootstrap.ps1 -Doc`) and its conversion `workspace/`.
 
 ## Operational Guidelines
 - **Preservation:** Keep sources and working artifacts until conversion output has been inspected. Removing this directory loses the source downloads and resumable PDF conversion state.
-- **Processing:** With `-Markdown`, finished Markdown and assets are written to the sibling book directory without the `-tmp` suffix. This staging directory is not automatically deleted.
+- **Processing:** `-Markdown` keeps finished output in `workspace/`. Add `-Publish` to copy Markdown and assets to the sibling book directory without `-tmp`; an existing nonempty destination is rejected. This staging directory is not automatically deleted.
 '@
         Set-Content -Path $ReadmePath -Value $Content -Encoding UTF8
     }
@@ -598,11 +604,11 @@ function Convert-ToMarkdown {
     param(
         [hashtable]$Item,
         [string]$SourceDir,
-        [string]$TargetDir
+        [bool]$PublishOutput
     )
 
     Write-Host "  Converting '$($Item.Name)' to publication-grade Markdown..." -ForegroundColor Cyan
-    Write-Host "    Target Directory: $TargetDir" -ForegroundColor DarkGray
+    Write-Host "    Staging Directory: $SourceDir" -ForegroundColor DarkGray
 
     $Success = $false
     if ($Item.Type -eq "SingleFile" -and $Item.TargetFile -like "*.pdf") {
@@ -620,9 +626,9 @@ function Convert-ToMarkdown {
             $PdfScript,
             "--pdf", $PdfSource,
             "--workspace", $Workspace,
-            "--output-dir", $TargetDir,
             "--config", $PdfConfig
         )
+        if ($PublishOutput) { $cmdArgs += "--publish" }
         try {
             & python $cmdArgs
             $Success = ($LASTEXITCODE -eq 0)
@@ -644,9 +650,9 @@ function Convert-ToMarkdown {
         $cmdArgs = @(
             $HtmlScript,
             "--input", $HtmlSource,
-            "--output-dir", $TargetDir,
             "--document-name", $Item.Name
         )
+        if ($PublishOutput) { $cmdArgs += "--publish" }
         try {
             & python $cmdArgs
             $Success = ($LASTEXITCODE -eq 0)
@@ -666,9 +672,9 @@ function Convert-ToMarkdown {
         $cmdArgs = @(
             $HtmlScript,
             "--input", $CrawlSource,
-            "--output-dir", $TargetDir,
             "--document-name", $Item.Name
         )
+        if ($PublishOutput) { $cmdArgs += "--publish" }
         try {
             & python $cmdArgs
             $Success = ($LASTEXITCODE -eq 0)
@@ -704,6 +710,10 @@ if ($List) {
     exit 0
 }
 
+if ($Publish -and -not $Markdown) {
+    throw "-Publish requires -Markdown"
+}
+
 # Auto-promote -AllSources or -Force to -All
 if ($AllSources -or $Force) {
     $All = $true
@@ -732,6 +742,21 @@ $ItemsToProcess = @(
     }
 )
 
+# Reject every occupied destination before downloading or converting any selected book.
+if ($Publish) {
+    foreach ($entry in $ItemsToProcess) {
+        $BookDir = Join-Path $Destination $entry.Folder
+        if (Test-Path -LiteralPath $BookDir) {
+            $BookItem = Get-Item -LiteralPath $BookDir -Force
+            if (-not $BookItem.PSIsContainer -or
+                ($BookItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -or
+                @(Get-ChildItem -LiteralPath $BookDir -Force).Count -gt 0) {
+                throw "Publication destination is not an empty directory: $BookDir"
+            }
+        }
+    }
+}
+
 Write-Host ""
 Write-Host "Bootstrapping External Amiga Reference Materials" -ForegroundColor Cyan
 Write-Host "Destination : $Destination" -ForegroundColor DarkGray
@@ -750,7 +775,6 @@ $ProcessedCount = 0
 foreach ($entry in $ItemsToProcess) {
     $ProcessedCount++
     Write-Host "[$ProcessedCount/$($ItemsToProcess.Count)] Processing '$($entry.Name)'..." -ForegroundColor Yellow
-    $ItemTargetDir = Join-Path $Destination $entry.Folder
     $ItemSourceDir = Join-Path $Destination "$($entry.Folder)-tmp"
     Ensure-StagingReadme -TempDir $ItemSourceDir
 
@@ -765,7 +789,7 @@ foreach ($entry in $ItemsToProcess) {
         $HasErrors = $true
     }
     elseif ($Markdown) {
-        $ConvertSuccess = Convert-ToMarkdown -Item $entry -SourceDir $ItemSourceDir -TargetDir $ItemTargetDir
+        $ConvertSuccess = Convert-ToMarkdown -Item $entry -SourceDir $ItemSourceDir -PublishOutput ([bool]$Publish)
         if (-not $ConvertSuccess) {
             $HasErrors = $true
         }
@@ -783,10 +807,10 @@ if ($HasErrors) {
         Write-Host "All requested reference documentation items provisioned successfully." -ForegroundColor Green
     }
     Write-Host ""
-    Write-Host "NOTE: Raw sources and PDF workspaces are provisioned into:" -ForegroundColor Yellow
+    Write-Host "NOTE: Sources and conversion workspaces are provisioned into:" -ForegroundColor Yellow
     Write-Host "      $Destination/<Document_Name>-tmp/" -ForegroundColor White
-    if ($Markdown) {
-        Write-Host "      Finished Markdown and assets: $Destination/<Document_Name>/" -ForegroundColor White
+    if ($Publish) {
+        Write-Host "      Published Markdown and assets: $Destination/<Document_Name>/" -ForegroundColor White
     }
     exit 0
 }

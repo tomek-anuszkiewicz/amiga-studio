@@ -21,6 +21,7 @@ from conversion.transport import CodexTransport
 from conversion.lineage import read_state, write_state, file_hash, stage_identity, validate_prefix, restore_shared, complete_stage, first_incomplete_stage
 from conversion.pdf_artifacts import validate_text_layer
 from conversion.pdf_selection import parse_page_ranges, selected_pages
+from conversion.publication import book_directory, check_destination, publish_output
 
 MANUAL_TASKS = {"06": "continuations", "07": "tables", "08": "graphics", "09": "prose"}
 
@@ -368,7 +369,7 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Optional[Path]):
 
     if output_dir:
         md_count = len(list(output_dir.glob("*.md"))) if output_dir.exists() else 0
-        print(f"[*] Custom Output Dir             : {md_count} files in {output_dir.name}/")
+        print(f"[*] Final Workspace Output        : {md_count} files in {output_dir.name}/")
 
     status_file = workspace_dir / "stage_status.json"
     if status_file.exists():
@@ -468,7 +469,7 @@ def main():
     parser = argparse.ArgumentParser(description="PDF-to-Markdown Pipeline Orchestrator (Stages 00-14)")
     parser.add_argument("--pdf", type=Path, help="Source PDF or directory containing exactly one PDF")
     parser.add_argument("--workspace", type=Path)
-    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--publish", action="store_true", help="Copy finished Markdown/assets into the empty sibling book directory without -tmp")
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--cache-dir", type=Path, help="Codex cache directory for worker subprocesses")
     parser.add_argument("--from-stage")
@@ -493,7 +494,12 @@ def main():
     if pdf and not pdf.is_file():
         raise FileNotFoundError(pdf)
     workspace = args.workspace.resolve() if args.workspace else ((pdf.parent / "workspace") if pdf else Path.cwd() / "workspace")
-    output = args.output_dir.resolve() if args.output_dir else workspace / "14_link_toc"
+    output = workspace / "14_link_toc"
+    destination = book_directory(workspace) if args.publish else None
+    if destination is not None:
+        check_destination(destination)
+        if args.status or args.prepare_stage or args.apply_stage:
+            raise ValueError("Publishing requires completed conversion, not status or manual handoff")
     if args.status:
         print_pipeline_status(workspace, output)
         return
@@ -521,6 +527,8 @@ def main():
         end = resolve_stage_idx(args.to_stage) if args.to_stage else len(STAGE_REGISTRY)-1
     if start is None or end is None or start > end and start != len(STAGE_REGISTRY):
         raise ValueError("Invalid stage interval")
+    if args.publish and end != len(STAGE_REGISTRY)-1:
+        raise ValueError("Publishing requires completion through Stage 14")
     source = {"name": pdf.name, "sha256": file_hash(pdf)} if pdf else state.get("source")
     if not source:
         raise ValueError("--pdf is required for a new conversion")
@@ -542,6 +550,9 @@ def main():
     if start == len(STAGE_REGISTRY):
         restore_shared(state, STAGE_REGISTRY, start, workspace)
         print("[+] All PDF stages have validated completion records.")
+        if destination is not None:
+            publish_output(output, destination)
+            print(f"[+] Published reference book: {destination}")
         return
     if start == 0 and pdf is None:
         raise ValueError("--pdf is required to regenerate Stage 00")
@@ -602,6 +613,9 @@ def main():
             update_status(workspace / "stage_status.json", stage["id"], "failed", "Artifact completion validation failed")
             raise
     print("[+] Selected PDF pipeline stages completed with validated lineage.")
+    if destination is not None:
+        publish_output(output, destination)
+        print(f"[+] Published reference book: {destination}")
 
 
 if __name__ == "__main__":

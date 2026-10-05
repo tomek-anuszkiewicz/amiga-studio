@@ -4,7 +4,7 @@ pipeline.py: Master CLI Orchestrator for HTML-to-Markdown Reference Conversion.
 
 Handles both single-file technical HTML articles (e.g. Jorge Cwik's 68kPrefetch.html)
 and multi-page crawled web publications (e.g. Kuba Winnicki's Achtung! Amiga).
-Emits publication-grade Obsidian Markdown directly into the destination reference directory.
+Keeps Markdown and assets in a source-local workspace until explicitly published.
 """
 
 import argparse
@@ -34,6 +34,7 @@ SKILL_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SKILL_DIR.parent))
 from conversion import CodexClient, load_config
 from conversion.cache import ResponseCache
+from conversion.publication import book_directory, check_destination, publish_output
 
 
 def run_command(cmd: List[str], check: bool = True) -> bool:
@@ -182,6 +183,8 @@ def convert_single_html(input_file: Path, output_dir: Path, doc_title: str, clie
 
     title = doc_title or (soup.title.string.strip() if soup and soup.title and soup.title.string else input_file.stem)
     out_file = output_dir / f"{title}.md"
+    if out_file.parent != output_dir:
+        raise ValueError("Document title must be a filename without directory components")
 
     # 1. Extract assets
     assets_dir = output_dir / "assets"
@@ -199,14 +202,6 @@ def convert_single_html(input_file: Path, output_dir: Path, doc_title: str, clie
             pass
     print(f"[+] Emitted Markdown: {out_file.name} ({len(md_content)} chars)")
 
-    if output_dir.parent.name == "Reference":
-        mirror_file = output_dir.parent / out_file.name
-        try:
-            shutil.copyfile(out_file, mirror_file)
-            print(f"[*] Mirrored reference document to: {mirror_file.name}")
-        except Exception:
-            pass
-
     return out_file
 
 
@@ -214,6 +209,8 @@ def convert_crawl_directory(input_dir: Path, output_dir: Path, doc_title: str, c
     print(f"[*] Processing multi-page HTML crawl in: {input_dir.name}")
     title = doc_title or input_dir.name
     out_file = output_dir / f"{title}.md"
+    if out_file.parent != output_dir:
+        raise ValueError("Document title must be a filename without directory components")
 
     # 1. Extract assets
     assets_dir = output_dir / "assets"
@@ -271,21 +268,13 @@ def convert_crawl_directory(input_dir: Path, output_dir: Path, doc_title: str, c
             pass
     print(f"[+] Emitted consolidated Markdown: {out_file.name} ({len(md_content)} chars)")
 
-    if output_dir.parent.name == "Reference":
-        mirror_file = output_dir.parent / out_file.name
-        try:
-            shutil.copyfile(out_file, mirror_file)
-            print(f"[*] Mirrored reference document to: {mirror_file.name}")
-        except Exception:
-            pass
-
     return out_file
 
 
 def main():
     parser = argparse.ArgumentParser(description="HTML-to-Markdown Reference Conversion Pipeline")
     parser.add_argument("--input", "-i", type=str, required=True, help="Input HTML file or crawl directory")
-    parser.add_argument("--output-dir", "-o", type=str, default=None, help="Destination directory for Markdown and assets (defaults to input path)")
+    parser.add_argument("--publish", action="store_true", help="Copy finished Markdown/assets into the empty sibling book directory without -tmp")
     parser.add_argument("--document-name", "-n", type=str, default=None, help="Document title for output filename and metadata")
     parser.add_argument("--config", type=Path, default=SKILL_DIR / "config.yaml", help="Explicit stage configuration")
     parser.add_argument("--cache-dir", type=Path, default=None, help="Override the Codex response cache directory")
@@ -298,12 +287,22 @@ def main():
         print(f"[!] Error: Input path does not exist: {input_path}", file=sys.stderr)
         sys.exit(1)
 
+    source_dir = input_path if input_path.is_dir() else input_path.parent
+    if source_dir.name == "live" and source_dir.parent.name.endswith("-tmp"):
+        source_dir = source_dir.parent
+    output_dir = source_dir / "workspace/html_to_markdown"
+    destination = book_directory(source_dir) if args.publish else None
+    if destination is not None:
+        check_destination(destination)
     config = load_config(args.config)
     cache = ResponseCache(args.cache_dir) if args.cache_dir else None
     with CodexClient(config, stage="html_to_markdown", cache=cache) as client:
-        output_dir = Path(args.output_dir).resolve() if args.output_dir else (input_path if input_path.is_dir() else input_path.parent)
         output_dir.mkdir(parents=True, exist_ok=True)
-        doc_name = args.document_name or (output_dir.name if output_dir.name and output_dir.name.lower() != "live" else input_path.stem)
+        doc_name = args.document_name or source_dir.name.removesuffix("-tmp")
+        for previous in output_dir.glob("*.md"):
+            previous.unlink()
+        if (output_dir / "assets").exists():
+            shutil.rmtree(output_dir / "assets")
 
         try:
             if input_path.is_file():
@@ -328,7 +327,10 @@ def main():
         except Exception:
             pass
 
-    print("[+] HTML conversion completed successfully.")
+    if destination is not None:
+        publish_output(output_dir, destination)
+        print(f"[+] Published reference book: {destination}")
+    print(f"[+] HTML conversion completed successfully: {output_dir}")
 
 
 if __name__ == "__main__":

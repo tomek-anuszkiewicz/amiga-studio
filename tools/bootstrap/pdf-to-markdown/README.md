@@ -14,21 +14,27 @@ Run from the repository root. Install the pinned shared dependencies with `pytho
 python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --pdf "<PDF_FILE>" `
   --workspace "<WORKSPACE>" `
-  --output-dir "<OUTPUT_DIRECTORY>" `
   --config "tools/bootstrap/pdf-to-markdown/config.yaml"
 ```
 
-The workspace holds intermediate page images, JSON streams, task files, a configuration snapshot, stage status and `.conversion-state.json`. The output directory receives Markdown and assets. The shared `../conversion/` package owns configuration, Codex transport, response schemas, cache and predecessor validation. Use `--cache-dir` to select a disposable cache; the default is `.cache/codex`. Completed schema-validated responses are cached separately from legacy Gemini data.
+The workspace holds intermediate page images, JSON streams, task files, a configuration snapshot, stage status and `.conversion-state.json`. Final Markdown and assets remain in workspace/14_link_toc. The shared `../conversion/` package owns configuration, Codex transport, response schemas, cache and predecessor validation. Use `--cache-dir` to select a disposable cache; the default is `.cache/codex`. Completed schema-validated responses are cached separately from legacy Gemini data.
 
 [Stage 00](stages/00_text_layer/README.md) prepares `00_text_layer/<source stem> - OCR.pdf` plus a validated text-layer manifest. It retains native spans, adds invisible OCR only to selected textless pages containing text, and explicitly classifies blank/graphic-only pages. If no text addition is needed, the separate output is a byte-for-byte copy. The complete page tree, geometry, native content and selected-page renders remain unchanged. Only the selected fragment is certified. The original PDF must remain outside the workspace.
 
 [Stage 01](stages/01_preprocess/README.md) reads only that validated PDF and deterministically emits PNGs and positioned text JSON. Text comes from the reopened PDF, including its OCR spans. Page IDs retain physical source numbers; manifests record relative paths, hashes, provenance, displayed-page coordinates and actual raster transforms. Missing or invalid predecessors and mismatched page pairs stop conversion before cleanup or requests. Stage 02 keeps its existing block-summary/PNG request; supplying complete matching text JSON to the redesigned model request belongs to roadmap 1.1.
 
-Use `--page-ranges "19"` for a single physical PDF page. Keep the same source/page selection, workspace, output directory and configuration when continuing a stage interval. `--resume` validates completed predecessor artifacts and their source, procedure and stage model/effort identities before reuse. An incompatible or legacy workspace requires explicit regeneration from the reported stage. Prepared manual tasks also record their predecessor identity. Runtime/schema failures stop the pipeline without model or provider substitution.
+Use `--page-ranges "19"` for a single physical PDF page. Keep the same source/page selection, workspace and configuration when continuing a stage interval. `--resume` validates completed predecessor artifacts and their source, procedure and stage model/effort identities before reuse. An incompatible or legacy workspace requires explicit regeneration from the reported stage. Prepared manual tasks also record their predecessor identity. Runtime/schema failures stop the pipeline without model or provider substitution.
 
 ## Independent test workspaces and restarts
 
-Use a separate `--workspace` for each source/page-range experiment. Final Markdown defaults to `<WORKSPACE>/14_link_toc`; `--output-dir` is an explicit override and must identify the same conversion when restarting. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
+Use a separate `--workspace` for each source/page-range experiment. Final Markdown stays in `<WORKSPACE>/14_link_toc`; `--output-dir` has been removed. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
+
+Add `--publish` to copy completed Markdown and assets into the sibling book directory
+without `-tmp`. The workspace must be inside `<book>-tmp/`. The target must be absent
+or empty; occupied directories and links are rejected before execution and checked
+again before copying. Publication requires completion through Stage 14. An already
+completed conversion can use `--resume --publish`; retained artifacts and lineage
+are validated before copying. Intermediate state and metrics stay in the workspace.
 
 For example, first prepare stages 00–04 for physical pages 5–10 in `<WORKSPACE_A>`. Then restart from stage 05:
 
@@ -148,7 +154,7 @@ tools/bootstrap/pdf-to-markdown/
 > 1. Status progression tracking in `stage_status.json`
 > 2. LLM call metrics logging in `.metrics` (JSON content)
 > 3. Validated predecessor lineage and downstream artifact invalidation
-> 4. Standard argument and path normalization (`--workspace`, `--output-dir`, `--config`)
+> 4. Workspace path normalization and guarded publication (`--workspace`, `--publish`, `--config`)
 > 5. Hermetic configuration snapshotting to `<WORKSPACE>/config.yaml`
 >
 > ### Execution Rules:
@@ -231,7 +237,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --c
 
 ### Phase F: First Chapter Refinement & Final TOC Wikilinking (Stages 13 – 14)
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --output-dir "<OUTPUT_DIR>" --config "<CONFIG>" --from-stage 13 --to-stage 14
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 13 --to-stage 14
 ```
 
 ---
