@@ -1360,3 +1360,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 18/19 with 15 pre-existing broken Reference links
   - Graphify AST update completed
   - git diff check passed
+---
+
+### [2026-10-06 01:40 CET] — Clarify the bootstrap Sources help scope
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap.ps1`
+- **What Was Changed (The Concrete Reality)**:
+  - Describe Sources as external sources encompassing reference emulators
+  - test suites and vectors in both usage and options
+- **Architectural Rationale & Trade-Offs**:
+  - The delegated sources catalog provisions more than SingleStepTests
+- **Verification & Test Results**:
+  - Bootstrap help executed successfully
+  - quick preflight passed all six gates
+  - architecture suite passed 18/19 with 15 existing broken Reference links
+  - no provisioning logic changed

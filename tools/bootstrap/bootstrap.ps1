@@ -93,14 +93,14 @@ function Show-Usage {
     Write-Host "      A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'."
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Sources         : Provision external test sources & vectors (SingleStepTests, vAmiga)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Sources         : Provision external sources (reference emulators, test suites & vectors)"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Graphify        : Provision code knowledge graph (Graphify AST extraction)"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Documentation   : Provision external reference materials (PDFs, HTML crawls)"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Rag             : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian)"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -All             : Provision all 4 tiers in causal order (sources -> graph -> docs -> RAG)"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
-    Write-Host "  -Sources                 : Verify & unpack SingleStepTests 68000 test vectors"
+    Write-Host "  -Sources                 : Verify & provision external sources (reference emulators, test suites & vectors)"
     Write-Host "  -Graphify                : Update AST code knowledge graph"
     Write-Host "  -Documentation           : Download external reference materials into Reference/"
     Write-Host "  -Markdown                : Convert downloaded materials into publication-grade Markdown"
