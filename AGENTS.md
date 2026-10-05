@@ -1,13 +1,12 @@
 # Amiga 500 Emulator Architectural & Engineering Guidelines
 
-This repository contains the cycle-exact Amiga 500 emulator written in Rust.
-All agentic pair-programming and automated modifications must adhere strictly to the architectural constraints, execution model, and coding guidelines detailed below.
+All agent work on this cycle-exact Rust Amiga 500 emulator must follow these architectural and engineering guidelines.
 
 ---
 
 ## 1. Operating & Behavioral Rules (`.agents/rules/`)
 
-Operational rules are modularized under `.agents/rules/` across two tiers:
+Rules in `.agents/rules/` use two trigger tiers:
 
 ### A. Universal Invariants (`trigger: always_on`)
 - **Audio Voice Transcription** ([`audio-transcription.md`](.agents/rules/audio-transcription.md)): Mandatory spoken language transcript echo before responses.
@@ -41,6 +40,13 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
 - **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): AST query before file inspection; updates via `graphify update .`.
 - **Parallel Execution & Async Tasks** ([`parallel-execution.md`](.agents/rules/parallel-execution.md)): Non-blocking background tasks, targeted sub-suite testing.
 - **Practitioner Voice & Tone** ([`practitioner-voice-and-tone.md`](.agents/rules/practitioner-voice-and-tone.md)): Hands-on lead architect persona, tech blog standard, zero academic jargon.
+
+### Reasoning Before Scripts
+
+- First identify the question to resolve and whether reasoning from the available evidence is sufficient.
+- Use a script when a concrete measurement, verification, or data-processing step is needed. A matching filename alone does not justify using it.
+- Treat temporary files in `.agent/tmp/` as artifacts of earlier attempts whose assumptions need checking before reuse.
+- Before repairing or extending a tool, reassess whether that work is necessary for the user's task. If it is not, return to the original question and choose a simpler approach.
 
 ---
 
@@ -100,7 +106,7 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
 ## 4. Quality Assurance & Definition of Done
 
 - **Per-Commit Gate (Routine Micro-Commits):**
-  - Pre-flight quick gate: `python tools/harness/pre_flight.py --quick` (formatting, AGENTS.md ceiling, test coupling, API coverage, clippy, Code Quality 1-2, Hardware Quality 1-2).
+  - Quick gate: `python tools/harness/pre_flight.py --quick`.
   - Automated architecture tests: `cargo test -p test_runner --test test_architecture_rules` *(not included in `--quick`; must be run separately)*.
   - Atomic commit following Conventional Commits in strict English per [`git-commits.md`](.agents/rules/git-commits.md).
   - *Routine micro-commits must not add diary entries; design doc synchronization and roadmap pruning occur at minor roadmap points or milestones.*
