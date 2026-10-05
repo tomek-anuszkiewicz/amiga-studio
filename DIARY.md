@@ -825,3 +825,17 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed all 19 tests
   - Graphify update passed
   - no live API call or document conversion was run
+---
+
+### [2026-10-05 22:35 CEST] — Remove unused PDF converter path settings
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/config.yaml`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the unused paths section
+- **Architectural Rationale & Trade-Offs**:
+  - Remove ineffective YAML controls because the CLI and fixed stage directory layout already determine paths.
+- **Verification & Test Results**:
+  - YAML parsing and comparison against HEAD passed: only paths was removed
+  - quick pre-flight passed
+  - architecture suite passed all 19 tests
+  - no document conversion was run
