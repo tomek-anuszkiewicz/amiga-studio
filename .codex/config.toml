@@ -1,4 +1,4 @@
-# Project MCP adapter; runtime connectivity is verified separately.
+# Inherit the active Codex session directory; keep server paths relative to it.
 [mcp_servers.amiga-rag]
 command = "python"
 args = ["tools/amiga-rag-mcp-server/amiga_rag_mcp_server.py"]
