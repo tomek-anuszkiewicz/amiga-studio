@@ -140,12 +140,7 @@ fn assemble_mnemonic(input: &str, pc: u32) -> Result<Vec<u16>, String> {
     }
 
     // F. CLR / TST / NOT / NEG / NEGX
-    if base_mnem == "CLR"
-        || base_mnem == "TST"
-        || base_mnem == "NOT"
-        || base_mnem == "NEG"
-        || base_mnem == "NEGX"
-    {
+    if matches!(base_mnem, "CLR" | "TST" | "NOT" | "NEG" | "NEGX") {
         let size_bits = parse_size_bits(size_opt)?;
         let (ea_mode, ea_reg, mut ext_words) = parse_ea(op_part)?;
         let base_code = match base_mnem {
@@ -296,7 +291,7 @@ fn assemble_mnemonic(input: &str, pc: u32) -> Result<Vec<u16>, String> {
     }
 
     // N. MULU / MULS / DIVU / DIVS
-    if base_mnem == "MULU" || base_mnem == "MULS" || base_mnem == "DIVU" || base_mnem == "DIVS" {
+    if matches!(base_mnem, "MULU" | "MULS" | "DIVU" | "DIVS") {
         let (src_str, dn_str) = split_two_operands(op_part)?;
         let dn = parse_dn(dn_str)?;
         let (ea_mode, ea_reg, mut ext) = parse_ea_sized(src_str, true, false)?;
@@ -369,7 +364,7 @@ fn assemble_mnemonic(input: &str, pc: u32) -> Result<Vec<u16>, String> {
     }
 
     // S. ADD / SUB / AND / OR
-    if base_mnem == "ADD" || base_mnem == "SUB" || base_mnem == "AND" || base_mnem == "OR" {
+    if matches!(base_mnem, "ADD" | "SUB" | "AND" | "OR") {
         return assemble_alu(base_mnem, size_opt, op_part);
     }
 

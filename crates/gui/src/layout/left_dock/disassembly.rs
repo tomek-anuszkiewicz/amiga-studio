@@ -46,9 +46,10 @@ pub(crate) fn render_disassembly(
                 .desired_width(70.0)
                 .hint_text("000000"),
         );
-        if (response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)))
-            || ui.button("Jump").clicked()
-        {
+        let is_address_submitted =
+            response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+        let should_jump = is_address_submitted || ui.button("Jump").clicked();
+        if should_jump {
             let clean = goto_addr_str.trim().trim_start_matches('$');
             if let Ok(addr) = u32::from_str_radix(clean, 16) {
                 let target = addr & 0x00FF_FFFF;

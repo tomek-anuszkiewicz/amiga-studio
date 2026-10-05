@@ -59,7 +59,9 @@ pub fn run_single_test_detail_with_bus(
 ) -> Result<(), TestFailure> {
     let is_harte = test.name.contains('[');
     // Tom Harte Real68k test vectors #1582 and #1760 in ASL.b.json contain corrupted upper bits in D2 (hardware capture glitch)
-    if is_harte && file_path.contains("ASL.b") && (test_index == 1582 || test_index == 1760) {
+    let is_corrupted_capture =
+        is_harte && file_path.contains("ASL.b") && matches!(test_index, 1582 | 1760);
+    if is_corrupted_capture {
         return Ok(());
     }
 
@@ -198,13 +200,13 @@ pub fn run_single_test_detail_with_bus(
             }
             // Note: In M68000 Address Error stack frame for MOVE.w -(An), hardware captures
             // exhibit variations in the pushed instruction register (SSP+6..=SSP+7).
-            if is_harte
+            let has_variable_address_error_frame = is_harte
                 && file_path.contains("MOVE.w")
                 && (addr == cpu.state.ssp()
                     || addr == cpu.state.ssp().wrapping_add(1)
                     || addr == cpu.state.ssp().wrapping_add(6)
-                    || addr == cpu.state.ssp().wrapping_add(7))
-            {
+                    || addr == cpu.state.ssp().wrapping_add(7));
+            if has_variable_address_error_frame {
                 continue;
             }
             // Note: In M68000 Address Error stack frame, the PC pushed at SSP+10..=SSP+13
@@ -222,9 +224,8 @@ pub fn run_single_test_detail_with_bus(
     }
 
     // Verify Cycle Length
-    if (mode == VerifyMode::StateAndCycles || mode == VerifyMode::Full)
-        && actual_clocks != test.length
-    {
+    let should_verify_cycles = matches!(mode, VerifyMode::StateAndCycles | VerifyMode::Full);
+    if should_verify_cycles && actual_clocks != test.length {
         failure.diffs.push(StateDiff::CycleLength {
             actual: actual_clocks,
             expected: test.length,

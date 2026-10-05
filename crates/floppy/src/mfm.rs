@@ -151,7 +151,8 @@ pub fn decode_amiga_sector(raw: &[u8]) -> Result<(u8, u8, [u8; 512]), MfmError> 
     // Locate sync mark $4489 $4489
     let mut sync_idx = None;
     for i in 0..(raw.len().saturating_sub(4)) {
-        if raw[i] == 0x44 && raw[i + 1] == 0x89 && raw[i + 2] == 0x44 && raw[i + 3] == 0x89 {
+        let is_sector_sync = raw[i..i + 4] == [0x44, 0x89, 0x44, 0x89];
+        if is_sector_sync {
             sync_idx = Some(i);
             break;
         }

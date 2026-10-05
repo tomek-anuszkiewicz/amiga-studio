@@ -191,7 +191,8 @@ impl FrameBuilder {
         for y in 26..311isize {
             let row_offset = (y as usize) * MAX_FRAME_WIDTH;
             for x in 196..912isize {
-                if y >= cy1 && y < cy2 && x >= cx1 && x < cx2 {
+                let is_inside_cutout = (cy1..cy2).contains(&y) && (cx1..cx2).contains(&x);
+                if is_inside_cutout {
                     let argb = self.buffer[row_offset + (x as usize)];
                     out[out_idx] = ((argb >> 16) & 0xFF) as u8;
                     out[out_idx + 1] = ((argb >> 8) & 0xFF) as u8;

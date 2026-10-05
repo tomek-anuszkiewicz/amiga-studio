@@ -251,9 +251,9 @@ impl EmulatorApp {
         }
 
         // F5 or Space: Toggle Run / Pause
-        if input.key_pressed(egui::Key::F5)
-            || (input.key_pressed(egui::Key::Space) && !input.focused)
-        {
+        let should_toggle_run = input.key_pressed(egui::Key::F5)
+            || (input.key_pressed(egui::Key::Space) && !input.focused);
+        if should_toggle_run {
             self.disassembly_view_addr = None;
             self.session.toggle_run();
         }
@@ -317,9 +317,9 @@ impl EmulatorApp {
         }
 
         // Ctrl + Plus / Equal: Zoom In
-        if input.modifiers.command
-            && (input.key_pressed(egui::Key::Plus) || input.key_pressed(egui::Key::Equals))
-        {
+        let should_zoom_in = input.modifiers.command
+            && (input.key_pressed(egui::Key::Plus) || input.key_pressed(egui::Key::Equals));
+        if should_zoom_in {
             let current = ctx.zoom_factor();
             ctx.set_zoom_factor((current + 0.25).min(2.5));
         }

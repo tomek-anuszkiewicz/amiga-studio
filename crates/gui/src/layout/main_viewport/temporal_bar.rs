@@ -180,10 +180,9 @@ pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                     .desired_width(65.0)
                     .font(egui::TextStyle::Monospace),
             );
-            if (ui.button("Go").clicked()
-                || (resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))))
-                && !app.target_cck_input.is_empty()
-            {
+            let is_jump_requested = ui.button("Go").clicked()
+                || (resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
+            if is_jump_requested && !app.target_cck_input.is_empty() {
                 if let Ok(target) = app.target_cck_input.trim().parse::<u64>() {
                     app.session.jump_to_cck(target);
                 }

@@ -287,14 +287,15 @@ impl DmaScheduler {
         cpu_wants_bus: bool,
     ) -> DmaChannel {
         // Priority 1: DRAM Refresh (CCK 1, 3, 5, 226/0xE2, 227/0xE3) - Unconditional
-        if hpos == 1 || hpos == 3 || hpos == 5 || hpos == 0xE2 || hpos == 0xE3 {
+        let fixed_slot = Self::fixed_slot_for_hpos(hpos);
+        if fixed_slot == Some(DmaChannel::Refresh) {
             self.current_owner = DmaChannel::Refresh;
             self.chip_ram_blocked = true;
             return DmaChannel::Refresh;
         }
 
         // Priority 2: Floppy Disk DMA (CCK 7, 9, 11)
-        if (hpos == 7 || hpos == 9 || hpos == 11)
+        if fixed_slot == Some(DmaChannel::Disk)
             && disk_active
             && self.is_channel_enabled(DmaChannel::Disk)
         {
@@ -380,7 +381,8 @@ impl DmaScheduler {
     #[inline]
     pub fn is_chip_ram_blocked(&self, hpos: u16, blitter_busy: bool) -> bool {
         // DRAM Refresh is unconditional (slots 1, 3, 5, 226/0xE2, 227/0xE3)
-        if hpos == 1 || hpos == 3 || hpos == 5 || hpos == 0xE2 || hpos == 0xE3 {
+        let fixed_slot = Self::fixed_slot_for_hpos(hpos);
+        if fixed_slot == Some(DmaChannel::Refresh) {
             return true;
         }
         if !self.is_dma_enabled() {
@@ -391,7 +393,7 @@ impl DmaScheduler {
             return true;
         }
         // Check fixed priority slots
-        if let Some(channel) = Self::fixed_slot_for_hpos(hpos) {
+        if let Some(channel) = fixed_slot {
             if self.is_channel_enabled(channel) {
                 return true;
             }

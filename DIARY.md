@@ -1375,3 +1375,33 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight passed all six gates
   - architecture suite passed 18/19 with 15 existing broken Reference links
   - no provisioning logic changed
+---
+
+### [2026-10-06 01:48 CEST] — Clarify compound branch predicates
+- **Affected Subsystems**:
+  - `CPU`
+  - `debugger and disassembler`
+  - `DMA`
+  - `floppy`
+  - `frame builder`
+  - `GUI`
+  - `test runner`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace opcode membership chains with matches patterns
+  - Name interrupt eligibility and branch decisions
+  - Reuse the existing fixed DMA slot map
+  - Express MFM sync and cutout membership directly
+  - Preserve lazy GUI event evaluation and existing silicon verification tolerances
+- **Architectural Rationale & Trade-Offs**:
+  - Make branch intent explicit without changing hardware behavior or golden references
+  - The milestone condition checker is a regex heuristic rather than model inference
+- **Verification & Test Results**:
+  - Milestone gate 11/11 PASS
+  - Quick gate PASS
+  - Architecture tests 19/19 PASS
+  - Affected crate tests 224/224 PASS including 38 GUI interactions
+  - Cartesian DMA tests 20/20 PASS
+  - Full SingleStepTests with SINGLESTEP_FULL=1: 126/127 PASS with DIVU vector 5744 failing on RAM byte 0x0007FE
+  - The same DIVU failure was reproduced with all 13 refactored files restored to HEAD and the refactored sources then restored
+  - Graphify incremental AST update completed
+  - No new baseline regressions demonstrated and no reference vectors modified

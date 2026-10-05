@@ -135,7 +135,9 @@ where
     let mut best_score = 0i32;
 
     for c in valid_candidates {
-        if c.score > best_score || (c.score == best_score && c.addr < best_candidate) {
+        let is_better_candidate =
+            c.score > best_score || (c.score == best_score && c.addr < best_candidate);
+        if is_better_candidate {
             best_score = c.score;
             best_candidate = c.addr;
         }

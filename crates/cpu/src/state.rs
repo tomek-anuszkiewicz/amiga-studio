@@ -311,7 +311,9 @@ impl CpuState {
     /// according to M68000 priority rules (ipl > mask || ipl == 7 for NMI).
     #[inline(always)]
     pub fn is_interrupt_pending(&self) -> Option<u8> {
-        if (self.ipl > self.interrupt_mask() && self.ipl > 0) || self.ipl == 7 {
+        let has_unmasked_interrupt = self.ipl > self.interrupt_mask() && self.ipl > 0;
+        let is_nonmaskable_interrupt = self.ipl == 7;
+        if has_unmasked_interrupt || is_nonmaskable_interrupt {
             Some(self.ipl)
         } else {
             None

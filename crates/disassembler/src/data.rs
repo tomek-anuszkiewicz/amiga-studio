@@ -156,7 +156,7 @@ pub(crate) fn try_disassemble_data(
 
     // 9. CLR, NEG, NEGX, NOT, TST ($4000..$4AFF)
     let group_4 = (op >> 8) & 0xFF;
-    if group_4 == 0x40 || group_4 == 0x42 || group_4 == 0x44 || group_4 == 0x46 || group_4 == 0x4A {
+    if matches!(group_4, 0x40 | 0x42 | 0x44 | 0x46 | 0x4A) {
         let size_bits = (op >> 6) & 0x03;
         if size_bits < 3 {
             let mnem = match (group_4, size_bits) {

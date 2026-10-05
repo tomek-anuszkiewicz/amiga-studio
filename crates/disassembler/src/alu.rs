@@ -221,7 +221,7 @@ pub(crate) fn try_disassemble_alu(
 
     // 4. ADD, ADDA, ADDX, SUB, SUBA, SUBX, AND, OR
     let op_group = (op >> 12) & 0x0F;
-    if op_group == 0xD || op_group == 0x9 || op_group == 0xC || op_group == 0x8 {
+    if matches!(op_group, 0xD | 0x9 | 0xC | 0x8) {
         let base_name = match op_group {
             0xD => "ADD",
             0x9 => "SUB",
@@ -232,7 +232,9 @@ pub(crate) fn try_disassemble_alu(
         let opmode = ((op >> 6) & 7) as u8;
 
         // ADDA / SUBA
-        if (op_group == 0xD || op_group == 0x9) && (opmode == 3 || opmode == 7) {
+        let is_add_or_sub = matches!(op_group, 0xD | 0x9);
+        let is_address_arithmetic = is_add_or_sub && matches!(opmode, 3 | 7);
+        if is_address_arithmetic {
             let mnem = match (op_group, opmode) {
                 (0xD, 3) => "ADDA.W",
                 (0xD, 7) => "ADDA.L",
@@ -245,7 +247,8 @@ pub(crate) fn try_disassemble_alu(
         }
 
         // ADDX / SUBX
-        if (op_group == 0xD || op_group == 0x9) && (op & 0x0130) == 0x0100 {
+        let is_extend_arithmetic = is_add_or_sub && (op & 0x0130) == 0x0100;
+        if is_extend_arithmetic {
             let sz = match opmode & 3 {
                 0 => ".B",
                 1 => ".W",

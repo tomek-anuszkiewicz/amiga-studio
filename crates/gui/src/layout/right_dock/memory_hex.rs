@@ -297,17 +297,19 @@ pub(crate) fn render_memory_hex(
                                                 .data(|d| d.get_temp(just_started_id))
                                                 .unwrap_or(false);
 
+                                            let should_commit_edit = || {
+                                                !just_started
+                                                    && (edit_res.lost_focus()
+                                                        || ui.input(|i| {
+                                                            i.key_pressed(egui::Key::Tab)
+                                                                || i.key_pressed(egui::Key::Enter)
+                                                        }))
+                                            };
                                             if ui.input(|i| i.key_pressed(egui::Key::Escape))
                                                 || edit_res.clicked_elsewhere()
                                             {
                                                 edit_buffer.1.clear();
-                                            } else if !just_started
-                                                && (edit_res.lost_focus()
-                                                    || ui.input(|i| {
-                                                        i.key_pressed(egui::Key::Tab)
-                                                            || i.key_pressed(egui::Key::Enter)
-                                                    }))
-                                            {
+                                            } else if should_commit_edit() {
                                                 let clean = edit_buffer.1.trim();
                                                 if let Ok(val) = u8::from_str_radix(clean, 16) {
                                                     bus.write_byte_debug(byte_addr, val);
