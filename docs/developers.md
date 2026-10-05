@@ -213,6 +213,15 @@ When external test sources are provisioned via `.\tools\bootstrap\bootstrap.ps1 
 
 Provisions original PDF scans, OEM technical manuals, and archival web articles for developers inspecting raw schematics or re-running OCR pipelines:
 
+Each book's downloads go into `Obsidian/Amiga/Reference/<Document_Name>-tmp/`
+(or `<Destination>/<Document_Name>-tmp/` with a custom destination). PDF conversion
+keeps its `workspace/` there. With `-Markdown`, the dispatcher reads these sources
+and writes finished Markdown and assets to the sibling `<Document_Name>/` directory
+without the suffix. Existing downloads in unsuffixed directories are not moved or
+reused automatically; the `-tmp` directories remain available for inspection and
+resuming conversion. The HTML converter also retains its existing behavior of
+mirroring the Markdown file into the parent when the output's parent is named `Reference`.
+
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Documentation
 ```

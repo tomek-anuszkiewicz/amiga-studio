@@ -5,7 +5,10 @@
 .DESCRIPTION
     Fetches raw, unprocessed external reference materials (PDF scans, microarchitectural
     guides, and multi-page HTML crawls) into:
-        Obsidian/Amiga/Reference/<Document_Name>/
+        Obsidian/Amiga/Reference/<Document_Name>-tmp/
+
+    PDF conversion workspaces stay with the downloaded sources. With -Markdown,
+    finished Markdown and assets are written to <Document_Name>/ without the suffix.
 
     Features:
     - Multi-source resilience: 2-3 verified mirrors per document with automated failover.
@@ -29,7 +32,7 @@
 
 .PARAMETER Markdown
     Processes downloaded reference documentation (PDF scans, microarchitectural guides,
-    and HTML crawls) into publication-grade Markdown directly within their target directories.
+    and HTML crawls) into publication-grade Markdown in sibling directories without -tmp.
     Aliases: -Convert, -Process.
 
 .PARAMETER Hrm
@@ -295,7 +298,8 @@ function Show-Usage {
     Write-Host "Amiga Reference Documentation Bootstrapper" -ForegroundColor Cyan
     Write-Host "==========================================" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "NOTE: Downloads raw, unprocessed reference materials into Obsidian/Amiga/Reference/." -ForegroundColor Yellow
+    Write-Host "NOTE: Downloads raw sources into Obsidian/Amiga/Reference/<Document_Name>-tmp/." -ForegroundColor Yellow
+    Write-Host "      With -Markdown, finished output goes into <Document_Name>/ without -tmp."
     Write-Host "      Reference files are ignored by Git and do not affect emulator execution."
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
@@ -330,7 +334,8 @@ function Show-CatalogList {
     foreach ($item in $Catalog) {
         Write-Host "[$($item.Id)] $($item.Name)" -ForegroundColor Green
         Write-Host "    Description : $($item.Description)" -ForegroundColor White
-        Write-Host "    Directory   : Reference\$($item.Folder)\" -ForegroundColor DarkGray
+        Write-Host "    Sources     : Reference\$($item.Folder)-tmp\" -ForegroundColor DarkGray
+        Write-Host "    Markdown    : Reference\$($item.Folder)\" -ForegroundColor DarkGray
         Write-Host "    Mirrors ($($item.Mirrors.Count) configured):" -ForegroundColor Yellow
         $idx = 1
         foreach ($m in $item.Mirrors) {
@@ -346,9 +351,6 @@ function Show-CatalogList {
 
 function Ensure-StagingReadme {
     param([string]$TempDir)
-    if ($TempDir -notlike "*temp*") {
-        return
-    }
     if (-not (Test-Path $TempDir)) {
         New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
     }
@@ -357,12 +359,11 @@ function Ensure-StagingReadme {
         $Content = @'
 # Temporary External Reference Staging Directory
 
-This directory contains raw, unprocessed external reference materials (PDF scans, HTML crawls, and archives) downloaded by `tools/bootstrap/bootstrap_documentation.ps1` (or `tools/bootstrap/bootstrap.ps1 -Doc`).
+This book's `-tmp` directory contains raw reference materials downloaded by `tools/bootstrap/bootstrap_documentation.ps1` (or `tools/bootstrap/bootstrap.ps1 -Doc`) and its PDF conversion `workspace/`.
 
 ## Operational Guidelines
-- **Safe to Delete:** You can safely delete this directory or any subfolder at any time. It has zero impact on compiling, testing, or running the emulator.
-- **Git Visibility:** This directory is intentionally **NOT** listed in `.gitignore`. When files are downloaded, it appears in `git status` as untracked files to ensure developers have visual confirmation of temporary downloaded materials.
-- **Processing:** Converted markdown specifications live in the parent `Obsidian/Amiga/Reference/` directory and are tracked in Git.
+- **Preservation:** Keep sources and working artifacts until conversion output has been inspected. Removing this directory loses the source downloads and resumable PDF conversion state.
+- **Processing:** With `-Markdown`, finished Markdown and assets are written to the sibling book directory without the `-tmp` suffix. This staging directory is not automatically deleted.
 '@
         Set-Content -Path $ReadmePath -Value $Content -Encoding UTF8
     }
@@ -596,6 +597,7 @@ function Download-CrawlItem {
 function Convert-ToMarkdown {
     param(
         [hashtable]$Item,
+        [string]$SourceDir,
         [string]$TargetDir
     )
 
@@ -606,8 +608,8 @@ function Convert-ToMarkdown {
     if ($Item.Type -eq "SingleFile" -and $Item.TargetFile -like "*.pdf") {
         $PdfScript = Join-Path $RepoRoot "tools\bootstrap\pdf-to-markdown\pipeline.py"
         $PdfConfig = Join-Path $RepoRoot "tools\bootstrap\pdf-to-markdown\config.yaml"
-        $PdfSource = Join-Path $TargetDir $Item.TargetFile
-        $Workspace = Join-Path $TargetDir "workspace"
+        $PdfSource = Join-Path $SourceDir $Item.TargetFile
+        $Workspace = Join-Path $SourceDir "workspace"
 
         if (-not (Test-Path $PdfSource)) {
             Write-Error "PDF source not found: $PdfSource"
@@ -632,7 +634,7 @@ function Convert-ToMarkdown {
     }
     elseif ($Item.Type -eq "SingleFile" -and $Item.TargetFile -like "*.html") {
         $HtmlScript = Join-Path $RepoRoot "tools\bootstrap\html-to-markdown\pipeline.py"
-        $HtmlSource = Join-Path $TargetDir $Item.TargetFile
+        $HtmlSource = Join-Path $SourceDir $Item.TargetFile
 
         if (-not (Test-Path $HtmlSource)) {
             Write-Error "HTML source not found: $HtmlSource"
@@ -656,9 +658,9 @@ function Convert-ToMarkdown {
     }
     elseif ($Item.Type -eq "Crawl") {
         $HtmlScript = Join-Path $RepoRoot "tools\bootstrap\html-to-markdown\pipeline.py"
-        $CrawlSource = Join-Path $TargetDir "live"
+        $CrawlSource = Join-Path $SourceDir "live"
         if (-not (Test-Path $CrawlSource)) {
-            $CrawlSource = $TargetDir
+            $CrawlSource = $SourceDir
         }
 
         $cmdArgs = @(
@@ -722,8 +724,6 @@ if (-not $HasExplicitAction) {
     exit 0
 }
 
-Ensure-StagingReadme -TempDir $Destination
-
 $ItemsToProcess = @(
     if ($SelectedIds.Count -gt 0) {
         $Catalog | Where-Object { $SelectedIds -contains $_.Id }
@@ -751,22 +751,21 @@ foreach ($entry in $ItemsToProcess) {
     $ProcessedCount++
     Write-Host "[$ProcessedCount/$($ItemsToProcess.Count)] Processing '$($entry.Name)'..." -ForegroundColor Yellow
     $ItemTargetDir = Join-Path $Destination $entry.Folder
-    if (-not (Test-Path $ItemTargetDir)) {
-        New-Item -ItemType Directory -Path $ItemTargetDir -Force | Out-Null
-    }
+    $ItemSourceDir = Join-Path $Destination "$($entry.Folder)-tmp"
+    Ensure-StagingReadme -TempDir $ItemSourceDir
 
     $DownloadSuccess = $false
     if ($entry.Type -eq "Crawl") {
-        $DownloadSuccess = Download-CrawlItem -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
+        $DownloadSuccess = Download-CrawlItem -Item $entry -TargetDir $ItemSourceDir -ForceDownload $Force -AllSourcesMode $AllSources
     } else {
-        $DownloadSuccess = Download-SingleFile -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
+        $DownloadSuccess = Download-SingleFile -Item $entry -TargetDir $ItemSourceDir -ForceDownload $Force -AllSourcesMode $AllSources
     }
 
     if (-not $DownloadSuccess) {
         $HasErrors = $true
     }
     elseif ($Markdown) {
-        $ConvertSuccess = Convert-ToMarkdown -Item $entry -TargetDir $ItemTargetDir
+        $ConvertSuccess = Convert-ToMarkdown -Item $entry -SourceDir $ItemSourceDir -TargetDir $ItemTargetDir
         if (-not $ConvertSuccess) {
             $HasErrors = $true
         }
@@ -784,7 +783,10 @@ if ($HasErrors) {
         Write-Host "All requested reference documentation items provisioned successfully." -ForegroundColor Green
     }
     Write-Host ""
-    Write-Host "NOTE: Reference materials provisioned directly into:" -ForegroundColor Yellow
-    Write-Host "      Obsidian/Amiga/Reference/" -ForegroundColor White
+    Write-Host "NOTE: Raw sources and PDF workspaces are provisioned into:" -ForegroundColor Yellow
+    Write-Host "      $Destination/<Document_Name>-tmp/" -ForegroundColor White
+    if ($Markdown) {
+        Write-Host "      Finished Markdown and assets: $Destination/<Document_Name>/" -ForegroundColor White
+    }
     exit 0
 }

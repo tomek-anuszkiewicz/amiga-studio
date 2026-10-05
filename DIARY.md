@@ -1284,3 +1284,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick preflight passed with AGENTS.md at 7895 bytes within its 14000-byte ceiling
   - Architecture suite 18/19 with the same 62 pre-existing missing Design links
   - No implementation or unrelated plan changed
+---
+
+### [2026-10-06 01:27 CEST] — Stage reference downloads in per-book temporary directories
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `tools/bootstrap/bootstrap.ps1`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Store downloaded PDF and HTML sources in per-book -tmp directories
+  - keep PDF workspaces with sources and route finished Markdown/assets to sibling directories without the suffix
+  - update staging README and developer usage documentation
+  - retain existing HTML parent mirroring and existing source directories
+- **Architectural Rationale & Trade-Offs**:
+  - Separate raw sources and resumable conversion artifacts from finished reference output as requested
+  - preserve existing downloads without implicit migration
+- **Verification & Test Results**:
+  - PowerShell parsing and isolated routing smoke check passed for all six catalog items plus crawl fallback without network or inference
+  - existing bootstrap contract tests passed 4/4
+  - quick preflight passed all six checks
+  - architecture rules passed 18/19 with the link-integrity test reporting 18 missing Reference targets outside this change
+  - Graphify AST update completed
+  - live downloads and conversion not run

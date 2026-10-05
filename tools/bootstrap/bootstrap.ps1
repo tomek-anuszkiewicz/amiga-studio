@@ -32,13 +32,13 @@
 
 .PARAMETER Documentation
     Provisions raw external reference documentation (PDF scans, microarchitectural guides,
-    and multi-page HTML crawls) into Obsidian/Amiga/Reference/. Delegates to
+    and multi-page HTML crawls) into Obsidian/Amiga/Reference/<Document_Name>-tmp/. Delegates to
     tools/bootstrap_documentation.ps1.
 
 .PARAMETER Markdown
     When bootstrapping documentation (-Documentation), converts downloaded
-    reference scans and crawls into publication-grade Markdown directly within their target
-    directories. Aliases: -Convert, -Process.
+    reference scans and crawls into publication-grade Markdown and assets in sibling
+    <Document_Name>/ directories without -tmp. Aliases: -Convert, -Process.
 
 .PARAMETER All
     Executes all 4 bootstrap tiers in physical causal order:
