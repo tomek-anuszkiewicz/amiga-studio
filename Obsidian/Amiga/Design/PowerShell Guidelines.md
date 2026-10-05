@@ -135,47 +135,24 @@ The output must use standard PowerShell `Write-Host` color tokens matching repos
   - Right column: White descriptions with embedded DarkGray alias/default notes.
 
 ### 4.2 Canonical `Show-Usage` Implementation Pattern
-```powershell
-function Show-Usage {
-    Write-Host ""
-    Write-Host "Amiga 500 Emulator Repository Bootstrapper" -ForegroundColor Cyan
-    Write-Host "=========================================" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "NOTE: Bootstrapping is NOT required to build or run the emulator!" -ForegroundColor Yellow
-    Write-Host "      A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'."
-    Write-Host ""
-    Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap.ps1 -Test                      : Provision hardware test vectors (SingleStepTests, vAmiga)"
-    Write-Host "  .\tools\bootstrap.ps1 -Ref                       : Provision external reference materials (PDFs, HTML crawls)"
-    Write-Host "  .\tools\bootstrap.ps1 -All                       : Provision all primary tiers (tests -> Graphify -> RAG)"
-    Write-Host ""
-    Write-Host "Options:" -ForegroundColor White
-    Write-Host "  -Test                    : Verify & unpack SingleStepTests 68000 test vectors"
-    Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
-    Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (aliases: -Doc, -Qdrant)"
-    Write-Host "  -Ref                     : Download external reference materials into temp/"
-    Write-Host "  -AllSources              : Download from all mirrors for -Ref (alias: -AllMirrors)"
-    Write-Host "  -All                     : Run all primary tiers (-Test, -Graphify, -Rag)"
-    Write-Host ""
-}
-```
+The coordinator's current command syntax is maintained in [`tools/bootstrap/bootstrap.ps1`](../../../tools/bootstrap/bootstrap.ps1). Its primary tiers are `-Sources`, `-Graphify`, `-Documentation`, and `-Rag`; `-All` runs them in that order. `-Markdown` enables conversion and automatically selects `-Documentation`.
 
 ---
 
 ## 5. Ergonomic Sub-Flag Auto-Promotion Pattern
 
-CLI scripts frequently have tiered parameters (e.g. parent switch `-Ref` and child modifier `-AllSources`, or `-Force` implying `-All`).
+CLI scripts frequently have tiered parameters (e.g. parent switch `-All` and child modifier `-AllSources`, or `-Force` implying `-All`).
 
 ### 5.1 The Anti-Pattern: Failing on Missing Parent Switches
-Forcing a developer to type `.\tools\bootstrap.ps1 -Ref -AllSources` when they already explicitly specified `-AllSources` is brittle and frustrating.
+Forcing a developer to type `.\tools\bootstrap\bootstrap_documentation.ps1 -All -AllSources` when they already explicitly specified `-AllSources` is brittle and frustrating.
 
 ### 5.2 The Solution: Automatic Tier Promotion
 Evaluate child parameter presence and auto-promote parent tier flags before the validation check:
 
 ```powershell
-# Auto-promote parent switch if specific child modifier is passed
-if ($AllSources) {
-    $Ref = $true
+# Auto-promote documentation when conversion is requested in the coordinator
+if ($Markdown) {
+    $Documentation = $true
 }
 
 # Auto-promote -AllSources or -Force to -All in reference bootstrapper
@@ -184,7 +161,7 @@ if ($AllSources -or $Force) {
 }
 
 # Validation guard: display usage if no active actions were triggered
-if (-not $Rag -and -not $Test -and -not $Graphify -and -not $Ref -and -not $All) {
+if (-not $Rag -and -not $Sources -and -not $Graphify -and -not $Documentation -and -not $All) {
     Show-Usage
     exit 0
 }

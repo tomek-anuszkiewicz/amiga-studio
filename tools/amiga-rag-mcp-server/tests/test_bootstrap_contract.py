@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
-BOOTSTRAP_SCRIPT = REPOSITORY_ROOT / "tools" / "bootstrap.ps1"
+BOOTSTRAP_SCRIPT = REPOSITORY_ROOT / "tools" / "bootstrap" / "bootstrap.ps1"
 COMPATIBILITY_BOOTSTRAP_SCRIPT = REPOSITORY_ROOT / "tools" / "bootstrap" / "bootstrap_rag.ps1"
 QDRANT_BOOTSTRAP_SCRIPT = REPOSITORY_ROOT / "tools" / "bootstrap" / "ensure_qdrant.ps1"
 
@@ -70,6 +70,7 @@ class BootstrapRagContractTests(unittest.TestCase):
                     f'{REPOSITORY_ROOT / "docs"} --source amiga --index-json {temporary_root / "rag-index.json"}',
                     f'{REPOSITORY_ROOT / "Obsidian" / "Amiga" / "Design"} --source amiga --index-json {temporary_root / "rag-index.json"}',
                     f'{REPOSITORY_ROOT / "Obsidian" / "Amiga" / "Reference"} --source amiga --index-json {temporary_root / "rag-index.json"}',
+                    f'--status --index-json {temporary_root / "rag-index.json"}',
                 ],
             )
             self.assertEqual(
@@ -84,7 +85,7 @@ class BootstrapRagContractTests(unittest.TestCase):
         bootstrap_source = BOOTSTRAP_SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn("if ($Rag -or $All)", bootstrap_source)
-        self.assertIn("tests -> Graphify -> RAG", bootstrap_source)
+        self.assertIn("(-Sources -> -Graphify -> -Documentation -> -Rag)", bootstrap_source)
 
     def test_compatibility_bootstrap_delegates_to_path_cli(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

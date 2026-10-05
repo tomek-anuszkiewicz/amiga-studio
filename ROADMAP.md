@@ -468,13 +468,13 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
 
 ### 3.5: Autonomous Bootstrapping, Documentation Ingestion & Knowledge Pipeline Refinement (Active Milestone)
 
-- **3.5.1: Verification of Document Bootstrapping (`tools/bootstrap.ps1 -Rag` / Qdrant RAG)**
+- **3.5.1: Verification of Document Bootstrapping (`tools/bootstrap/bootstrap.ps1 -Rag` / Qdrant RAG)**
   - **Objective:** Verify end-to-end documentation ingestion against local Qdrant vector database (`http://localhost:6333`).
   - **Actionable Scope:**
     - Validate SHA-256 incremental hashing cache, chunking fidelity, multi-threaded fast embeddings, and offline sidecar vision descriptions (`<image>.txt`).
     - Ensure zero regressions or stalls during fresh database initialization and incremental reindexing.
   - **Verification Gate:**
-    - `.\tools\bootstrap.ps1 -Rag` completes with exit code 0.
+    - `.\tools\bootstrap\bootstrap.ps1 -Rag` completes with exit code 0.
 
 - **3.5.2: Iterative Design Documentation Calibration Loop (`Obsidian/Amiga/Design/`)**
   - **Objective:** Establish a closed-loop calibration process for design specifications to ensure agent comprehension.
@@ -506,13 +506,13 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
   - **Verification Gate:**
     - `python tools/harness/audit_docs_quality.py` passing with zero broken references.
 
-- **3.5.5: End-to-End Hardening of `tools/bootstrap.ps1`**
+- **3.5.5: End-to-End Hardening of `tools/bootstrap/bootstrap.ps1`**
   - **Objective:** Exhaustively test the complete PowerShell bootstrapper across all flag configurations.
   - **Actionable Scope:**
-    - Test `-Test`, `-Graphify`, `-Rag`, and `-All` flags.
+    - Test `-Sources`, `-Graphify`, `-Documentation`, `-Markdown`, `-Rag`, and `-All` flags.
     - Verify clean-room resilience on fresh environments: archive decompression (`.gz`/`.zip`), directory creation, missing dependency warnings, and non-zero exit code reporting.
   - **Verification Gate:**
-    - `powershell -ExecutionPolicy Bypass -File tools/bootstrap.ps1 -Test` completes successfully with exit code 0.
+    - `powershell -ExecutionPolicy Bypass -File tools/bootstrap/bootstrap.ps1 -Sources` completes successfully with exit code 0.
 
 ---
 

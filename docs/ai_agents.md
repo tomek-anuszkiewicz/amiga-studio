@@ -34,7 +34,7 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 - **Trusted Data Boundary & Provenance:**
   - The local RAG vector store and Graphify AST graphs operate exclusively on a trusted local boundary.
   - Only authoritative Commodore/Motorola hardware reference manuals and internal design specs should be placed in `Obsidian/Amiga/`.
-  - Pinned upstreams in `tools/bootstrap.ps1` and strict architectural isolation between guest 68000 emulation and host LLM prompting prevent indirect prompt injection risks.
+  - Pinned upstreams in `tools/bootstrap/bootstrap.ps1` and strict architectural isolation between guest 68000 emulation and host LLM prompting prevent indirect prompt injection risks.
   - **Query Tools:** Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "devnotes"])`. `devnotes` is maintained by a separate project and is retrieval-only here.
 
 ### B. Code Structure & Relationships: AST Knowledge Graph (`graphify`)
@@ -43,7 +43,7 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
   - **Reference Emulator Sources (`ref_src/`):** Clean C++ reference implementation (`ref_src/vAmiga`) and external test harnesses.
 - **Incremental Knowledge Graph Updates ([`graphify.md`](../.agents/rules/graphify.md)):**
   - Graphify maintains an AST cache that extracts only modified files in 1–2 seconds without LLM calls.
-  - After modifications to code in `crates/` or `ref_src/`, run `graphify update .` from the repository root (or via `.\tools\bootstrap.ps1 -Graphify`).
+  - After modifications to code in `crates/` or `ref_src/`, run `graphify update .` from the repository root (or via `.\tools\bootstrap\bootstrap.ps1 -Graphify`).
   - This keeps a single unified knowledge graph in `graphify-out/` connecting active emulator crates and reference implementations.
 - **Query Tools:**
   - `graphify query "<question>"`: Query symbol dependencies, call hierarchies, and architectural boundaries.
