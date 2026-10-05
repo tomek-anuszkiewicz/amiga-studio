@@ -605,3 +605,17 @@ Every future modification or implementation task must append an entry following 
   - Codex MCP launch regression passed
   - published search metadata verified
   - Graphify update found no topology changes
+---
+
+### [2026-10-05 21:37 CEST] — Shorten clean-break refactoring guidance
+- **Affected Subsystems**:
+  - `.agents/rules/clean-break-refactoring.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Condensed the rule from 66 lines to 8
+  - retained complete internal API migration and explicit opt-in for compatibility
+  - clarified external contracts and saved-data impact
+- **Architectural Rationale & Trade-Offs**:
+  - Make the refactoring policy concise while preventing unsolicited legacy interfaces
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 20 tests
