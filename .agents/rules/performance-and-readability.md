@@ -8,7 +8,7 @@
 - **Contiguous memory layouts:** flat arrays over pointer-chased dynamic structures.
 
 ## Inlining Policy
-- `#[inline(always)]` — ultra-hot ALU and CCR flag calculations only.
+- `#[inline(always)]` — ultra-hot ALU/CCR calculations and CPU register accessors used by instruction micro-steps. Ordinary configuration getters and setters use `#[inline]`; see [method-inlining.md](method-inlining.md).
 - `#[inline]` — lightweight public getters and cross-crate forwarding wrappers.
 - `#[inline(never)]` — mandatory on cold exception/trap paths to keep the hot dispatch linear.
 - No forced inlining on functions > 15–20 lines of control flow.

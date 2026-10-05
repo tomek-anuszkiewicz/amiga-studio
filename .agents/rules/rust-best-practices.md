@@ -80,30 +80,30 @@ pub struct ChannelConfig {
 }
 
 impl ChannelConfig {
-    #[inline(always)]
+    #[inline]
     pub const fn new(volume: u8, enabled: bool) -> Self {
         Self { volume, enabled }
     }
 
     // Standard getter (matches field name)
-    #[inline(always)]
+    #[inline]
     pub const fn volume(&self) -> u8 {
         self.volume
     }
 
     // Boolean getter (starts with is_)
-    #[inline(always)]
+    #[inline]
     pub const fn is_enabled(&self) -> bool {
         self.enabled
     }
 
     // Setters (start with set_)
-    #[inline(always)]
+    #[inline]
     pub const fn set_volume(&mut self, volume: u8) {
         self.volume = volume;
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn set_enabled(&mut self, enabled: bool) {
         self.enabled = enabled;
     }

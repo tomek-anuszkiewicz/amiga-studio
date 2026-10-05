@@ -78,11 +78,11 @@ All modifications to design specifications must adhere strictly to the YAML fron
 
 ---
 
-## 7. Design Documentation Reflection & Delegation in Agent Rules
+## 7. Route Tasks to Authoritative Specifications
 
-Design specifications under [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Design/) serve as the authoritative architectural ground truth. To guarantee that autonomous pair-programming agents strictly follow these specifications during coding tasks, every design specification and its architectural domain must be explicitly reflected in agent rules (`.agents/rules/*.md` and `AGENTS.md`) with explicit operational delegation and links:
-- **Zero Unreflected Design Specs:** Every living design specification in `Obsidian/Amiga/Design/` must be referenced in its governing agent rule so agents are directed to the specification when implementing or refactoring code in that domain.
-- **Continuous Audit:** Automated governance audits (`python tools/harness/audit_docs_quality.py --rules-delegation`) enforce 100% reflection and alert on any unreflected design documents with actionable remediation recommendations.
+Design specifications under [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Design/) remain authoritative. Route a task through its domain rule or [General Architecture.md](../../Obsidian/Amiga/Design/General%20Architecture.md), then read the relevant specification before changing documented behavior.
+
+A specification may be reached through the design index; duplicating every document link in a rule is unnecessary. The existing `--rules-delegation` scanner still reports missing direct rule references. Updating that scanner is deferred harness work; its direct-reference findings do not establish that an indexed specification is unreachable.
 
 ---
 

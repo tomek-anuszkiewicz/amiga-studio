@@ -22,7 +22,7 @@ Analyzes each page vertically from top to bottom, classifying bands into explici
 ## Outputs
 - `workspace/02_page_segmentation/page_XXXX_segments.json`: Segment list with coordinates, text, and classified types.
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/02_page_segmentation/segment_page.py --workspace "workspace"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02
 ```

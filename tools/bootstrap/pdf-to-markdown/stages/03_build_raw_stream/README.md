@@ -14,7 +14,7 @@ Simultaneously extracts initial visual clips (SVG vector or 300 DPI PNG with a 1
 - `workspace/03_build_raw_stream/assets/asset_node_XXXXX.svg` / `.png`: Cropped visual assets.
 - `workspace/03_build_raw_stream/assets/asset_node_XXXXX.txt`: Underlying text characters extracted within bounding boxes.
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/03_build_raw_stream/build_stream.py --workspace "workspace"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 03
 ```

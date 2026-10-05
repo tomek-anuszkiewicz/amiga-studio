@@ -11,7 +11,7 @@ Links head nodes and continuation nodes via explicit JSON metadata (`continuatio
 ## Outputs
 - `workspace/06_detect_continuations/{index:02d}_{slug}.json`: Chapter streams with continuation relationships annotated on nodes.
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/06_detect_continuations/detect_continuations.py --workspace "workspace"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 06 --to-stage 06
 ```

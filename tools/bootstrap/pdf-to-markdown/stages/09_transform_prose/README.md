@@ -20,7 +20,7 @@ Formats narrative body text, programming code listings, section headings, and ta
 ## Outputs
 - `workspace/09_transform_prose/{index:02d}_{slug}.json`: Formatted chapter streams with `node.rendered_markdown`.
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/09_transform_prose/format_prose.py --workspace "workspace"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 09 --to-stage 09
 ```

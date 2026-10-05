@@ -18,7 +18,7 @@ Specialized worker for table blocks across all chapter streams:
 ## Outputs
 - `workspace/07_transform_tables/{index:02d}_{slug}.json`: Chapter streams with rendered table markup in `node.rendered_markdown`.
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/07_transform_tables/transform_tables.py --workspace "workspace"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 07 --to-stage 07
 ```

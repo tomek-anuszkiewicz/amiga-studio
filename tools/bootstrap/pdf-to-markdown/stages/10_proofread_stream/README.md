@@ -17,7 +17,7 @@ Proofreads chapter streams and manifest metadata prior to Markdown serialization
 - `workspace/10_proofread_stream/{index:02d}_{slug}.json`: Proofread chapter streams.
 - `workspace/chapters_manifest.json`: Updated manifest with proofread titles, clean slugs, and target filenames.
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/10_proofread_stream/proofread_stream.py --workspace "workspace"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 10 --to-stage 10
 ```

@@ -458,7 +458,6 @@ def check_script_locality_and_governance():
         "pre_flight.py",
         "run_tests.py",
         "check_polish.py",
-        "check_test_coupling.py",
         "audit_api_coverage.py",
         "audit_code_quality.py",
         "audit_docs_quality.py",
@@ -548,7 +547,6 @@ def check_skill_and_rule_governance():
         "practitioner-voice-and-tone.md",
         "rust-best-practices.md",
         "spec-compliance.md",
-        "strict-scope-discipline.md",
         "structural-root-cause.md",
         "workspace-structure-and-reexports.md",
     }
@@ -662,7 +660,7 @@ DESIGN_DOC_GOVERNANCE_MAP = {
     "General Architecture.md": ("workspace-structure-and-reexports.md", "Workspace crate dependency topology and named roots"),
     "Configuration.md": ("workspace-structure-and-reexports.md", "Decoupled machine configuration and video standards"),
     "Rust Guidelines.md": ("rust-best-practices.md", "Safe borrowing, zero unwraps, and numeric wrapping"),
-    "Testing Strategy and Quality Assurance.md": ("unit-testing-policy.md", "3-tier testing taxonomy and change-coupling"),
+    "Testing Strategy and Quality Assurance.md": ("unit-testing-policy.md", "four verification tiers and behavior-based coverage"),
     "Platform Quirks and Invariants Catalog.md": ("spec-compliance.md", "Amiga 500 silicon traps and hardware quirks"),
     "vAmigaTS Verification Scorecard.md": ("spec-compliance.md", "vAmigaTS verification scorecard and pass rates"),
 }
@@ -1054,11 +1052,10 @@ REGISTERED_RULE_AUDITS = {
     "parallel-execution.md": ["skills (parallel execution)"],
     "performance-and-readability.md": ["test_architecture_rules.rs (test_zero_user_defined_macros)", "audit_code_quality.py (Pillar 3 condition soup)"],
     "practitioner-voice-and-tone.md": ["skills (Conscience Checks 4 & 5)"],
-    "repro-first.md": ["tools/harness/check_test_coupling.py"],
+    "repro-first.md": ["skills (repro-first verification)"],
     "roadmap-maintenance.md": ["audit_docs_quality.py (Pillar 10 roadmap zero-retention)"],
     "rust-best-practices.md": ["test_architecture_rules.rs (test_zero_runtime_panics_or_unwraps)", "audit_code_quality.py (Pillars 1, 2, & 4)"],
     "spec-compliance.md": ["test_architecture_rules.rs (test_golden_hash_anti_tamper_policy_compliance)", "skills (Conscience Check 2)"],
-    "strict-scope-discipline.md": ["test_architecture_rules.rs", "skills (Conscience Check)"],
     "structural-root-cause.md": ["skills (Conscience Check 3)"],
     "unit-testing-policy.md": ["test_architecture_rules.rs (test_every_crate_has_dedicated_external_tests_suite)", "audit_hardware_quality.py (Pillar 5)"],
     "vault-linking-and-graph-integrity.md": ["test_architecture_rules.rs (test_obsidian_design_docs_links_integrity)", "audit_docs_quality.py (Pillars 2 & 7)"],
@@ -1340,7 +1337,7 @@ def main():
             for issue in s_issues:
                 print(f"    * {issue['message']}")
         else:
-            print("  - Status: [PASS] 100% semantic parity between design specs and Rust code.")
+            print("  - Status: [PASS] Configured static consistency checks passed; full semantic parity requires manual review.")
 
     # 10. Rule Audit Coverage & Governance Invariants
     if run_all or args.rule_coverage:

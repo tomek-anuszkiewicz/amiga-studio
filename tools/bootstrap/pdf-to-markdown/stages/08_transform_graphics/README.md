@@ -19,7 +19,7 @@ Specialized worker for technical schematics, flowcharts, block diagrams, and ill
 - `workspace/08_transform_graphics/{index:02d}_{slug}.json`: Chapter streams with rendered diagram markup in `node.rendered_markdown`.
 - `workspace/08_transform_graphics/assets/{id}.png.txt`: Vector search technical sidecars.
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/08_transform_graphics/transform_graphics.py --workspace "workspace"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 08 --to-stage 08
 ```

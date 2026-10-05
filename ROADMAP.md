@@ -174,7 +174,7 @@ When an agent finishes any numbered item:
   - **Objective:** Understand the current state of all test crates (`test_runner`, per-crate `tests/`) — what is covered, what is missing, what is structurally sound vs. accidental.
   - **Actionable Scope:**
     - Catalogue existing L1/L2/L3 tests per subsystem.
-    - Identify zombie tests, coverage gaps, and coupling violations.
+    - Identify zombie tests, behavior coverage gaps, and missing regression evidence.
     - Decide if any structural rework (file layout, harness helpers) is needed before the HRM-aligned test sprint.
   - **Verification Gate:**
     - `python tools/harness/audit_code_quality.py --dead-code`
@@ -216,7 +216,7 @@ When an agent finishes any numbered item:
     - Sync any divergence between documentation and actual `MachineLoop` poll-and-route implementation found in Step 1.8.
   - **Verification Gate:**
     - `python tools/harness/pre_flight.py --milestone` (Docs Quality pillar).
-    - All updated design docs have `last_verified_commit` checkpoint bumped.
+    - All updated design docs have `last_synced_commit` checkpoint bumped.
 
 - **1.13: HRM-Aligned Subsystem Test Suite Authoring**
   - **Objective:** Write a clean, authoritative test suite for each custom chip subsystem derived strictly from the Amiga Hardware Reference Manual — not from source code inference. Tests must be simple, register-behavioral, and free from cycle-exact timing complexity.
@@ -228,7 +228,7 @@ When an agent finishes any numbered item:
   - **Verification Gate:**
     - `python tools/harness/pre_flight.py --quick`
     - `cargo test -p test_runner --test test_architecture_rules`
-    - All new test files pass with ≥ 2 `#[test]` functions and ≥ 10 assertions per subsystem per unit-testing-policy.
+    - Tests verify subsystem behavior, boundary conditions, and relevant failure modes per unit-testing-policy; no assertion-count quota applies.
 
 - **1.14: Lockstep Differential Tracer vs. vAmiga (Contingency)**
   - **Trigger:** Only if HRM-aligned tests (1.13) fail to isolate a regression — i.e. tests pass but behavior diverges from reference in ways not yet covered by the test suite.

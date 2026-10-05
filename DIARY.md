@@ -357,7 +357,7 @@ This section maintains a continuous, granular chronological record of all engine
 Because Git commits are frequently batched, squashed, or merged into higher-level commits during multi-stage worktree development, standard commit messages often do not preserve the full evolutionary context, granular mechanics, or subtle trade-offs considered along the way. This log serves as the authoritative, human-readable chronicle of what was actually built, modified, and verified in each development session.
 
 ### Mandatory Entry Schema:
-Every future modification or implementation task must append an entry following this structure:
+Every repository commit must include a new Section 10 entry for the changes it records, including routine code, test, rule, documentation, and merge commits. At minor roadmap points and milestones, compact settled entries into separate milestone digests while retaining unfinished work. Use the following entry structure:
 - **Timestamp & Context**: Date / local time and the active branch / task / PR.
 - **Affected Subsystems**: Specific crates, modules, tools, or configuration affected.
 - **What Was Changed (The Concrete Reality)**: Detailed technical description of changes, data structures, algorithms, or mechanics implemented.
@@ -587,6 +587,34 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Invariants**:
   - `python tools/harness/pre_flight.py --quick` passed cleanly.
   - `cargo test -p test_runner --test test_architecture_rules` passed (20/20).
+---
+
+### [2026-10-05 21:33 CEST] — Simplify agent guidance and clarify per-commit diary logging
+- **Affected Subsystems**:
+  - `.agents/rules`
+  - `.agents/skills`
+  - `.codex/agents`
+  - `tools/harness`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `crates/test_runner/tests`
+  - `documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Consolidated scope and root-cause rules while preserving the isolated special-case prohibition
+  - clarified logging on every commit and compaction at milestone completion
+  - reduced common instructions and made domain guidance selective
+  - aligned checkpoint names, Markdown links, inlining examples, verification tiers, and converter stage commands
+  - removed forced source/test file coupling and assertion quotas
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve emulator invariants while reducing duplicated instructions and resolving contradictory procedures
+  - keep the previously reported documentation-audit remediation outside this task
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 20 tests
+  - Python harness suite passed 32 tests
+  - agent TOML syntax and Python compilation passed
+  - Graphify code graph refreshed
+  - full documentation audit still reports 9 deferred findings after the merged prime-directives rule was removed
+  - no emulator production source changed
 ---
 
 ### [2026-10-05 21:34 CEST] — Clarify RAG context retrieval and MCP search guidance

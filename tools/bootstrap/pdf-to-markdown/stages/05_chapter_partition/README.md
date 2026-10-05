@@ -13,7 +13,7 @@ Slices the global `reduced_stream.json` into independent, chapter-level JSON str
 - `workspace/05_chapter_partition/{index:02d}_{slug}.json`: Partitioned section stream files.
 - `workspace/chapters_manifest.json`: Document section manifest mapping section index, slug, title, and target Markdown file.
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/05_chapter_partition/partition_chapters.py --workspace "workspace"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 05 --to-stage 05
 ```

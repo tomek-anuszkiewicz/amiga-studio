@@ -93,7 +93,7 @@ All links in `Obsidian/Amiga/Design/` must adhere to mathematically verified rel
 
 ## 5. Hub-and-Spoke Topology & Canonical Authorities
 
-- **Central Canonical Hub:** [`General Architecture.md`](General%20Architecture.md) serves as the top-level index for the entire emulator architecture. It must catalog and contextually link downward to all subsystem design documents.
+- **Central Canonical Hub:** [`General Architecture.md`](../../Obsidian/Amiga/Design/General%20Architecture.md) serves as the top-level index for the entire emulator architecture. It must catalog and contextually link downward to all subsystem design documents.
 - **Lateral Subsystem Connectivity:** Subsystems that interact on the physical bus or via DMA (e.g. Agnus $\leftrightarrow$ MemoryBus, Paula $\leftrightarrow$ Floppy, CIA-A $\leftrightarrow$ Keyboard) must maintain reciprocal cross-links.
-- **Small-World Graph Density:** Maintain high-signal semantic links (typically 6–15 high-signal links per document). Avoid superficial link sprawl.
+- **Purposeful Links:** Link the dependencies and sources that help readers understand or verify the document. There is no required link count; avoid superficial link sprawl.
 

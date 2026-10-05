@@ -63,4 +63,4 @@ Terminal outputs from commands (the Codex shell tool) are permanently stored in 
    - Always run compiler checks with `--quiet`: `cargo check --quiet`.
    - In test suites, pass `--quiet` to the test harness: `cargo test -p <crate> -- --quiet`. This suppresses hundreds of passing `test ... ok` lines and prints strictly the concise summary line.
 3. **Unified Pre-Flight Quality Gate**:
-   - Use `python tools/harness/pre_flight.py` (or `--quick`) to run `cargo fmt`, `AGENTS.md` byte ceiling checks, test coupling, and quick code/hardware checks in a single pass; run architecture tests separately. On success, it outputs a clean summary, saving tokens per turn.
+   - Use `python tools/harness/pre_flight.py` (or `--quick`) to run `cargo fmt`, `AGENTS.md` byte ceiling checks, API coverage and quick code/hardware checks in a single pass; run architecture tests separately. On success, it outputs a clean summary, saving tokens per turn.

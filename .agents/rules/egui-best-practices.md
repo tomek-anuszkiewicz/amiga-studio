@@ -1,6 +1,6 @@
 # egui & Immediate-Mode Frontend Best Practices
 
-All user interface code in the Amiga 500 emulator (`crates/desktop_gui`) must strictly adhere to these immediate-mode guidelines.
+All user interface code in the Amiga 500 emulator (`crates/gui`) must strictly adhere to these immediate-mode guidelines.
 
 ---
 
@@ -12,7 +12,7 @@ All user interface code in the Amiga 500 emulator (`crates/desktop_gui`) must st
 ---
 
 ## 2. Visual-to-Source 1:1 Layout Mapping
-Structure all files under `crates/desktop_gui/src/layout/` to strictly mirror what is visible on the screen:
+Structure all files under `crates/gui/src/layout/` to strictly mirror what is visible on the screen:
 - `top_menu_bar.rs`: Top toolbar (file loading, run/pause/step, theme, zoom).
 - `main_viewport/amiga_screen.rs`: 4:3 centered Amiga CRT display container.
 - `main_viewport/temporal_bar.rs`: Timeline scrubber and rewind slider below screen.

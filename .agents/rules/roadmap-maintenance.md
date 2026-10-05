@@ -27,9 +27,9 @@ Whenever completing a minor roadmap step (e.g. Step 1.1, 1.2, 2.1) or major mile
 3. **Design Documentation Synchronization:**
    - Update affected design documents under `Obsidian/Amiga/Design/` and stamp Git checkpoints (`audit_docs_quality.py --design-bump <doc>`) per [`docs-maintenance.md`](docs-maintenance.md).
 4. **Milestone Engineering Diary Logging:**
-   - Record the completed roadmap step in [`DIARY.md`](../../DIARY.md) (Section 10) using `python tools/harness/log_diary.py`.
+   - Include the completion commit's own Section 10 entry using `python tools/harness/log_diary.py`, just as every earlier commit includes its own entry. Record actual completion evidence and compaction in that entry.
 5. **Milestone Diary Compaction (`compact-diary`):**
-   - Upon concluding minor roadmap steps or major milestone phases, invoke the `compact-diary` skill ([`.agents/skills/compact-diary/`](../skills/compact-diary/SKILL.md)) whenever Section 10 grows large to synthesize older settled milestone entries into high-level architectural digests.
+   - On every completed minor roadmap point or major milestone, invoke [compact-diary](../skills/compact-diary/SKILL.md) to consolidate its settled per-commit entries into a milestone digest. Retain unfinished work in granular form; diary size is not the trigger.
 
 ---
 

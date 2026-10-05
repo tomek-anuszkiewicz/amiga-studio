@@ -26,7 +26,7 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets
 cargo test -p test_runner --test test_architecture_rules
 ```
-If formatting checks, clippy lints, or any architecture tests fail, review is immediately blocked until the violation is resolved (format via `cargo fmt --all`).
+Report failed checks as findings and distinguish pre-existing failures from regressions in the reviewed change. Continue independent diff review when evidence permits; do not modify files during a review-only task. Approval requires the applicable gates to pass or an explicit decision about a known failure.
 
 ### Step 2: Diff Inspection (`git diff`)
 Analyze all modified and added files using `git diff`:
@@ -67,8 +67,8 @@ Analyze all modified and added files using `git diff`:
 
 ### Step 3: Living Documentation & Defect Retrospection Audit
 1. **Defect Retrospection (if bug fix / refactor)**: Did the author perform root-cause analysis ("Why did this happen?")? Are dedicated regression tests in place covering edge cases? Were systemic safeguards (architectural rules, lints, or DoD criteria) added to ensure this class of defect never recurs?
-2. **Design Documents**: Did the author update `Obsidian/Amiga/Design/`? Were speculative draft snippets, pre-implementation sketches, and duplicate code snippets of already-written code removed? (The codebase is the single source of truth; design docs must not duplicate implemented Rust code).
-3. **Engineering Diary (`DIARY.md`)**: Did the author append a detailed narrative entry to `DIARY.md` (Section 10) detailing what was actually done, the technical rationale, and architectural decisions, ensuring the granular history is preserved even across squashed/merged commits?
+2. **Design Documents**: If documented architecture changed or a milestone completed, were affected specifications reconciled and checkpoints updated per `docs-maintenance.md`? Mechanical changes can rely on existing documentation. Remove obsolete proposals and duplicate implemented code where the affected documents require it.
+3. **Engineering Diary (`DIARY.md`)**: Does every commit under review include its own Section 10 entry describing changes, rationale, and actual verification? At a completed minor roadmap point or milestone, were its settled entries compacted into a dedicated digest? Routine commits log entries; they do not trigger compaction.
 4. **Roadmap**: If a step in `ROADMAP.md` is 100% complete, was it **completely deleted and removed** from the active backlog (zero `[COMPLETED]` tags or finished task descriptions retained in Section 2 per [`roadmap-maintenance`](../roadmap-maintenance/SKILL.md)), and summarized in the baseline summary if applicable?
 5. **Crate Graph**: Were crate dependencies in `General Architecture.md` updated if `Cargo.toml` was touched?
 
@@ -96,7 +96,7 @@ Provide the audit report using the following standard template:
 - [ ] **Path Privacy:** Zero external host paths.
 - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
 - [ ] **Practitioner Voice & Tone:** Documentation written from hands-on lead architect perspective (tech blog standard), zero academic jargon, and top-down information hierarchy.
-- [ ] **Test Coverage:** All workspace tests pass 100% green (`cargo test`).
+- [ ] **Domain Verification:** Required suites for the changed domain pass; existing coverage is sufficient or relevant tests were updated. Report checks not run and unresolved coverage gaps.
 
 **Verdict:** [APPROVED | CHANGES REQUESTED]
 **Observations / Required Actions:** (if any)

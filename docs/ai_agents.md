@@ -15,12 +15,11 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 - **Strict Path Privacy (`no-external-paths.md`):** Zero external host paths in committed files; use generic placeholders.
 - **Zero Host Panics (`performance-and-readability.md`):** No `.unwrap()` or `.expect()` in runtime emulation hot paths.
 - **Hardware Efficiency & Readability:** Zero custom macros (`macro_rules!`), zero const-generic instruction handlers, contiguous memory layouts, and zero heap allocations in execution loops.
-- **Amiga RAG Knowledge Base (`amiga-rag.md`):** Mandatory pre-task conceptual retrieval through the project MCP server.
+- **Amiga RAG Knowledge Base (`amiga-rag.md`):** Targeted domain/reference retrieval through the CLI or optional MCP adapter; consult developer notes when project evidence is insufficient.
 - **Graphify AST Knowledge Graph (`graphify.md`):** Consult the code knowledge graph for AST queries and adhere to scoped subtree re-indexing (`crates/` vs `ref_src/`).
 - **Information Hierarchy (`information-hierarchy.md`):** Inverted pyramid structure, leading with key architectural conclusions.
 - **Practitioner Voice & Tone (`practitioner-voice-and-tone.md`):** Hands-on lead architect persona, in-depth tech blog standard, and zero academic/dissertation jargon.
-- **Structural Root-Cause Resolution (`structural-root-cause.md`):** Mandatory structural upstream fixes; strict prohibition of local symptom patches.
-- **Strict Scope Discipline (`strict-scope-discipline.md`):** Strict task boundary, minimal necessary diffs, zero unsolicited refactoring, and delivered vs suggested reporting.
+- **Scoped Changes & Root-Cause Resolution (`structural-root-cause.md`):** Fix the mechanism, reuse existing definitions, and keep changes within the requested task.
 
 ---
 
@@ -76,7 +75,7 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`obsidian-vault-linking`](../.agents/skills/obsidian-vault-linking/SKILL.md): Enforces Line 1 YAML properties (`tags: [spec, ...]`), inverted pyramid structure, dual-layer linking (inline contextual + bottom structural references), and zero broken links across [Obsidian/Amiga/Design/](../Obsidian/Amiga/Design/).
 - [`sync-design-docs`](../.agents/skills/sync-design-docs/SKILL.md): Synchronize Obsidian design specifications with active codebase changes, prune draft code, and update crate graphs.
 - [`roadmap-maintenance`](../.agents/skills/roadmap-maintenance/SKILL.md): Systematic maintenance and substrate-first ordering of `ROADMAP.md` with zero retention of completed items.
-- [`compact-diary`](../.agents/skills/compact-diary/SKILL.md): Milestone compaction procedure synthesizing older chronological log entries in [DIARY.md](../DIARY.md) into concise architectural digests while preserving key evolutionary rationale and verified results.
+- [`compact-diary`](../.agents/skills/compact-diary/SKILL.md): Milestone compaction procedure synthesizing settled per-commit log entries in [DIARY.md](../DIARY.md) into concise architectural digests while preserving key evolutionary rationale and verified results.
 - [`index-amiga-rag`](../.agents/skills/index-amiga-rag/SKILL.md): CLI-first guidance for project Markdown retrieval and incremental indexing.
 - [`author-methodology-doc`](../.agents/skills/author-methodology-doc/SKILL.md): Author, audit, or restructure narrative articles, methodology documents, essays, and retrospective devlogs (e.g. `docs/how_this_emulator_was_written.md`) using the 6-layer Inverted Pyramid hierarchy.
 - [`graphify`](../.agents/skills/graphify/SKILL.md): Persistent code knowledge graph navigation, call hierarchy tracing, and scoped subtree updates (`crates/` vs `ref_src/`).
@@ -166,6 +165,6 @@ Main Session (Lead Architect)
 
 The Amiga RAG stdio adapter is declared in [`.codex/config.toml`](../.codex/config.toml). Project configuration requires a trusted project in Codex. MCP connectivity and Graphify runtime repairs are separate from format conversion.
 
-Run validation commands explicitly, including `python tools/harness/pre_flight.py --quick` and the separate architecture test. Language checks support file paths or `python tools/harness/check_polish.py --staged` for staged additions. Do not install or use lifecycle, code, or Git hooks.
+Every commit includes its own DIARY.md Section 10 entry; at minor roadmap points or milestones, compact settled entries into milestone digests. Run validation commands explicitly, including `python tools/harness/pre_flight.py --quick` and the separate architecture test. Language checks support file paths or `python tools/harness/check_polish.py --staged` for staged additions. Do not install or use lifecycle, code, or Git hooks.
 
 Format references: [Codex agents](https://learn.chatgpt.com/docs/agent-configuration/subagents), [project instructions](https://learn.chatgpt.com/docs/agent-configuration/agents-md), and [configuration](https://learn.chatgpt.com/docs/config-file/config-reference).

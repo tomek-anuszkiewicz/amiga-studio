@@ -11,13 +11,13 @@ Whenever an agent is tasked with fixing a bug, CPU instruction divergence, bus c
 
 ```mermaid
 flowchart LR
-    A["1. Author Failing Test<br/>(crates/*/tests/)"] --> B["2. Verify Failure<br/>(cargo test -p ...)"]
+    A["1. Identify or Author Failing Test<br/>(crates/*/tests/)"] --> B["2. Verify Failure<br/>(cargo test -p ...)"]
     B --> C["3. Implement Minimal Fix<br/>(crates/*/src/)"]
     C --> D["4. Verify Pass & Non-Regression<br/>(pre_flight.py)"]
 ```
 
 1. **Mandatory Failing Test First (The Red Phase):**
-   - Before modifying any production code in `crates/*/src/`, the agent **must write an isolated reproduction test** in the appropriate test suite under `crates/<crate>/tests/` (e.g. `crates/cpu/tests/test_regressions.rs` or `crates/<crate>/tests/test_<subsystem>.rs`).
+   - Before modifying any production code in `crates/*/src/`, the agent **must identify or write an isolated reproduction test** in the appropriate test suite under `crates/<crate>/tests/` (e.g. `crates/cpu/tests/test_regressions.rs` or `crates/<crate>/tests/test_<subsystem>.rs`).
    - The test must precisely isolate and assert the expected hardware behavior vs the defect.
    - Run `cargo test -p <crate> --test <test_name>` and confirm that the test fails on unmodified production code with the exact expected error.
 
@@ -51,9 +51,9 @@ flowchart LR
 
 ## 3. Checklist for Bug Resolution
 
-- [ ] Has an isolated reproduction test been created in `crates/<crate>/tests/`?
+- [ ] Has an isolated reproduction test been identified or created in `crates/<crate>/tests/`?
 - [ ] Was the test executed and verified to FAIL on current code before making changes?
 - [ ] Was the fix implemented in `crates/*/src/` with zero dynamic heap allocations in hot paths?
 - [ ] Does the reproduction test now PASS?
 - [ ] Have domain regression suites (`SingleStepTests`, `test_dma_cartesian`, `test_architecture_rules`) been run?
-- [ ] If this fix completes a minor roadmap point or major milestone, has its outcome been logged in `DIARY.md` (Section 10)? Otherwise, leave `DIARY.md` unchanged.
+- [ ] Does the commit include its own `DIARY.md` Section 10 entry? If it completes a minor roadmap point or milestone, have its settled entries also been compacted?

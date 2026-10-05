@@ -16,7 +16,7 @@ Dedicated cross-document wikilink resolution worker:
 - `<output_dir>/*.md`: Finalized Markdown documents with active cross-file wikilinks and zero leftover marker tags.
 - `<output_dir>/assets/`: Synchronized visual assets.
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/14_link_toc/link_toc.py --output-dir "output_markdown" --workspace "workspace" --config "config.yaml"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 14 --to-stage 14
 ```

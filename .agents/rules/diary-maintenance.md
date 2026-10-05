@@ -1,60 +1,28 @@
-# Engineering Diary Maintenance Rule (`DIARY.md`)
+# Engineering Diary: Every Commit, Compaction at Milestones
 
-This rule governs milestone entries in the engineering chronicle in [`DIARY.md`](../../DIARY.md).
+## Per-Commit Logging
 
----
+Every repository commit must include a new entry in [DIARY.md](../../DIARY.md) Section 10 describing that commit. This includes fixes, refactors, tests, rules, documentation, and merge commits. Stage the entry with the changes it records; do not postpone logging until a milestone or create a separate trailing diary commit.
 
-## 1. Milestone-Only Engineering Log (Section 10)
+Keep routine entries concise. Record affected components, what changed, why, and the actual verification results, including checks not run or known failures. A commit is not evidence that a roadmap milestone is complete.
 
-Append an entry to [`DIARY.md`](../../DIARY.md) under Section 10 only after a minor roadmap point (for example, Step 1.1 or 1.2) or a major milestone has been completed and verified. Summarize the completed point or milestone, including the relevant work since its previous diary entry.
+Use the appender rather than reading the entire diary:
 
-Routine micro-commits, including intermediate fixes, refactors, tests, rule changes, and documentation edits, **must not create DIARY.md entries**. A completed task or Git commit alone is not a diary trigger.
+```powershell
+python tools/harness/log_diary.py `
+  --title "<Commit-sized change>" `
+  --subsystems "<relative components>" `
+  --changes "<change 1>; <change 2>" `
+  --rationale "<reason or trade-off>" `
+  --results "<observed verification>"
+```
 
-Format each milestone entry with timestamp: `### [YYYY-MM-DD HH:MM CEST] — <Title>`.
+Entries use `### [YYYY-MM-DD HH:MM CET/CEST] — <Title>`. Use `--date` when an explicit local timestamp is needed. Do not claim a test passed before its result is available.
 
----
+## Milestone Compaction
 
-## 2. Deterministic Logging Tool (`tools/harness/log_diary.py`)
+After a minor roadmap point or major milestone passes its completion gates, use [compact-diary](../skills/compact-diary/SKILL.md) to consolidate its settled commit entries into a milestone digest. This is the compaction trigger, regardless of diary size.
 
-To prevent context bloat and eliminate reading the 90+ KB `DIARY.md` file into context:
-- **Recommended Workflow:** Always use the deterministic CLI tool:
-  ```powershell
-  python tools/harness/log_diary.py \
-    --title "<Title>" \
-    --subsystems "<crates/..., rules/...>" \
-    --changes "<bullet 1>; <bullet 2>" \
-    --rationale "<rationale>" \
-    --results "<test verification>"
-  ```
-- The tool automatically computes the current timestamp (`### [YYYY-MM-DD HH:MM CEST] — <Title>`), formats all 4 required sections, and appends the entry cleanly in 0.05s without prompt overhead.
-- **Milestone Lifecycle & Git Staging Order:**
-  - Execute `log_diary.py` only after the minor roadmap point or major milestone passes its completion gates, and before the milestone-completion commit.
-  - Stage `DIARY.md` with the milestone completion changes under the **Cohesive Unit** protocol in [`.agents/rules/git-commits.md`](git-commits.md). Earlier routine micro-commits must not include diary entries.
-  - Do not leave the required milestone entry for an orphan trailing `docs(diary): ...` commit.
+Preserve decisions, alternatives, non-obvious hardware findings, and verification evidence. Keep each distinct milestone in its own digest and retain granular entries for unfinished work. The completion commit includes its own entry describing the outcome and compaction; do not add a second entry solely to satisfy the compaction procedure.
 
----
-
-## 3. Standard Entry Structure
-
-Every log entry under Section 10 must systematically document:
-
-1. **Affected Subsystems:** Crates, modules, rules, or design notes modified.
-2. **What Was Changed (The Concrete Reality):** Specific code modifications, data structures, algorithms, or mechanics introduced or refactored.
-3. **Why It Was Done & Architectural Rationale:** The problem statement, edge cases discovered, user directives, and trade-offs behind the solution.
-4. **Verification & Test Results:** Specific test suites executed and verified (e.g. `cargo test -p test_runner --test test_architecture_rules`, SingleStepTests, formatting checks).
-
----
-
-## 4. Rationale: The Narrative History
-
-Git commits record routine changes. `DIARY.md` records the verified outcome, technical decisions, and evidence for each completed roadmap point or milestone, so the engineering history remains readable without duplicating every commit.
-
----
-
-## 5. Milestone Diary Compaction Gate
-
-Upon completing minor roadmap points (Step 1.1, 1.2, 1.3...) or major roadmap milestones in [`ROADMAP.md`](../../ROADMAP.md):
-- Invoke the `compact-diary` skill ([`.agents/skills/compact-diary/`](../skills/compact-diary/SKILL.md)) whenever Section 10 grows unwieldy (or exceeds operational thresholds ~150 KB / 1,500 lines), synthesizing settled historical milestone entries into high-level architectural digests while preserving active and recent entries in full granular detail.
-- **Anti-Steamroller Invariant:** Never collapse multiple distinct major engineering milestones into a single generic bucket; each distinct architectural milestone retains its own dedicated Milestone Digest.
-
-
+The two responsibilities are separate: **logging happens on every commit; compaction happens at milestone completion**. See [git-commits.md](git-commits.md) for staging and validation.

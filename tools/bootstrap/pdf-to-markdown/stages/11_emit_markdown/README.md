@@ -19,7 +19,7 @@ Serializes chapter streams into standalone Markdown files formatted as `<output_
 - `<output_dir>/{index:02d}_{slug}.md`: Emitted per-section Markdown documents.
 - `<output_dir>/assets/`: Synchronized visual assets and RAG sidecars.
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/11_emit_markdown/emit_markdown.py --workspace "workspace" --output-dir "workspace/11_emit_markdown" --config "config.yaml"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 11 --to-stage 11
 ```

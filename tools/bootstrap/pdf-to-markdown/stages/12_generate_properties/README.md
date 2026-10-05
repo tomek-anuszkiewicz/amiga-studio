@@ -20,7 +20,7 @@ Enriches raw Markdown chapter files emitted from Stage 11 with publication-grade
 - `<output_dir>/*.md`: Markdown documents with Line 1 Obsidian YAML frontmatter.
 - `<output_dir>/assets/`: Synchronized visual assets.
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/12_generate_properties/generate_properties.py --workspace "workspace" --config "config.yaml"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 12 --to-stage 12
 ```

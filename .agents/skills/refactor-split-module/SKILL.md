@@ -20,7 +20,7 @@ Activate this skill whenever:
 
 ## 2. Decomposition Principles
 
-1. **Strict 800-Line Ceiling:** Every `.rs` file in `crates/*/src/` must remain $\le 800$ lines.
+1. **800-Line Ceiling and Registered Exceptions:** Apply the limit and recognized instruction/table exceptions in [file-size-and-cohesion.md](../../rules/file-size-and-cohesion.md). Do not split flat instruction files into subdirectories. Remove an exception when the refactor makes it unnecessary.
 2. **Flat Instruction Hierarchy:** Under `crates/cpu/src/instructions/`, maintain a flat 1:1 opcode-to-file mapping with zero subdirectories.
 3. **3-Tier Re-Export Preservation:** External callers must not experience breaking API changes. Re-export public types from the crate root (`src/<crate>.rs`) via `pub use submodule::TypeName;`.
 4. **Disjoint Borrowing & Zero Allocations:** Ensure split submodules preserve independent field borrowing without requiring `Rc<RefCell<...>>` or heap allocations in hot paths.

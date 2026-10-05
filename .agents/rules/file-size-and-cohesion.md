@@ -46,9 +46,9 @@ Modifications to `LINE_COUNT_EXCEPTIONS` (in `crates/test_runner/tests/test_arch
 1. **Zero Autonomous Additions:**
    - When a file exceeds 800 lines, the agent is **strictly prohibited from autonomously adding it to `LINE_COUNT_EXCEPTIONS`** to silence CI failures.
    - The agent must decompose the file per Section 5/Section 7, or present the issue to the user with exact metrics and await an explicit user command to grant an exception.
-2. **Zero Autonomous Deletions:**
-   - When a refactored file drops to $\le 800$ lines, the agent is **strictly prohibited from silently pruning it from `LINE_COUNT_EXCEPTIONS`**.
-   - Automated architecture tests (`test_no_stale_line_count_exceptions`) and code quality audits (`[stale_line_count_exception]`) will explicitly fail or warn, alerting the user to decide and authorize the removal.
+2. **Remove Stale Exceptions:**
+   - When a refactored file drops to $\le 800$ lines or is removed, delete its stale `LINE_COUNT_EXCEPTIONS` entry in the same refactor and report the removal. No separate approval is needed.
+   - `test_no_stale_line_count_exceptions` and code quality audits verify that the exception list matches the remaining oversized files.
 3. **Continuous Automated Bidirectional Verification:**
    - `test_file_size_limits`: Fails if any unexempted production file exceeds 800 lines.
    - `test_no_stale_line_count_exceptions`: Fails if any file registered in `LINE_COUNT_EXCEPTIONS` has $\le 800$ lines or does not exist on disk.
@@ -57,7 +57,7 @@ Modifications to `LINE_COUNT_EXCEPTIONS` (in `crates/test_runner/tests/test_arch
 Split regardless of line count when:
 - The file has multiple reasons to change (e.g. bus arbitration vs address mapping vs configuration).
 - Pure serializable state structs are mixed with heavy operational simulation logic.
-- In-file unit tests grow beyond ~150–200 lines (move to `tests/*.rs`).
+- Inline tests are found in production code (move them to `tests/*.rs` regardless of size).
 - Sub-features are completely independent (e.g. Paula's audio DACs vs floppy disk controller vs UART).
 
 ## 6. Strict Flat Instruction Hierarchy (`crates/cpu/src/instructions/`)

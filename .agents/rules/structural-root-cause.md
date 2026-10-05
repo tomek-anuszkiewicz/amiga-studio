@@ -1,42 +1,23 @@
-# Structural Root-Cause Resolution Rule (Zero Local Symptom Patches)
+# Scoped Changes and Structural Root-Cause Resolution
 
----
+## Task Scope
 
-## 1. Core Mandate
+- Investigatory questions authorize inspection and explanations. Modify files when the user requests implementation or accepts the proposed changes.
+- Make the changes needed to complete the task, including affected callers, tests, and documentation. Avoid unrelated cleanup or sibling feature work.
+- If resolving the cause requires work outside the agreed task, explain the dependency and obtain direction before expanding scope.
+- Report delivered changes, verification, and material unresolved findings. Use a response format appropriate to the task; empty recommendations sections are unnecessary.
 
-When addressing any defect, test divergence, or user-reported anomaly:
-- **Never apply surface-level local tweaks to silence the symptom.**
-- Trace the data lifecycle or hardware timing upstream. Implement a structural solution that resolves the root cause for the entire class of problems.
+## Fix the Mechanism
 
----
+- Explain the failing data flow, clock phase, or state transition before changing it. Use the [repro-first procedure](repro-first.md) to confirm the defect and the fix.
+- Fix the shared upstream mechanism when evidence identifies one. Do not assume unrelated failures have a single cause.
+- Search for existing constants, types, and helpers before introducing equivalents; reuse the authoritative definition.
+- Prove the mechanism on an isolated case before scaling the change. File count alone is not a reason to stop a necessary repair.
 
-## 2. Prohibited Anti-Patterns
+## Prohibited Symptom Patches
 
-### A. Coordinate & Timing Nudging
-- **Forbidden:** Adjusting an offset, beam coordinate, or cycle delay by $\pm 1$ / $\pm 2$ to make a test pass.
-- **Required:** Trace the physical silicon clock phase or signal origin — determine *why* the event fired early or late.
+- **Coordinate and timing nudges:** Do not add $\pm 1$ / $\pm 2$ offsets merely to make a test pass. Establish the physical phase or signal origin.
+- **OCR string hacks:** Do not hardcode substitutions such as `re.sub(r"HARDW\s+ARE", "HARDWARE")` for one artifact. Correct the shared processing mechanism.
+- **Isolated special-casing:** Special-case `if` branches for a single opcode, register address, or file name are forbidden. Modify the state machine or data model to handle the condition generically.
 
-### B. Ad-Hoc Regexes & String Hacks
-- **Forbidden:** Hardcoded `re.sub(r"HARDW\s+ARE", "HARDWARE")` or character-stripping to fix a single OCR artifact.
-- **Required:** Fix pipeline ordering upstream so clean data is produced before emission.
-
-### C. Isolated Special-Casing
-- **Forbidden:** Special-case `if` branches for a single opcode, register address, or file name.
-- **Required:** Modify the state machine or data model to handle the condition generically.
-
----
-
-## 3. Assume Systematic Scope (for the Mechanism, Not the Spatial Scope)
-
-- One broken chapter title → same OCR flaw affects all headings. One shifted raster line → arbitration logic affects all lines.
-- Fix the shared upstream mechanism, not just the reported instance.
-- **Not a license for spatial expansion:** if the fix requires touching modules outside the task perimeter, escalate to the user per [`strict-scope-discipline.md`](strict-scope-discipline.md).
-
----
-
-## 4. Pre-Submission Checklist
-
-- [ ] Free of $\pm 1$ coordinate/cycle nudges without silicon timing proof?
-- [ ] Free of hardcoded ad-hoc string substitutions or regex patches?
-- [ ] Resolves the entire class of errors, not just the reported instance?
-- [ ] Root cause addressed upstream in the data lifecycle or state machine?
+Before completion, verify that the diff addresses the cause, stays within the agreed scope, and adds no unrelated cleanup or duplicated definitions. For a requested refactor, update all affected consumers according to [clean-break-refactoring.md](clean-break-refactoring.md).

@@ -21,7 +21,7 @@ Stage separately by concern: `git add <file1> <file2>`
 | `crates/<subsystem>/src/` | `feat/fix/refactor/perf(<subsystem>):` |
 | `crates/test_runner/tests/` | `test(arch):` / `test(<subsystem>):` |
 
-**Exception:** implementation + its unit test + its design spec update for the **same feature** → single atomic commit.
+**Cohesive unit:** implementation, relevant tests, design updates, and the diary entry for the **same feature** belong in one atomic commit. Every separate atomic commit gets its own diary entry.
 
 ---
 
@@ -47,7 +47,7 @@ python tools/harness/pre_flight.py --quick
 cargo test -p test_runner --test test_architecture_rules
 ```
 
-> Routine micro-commits must not add `DIARY.md` entries. Diary logging, design doc synchronization, and roadmap pruning occur upon completing minor roadmap points or milestones.
+> Every commit includes a new `DIARY.md` Section 10 entry describing its changes and verification. At minor roadmap points or milestones, compact settled entries per [diary-maintenance.md](diary-maintenance.md); synchronize design docs and prune the roadmap when their completion conditions apply.
 
 ---
 

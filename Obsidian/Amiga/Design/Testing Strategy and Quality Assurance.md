@@ -1,12 +1,12 @@
 ---
 title: "Amiga 500 Testing Strategy and Quality Assurance"
-aliases: ["Testing Strategy", "QA Strategy", "3-Tier Testing Architecture"]
+aliases: ["Testing Strategy", "QA Strategy", "Four-Tier Verification Architecture"]
 tags: ["amiga", "design", "testing", "architecture", "qa"]
 category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-09-16
+updated: 2026-10-05
 related: ["[General Architecture.md](General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 ---
 
@@ -19,7 +19,7 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[CPU SingleSt
 
 ## 1. Architectural Purpose & Testing Pyramid
 
-To guarantee hardware fidelity, zero regressions, and complete opcode support, the Amiga 500 emulator enforces a strict **3-Tier Testing Architecture** across all 27 workspace crates. Every crate maintains an external `tests/` directory with zero inline tests in `src/`, providing clean separation between runtime production logic and test harnesses:
+To guarantee hardware fidelity, zero regressions, and complete opcode support, the Amiga 500 emulator enforces a strict **Four-Tier Verification Architecture** across all 27 workspace crates. Every crate maintains an external `tests/` directory with zero inline tests in `src/`, providing clean separation between runtime production logic and test harnesses:
 
 ```mermaid
 graph TD
@@ -43,17 +43,18 @@ graph TD
     subgraph Tier3["Tier 3: Silicon Ground Truth, Benchmarks & Gates (L3 — Verification Harness)"]
         V1["Silicon SingleStepTests<br/><code>crates/test_runner/tests/test_singlestep.rs</code>"]:::t3
         V2["Cartesian DMA Permutations<br/><code>crates/test_runner/tests/test_dma_cartesian.rs</code>"]:::t3
-        V3["vAmigaTS Visual Matchers<br/><code>crates/test_runner/tests/test_vamiga_*.rs</code>"]:::t3
         V4["Opcode Benchmark Hashes & Architecture Rules<br/><code>crates/test_runner/tests/test_architecture_rules.rs</code>"]:::t3
     end
 
+    V3["Tier 4: vAmigaTS Whole-Machine Captures<br/><code>crates/test_runner/tests/test_vamiga_*.rs</code>"]:::t3
     Tier1 --> Tier2
     Tier2 --> Tier3
+    Tier3 --> V3
 ```
 
 ---
 
-## 2. The 3-Tier Testing Breakdown
+## 2. Unit, Integration, and CPU/Bus Verification
 
 ### Tier 1: Isolated Unit Tests (L1 — Fast, Unit Scope)
 - **Scope**: Single crate, single module in complete isolation. Zero multi-chip machine state.
@@ -265,8 +266,8 @@ When building, extending, or refactoring any part of the emulator, execute tests
      - `crates/floppy`: `test_floppy.rs`, `test_mfm.rs`.
      - `crates/config`: `test_config.rs`, `test_mutation.rs`.
      - `crates/physical_memory`: `test_arbitration.rs`, `test_map.rs`, `test_physical_memory.rs`.
-4. **Minimum Test & Assertion Density**:
-   - Every workspace crate must define at least **2 active `#[test]` functions** and at least **10 assertions** (`assert!`, `assert_eq!`, `assert_ne!`) to prevent shallow placeholder scaffolding.
+4. **Behavior Coverage**:
+   - Every workspace crate retains an active external test suite. Assess whether tests demonstrate the required behavior and failure modes; no assertion-count quota applies.
 
 ---
 
@@ -275,8 +276,7 @@ When building, extending, or refactoring any part of the emulator, execute tests
 | Tool / Script | Purpose | Enforcement Layer |
 | :--- | :--- | :--- |
 | [`tools/harness/run_tests.py`](../../../tools/harness/run_tests.py) | CLI runner for Tier 1 (`--unit`), Tier 2 (`--integration`), and Tier 3 (`--harness`). | Developer workflow & CI |
-| [`tools/harness/pre_flight.py`](../../../tools/harness/pre_flight.py) | Master pre-commit quality checker (Formatting, AGENTS.md size, Test Coupling, API Coverage, Architecture rules). | Explicit agent/developer command & CI |
-| [`tools/harness/check_test_coupling.py`](../../../tools/harness/check_test_coupling.py) | Verifies that changes to `crates/<crate>/src/` are coupled with changes to `crates/<crate>/tests/`. | Explicit agent/developer command |
+| [`tools/harness/pre_flight.py`](../../../tools/harness/pre_flight.py) | Master pre-commit quality checker (Formatting, AGENTS.md size, API Coverage, Architecture rules). | Explicit agent/developer command & CI |
 | [`tools/harness/audit_api_coverage.py`](../../../tools/harness/audit_api_coverage.py) | Statically verifies that public functions (`pub fn`) are referenced and tested in unit/integration suites. | Pre-flight gate (`--strict`) |
 | [`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs) | 20 automated tests validating architectural rules, test naming, and multi-module parity. | `cargo test` & pre-flight gate |
 | [`$test-runner`](../../../.agents/skills/test-runner/SKILL.md) | Standardized execution runner across tiers, writing snapshots to `.test_results/` and diffing regressions. | Codex skill |

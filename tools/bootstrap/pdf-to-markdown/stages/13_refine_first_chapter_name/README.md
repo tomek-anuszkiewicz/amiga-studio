@@ -16,7 +16,7 @@ Contextual naming refinement worker for the document's opening section:
 - `<output_dir>/00_{slug}.md`: Renamed canonical opening document with updated YAML frontmatter.
 - `<output_dir>/assets/`: Synchronized visual assets.
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/13_refine_first_chapter_name/refine_name.py --workspace "workspace" --config "config.yaml"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 13 --to-stage 13
 ```

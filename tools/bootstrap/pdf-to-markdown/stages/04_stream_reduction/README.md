@@ -17,7 +17,7 @@ Performs sequential normalization across the global node stream:
 - `workspace/04_stream_reduction/reduced_stream.json`: Normalized, welded node stream.
 - `workspace/04_stream_reduction/assets/`: Consolidated visual and text assets (`asset_node_XXXXX.png`, `.txt`, `.svg`).
 
-## Standalone Invocation
+## Invocation Through the Orchestrator
 ```powershell
-python stages/04_stream_reduction/reduce_stream.py --workspace "workspace"
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 04 --to-stage 04
 ```

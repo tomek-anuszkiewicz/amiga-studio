@@ -17,7 +17,7 @@ This skill provides on-demand verification across the repository's documentation
 
 ---
 
-## 2. The Seven Documentation Quality Pillars
+## 2. Documentation Quality Checks
 
 ### Pillar 1: Design Documentation & Code Drift Detection (`--design-sync`)
 - **Deterministic Git Checkpoints:** Every code-backed design specification in `Obsidian/Amiga/Design/` records `tracked_paths` and `last_synced_commit` in its YAML frontmatter.
@@ -53,8 +53,8 @@ This skill provides on-demand verification across the repository's documentation
 - **Inverted Pyramid:** Decisive architectural conclusions, invariants, and memory maps presented in opening 20–50 lines before implementation details.
 
 ### Pillar 8: Design Docs to Agent Rules Reflection & Delegation (`--rules-delegation`)
-- **Coding Delegation Invariant:** Every design specification in `Obsidian/Amiga/Design/` must be explicitly reflected in at least one agent rule in `.agents/rules/*.md` or `AGENTS.md`.
-- **Operational Linkage:** Guarantees that AI pair-programming agents executing coding tasks in any subsystem (custom chips, CPU, memory bus, peripherals, GUI, testing) are governed by and delegated to the authoritative design documentation.
+- **Task Routing:** Verify that domain rules or the design index route the task to its authoritative specification. Do not require a duplicated direct rule link for every document.
+- **Legacy Scanner Limitation:** `--rules-delegation` still checks direct rule references; its seven previously reported findings and scanner redesign are deferred. Report its result separately from the actual routing review.
 
 ### Pillar 9: Semantic Documentation-to-Code Parity (`--semantic-sync`)
 - **Deterministic Field Validator (The Double-Check Engine):** Validates five deep semantic dimensions against live Rust source code:
@@ -68,7 +68,7 @@ This skill provides on-demand verification across the repository's documentation
 
 ## 3. The Verbal Double-Check Protocol (Heuristic Verification)
 
-Automated Python scripts guarantee syntactic and boundary correctness, but cannot detect semantic drift caused by speculative coding or forgotten rules. Conclude every audit with the **5 Heuristic Questions**:
+Automated checks validate their configured patterns and boundaries. They do not establish complete semantic agreement or hardware fidelity; report the inspected scope and follow with manual review where required. Conclude every audit with the **5 Heuristic Questions**:
 1. 🧠 **Spec Freshness Review:** Did recent code changes alter chip behavior or registers without updating `Obsidian/Amiga/Design/*.md`?
 2. 🚫 **Anti-Nudge Review (`structural-root-cause.md`):** Are all beam coordinates and delays silicon-verified rather than empirical $\pm 1$ / $\pm 2$ symptom patches?
 3. 🔬 **Assertion Density & Genuine Test Review (`unit-testing-policy.md`):** Do unit tests genuinely verify chip behavior and state changes, or do they only assert trivial boilerplate?

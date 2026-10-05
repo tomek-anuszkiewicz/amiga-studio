@@ -50,10 +50,7 @@ flowchart TD
 
 ### Vector 3: Silicon Depth & Architectural Rigor
 - **Question:** *Does this document read like a professional Commodore/Motorola hardware manual with mechanical sympathy, or is it a generic, shallow summary?*
-- **Scoring (0–100%):**
-  - **90–100% (Gold Standard):** Exact bitfield layouts, hexadecimal masks, CCK1/CCK2 phase timing, autovector numbers, physical memory maps, and clean Inverted Pyramid structure.
-  - **70–89% (Acceptable):** Core state machine and registers covered; minor pipeline delays or edge cases omitted.
-  - **< 70% (Shallow Stub):** High-level narrative only; lacks bit-level register definitions or circuit mechanics.
+- **Assessment:** Identify which relevant register definitions, bitfields, phases, memory ranges, and edge cases are covered, missing, or contradicted. Support the assessment with concrete references; do not assign a subjective percentage without a defined denominator.
 
 ---
 
@@ -121,7 +118,7 @@ When executing an audit:
 **Evaluated Scope:**
 - **Code:** `crates/<crate>/src/`
 - **Specification:** `Obsidian/Amiga/Design/<Spec>.md`
-- **Overall Parity Score:** [XX]% / 100%
+- **Evidence Coverage:** [assessed dimensions and limitations]
 - **Verdict:** [PASS | NEEDS_DOCS_ENRICHMENT | NEEDS_CODE_ALIGNMENT | SPEC_DIVERGENCE]
 
 ---

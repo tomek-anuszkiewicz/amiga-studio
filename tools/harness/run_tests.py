@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Amiga 500 Emulator: Test Tier Runner CLI
-Provides unified execution for the 3-Tier Testing Architecture:
+Runs unit, integration, and CPU/bus verification; whole-machine captures form the separate fourth tier:
   - Tier 1 (--unit): Fast, isolated unit tests (< 2s).
   - Tier 2 (--integration): Multi-crate integration & headless UI interaction tests.
   - Tier 3 (--harness): Silicon verification, Cartesian DMA sweeps & benchmark tests.
@@ -174,7 +174,7 @@ def run_tier3_harness(quiet=False):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Amiga 500 Emulator 3-Tier Test Runner"
+        description="Amiga 500 Emulator Unit, Integration, and CPU/Bus Test Runner"
     )
     parser.add_argument(
         "--unit",
