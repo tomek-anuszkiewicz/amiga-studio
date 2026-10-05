@@ -805,3 +805,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick pre-flight passed
   - architecture suite passed all 19 tests
   - no document conversion was run
+---
+
+### [2026-10-05 22:34 CEST] — Use provider sampling defaults in reference converters
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/html-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove temperature from both configurations and Gemini clients
+  - remove temperature from cache key construction and the HTML fallback configuration
+  - update HTML configuration documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Let Gemini use its default sampling and prevent responses generated with explicit temperature settings from being reused for new requests
+- **Verification & Test Results**:
+  - Offline checks passed for both real SDK request configurations and cache APIs
+  - all other YAML settings preserved
+  - Python syntax checks passed
+  - quick pre-flight passed
+  - architecture suite passed all 19 tests
+  - Graphify update passed
+  - no live API call or document conversion was run

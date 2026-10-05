@@ -115,7 +115,6 @@ class GeminiClient:
         self.vision_model = self.config.get("model_vision", "gemini-3.8-flash")
         self.default_thinking_budget = self.config.get("default_thinking_budget", 0)
         self.stages_thinking_budget = self.config.get("stages_thinking_budget", {})
-        self.temperature = self.config.get("temperature", 0.1)
         self.client = None
         self._init_client()
 
@@ -171,7 +170,6 @@ class GeminiClient:
             thinking_config = types.ThinkingConfig(thinking_budget=budget)
 
         cfg = types.GenerateContentConfig(
-            temperature=self.temperature,
             thinking_config=thinking_config,
             response_mime_type=response_mime_type,
         )
@@ -194,7 +192,6 @@ class GeminiClient:
             prompt=prompt,
             images=None,
             budget=budget,
-            temperature=self.temperature,
             response_mime_type=response_mime_type,
         )
         cached_val = load_from_cache(cache_key)
@@ -276,7 +273,6 @@ class GeminiClient:
             prompt=prompt,
             images=images,
             budget=budget,
-            temperature=self.temperature,
             response_mime_type=response_mime_type,
         )
         cached_val = load_from_cache(cache_key)

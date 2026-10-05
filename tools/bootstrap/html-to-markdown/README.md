@@ -15,7 +15,7 @@ python tools/bootstrap/html-to-markdown/pipeline.py `
   --document-name "<DOCUMENT_TITLE>"
 ```
 
-The input is a local HTML file or an already downloaded crawl directory. Output consists of Markdown and referenced images in `assets/`. Omitting `--output-dir` writes beside the input file or inside the input directory. The program loads its adjacent `config.yaml` for model, temperature, thinking budget, and timeout settings; the HTML CLI has no `--config` option. LLM responses use the persistent disk cache in `llm_cache.py`.
+The input is a local HTML file or an already downloaded crawl directory. Output consists of Markdown and referenced images in `assets/`. Omitting `--output-dir` writes beside the input file or inside the input directory. The program loads its adjacent `config.yaml` for model, thinking budget, and timeout settings; the HTML CLI has no `--config` option. Sampling uses the provider defaults. LLM responses use the persistent disk cache in `llm_cache.py`.
 
 Optional rendering and comparison tools require Chrome, Chromium, or Edge; page rasterization also requires PyMuPDF, and comparison images require Pillow. See the operational workflow below for these tools and link validation.
 
@@ -37,7 +37,7 @@ All conversion scripts and references reside inside this program directory:
 ```text
 tools/bootstrap/html-to-markdown/
 ├── README.md                              # Program usage and conversion conventions
-├── config.yaml                            # Program configuration (models, temperature, budget)
+├── config.yaml                            # Program configuration (models, budget, timeout)
 ├── pipeline.py                            # Master conversion orchestrator
 ├── llm_cache.py                           # Content-addressable persistent disk cache (.cache/gemini)
 ├── llm_client.py                          # Gemini LLM client with automatic cache checking & retry

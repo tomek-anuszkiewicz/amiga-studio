@@ -181,7 +181,6 @@ def convert_with_llm(html_content: str, document_title: str, prompt_file: Path) 
             config["llm"] = {
                 "model_prose": "gemini-3.8-flash",
                 "model_vision": "gemini-3.8-flash",
-                "temperature": 0.1,
                 "default_thinking_budget": 0,
             }
 

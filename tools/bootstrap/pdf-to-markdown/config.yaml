@@ -32,7 +32,6 @@ llm:
   model_fast: "gemini-3.8-flash"
   default_thinking_budget: 0   # 0 = disabled (instant response, ~200-500ms)
   timeout_seconds: 60
-  temperature: 0.1
   concurrency: 8
 
   # Per-stage thinking budget configuration (in tokens; 0 = disabled, positive int = allocated budget)

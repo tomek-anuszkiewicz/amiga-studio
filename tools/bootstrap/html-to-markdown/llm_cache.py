@@ -36,13 +36,11 @@ def compute_cache_key(
     prompt: str,
     images: Optional[List[Any]] = None,
     budget: Optional[int] = None,
-    temperature: Optional[float] = None,
     response_mime_type: Optional[str] = None,
 ) -> str:
     """Computes a deterministic SHA-256 cache key from request parameters."""
     h = hashlib.sha256()
     h.update(f"model:{model}\n".encode("utf-8"))
-    h.update(f"temp:{temperature}\n".encode("utf-8"))
     h.update(f"budget:{budget}\n".encode("utf-8"))
     h.update(f"mime:{response_mime_type}\n".encode("utf-8"))
     h.update(f"prompt:{prompt}\n".encode("utf-8"))
