@@ -4,6 +4,8 @@ This Python command-line program converts technical PDF documents (such as Amiga
 
 `pipeline.py` controls execution, status tracking, and stage invalidation. The workflow is defined in Python, while LLM results are not guaranteed to be deterministic. Stage prompts remain runtime inputs in `stages/`.
 
+For development, follow the [developer-led workflow](../reference-conversion-contract.md#development-workflow): make the requested change, convert the fragment selected by the user when requested, and let the user assess the output. Automatic tests follow the [bootstrap converter scope](../../../.agents/rules/unit-testing-policy.md#bootstrap-converter-scope).
+
 ## Quick Start
 
 Run from the repository root. Install the pinned shared dependencies with `python -m pip install -r tools/bootstrap/conversion/requirements.txt` and authenticate with `codex login` using ChatGPT sign-in. API-key mode is rejected. Every inference stage has an explicit model and reasoning effort in `config.yaml`; the current baseline is `gpt-6.1-sol` / `medium`, concurrency 1.

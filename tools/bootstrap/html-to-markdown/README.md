@@ -4,6 +4,8 @@ This Python command-line program converts HTML documents (Microsoft Word exports
 
 `pipeline.py` orchestrates file processing and calls Codex through the shared [conversion client](../conversion/client.py). LLM transcription results are not guaranteed to be deterministic. Conversion instructions live in [`references/llm-transcription-prompt.md`](references/llm-transcription-prompt.md).
 
+For development, follow the [developer-led workflow](../reference-conversion-contract.md#development-workflow): make the requested change, convert the fragment selected by the user when requested, and let the user assess the output. Automatic tests follow the [bootstrap converter scope](../../../.agents/rules/unit-testing-policy.md#bootstrap-converter-scope).
+
 ## Quick Start
 
 Install the pinned SDK/runtime and dependencies, then sign in to Codex with ChatGPT. API-key mode is rejected:
@@ -24,7 +26,7 @@ python tools/bootstrap/html-to-markdown/pipeline.py `
 
 The input is a local HTML file or an already downloaded crawl directory. Output consists of Markdown and referenced images in `assets/`. Omitting `--output-dir` writes beside the source. The adjacent `config.yaml` selects `llm.stages.html_to_markdown.model` and `reasoning_effort`, with separate timeout and concurrency settings. Use `--config` for another explicit YAML file and `--cache-dir` for a disposable pilot cache. The baseline is `gpt-6.1-sol` / `medium`, concurrency 1. Invalid configuration, authentication and inference failures stop conversion; no PDF configuration or DOM result substitutes for Codex.
 
-The shared client caches only completed, validated responses under `Reference/.cache/codex` and writes `.conversion-metrics.json` beside the output. Cached usage belongs to the original request. See the [conversion contract](../reference-conversion-contract.md) for source fidelity and transport boundaries. One small text/code/table HTML pilot has been inspected; full crawls and image recovery still require validation.
+The shared client caches only completed, validated responses under `Reference/.cache/codex` and writes `.conversion-metrics.json` beside the output. Cached usage belongs to the original request. See the [conversion contract](../reference-conversion-contract.md) for source fidelity and transport boundaries; development runs use the fragment requested by the user.
 
 Optional rendering and comparison tools require Chrome, Chromium, or Edge; page rasterization also requires PyMuPDF, and comparison images require Pillow. See the operational workflow below for these tools and link validation.
 

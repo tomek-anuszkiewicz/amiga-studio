@@ -28,7 +28,7 @@ Read applicable domain rules before editing that domain. Use [Graphify](.agents/
 | Documentation | [Documentation maintenance](.agents/rules/docs-maintenance.md), [vault links](.agents/rules/vault-linking-and-graph-integrity.md), [information hierarchy](.agents/rules/information-hierarchy.md), [writing style](.agents/rules/practitioner-voice-and-tone.md) |
 | Commit or milestone | [Diary](.agents/rules/diary-maintenance.md), [roadmap](.agents/rules/roadmap-maintenance.md) |
 | Merge or worktree | [Merge policy and required procedures](.agents/rules/git-merge-commits.md) |
-| Reference conversion bootstrap | [Conversion programs](docs/developers.md#processing-raw-documents-into-markdown) |
+| Reference conversion bootstrap | [Conversion programs](docs/developers.md#processing-raw-documents-into-markdown), [developer-led workflow](tools/bootstrap/reference-conversion-contract.md#development-workflow), [converter testing scope](.agents/rules/unit-testing-policy.md#bootstrap-converter-scope) |
 | Long-running checks | [Parallel execution](.agents/rules/parallel-execution.md) |
 
 Codex discovers skill names and descriptions in `.agents/skills/` and reads full instructions when selected; a separate skill catalog is unnecessary here. Rule files are referenced Markdown and must be read as routed above. Roles live in `.codex/agents/*.toml`; delegate only when requested by the user or applicable instructions. MCP configuration is `.codex/config.toml`.

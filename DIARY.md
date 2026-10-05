@@ -1153,3 +1153,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify AST refresh passed without inference
   - Whitespace check passed
   - Conversion tests and live inference were not run
+---
+
+### [2026-10-06 00:23 CEST] — Document developer-led converter iterations and test scope
+- **Affected Subsystems**:
+  - `AGENTS.md`
+  - `.agents/rules/unit-testing-policy.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+  - `tools/bootstrap/html-to-markdown/README.md`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Define change then user-requested fragment conversion then user assessment as the converter development workflow
+  - Retain existing configuration, transport, cache and recovery tests without default test expansion
+  - Exclude independent pilots, quality scoring and reinstatement of removed crop tests
+  - Route agent and converter entrypoints to the shared workflow and testing policy
+- **Architectural Rationale & Trade-Offs**:
+  - Persist the user's agreed workflow for subsequent sessions while keeping repository commit checks and runtime schema validation distinct from conversion-quality assessment
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Documentation governance audit reported zero issues
+  - All 9 existing skill-governance tests passed
+  - All 14 added Markdown links and anchors resolved
+  - Architecture suite: 18 passed and 1 failed on 62 existing broken Design-to-Reference links
+  - No converter tests, fragment conversion or live inference ran
