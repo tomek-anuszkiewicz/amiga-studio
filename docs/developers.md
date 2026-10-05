@@ -228,13 +228,13 @@ For multi-page web publications, the bootstrapper incorporates an autonomous cra
 
 When new reference manuals or updated editions are retrieved, use specialized agent skills to convert raw scans and crawled HTML into repository-grade Markdown:
 
-1. **PDF Scans to Markdown ([`pdf-to-markdown`](../.agents/skills/pdf-to-markdown/SKILL.md)):**
+1. **PDF Scans to Markdown ([`pdf-to-markdown`](../tools/bootstrap/pdf-to-markdown/SKILL.md)):**
    - Leverages Gemini multimodal reasoning to analyze document structure and partition into logical chapters.
    - Extracts and crops circuit diagrams, register maps, and waveforms into high-resolution PNG/SVG assets.
    - Stitches multi-page register tables into GitHub-flavored Markdown tables.
    - Generates Git-tracked multimodal sidecar text files (`<image>.txt`) describing timing diagrams for offline AI inspection.
 
-2. **Web Crawls to Markdown ([`html-to-markdown`](../.agents/skills/html-to-markdown/SKILL.md)):**
+2. **Web Crawls to Markdown ([`html-to-markdown`](../tools/bootstrap/html-to-markdown/SKILL.md)):**
    - Crawls multi-page HTML hierarchies (e.g. Kuba Winnicki's *Achtung! Amiga*).
    - Strips legacy table formatting, inline styling, and obsolete navigational chrome.
    - Normalizes cross-chapter hyperlinks into Obsidian internal vault links (`[[Chapter#Section]]`).

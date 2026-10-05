@@ -16,7 +16,7 @@ It is architected around an **Agent-Driven Hybrid Model**:
 ## 1. Directory Structure
 
 ```text
-.agents/skills/pdf-to-markdown/
+tools/bootstrap/pdf-to-markdown/
 ├── SKILL.md                                 # This workflow manual
 ├── pipeline.py                              # Master CLI orchestrator & task manager
 ├── config.yaml                              # Global configuration (DPI, paths, heuristics)
@@ -109,17 +109,17 @@ It is architected around an **Agent-Driven Hybrid Model**:
 > 5. Hermetic configuration snapshotting to `<WORKSPACE>/config.yaml`
 >
 > ### Execution Rules:
-> - **Full pipeline**: `python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>"`
-> - **Stage interval**: `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 05`
+> - **Full pipeline**: `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>"`
+> - **Stage interval**: `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 05`
 > - **Single stage**: Set `--from-stage` and `--to-stage` to the exact same stage number:
->   `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02`
+>   `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02`
 > - **Stage 01 with specific pages**:
->   `python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01`
+>   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01`
 > - **Deterministic batch (01, 03, 04, 05, 10, 11)**:
->   `python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --run-deterministic`
+>   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --run-deterministic`
 > - **Cognitive review stages (06, 07, 08, 09)**:
->   - Prepare task items: `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --prepare-stage 07`
->   - Apply edited task items: `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --apply-stage 07`
+>   - Prepare task items: `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --prepare-stage 07`
+>   - Apply edited task items: `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --apply-stage 07`
 
 ---
 
@@ -131,35 +131,35 @@ When running a conversion task, the Agent executes the pipeline through 6 distin
 Run deterministic ingestion through the orchestrator:
 ```powershell
 # Run Stages 01 to 05:
-python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PATH_TO_PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 01 --to-stage 05
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PATH_TO_PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 01 --to-stage 05
 
 # Or test a single stage / specific page ranges in Stage 01:
-python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PATH_TO_PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PATH_TO_PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01
 ```
 
 ### Phase B: Continuation Detection (Stage 06)
 ```powershell
 # Detect multi-page table and graphic continuations
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 06 --to-stage 06
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 06 --to-stage 06
 ```
 
 ### Phase C: Structural Node Transformation (Stages 07 – 09)
 
 #### 1. Tables (Stage 07)
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --prepare-stage 07
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --prepare-stage 07
 ```
 - For each `{node_id}.json` in `<WORKSPACE>/tasks/tables/`:
   - Inspect `raw_text` and image preview (`png_path`).
   - Edit or refine the table in `<WORKSPACE>/tasks/tables/{node_id}.md` (GFM or semantic HTML table).
 - Apply tables:
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --apply-stage 07
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --apply-stage 07
 ```
 
 #### 2. Graphics (Stage 08)
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --prepare-stage 08
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --prepare-stage 08
 ```
 - For each `{node_id}.json` in `<WORKSPACE>/tasks/graphics/`:
   - View image using `view_file` on `png_path`.
@@ -168,27 +168,27 @@ python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --pr
   - If it is an electrical schematic, waveform, or pinout: author a comprehensive technical description in `{node_id}.sidecar.txt` for RAG vector search and preserve the image embed.
 - Apply graphics:
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --apply-stage 08
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --apply-stage 08
 ```
 
 #### 3. Prose & TOC Delimiters (Stage 09)
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 09 --to-stage 09
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 09 --to-stage 09
 ```
 
 ### Phase D: Stream Proofreading & Manifest Normalization (Stage 10)
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 10 --to-stage 10
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 10 --to-stage 10
 ```
 
 ### Phase E: Markdown Emission & Properties Generation (Stages 11 – 12)
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 11 --to-stage 12
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 11 --to-stage 12
 ```
 
 ### Phase F: First Chapter Refinement & Final TOC Wikilinking (Stages 13 – 14)
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --output-dir "<OUTPUT_DIR>" --config "<CONFIG>" --from-stage 13 --to-stage 14
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --output-dir "<OUTPUT_DIR>" --config "<CONFIG>" --from-stage 13 --to-stage 14
 ```
 
 ---
@@ -196,6 +196,6 @@ python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --ou
 ## 4. Monitoring & Status Check
 Check pipeline progress and pending tasks at any time:
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --status
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --status
 ```
 

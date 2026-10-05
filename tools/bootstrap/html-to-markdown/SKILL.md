@@ -23,7 +23,7 @@ This skill provides a standardized, vision-and-LLM-driven workflow for convertin
 All conversion scripts and references reside inside this skill directory:
 
 ```text
-.agents/skills/html-to-markdown/
+tools/bootstrap/html-to-markdown/
 ├── SKILL.md                               # This workflow recipe
 ├── config.yaml                            # Skill configuration (models, temperature, budget)
 ├── pipeline.py                            # Master conversion orchestrator
@@ -158,20 +158,20 @@ The LLM must construct a clean, hierarchical Table of Contents placed immediatel
 Run `download_assets.py` to extract, copy, or download all images referenced in the HTML document (or all HTML files in a crawl directory) to `assets/` and generate technical `.txt` sidecars:
 ```powershell
 # For single HTML file:
-python .agents/skills/html-to-markdown/scripts/download_assets.py `
+python tools/bootstrap/html-to-markdown/scripts/download_assets.py `
   --html "Obsidian/Amiga/Reference/DocFolder/doc.html" `
   --assets-dir "Obsidian/Amiga/Reference/html-sandbox/assets"
 
 # For multi-page HTML directory crawl:
 Get-ChildItem "Obsidian/Amiga/Reference/DocFolder/*.html" | ForEach-Object {
-  python .agents/skills/html-to-markdown/scripts/download_assets.py `
+  python tools/bootstrap/html-to-markdown/scripts/download_assets.py `
     --html $_.FullName `
     --assets-dir "Obsidian/Amiga/Reference/html-sandbox/assets"
 }
 ```
 *(Optional)* If visual page layout inspection is needed, render high-res page PNGs:
 ```powershell
-python .agents/skills/html-to-markdown/scripts/html_to_pages.py `
+python tools/bootstrap/html-to-markdown/scripts/html_to_pages.py `
   --input "Obsidian/Amiga/Reference/DocFolder/doc.html" `
   --output-dir "Obsidian/Amiga/Reference/html-sandbox/pages" `
   --resolution 200
@@ -193,7 +193,7 @@ The LLM will produce clean Markdown with:
 ### Phase 3: Resolve Image Placeholders
 Run `replace_placeholders.py` to verify assets, update image links, and guarantee sidecars:
 ```powershell
-python .agents/skills/html-to-markdown/scripts/replace_placeholders.py `
+python tools/bootstrap/html-to-markdown/scripts/replace_placeholders.py `
   --markdown "Obsidian/Amiga/Reference/html-sandbox/doc.md" `
   --assets-dir "Obsidian/Amiga/Reference/html-sandbox/assets" `
   --source-assets-dir "Obsidian/Amiga/Reference/DocFolder" `
@@ -203,7 +203,7 @@ python .agents/skills/html-to-markdown/scripts/replace_placeholders.py `
 ### Phase 4: Headless Visual Comparison
 Generate a side-by-side visual comparison between the original HTML rendering and the converted Markdown:
 ```powershell
-python .agents/skills/html-to-markdown/scripts/render_comparison.py `
+python tools/bootstrap/html-to-markdown/scripts/render_comparison.py `
   --html "Obsidian/Amiga/Reference/DocFolder/doc.html" `
   --markdown "Obsidian/Amiga/Reference/html-sandbox/doc.md" `
   --output-dir "Obsidian/Amiga/Reference/html-sandbox"
@@ -213,7 +213,7 @@ Open `visual_comparison.png` to visually audit typography, alignment, and diagra
 ### Phase 5: Link Integrity & Asset Audit
 Run `validate_links.py` to verify 100% link, anchor, and image resolution:
 ```powershell
-python .agents/skills/html-to-markdown/scripts/validate_links.py `
+python tools/bootstrap/html-to-markdown/scripts/validate_links.py `
   "Obsidian/Amiga/Reference/html-sandbox/doc.md"
 ```
 Target: **100% PASS (0 broken files, 0 broken anchors, 0 warnings)**.

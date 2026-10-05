@@ -50,10 +50,10 @@ stages/01_preprocess/
 
 ### Standard Preprocessing (with automatic scan detection & OCR):
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --pdf "path/to/manual.pdf" --workspace "workspace" --from-stage 01 --to-stage 01
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "path/to/manual.pdf" --workspace "workspace" --from-stage 01 --to-stage 01
 ```
 
 ### Targeted Pages or Page Ranges:
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --pdf "path/to/manual.pdf" --workspace "workspace" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "path/to/manual.pdf" --workspace "workspace" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01
 ```

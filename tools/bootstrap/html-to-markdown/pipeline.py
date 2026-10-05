@@ -37,7 +37,7 @@ if str(SKILL_DIR) not in sys.path:
 try:
     from llm_client import GeminiClient
 except ImportError:
-    PDF_SKILL_DIR = REPO_ROOT / ".agents" / "skills" / "pdf-to-markdown"
+    PDF_SKILL_DIR = REPO_ROOT / "tools" / "bootstrap" / "pdf-to-markdown"
     if str(PDF_SKILL_DIR) not in sys.path:
         sys.path.insert(0, str(PDF_SKILL_DIR))
     try:
@@ -171,7 +171,7 @@ def convert_with_llm(html_content: str, document_title: str, prompt_file: Path) 
     try:
         config_path = SKILL_DIR / "config.yaml"
         if not config_path.is_file():
-            config_path = REPO_ROOT / ".agents" / "skills" / "pdf-to-markdown" / "config.yaml"
+            config_path = REPO_ROOT / "tools" / "bootstrap" / "pdf-to-markdown" / "config.yaml"
         config = {}
         if config_path.is_file():
             import yaml

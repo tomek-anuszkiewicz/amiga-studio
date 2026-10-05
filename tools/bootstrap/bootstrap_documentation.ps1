@@ -604,8 +604,8 @@ function Convert-ToMarkdown {
 
     $Success = $false
     if ($Item.Type -eq "SingleFile" -and $Item.TargetFile -like "*.pdf") {
-        $PdfScript = Join-Path $RepoRoot ".agents\skills\pdf-to-markdown\pipeline.py"
-        $PdfConfig = Join-Path $RepoRoot ".agents\skills\pdf-to-markdown\config.yaml"
+        $PdfScript = Join-Path $RepoRoot "tools\bootstrap\pdf-to-markdown\pipeline.py"
+        $PdfConfig = Join-Path $RepoRoot "tools\bootstrap\pdf-to-markdown\config.yaml"
         $PdfSource = Join-Path $TargetDir $Item.TargetFile
         $Workspace = Join-Path $TargetDir "workspace"
 
@@ -631,7 +631,7 @@ function Convert-ToMarkdown {
         }
     }
     elseif ($Item.Type -eq "SingleFile" -and $Item.TargetFile -like "*.html") {
-        $HtmlScript = Join-Path $RepoRoot ".agents\skills\html-to-markdown\pipeline.py"
+        $HtmlScript = Join-Path $RepoRoot "tools\bootstrap\html-to-markdown\pipeline.py"
         $HtmlSource = Join-Path $TargetDir $Item.TargetFile
 
         if (-not (Test-Path $HtmlSource)) {
@@ -655,7 +655,7 @@ function Convert-ToMarkdown {
         }
     }
     elseif ($Item.Type -eq "Crawl") {
-        $HtmlScript = Join-Path $RepoRoot ".agents\skills\html-to-markdown\pipeline.py"
+        $HtmlScript = Join-Path $RepoRoot "tools\bootstrap\html-to-markdown\pipeline.py"
         $CrawlSource = Join-Path $TargetDir "live"
         if (-not (Test-Path $CrawlSource)) {
             $CrawlSource = $TargetDir

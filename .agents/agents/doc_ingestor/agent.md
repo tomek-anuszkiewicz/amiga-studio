@@ -67,8 +67,8 @@ not architectural judgement.
 - ROADMAP.md pruning and DIARY.md compaction.
 
 ## Skills to Invoke
-- [`pdf-to-markdown`](../../skills/pdf-to-markdown/SKILL.md)
-- [`html-to-markdown`](../../skills/html-to-markdown/SKILL.md)
+- [`pdf-to-markdown`](../../../tools/bootstrap/pdf-to-markdown/SKILL.md)
+- [`html-to-markdown`](../../../tools/bootstrap/html-to-markdown/SKILL.md)
 - [`index-amiga-rag`](../../skills/index-amiga-rag/SKILL.md)
 
 ## Output Contract
