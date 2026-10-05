@@ -839,3 +839,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick pre-flight passed
   - architecture suite passed all 19 tests
   - no document conversion was run
+---
+
+### [2026-10-05 22:43 CEST] — Plan roadmap 1.1 Codex conversion and per-stage configuration
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `.agent/tasks/codex-document-conversion.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Extract roadmap 1.1 execution detail into a linked plan
+  - specify shared Codex integration with ChatGPT authentication and explicit model/effort entries for both converters
+  - audit inference stages and plan cache/resume/manual handoff validation
+- **Architectural Rationale & Trade-Offs**:
+  - Make the next conversion task executable while retaining roadmap 1.2-1.6 as pending work and keeping active Gemini clients/configuration unchanged
+- **Verification & Test Results**:
+  - YAML examples cover 10 PDF inference stages and one HTML inference stage
+  - 15 local links resolve
+  - English checks passed
+  - initial portability diagnostic falsely matched an HTTPS URL and the corrected path-only scan passed
+  - quick pre-flight passed
+  - architecture suite passed all 19 tests
+  - no SDK installation, live inference, production migration, conversion or indexing was performed

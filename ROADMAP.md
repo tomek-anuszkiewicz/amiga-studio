@@ -5,9 +5,8 @@
 Prepare source-faithful Markdown and searchable assets once, before routine emulator development. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
 - **1.1: Review and Adapt Conversion Workflows to Codex Vision**
-  - Trace existing Gemini calls, table/graphics processing, fallbacks, persisted outputs, and manual handoffs in the PDF and HTML workflows; replace the model calls with Codex Vision for transcription, segmentation, crop review, and table/image interpretation.
-  - Consolidate the conversion contract, including visual retention, descriptions, and Markdown fallbacks. Validate the stages below on representative samples before bulk conversion and repeat validation when sources or the contract change.
-  - **Gate:** A workflow map identifies stage inputs, written outputs, and manual recovery artifacts; persisted sample outputs demonstrate source fidelity and valid structured output against the asset contract.
+  - Execute the [Codex conversion and stage configuration plan](.agent/tasks/codex-document-conversion.md): migrate both converters with ChatGPT authentication, one explicit model/reasoning-effort entry per inference stage, and compatible cache/resume/manual handoffs; consolidate the source-fidelity contract.
+  - **Gate:** Text/image/JSON pilots and persisted PDF/HTML samples verify stage selection, source fidelity, structured output, assets, and recovery behavior. Detailed execution remains in the plan; Steps 1.2-1.6 retain their pending scope.
 
 - **1.2: PDF Text Layer and Positioned Text JSON**
   - Add OCR only where pages lack text layers; preserve native text, page order, dimensions, and visuals, distinguish blank pages, and always publish the validated PDF plus per-page native/OCR provenance, even when OCR is unnecessary.
