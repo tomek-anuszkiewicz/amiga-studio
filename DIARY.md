@@ -1177,3 +1177,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - All 14 added Markdown links and anchors resolved
   - Architecture suite: 18 passed and 1 failed on 62 existing broken Design-to-Reference links
   - No converter tests, fragment conversion or live inference ran
+---
+
+### [2026-10-06 00:28 CEST] — Ignore local test-book materials and remove the old page tracker
+- **Affected Subsystems**:
+  - `.gitignore`
+  - `Obsidian/Amiga/Reference/Test Book example-4567-codex/TEST_PAGES_TRACKER.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Commit the pending ignore patterns for local test-book directories and timing-analysis variants
+  - Record removal of the old tracked Codex test-page matrix
+  - Remove the obsolete tracker exception and redundant test-book ignore entries
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the requested commit while keeping local reference inputs and conversion artifacts outside Git
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture suite: 18 passed and 1 failed on the same 62 existing broken Design-to-Reference links
+  - git check-ignore verified all four representative local reference paths are ignored
+  - No active tracker references found in searched agent, roadmap, tooling and developer documentation
+  - No converter tests or inference ran
