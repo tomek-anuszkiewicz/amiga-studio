@@ -1058,3 +1058,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite: 18 passed and 1 failed on the same 62 unrelated broken design-document Markdown links
   - All PDF converter Python modules parsed and staged diff check passed
   - Graphify AST refresh completed
+---
+
+### [2026-10-06 00:04 CEST] — Plan a uniform OCR PDF input before preprocessing
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Clarify Step 1.2 text-layer preparation before preprocessing
+  - Always create a separate source-stem - OCR.pdf by adding OCR where needed or copying native-text input
+  - Require the validated output as the sole downstream PDF input and verify it in the acceptance gate
+- **Architectural Rationale & Trade-Offs**:
+  - Give scanned and native-text PDFs one artifact handoff and one downstream conversion path
+  - This is pending roadmap scope and does not implement OCR
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture suite: 18 passed and 1 failed on 62 existing broken design-document links outside this change
+  - Roadmap diff and whitespace check passed
+  - No converter execution was required for this documentation-only change

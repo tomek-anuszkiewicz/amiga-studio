@@ -9,10 +9,10 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
   - **Gate:** Text/image/JSON pilots and persisted PDF/HTML samples verify stage selection, source fidelity, structured output, assets, and recovery behavior. Detailed execution remains in the plan; Steps 1.2-1.6 retain their pending scope.
 
 - **1.2: PDF Text Layer and Positioned Text JSON**
-  - Add OCR only where pages lack text layers; preserve native text, page order, dimensions, and visuals, distinguish blank pages, and always publish the validated PDF plus per-page native/OCR provenance, even when OCR is unnecessary.
-  - Extract persisted per-page JSON from the resulting native/OCR text layer, containing page identifiers, text blocks, bounding boxes, coordinate conventions, dimensions, and provenance. Preprocessing must consume this validated PDF and preserve alignment between the rendered PNGs and text JSON.
+  - Add a text-layer preparation stage before preprocessing. Always create a separate `<source stem> - OCR.pdf`: add OCR only where pages lack text layers, or copy the source when OCR is unnecessary. Preserve the source, native text, page order, dimensions, and visuals; distinguish blank pages and publish the validated output with per-page native/OCR provenance.
+  - Use this validated `- OCR.pdf` as the sole PDF input to preprocessing for both native-text and scanned documents; both then follow the same downstream path. Extract persisted per-page JSON from its text layer, containing page identifiers, text blocks, bounding boxes, coordinate conventions, dimensions, and provenance, and preserve alignment between the rendered PNGs and text JSON.
   - Each stage consumes validated predecessor artifacts. Missing, stale, incomplete, or mismatched artifacts block downstream conversion; blank pages and resumed runs retain explicit page identity.
-  - **Gate:** Native, scanned, mixed, and blank-page samples verify written text JSON, provenance, positions, and unchanged page geometry; invalid handoffs block conversion and resumed runs preserve page identity.
+  - **Gate:** Native, scanned, mixed, and blank-page samples verify creation and downstream use of the separate `- OCR.pdf`, written text JSON, provenance, positions, unchanged source and page geometry; invalid handoffs block conversion and resumed runs preserve page identity.
 
 - **1.3: PNG-to-Markdown and Crops with OCR Text JSON**
   - For every page-conversion request, supply Codex Vision with both the source-page PNG and its matching text-layer JSON from Step 1.2, including OCR-derived text and positions. Use the JSON to support accurate transcription and the PNG to verify layout, reading order, table structure, crop boundaries, and conflicting text.
