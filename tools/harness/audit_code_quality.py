@@ -667,6 +667,11 @@ def main():
     if args.all or args.accessors:
         accessor_issues = scan_accessor_conventions(args.crate)
 
+    total_issues = sum(len(issues) for issues in (
+        dead, zombies, vis_leaks, condition_issues, accessor_issues
+    ))
+    exit_code = 1 if args.strict and total_issues > 0 else 0
+
     if args.json:
         out = {
             "dead_code": dead,
@@ -676,7 +681,7 @@ def main():
             "accessor_issues": accessor_issues,
         }
         print(json.dumps(out, indent=2))
-        return
+        return exit_code
 
     if sys.stdout.encoding != "utf-8":
         try:
@@ -743,11 +748,8 @@ def main():
     )
     print("=" * 76)
 
-    if args.strict:
-        failures = len(dead) + len(zombies) + len(vis_leaks)
-        if failures > 0:
-            sys.exit(1)
+    return exit_code
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
