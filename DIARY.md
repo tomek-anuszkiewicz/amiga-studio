@@ -1115,3 +1115,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Verified 18 local Markdown links, remaining-only plan, exclusive task ownership and contiguous numbering
   - English and whitespace checks passed
   - Documentation-only reorganization, no conversion, live inference or milestone completion checks ran
+---
+
+### [2026-10-06 00:17 CEST] — Drop additional validation of the migrated conversion workflow
+- **Affected Subsystems**:
+  - `.agent/tasks/codex-document-conversion.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the plan whose remaining scope was additional conversion validation
+  - Remove the coverage matrix, additional conversion regressions and pilot gate
+  - Use existing migration evidence as the basis for follow-on roadmap work
+  - Keep conversion-quality evaluation outside the current scope
+- **Architectural Rationale & Trade-Offs**:
+  - Task codex-document-conversion: apply the user's decision to proceed without expanding tests of a workflow due for substantial redesign
+  - Do not claim full coverage, source-fidelity acceptance or milestone completion
+- **Verification & Test Results**:
+  - Required per-commit quick pre-flight passed
+  - Required architecture suite: 18 passed and 1 failed on the same 62 existing broken Design-to-Reference links
+  - English scan and whitespace check passed
+  - No active references to the deleted plan remain in searched task, governance, tooling and developer documentation
+  - No conversion tests, coverage audit, live inference, book conversion or milestone checks ran
