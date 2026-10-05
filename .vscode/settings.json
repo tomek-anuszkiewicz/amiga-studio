@@ -9,10 +9,5 @@
     "/graphify-out": true,
     "**/.git": true,
     "**/target": true
-  },
-  "workbench.editorAssociations": {
-    "**/.agents/rules/**/*.md": "default",
-    "**/.agents/skills/**/*.md": "default",
-    "**/_agents/rules/**/*.md": "default"
   }
 }
