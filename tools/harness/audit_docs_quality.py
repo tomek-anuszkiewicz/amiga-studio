@@ -536,7 +536,6 @@ def check_skill_and_rule_governance():
     }
 
     PASSIVE_INVARIANT_RULES = {
-        "asset-descriptions.md",
         "audio-transcription.md",
         "clean-break-refactoring.md",
         "information-hierarchy.md",
@@ -1037,7 +1036,6 @@ def check_semantic_sync():
 
 REGISTERED_RULE_AUDITS = {
     "amiga-rag.md": ["rag_qdrant", "audit_docs_quality.py (Pillar 5)"],
-    "asset-descriptions.md": ["audit_docs_quality.py (Pillars 6 & 10)", "test_architecture_rules.rs (rule registry)"],
     "audio-transcription.md": ["skills (Conscience Check 1)"],
     "clean-break-refactoring.md": ["test_architecture_rules.rs (test_zero_backward_compatibility_shims_and_stale_aliases)"],
     "docs-maintenance.md": ["audit_docs_quality.py (Pillar 1 code drift)"],

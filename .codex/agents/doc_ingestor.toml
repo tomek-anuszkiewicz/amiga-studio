@@ -32,7 +32,6 @@ not architectural judgement.
    - For every circuit diagram, timing chart, or block diagram under `Obsidian/Amiga/`,
      invoke multimodal vision to author a companion `<image>.txt` technical sidecar.
    - Coordinate with `vision_analyst` for complex signal-flow or bus topology diagrams.
-   - Follow [`asset-descriptions.md`](../../.agents/rules/asset-descriptions.md) for asset naming and descriptions.
 
 4. **Qdrant Vector Reindexing**:
    - After ingestion or any modification to files under `Obsidian/Amiga/Reference/` or

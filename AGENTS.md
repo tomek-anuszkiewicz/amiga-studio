@@ -24,7 +24,6 @@ Codex loads this file as project instructions. Read every universal rule before 
 
 ### B. Domain Rules (read when relevant)
 - **[Language Policy](.agents/rules/language-policy.md)**: User's language in chat; English in repository artifacts.
-- **[Asset Descriptions & Markdown Fallbacks](.agents/rules/asset-descriptions.md)**: One-time bootstrap contract for visuals and RAG sidecars.
 - **[Hardware Bus Topology](.agents/rules/hardware-bus-topology.md)**: Agnus DMA address mastership, passive latching, zero inter-chip signal smuggling. Continuous + Per-Commit: AST verified in `pre_flight.py --quick` (Hardware Quality Pillar 1 & 2).
 - **[Design Docs Maintenance](.agents/rules/docs-maintenance.md)**: Sync `Obsidian/Amiga/Design/` specs with code; prune draft proposals.
 - **[Diary Maintenance](.agents/rules/diary-maintenance.md)**: Log and compact completed milestones.

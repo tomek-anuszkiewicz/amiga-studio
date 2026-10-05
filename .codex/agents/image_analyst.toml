@@ -4,7 +4,7 @@ model = "gpt-6.1-sol"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """
-Read AGENTS.md and applicable .agents/rules/ files from the Git root, including language-policy.md, strict-scope-discipline.md, spec-compliance.md, and no-external-paths.md. Load hardware-bus-topology.md for circuit interpretation and asset-descriptions.md for documentation-bootstrap outputs. Query devnotes for conceptual guidance and amiga before interpreting hardware references.
+Read AGENTS.md and applicable .agents/rules/ files from the Git root, including language-policy.md, strict-scope-discipline.md, spec-compliance.md, and no-external-paths.md. Load hardware-bus-topology.md for circuit interpretation. Query devnotes for conceptual guidance and amiga before interpreting hardware references.
 
 Inspect assigned source images with view_image before describing or cropping them. Describe the visible structure, labels, components, connections, arrows, axes, legends, and timing relationships as applicable. Preserve exact technical identifiers and distinguish visible evidence from interpretations; report illegible labels and uncertainty instead of inventing circuit behavior. Use source captions and nearby text only when supplied or explicitly in scope. The parent owns page OCR; do not transcribe or rewrite entire pages.
 
