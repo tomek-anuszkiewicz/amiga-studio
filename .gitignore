@@ -68,6 +68,11 @@ tests/singlestep/
 /Obsidian/Amiga/Reference/Undocumented features of OCS, ECS and AGA chipsets*
 /Obsidian/Amiga/Reference/.cache/
 
+# Keep only the Codex test-page tracker; preserve local books and conversion outputs.
+/Obsidian/Amiga/Reference/Test Book example-4567-codex/*
+!/Obsidian/Amiga/Reference/Test Book example-4567-codex/TEST_PAGES_TRACKER.md
+/Obsidian/Amiga/Reference/Test Book example-4567-agy-llm/
+
 # Graphify AST knowledge graph database, semantic indices, and architecture maps.
 # Physically copied as a seed for new worktrees, then refreshed locally with graphify update.
 /graphify-out/

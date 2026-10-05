@@ -892,3 +892,45 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick pre-flight passed
   - architecture suite passed all 19 tests
   - no inference or conversion was run
+---
+
+### [2026-10-05 22:52 CEST] — Track the Codex test-page matrix and ignore local book artifacts
+- **Affected Subsystems**:
+  - `.gitignore`
+  - `Obsidian/Amiga/Reference/Test Book example-4567-codex/TEST_PAGES_TRACKER.md`
+  - `.agent/tasks/codex-document-conversion.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add only the Codex test-page tracker to Git
+  - ignore all other files and nested directories in its dataset and the entire AGY dataset
+  - align tracker and plan with the current PDF location
+  - preserve seven Markdown hard breaks without trailing whitespace
+- **Architectural Rationale & Trade-Offs**:
+  - Keep test expectations versioned while leaving local PDF sources and conversion outputs outside Git history
+- **Verification & Test Results**:
+  - Eight ignore cases passed including nested paths and the tracker exception
+  - current PDF and tracker paths resolve
+  - tracker language check passed
+  - quick pre-flight passed
+  - architecture suite passed all 19 tests
+  - no source PDF or generated artifacts were staged
+---
+
+### [2026-10-05 22:57 CET] — Document local reconstruction and replace source quotations in the test tracker
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Reference/Test Book example-4567-codex/TEST_PAGES_TRACKER.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace three manual paragraphs with alert placeholders and independent verification criteria
+  - add missing source PDF page 28 to the selection list
+  - record four source SHA-256 hashes and local reconstruction instructions
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the versioned tracker focused on test expectations and reproducible page selection while source book content remains local
+  - amend the tracker-import commit as requested
+- **Verification & Test Results**:
+  - All 160 selected pages match source decoded content streams and media boxes
+  - all four selection lists and counts match the matrix
+  - all four source hashes and page counts verified
+  - three source paragraphs removed
+  - language and diff checks passed
+  - quick pre-flight passed
+  - all 19 architecture tests passed
+  - no inference or conversion run

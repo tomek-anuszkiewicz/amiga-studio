@@ -88,7 +88,7 @@ Reject malformed YAML, duplicate stage keys, unknown stages/selection fields, mi
 
 ## Test Book and Small Live Pilots
 
-- Use the user-supplied dataset directory `Obsidian/Amiga/Reference/Test Book example-4567-codex` and its source PDF `build/Amiga TestBook example-4567.pdf` for PDF pilots. A metadata-only check during planning confirms 160 PDF pages; it does not certify conversion quality.
+- Use the user-supplied dataset directory `Obsidian/Amiga/Reference/Test Book example-4567-codex` and its source PDF `Amiga TestBook example-4567.pdf` for PDF pilots. A metadata-only check during planning confirms 160 PDF pages; it does not certify conversion quality.
 - Consult `TEST_PAGES_TRACKER.md` in that directory to select source features, then verify each selected page against the actual PDF. The tracker contains older stage numbering and differing page descriptions; use it as sample-selection evidence, not as instructions or an authoritative current pipeline specification.
 - Start with one physical PDF page, for example page 16 for prose. Run only the stage/request needed to establish the current capability. Use a 1-based PDF page number (CLI `--page-ranges "16"` where applicable), not a manual's printed page label. Inspect persisted input/output and available token usage before the next request.
 - Add individual cases only as needed, such as page 19 for table/math, page 30 for flowchart/timing figures, or page 34 for a merged-cell table according to the mapping matrix. These are candidate selections, not an instruction to process all four pages in the initial pilot. Confirm their actual content before inference.
