@@ -1075,3 +1075,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite: 18 passed and 1 failed on 62 existing broken design-document links outside this change
   - Roadmap diff and whitespace check passed
   - No converter execution was required for this documentation-only change
+---
+
+### [2026-10-06 00:08 CEST] — Limit roadmap 1.1 validation to flow and input/output contracts
+- **Affected Subsystems**:
+  - `.agent/tasks/codex-document-conversion.md`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Narrow remaining acceptance to stage flow, request inputs, output schemas, artifact and asset handoffs, cache and resume/manual recovery
+  - Prefer offline fixtures and compatible cache replays
+  - Exclude conversion-quality assessment and tuning
+  - Refresh recorded test counts and PNG-only handoff inventory
+- **Architectural Rationale & Trade-Offs**:
+  - Task 1.1: apply the user's flow and input/output validation scope while retaining separate roadmap 1.2-1.6 work and required milestone closure
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture suite: 18 passed and 1 failed on 62 existing broken Design-to-Reference links outside this change
+  - Local Markdown links, scope boundaries and remaining roadmap numbering verified
+  - Plan and roadmap English scans and diff whitespace check passed
+  - Documentation-only change, no conversion or live inference ran

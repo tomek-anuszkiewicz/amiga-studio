@@ -4,9 +4,9 @@
 
 Prepare source-faithful Markdown and searchable assets once, before routine emulator development. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
-- **1.1: Review and Adapt Conversion Workflows to Codex Vision**
-  - Execute the [Codex conversion and stage configuration plan](.agent/tasks/codex-document-conversion.md): migrate both converters with ChatGPT authentication, one explicit model/reasoning-effort entry per inference stage, and compatible cache/resume/manual handoffs; consolidate the source-fidelity contract.
-  - **Gate:** Text/image/JSON pilots and persisted PDF/HTML samples verify stage selection, source fidelity, structured output, assets, and recovery behavior. Detailed execution remains in the plan; Steps 1.2-1.6 retain their pending scope.
+- **1.1: Validate Codex Conversion Flow and Stage Input/Output**
+  - Complete the remaining flow and input/output checks in the [Codex conversion and stage configuration plan](.agent/tasks/codex-document-conversion.md): verify implemented PDF/HTML request branches, predecessor handoffs, structured outputs, assets, cache and resume/manual recovery. Use offline fixtures and compatible cached results; add minimal live requests only for unresolved transport behavior.
+  - **Gate:** Evidence verifies stage selection, intended request inputs, output schemas, artifact identity/order, asset references and recovery behavior; complete the required milestone checks and documentation review. Conversion-quality assessment and tuning are outside this task. Detailed execution remains in the plan; Steps 1.2-1.6 retain their pending scope.
 
 - **1.2: PDF Text Layer and Positioned Text JSON**
   - Add a text-layer preparation stage before preprocessing. Always create a separate `<source stem> - OCR.pdf`: add OCR only where pages lack text layers, or copy the source when OCR is unnecessary. Preserve the source, native text, page order, dimensions, and visuals; distinguish blank pages and publish the validated output with per-page native/OCR provenance.
