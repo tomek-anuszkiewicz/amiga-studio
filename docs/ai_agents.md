@@ -77,10 +77,8 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`sync-design-docs`](../.agents/skills/sync-design-docs/SKILL.md): Synchronize Obsidian design specifications with active codebase changes, prune draft code, and update crate graphs.
 - [`roadmap-maintenance`](../.agents/skills/roadmap-maintenance/SKILL.md): Systematic maintenance and substrate-first ordering of `ROADMAP.md` with zero retention of completed items.
 - [`compact-diary`](../.agents/skills/compact-diary/SKILL.md): Milestone compaction procedure synthesizing older chronological log entries in [DIARY.md](../DIARY.md) into concise architectural digests while preserving key evolutionary rationale and verified results.
-- [`pdf-to-markdown`](../tools/bootstrap/pdf-to-markdown/SKILL.md): High-fidelity document conversion toolchain (PyMuPDF chapter splitting, figure cropping, SVG vectorization, and table stitching) for technical reference manuals.
 - [`index-amiga-rag`](../.agents/skills/index-amiga-rag/SKILL.md): CLI-first guidance for project Markdown retrieval and incremental indexing.
 - [`author-methodology-doc`](../.agents/skills/author-methodology-doc/SKILL.md): Author, audit, or restructure narrative articles, methodology documents, essays, and retrospective devlogs (e.g. `docs/how_this_emulator_was_written.md`) using the 6-layer Inverted Pyramid hierarchy.
-- [`html-to-markdown`](../tools/bootstrap/html-to-markdown/SKILL.md): Standardized toolchain for converting legacy Word HTML, vintage web documentation, and technical HTML articles into clean, publication-grade Obsidian Markdown with asset extraction, layout unnesting, and anchor link validation.
 - [`graphify`](../.agents/skills/graphify/SKILL.md): Persistent code knowledge graph navigation, call hierarchy tracing, and scoped subtree updates (`crates/` vs `ref_src/`).
 - [`audit-docs-quality`](../.agents/skills/audit-docs-quality/SKILL.md): Comprehensive documentation, Obsidian vault linking, constitutional size limits, and agent governance quality audit playbook.
 - [`audit-semantic-parity`](../.agents/skills/audit-semantic-parity/SKILL.md): Inference-driven bidirectional semantic audit evaluating code-to-docs parity (blind spots, undocumented code) and docs-to-code parity (hallucinations, ghost features, spec drift).
@@ -88,6 +86,17 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 ### D. Git & Worktree Orchestration
 - [`git-worktree`](../.agents/skills/git-worktree/SKILL.md): Create, synchronize, and tear down isolated Git worktrees with automatic physical copying of ignored test assets, `.env`, and a `graphify-out/` seed followed by `graphify update .` (Zero NTFS Junctions).
 - [`git-resolve-merge`](../.agents/skills/git-resolve-merge/SKILL.md): Resolve 3-way Git merge conflicts holistically in isolated worktrees with mandatory merge commits and regression verification.
+
+---
+
+## Bootstrap Conversion Programs (`tools/bootstrap/`)
+
+Initial reference conversion is handled by Python CLI programs documented in their own READMEs:
+
+- [`pdf-to-markdown`](../tools/bootstrap/pdf-to-markdown/README.md): A 14-stage PDF conversion pipeline with Gemini processing, asset extraction, and optional manual correction.
+- [`html-to-markdown`](../tools/bootstrap/html-to-markdown/README.md): HTML and downloaded crawl conversion with Gemini transcription, asset processing, and validation helpers.
+
+[`bootstrap_documentation.ps1`](../tools/bootstrap/bootstrap_documentation.ps1) dispatches conversion during bootstrap. Routine agent work consumes the generated Markdown and assets; see [Processing Raw Documents into Markdown](developers.md#processing-raw-documents-into-markdown) for the tooling overview.
 
 ---
 

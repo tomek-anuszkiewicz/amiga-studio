@@ -1,15 +1,27 @@
----
-name: pdf-to-markdown
-description: Convert technical PDF manuals and reference books into publication-grade Obsidian Markdown using a modular 14-stage stream-based pipeline driven by the Agent.
----
+# PDF-to-Markdown Bootstrap Converter
 
-# Recipe: Modular PDF-to-Markdown Conversion Pipeline (Agent-Driven)
+This Python command-line program converts technical PDF documents (such as Amiga hardware reference manuals, hardware schematics, and Motorola 68000 PRMs) into Obsidian Markdown through a 14-stage pipeline. It prepares the initial reference knowledge base; subsequent project work uses the generated Markdown and assets.
 
-This skill converts complex technical PDF documents (such as Amiga hardware reference manuals, hardware schematics, and Motorola 68000 PRMs) into publication-grade Obsidian Markdown.
+`pipeline.py` controls execution, status tracking, and stage invalidation. The workflow is defined in Python, while LLM results are not guaranteed to be deterministic. Stage prompts remain runtime inputs in `stages/`.
 
-It is architected around an **Agent-Driven Hybrid Model**:
+## Quick Start
+
+Run from the repository root with Python, PyMuPDF, Pillow, `PyYAML`, `python-dotenv`, and `google-genai` installed, and `GEMINI_API_KEY` available in the environment or project `.env`:
+
+```powershell
+python tools/bootstrap/pdf-to-markdown/pipeline.py `
+  --pdf "<PDF_FILE>" `
+  --workspace "<WORKSPACE>" `
+  --output-dir "<OUTPUT_DIRECTORY>" `
+  --config "tools/bootstrap/pdf-to-markdown/config.yaml"
+```
+
+The workspace holds intermediate page images, JSON streams, task files, a configuration snapshot, and stage status. The output directory receives Markdown and assets. `config.yaml` controls rendering, paths, model selection, concurrency, and conversion heuristics. LLM responses use the persistent disk cache in `llm_cache.py`. Use `--resume` to continue after completed stages, or the stage interval and optional manual correction commands below.
+
+## Processing Model
+
 - **Deterministic Python Scripts** handle mechanical tasks (page extraction, 300 DPI rendering, text geometry, asset slicing with 10% margins, stream stitching, chapter partitioning, Markdown emission, and TOC link resolution).
-- **Gemini LLM & Multimodal Vision** serves as the mandatory cognitive engine across all stages (via `llm_client.py` powered by `google-genai`), providing high-fidelity OCR text extraction, visual zone segmentation, multi-page continuation resolution, table structuring, flowchart/Mermaid transcription, stream proofreading, and publication-grade Obsidian properties generation with zero offline fallbacks.
+- **Gemini LLM & Multimodal Vision** handles OCR text extraction, visual zone segmentation, multi-page continuation resolution, table structuring, flowchart/Mermaid transcription, stream proofreading, and Obsidian properties generation through `llm_client.py`, powered by `google-genai`. Stages requiring the LLM have no offline fallback.
 
 ---
 
@@ -17,9 +29,11 @@ It is architected around an **Agent-Driven Hybrid Model**:
 
 ```text
 tools/bootstrap/pdf-to-markdown/
-├── SKILL.md                                 # This workflow manual
+├── README.md                                # Program usage and stage workflow
 ├── pipeline.py                              # Master CLI orchestrator & task manager
 ├── config.yaml                              # Global configuration (DPI, paths, heuristics)
+├── llm_client.py                            # Gemini API client, retry, and metrics
+├── llm_cache.py                             # Persistent LLM response cache
 └── stages/
     ├── 01_preprocess/
     │   ├── preprocess.py                    # Splits PDF -> page_XXXX.pdf, 300 DPI PNG, text blocks JSON
@@ -115,20 +129,20 @@ tools/bootstrap/pdf-to-markdown/
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02`
 > - **Stage 01 with specific pages**:
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01`
-> - **Deterministic batch (01, 03, 04, 05, 10, 11)**:
+> - **Convenience batch (01, 03, 04, 05, 10, 11)**: The CLI names this option `--run-deterministic`, but some selected stages also call the LLM.
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --run-deterministic`
-> - **Cognitive review stages (06, 07, 08, 09)**:
+> - **Optional manual review stages (06, 07, 08, 09)**:
 >   - Prepare task items: `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --prepare-stage 07`
 >   - Apply edited task items: `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --apply-stage 07`
 
 ---
 
-## 3. Agent Execution Workflow
+## 3. Stage Execution and Optional Manual Correction
 
-When running a conversion task, the Agent executes the pipeline through 6 distinct phases via `pipeline.py`:
+The full command above runs the pipeline through `pipeline.py`. For staged execution or inspection, use the six phases below. The `--prepare-stage` and `--apply-stage` commands expose task files for optional manual correction by an operator or agent.
 
 ### Phase A: Ingestion & Mechanical Stream Building (Stages 01 – 05)
-Run deterministic ingestion through the orchestrator:
+Run ingestion through the orchestrator:
 ```powershell
 # Run Stages 01 to 05:
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PATH_TO_PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 01 --to-stage 05
@@ -147,38 +161,38 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --c
 
 #### 1. Tables (Stage 07)
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --prepare-stage 07
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --prepare-stage 07
 ```
 - For each `{node_id}.json` in `<WORKSPACE>/tasks/tables/`:
   - Inspect `raw_text` and image preview (`png_path`).
   - Edit or refine the table in `<WORKSPACE>/tasks/tables/{node_id}.md` (GFM or semantic HTML table).
 - Apply tables:
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --apply-stage 07
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --apply-stage 07
 ```
 
 #### 2. Graphics (Stage 08)
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --prepare-stage 08
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --prepare-stage 08
 ```
 - For each `{node_id}.json` in `<WORKSPACE>/tasks/graphics/`:
-  - View image using `view_file` on `png_path`.
+  - Open the image identified by `png_path`.
   - If it is a calculation tree, dataflow, address generation graph, or state machine: use Mermaid with collapsible ASCII callout in `{node_id}.md`.
   - If it is a register bitfield: use a compact 3–4 line ASCII box (zero leader lines) followed by a structured Markdown table or list.
   - If it is an electrical schematic, waveform, or pinout: author a comprehensive technical description in `{node_id}.sidecar.txt` for RAG vector search and preserve the image embed.
 - Apply graphics:
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --apply-stage 08
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --apply-stage 08
 ```
 
 #### 3. Prose & TOC Delimiters (Stage 09)
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 09 --to-stage 09
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 09 --to-stage 09
 ```
 
 ### Phase D: Stream Proofreading & Manifest Normalization (Stage 10)
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 10 --to-stage 10
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 10 --to-stage 10
 ```
 
 ### Phase E: Markdown Emission & Properties Generation (Stages 11 – 12)
@@ -196,6 +210,6 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --o
 ## 4. Monitoring & Status Check
 Check pipeline progress and pending tasks at any time:
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --status
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --status
 ```
 

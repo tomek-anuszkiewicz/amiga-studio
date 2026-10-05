@@ -1,15 +1,27 @@
----
-name: html-to-markdown
-description: Convert legacy Word HTML, web documentation, and technical HTML articles into clean, publication-grade Obsidian Markdown using LLM transcription, asset downloading, and link validation.
----
+# HTML-to-Markdown Bootstrap Converter
 
-# Recipe: Converting Technical HTML Documents to Markdown
+This Python command-line program converts HTML documents (Microsoft Word exports, vintage web pages, and downloaded multi-page manuals) into Markdown for Obsidian and GitHub documentation. It prepares the initial reference knowledge base; subsequent project work uses the generated Markdown and assets.
 
-This skill provides a standardized, vision-and-LLM-driven workflow for converting arbitrary HTML documents (Microsoft Word exports, vintage 1990s web pages, multi-page technical manuals) into publication-grade Markdown optimized for Obsidian vaults and GitHub documentation.
+`pipeline.py` orchestrates file processing and calls Gemini through `google-genai`. The workflow is defined in Python, while LLM transcription results are not guaranteed to be deterministic. Conversion instructions used by the program live in [`references/llm-transcription-prompt.md`](references/llm-transcription-prompt.md).
+
+## Quick Start
+
+Run from the repository root with Python, `google-genai`, `python-dotenv`, and `PyYAML` installed, and `GEMINI_API_KEY` available in the environment or project `.env`:
+
+```powershell
+python tools/bootstrap/html-to-markdown/pipeline.py `
+  --input "<HTML_FILE_OR_CRAWL_DIRECTORY>" `
+  --output-dir "<OUTPUT_DIRECTORY>" `
+  --document-name "<DOCUMENT_TITLE>"
+```
+
+The input is a local HTML file or an already downloaded crawl directory. Output consists of Markdown and referenced images in `assets/`. Omitting `--output-dir` writes beside the input file or inside the input directory. The program loads its adjacent `config.yaml` for model, temperature, thinking budget, and timeout settings; the HTML CLI has no `--config` option. LLM responses use the persistent disk cache in `llm_cache.py`.
+
+Optional rendering and comparison tools require Chrome, Chromium, or Edge; page rasterization also requires PyMuPDF, and comparison images require Pillow. See the operational workflow below for these tools and link validation.
 
 > [!IMPORTANT]
-> **No Mechanical Conversion Scripts for Text:**
-> Arbitrary HTML documents vary wildly in layout tables, non-standard CSS, and nested tags. Writing deterministic DOM parsing scripts for text conversion is fragile and unsustainable.
+> **Conversion Model:**
+> HTML documents vary in layout tables, non-standard CSS, and nested tags. This converter uses LLM transcription for document text and structure, with Python scripts handling assets and output processing.
 > 
 > **The LLM-Driven Pipeline:**
 > 1. Download/extract all referenced images to `assets/` and create technical sidecars.
@@ -20,12 +32,12 @@ This skill provides a standardized, vision-and-LLM-driven workflow for convertin
 
 ## 1. Toolchain & Directory Structure
 
-All conversion scripts and references reside inside this skill directory:
+All conversion scripts and references reside inside this program directory:
 
 ```text
 tools/bootstrap/html-to-markdown/
-├── SKILL.md                               # This workflow recipe
-├── config.yaml                            # Skill configuration (models, temperature, budget)
+├── README.md                              # Program usage and conversion conventions
+├── config.yaml                            # Program configuration (models, temperature, budget)
 ├── pipeline.py                            # Master conversion orchestrator
 ├── llm_cache.py                           # Content-addressable persistent disk cache (.cache/gemini)
 ├── llm_client.py                          # Gemini LLM client with automatic cache checking & retry
@@ -154,6 +166,8 @@ The LLM must construct a clean, hierarchical Table of Contents placed immediatel
 
 ## 7. Operational Workflow
 
+Use `pipeline.py` for normal conversion. The following helper commands support individual preparation, inspection, and validation steps; they are not prerequisites for manually coordinating every pipeline run.
+
 ### Phase 1: Download & Prepare Assets
 Run `download_assets.py` to extract, copy, or download all images referenced in the HTML document (or all HTML files in a crawl directory) to `assets/` and generate technical `.txt` sidecars:
 ```powershell
@@ -178,7 +192,7 @@ python tools/bootstrap/html-to-markdown/scripts/html_to_pages.py `
 ```
 
 ### Phase 2: LLM Transcription
-Instruct the LLM to perform the conversion by providing:
+The pipeline provides the LLM with:
 1. The full prompt instructions from [`references/llm-transcription-prompt.md`](references/llm-transcription-prompt.md).
 2. The HTML source text (or page PNGs). For multi-page crawls, follow **Section 5 (Multi-Page HTML Crawl Consolidation Protocol)** to consolidate chapters sequentially into a single reference document.
 

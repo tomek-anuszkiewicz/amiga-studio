@@ -66,9 +66,15 @@ not architectural judgement.
 - YAML frontmatter correctness and dual-layer wikilink enforcement.
 - ROADMAP.md pruning and DIARY.md compaction.
 
+## Bootstrap Programs
+
+Run the converters through their Python CLIs as documented in their READMEs:
+
+- [`pdf-to-markdown`](../../../tools/bootstrap/pdf-to-markdown/README.md)
+- [`html-to-markdown`](../../../tools/bootstrap/html-to-markdown/README.md)
+
 ## Skills to Invoke
-- [`pdf-to-markdown`](../../../tools/bootstrap/pdf-to-markdown/SKILL.md)
-- [`html-to-markdown`](../../../tools/bootstrap/html-to-markdown/SKILL.md)
+
 - [`index-amiga-rag`](../../skills/index-amiga-rag/SKILL.md)
 
 ## Output Contract

@@ -226,16 +226,16 @@ For multi-page web publications, the bootstrapper incorporates an autonomous cra
 <a id="processing-raw-documents-into-markdown"></a>
 ##### Processing Raw Documents into Markdown
 
-When new reference manuals or updated editions are retrieved, use specialized agent skills to convert raw scans and crawled HTML into repository-grade Markdown:
+The bootstrap converters prepare the initial reference knowledge base from raw scans and downloaded HTML. Each program has a Python CLI and calls Gemini for LLM processing; later project work consumes the generated Markdown and assets. The dispatcher is [`bootstrap_documentation.ps1`](../tools/bootstrap/bootstrap_documentation.ps1).
 
-1. **PDF Scans to Markdown ([`pdf-to-markdown`](../tools/bootstrap/pdf-to-markdown/SKILL.md)):**
+1. **PDF Scans to Markdown ([`pdf-to-markdown`](../tools/bootstrap/pdf-to-markdown/README.md)):**
    - Leverages Gemini multimodal reasoning to analyze document structure and partition into logical chapters.
    - Extracts and crops circuit diagrams, register maps, and waveforms into high-resolution PNG/SVG assets.
    - Stitches multi-page register tables into GitHub-flavored Markdown tables.
    - Generates Git-tracked multimodal sidecar text files (`<image>.txt`) describing timing diagrams for offline AI inspection.
 
-2. **Web Crawls to Markdown ([`html-to-markdown`](../tools/bootstrap/html-to-markdown/SKILL.md)):**
-   - Crawls multi-page HTML hierarchies (e.g. Kuba Winnicki's *Achtung! Amiga*).
+2. **Web Crawls to Markdown ([`html-to-markdown`](../tools/bootstrap/html-to-markdown/README.md)):**
+   - Converts downloaded multi-page HTML hierarchies (e.g. Kuba Winnicki's *Achtung! Amiga*).
    - Strips legacy table formatting, inline styling, and obsolete navigational chrome.
    - Normalizes cross-chapter hyperlinks into Obsidian internal vault links (`[[Chapter#Section]]`).
 
