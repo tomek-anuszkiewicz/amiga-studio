@@ -332,28 +332,11 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
 
 ---
 
-## Step 10: Agent Harness Evaluation and Bootstrap Reliability
+## Step 10: Documentation-to-Code Regeneration Experiment
 
-- **10.1: Verify Remaining Harness Modernization Work**
-  - Reconcile the former harness plan with the native Codex configuration, specialized roles, FastMCP adapter, and MCP contract/discovery regressions. Retain only unmet requirements; resolve whether plugins or executable tool allowlists add value beyond the current native setup, rather than imposing unconditional delegation.
-  - Author the outstanding `Obsidian/Amiga/Design/Agent Harness and Evals Architecture.md` covering tooling boundaries, delegation, retrieval contracts, and evaluation schemas. Build task-based evals for tool selection, Graphify/RAG retrieval, scoped delegation when requested, and multi-step outcomes.
-  - **Gate:** Current MCP contract and discovery tests pass; the architecture note and reproducible agent-behavior evals demonstrate the retained requirements. Existing transport tests alone do not prove agent behavior.
-
-- **10.2: Design Retrieval Calibration**
-  - Index accepted design specifications, query CCK phases/contention/wait states/register propagation, refine ambiguous or missing invariants, and reindex through the shared CLI.
-  - **Gate:** A repeatable query set and source-grounded comparisons demonstrate improved retrieval and agent comprehension.
-
-- **10.3: Isolated Documentation-to-Code Regeneration Trial**
+- **10.1: Isolated Documentation-to-Code Regeneration Trial**
   - In an isolated checkout, remove one selected subsystem and regenerate it from curated specs, rules, and test vectors. Compare behavior and source with the preserved original; use failures to refine documentation and instructions.
   - **Gate:** The regenerated subsystem passes its unit and integration suites without regressions.
-
-- **10.4: Reference Relevance Audit**
-  - After successful regeneration trials, review retrieval/history evidence and propose removal of irrelevant material while retaining canonical hardware sources and dependencies. Absence from observed logs alone does not prove irrelevance.
-  - **Gate:** An evidence-based scope decision and `python tools/harness/audit_docs_quality.py` verify that accepted pruning leaves no broken references.
-
-- **10.5: Bootstrap Flag and Failure Handling Verification**
-  - Test `tools/bootstrap/bootstrap.ps1` flags (`-Sources`, `-Graphify`, `-Documentation`, `-Markdown`, `-Rag`, `-All`) in an isolated environment, including archives, directories, missing dependencies, and failure exit codes. Reconcile legacy RAG startup with the canonical external service before combined runs.
-  - **Gate:** Recorded flag-path results include fresh setup, successful outputs, and expected failures; a successful `-Sources` run alone does not cover the other flags.
 
 ## Step 11: Later Hardware and Diagnostic Extensions
 

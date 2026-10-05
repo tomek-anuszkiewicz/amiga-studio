@@ -715,3 +715,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - language and diff checks passed
   - numbering and local-link check passed for 11 steps, 44 tasks, 7 sub-suites, and 20 links
   - full subsystem milestone and semantic-parity gates were not run because no implementation milestone was completed
+---
+
+### [2026-10-05 22:14 CEST] — Limit roadmap Step 10 to subsystem regeneration
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the four unselected Step 10 tasks
+  - retain the isolated documentation-to-code regeneration experiment as 10.1 and rename the workstream
+- **Architectural Rationale & Trade-Offs**:
+  - Keep only the experiment selected by the user
+  - preserving its isolated-checkout scope and unit/integration acceptance gate
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture tests passed 19 of 19
+  - roadmap verification passed for 11 steps and 40 tasks with valid numbering, references and 20 local links
+  - language and diff checks passed
+  - no regeneration experiment or subsystem milestone was executed
