@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -116,12 +117,118 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(transport.calls[-1][2]["schema"], schema)
 
     def test_cache_hits_do_not_make_requests(self):
-        transport = FakeTransport()
-        client = self.client(transport)
-        client.generate_text("sample")
-        client.generate_text("sample")
-        self.assertEqual((client.call_count, client.cached_call_count), (1, 1))
-        self.assertEqual(len(transport.calls), 1)
+        image = Path(self.tmp.name) / "image.png"
+        image.write_bytes(b"sample image")
+        schema = {"type": "object", "properties": {"signal": {"type": "string"}}, "required": ["signal"]}
+        for method, arguments, response in (
+            ("generate_text", {}, "Saved text"),
+            ("generate_vision", {"image_path": image}, "Saved image response"),
+            ("generate_json", {"schema": schema, "image_path": image}, '{"signal":"CCK"}'),
+        ):
+            with self.subTest(method=method):
+                cache_directory = Path(self.tmp.name) / method
+                transport = FakeTransport(text=response)
+                with CodexClient(config(), stage="html_to_markdown", transport=transport,
+                                 cache=ResponseCache(cache_directory)) as first:
+                    expected = getattr(first, method)("sample", **arguments)
+                    self.assertEqual((first.call_count, first.cached_call_count), (1, 0))
+                unused = FakeTransport(error=RuntimeError("Cache replay must not call the model"))
+                with CodexClient(config(), stage="html_to_markdown", transport=unused,
+                                 cache=ResponseCache(cache_directory)) as replay:
+                    self.assertEqual(getattr(replay, method)("sample", **arguments), expected)
+                    self.assertEqual((replay.call_count, replay.cached_call_count), (0, 1))
+                    self.assertTrue(replay.metrics[-1]["cached"])
+                self.assertEqual(len(transport.calls), 1)
+                self.assertEqual(unused.calls, [])
+
+    def test_request_changes_make_new_calls_and_cache_the_new_response(self):
+        images = [Path(self.tmp.name) / name for name in ("a.png", "b.png")]
+        for changed_field in ("prompt", "model", "reasoning_effort", "stage", "schema", "image_contents", "image_order"):
+            with self.subTest(changed_field=changed_field):
+                for index, image in enumerate(images):
+                    image.write_bytes(str(index).encode())
+                cache = ResponseCache(Path(self.tmp.name) / changed_field)
+                schema = {"type": "object", "properties": {"signal": {"type": "string"}}, "required": ["signal"]}
+                with CodexClient(config(), stage="html_to_markdown", transport=FakeTransport(text='{"signal":"old"}'), cache=cache) as first:
+                    self.assertEqual(first.generate_json("sample", schema=schema, image_path=images), {"signal": "old"})
+                changed = config()
+                stage, prompt, ordered_images = "html_to_markdown", "sample", images
+                if changed_field == "prompt":
+                    prompt = "changed prompt"
+                elif changed_field in ("model", "reasoning_effort"):
+                    changed["llm"]["stages"][stage][changed_field] = "other-model" if changed_field == "model" else "high"
+                elif changed_field == "stage":
+                    stage = "07_transform_tables"
+                    changed["llm"]["stages"] = {stage: changed["llm"]["stages"]["html_to_markdown"]}
+                elif changed_field == "schema":
+                    schema["additionalProperties"] = False
+                elif changed_field == "image_contents":
+                    images[0].write_bytes(b"changed image at the same path")
+                elif changed_field == "image_order":
+                    ordered_images = images[::-1]
+                transport = FakeTransport(text='{"signal":"new"}')
+                with CodexClient(changed, stage=stage, transport=transport, cache=cache) as client:
+                    self.assertEqual(client.generate_json(prompt, schema=schema, image_path=ordered_images), {"signal": "new"})
+                    self.assertEqual((client.call_count, client.cached_call_count), (1, 0))
+                self.assertEqual(len(transport.calls), 1)
+                unused = FakeTransport(error=RuntimeError("Changed request replay must use cache"))
+                with CodexClient(changed, stage=stage, transport=unused, cache=cache) as replay:
+                    self.assertEqual(replay.generate_json(prompt, schema=schema, image_path=ordered_images), {"signal": "new"})
+                    self.assertEqual((replay.call_count, replay.cached_call_count), (0, 1))
+                self.assertEqual(unused.calls, [])
+
+    def test_unreadable_incomplete_and_mismatched_cache_entries_are_refetched(self):
+        request = identity(selection(config(), "html_to_markdown"), "sample", [], None)
+        valid = {"identity": request, "status": "completed", "text": "Old response"}
+        mismatch = {**request, "engine": "legacy-engine"}
+        bodies = {
+            "invalid_json": "truncated {",
+            "non_object": "[]",
+            "incomplete": json.dumps({**valid, "status": "interrupted"}),
+            "mismatched_identity": json.dumps({**valid, "identity": mismatch}),
+        }
+        self.cache.directory.mkdir()
+        path = self.cache.directory / f"{digest(request)}.json"
+        for case, body in bodies.items():
+            with self.subTest(case=case):
+                path.write_text(body, encoding="utf-8")
+                transport = FakeTransport(text="Fresh response")
+                with self.client(transport) as client:
+                    self.assertEqual(client.generate_text("sample"), "Fresh response")
+                    self.assertEqual((client.call_count, client.cached_call_count), (1, 0))
+                self.assertEqual(len(transport.calls), 1)
+                self.assertEqual(self.cache.load(request)["text"], "Fresh response")
+
+    def test_cached_json_is_validated_before_reuse_without_model_calls(self):
+        schema = {"type": "object", "properties": {"signal": {"type": "string"}}, "required": ["signal"]}
+        request = identity(selection(config(), "html_to_markdown"), "sample", [], schema)
+        for response in ('{"signal":12}', "truncated {", ""):
+            with self.subTest(response=response):
+                self.cache.save(request, {"status": "completed", "text": response})
+                transport = FakeTransport()
+                with self.client(transport) as client:
+                    with self.assertRaisesRegex(RuntimeError, "Invalid cached conversion response"):
+                        client.generate_json("sample", schema=schema)
+                    self.assertEqual((client.call_count, client.cached_call_count), (0, 0))
+                self.assertEqual(transport.calls, [])
+                self.assertEqual(self.cache.load(request)["text"], response)
+
+    def test_environment_cache_directory_and_explicit_cache_are_isolated(self):
+        environment_directory = Path(self.tmp.name) / "environment-cache"
+        explicit_directory = Path(self.tmp.name) / "explicit-cache"
+        with patch.dict(os.environ, {"CONVERSION_CACHE_DIR": str(environment_directory)}):
+            with CodexClient(config(), stage="html_to_markdown", transport=FakeTransport(text="Environment response")) as client:
+                self.assertEqual(client.generate_text("sample"), "Environment response")
+                self.assertEqual(client.cache.directory, environment_directory)
+            with CodexClient(config(), stage="html_to_markdown", transport=FakeTransport(text="Explicit response"),
+                             cache=ResponseCache(explicit_directory)) as client:
+                self.assertEqual(client.generate_text("sample"), "Explicit response")
+                self.assertEqual(client.cache.directory, explicit_directory)
+            unused = FakeTransport(error=RuntimeError("Environment cache replay must not call the model"))
+            with CodexClient(config(), stage="html_to_markdown", transport=unused) as replay:
+                self.assertEqual(replay.generate_text("sample"), "Environment response")
+                self.assertEqual((replay.call_count, replay.cached_call_count), (0, 1))
+            self.assertEqual(unused.calls, [])
 
     def test_cache_identity_changes_with_effort_schema_images_and_order(self):
         images = [Path(self.tmp.name) / name for name in ("a.png", "b.png")]
@@ -134,9 +241,12 @@ class ClientTests(unittest.TestCase):
         changed = config()
         changed["llm"]["stages"]["html_to_markdown"]["reasoning_effort"] = "high"
         variants.append(identity(selection(changed, "html_to_markdown"), "sample", images, None))
+        for field in ("BASE_INSTRUCTIONS", "DEVELOPER_INSTRUCTIONS", "SDK_VERSION", "CONTRACT_VERSION"):
+            with patch(f"conversion.cache.{field}", "changed cache contract"):
+                variants.append(identity(selected, "sample", images, None))
         images[0].write_bytes(b"changed")
         variants.append(identity(selected, "sample", images, None))
-        self.assertEqual(len({digest(first), *(digest(v) for v in variants)}), 6)
+        self.assertEqual(len({digest(first), *(digest(v) for v in variants)}), len(variants) + 1)
         self.assertEqual(first["engine"], "codex-chatgpt")
 
     def test_failed_interrupted_empty_and_invalid_json_never_cached(self):

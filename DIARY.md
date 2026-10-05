@@ -1195,3 +1195,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - git check-ignore verified all four representative local reference paths are ignored
   - No active tracker references found in searched agent, roadmap, tooling and developer documentation
   - No converter tests or inference ran
+---
+
+### [2026-10-06 00:31 CEST] — Verify converter response-cache reuse and invalidation
+- **Affected Subsystems**:
+  - `tests/test_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Extend cache replay checks to text, image and JSON calls through fresh client/cache instances
+  - Add four behavioral tests for request changes, rejected cache entries, cached JSON validation and cache-directory isolation
+  - Extend identity checks for instructions and runtime/contract versions
+  - Keep converter implementation unchanged
+- **Architectural Rationale & Trade-Offs**:
+  - Add the user's explicitly requested technical cache tests and verify actual transport-call avoidance rather than only comparing request hashes
+- **Verification & Test Results**:
+  - Existing shared/HTML baseline: 15 passed
+  - Updated shared/HTML suite: 19 passed
+  - Both converter suites: 36 passed in 1.702 seconds
+  - Deliberately disabling cache load or save was detected by the persistence test
+  - Quick pre-flight passed
+  - Architecture suite: 18 passed and 1 failed on 62 existing broken Design-to-Reference links
+  - Graphify AST refresh passed
+  - All conversion checks used fake transport and temporary directories with no live inference
