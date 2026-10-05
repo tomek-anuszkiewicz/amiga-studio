@@ -4,20 +4,21 @@
 
 Prepare source-faithful Markdown and searchable assets once, before routine emulator development. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
-- **1.1: Review PDF and HTML Workflows**
-  - Trace existing Gemini calls, table/graphics processing, fallbacks, persisted outputs, and manual review/recovery. Identify the changes needed to use Codex Vision and consolidate the conversion contract for both workflows.
-  - **Gate:** A workflow map identifies each stage's inputs, written outputs, and exact manual handoff artifacts; model responses and prepared tasks alone do not count as delivered output.
+- **1.1: Review and Adapt Conversion Workflows to Codex Vision**
+  - Trace existing Gemini calls, table/graphics processing, fallbacks, persisted outputs, and manual handoffs in the PDF and HTML workflows; replace the model calls with Codex Vision for transcription, segmentation, crop review, and table/image interpretation.
+  - Consolidate the conversion contract, including visual retention, descriptions, and Markdown fallbacks. Validate the stages below on representative samples before bulk conversion and repeat validation when sources or the contract change.
+  - **Gate:** A workflow map identifies stage inputs, written outputs, and manual recovery artifacts; persisted sample outputs demonstrate source fidelity and valid structured output against the asset contract.
 
-- **1.2: Codex Vision Conversion and Asset Contract**
-  - Adapt the conversion workflows to use Codex Vision for visual transcription, segmentation, crop review, and table/image interpretation, replacing the existing Gemini calls as identified in Step 1.1.
-  - Define visual retention, descriptions, and Markdown fallbacks once for bootstrap. Validate the stages below on representative samples before bulk conversion; repeat validation when sources or the contract change.
-  - **Gate:** Persisted sample outputs demonstrate source fidelity and valid structured output, with documented failures and manual handoffs; the approved asset contract covers retained visuals, descriptions, and fallbacks.
-
-- **1.3: PDF Text Layer and Positioned Text Input**
+- **1.2: PDF Text Layer and Positioned Text JSON**
   - Add OCR only where pages lack text layers; preserve native text, page order, dimensions, and visuals, distinguish blank pages, and always publish the validated PDF plus per-page native/OCR provenance, even when OCR is unnecessary.
-  - Extract persisted per-page JSON containing text blocks, bounding boxes, coordinate conventions, dimensions, and provenance. Preprocessing must use that PDF and text, and each vision request must include the matching PNG and JSON; verify conflicts and layout against the PNG.
+  - Extract persisted per-page JSON from the resulting native/OCR text layer, containing page identifiers, text blocks, bounding boxes, coordinate conventions, dimensions, and provenance. Preprocessing must consume this validated PDF and preserve alignment between the rendered PNGs and text JSON.
   - Each stage consumes validated predecessor artifacts. Missing, stale, incomplete, or mismatched artifacts block downstream conversion; blank pages and resumed runs retain explicit page identity.
-  - **Gate:** Native, scanned, mixed, and blank-page samples preserve geometry and text provenance; inspect model requests to prove aligned PNG/JSON input and test rejection of invalid handoffs and correct resumption.
+  - **Gate:** Native, scanned, mixed, and blank-page samples verify written text JSON, provenance, positions, and unchanged page geometry; invalid handoffs block conversion and resumed runs preserve page identity.
+
+- **1.3: PNG-to-Markdown and Crops with OCR Text JSON**
+  - For every page-conversion request, supply Codex Vision with both the source-page PNG and its matching text-layer JSON from Step 1.2, including OCR-derived text and positions. Use the JSON to support accurate transcription and the PNG to verify layout, reading order, table structure, crop boundaries, and conflicting text.
+  - Persist ordered Markdown and table/image crop definitions with stable segment identifiers and explicit page coordinates for Step 1.4. Consume validated predecessor artifacts; reject absent, stale, or mismatched PNG/JSON pairs and record legitimate blank-page text explicitly.
+  - **Gate:** Inspect assembled model requests to prove both inputs reach the conversion model; representative pages verify Markdown and crop geometry, invalid input pairs are rejected, and blank pages and resumed runs retain the same page mapping.
 
 - **1.4: Iterative Table and Image Crop Review**
   - Add `02b_reclip` between segmentation and `03_build_raw_stream`. Review each rectangle on the full source-page PNG; apply corrections, regenerate the crop and annotated page, and review again until acceptance or an iteration limit requiring manual review.

@@ -750,3 +750,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - language and diff checks passed
   - no olmOCR, Docling or RunPod comparison remains in ROADMAP.md
   - converter implementation and conversion runs were not performed
+---
+
+### [2026-10-05 22:23 CEST] — Separate OCR extraction from PNG conversion in the roadmap
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Merge workflow review and Codex Vision adaptation into 1.1
+  - renumber text-layer preparation and positioned JSON extraction to 1.2
+  - add explicit PNG-to-Markdown and crop conversion as 1.3 with mandatory matching OCR text JSON in each model request
+- **Architectural Rationale & Trade-Offs**:
+  - Make the artifact handoff from OCR extraction to visual conversion explicit and independently verifiable while removing overlapping preparation tasks
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture tests passed 19 of 19
+  - roadmap numbering and local-link checks passed for 11 steps and 40 tasks
+  - language and diff checks passed
+  - converter code and model requests were not executed
