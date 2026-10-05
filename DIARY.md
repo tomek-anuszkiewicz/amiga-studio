@@ -1094,3 +1094,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Local Markdown links, scope boundaries and remaining roadmap numbering verified
   - Plan and roadmap English scans and diff whitespace check passed
   - Documentation-only change, no conversion or live inference ran
+---
+
+### [2026-10-06 00:11 CEST] — Move active Codex conversion validation out of the roadmap
+- **Affected Subsystems**:
+  - `.agent/tasks/codex-document-conversion.md`
+  - `ROADMAP.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove implemented migration steps, configuration examples and execution history from the plan
+  - Keep only remaining flow and input/output verification and milestone closure
+  - Move the former roadmap 1.1 scope and acceptance gate entirely into the active plan
+  - Remove the duplicated roadmap entry and renumber remaining conversion work to 1.1-1.5
+  - Update internal dependencies and conversion contract links
+- **Architectural Rationale & Trade-Offs**:
+  - Task codex-document-conversion: keep one remaining-work plan and remove duplicate roadmap ownership without claiming completion
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture suite: 18 passed and 1 failed on 62 existing broken Design-to-Reference links
+  - Verified 18 local Markdown links, remaining-only plan, exclusive task ownership and contiguous numbering
+  - English and whitespace checks passed
+  - Documentation-only reorganization, no conversion, live inference or milestone completion checks ran

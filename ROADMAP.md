@@ -4,33 +4,29 @@
 
 Prepare source-faithful Markdown and searchable assets once, before routine emulator development. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
-- **1.1: Validate Codex Conversion Flow and Stage Input/Output**
-  - Complete the remaining flow and input/output checks in the [Codex conversion and stage configuration plan](.agent/tasks/codex-document-conversion.md): verify implemented PDF/HTML request branches, predecessor handoffs, structured outputs, assets, cache and resume/manual recovery. Use offline fixtures and compatible cached results; add minimal live requests only for unresolved transport behavior.
-  - **Gate:** Evidence verifies stage selection, intended request inputs, output schemas, artifact identity/order, asset references and recovery behavior; complete the required milestone checks and documentation review. Conversion-quality assessment and tuning are outside this task. Detailed execution remains in the plan; Steps 1.2-1.6 retain their pending scope.
-
-- **1.2: PDF Text Layer and Positioned Text JSON**
+- **1.1: PDF Text Layer and Positioned Text JSON**
   - Add a text-layer preparation stage before preprocessing. Always create a separate `<source stem> - OCR.pdf`: add OCR only where pages lack text layers, or copy the source when OCR is unnecessary. Preserve the source, native text, page order, dimensions, and visuals; distinguish blank pages and publish the validated output with per-page native/OCR provenance.
   - Use this validated `- OCR.pdf` as the sole PDF input to preprocessing for both native-text and scanned documents; both then follow the same downstream path. Extract persisted per-page JSON from its text layer, containing page identifiers, text blocks, bounding boxes, coordinate conventions, dimensions, and provenance, and preserve alignment between the rendered PNGs and text JSON.
   - Each stage consumes validated predecessor artifacts. Missing, stale, incomplete, or mismatched artifacts block downstream conversion; blank pages and resumed runs retain explicit page identity.
   - **Gate:** Native, scanned, mixed, and blank-page samples verify creation and downstream use of the separate `- OCR.pdf`, written text JSON, provenance, positions, unchanged source and page geometry; invalid handoffs block conversion and resumed runs preserve page identity.
 
-- **1.3: PNG-to-Markdown and Crops with OCR Text JSON**
-  - For every page-conversion request, supply Codex Vision with both the source-page PNG and its matching text-layer JSON from Step 1.2, including OCR-derived text and positions. Use the JSON to support accurate transcription and the PNG to verify layout, reading order, table structure, crop boundaries, and conflicting text.
-  - Persist ordered Markdown and table/image crop definitions with stable segment identifiers and explicit page coordinates for Step 1.4. Consume validated predecessor artifacts; reject absent, stale, or mismatched PNG/JSON pairs and record legitimate blank-page text explicitly.
+- **1.2: PNG-to-Markdown and Crops with OCR Text JSON**
+  - For every page-conversion request, supply Codex Vision with both the source-page PNG and its matching text-layer JSON from Step 1.1, including OCR-derived text and positions. Use the JSON to support accurate transcription and the PNG to verify layout, reading order, table structure, crop boundaries, and conflicting text.
+  - Persist ordered Markdown and table/image crop definitions with stable segment identifiers and explicit page coordinates for Step 1.3. Consume validated predecessor artifacts; reject absent, stale, or mismatched PNG/JSON pairs and record legitimate blank-page text explicitly.
   - **Gate:** Inspect assembled model requests to prove both inputs reach the conversion model; representative pages verify Markdown and crop geometry, invalid input pairs are rejected, and blank pages and resumed runs retain the same page mapping.
 
-- **1.4: Iterative Table and Image Crop Review**
+- **1.3: Iterative Table and Image Crop Review**
   - Add `02b_reclip` between segmentation and `03_build_raw_stream`. Review each rectangle on the full source-page PNG; apply corrections, regenerate the crop and annotated page, and review again until acceptance or an iteration limit requiring manual review.
   - Persist stable segment IDs, verdicts, coordinate revisions, previews, and accepted crops for resumption. Raw-stream construction must consume finalized reclip output, preserve accepted geometry, and reject stale or unresolved results.
   - **Gate:** Samples cover immediate acceptance, correction/review/acceptance, iteration-limit handoff, and resumption; saved artifacts prove review and downstream use without silent recropping.
 
-- **1.5: Table, Image, and ASCII-Art Descriptions**
+- **1.4: Table, Image, and ASCII-Art Descriptions**
   - Add a runnable stage consuming validated Markdown/assets and source context. Preserve HTML tables, images, and `text`-fenced ASCII art; place actual closed `<details><summary>...</summary>...</details>` HTML directly below each element, collapsed by default.
   - Describe source-visible purpose, labels, values, and spatial/logical/timing relationships. Table descriptions cover headers and material relationships and include a GFM fallback preserving cell order and span semantics.
   - Write each image's identical description beside its asset as `<asset filename>.txt`. Persist enriched Markdown and sidecars; rerunning must not duplicate blocks or create mismatches.
   - **Gate:** Inspect rendered table/image/ASCII samples and written files for placement, faithful content, matching sidecars, and idempotent reruns.
 
-- **1.6: Validate Bulk Conversion and RAG Ingestion**
+- **1.5: Validate Bulk Conversion and RAG Ingestion**
   - After approving the sample pipeline, convert the manuals and validate Markdown, links, assets, and descriptions before indexing. Verify fresh and incremental `amiga` ingestion, hashing, chunk fidelity, embeddings, and sidecar retrieval through the canonical `rag_qdrant` CLI.
   - **Gate:** Accepted converted artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](docs/developers.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag); unchanged input does not cause unnecessary reindexing.
 
