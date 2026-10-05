@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 WORKTREE_SCRIPT = REPOSITORY_ROOT / "tools" / "git" / "worktree.ps1"
 
 
