@@ -7,14 +7,14 @@ Stage 01 handles both digital and physical documents through two unified process
 1. **Born-Digital PDF Pathway (Direct Extraction):**
    - Extracts native vector geometries, 300 DPI PNG renders, and native text blocks via PyMuPDF (`fitz.get_text("blocks")`).
    - Runs deterministically with zero network calls and sub-second latency.
-2. **Scanned / Visual PDF Pathway (Gemini Vision OCR):**
+2. **Scanned / Visual PDF Pathway (Codex Vision OCR):**
    - Automatically detects pages lacking healthy native text (`total_chars < threshold`, default 20, or 0 text blocks).
-   - Triggers Gemini Vision OCR worker (`detect_and_ocr.py`) using a single-pass 3-way triage prompt (`prompt_ocr.md`: `text_page`, `pure_graphic`, `blank`).
+   - Triggers Codex Vision OCR worker (`detect_and_ocr.py`) using a single-pass 3-way triage prompt (`prompt_ocr.md`: `text_page`, `pure_graphic`, `blank`).
    - Extracts structured text blocks with normalized integer millirange coordinates `box_2d: [ymin, xmin, ymax, xmax]` in range `[0..1000]`.
 
 > [!IMPORTANT]
 > **Uniform Artifact Contracts:**  
-> Regardless of whether a page is processed via born-digital text extraction or scanned Gemini Vision OCR, Stage 01 outputs the **exact same uniform artifact contracts** in `workspace/01_preprocess/`. Downstream stages (02 through 13) are completely agnostic to whether the source page was a vector PDF or a paper scan.
+> Regardless of whether a page is processed via born-digital text extraction or scanned Codex Vision OCR, Stage 01 outputs the **exact same uniform artifact contracts** in `workspace/01_preprocess/`. Downstream stages (02 through 13) are completely agnostic to whether the source page was a vector PDF or a paper scan.
 
 ---
 

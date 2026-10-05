@@ -956,3 +956,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - one HTML cache replay avoided inference
   - PDF pilot used one physical page and one request
   - full PDF pipeline, resume/manual lineage and milestone gates not completed
+---
+
+### [2026-10-05 23:35 CEST] — Migrate PDF stages to shared Codex conversion client
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/pdf-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Bind every PDF inference worker to explicit stage model and effort with structured response schemas
+  - Remove duplicated Gemini client and cache
+  - Validate predecessor completion identities and record worker metrics
+  - Update conversion usage and task evidence
+- **Architectural Rationale & Trade-Offs**:
+  - Task 1.1: pass one physical PDF page through the existing 14-stage workflow using ChatGPT authentication
+  - Conversion-quality repairs and title-call optimization were reverted as requested
+  - Broader recovery and source-fidelity acceptance remain pending
+- **Verification & Test Results**:
+  - Physical page 19 passed all 14 stages with 8 live requests across the pilot
+  - Full replay passed using 9 cache hits and zero new requests
+  - Completed-run resume validated all stages without inference
+  - 22 conversion tests and 4 bootstrap tests passed
+  - Python compilation and PDF CLI help passed
+  - Quick pre-flight passed
+  - Architecture suite: 18 passed and 1 failed because Design links target 62 missing Reference materials
+  - Staged English scan reported the Python standard-library identifier copytree as Polish; manually verified this false positive without changing the scanner
+  - Graphify code refresh completed without inference

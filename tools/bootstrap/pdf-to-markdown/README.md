@@ -6,7 +6,7 @@ This Python command-line program converts technical PDF documents (such as Amiga
 
 ## Quick Start
 
-Run from the repository root with Python, PyMuPDF, Pillow, `PyYAML`, `python-dotenv`, and `google-genai` installed, and `GEMINI_API_KEY` available in the environment or project `.env`:
+Run from the repository root. Install the pinned shared dependencies with `python -m pip install -r tools/bootstrap/conversion/requirements.txt` and authenticate with `codex login` using ChatGPT sign-in. API-key mode is rejected. Every inference stage has an explicit model and reasoning effort in `config.yaml`; the current baseline is `gpt-6.1-sol` / `medium`, concurrency 1.
 
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py `
@@ -16,12 +16,14 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --config "tools/bootstrap/pdf-to-markdown/config.yaml"
 ```
 
-The workspace holds intermediate page images, JSON streams, task files, a configuration snapshot, and stage status. The output directory receives Markdown and assets. `config.yaml` controls rendering, paths, model selection, concurrency, and conversion heuristics. LLM responses use the persistent disk cache in `llm_cache.py`. Use `--resume` to continue after completed stages, or the stage interval and optional manual correction commands below.
+The workspace holds intermediate page images, JSON streams, task files, a configuration snapshot, stage status and `.conversion-state.json`. The output directory receives Markdown and assets. The shared `../conversion/` package owns configuration, Codex transport, response schemas, cache and predecessor validation. Use `--cache-dir` to select a disposable cache; the default is `.cache/codex`. Completed schema-validated responses are cached separately from legacy Gemini data.
+
+Use `--page-ranges "19"` for a single physical PDF page. Keep the same source/page selection, workspace, output directory and configuration when continuing a stage interval. `--resume` validates completed predecessor artifacts and their source, procedure and stage model/effort identities before reuse. An incompatible or legacy workspace requires explicit regeneration from the reported stage. Prepared manual tasks also record their predecessor identity. Runtime/schema failures stop the pipeline without model or provider substitution.
 
 ## Processing Model
 
 - **Deterministic Python Scripts** handle mechanical tasks (page extraction, 300 DPI rendering, text geometry, asset slicing with 10% margins, stream stitching, chapter partitioning, Markdown emission, and TOC link resolution).
-- **Gemini LLM & Multimodal Vision** handles OCR text extraction, visual zone segmentation, multi-page continuation resolution, table structuring, flowchart/Mermaid transcription, stream proofreading, and Obsidian properties generation through `llm_client.py`, powered by `google-genai`. Stages requiring the LLM have no offline fallback.
+- **Codex text and original-detail image input** handle OCR, segmentation, continuation decisions, table and graphic transcription, prose formatting, title normalization and properties generation through the shared stage-bound client. Stages requiring inference have no offline fallback. Stage 10 currently normalizes titles/slugs and copies rendered node text; it does not perform a separate body-proofreading request.
 
 ---
 
@@ -32,8 +34,6 @@ tools/bootstrap/pdf-to-markdown/
 ├── README.md                                # Program usage and stage workflow
 ├── pipeline.py                              # Master CLI orchestrator & task manager
 ├── config.yaml                              # Global configuration (DPI, paths, heuristics)
-├── llm_client.py                            # Gemini API client, retry, and metrics
-├── llm_cache.py                             # Persistent LLM response cache
 └── stages/
     ├── 01_preprocess/
     │   ├── preprocess.py                    # Splits PDF -> page_XXXX.pdf, 300 DPI PNG, text blocks JSON
@@ -84,7 +84,7 @@ tools/bootstrap/pdf-to-markdown/
     │   └── README.md
     │
     ├── 10_proofread_stream/
-    │   ├── proofread_stream.py              # Proofreads manifest titles, slugs & streams with LLM
+    │   ├── proofread_stream.py              # Normalizes manifest titles/slugs and copies rendered streams
     │   ├── prompt.md                        # Technical proofreading guidelines (strict anti-hallucination rules)
     │   └── README.md
     │
@@ -117,8 +117,8 @@ tools/bootstrap/pdf-to-markdown/
 > **ALL execution MUST go through `pipeline.py`**.
 > Directly executing sub-scripts bypasses:
 > 1. Status progression tracking in `stage_status.json`
-> 2. LLM call metrics logging in `.metrics.json`
-> 3. Automatic downstream stage invalidation and cache cleanup
+> 2. LLM call metrics logging in `.metrics` (JSON content)
+> 3. Validated predecessor lineage and downstream artifact invalidation
 > 4. Standard argument and path normalization (`--workspace`, `--output-dir`, `--config`)
 > 5. Hermetic configuration snapshotting to `<WORKSPACE>/config.yaml`
 >
@@ -129,7 +129,7 @@ tools/bootstrap/pdf-to-markdown/
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02`
 > - **Stage 01 with specific pages**:
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01`
-> - **Convenience batch (01, 03, 04, 05, 10, 11)**: The CLI names this option `--run-deterministic`, but some selected stages also call the LLM.
+> - **Next ready deterministic stage (03, 05, 11, 14)**: `--run-deterministic` runs one ready stage and rejects an inference stage.
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --run-deterministic`
 > - **Optional manual review stages (06, 07, 08, 09)**:
 >   - Prepare task items: `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --prepare-stage 07`
@@ -213,3 +213,7 @@ Check pipeline progress and pending tasks at any time:
 python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --status
 ```
 
+
+## Validated pilot scope
+
+Physical page 19 of the 160-page test book passed all 14 stages using the shared Codex client. The page exercised native extraction, segmentation, table transcription, prose formatting, properties and naming; stages with no matching work still executed. Eight live requests were needed across the pilot, and completed-run resume validated all records without inference. This verifies pipeline integration for one page. Transcription quality, scanned OCR, graphics, real TOC linking, multi-page continuations and manual recovery remain separate validation work; no full-book conversion or indexing ran.

@@ -18,15 +18,16 @@ import sys
 from pathlib import Path
 import yaml
 
-# Import GeminiClient from skill root
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from conversion.config import UniqueLoader
+
+# Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
-try:
-    from llm_client import GeminiClient
-except ImportError:
-    GeminiClient = None
+from conversion import CodexClient
+from conversion import pdf_schemas
 
 TOC_START_MARKER = "<!-- TOC34534 -->"
 TOC_END_MARKER = "<!-- /TOC34534 -->"
@@ -129,12 +130,7 @@ def assemble_callouts(nodes: list) -> int:
 
 
 def process_prose(workspace_dir: Path, config: dict):
-    input_candidates = [
-        workspace_dir / "08_transform_graphics",
-        workspace_dir / "07_transform_tables",
-        workspace_dir / "06_detect_continuations",
-        workspace_dir / "05_chapter_partition",
-    ]
+    input_candidates = [workspace_dir / "08_transform_graphics"]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
         raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
@@ -147,166 +143,161 @@ def process_prose(workspace_dir: Path, config: dict):
     prompt_path = Path(__file__).resolve().parent / "prompt.md"
     base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
 
-    gemini = GeminiClient(config)
+    with CodexClient(config, stage="09_transform_prose", images=True) as codex:
 
-    from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import ThreadPoolExecutor
 
-    concurrency = int(config.get("llm", {}).get("concurrency", 8))
-    print(f"[*] Prose Worker LLM active ({gemini.default_model}). Formatting prose/code (concurrency={concurrency})...")
+        concurrency = int(config.get("llm", {}).get("concurrency", 1))
+        print(f"[*] Prose Worker LLM active ({codex.selected.model}). Formatting prose/code (concurrency={concurrency})...")
 
-    chapter_files = sorted(list(input_dir.glob("*.json")))
-    formatted_count = 0
+        chapter_files = sorted(list(input_dir.glob("*.json")))
+        formatted_count = 0
 
-    def _format_prose_task(task):
-        c_file, group_indices, n_type, raw_text, png_path = task
-        full_prompt = (
-            f"{base_prompt}\n\n"
-            f"## Node Type: {n_type}\n"
-            f"## Raw Text:\n```text\n{raw_text}\n```\n"
-        )
-        if n_type == "code_block" and png_path and png_path.exists():
-            rendered = gemini.generate_vision(full_prompt, image_path=png_path, stage="09_transform_prose")
-        else:
-            rendered = gemini.generate_text(full_prompt, stage="09_transform_prose")
-
-        if rendered:
-            rendered_text = rendered.strip()
-            if n_type == "toc" and TOC_START_MARKER not in rendered_text:
-                rendered_text = f"{TOC_START_MARKER}\n{rendered_text}\n{TOC_END_MARKER}"
-            return c_file, group_indices, rendered_text + "\n\n"
-        else:
-            return c_file, group_indices, raw_text + "\n\n"
-
-    chapters = {}
-    all_llm_tasks = []
-
-    for c_file in chapter_files:
-        with open(c_file, "r", encoding="utf-8") as f:
-            nodes = json.load(f)
-        chapters[c_file] = nodes
-
-        i = 0
-        while i < len(nodes):
-            node = nodes[i]
-            # Don't overwrite if already rendered (e.g. table or graphic)
-            if node.get("rendered_markdown"):
-                i += 1
-                continue
-
-            n_type = node.get("type")
-            raw_text = node.get("raw_text", "")
-
-            if n_type == "callout":
-                # Will be assembled with subsequent callout_text blocks in assemble_callouts
-                i += 1
-            elif n_type in ("heading", "chapter"):
-                lvl = 1 if n_type == "chapter" else (node.get("heading_level") or 2)
-                node["rendered_markdown"] = format_heading(raw_text, level=lvl)
-                formatted_count += 1
-                i += 1
-            elif n_type == "toc_header":
-                node["rendered_markdown"] = ""
-                i += 1
-            elif n_type == "caption":
-                clean_cap = " ".join(raw_text.strip().split())
-                node["rendered_markdown"] = f"*{clean_cap}*\n\n"
-                formatted_count += 1
-                i += 1
-            elif n_type == "toc":
-                # Batch consecutive TOC nodes on the same page (up to 6000 chars)
-                group_indices = [i]
-                group_text_parts = [raw_text]
-                group_len = len(raw_text)
-                cur_page = node.get("page")
-                j = i + 1
-                while j < len(nodes):
-                    next_node = nodes[j]
-                    if (
-                        next_node.get("type") == "toc"
-                        and not next_node.get("rendered_markdown")
-                        and next_node.get("page") == cur_page
-                        and (group_len + len(next_node.get("raw_text", ""))) < 6000
-                    ):
-                        group_indices.append(j)
-                        t = next_node.get("raw_text", "")
-                        group_text_parts.append(t)
-                        group_len += len(t)
-                        j += 1
-                    else:
-                        break
-                combined_raw = "\n\n".join(group_text_parts)
-                all_llm_tasks.append((c_file, group_indices, "toc", combined_raw, None))
-                i = j
-            elif n_type == "code_block":
-                png_rel = node.get("png_path")
-                png_path = workspace_dir / png_rel if png_rel else None
-                all_llm_tasks.append((c_file, [i], "code_block", raw_text, png_path))
-                i += 1
-            elif n_type in ("prose", "callout_text"):
-                # Batch consecutive nodes of identical type on the same page up to 4000 chars
-                cur_type = n_type
-                group_indices = [i]
-                group_text_parts = [raw_text]
-                group_len = len(raw_text)
-                cur_page = node.get("page")
-                j = i + 1
-                while j < len(nodes):
-                    next_node = nodes[j]
-                    if (
-                        next_node.get("type") == cur_type
-                        and not next_node.get("rendered_markdown")
-                        and next_node.get("page") == cur_page
-                        and (group_len + len(next_node.get("raw_text", ""))) < 4000
-                    ):
-                        group_indices.append(j)
-                        t = next_node.get("raw_text", "")
-                        group_text_parts.append(t)
-                        group_len += len(t)
-                        j += 1
-                    else:
-                        break
-                combined_raw = "\n\n".join(group_text_parts)
-                all_llm_tasks.append((c_file, group_indices, "prose", combined_raw, None))
-                i = j
+        def _format_prose_task(task):
+            c_file, group_indices, n_type, raw_text, png_path = task
+            full_prompt = (
+                f"{base_prompt}\n\n"
+                f"## Node Type: {n_type}\n"
+                f"## Raw Text:\n```text\n{raw_text}\n```\n"
+            )
+            if n_type == "code_block" and png_path and png_path.exists():
+                rendered = codex.generate_vision(full_prompt, image_path=png_path)
             else:
-                i += 1
+                rendered = codex.generate_text(full_prompt)
 
-    if all_llm_tasks:
-        print(f"[*] Formatting {len(all_llm_tasks)} prose/code/toc batches across {len(chapters)} chapters (concurrency={concurrency})...")
-        with ThreadPoolExecutor(max_workers=min(len(all_llm_tasks), concurrency)) as executor:
-            results = list(executor.map(_format_prose_task, all_llm_tasks))
+            if rendered:
+                rendered_text = rendered.strip()
+                if n_type == "toc" and TOC_START_MARKER not in rendered_text:
+                    rendered_text = f"{TOC_START_MARKER}\n{rendered_text}\n{TOC_END_MARKER}"
+                return c_file, group_indices, rendered_text + "\n\n"
+            else:
+                return c_file, group_indices, raw_text + "\n\n"
 
-        for c_file, group_indices, rendered_md in results:
-            nodes = chapters[c_file]
-            head_idx = group_indices[0]
-            nodes[head_idx]["rendered_markdown"] = rendered_md
-            formatted_count += 1
-            for sub_idx in group_indices[1:]:
-                nodes[sub_idx]["rendered_markdown"] = ""
-                nodes[sub_idx]["continuation_status"] = "continuation"
+        chapters = {}
+        all_llm_tasks = []
+
+        for c_file in chapter_files:
+            with open(c_file, "r", encoding="utf-8") as f:
+                nodes = json.load(f)
+            chapters[c_file] = nodes
+
+            i = 0
+            while i < len(nodes):
+                node = nodes[i]
+                # Don't overwrite if already rendered (e.g. table or graphic)
+                if node.get("rendered_markdown"):
+                    i += 1
+                    continue
+
+                n_type = node.get("type")
+                raw_text = node.get("raw_text", "")
+
+                if n_type == "callout":
+                    # Will be assembled with subsequent callout_text blocks in assemble_callouts
+                    i += 1
+                elif n_type in ("heading", "chapter"):
+                    lvl = 1 if n_type == "chapter" else (node.get("heading_level") or 2)
+                    node["rendered_markdown"] = format_heading(raw_text, level=lvl)
+                    formatted_count += 1
+                    i += 1
+                elif n_type == "toc_header":
+                    node["rendered_markdown"] = ""
+                    i += 1
+                elif n_type == "caption":
+                    clean_cap = " ".join(raw_text.strip().split())
+                    node["rendered_markdown"] = f"*{clean_cap}*\n\n"
+                    formatted_count += 1
+                    i += 1
+                elif n_type == "toc":
+                    # Batch consecutive TOC nodes on the same page (up to 6000 chars)
+                    group_indices = [i]
+                    group_text_parts = [raw_text]
+                    group_len = len(raw_text)
+                    cur_page = node.get("page")
+                    j = i + 1
+                    while j < len(nodes):
+                        next_node = nodes[j]
+                        if (
+                            next_node.get("type") == "toc"
+                            and not next_node.get("rendered_markdown")
+                            and next_node.get("page") == cur_page
+                            and (group_len + len(next_node.get("raw_text", ""))) < 6000
+                        ):
+                            group_indices.append(j)
+                            t = next_node.get("raw_text", "")
+                            group_text_parts.append(t)
+                            group_len += len(t)
+                            j += 1
+                        else:
+                            break
+                    combined_raw = "\n\n".join(group_text_parts)
+                    all_llm_tasks.append((c_file, group_indices, "toc", combined_raw, None))
+                    i = j
+                elif n_type == "code_block":
+                    png_rel = node.get("png_path")
+                    png_path = workspace_dir / png_rel if png_rel else None
+                    all_llm_tasks.append((c_file, [i], "code_block", raw_text, png_path))
+                    i += 1
+                elif n_type in ("prose", "callout_text"):
+                    # Batch consecutive nodes of identical type on the same page up to 4000 chars
+                    cur_type = n_type
+                    group_indices = [i]
+                    group_text_parts = [raw_text]
+                    group_len = len(raw_text)
+                    cur_page = node.get("page")
+                    j = i + 1
+                    while j < len(nodes):
+                        next_node = nodes[j]
+                        if (
+                            next_node.get("type") == cur_type
+                            and not next_node.get("rendered_markdown")
+                            and next_node.get("page") == cur_page
+                            and (group_len + len(next_node.get("raw_text", ""))) < 4000
+                        ):
+                            group_indices.append(j)
+                            t = next_node.get("raw_text", "")
+                            group_text_parts.append(t)
+                            group_len += len(t)
+                            j += 1
+                        else:
+                            break
+                    combined_raw = "\n\n".join(group_text_parts)
+                    all_llm_tasks.append((c_file, group_indices, "prose", combined_raw, None))
+                    i = j
+                else:
+                    i += 1
+
+        if all_llm_tasks:
+            print(f"[*] Formatting {len(all_llm_tasks)} prose/code/toc batches across {len(chapters)} chapters (concurrency={concurrency})...")
+            with ThreadPoolExecutor(max_workers=min(len(all_llm_tasks), concurrency)) as executor:
+                results = list(executor.map(_format_prose_task, all_llm_tasks))
+
+            for c_file, group_indices, rendered_md in results:
+                nodes = chapters[c_file]
+                head_idx = group_indices[0]
+                nodes[head_idx]["rendered_markdown"] = rendered_md
                 formatted_count += 1
+                for sub_idx in group_indices[1:]:
+                    nodes[sub_idx]["rendered_markdown"] = ""
+                    nodes[sub_idx]["continuation_status"] = "continuation"
+                    formatted_count += 1
 
-    for c_file, nodes in chapters.items():
-        assembled = assemble_callouts(nodes)
-        if assembled > 0:
-            formatted_count += assembled
-        target_file = out_dir / c_file.name
-        with open(target_file, "w", encoding="utf-8") as f:
-            json.dump(nodes, f, indent=2)
+        for c_file, nodes in chapters.items():
+            assembled = assemble_callouts(nodes)
+            if assembled > 0:
+                formatted_count += assembled
+            target_file = out_dir / c_file.name
+            with open(target_file, "w", encoding="utf-8") as f:
+                json.dump(nodes, f, indent=2)
 
-    print(f"[+] Stage 09 complete. Formatted {formatted_count} nodes into {out_dir}.")
+        print(f"[+] Stage 09 complete. Formatted {formatted_count} nodes into {out_dir}.")
 
 
 def prepare_prose_tasks(workspace_dir: Path) -> int:
     """
     Extracts TOC and code block nodes into workspace/tasks/prose/ for inspection.
     """
-    input_candidates = [
-        workspace_dir / "08_transform_graphics",
-        workspace_dir / "07_transform_tables",
-        workspace_dir / "06_detect_continuations",
-        workspace_dir / "05_chapter_partition",
-    ]
+    input_candidates = [workspace_dir / "08_transform_graphics"]
     chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not chapters_dir:
         raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
@@ -359,12 +350,7 @@ def apply_prose_tasks(workspace_dir: Path) -> int:
         print(f"[!] No prose tasks directory found at {tasks_dir}")
         return 0
 
-    input_candidates = [
-        workspace_dir / "08_transform_graphics",
-        workspace_dir / "07_transform_tables",
-        workspace_dir / "06_detect_continuations",
-        workspace_dir / "05_chapter_partition",
-    ]
+    input_candidates = [workspace_dir / "08_transform_graphics"]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
         raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
@@ -416,7 +402,7 @@ def main():
         raise FileNotFoundError(f"Stage 09: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.load(f, Loader=UniqueLoader)
     if not config or not isinstance(config, dict):
         raise ValueError(f"Stage 09: Config file is empty or invalid: {config_path}")
 

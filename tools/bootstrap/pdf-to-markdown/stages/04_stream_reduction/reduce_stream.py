@@ -3,7 +3,7 @@
 stages/04_stream_reduction/reduce_stream.py:
 Normalizes the sequential node stream:
 1. Suppresses all header and footer nodes.
-2. Identifies and unifies contiguous graphic fragments on the same page into a single diagram asset using Gemini Vision.
+2. Identifies and unifies contiguous graphic fragments on the same page into a single diagram asset using Codex Vision.
 3. Welds consecutive prose nodes across page breaks and performs de-hyphenation.
 4. Emits workspace/04_stream_reduction/reduced_stream.json.
 """
@@ -16,7 +16,10 @@ from pathlib import Path
 from typing import Optional
 import yaml
 
-# Import GeminiClient and extract_assets_for_nodes
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from conversion.config import UniqueLoader
+
+# Import CodexClient and extract_assets_for_nodes
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
@@ -25,10 +28,8 @@ STAGE3_DIR = SKILL_ROOT / "stages" / "03_build_raw_stream"
 if str(STAGE3_DIR) not in sys.path:
     sys.path.insert(0, str(STAGE3_DIR))
 
-try:
-    from llm_client import GeminiClient
-except ImportError:
-    GeminiClient = None
+from conversion import CodexClient
+from conversion import pdf_schemas
 
 try:
     from extract_initial_assets import extract_assets_for_nodes
@@ -36,9 +37,9 @@ except ImportError:
     extract_assets_for_nodes = None
 
 
-def weld_prose_with_gemini(text1: str, text2: str, gemini: GeminiClient, prompt_template: str) -> str:
+def weld_prose_with_codex(text1: str, text2: str, codex: CodexClient, prompt_template: str) -> str:
     """
-    Uses Gemini LLM to evaluate cross-page paragraph continuation and perform accurate de-hyphenation.
+    Uses Codex LLM to evaluate cross-page paragraph continuation and perform accurate de-hyphenation.
     """
     t1 = text1.rstrip()
     t2 = text2.lstrip()
@@ -49,7 +50,7 @@ def weld_prose_with_gemini(text1: str, text2: str, gemini: GeminiClient, prompt_
             f"## Tail Text of Preceding Page:\n```text\n{t1[-300:]}\n```\n\n"
             f"## Head Text of Next Page:\n```text\n{t2[:300]}\n```\n"
         )
-        res = gemini.generate_json(prompt)
+        res = codex.generate_json(prompt, schema=pdf_schemas.SEAM)
         if isinstance(res, dict) and res.get("is_continuation"):
             dehyphen = res.get("de_hyphenated_word")
             if dehyphen and "-" in t1[-12:]:
@@ -65,11 +66,11 @@ def weld_prose_with_gemini(text1: str, text2: str, gemini: GeminiClient, prompt_
 def reduce_contiguous_graphics(
     nodes: list,
     workspace_dir: Path,
-    gemini: Optional[GeminiClient],
+    codex: Optional[CodexClient],
     graphics_prompt: str,
     padding_ratio: float = 0.10,
     reduced_assets_dir: Path = None,
-    concurrency: int = 8,
+    concurrency: int = 1,
 ) -> tuple:
     """
     Identifies runs of contiguous graphic nodes on the same page.
@@ -128,7 +129,7 @@ def reduce_contiguous_graphics(
 
         def _eval_cluster(task):
             start_idx, prompt, png_path = task
-            res = gemini.generate_json(prompt, image_path=png_path, stage="04_stream_reduction")
+            res = codex.generate_json(prompt, image_path=png_path, schema=pdf_schemas.GRAPHIC_UNION)
             is_single = False
             res_title = ""
             if isinstance(res, dict) and res.get("is_single_graphic"):
@@ -345,182 +346,182 @@ def reduce_stream(workspace_dir: Path, config: dict):
     graphics_prompt_path = Path(__file__).resolve().parent / "prompt_graphics_union.md"
     graphics_prompt_template = graphics_prompt_path.read_text(encoding="utf-8") if graphics_prompt_path.exists() else ""
 
-    gemini = GeminiClient(config)
+    with CodexClient(config, stage="04_stream_reduction", images=True) as codex:
 
-    with open(raw_stream_path, "r", encoding="utf-8") as f:
-        raw_nodes = json.load(f)
+        with open(raw_stream_path, "r", encoding="utf-8") as f:
+            raw_nodes = json.load(f)
 
-    print(f"[*] Reducing stream of {len(raw_nodes)} nodes from {raw_stream_path.name}...")
+        print(f"[*] Reducing stream of {len(raw_nodes)} nodes from {raw_stream_path.name}...")
 
-    # Step 1: Suppress headers and footers
-    active_nodes = []
-    skipped_count = 0
-    for node in raw_nodes:
-        if node.get("type") in ("header", "footer"):
-            skipped_count += 1
-        else:
-            active_nodes.append(node)
+        # Step 1: Suppress headers and footers
+        active_nodes = []
+        skipped_count = 0
+        for node in raw_nodes:
+            if node.get("type") in ("header", "footer"):
+                skipped_count += 1
+            else:
+                active_nodes.append(node)
 
-    print(f"[*] Suppressed {skipped_count} header/footer nodes.")
+        print(f"[*] Suppressed {skipped_count} header/footer nodes.")
 
-    # Prepare Stage 04 assets directory by synchronizing from Stage 03
-    import shutil
-    out_dir = workspace_dir / "04_stream_reduction"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    reduced_assets_dir = out_dir / "assets"
-    reduced_assets_dir.mkdir(parents=True, exist_ok=True)
-    raw_assets_dir = workspace_dir / "03_build_raw_stream" / "assets"
+        # Prepare Stage 04 assets directory by synchronizing from Stage 03
+        import shutil
+        out_dir = workspace_dir / "04_stream_reduction"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        reduced_assets_dir = out_dir / "assets"
+        reduced_assets_dir.mkdir(parents=True, exist_ok=True)
+        raw_assets_dir = workspace_dir / "03_build_raw_stream" / "assets"
 
-    for old_f in reduced_assets_dir.glob("*"):
-        if old_f.is_file():
-            old_f.unlink()
-    if raw_assets_dir.exists():
-        for asset_f in raw_assets_dir.glob("*"):
-            if asset_f.is_file():
-                shutil.copy2(asset_f, reduced_assets_dir / asset_f.name)
+        for old_f in reduced_assets_dir.glob("*"):
+            if old_f.is_file():
+                old_f.unlink()
+        if raw_assets_dir.exists():
+            for asset_f in raw_assets_dir.glob("*"):
+                if asset_f.is_file():
+                    shutil.copy2(asset_f, reduced_assets_dir / asset_f.name)
 
-    for n in active_nodes:
-        for k in ("png_path", "svg_path", "raw_text_path"):
-            val = n.get(k)
-            if val and "03_build_raw_stream/assets" in val:
-                n[k] = val.replace("03_build_raw_stream/assets", "04_stream_reduction/assets")
-            elif val and val.startswith("assets/"):
-                n[k] = f"04_stream_reduction/{val}"
+        for n in active_nodes:
+            for k in ("png_path", "svg_path", "raw_text_path"):
+                val = n.get(k)
+                if val and "03_build_raw_stream/assets" in val:
+                    n[k] = val.replace("03_build_raw_stream/assets", "04_stream_reduction/assets")
+                elif val and val.startswith("assets/"):
+                    n[k] = f"04_stream_reduction/{val}"
 
-    # Step 2: Unify contiguous graphic nodes on identical pages
-    concurrency = int(config.get("llm", {}).get("concurrency", 8))
-    padding = config.get("render", {}).get("padding_margin_ratio", 0.10)
-    nodes_after_graphics, num_unifications, num_collapsed_graphics = reduce_contiguous_graphics(
-        active_nodes,
-        workspace_dir,
-        gemini,
-        graphics_prompt_template,
-        padding_ratio=padding,
-        reduced_assets_dir=reduced_assets_dir,
-        concurrency=concurrency,
-    )
-    if num_unifications > 0:
-        print(f"[*] Graphic Reduction: Consolidated {num_collapsed_graphics + num_unifications} fragments into {num_unifications} unified diagram(s) (eliminated {num_collapsed_graphics} fragmented nodes).")
+        # Step 2: Unify contiguous graphic nodes on identical pages
+        concurrency = int(config.get("llm", {}).get("concurrency", 1))
+        padding = config.get("render", {}).get("padding_margin_ratio", 0.10)
+        nodes_after_graphics, num_unifications, num_collapsed_graphics = reduce_contiguous_graphics(
+            active_nodes,
+            workspace_dir,
+            codex,
+            graphics_prompt_template,
+            padding_ratio=padding,
+            reduced_assets_dir=reduced_assets_dir,
+            concurrency=concurrency,
+        )
+        if num_unifications > 0:
+            print(f"[*] Graphic Reduction: Consolidated {num_collapsed_graphics + num_unifications} fragments into {num_unifications} unified diagram(s) (eliminated {num_collapsed_graphics} fragmented nodes).")
 
-    # Step 2b: Unify contiguous table nodes on identical pages
-    nodes_after_tables, num_table_unifications, num_collapsed_tables = reduce_contiguous_tables(
-        nodes_after_graphics,
-        workspace_dir,
-        padding_ratio=padding,
-        reduced_assets_dir=reduced_assets_dir,
-    )
-    if num_table_unifications > 0:
-        print(f"[*] Table Reduction: Consolidated {num_collapsed_tables + num_table_unifications} fragments into {num_table_unifications} unified table(s) (eliminated {num_collapsed_tables} fragmented nodes).")
+        # Step 2b: Unify contiguous table nodes on identical pages
+        nodes_after_tables, num_table_unifications, num_collapsed_tables = reduce_contiguous_tables(
+            nodes_after_graphics,
+            workspace_dir,
+            padding_ratio=padding,
+            reduced_assets_dir=reduced_assets_dir,
+        )
+        if num_table_unifications > 0:
+            print(f"[*] Table Reduction: Consolidated {num_collapsed_tables + num_table_unifications} fragments into {num_table_unifications} unified table(s) (eliminated {num_collapsed_tables} fragmented nodes).")
 
-    # Step 3: Weld consecutive prose nodes and consecutive code_block nodes
-    # Phase 3a: Fast same-page local welds in memory
-    condensed = []
-    welded_prose_count = 0
-    welded_code_count = 0
+        # Step 3: Weld consecutive prose nodes and consecutive code_block nodes
+        # Phase 3a: Fast same-page local welds in memory
+        condensed = []
+        welded_prose_count = 0
+        welded_code_count = 0
 
-    for node in nodes_after_tables:
-        n_type = node.get("type")
-        if condensed and condensed[-1]["type"] == "prose" and n_type == "prose":
-            prev = condensed[-1]
-            prev_page = prev.get("page_end", prev.get("page"))
-            curr_page = node.get("page")
-            if prev_page == curr_page:
-                prev["raw_text"] = prev["raw_text"].rstrip() + "\n\n" + node["raw_text"].lstrip()
-                prev["page_end"] = curr_page
+        for node in nodes_after_tables:
+            n_type = node.get("type")
+            if condensed and condensed[-1]["type"] == "prose" and n_type == "prose":
+                prev = condensed[-1]
+                prev_page = prev.get("page_end", prev.get("page"))
+                curr_page = node.get("page")
+                if prev_page == curr_page:
+                    prev["raw_text"] = prev["raw_text"].rstrip() + "\n\n" + node["raw_text"].lstrip()
+                    prev["page_end"] = curr_page
+                    if "welded_nodes" not in prev:
+                        prev["welded_nodes"] = [prev["node_id"]]
+                    prev["welded_nodes"].append(node["node_id"])
+                    welded_prose_count += 1
+                    continue
+
+            if condensed and condensed[-1]["type"] == "code_block" and n_type == "code_block" and condensed[-1]["page"] == node["page"]:
+                prev = condensed[-1]
+                prev["raw_text"] = prev["raw_text"].rstrip() + "\n" + node["raw_text"].lstrip()
                 if "welded_nodes" not in prev:
                     prev["welded_nodes"] = [prev["node_id"]]
                 prev["welded_nodes"].append(node["node_id"])
-                welded_prose_count += 1
+                if prev.get("bbox") and node.get("bbox"):
+                    prev["bbox"] = [
+                        round(min(prev["bbox"][0], node["bbox"][0]), 2),
+                        round(min(prev["bbox"][1], node["bbox"][1]), 2),
+                        round(max(prev["bbox"][2], node["bbox"][2]), 2),
+                        round(max(prev["bbox"][3], node["bbox"][3]), 2),
+                    ]
+                welded_code_count += 1
                 continue
 
-        if condensed and condensed[-1]["type"] == "code_block" and n_type == "code_block" and condensed[-1]["page"] == node["page"]:
-            prev = condensed[-1]
-            prev["raw_text"] = prev["raw_text"].rstrip() + "\n" + node["raw_text"].lstrip()
-            if "welded_nodes" not in prev:
-                prev["welded_nodes"] = [prev["node_id"]]
-            prev["welded_nodes"].append(node["node_id"])
-            if prev.get("bbox") and node.get("bbox"):
-                prev["bbox"] = [
-                    round(min(prev["bbox"][0], node["bbox"][0]), 2),
-                    round(min(prev["bbox"][1], node["bbox"][1]), 2),
-                    round(max(prev["bbox"][2], node["bbox"][2]), 2),
-                    round(max(prev["bbox"][3], node["bbox"][3]), 2),
-                ]
-            welded_code_count += 1
-            continue
+            node_copy = dict(node)
+            if "page_start" not in node_copy:
+                node_copy["page_start"] = node["page"]
+            if "page_end" not in node_copy:
+                node_copy["page_end"] = node["page"]
+            condensed.append(node_copy)
 
-        node_copy = dict(node)
-        if "page_start" not in node_copy:
-            node_copy["page_start"] = node["page"]
-        if "page_end" not in node_copy:
-            node_copy["page_end"] = node["page"]
-        condensed.append(node_copy)
+        # Phase 3b: Evaluate cross-page prose seams concurrently
+        seam_tasks = []
+        for k in range(len(condensed) - 1):
+            if condensed[k]["type"] == "prose" and condensed[k + 1]["type"] == "prose":
+                t1 = condensed[k]["raw_text"]
+                t2 = condensed[k + 1]["raw_text"]
+                seam_tasks.append((k, t1, t2))
 
-    # Phase 3b: Evaluate cross-page prose seams concurrently
-    seam_tasks = []
-    for k in range(len(condensed) - 1):
-        if condensed[k]["type"] == "prose" and condensed[k + 1]["type"] == "prose":
-            t1 = condensed[k]["raw_text"]
-            t2 = condensed[k + 1]["raw_text"]
-            seam_tasks.append((k, t1, t2))
+        seam_results = {}
+        if seam_tasks and seam_prompt_template:
+            from concurrent.futures import ThreadPoolExecutor
 
-    seam_results = {}
-    if seam_tasks and seam_prompt_template:
-        from concurrent.futures import ThreadPoolExecutor
+            def _eval_seam_task(task):
+                idx, text1, text2 = task
+                welded = weld_prose_with_codex(text1, text2, codex, seam_prompt_template)
+                return idx, welded
 
-        def _eval_seam_task(task):
-            idx, text1, text2 = task
-            welded = weld_prose_with_gemini(text1, text2, gemini, seam_prompt_template)
-            return idx, welded
+            print(f"[*] Evaluating {len(seam_tasks)} cross-page prose seams (concurrency={concurrency})...")
+            with ThreadPoolExecutor(max_workers=min(len(seam_tasks), concurrency)) as executor:
+                seam_results = dict(executor.map(_eval_seam_task, seam_tasks))
 
-        print(f"[*] Evaluating {len(seam_tasks)} cross-page prose seams (concurrency={concurrency})...")
-        with ThreadPoolExecutor(max_workers=min(len(seam_tasks), concurrency)) as executor:
-            seam_results = dict(executor.map(_eval_seam_task, seam_tasks))
+        final_nodes = []
+        idx = 0
+        while idx < len(condensed):
+            cur_node = condensed[idx]
+            if idx in seam_results:
+                welded_text = seam_results[idx]
+                next_node = condensed[idx + 1]
+                cur_node["raw_text"] = welded_text
+                cur_node["page_end"] = next_node.get("page_end", next_node.get("page"))
+                if "welded_nodes" not in cur_node:
+                    cur_node["welded_nodes"] = [cur_node["node_id"]]
+                cur_node["welded_nodes"].extend(next_node.get("welded_nodes", [next_node["node_id"]]))
+                welded_prose_count += 1
+                final_nodes.append(cur_node)
+                idx += 2
+            else:
+                final_nodes.append(cur_node)
+                idx += 1
 
-    final_nodes = []
-    idx = 0
-    while idx < len(condensed):
-        cur_node = condensed[idx]
-        if idx in seam_results:
-            welded_text = seam_results[idx]
-            next_node = condensed[idx + 1]
-            cur_node["raw_text"] = welded_text
-            cur_node["page_end"] = next_node.get("page_end", next_node.get("page"))
-            if "welded_nodes" not in cur_node:
-                cur_node["welded_nodes"] = [cur_node["node_id"]]
-            cur_node["welded_nodes"].extend(next_node.get("welded_nodes", [next_node["node_id"]]))
-            welded_prose_count += 1
-            final_nodes.append(cur_node)
-            idx += 2
-        else:
-            final_nodes.append(cur_node)
-            idx += 1
+        if welded_prose_count > 0:
+            print(f"[*] Prose Welding: Welded {welded_prose_count} consecutive prose segments.")
+        if welded_code_count > 0:
+            print(f"[*] Code Welding: Welded {welded_code_count} consecutive code block segments.")
 
-    if welded_prose_count > 0:
-        print(f"[*] Prose Welding: Welded {welded_prose_count} consecutive prose segments.")
-    if welded_code_count > 0:
-        print(f"[*] Code Welding: Welded {welded_code_count} consecutive code block segments.")
+        out_dir = workspace_dir / "04_stream_reduction"
+        out_dir.mkdir(parents=True, exist_ok=True)
 
-    out_dir = workspace_dir / "04_stream_reduction"
-    out_dir.mkdir(parents=True, exist_ok=True)
+        # Prune orphaned asset files that do not belong to any active node in final_nodes
+        reduced_assets_dir = out_dir / "assets"
+        if reduced_assets_dir.exists():
+            active_node_ids = {n["node_id"] for n in final_nodes}
+            for f in list(reduced_assets_dir.glob("asset_*")):
+                m = re.match(r"asset_(node_\d+)", f.name)
+                if m and m.group(1) not in active_node_ids:
+                    try:
+                        f.unlink(missing_ok=True)
+                    except Exception:
+                        pass
 
-    # Prune orphaned asset files that do not belong to any active node in final_nodes
-    reduced_assets_dir = out_dir / "assets"
-    if reduced_assets_dir.exists():
-        active_node_ids = {n["node_id"] for n in final_nodes}
-        for f in list(reduced_assets_dir.glob("asset_*")):
-            m = re.match(r"asset_(node_\d+)", f.name)
-            if m and m.group(1) not in active_node_ids:
-                try:
-                    f.unlink(missing_ok=True)
-                except Exception:
-                    pass
+        reduced_stream_path = out_dir / "reduced_stream.json"
+        with open(reduced_stream_path, "w", encoding="utf-8") as f:
+            json.dump(final_nodes, f, indent=2)
 
-    reduced_stream_path = out_dir / "reduced_stream.json"
-    with open(reduced_stream_path, "w", encoding="utf-8") as f:
-        json.dump(final_nodes, f, indent=2)
-
-    print(f"[+] Stage 04 complete. Stream reduced from {len(raw_nodes)} -> {len(final_nodes)} nodes in {reduced_stream_path}")
+        print(f"[+] Stage 04 complete. Stream reduced from {len(raw_nodes)} -> {len(final_nodes)} nodes in {reduced_stream_path}")
 
 
 def main():
@@ -535,7 +536,7 @@ def main():
         raise FileNotFoundError(f"Stage 04: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.load(f, Loader=UniqueLoader)
     if not config or not isinstance(config, dict):
         raise ValueError(f"Stage 04: Config file is empty or invalid: {config_path}")
 

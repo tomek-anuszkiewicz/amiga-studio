@@ -2,7 +2,7 @@
 """
 stages/10_proofread_stream/proofread_stream.py:
 Proofreads chapter streams and manifest metadata before Markdown serialization:
-1. Proofreads and corrects chapter titles in chapters_manifest.json using Gemini LLM.
+1. Proofreads and corrects chapter titles in chapters_manifest.json using Codex LLM.
 2. Harmonizes chapter titles with primary heading nodes in the stream.
 3. Derives clean slugs and target filenames directly in chapters_manifest.json.
 4. Performs an OCR proofreading pass on stream node text.
@@ -19,15 +19,16 @@ import shutil
 import sys
 import yaml
 
-# Import GeminiClient from skill root
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from conversion.config import UniqueLoader
+
+# Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
-try:
-    from llm_client import GeminiClient
-except ImportError:
-    GeminiClient = None
+from conversion import CodexClient
+from conversion import pdf_schemas
 
 
 def generate_slug(text: str) -> str:
@@ -36,7 +37,7 @@ def generate_slug(text: str) -> str:
     return cleaned[:40] if cleaned else "section"
 
 
-def proofread_title_llm(raw_title: str, gemini: GeminiClient) -> str:
+def proofread_title_llm(raw_title: str, codex: CodexClient) -> str:
     prompt = (
         "You are an expert technical editor. Correct any OCR typos, accidental split words, or weird spacing "
         "in this chapter/section title. Do not change the wording or meaning; only fix OCR errors and broken words "
@@ -47,16 +48,16 @@ def proofread_title_llm(raw_title: str, gemini: GeminiClient) -> str:
         f"{raw_title}"
     )
     try:
-        c_title = gemini.generate_text(prompt, stage="10_proofread_stream").strip().strip('"').strip("'")
+        c_title = codex.generate_text(prompt).strip().strip('"').strip("'")
         if c_title and len(c_title) < len(raw_title) * 2:
             return c_title
-    except Exception as e:
-        print(f"[!] Warning: LLM title proofreading failed for '{raw_title}': {e}")
+    except Exception:
+        raise
     return raw_title
 
 
-def determine_section_title_llm(raw_title: str, raw_slug: str, sample_text: str, gemini: GeminiClient) -> str:
-    """Queries Gemini to dynamically determine the canonical, publication-grade title based on section content."""
+def determine_section_title_llm(raw_title: str, raw_slug: str, sample_text: str, codex: CodexClient) -> str:
+    """Queries Codex to dynamically determine the canonical, publication-grade title based on section content."""
     prompt = (
         "You are an expert technical book editor. Determine the canonical, professional title for this section "
         "of a technical manual based on its actual content.\n\n"
@@ -67,27 +68,27 @@ def determine_section_title_llm(raw_title: str, raw_slug: str, sample_text: str,
         "without quotes, markdown formatting, or explanation:"
     )
     try:
-        c_title = gemini.generate_text(prompt, stage="10_proofread_stream").strip().strip('"').strip("'")
+        c_title = codex.generate_text(prompt).strip().strip('"').strip("'")
         if c_title and len(c_title) < 100:
             if raw_slug == "preface" and "table of contents" in c_title.lower():
                 return "Front Matter"
             return c_title
-    except Exception as e:
-        print(f"[!] Warning: LLM title determination failed for '{raw_title}': {e}")
+    except Exception:
+        raise
     return raw_title if (raw_slug != "preface" or "table of contents" not in raw_title.lower()) else "Front Matter"
 
 
-def proofread_node_text(text: str, gemini: GeminiClient, base_prompt: str) -> str:
+def proofread_node_text(text: str, codex: CodexClient, base_prompt: str) -> str:
     if not text or not text.strip():
         return text
     # Only invoke LLM on blocks with substantial text or suspicious split words / punctuation
     prompt = f"{base_prompt}\n\n## Content to Proofread:\n\n{text}"
     try:
-        corrected = gemini.generate_text(prompt, stage="10_proofread_stream").strip()
+        corrected = codex.generate_text(prompt).strip()
         if corrected:
             return corrected
-    except Exception as e:
-        print(f"[!] Warning: Node proofreading failed: {e}")
+    except Exception:
+        raise
     return text
 
 
@@ -124,178 +125,157 @@ def process_proofread_stream(
         manifest = json.load(f)
 
     # Locate input chapters directory if not provided or missing
-    if not input_dir or not input_dir.exists() or not list(input_dir.glob("*.json")):
-        candidates = [
-            workspace_dir / "09_transform_prose",
-            workspace_dir / "08_transform_graphics",
-            workspace_dir / "07_transform_tables",
-            workspace_dir / "06_detect_continuations",
-            workspace_dir / "05_chapter_partition",
-        ]
-        input_dir = next((p for p in candidates if p.exists() and list(p.glob("*.json"))), input_dir)
-
     if not input_dir or not input_dir.exists():
         raise FileNotFoundError(f"Missing input chapter files in {workspace_dir}")
 
     # Synchronize assets forward
     src_assets = input_dir / "assets"
-    if not src_assets.exists():
-        for cand in [
-            workspace_dir / "08_transform_graphics" / "assets",
-            workspace_dir / "07_transform_tables" / "assets",
-            workspace_dir / "05_chapter_partition" / "assets",
-            workspace_dir / "assets",
-        ]:
-            if cand.exists():
-                src_assets = cand
-                break
-
     if src_assets and src_assets.exists():
         for asset_file in src_assets.glob("*"):
             if asset_file.is_file():
                 shutil.copy2(asset_file, out_assets / asset_file.name)
 
-    gemini = GeminiClient(config)
-    prompt_file = Path(__file__).resolve().parent / "prompt.md"
-    base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
+    with CodexClient(config, stage="10_proofread_stream", images=False) as codex:
+        prompt_file = Path(__file__).resolve().parent / "prompt.md"
+        base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
 
-    concurrency = int(config.get("llm", {}).get("concurrency", 8))
-    print(f"[*] Stream Proofreading LLM active ({gemini.default_model}). Processing {len(manifest)} partitions (concurrency={concurrency})...")
+        concurrency = int(config.get("llm", {}).get("concurrency", 1))
+        print(f"[*] Stream Proofreading LLM active ({codex.selected.model}). Processing {len(manifest)} partitions (concurrency={concurrency})...")
 
-    title_map = {}
-    if manifest:
-        from concurrent.futures import ThreadPoolExecutor
+        title_map = {}
+        if manifest:
+            from concurrent.futures import ThreadPoolExecutor
 
-        def _proofread_single_title(entry):
-            raw_title = entry.get("title", "")
-            raw_slug = entry.get("slug", "")
-            idx = entry.get("index", 0)
-            key = (idx, raw_slug)
+            def _proofread_single_title(entry):
+                raw_title = entry.get("title", "")
+                raw_slug = entry.get("slug", "")
+                idx = entry.get("index", 0)
+                key = (idx, raw_slug)
 
-            # Sample text from chapter JSON to assist dynamic title determination
-            sample_text = ""
-            json_candidate = input_dir / f"{idx:02d}_{raw_slug}.json"
-            if not json_candidate.exists():
-                json_candidate = workspace_dir / entry.get("json_file", "")
-            if json_candidate.exists():
-                try:
-                    with open(json_candidate, "r", encoding="utf-8") as f:
-                        sample_nodes = json.load(f)
-                    informative_nodes = [n for n in sample_nodes if n.get("type") not in ("thumb_index", "header", "footer")]
-                    if not informative_nodes:
-                        informative_nodes = sample_nodes
-                    sample_text = " ".join([n.get("raw_text", "") or n.get("rendered_markdown", "") for n in informative_nodes[:10]])
-                except Exception:
-                    pass
+                # Sample text from chapter JSON to assist dynamic title determination
+                sample_text = ""
+                json_candidate = input_dir / f"{idx:02d}_{raw_slug}.json"
+                if not json_candidate.exists():
+                    json_candidate = workspace_dir / entry.get("json_file", "")
+                if json_candidate.exists():
+                    try:
+                        with open(json_candidate, "r", encoding="utf-8") as f:
+                            sample_nodes = json.load(f)
+                        informative_nodes = [n for n in sample_nodes if n.get("type") not in ("thumb_index", "header", "footer")]
+                        if not informative_nodes:
+                            informative_nodes = sample_nodes
+                        sample_text = " ".join([n.get("raw_text", "") or n.get("rendered_markdown", "") for n in informative_nodes[:10]])
+                    except Exception:
+                        pass
 
-            if idx == 0 or raw_slug in ("preface", "toc"):
-                return key, determine_section_title_llm(raw_title, raw_slug, sample_text, gemini)
-            elif raw_title:
-                return key, proofread_title_llm(raw_title, gemini)
-            return key, raw_title
+                if idx == 0 or raw_slug in ("preface", "toc"):
+                    return key, determine_section_title_llm(raw_title, raw_slug, sample_text, codex)
+                elif raw_title:
+                    return key, proofread_title_llm(raw_title, codex)
+                return key, raw_title
 
-        with ThreadPoolExecutor(max_workers=min(len(manifest), concurrency)) as executor:
-            title_results = list(executor.map(_proofread_single_title, manifest))
-        title_map = dict(title_results)
+            with ThreadPoolExecutor(max_workers=min(len(manifest), concurrency)) as executor:
+                title_results = list(executor.map(_proofread_single_title, manifest))
+            title_map = dict(title_results)
 
-    updated_manifest = []
+        updated_manifest = []
 
-    for entry in manifest:
-        idx = entry["index"]
-        raw_slug = entry["slug"]
-        raw_title = entry["title"]
+        for entry in manifest:
+            idx = entry["index"]
+            raw_slug = entry["slug"]
+            raw_title = entry["title"]
 
-        # Locate chapter json file
-        json_file = input_dir / f"{idx:02d}_{raw_slug}.json"
-        if not json_file.exists():
-            json_file = workspace_dir / entry.get("json_file", "")
-        if not json_file.exists():
-            # Match any json with prefix
-            matches = list(input_dir.glob(f"{idx:02d}_*.json"))
-            if matches:
-                json_file = matches[0]
+            # Locate chapter json file
+            json_file = input_dir / f"{idx:02d}_{raw_slug}.json"
+            if not json_file.exists():
+                json_file = workspace_dir / entry.get("json_file", "")
+            if not json_file.exists():
+                # Match any json with prefix
+                matches = list(input_dir.glob(f"{idx:02d}_*.json"))
+                if matches:
+                    json_file = matches[0]
 
-        if not json_file.exists():
-            print(f"[!] Warning: Chapter JSON for {raw_title} not found at {json_file}")
-            updated_manifest.append(entry)
-            continue
+            if not json_file.exists():
+                print(f"[!] Warning: Chapter JSON for {raw_title} not found at {json_file}")
+                updated_manifest.append(entry)
+                continue
 
-        with open(json_file, "r", encoding="utf-8") as f:
-            nodes = json.load(f)
+            with open(json_file, "r", encoding="utf-8") as f:
+                nodes = json.load(f)
 
-        # 1. Proofread and correct chapter title using composite key
-        corrected_title = title_map.get((idx, raw_slug), raw_title)
+            # 1. Proofread and correct chapter title using composite key
+            corrected_title = title_map.get((idx, raw_slug), raw_title)
 
-        # 2. Harmonize with primary heading node and update node rendered_markdown
-        ch_sub = re.match(r"^chapter\s+\d+[:\s]+(.*)$", corrected_title, re.IGNORECASE)
-        expected_sub = ch_sub.group(1).strip() if ch_sub else ""
+            # 2. Harmonize with primary heading node and update node rendered_markdown
+            ch_sub = re.match(r"^chapter\s+\d+[:\s]+(.*)$", corrected_title, re.IGNORECASE)
+            expected_sub = ch_sub.group(1).strip() if ch_sub else ""
 
-        for node in nodes:
-            if node.get("type") in ("chapter", "heading"):
-                rendered = node.get("rendered_markdown", "").strip()
-                if rendered:
-                    h_m = re.search(r"^#+\s+(Chapter\s+\d+)\s*\n+#+\s+([^\n]+)", rendered, re.IGNORECASE | re.MULTILINE)
-                    if h_m:
-                        expected = f"{h_m.group(1).title()}: {h_m.group(2).strip()}"
-                        if expected.lower().replace(" ", "") == corrected_title.lower().replace(" ", ""):
-                            corrected_title = expected
-                    elif expected_sub:
-                        r_clean = rendered.lstrip("#").strip()
-                        if r_clean.lower().replace(" ", "") == expected_sub.lower().replace(" ", ""):
-                            node["rendered_markdown"] = f"# {expected_sub}\n\n"
+            for node in nodes:
+                if node.get("type") in ("chapter", "heading"):
+                    rendered = node.get("rendered_markdown", "").strip()
+                    if rendered:
+                        h_m = re.search(r"^#+\s+(Chapter\s+\d+)\s*\n+#+\s+([^\n]+)", rendered, re.IGNORECASE | re.MULTILINE)
+                        if h_m:
+                            expected = f"{h_m.group(1).title()}: {h_m.group(2).strip()}"
+                            if expected.lower().replace(" ", "") == corrected_title.lower().replace(" ", ""):
+                                corrected_title = expected
+                        elif expected_sub:
+                            r_clean = rendered.lstrip("#").strip()
+                            if r_clean.lower().replace(" ", "") == expected_sub.lower().replace(" ", ""):
+                                node["rendered_markdown"] = f"# {expected_sub}\n\n"
 
-        # 3. Derive clean canonical slug and filename
-        if idx > 0:
-            clean_t = corrected_title.lower()
-            ch_sub = re.match(r"^chapter\s+\d+[:\s]+(.*)$", clean_t)
-            rest = ch_sub.group(1) if ch_sub else clean_t
-            rest_slug = generate_slug(rest)
-            new_slug = f"chapter_{idx}_{rest_slug}" if rest_slug else f"chapter_{idx}"
-        else:
-            new_slug = raw_slug if raw_slug in ("toc", "preface") else generate_slug(corrected_title)
+            # 3. Derive clean canonical slug and filename
+            if idx > 0:
+                clean_t = corrected_title.lower()
+                ch_sub = re.match(r"^chapter\s+\d+[:\s]+(.*)$", clean_t)
+                rest = ch_sub.group(1) if ch_sub else clean_t
+                rest_slug = generate_slug(rest)
+                new_slug = f"chapter_{idx}_{rest_slug}" if rest_slug else f"chapter_{idx}"
+            else:
+                new_slug = raw_slug if raw_slug in ("toc", "preface") else generate_slug(corrected_title)
 
-        target_file_slug = f"{idx:02d}_{new_slug}"
-        out_json_name = f"{target_file_slug}.json"
+            target_file_slug = f"{idx:02d}_{new_slug}"
+            out_json_name = f"{target_file_slug}.json"
 
-        # Format canonical publication-grade markdown filename matching {idx:02d} - {Title}.md
-        clean_title_name = re.sub(r'[:/\\|]', ' - ', corrected_title)
-        clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name)
-        clean_title_name = re.sub(r'\s+', ' ', clean_title_name).strip(' -.')
-        target_md_name = f"{idx:02d} - {clean_title_name}.md" if clean_title_name else f"{target_file_slug}.md"
+            # Format canonical publication-grade markdown filename matching {idx:02d} - {Title}.md
+            clean_title_name = re.sub(r'[:/\\|]', ' - ', corrected_title)
+            clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name)
+            clean_title_name = re.sub(r'\s+', ' ', clean_title_name).strip(' -.')
+            target_md_name = f"{idx:02d} - {clean_title_name}.md" if clean_title_name else f"{target_file_slug}.md"
 
-        # Prevent duplicate target filenames across partitions in the manifest
-        existing_targets = [e.get("target_md_file") for e in updated_manifest]
-        if target_md_name in existing_targets:
-            target_md_name = f"{idx:02d} - {new_slug.replace('_', ' ').title()}.md"
+            # Prevent duplicate target filenames across partitions in the manifest
+            existing_targets = [e.get("target_md_file") for e in updated_manifest]
+            if target_md_name in existing_targets:
+                target_md_name = f"{idx:02d} - {new_slug.replace('_', ' ').title()}.md"
 
-        # 4. Save proofread nodes to output_dir
-        out_json_path = output_dir / out_json_name
-        with open(out_json_path, "w", encoding="utf-8") as f:
-            json.dump(nodes, f, indent=2)
+            # 4. Save proofread nodes to output_dir
+            out_json_path = output_dir / out_json_name
+            with open(out_json_path, "w", encoding="utf-8") as f:
+                json.dump(nodes, f, indent=2)
 
-        updated_entry = {
-            "index": idx,
-            "slug": new_slug,
-            "title": corrected_title,
-            "json_file": f"10_proofread_stream/{out_json_name}",
-            "target_md_file": target_md_name,
-            "node_count": len(nodes),
-        }
-        updated_manifest.append(updated_entry)
-        print(f"    Proofread Partition {idx:02d}: {corrected_title} -> {out_json_name}")
+            updated_entry = {
+                "index": idx,
+                "slug": new_slug,
+                "title": corrected_title,
+                "json_file": f"10_proofread_stream/{out_json_name}",
+                "target_md_file": target_md_name,
+                "node_count": len(nodes),
+            }
+            updated_manifest.append(updated_entry)
+            print(f"    Proofread Partition {idx:02d}: {corrected_title} -> {out_json_name}")
 
-    # Write updated manifest back to workspace
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(updated_manifest, f, indent=2)
+        # Write updated manifest back to workspace
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(updated_manifest, f, indent=2)
 
-    # Clean empty assets directory if present
-    if out_assets.exists() and not any(out_assets.iterdir()):
-        try:
-            out_assets.rmdir()
-        except Exception:
-            pass
+        # Clean empty assets directory if present
+        if out_assets.exists() and not any(out_assets.iterdir()):
+            try:
+                out_assets.rmdir()
+            except Exception:
+                pass
 
-    print(f"[+] Stage 10 complete. Proofread streams and manifest written to {output_dir}")
+        print(f"[+] Stage 10 complete. Proofread streams and manifest written to {output_dir}")
 
 
 def main():
@@ -314,7 +294,7 @@ def main():
         raise FileNotFoundError(f"Stage 10: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.load(f, Loader=UniqueLoader)
     if not config or not isinstance(config, dict):
         raise ValueError(f"Stage 10: Config file is empty or invalid: {config_path}")
 

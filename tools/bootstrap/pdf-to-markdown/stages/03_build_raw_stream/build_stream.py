@@ -12,6 +12,9 @@ import sys
 from pathlib import Path
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from conversion.config import UniqueLoader
+
 CURRENT_DIR = Path(__file__).resolve().parent
 if str(CURRENT_DIR) not in sys.path:
     sys.path.insert(0, str(CURRENT_DIR))
@@ -91,7 +94,7 @@ def main():
         raise FileNotFoundError(f"Stage 03: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.load(f, Loader=UniqueLoader)
     if not config or not isinstance(config, dict):
         raise ValueError(f"Stage 03: Config file is empty or invalid: {config_path}")
 

@@ -18,6 +18,9 @@ import sys
 from pathlib import Path
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from conversion.config import UniqueLoader
+
 
 TOC_START_MARKER = "<!-- TOC34534 -->"
 TOC_END_MARKER = "<!-- /TOC34534 -->"
@@ -382,17 +385,11 @@ def main():
         raise FileNotFoundError(f"Stage 14: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.load(f, Loader=UniqueLoader)
     if not config or not isinstance(config, dict):
         raise ValueError(f"Stage 14: Config file is empty or invalid: {config_path}")
 
-    input_candidates = [
-        Path(args.input_dir) if args.input_dir else None,
-        workspace_dir / "13_refine_first_chapter_name",
-        workspace_dir / "12_generate_properties",
-        workspace_dir / "11_emit_markdown",
-        Path("output_markdown")
-    ]
+    input_candidates = [Path(args.input_dir) if args.input_dir else None, workspace_dir / "13_refine_first_chapter_name"]
     input_dir = next((p for p in input_candidates if p and p.exists() and list(p.glob("*.md"))), None)
     if not input_dir:
         raise FileNotFoundError("No input markdown files found for Stage 14")

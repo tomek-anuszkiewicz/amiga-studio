@@ -1,7 +1,7 @@
 # Stage 12: Generate Obsidian Properties
 
 ## Objective
-Enriches raw Markdown chapter files emitted from Stage 11 with publication-grade Obsidian YAML frontmatter properties using Gemini LLM:
+Enriches raw Markdown chapter files emitted from Stage 11 with publication-grade Obsidian YAML frontmatter properties using Codex LLM:
 1. Discovers emitted chapter files in `<workspace>/11_emit_markdown`.
 2. Analyzes the opening chapter / front matter to infer the canonical **`book`** title (e.g. `"M68000 Family Programmer's Reference Manual"`, `"Amiga Hardware Reference Manual"`).
 3. Evaluates each chapter's content and structure to generate:

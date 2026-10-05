@@ -17,22 +17,20 @@ import sys
 from pathlib import Path
 import yaml
 
-# Import GeminiClient from skill root
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from conversion.config import UniqueLoader
+
+# Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
-try:
-    from llm_client import GeminiClient
-except ImportError:
-    GeminiClient = None
+from conversion import CodexClient
+from conversion import pdf_schemas
 
 
 def process_tables(workspace_dir: Path, config: dict):
-    input_candidates = [
-        workspace_dir / "06_detect_continuations",
-        workspace_dir / "05_chapter_partition",
-    ]
+    input_candidates = [workspace_dir / "06_detect_continuations"]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
         raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
@@ -51,13 +49,7 @@ def process_tables(workspace_dir: Path, config: dict):
         except Exception:
             pass
 
-    asset_candidates = [
-        workspace_dir / "06_detect_continuations" / "assets",
-        workspace_dir / "05_chapter_partition" / "assets",
-        workspace_dir / "04_stream_reduction" / "assets",
-        workspace_dir / "03_build_raw_stream" / "assets",
-        workspace_dir / "assets",
-    ]
+    asset_candidates = [workspace_dir / "06_detect_continuations" / "assets"]
     src_assets = next((p for p in asset_candidates if p.exists()), None)
     if src_assets:
         for f in src_assets.glob("*"):
@@ -69,113 +61,113 @@ def process_tables(workspace_dir: Path, config: dict):
         prompt_path = Path(__file__).resolve().parent / "prompt_markdown_table.md"
     base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
 
-    gemini = GeminiClient(config)
+    with CodexClient(config, stage="07_transform_tables", images=True) as codex:
 
-    from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import ThreadPoolExecutor
 
-    concurrency = int(config.get("llm", {}).get("concurrency", 8))
-    print(f"[*] Table Worker LLM active ({gemini.default_model}). Transforming tables (concurrency={concurrency})...")
+        concurrency = int(config.get("llm", {}).get("concurrency", 1))
+        print(f"[*] Table Worker LLM active ({codex.selected.model}). Transforming tables (concurrency={concurrency})...")
 
-    chapter_files = sorted(list(input_dir.glob("*.json")))
-    transformed_count = 0
+        chapter_files = sorted(list(input_dir.glob("*.json")))
+        transformed_count = 0
 
-    chapters = {}
-    all_tasks = []
+        chapters = {}
+        all_tasks = []
 
-    for c_file in chapter_files:
-        with open(c_file, "r", encoding="utf-8") as f:
-            nodes = json.load(f)
-        chapters[c_file] = nodes
+        for c_file in chapter_files:
+            with open(c_file, "r", encoding="utf-8") as f:
+                nodes = json.load(f)
+            chapters[c_file] = nodes
 
-        for idx, node in enumerate(nodes):
-            if node.get("type") != "table":
-                continue
-            if node.get("continuation_status") == "continuation":
-                node["rendered_markdown"] = ""
-                continue
+            for idx, node in enumerate(nodes):
+                if node.get("type") != "table":
+                    continue
+                if node.get("continuation_status") == "continuation":
+                    node["rendered_markdown"] = ""
+                    continue
 
-            raw_text = node.get("raw_text", "")
-            image_paths = []
-            if node.get("continuation_status") == "head" and "merged_nodes" in node:
-                child_texts = []
-                if node.get("png_path"):
-                    p = workspace_dir / node["png_path"]
-                    if p.exists():
-                        image_paths.append(p)
-                for other in nodes:
-                    if other.get("node_id") in node["merged_nodes"] and other.get("node_id") != node["node_id"]:
-                        if other.get("type") == "table":
-                            child_texts.append(other.get("raw_text", ""))
-                            if other.get("png_path"):
-                                p = workspace_dir / other["png_path"]
-                                if p.exists():
-                                    image_paths.append(p)
-                if child_texts:
-                    raw_text = raw_text + "\n" + "\n".join(child_texts)
+                raw_text = node.get("raw_text", "")
+                image_paths = []
+                if node.get("continuation_status") == "head" and "merged_nodes" in node:
+                    child_texts = []
+                    if node.get("png_path"):
+                        p = workspace_dir / node["png_path"]
+                        if p.exists():
+                            image_paths.append(p)
+                    for other in nodes:
+                        if other.get("node_id") in node["merged_nodes"] and other.get("node_id") != node["node_id"]:
+                            if other.get("type") == "table":
+                                child_texts.append(other.get("raw_text", ""))
+                                if other.get("png_path"):
+                                    p = workspace_dir / other["png_path"]
+                                    if p.exists():
+                                        image_paths.append(p)
+                    if child_texts:
+                        raw_text = raw_text + "\n" + "\n".join(child_texts)
+                else:
+                    png_rel = node.get("png_path")
+                    if png_rel:
+                        p = workspace_dir / png_rel
+                        if p.exists():
+                            image_paths.append(p)
+
+                png_arg = image_paths if len(image_paths) > 1 else (image_paths[0] if image_paths else None)
+                all_tasks.append((c_file, idx, raw_text, png_arg))
+
+        def _render_table_task(task):
+            c_file, idx, raw_text, png_arg = task
+            extra_hint = ""
+            if isinstance(png_arg, (list, tuple)) and len(png_arg) > 1:
+                extra_hint = f"\n\nNote: This table spans {len(png_arg)} consecutive pages. Merge all rows from all pages into a SINGLE unified continuous table. Drop redundant repeated header rows between pages."
+            full_prompt = f"{base_prompt}{extra_hint}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
+            if png_arg:
+                rendered = codex.generate_vision(full_prompt, image_path=png_arg)
             else:
-                png_rel = node.get("png_path")
-                if png_rel:
-                    p = workspace_dir / png_rel
-                    if p.exists():
-                        image_paths.append(p)
+                rendered = codex.generate_text(full_prompt)
+            return c_file, idx, rendered
 
-            png_arg = image_paths if len(image_paths) > 1 else (image_paths[0] if image_paths else None)
-            all_tasks.append((c_file, idx, raw_text, png_arg))
+        if all_tasks:
+            print(f"[*] Transforming {len(all_tasks)} tables across {len(chapters)} chapters (concurrency={concurrency})...")
+            with ThreadPoolExecutor(max_workers=min(len(all_tasks), concurrency)) as executor:
+                results = list(executor.map(_render_table_task, all_tasks))
 
-    def _render_table_task(task):
-        c_file, idx, raw_text, png_arg = task
-        extra_hint = ""
-        if isinstance(png_arg, (list, tuple)) and len(png_arg) > 1:
-            extra_hint = f"\n\nNote: This table spans {len(png_arg)} consecutive pages. Merge all rows from all pages into a SINGLE unified continuous table. Drop redundant repeated header rows between pages."
-        full_prompt = f"{base_prompt}{extra_hint}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
-        if png_arg:
-            rendered = gemini.generate_vision(full_prompt, image_path=png_arg, stage="07_transform_tables")
-        else:
-            rendered = gemini.generate_text(full_prompt, stage="07_transform_tables")
-        return c_file, idx, rendered
-
-    if all_tasks:
-        print(f"[*] Transforming {len(all_tasks)} tables across {len(chapters)} chapters (concurrency={concurrency})...")
-        with ThreadPoolExecutor(max_workers=min(len(all_tasks), concurrency)) as executor:
-            results = list(executor.map(_render_table_task, all_tasks))
-
-        for c_file, idx, rendered in results:
-            node = chapters[c_file][idx]
-            if rendered:
-                node["rendered_markdown"] = rendered.strip() + "\n"
-                node_id = node.get("node_id")
-                if node_id:
-                    for asset_file in out_assets_dir.glob(f"asset_{node_id}.*"):
-                        try:
-                            asset_file.unlink()
-                        except Exception:
-                            pass
-                if "merged_nodes" in node:
-                    for m_id in node["merged_nodes"]:
-                        for asset_file in out_assets_dir.glob(f"asset_{m_id}.*"):
+            for c_file, idx, rendered in results:
+                node = chapters[c_file][idx]
+                if rendered:
+                    node["rendered_markdown"] = rendered.strip() + "\n"
+                    node_id = node.get("node_id")
+                    if node_id:
+                        for asset_file in out_assets_dir.glob(f"asset_{node_id}.*"):
                             try:
                                 asset_file.unlink()
                             except Exception:
                                 pass
-                node["png_path"] = None
-                node["svg_path"] = None
-                node["raw_text_path"] = None
-            else:
-                asset_ref = node.get("svg_path") or node.get("png_path") or ""
-                node["rendered_markdown"] = f"![Table]({asset_ref})\n"
-            transformed_count += 1
+                    if "merged_nodes" in node:
+                        for m_id in node["merged_nodes"]:
+                            for asset_file in out_assets_dir.glob(f"asset_{m_id}.*"):
+                                try:
+                                    asset_file.unlink()
+                                except Exception:
+                                    pass
+                    node["png_path"] = None
+                    node["svg_path"] = None
+                    node["raw_text_path"] = None
+                else:
+                    asset_ref = node.get("svg_path") or node.get("png_path") or ""
+                    node["rendered_markdown"] = f"![Table]({asset_ref})\n"
+                transformed_count += 1
 
-    for c_file, nodes in chapters.items():
-        purged_nodes = [
-            n for n in nodes
-            if n.get("continuation_status") != "absorbed_caption"
-            and n.get("type") != "caption_continuation"
-        ]
-        target_file = out_dir / c_file.name
-        with open(target_file, "w", encoding="utf-8") as f:
-            json.dump(purged_nodes, f, indent=2)
+        for c_file, nodes in chapters.items():
+            purged_nodes = [
+                n for n in nodes
+                if n.get("continuation_status") != "absorbed_caption"
+                and n.get("type") != "caption_continuation"
+            ]
+            target_file = out_dir / c_file.name
+            with open(target_file, "w", encoding="utf-8") as f:
+                json.dump(purged_nodes, f, indent=2)
 
-    print(f"[+] Stage 07 complete. Transformed {transformed_count} table blocks into {out_dir}.")
+        print(f"[+] Stage 07 complete. Transformed {transformed_count} table blocks into {out_dir}.")
 
 
 def prepare_table_tasks(workspace_dir: Path) -> int:
@@ -183,10 +175,7 @@ def prepare_table_tasks(workspace_dir: Path) -> int:
     Extracts table nodes into workspace/tasks/tables/{node_id}.json and {node_id}.md
     for the Agent to inspect and transform.
     """
-    input_candidates = [
-        workspace_dir / "06_detect_continuations",
-        workspace_dir / "05_chapter_partition",
-    ]
+    input_candidates = [workspace_dir / "06_detect_continuations"]
     chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not chapters_dir:
         raise FileNotFoundError(f"Missing input chapters directory: {chapters_dir}")
@@ -259,10 +248,7 @@ def apply_table_tasks(workspace_dir: Path) -> int:
         print(f"[!] No table tasks directory found at {tasks_dir}")
         return 0
 
-    input_candidates = [
-        workspace_dir / "06_detect_continuations",
-        workspace_dir / "05_chapter_partition",
-    ]
+    input_candidates = [workspace_dir / "06_detect_continuations"]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
         raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
@@ -273,13 +259,7 @@ def apply_table_tasks(workspace_dir: Path) -> int:
     out_assets_dir.mkdir(parents=True, exist_ok=True)
 
     # Synchronize upstream assets
-    asset_candidates = [
-        workspace_dir / "06_detect_continuations" / "assets",
-        workspace_dir / "05_chapter_partition" / "assets",
-        workspace_dir / "04_stream_reduction" / "assets",
-        workspace_dir / "03_build_raw_stream" / "assets",
-        workspace_dir / "assets",
-    ]
+    asset_candidates = [workspace_dir / "06_detect_continuations" / "assets"]
     src_assets = next((p for p in asset_candidates if p.exists()), None)
     if src_assets:
         for f in src_assets.glob("*"):
@@ -352,7 +332,7 @@ def main():
         raise FileNotFoundError(f"Stage 07: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.load(f, Loader=UniqueLoader)
     if not config or not isinstance(config, dict):
         raise ValueError(f"Stage 07: Config file is empty or invalid: {config_path}")
 

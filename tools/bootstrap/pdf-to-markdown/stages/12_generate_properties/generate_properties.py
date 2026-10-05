@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 stages/12_generate_properties/generate_properties.py:
-Generates publication-grade Obsidian YAML frontmatter properties using Gemini LLM:
+Generates publication-grade Obsidian YAML frontmatter properties using Codex LLM:
 1. Discovers emitted Markdown chapter files from Stage 11.
 2. Identifies the opening section (front matter / Table of Contents / title page) to infer canonical book title.
 3. For each chapter, prompts LLM with chapter markdown and first chapter context to generate:
@@ -23,12 +23,16 @@ import shutil
 import sys
 import yaml
 
-# Import GeminiClient from skill root
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from conversion.config import UniqueLoader
+
+# Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
-from llm_client import GeminiClient
+from conversion import CodexClient
+from conversion import pdf_schemas
 
 
 def sanitize_tag(raw_tag: str) -> str:
@@ -43,10 +47,10 @@ def generate_chapter_properties(
     file_path: Path,
     content: str,
     first_file_excerpt: str,
-    gemini: GeminiClient,
+    codex: CodexClient,
     base_prompt: str,
 ) -> dict:
-    """Generates Obsidian properties for a single chapter using Gemini."""
+    """Generates Obsidian properties for a single chapter using Codex."""
     chapter_excerpt = content[:4000]
 
     full_prompt = (
@@ -58,9 +62,9 @@ def generate_chapter_properties(
         f"```markdown\n{chapter_excerpt}\n```\n"
     )
 
-    data = gemini.generate_json(full_prompt, stage="12_generate_properties")
+    data = codex.generate_json(full_prompt, schema=pdf_schemas.PROPERTIES)
     if not isinstance(data, dict):
-        raise ValueError(f"Gemini did not return a valid JSON dictionary for {file_path.name}: {data}")
+        raise ValueError(f"Codex did not return a valid JSON dictionary for {file_path.name}: {data}")
 
     title = str(data.get("title", "")).strip().strip('"')
     book = str(data.get("book", "")).strip().strip('"')
@@ -144,53 +148,53 @@ def process_generate_properties(
     with open(first_file, "r", encoding="utf-8") as f:
         first_content = f.read()
 
-    # Initialize Gemini client
-    gemini = GeminiClient(config)
+    # Initialize Codex client
+    with CodexClient(config, stage="12_generate_properties", images=False) as codex:
 
-    prompt_path = Path(__file__).parent / "prompt.md"
-    base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
+        prompt_path = Path(__file__).parent / "prompt.md"
+        base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
 
-    print(f"[*] Generating Obsidian properties for {len(md_files)} file(s) from {input_dir}...")
-    print(f"    First chapter reference: {first_file.name}")
+        print(f"[*] Generating Obsidian properties for {len(md_files)} file(s) from {input_dir}...")
+        print(f"    First chapter reference: {first_file.name}")
 
-    def process_file(md_path: Path):
-        with open(md_path, "r", encoding="utf-8") as f:
-            content = f.read()
+        def process_file(md_path: Path):
+            with open(md_path, "r", encoding="utf-8") as f:
+                content = f.read()
 
-        # Strip any existing frontmatter before regenerating
-        cleaned_content = content
-        if cleaned_content.startswith("---"):
-            parts = cleaned_content.split("---", 2)
-            if len(parts) >= 3:
-                cleaned_content = parts[2].lstrip("\r\n")
+            # Strip any existing frontmatter before regenerating
+            cleaned_content = content
+            if cleaned_content.startswith("---"):
+                parts = cleaned_content.split("---", 2)
+                if len(parts) >= 3:
+                    cleaned_content = parts[2].lstrip("\r\n")
 
-        props = generate_chapter_properties(
-            file_path=md_path,
-            content=cleaned_content,
-            first_file_excerpt=first_content,
-            gemini=gemini,
-            base_prompt=base_prompt,
-        )
+            props = generate_chapter_properties(
+                file_path=md_path,
+                content=cleaned_content,
+                first_file_excerpt=first_content,
+                codex=codex,
+                base_prompt=base_prompt,
+            )
 
-        frontmatter_block = serialize_obsidian_frontmatter(props)
-        final_text = f"{frontmatter_block}\n{cleaned_content}".rstrip() + "\n"
+            frontmatter_block = serialize_obsidian_frontmatter(props)
+            final_text = f"{frontmatter_block}\n{cleaned_content}".rstrip() + "\n"
 
-        target_path = output_dir / md_path.name
-        with open(target_path, "w", encoding="utf-8") as f:
-            f.write(final_text)
+            target_path = output_dir / md_path.name
+            with open(target_path, "w", encoding="utf-8") as f:
+                f.write(final_text)
 
-        print(f"    [+] {md_path.name} -> title: \"{props['title']}\", chapter: \"{props['chapter']}\"")
-        return props
+            print(f"    [+] {md_path.name} -> title: \"{props['title']}\", chapter: \"{props['chapter']}\"")
+            return props
 
-    concurrency = config.get("llm", {}).get("concurrency", 4)
-    if concurrency > 1 and len(md_files) > 1:
-        with ThreadPoolExecutor(max_workers=concurrency) as executor:
-            list(executor.map(process_file, md_files))
-    else:
-        for md_path in md_files:
-            process_file(md_path)
+        concurrency = config.get("llm", {}).get("concurrency", 4)
+        if concurrency > 1 and len(md_files) > 1:
+            with ThreadPoolExecutor(max_workers=concurrency) as executor:
+                list(executor.map(process_file, md_files))
+        else:
+            for md_path in md_files:
+                process_file(md_path)
 
-    print(f"[+] Stage 12 complete. Processed {len(md_files)} file(s) with Obsidian properties into {output_dir}")
+        print(f"[+] Stage 12 complete. Processed {len(md_files)} file(s) with Obsidian properties into {output_dir}")
 
 
 def main():
@@ -207,16 +211,11 @@ def main():
         raise FileNotFoundError(f"Stage 12: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.load(f, Loader=UniqueLoader)
     if not config or not isinstance(config, dict):
         raise ValueError(f"Stage 12: Config file is empty or invalid: {config_path}")
 
-    input_candidates = [
-        Path(args.input_dir) if args.input_dir else None,
-        workspace_dir / "11_emit_markdown",
-        workspace_dir / "10_proofread_stream",
-        Path("output_markdown")
-    ]
+    input_candidates = [Path(args.input_dir) if args.input_dir else None, workspace_dir / "11_emit_markdown"]
     input_dir = next((p for p in input_candidates if p and p.exists() and list(p.glob("*.md"))), None)
     if not input_dir:
         raise FileNotFoundError(f"Stage 12: No input markdown files found in candidates under {workspace_dir}")

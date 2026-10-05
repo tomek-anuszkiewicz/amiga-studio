@@ -2,7 +2,7 @@
 
 ## Objective
 Proofreads chapter streams and manifest metadata prior to Markdown serialization:
-1. Proofreads and corrects chapter/section titles in `workspace/chapters_manifest.json` using Gemini LLM (fixing OCR typos, accidental split words, and irregular spacing).
+1. Proofreads and corrects chapter/section titles in `workspace/chapters_manifest.json` using Codex LLM (fixing OCR typos, accidental split words, and irregular spacing).
 2. Harmonizes chapter titles with the primary heading nodes in the chapter streams.
 3. Derives clean, canonical slugs and target Markdown filenames directly in `chapters_manifest.json`.
 4. Performs an editorial proofreading pass on stream node texts to eliminate OCR character substitutions and spacing anomalies.

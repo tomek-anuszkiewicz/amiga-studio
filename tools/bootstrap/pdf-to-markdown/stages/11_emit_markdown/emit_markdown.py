@@ -17,16 +17,12 @@ import sys
 from pathlib import Path
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from conversion.config import UniqueLoader
+
 
 def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
-    input_candidates = [
-        workspace_dir / "10_proofread_stream",
-        workspace_dir / "09_transform_prose",
-        workspace_dir / "08_transform_graphics",
-        workspace_dir / "07_transform_tables",
-        workspace_dir / "06_detect_continuations",
-        workspace_dir / "05_chapter_partition",
-    ]
+    input_candidates = [workspace_dir / "10_proofread_stream"]
     chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not chapters_dir:
         raise FileNotFoundError(f"Missing formatted chapters in {workspace_dir}")
@@ -67,16 +63,7 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
                 pass
 
     # 1. Synchronize assets from latest stage (only active, referenced assets)
-    asset_candidates = [
-        workspace_dir / "10_proofread_stream" / "assets",
-        workspace_dir / "08_transform_graphics" / "assets",
-        workspace_dir / "07_transform_tables" / "assets",
-        workspace_dir / "06_detect_continuations" / "assets",
-        workspace_dir / "05_chapter_partition" / "assets",
-        workspace_dir / "04_stream_reduction" / "assets",
-        workspace_dir / "03_build_raw_stream" / "assets",
-        workspace_dir / "assets",
-    ]
+    asset_candidates = [workspace_dir / "10_proofread_stream" / "assets"]
     src_assets_dir = next((p for p in asset_candidates if p.exists()), None)
     if src_assets_dir and src_assets_dir.exists():
         for asset_file in src_assets_dir.glob("*"):
@@ -167,7 +154,7 @@ def main():
         raise FileNotFoundError(f"Stage 11: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.load(f, Loader=UniqueLoader)
     if not config or not isinstance(config, dict):
         raise ValueError(f"Stage 11: Config file is empty or invalid: {config_path}")
 

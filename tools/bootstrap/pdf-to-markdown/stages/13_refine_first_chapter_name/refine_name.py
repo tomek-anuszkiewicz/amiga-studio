@@ -2,7 +2,7 @@
 """
 stages/13_refine_first_chapter_name/refine_name.py:
 Inspects the content and preliminary name of the first chapter in <output_dir>.
-Queries Gemini to determine its canonical title and slug (typically Table of Contents / Front Matter).
+Queries Codex to determine its canonical title and slug (typically Table of Contents / Front Matter).
 Renames the file, updates its Line 1 YAML title, and synchronizes any cross-file wikilinks.
 """
 
@@ -15,12 +15,16 @@ import shutil
 import sys
 import yaml
 
-# Import GeminiClient from skill root
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from conversion.config import UniqueLoader
+
+# Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
-from llm_client import GeminiClient
+from conversion import CodexClient
+from conversion import pdf_schemas
 
 
 def update_frontmatter_title(content: str, new_title: str) -> str:
@@ -45,11 +49,7 @@ def process_first_chapter_refinement(
     input_dir: Path = None,
 ):
     if not input_dir:
-        candidates = [
-            workspace_dir / "12_generate_properties",
-            workspace_dir / "11_emit_markdown",
-            output_dir
-        ]
+        candidates = [workspace_dir / "12_generate_properties"]
         input_dir = next((p for p in candidates if p.exists() and list(p.glob("*.md"))), output_dir)
 
     if not input_dir.exists():
@@ -71,115 +71,115 @@ def process_first_chapter_refinement(
     if not config_path or not config_path.is_file():
         raise FileNotFoundError(f"Stage 13: Config file not found: {config_path}")
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.load(f, Loader=UniqueLoader)
     if not config or not isinstance(config, dict):
         raise ValueError(f"Stage 13: Config file is empty or invalid: {config_path}")
 
-    gemini = GeminiClient(config)
-    prompt_file = Path(__file__).parent / "prompt.md"
-    base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
-
-    full_prompt = (
-        f"{base_prompt}\n\n"
-        f"Preliminary File Name: {first_file.name}\n\n"
-        f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
-    )
-
-    parsed = gemini.generate_json(full_prompt, stage="13_refine_chapter")
-    if not isinstance(parsed, dict) or "title" not in parsed or "slug" not in parsed:
-        raise ValueError(f"Gemini did not return valid title and slug JSON for {first_file.name}: {parsed}")
-
-    new_title = str(parsed["title"]).strip().strip('"')
-    new_slug = str(parsed["slug"]).strip().strip('"')
-
-    clean_title_name = re.sub(r'[:/\\|]', ' - ', new_title)
-    clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name).strip(' -.')
-    new_filename = f"{prefix} - {clean_title_name}.md" if clean_title_name else f"{prefix}_{new_slug}.md"
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    out_assets_dir = output_dir / "assets"
-    out_assets_dir.mkdir(parents=True, exist_ok=True)
-
-    # If input and output differ, copy files to output without mutating input
-    if input_dir.resolve() != output_dir.resolve():
-        src_assets = input_dir / "assets"
-        if src_assets.exists():
-            for f in src_assets.glob("*"):
-                if f.is_file():
-                    shutil.copy2(f, out_assets_dir / f.name)
-        if out_assets_dir.exists() and not any(out_assets_dir.iterdir()):
-            try:
-                out_assets_dir.rmdir()
-            except Exception:
-                pass
-        for old_f in output_dir.glob("*.md"):
-            old_f.unlink()
-        for f in md_files:
-            shutil.copy2(f, output_dir / f.name)
-
-    # Target opening files (e.g. prefix 00: Front Matter, Table of Contents)
-    all_out_md = sorted(list(output_dir.glob("*.md")))
-    opening_targets = [f for f in all_out_md if re.match(r"^00\b", f.stem)]
-    if not opening_targets and all_out_md:
-        opening_targets = [all_out_md[0]]
-
-    for target_file in opening_targets:
-        old_stem = target_file.stem
-        match_prefix = re.match(r"^(\d+)", old_stem)
-        prefix = match_prefix.group(1) if match_prefix else "00"
-
-        with open(target_file, "r", encoding="utf-8") as f:
-            content = f.read()
+    with CodexClient(config, stage="13_refine_first_chapter_name", images=False) as codex:
+        prompt_file = Path(__file__).parent / "prompt.md"
+        base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
 
         full_prompt = (
             f"{base_prompt}\n\n"
-            f"Preliminary File Name: {target_file.name}\n\n"
+            f"Preliminary File Name: {first_file.name}\n\n"
             f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
         )
 
-        parsed = gemini.generate_json(full_prompt, stage="13_refine_chapter")
+        parsed = codex.generate_json(full_prompt, schema=pdf_schemas.TITLE)
         if not isinstance(parsed, dict) or "title" not in parsed or "slug" not in parsed:
-            print(f"[!] Warning: Gemini did not return valid title and slug JSON for {target_file.name}: {parsed}")
-            continue
+            raise ValueError(f"Codex did not return valid title and slug JSON for {first_file.name}: {parsed}")
 
         new_title = str(parsed["title"]).strip().strip('"')
         new_slug = str(parsed["slug"]).strip().strip('"')
 
         clean_title_name = re.sub(r'[:/\\|]', ' - ', new_title)
-        clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name)
-        clean_title_name = re.sub(r'\s+', ' ', clean_title_name).strip(' -.')
+        clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name).strip(' -.')
         new_filename = f"{prefix} - {clean_title_name}.md" if clean_title_name else f"{prefix}_{new_slug}.md"
-        new_path = output_dir / new_filename
 
-        print(f"[*] Analyzing opening chapter: {target_file.name}")
-        print(f"    Resolved canonical title: \"{new_title}\"")
-        print(f"    Resolved canonical slug : \"{new_slug}\" -> {new_filename}")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        out_assets_dir = output_dir / "assets"
+        out_assets_dir.mkdir(parents=True, exist_ok=True)
 
-        # Update YAML frontmatter
-        updated_content = update_frontmatter_title(content, new_title)
+        # If input and output differ, copy files to output without mutating input
+        if input_dir.resolve() != output_dir.resolve():
+            src_assets = input_dir / "assets"
+            if src_assets.exists():
+                for f in src_assets.glob("*"):
+                    if f.is_file():
+                        shutil.copy2(f, out_assets_dir / f.name)
+            if out_assets_dir.exists() and not any(out_assets_dir.iterdir()):
+                try:
+                    out_assets_dir.rmdir()
+                except Exception:
+                    pass
+            for old_f in output_dir.glob("*.md"):
+                old_f.unlink()
+            for f in md_files:
+                shutil.copy2(f, output_dir / f.name)
 
-        if new_path != target_file:
-            with open(new_path, "w", encoding="utf-8") as f:
-                f.write(updated_content)
-            if target_file.exists():
-                target_file.unlink()
-            print(f"[+] Saved canonical file: {new_filename}")
+        # Target opening files (e.g. prefix 00: Front Matter, Table of Contents)
+        all_out_md = sorted(list(output_dir.glob("*.md")))
+        opening_targets = [f for f in all_out_md if re.match(r"^00\b", f.stem)]
+        if not opening_targets and all_out_md:
+            opening_targets = [all_out_md[0]]
 
-            # Update cross-file wikilinks in output_dir
-            new_stem = new_path.stem
-            for other_file in output_dir.glob("*.md"):
-                with open(other_file, "r", encoding="utf-8") as f:
-                    txt = f.read()
-                if f"[[{old_stem}" in txt:
-                    updated_txt = txt.replace(f"[[{old_stem}", f"[[{new_stem}")
-                    with open(other_file, "w", encoding="utf-8") as f:
-                        f.write(updated_txt)
-                    print(f"    Updated wikilinks in {other_file.name} to point to {new_stem}")
-        else:
-            with open(target_file, "w", encoding="utf-8") as f:
-                f.write(updated_content)
+        for target_file in opening_targets:
+            old_stem = target_file.stem
+            match_prefix = re.match(r"^(\d+)", old_stem)
+            prefix = match_prefix.group(1) if match_prefix else "00"
 
-    print(f"[+] Stage 13 complete. Output vault finalized in {output_dir}.")
+            with open(target_file, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            full_prompt = (
+                f"{base_prompt}\n\n"
+                f"Preliminary File Name: {target_file.name}\n\n"
+                f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
+            )
+
+            parsed = codex.generate_json(full_prompt, schema=pdf_schemas.TITLE)
+            if not isinstance(parsed, dict) or "title" not in parsed or "slug" not in parsed:
+                print(f"[!] Warning: Codex did not return valid title and slug JSON for {target_file.name}: {parsed}")
+                continue
+
+            new_title = str(parsed["title"]).strip().strip('"')
+            new_slug = str(parsed["slug"]).strip().strip('"')
+
+            clean_title_name = re.sub(r'[:/\\|]', ' - ', new_title)
+            clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name)
+            clean_title_name = re.sub(r'\s+', ' ', clean_title_name).strip(' -.')
+            new_filename = f"{prefix} - {clean_title_name}.md" if clean_title_name else f"{prefix}_{new_slug}.md"
+            new_path = output_dir / new_filename
+
+            print(f"[*] Analyzing opening chapter: {target_file.name}")
+            print(f"    Resolved canonical title: \"{new_title}\"")
+            print(f"    Resolved canonical slug : \"{new_slug}\" -> {new_filename}")
+
+            # Update YAML frontmatter
+            updated_content = update_frontmatter_title(content, new_title)
+
+            if new_path != target_file:
+                with open(new_path, "w", encoding="utf-8") as f:
+                    f.write(updated_content)
+                if target_file.exists():
+                    target_file.unlink()
+                print(f"[+] Saved canonical file: {new_filename}")
+
+                # Update cross-file wikilinks in output_dir
+                new_stem = new_path.stem
+                for other_file in output_dir.glob("*.md"):
+                    with open(other_file, "r", encoding="utf-8") as f:
+                        txt = f.read()
+                    if f"[[{old_stem}" in txt:
+                        updated_txt = txt.replace(f"[[{old_stem}", f"[[{new_stem}")
+                        with open(other_file, "w", encoding="utf-8") as f:
+                            f.write(updated_txt)
+                        print(f"    Updated wikilinks in {other_file.name} to point to {new_stem}")
+            else:
+                with open(target_file, "w", encoding="utf-8") as f:
+                    f.write(updated_content)
+
+        print(f"[+] Stage 13 complete. Output vault finalized in {output_dir}.")
 
 
 def main():

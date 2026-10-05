@@ -17,6 +17,9 @@ from pathlib import Path
 import pymupdf
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from conversion.config import UniqueLoader
+
 try:
     from .detect_and_ocr import detect_and_ocr_pages, parse_page_ranges
 except ImportError:
@@ -163,7 +166,7 @@ def main():
         raise FileNotFoundError(f"Stage 01: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+        cfg = yaml.load(f, Loader=UniqueLoader)
     if not cfg or not isinstance(cfg, dict):
         raise ValueError(f"Stage 01: Config file is empty or invalid: {config_path}")
 

@@ -6,25 +6,19 @@ render:
   padding_margin_ratio: 0.10  # 10% safety margin on raster fallback crops
 
 llm:
-  provider: "google-genai"     # google-genai (Gemini is the mandatory cognitive engine)
-  model_vision: "gemini-3.8-flash"
-  model_prose: "gemini-3.8-flash"
-  model_table: "gemini-3.8-flash"
-  model_fast: "gemini-3.8-flash"
-  default_thinking_budget: 0   # 0 = disabled (instant response, ~200-500ms)
-  timeout_seconds: 60
-  concurrency: 8
-
-  # Per-stage thinking budget configuration (in tokens; 0 = disabled, positive int = allocated budget)
-  stages_thinking_budget:
-    01_preprocess: 512           # Fast OCR text detection, zero reasoning overhead
-    02_page_segmentation: 0    # Fast zone classification
-    07_transform_tables: 512   # Structural table layout reasoning
-    08_transform_graphics: 4096 # Deep spatial reasoning for ASCII art & column alignment
-    09_transform_prose: 0      # Fast markdown formatting
-    10_proofread_stream: 0     # Instant typo correction
-    12_generate_properties: 0  # Fast properties extraction & tagging
-    13_refine_chapter: 0       # Fast title extraction
+  timeout_seconds: 180
+  concurrency: 1
+  stages:
+    01_preprocess: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    02_page_segmentation: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    04_stream_reduction: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    06_detect_continuations: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    07_transform_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    08_transform_graphics: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    09_transform_prose: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    10_proofread_stream: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    12_generate_properties: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    13_refine_first_chapter_name: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
 
 markers:
   toc_start: "<!-- TOC34534 -->"

@@ -16,15 +16,16 @@ import sys
 from pathlib import Path
 import yaml
 
-# Import GeminiClient from skill root
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from conversion.config import UniqueLoader
+
+# Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
-try:
-    from llm_client import GeminiClient
-except ImportError:
-    GeminiClient = None
+from conversion import CodexClient
+from conversion import pdf_schemas
 
 
 def generate_default_sidecar(node_id: str, raw_text: str, page_num: int) -> str:
@@ -38,11 +39,7 @@ def generate_default_sidecar(node_id: str, raw_text: str, page_num: int) -> str:
 
 
 def process_graphics(workspace_dir: Path, config: dict):
-    input_candidates = [
-        workspace_dir / "07_transform_tables",
-        workspace_dir / "06_detect_continuations",
-        workspace_dir / "05_chapter_partition",
-    ]
+    input_candidates = [workspace_dir / "07_transform_tables"]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
         raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
@@ -60,13 +57,7 @@ def process_graphics(workspace_dir: Path, config: dict):
         except Exception:
             pass
 
-    asset_candidates = [
-        workspace_dir / "07_transform_tables" / "assets",
-        workspace_dir / "06_detect_continuations" / "assets",
-        workspace_dir / "05_chapter_partition" / "assets",
-        workspace_dir / "04_stream_reduction" / "assets",
-        workspace_dir / "03_build_raw_stream" / "assets",
-    ]
+    asset_candidates = [workspace_dir / "07_transform_tables" / "assets"]
     src_assets = next((p for p in asset_candidates if p.exists()), None)
     if src_assets:
         for f in src_assets.glob("*"):
@@ -74,159 +65,159 @@ def process_graphics(workspace_dir: Path, config: dict):
                 shutil.copy2(f, out_assets_dir / f.name)
     assets_dir = out_assets_dir
 
-    gemini = GeminiClient(config)
+    with CodexClient(config, stage="08_transform_graphics", images=True) as codex:
 
-    triage_prompt_path = Path(__file__).resolve().parent / "prompt_triage.md"
-    triage_prompt = triage_prompt_path.read_text(encoding="utf-8") if triage_prompt_path.exists() else ""
+        triage_prompt_path = Path(__file__).resolve().parent / "prompt_triage.md"
+        triage_prompt = triage_prompt_path.read_text(encoding="utf-8") if triage_prompt_path.exists() else ""
 
-    mermaid_prompt_path = Path(__file__).resolve().parent / "prompt_mermaid.md"
-    mermaid_prompt = mermaid_prompt_path.read_text(encoding="utf-8") if mermaid_prompt_path.exists() else ""
+        mermaid_prompt_path = Path(__file__).resolve().parent / "prompt_mermaid.md"
+        mermaid_prompt = mermaid_prompt_path.read_text(encoding="utf-8") if mermaid_prompt_path.exists() else ""
 
-    ascii_prompt_path = Path(__file__).resolve().parent / "prompt_ascii_art.md"
-    ascii_prompt = ascii_prompt_path.read_text(encoding="utf-8") if ascii_prompt_path.exists() else ""
+        ascii_prompt_path = Path(__file__).resolve().parent / "prompt_ascii_art.md"
+        ascii_prompt = ascii_prompt_path.read_text(encoding="utf-8") if ascii_prompt_path.exists() else ""
 
-    sidecar_prompt_path = Path(__file__).resolve().parent / "prompt_rag_sidecar.md"
-    sidecar_prompt = sidecar_prompt_path.read_text(encoding="utf-8") if sidecar_prompt_path.exists() else ""
+        sidecar_prompt_path = Path(__file__).resolve().parent / "prompt_rag_sidecar.md"
+        sidecar_prompt = sidecar_prompt_path.read_text(encoding="utf-8") if sidecar_prompt_path.exists() else ""
 
-    from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import ThreadPoolExecutor
 
-    concurrency = int(config.get("llm", {}).get("concurrency", 8))
-    print(f"[*] Graphics Worker LLM active ({gemini.vision_model}). Transforming graphics (concurrency={concurrency})...")
+        concurrency = int(config.get("llm", {}).get("concurrency", 1))
+        print(f"[*] Graphics Worker LLM active ({codex.selected.model}). Transforming graphics (concurrency={concurrency})...")
 
-    chapter_files = sorted(list(input_dir.glob("*.json")))
-    print(f"[*] Transforming graphics across {len(chapter_files)} chapter files...")
+        chapter_files = sorted(list(input_dir.glob("*.json")))
+        print(f"[*] Transforming graphics across {len(chapter_files)} chapter files...")
 
-    transformed_count = 0
-    sidecar_count = 0
+        transformed_count = 0
+        sidecar_count = 0
 
-    def _transform_graphic_task(task):
-        c_file, idx, node, has_dedicated_caption = task
-        node_id = node.get("node_id", "asset")
-        page_num = node.get("page", 1)
-        raw_text = node.get("raw_text", "")
-
-        svg_rel = node.get("svg_path")
-        png_rel = node.get("png_path")
-        asset_file = Path(svg_rel).name if svg_rel else (Path(png_rel).name if png_rel else f"asset_{node_id}.png")
-        png_path = workspace_dir / png_rel if png_rel else None
-
-        # First, classify with Gemini if this is a flowchart, ascii_art (register/bitfield), or circuit schematic
-        triage = gemini.generate_json(triage_prompt, image_path=png_path, stage="08_transform_graphics") if png_path and png_path.exists() and triage_prompt else {}
-        graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
-
-        # Check for genuine figure caption from raw_text or separate caption nodes
-        fig_match = re.search(r"(Figure\s+[A-Z0-9]+(?:[\-\.][A-Z0-9]+)?[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
-        genuine_caption = fig_match.group(1).strip() if fig_match else None
-        if not genuine_caption and raw_text.strip():
-            fig_lines = [l.strip() for l in raw_text.splitlines() if re.match(r"^Figure\s+[A-Z0-9]", l.strip(), re.IGNORECASE)]
-            if fig_lines:
-                genuine_caption = fig_lines[0]
-        if genuine_caption:
-            genuine_caption = re.sub(r"[\[\]|]", "", genuine_caption)
-
-        # Metadata title strictly for RAG sidecar (never injected as visible body text if absent from book)
-        node_meta_caption = node.get("metadata", {}).get("caption")
-        sidecar_title = genuine_caption or node_meta_caption or (triage.get("caption") if isinstance(triage, dict) else None) or f"Figure on page {page_num}"
-        sidecar_title = re.sub(r"[\[\]|]", "", sidecar_title)
-
-        if graphic_type == "mermaid" and png_path and png_path.exists() and mermaid_prompt:
-            mermaid_res = gemini.generate_vision(f"{mermaid_prompt}\n\nDiagram Labels:\n{raw_text}", png_path, stage="08_transform_graphics")
-            if mermaid_res:
-                return c_file, idx, {
-                    "rendered_markdown": mermaid_res.strip() + "\n\n",
-                    "prune_image": True,
-                    "sidecar_name": None,
-                    "sidecar_text": None,
-                }
-
-        if graphic_type == "ascii_art" and png_path and png_path.exists() and ascii_prompt:
-            caption_hint = (
-                "A dedicated caption node already exists in the document text, do not output any caption line."
-                if has_dedicated_caption else
-                (f"Include the genuine figure caption below the ASCII diagram: *{genuine_caption}*" if genuine_caption else "No caption line was printed in the book, do not output any caption.")
-            )
-            full_ascii_prompt = f"{ascii_prompt}\n\nCaption Guideline: {caption_hint}\n\nExtracted Labels:\n{raw_text}"
-            ascii_res = gemini.generate_vision(full_ascii_prompt, png_path, stage="08_transform_graphics")
-            if ascii_res:
-                return c_file, idx, {
-                    "rendered_markdown": ascii_res.strip() + "\n\n",
-                    "prune_image": True,
-                    "sidecar_name": None,
-                    "sidecar_text": None,
-                }
-
-        # Fallback to Obsidian image embed + RAG sidecar
-        if genuine_caption:
-            if has_dedicated_caption:
-                rendered_md = f"![[{asset_file}|{genuine_caption}]]\n\n"
-            else:
-                rendered_md = f"![[{asset_file}|{genuine_caption}]]\n\n*{genuine_caption}*\n\n"
-        else:
-            # No genuine caption in book: emit clean embed with zero artificial caption
-            rendered_md = f"![[{asset_file}]]\n\n"
-
-        # Generate technical engineering sidecar via Gemini Vision
-        sidecar_name = f"{asset_file}.txt"
-        sidecar_text = None
-        if png_path and png_path.exists() and sidecar_prompt:
-            sidecar_text = gemini.generate_vision(f"{sidecar_prompt}\n\nExtracted Labels:\n{raw_text}", png_path, stage="08_transform_graphics")
-
-        if not sidecar_text:
-            sidecar_text = (
-                f"Title: {sidecar_title}\n"
-                f"Page: {page_num}\n"
-                f"Labels:\n{raw_text}\n"
-            )
-
-        return c_file, idx, {
-            "rendered_markdown": rendered_md,
-            "prune_image": False,
-            "sidecar_name": sidecar_name,
-            "sidecar_text": sidecar_text,
-        }
-
-    chapters = {}
-    all_tasks = []
-
-    for c_file in chapter_files:
-        with open(c_file, "r", encoding="utf-8") as f:
-            nodes = json.load(f)
-        chapters[c_file] = nodes
-
-        for idx, node in enumerate(nodes):
-            if node.get("type") != "graphic":
-                continue
-            has_dedicated_caption = any(n.get("type") == "caption" and n.get("page") == node.get("page") for n in nodes)
-            all_tasks.append((c_file, idx, node, has_dedicated_caption))
-
-    if all_tasks:
-        print(f"[*] Transforming {len(all_tasks)} graphics across {len(chapters)} chapters (concurrency={concurrency})...")
-        with ThreadPoolExecutor(max_workers=min(len(all_tasks), concurrency)) as executor:
-            results = list(executor.map(_transform_graphic_task, all_tasks))
-
-        for c_file, idx, res in results:
-            node = chapters[c_file][idx]
+        def _transform_graphic_task(task):
+            c_file, idx, node, has_dedicated_caption = task
             node_id = node.get("node_id", "asset")
-            node["rendered_markdown"] = res["rendered_markdown"]
-            if res["prune_image"]:
-                for asset_f in out_assets_dir.glob(f"asset_{node_id}.*"):
-                    try:
-                        asset_f.unlink()
-                    except Exception:
-                        pass
-                node["png_path"] = None
-                node["svg_path"] = None
-                node["sidecar_path"] = None
+            page_num = node.get("page", 1)
+            raw_text = node.get("raw_text", "")
+
+            svg_rel = node.get("svg_path")
+            png_rel = node.get("png_path")
+            asset_file = Path(svg_rel).name if svg_rel else (Path(png_rel).name if png_rel else f"asset_{node_id}.png")
+            png_path = workspace_dir / png_rel if png_rel else None
+
+            # First, classify with Codex if this is a flowchart, ascii_art (register/bitfield), or circuit schematic
+            triage = codex.generate_json(triage_prompt, image_path=png_path, schema=pdf_schemas.GRAPHIC_TRIAGE) if png_path and png_path.exists() and triage_prompt else {}
+            graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
+
+            # Check for genuine figure caption from raw_text or separate caption nodes
+            fig_match = re.search(r"(Figure\s+[A-Z0-9]+(?:[\-\.][A-Z0-9]+)?[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
+            genuine_caption = fig_match.group(1).strip() if fig_match else None
+            if not genuine_caption and raw_text.strip():
+                fig_lines = [l.strip() for l in raw_text.splitlines() if re.match(r"^Figure\s+[A-Z0-9]", l.strip(), re.IGNORECASE)]
+                if fig_lines:
+                    genuine_caption = fig_lines[0]
+            if genuine_caption:
+                genuine_caption = re.sub(r"[\[\]|]", "", genuine_caption)
+
+            # Metadata title strictly for RAG sidecar (never injected as visible body text if absent from book)
+            node_meta_caption = node.get("metadata", {}).get("caption")
+            sidecar_title = genuine_caption or node_meta_caption or (triage.get("caption") if isinstance(triage, dict) else None) or f"Figure on page {page_num}"
+            sidecar_title = re.sub(r"[\[\]|]", "", sidecar_title)
+
+            if graphic_type == "mermaid" and png_path and png_path.exists() and mermaid_prompt:
+                mermaid_res = codex.generate_vision(f"{mermaid_prompt}\n\nDiagram Labels:\n{raw_text}", png_path)
+                if mermaid_res:
+                    return c_file, idx, {
+                        "rendered_markdown": mermaid_res.strip() + "\n\n",
+                        "prune_image": True,
+                        "sidecar_name": None,
+                        "sidecar_text": None,
+                    }
+
+            if graphic_type == "ascii_art" and png_path and png_path.exists() and ascii_prompt:
+                caption_hint = (
+                    "A dedicated caption node already exists in the document text, do not output any caption line."
+                    if has_dedicated_caption else
+                    (f"Include the genuine figure caption below the ASCII diagram: *{genuine_caption}*" if genuine_caption else "No caption line was printed in the book, do not output any caption.")
+                )
+                full_ascii_prompt = f"{ascii_prompt}\n\nCaption Guideline: {caption_hint}\n\nExtracted Labels:\n{raw_text}"
+                ascii_res = codex.generate_vision(full_ascii_prompt, png_path)
+                if ascii_res:
+                    return c_file, idx, {
+                        "rendered_markdown": ascii_res.strip() + "\n\n",
+                        "prune_image": True,
+                        "sidecar_name": None,
+                        "sidecar_text": None,
+                    }
+
+            # Fallback to Obsidian image embed + RAG sidecar
+            if genuine_caption:
+                if has_dedicated_caption:
+                    rendered_md = f"![[{asset_file}|{genuine_caption}]]\n\n"
+                else:
+                    rendered_md = f"![[{asset_file}|{genuine_caption}]]\n\n*{genuine_caption}*\n\n"
             else:
-                node["sidecar_path"] = None
-            transformed_count += 1
+                # No genuine caption in book: emit clean embed with zero artificial caption
+                rendered_md = f"![[{asset_file}]]\n\n"
 
-    for c_file, nodes in chapters.items():
-        target_file = out_dir / c_file.name
-        with open(target_file, "w", encoding="utf-8") as f:
-            json.dump(nodes, f, indent=2)
+            # Generate technical engineering sidecar via Codex Vision
+            sidecar_name = f"{asset_file}.txt"
+            sidecar_text = None
+            if png_path and png_path.exists() and sidecar_prompt:
+                sidecar_text = codex.generate_vision(f"{sidecar_prompt}\n\nExtracted Labels:\n{raw_text}", png_path)
 
-    print(f"[+] Stage 08 complete. Transformed {transformed_count} graphics, generated {sidecar_count} RAG sidecars in {out_dir}.")
+            if not sidecar_text:
+                sidecar_text = (
+                    f"Title: {sidecar_title}\n"
+                    f"Page: {page_num}\n"
+                    f"Labels:\n{raw_text}\n"
+                )
+
+            return c_file, idx, {
+                "rendered_markdown": rendered_md,
+                "prune_image": False,
+                "sidecar_name": sidecar_name,
+                "sidecar_text": sidecar_text,
+            }
+
+        chapters = {}
+        all_tasks = []
+
+        for c_file in chapter_files:
+            with open(c_file, "r", encoding="utf-8") as f:
+                nodes = json.load(f)
+            chapters[c_file] = nodes
+
+            for idx, node in enumerate(nodes):
+                if node.get("type") != "graphic":
+                    continue
+                has_dedicated_caption = any(n.get("type") == "caption" and n.get("page") == node.get("page") for n in nodes)
+                all_tasks.append((c_file, idx, node, has_dedicated_caption))
+
+        if all_tasks:
+            print(f"[*] Transforming {len(all_tasks)} graphics across {len(chapters)} chapters (concurrency={concurrency})...")
+            with ThreadPoolExecutor(max_workers=min(len(all_tasks), concurrency)) as executor:
+                results = list(executor.map(_transform_graphic_task, all_tasks))
+
+            for c_file, idx, res in results:
+                node = chapters[c_file][idx]
+                node_id = node.get("node_id", "asset")
+                node["rendered_markdown"] = res["rendered_markdown"]
+                if res["prune_image"]:
+                    for asset_f in out_assets_dir.glob(f"asset_{node_id}.*"):
+                        try:
+                            asset_f.unlink()
+                        except Exception:
+                            pass
+                    node["png_path"] = None
+                    node["svg_path"] = None
+                    node["sidecar_path"] = None
+                else:
+                    node["sidecar_path"] = None
+                transformed_count += 1
+
+        for c_file, nodes in chapters.items():
+            target_file = out_dir / c_file.name
+            with open(target_file, "w", encoding="utf-8") as f:
+                json.dump(nodes, f, indent=2)
+
+        print(f"[+] Stage 08 complete. Transformed {transformed_count} graphics, generated {sidecar_count} RAG sidecars in {out_dir}.")
 
 
 def prepare_graphics_tasks(workspace_dir: Path) -> int:
@@ -234,11 +225,7 @@ def prepare_graphics_tasks(workspace_dir: Path) -> int:
     Extracts graphic nodes into workspace/tasks/graphics/{node_id}.json and {node_id}.md
     for the Agent to inspect image assets and author Mermaid or sidecars.
     """
-    input_candidates = [
-        workspace_dir / "07_transform_tables",
-        workspace_dir / "06_detect_continuations",
-        workspace_dir / "05_chapter_partition",
-    ]
+    input_candidates = [workspace_dir / "07_transform_tables"]
     chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not chapters_dir:
         raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
@@ -318,13 +305,7 @@ def apply_graphics_tasks(workspace_dir: Path) -> int:
     out_assets_dir = out_dir / "assets"
     out_assets_dir.mkdir(parents=True, exist_ok=True)
 
-    asset_candidates = [
-        workspace_dir / "07_transform_tables" / "assets",
-        workspace_dir / "06_detect_continuations" / "assets",
-        workspace_dir / "05_chapter_partition" / "assets",
-        workspace_dir / "04_stream_reduction" / "assets",
-        workspace_dir / "03_build_raw_stream" / "assets",
-    ]
+    asset_candidates = [workspace_dir / "07_transform_tables" / "assets"]
     src_assets = next((p for p in asset_candidates if p.exists()), None)
     if src_assets:
         for f in src_assets.glob("*"):
@@ -336,11 +317,7 @@ def apply_graphics_tasks(workspace_dir: Path) -> int:
         print(f"[!] No graphic tasks directory found at {tasks_dir}")
         return 0
 
-    input_candidates = [
-        workspace_dir / "07_transform_tables",
-        workspace_dir / "06_detect_continuations",
-        workspace_dir / "05_chapter_partition",
-    ]
+    input_candidates = [workspace_dir / "07_transform_tables"]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
         raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
@@ -406,7 +383,7 @@ def main():
         raise FileNotFoundError(f"Stage 08: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.load(f, Loader=UniqueLoader)
     if not config or not isinstance(config, dict):
         raise ValueError(f"Stage 08: Config file is empty or invalid: {config_path}")
 

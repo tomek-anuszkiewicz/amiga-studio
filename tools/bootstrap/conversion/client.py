@@ -1,12 +1,14 @@
 """Stage-bound calls; validate completion and JSON before publishing cache entries."""
 
 import json
+import os
 import time
 from jsonschema import validate
 
 from .cache import ResponseCache, identity
 from .config import selection, validate_config, HTML_STAGES, PDF_STAGES
 from .transport import CodexTransport
+from .metrics import record
 
 
 class CodexClient:
@@ -16,7 +18,7 @@ class CodexClient:
         self.selected = selection(config, stage)
         self.timeout = config["llm"].get("timeout_seconds", 180)
         self.transport = transport or CodexTransport()
-        self.cache = cache or ResponseCache()
+        self.cache = cache or (ResponseCache(os.environ["CONVERSION_CACHE_DIR"]) if os.environ.get("CONVERSION_CACHE_DIR") else ResponseCache())
         self.call_count = 0
         self.cached_call_count = 0
         self.metrics = []
@@ -54,18 +56,22 @@ class CodexClient:
                 result = self.transport.run(self.selected, prompt, images=images, schema=schema, timeout=self.timeout)
                 checked(result)
             except Exception as error:
-                self.metrics.append({"stage": self.selected.stage, "model": self.selected.model,
+                self._record({"stage": self.selected.stage, "model": self.selected.model,
                                      "reasoning_effort": self.selected.reasoning_effort, "cached": False,
                                      "status": "failed", "error_type": type(error).__name__,
                                      "duration_seconds": time.monotonic() - started})
                 raise
             self.cache.save(request, result)
             cached = False
-        self.metrics.append({"stage": self.selected.stage, "model": self.selected.model,
+        self._record({"stage": self.selected.stage, "model": self.selected.model,
                              "reasoning_effort": self.selected.reasoning_effort, "cached": cached,
                              "usage": result.get("usage"), "duration_seconds": result.get("duration_seconds"),
                              "events": result.get("events"), "execution": result.get("execution")})
         return result["text"]
+
+    def _record(self, metric):
+        self.metrics.append(metric)
+        record(metric)
 
     def generate_text(self, prompt, *, validator=None):
         return self._generate(prompt, validator=validator)

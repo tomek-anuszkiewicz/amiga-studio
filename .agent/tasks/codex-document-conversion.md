@@ -1,6 +1,6 @@
 # Roadmap 1.1: Codex Conversion and Stage Configuration
 
-Status: active. The shared Codex client and HTML migration are implemented; PDF transport piloting has started. Roadmap 1.1 is not complete.
+Status: active. The shared Codex client, HTML migration and PDF caller/configuration migration are implemented. One physical PDF page passed all 14 stages; broader acceptance remains pending. Roadmap 1.1 is not complete.
 
 ## Current execution evidence
 
@@ -8,7 +8,8 @@ Status: active. The shared Codex client and HTML migration are implemented; PDF 
 - HTML now uses the shared stage-bound client, strict YAML parser and isolated Codex cache. Removed duplicated Gemini files and silent configuration/DOM substitutions. A single small HTML page preserved prose, code and a table; unchanged replay hit the cache. Offline regressions cover selection, error propagation, JSON/cache validation, image detail, fresh threads and timeout closure.
 - PDF pilot used only physical page 16 from the supplied 160-page book, rendered at 300 DPI and visually inspected. One image-plus-schema request with `detail: original` produced a Markdown transcription preserving all three sections, signal overbars, footer and the incomplete final sentence. It took 14.63 seconds; reported usage was 17,197 input tokens, 737 output tokens (61 reasoning tokens). This is transport/source-fidelity evidence for one prose page, not a completed PDF stage or full-book validation.
 - Inputs, source hashes, requests, responses, metrics and page image are under `.agent/tmp/codex-conversion-pilot/`. The source PDF and tracker were not changed. Initial transport pilots included one text request and one schema request. HTML integration used one aborted request, two completed requests after transport corrections and one cache replay; PDF used one completed image/schema request. No bulk conversion or indexing ran.
-- Pending: migrate PDF configurations and all callers together, audit predecessor fallbacks, enforce config-aware resume/manual handoffs, expand offline PDF coverage, and run only additional minimal feature samples justified by unresolved cases. Milestone review, checkpoint synchronization, diary compaction and roadmap pruning remain pending.
+- PDF integration now uses the shared stage-bound client and schemas, strict YAML, predecessor completion fingerprints, manifest snapshots, manual identity markers and persistent worker metrics. Physical page 19 passed all 14 stages with 8 live requests in total (segmentation 1, table 1, prose 3, title 1, properties 1, opening title 1). Completed-run resume validated all 14 records without inference. Artifacts are under `.agent/tmp/pdf-one-page-19/`. Quality repairs were explicitly deferred by the user; the temporary prose-image repair and title-call optimization were reverted.
+- Offline validation currently includes 15 shared/HTML tests and 7 PDF configuration/lineage tests. Pending: broader PDF branch and manual-recovery coverage, and only additional minimal feature samples justified by unresolved cases. Milestone review, checkpoint synchronization, diary compaction and roadmap pruning remain pending.
 
 
 Replace Gemini inference in both bootstrap converters with Codex, using the user's ChatGPT sign-in. Give every inference stage one explicit model and reasoning-effort entry. Keep the existing conversion pipeline usable until its clients, configuration readers, and callers migrate together.
@@ -16,7 +17,7 @@ Replace Gemini inference in both bootstrap converters with Codex, using the user
 ## Scope and Decisions
 
 - Own [roadmap item 1.1](../../ROADMAP.md), the [PDF converter](../../tools/bootstrap/pdf-to-markdown/README.md), and the [HTML converter](../../tools/bootstrap/html-to-markdown/README.md).
-- Use the Python `openai-codex` SDK and local app-server as the selected transport, confirmed by the user. SDK/runtime 0.160.1, authentication reuse, original-detail image input and schema output have now been piloted; broader PDF integration and recovery remain pending.
+- Use the Python `openai-codex` SDK and local app-server as the selected transport, confirmed by the user. SDK/runtime 0.160.1, authentication reuse, original-detail image input and schema output have now been piloted; one-page PDF integration has passed; broader recovery remains pending.
 - Preserve ChatGPT subscription authentication. API-key billing is a different mode and is not a fallback.
 - Use Codex exclusively. Remove the configurable `provider` field and Gemini dependencies, credentials, role models, hardcoded model fallbacks, and numeric thinking-budget logic from the converter execution paths. Do not introduce a provider router.
 - Keep two YAML files with the same `llm.stages` schema. Every inference stage has a complete `{model, reasoning_effort}` entry; no global model/effort default, role indirection, positional slash syntax, or silent substitution.
@@ -30,9 +31,9 @@ Roadmap 1.2-1.6 remain separate pending work. This task prepares the transport a
 
 ## Migration Baseline and Workflow Map
 
-At the migration baseline, clients and caches were duplicated in the two converter directories and both YAML files selected Gemini. HTML now uses the shared Codex client and stage schema; PDF retains its original client/configuration until its callers and recovery migrate together. Temperature and unused PDF paths/table/segmentation settings were removed before this task. The following map describes the existing PDF workflow and audited baseline gaps, not completed migration evidence.
+At the migration baseline, clients and caches were duplicated in the two converter directories and both YAML files selected Gemini. Both converters now use the shared Codex client and stage schema. PDF migration preserves the existing transformation algorithm; quality changes are deferred. Temperature and unused PDF paths/table/segmentation settings were removed before this task. The following map describes the existing workflow; the omissions listed below are the audited pre-migration baseline, retained for comparison.
 
-Paths below are relative to the selected workspace. This is a current workflow inventory, not proof that artifact lineage is validated. Several workers select the first available older directory; migration must audit these fallbacks and reject incompatible predecessor artifacts instead of treating an existing file as sufficient evidence.
+Paths below are relative to the selected workspace. This is a current workflow inventory, not proof that artifact lineage is validated. Automatic execution validates immediate predecessor completion before launching workers. Arbitrary existing artifacts are not accepted as proof of compatible conversion.
 
 | Stage | Inference work | Current inputs | Persisted outputs / recovery |
 | --- | --- | --- | --- |
@@ -52,7 +53,7 @@ Paths below are relative to the selected workspace. This is a current workflow i
 | `14_link_toc` | None | Markdown and header catalog | `14_link_toc` linked Markdown/assets |
 | HTML `html_to_markdown` | Transcribe a single HTML document or aggregated crawl | HTML, document title, conversion instructions | Markdown/assets in the output directory |
 
-All branches within an inference stage use its configured pair: text, vision, JSON, triage, OCR, empty-page handling, and repair requests. Current omissions to correct:
+All branches within an inference stage use its configured pair: text, vision, JSON, triage, OCR, empty-page handling, and repair requests. Audited baseline omissions addressed by this migration:
 
 - `02_page_segmentation/segment_page.py`: the text-empty-page vision call has no stage argument.
 - `04_stream_reduction/reduce_stream.py`: prose-seam inference has no stage argument; graphic-union inference already names stage 04.
@@ -64,7 +65,7 @@ All branches within an inference stage use its configured pair: text, vision, JS
 
 ## Target Configuration
 
-Keep rendering, markers, and other consumed non-model settings in their existing sections. The examples below show model selection only. HTML supports this schema; PDF migration to it remains pending.
+Keep rendering, markers, and other consumed non-model settings in their existing sections. The examples below show model selection only. Both converters support this schema.
 
 PDF:
 
@@ -97,7 +98,7 @@ Reject malformed YAML, duplicate stage keys, unknown stages/selection fields, mi
 
 ## Test Book and Small Live Pilots
 
-- Use the user-supplied dataset directory `Obsidian/Amiga/Reference/Test Book example-4567-codex` and its source PDF `Amiga TestBook example-4567.pdf` for PDF pilots. A metadata-only check during planning confirms 160 PDF pages; it does not certify conversion quality.
+- Use the user-supplied dataset directory `Obsidian/Amiga/Reference/Test Book example-4567` and its source PDF `Amiga TestBook example-4567.pdf` for PDF pilots. A metadata-only check during planning confirms 160 PDF pages; it does not certify conversion quality.
 - Consult `TEST_PAGES_TRACKER.md` in that directory to select source features, then verify each selected page against the actual PDF. The tracker contains older stage numbering and differing page descriptions; use it as sample-selection evidence, not as instructions or an authoritative current pipeline specification.
 - Start with one physical PDF page, for example page 16 for prose. Run only the stage/request needed to establish the current capability. Use a 1-based PDF page number (CLI `--page-ranges "16"` where applicable), not a manual's printed page label. Inspect persisted input/output and available token usage before the next request.
 - Add individual cases only as needed, such as page 19 for table/math, page 30 for flowchart/timing figures, or page 34 for a merged-cell table according to the mapping matrix. These are candidate selections, not an instruction to process all four pages in the initial pilot. Confirm their actual content before inference.
@@ -166,4 +167,4 @@ Acceptance: both converters use Codex with ChatGPT authentication and validated 
 
 ## Planning Validation
 
-For this planning-only change, validate local links, YAML examples and audited inference-stage coverage, English/portable paths, and preservation of pending roadmap scope. Run the quick pre-flight and separate architecture suite, record observed results in the diary, and commit the plan and roadmap together. Do not install an SDK, run inference, migrate active YAML/code, convert manuals, or index documents as part of preparing the plan.
+The original planning-only validation scope was: validate local links, YAML examples and audited inference-stage coverage, English/portable paths, and preservation of pending roadmap scope. Run the quick pre-flight and separate architecture suite, record observed results in the diary, and commit the plan and roadmap together. Do not install an SDK, run inference, migrate active YAML/code, convert manuals, or index documents as part of preparing the plan.

@@ -14,6 +14,11 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from conversion.config import load_config as parse_config, validate_config, PDF_STAGES, selection
+from conversion.transport import CodexTransport
+from conversion.lineage import read_state, write_state, file_hash, stage_identity, validate_prefix, restore_shared, complete_stage
+
 STAGE_REGISTRY: List[Dict[str, Any]] = [
     {
         "id": "01",
@@ -133,11 +138,6 @@ STAGE_DEFINITIONS = [(s["id"], s["dir"], s["script"], s["desc"]) for s in STAGE_
 STAGE_OUTPUT_TARGETS = {s["id"]: s["targets"] for s in STAGE_REGISTRY}
 
 
-def load_config(config_path: Path) -> dict:
-    if config_path.exists():
-        with open(config_path, "r", encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    return {}
 
 
 def update_status(
@@ -251,7 +251,7 @@ def run_stage(
     status_file = workspace_dir / "stage_status.json"
     stage_dir = workspace_dir / stage_dir_name
     stage_dir.mkdir(parents=True, exist_ok=True)
-    stage_metrics_file = stage_dir / ".metrics.json"
+    stage_metrics_file = stage_dir / ".metrics"
 
     try:
         stage_metrics_file.unlink(missing_ok=True)
@@ -272,7 +272,6 @@ def run_stage(
                     m["llm_calls"] = int(data.get("llm_calls", 0))
                     m["llm_cached_calls"] = int(data.get("llm_cached_calls", 0))
                     m["llm_time_seconds"] = float(data.get("llm_time_seconds", 0.0))
-                stage_metrics_file.unlink(missing_ok=True)
             except Exception:
                 pass
         return m
@@ -292,12 +291,12 @@ def run_stage(
             llm_cached_calls=m["llm_cached_calls"],
             llm_time_seconds=m["llm_time_seconds"],
         )
-        print(f"[*] Stage {stage_num} finished in {duration:.2f}s (LLM API: {m['llm_calls']}, Cache: {m['llm_cached_calls']}).")
+        print(f"[*] Stage {stage_num} finished in {duration:.2f}s (Codex calls: {m['llm_calls']}, Cache: {m['llm_cached_calls']}).")
         return True
     except subprocess.CalledProcessError as e:
         duration = round(time.time() - start_time, 2)
         m = read_and_clean_metrics()
-        print(f"[!] Stage {stage_num} failed with return code {e.returncode} ({duration:.2f}s, LLM API: {m['llm_calls']}, Cache: {m['llm_cached_calls']})", file=sys.stderr)
+        print(f"[!] Stage {stage_num} failed with return code {e.returncode} ({duration:.2f}s, Codex calls: {m['llm_calls']}, Cache: {m['llm_cached_calls']})", file=sys.stderr)
         update_status(
             status_file,
             stage_num,
@@ -312,7 +311,7 @@ def run_stage(
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         m = read_and_clean_metrics()
-        print(f"[!] Stage {stage_num} encountered exception: {e} ({duration:.2f}s, LLM API: {m['llm_calls']}, Cache: {m['llm_cached_calls']})", file=sys.stderr)
+        print(f"[!] Stage {stage_num} encountered exception: {e} ({duration:.2f}s, Codex calls: {m['llm_calls']}, Cache: {m['llm_cached_calls']})", file=sys.stderr)
         update_status(
             status_file,
             stage_num,
@@ -370,7 +369,7 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Optional[Path]):
                         cached = st.get("llm_cached_calls", 0)
                         total_calls += calls
                         total_cached += cached
-                        print(f"Stage {num} ({s['dir']:<28}): {status:<8} | Time: {dur_str:>8} | LLM API: {calls:>4} | Cache: {cached:>4}")
+                        print(f"Stage {num} ({s['dir']:<28}): {status:<8} | Time: {dur_str:>8} | Codex calls: {calls:>4} | Cache: {cached:>4}")
                 print(f"Total Measured Time: {total_duration:.2f}s | Total LLM API Calls: {total_calls} | Total Cache Hits: {total_cached}")
                 print("--------------------------------------------------")
         except Exception:
@@ -418,167 +417,143 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], sta
 
 def main():
     parser = argparse.ArgumentParser(description="Master 14-Stage PDF-to-Markdown Pipeline Orchestrator")
-    parser.add_argument("--pdf", type=str, help="Path to input technical PDF document")
-    parser.add_argument("--workspace", type=str, default=None, help="Workspace directory for intermediate data")
-    parser.add_argument("--output-dir", type=str, default=None, help="Output directory for generated Markdown files")
-    parser.add_argument("--config", type=str, required=True, help="Path to YAML configuration file")
-    parser.add_argument("--from-stage", type=str, help="Start pipeline from stage number (e.g. 03)")
-    parser.add_argument("--to-stage", type=str, help="End pipeline at stage number (e.g. 08)")
-    parser.add_argument("--page-ranges", type=str, default=None, help="Page ranges or discrete pages to process in Stage 01 (e.g. '1-5, 7, 8, 10-15' or '1..5')")
-    parser.add_argument("--resume", action="store_true", help="Resume from last successfully completed stage")
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose command printing")
-    parser.add_argument("--status", action="store_true", help="Display summary status of workspace and task items")
-    parser.add_argument("--prepare-stage", type=str, help="Prepare task items for cognitive stage (06, 07, 08, 09)")
-    parser.add_argument("--apply-stage", type=str, help="Apply Agent's edited task items for cognitive stage (06, 07, 08, 09)")
-    parser.add_argument("--run-deterministic", action="store_true", help="Run deterministic stages (01, 03, 04, 05, 10, 11)")
-
+    parser.add_argument("--pdf", type=Path, help="Source PDF or directory containing exactly one PDF")
+    parser.add_argument("--workspace", type=Path)
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--cache-dir", type=Path, help="Codex cache directory for worker subprocesses")
+    parser.add_argument("--from-stage")
+    parser.add_argument("--to-stage")
+    parser.add_argument("--page-ranges", help="Physical 1-based source PDF pages")
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--status", action="store_true")
+    parser.add_argument("--prepare-stage")
+    parser.add_argument("--apply-stage")
+    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (03, 05, 11, 14)")
     args = parser.parse_args()
-
     skill_dir = Path(__file__).resolve().parent
-    config_source_path = Path(args.config)
-    if not config_source_path.is_absolute():
-        if not config_source_path.exists():
-            skill_relative = skill_dir / config_source_path
-            if skill_relative.exists():
-                config_source_path = skill_relative
-
-    if not config_source_path.is_file():
-        print(f"[!] Error: Config file not found: {config_source_path}", file=sys.stderr)
-        sys.exit(1)
-
-    try:
-        with open(config_source_path, "r", encoding="utf-8") as f:
-            raw_config = yaml.safe_load(f)
-        if not raw_config or not isinstance(raw_config, dict):
-            print(f"[!] Error: Config file is empty or invalid YAML: {config_source_path}", file=sys.stderr)
-            sys.exit(1)
-    except Exception as e:
-        print(f"[!] Error reading config file {config_source_path}: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    pdf_path = Path(args.pdf).resolve() if args.pdf else None
-    if pdf_path and not pdf_path.is_file():
-        if pdf_path.is_dir():
-            book_dir = pdf_path
-            candidates = list(pdf_path.glob("*.pdf"))
-            if len(candidates) == 1:
-                pdf_path = candidates[0]
-        elif pdf_path.parent.is_dir():
-            book_dir = pdf_path.parent
-            candidates = list(pdf_path.parent.glob("*.pdf"))
-            if len(candidates) == 1:
-                pdf_path = candidates[0]
-        else:
-            book_dir = None
-    else:
-        book_dir = pdf_path.parent if pdf_path else None
-
-    if args.workspace:
-        workspace_dir = Path(args.workspace).resolve()
-    else:
-        workspace_dir = (book_dir / "workspace") if book_dir else (Path.cwd() / "workspace")
-    workspace_dir.mkdir(parents=True, exist_ok=True)
-
-    # Snapshot config into workspace
-    workspace_config_path = workspace_dir / "config.yaml"
-    if config_source_path.resolve() != workspace_config_path.resolve():
-        try:
-            shutil.copyfile(config_source_path, workspace_config_path)
-        except Exception as e:
-            print(f"[!] Error snapshotting config to workspace {workspace_config_path}: {e}", file=sys.stderr)
-            sys.exit(1)
-    config_path = workspace_config_path
-
-    output_dir = None
-    if args.output_dir:
-        output_dir = Path(args.output_dir).resolve()
-        output_dir.mkdir(parents=True, exist_ok=True)
-    elif book_dir:
-        output_dir = book_dir.resolve()
-        output_dir.mkdir(parents=True, exist_ok=True)
-
+    config_source = args.config.resolve()
+    config = parse_config(config_source, known_stages=PDF_STAGES, required_stages=())
+    pdf = args.pdf.resolve() if args.pdf else None
+    if pdf and pdf.is_dir():
+        candidates = list(pdf.glob("*.pdf"))
+        if len(candidates) != 1:
+            raise ValueError("Source directory must contain exactly one PDF")
+        pdf = candidates[0]
+    if pdf and not pdf.is_file():
+        raise FileNotFoundError(pdf)
+    workspace = args.workspace.resolve() if args.workspace else ((pdf.parent / "workspace") if pdf else Path.cwd() / "workspace")
+    output = args.output_dir.resolve() if args.output_dir else (pdf.parent if pdf else workspace / "14_link_toc")
     if args.status:
-        print_pipeline_status(workspace_dir, output_dir)
+        print_pipeline_status(workspace, output)
         return
-
-    # Handle prepare / apply stage shortcuts
-    if args.prepare_stage or args.apply_stage:
-        stage_arg = args.prepare_stage or args.apply_stage
-        target_idx = resolve_stage_idx(stage_arg)
-        if target_idx is None:
-            print(f"[!] Unknown stage: {stage_arg}", file=sys.stderr)
-            sys.exit(1)
-        s = STAGE_REGISTRY[target_idx]
-        mode_flag = "--prepare" if args.prepare_stage else "--apply"
-        script = skill_dir / "stages" / s["dir"] / s["script"]
-        cmd = [sys.executable, str(script), "--workspace", str(workspace_dir), "--config", str(config_path), mode_flag]
-        subprocess.run(cmd, check=True)
-        return
-
-    status_file = workspace_dir / "stage_status.json"
-
-    if args.run_deterministic:
-        stages_to_run = [i for i, s in enumerate(STAGE_REGISTRY) if s["id"] in ("01", "03", "04", "05", "10", "11")]
-    elif args.from_stage or args.to_stage:
-        s_start = resolve_stage_idx(args.from_stage) if args.from_stage else 0
-        s_end = resolve_stage_idx(args.to_stage) if args.to_stage else (len(STAGE_REGISTRY) - 1)
-        if s_start is None or s_end is None:
-            print(f"[!] Invalid stage range: {args.from_stage} to {args.to_stage}", file=sys.stderr)
-            sys.exit(1)
-        stages_to_run = list(range(s_start, s_end + 1))
+    if sum(bool(value) for value in (args.prepare_stage, args.apply_stage, args.resume, args.run_deterministic)) > 1:
+        raise ValueError("Choose one execution mode")
+    if args.resume and (args.from_stage or args.to_stage):
+        raise ValueError("Resume cannot be combined with a stage interval")
+    state = read_state(workspace)
+    completed = 0
+    while completed < len(STAGE_REGISTRY) and state.get("stages", {}).get(STAGE_REGISTRY[completed]["id"], {}).get("status") == "completed":
+        completed += 1
+    manual = args.prepare_stage or args.apply_stage
+    if manual:
+        start = resolve_stage_idx(manual)
+        end = start
+    elif args.run_deterministic:
+        start = completed
+        end = start
+        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("03", "05", "11", "14"):
+            raise ValueError("Next stage requires inference; use an explicit stage interval")
     elif args.resume:
-        last_completed_idx = get_last_completed_stage_idx(status_file)
-        start_idx = last_completed_idx + 1
-        if start_idx >= len(STAGE_REGISTRY):
-            print("[*] All pipeline stages are already completed successfully.")
-            return
-        stages_to_run = list(range(start_idx, len(STAGE_REGISTRY)))
-        print(f"[*] Resuming from Stage {STAGE_REGISTRY[start_idx]['id']} ({STAGE_REGISTRY[start_idx]['dir']})")
+        start, end = completed, len(STAGE_REGISTRY)-1
+        if not state.get("source"):
+            raise ValueError("Legacy/unverified workspace cannot resume; explicitly regenerate from Stage 01")
     else:
-        stages_to_run = list(range(len(STAGE_REGISTRY)))
-
-    clean_downstream_stages(workspace_dir, output_dir, stages_to_run[0], status_file)
-
-    if 0 in stages_to_run and not pdf_path:
-        pages_exist = bool(list((workspace_dir / "01_preprocess").glob("page_*.png")))
-        if not pages_exist:
-            print("[!] Error: --pdf is required when running Stage 01 without existing preprocessed pages.", file=sys.stderr)
-            sys.exit(1)
+        start = resolve_stage_idx(args.from_stage) if args.from_stage else 0
+        end = resolve_stage_idx(args.to_stage) if args.to_stage else len(STAGE_REGISTRY)-1
+    if start is None or end is None or start > end and start != len(STAGE_REGISTRY):
+        raise ValueError("Invalid stage interval")
+    source = {"name": pdf.name, "sha256": file_hash(pdf)} if pdf else state.get("source")
+    if not source:
+        raise ValueError("--pdf is required for a new conversion")
+    source = dict(source)
+    if args.page_ranges:
+        sys.path.insert(0, str(skill_dir / "stages/01_preprocess"))
+        from detect_and_ocr import parse_page_ranges
+        source["pages"] = parse_page_ranges(args.page_ranges)
+        if not source["pages"] or min(source["pages"]) < 1:
+            raise ValueError("Invalid physical PDF page selection")
+    elif start == 0:
+        source["pages"] = None
+    else:
+        source["pages"] = state.get("source", {}).get("pages")
+    predecessor = validate_prefix(state, STAGE_REGISTRY, start, config, source, skill_dir, workspace, output)
+    if start == len(STAGE_REGISTRY):
+        print("[+] All PDF stages have validated completion records.")
+        return
+    selected = STAGE_REGISTRY[start:end+1]
+    required = {stage["dir"] for stage in selected if stage["dir"] in PDF_STAGES}
+    validate_config(config, PDF_STAGES, required)
+    if required and not manual:
+        transport = CodexTransport()
+        try:
+            for stage in required:
+                transport.validate(selection(config, stage), images=stage[:2] in ("01", "02", "04", "07", "08", "09"))
+        finally:
+            transport.close()
+    stage = STAGE_REGISTRY[start]
+    identity = stage_identity(stage, config, source, predecessor, skill_dir)
+    task_names = {"06": "continuations", "07": "tables", "08": "graphics", "09": "prose"}
+    marker = workspace / "tasks/.lineage" / f"{stage['id']}.json"
+    if manual and stage["id"] not in task_names:
+        raise ValueError("Manual handoff is available only for Stages 06–09")
+    if args.apply_stage:
+        if not marker.is_file() or json.loads(marker.read_text(encoding="utf-8")) != identity:
+            raise ValueError("Prepared tasks do not match source, predecessor, model/effort or procedure; prepare again")
+    # All configuration and predecessor validation precedes writes and cleanup.
+    workspace.mkdir(parents=True, exist_ok=True)
+    output.mkdir(parents=True, exist_ok=True)
+    config_path = workspace / "config.yaml"
+    if config_source != config_path:
+        shutil.copyfile(config_source, config_path)
+    if args.cache_dir:
+        os.environ["CONVERSION_CACHE_DIR"] = str(args.cache_dir.resolve())
+    if manual:
+        script = skill_dir / "stages" / stage["dir"] / stage["script"]
+        mode = "--prepare" if args.prepare_stage else "--apply"
+        subprocess.run([sys.executable, str(script), "--workspace", str(workspace), "--config", str(config_path), mode], check=True)
+        if args.prepare_stage:
+            marker.parent.mkdir(parents=True, exist_ok=True)
+            marker.write_text(json.dumps(identity, indent=2), encoding="utf-8")
         else:
-            print("[*] Note: Existing preprocessed pages found in workspace.")
-
-    print(f"[*] PDF-to-Markdown Pipeline executing stages: {[STAGE_REGISTRY[i]['id'] for i in stages_to_run]}")
-    print(f"    Workspace  : {workspace_dir}")
-    if output_dir:
-        print(f"    Output Dir : {output_dir}")
-    if pdf_path:
-        print(f"    Source PDF : {pdf_path}")
-
-    for idx in stages_to_run:
-        s_info = STAGE_REGISTRY[idx]
-        success = run_stage(
-            stage_info=s_info,
-            skill_dir=skill_dir,
-            workspace_dir=workspace_dir,
-            pdf_path=pdf_path,
-            output_dir=output_dir,
-            config_path=config_path,
-            verbose=args.verbose,
-            page_ranges=args.page_ranges,
-        )
-        if not success:
-            print(f"\n[!] Pipeline halted at Stage {s_info['id']} due to failure.", file=sys.stderr)
-            sys.exit(1)
-
-    if output_dir:
-        out_assets = output_dir / "assets"
-        if out_assets.exists() and not any(out_assets.iterdir()):
-            try:
-                out_assets.rmdir()
-            except Exception:
-                pass
-
-    print("\n[+] Selected pipeline stages completed successfully!")
+            if start+1 < len(STAGE_REGISTRY):
+                clean_downstream_stages(workspace, output, start+1, workspace / "stage_status.json")
+            state["stages"] = {key: value for key, value in state.get("stages", {}).items() if key <= stage["id"]}
+            complete_stage(state, stage, identity, workspace, output)
+            update_status(workspace / "stage_status.json", stage["id"], "success", "Validated manual handoff")
+        return
+    restore_shared(state, STAGE_REGISTRY, start, workspace)
+    clean_downstream_stages(workspace, output, start, workspace / "stage_status.json")
+    state["source"] = source
+    state["stages"] = {key: value for key, value in state.get("stages", {}).items() if int(key) < int(stage["id"])}
+    write_state(workspace, state)
+    print(f"[*] PDF source: {source['name']}; selected pages: {source['pages']}; stages: {[stage['id'] for stage in selected]}")
+    for stage in selected:
+        identity = stage_identity(stage, config, source, predecessor, skill_dir)
+        if not run_stage(stage, skill_dir, workspace, pdf, output, config_path, args.verbose, args.page_ranges):
+            raise RuntimeError(f"Pipeline halted at Stage {stage['id']}")
+        try:
+            if stage["id"] in ("05", "06"):
+                previous_dir = STAGE_REGISTRY[int(stage["id"])-2]["dir"]
+                assets = workspace / previous_dir / "assets"
+                if assets.is_dir():
+                    shutil.copytree(assets, workspace / stage["dir"] / "assets", dirs_exist_ok=True)
+            predecessor = complete_stage(state, stage, identity, workspace, output)
+        except Exception:
+            update_status(workspace / "stage_status.json", stage["id"], "failed", "Artifact completion validation failed")
+            raise
+    print("[+] Selected PDF pipeline stages completed with validated lineage.")
 
 
 if __name__ == "__main__":
