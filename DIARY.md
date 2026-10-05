@@ -1135,3 +1135,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - English scan and whitespace check passed
   - No active references to the deleted plan remain in searched task, governance, tooling and developer documentation
   - No conversion tests, coverage audit, live inference, book conversion or milestone checks ran
+---
+
+### [2026-10-06 00:21 CEST] — Remove the four PDF asset and crop tests
+- **Affected Subsystems**:
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Delete PdfAssetTests and its class-local stage-loading helper
+  - Remove the four raw-stream asset, PNG crop, merged-table crop and missing-PNG tests
+  - Preserve all remaining PDF tests and converter implementation
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the user's explicit request to remove these four tests from the converter suite
+- **Verification & Test Results**:
+  - AST comparison confirmed exactly the requested class was removed and all 17 remaining PDF tests are unchanged
+  - Required quick pre-flight passed
+  - Required architecture suite: 18 passed and 1 failed on 62 existing broken Design-to-Reference links
+  - Graphify AST refresh passed without inference
+  - Whitespace check passed
+  - Conversion tests and live inference were not run
