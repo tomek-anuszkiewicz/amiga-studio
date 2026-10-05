@@ -55,7 +55,7 @@ def partition_chapters(workspace_dir: Path, config: dict):
 
         # Detect TOC start
         if first_toc_idx is None:
-            if n_type == "toc_header" or n_type == "toc" or (n_type == "heading" and "table of contents" in raw.lower()):
+            if n_type == "toc_heading" or n_type == "toc" or (n_type == "heading" and "table of contents" in raw.lower()):
                 first_toc_idx = idx
 
         # Detect First Chapter start (must be after TOC or standalone)

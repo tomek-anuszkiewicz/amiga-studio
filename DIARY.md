@@ -1405,3 +1405,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - The same DIVU failure was reproduced with all 13 refactored files restored to HEAD and the refactored sources then restored
   - Graphify incremental AST update completed
   - No new baseline regressions demonstrated and no reference vectors modified
+---
+
+### [2026-10-06 01:53 CET] — Rename the PDF TOC heading segment type
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/pdf_schemas.py`
+  - `tools/bootstrap/pdf-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Rename the TOC title type to toc_heading in the segmentation prompt and response schema
+  - Update chapter partitioning, prose transformation, Markdown emission and pipeline documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Distinguish a body TOC heading from running page headers
+  - Existing segmentation artifacts require explicit regeneration from Stage 02
+- **Verification & Test Results**:
+  - Modified Python files compile successfully
+  - No obsolete identifier remains in bootstrap sources
+  - Quick per-commit gate PASS
+  - Architecture tests 19/19 PASS
+  - Graphify incremental update completed
+  - No fragment conversion requested or run

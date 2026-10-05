@@ -22,7 +22,7 @@ SEGMENTATION = object_schema({
     "is_full_page_graphic": BOOL, "graphic_caption": NULL_STRING,
     "segments": {"type": "array", "items": object_schema({
         "idx": {"type": "integer", "minimum": 0},
-        "type": {"type": "string", "enum": ["header", "footer", "toc_header", "toc", "thumb_index", "chapter", "heading", "callout", "callout_text", "prose", "code_block", "table", "graphic", "caption", "caption_continuation"]},
+        "type": {"type": "string", "enum": ["header", "footer", "toc_heading", "toc", "thumb_index", "chapter", "heading", "callout", "callout_text", "prose", "code_block", "table", "graphic", "caption", "caption_continuation"]},
         "heading_level": {"type": ["integer", "null"]}, "graphic_bbox_norm": NULL_BBOX,
     })},
 })

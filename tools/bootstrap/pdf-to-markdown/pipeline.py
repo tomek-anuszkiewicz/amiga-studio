@@ -120,7 +120,7 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "id": "11",
         "dir": "11_emit_markdown",
         "script": "emit_markdown.py",
-        "desc": "Emit per-section Markdown files (suppressing toc_header)",
+        "desc": "Emit per-section Markdown files (suppressing toc_heading)",
         "targets": ["11_emit_markdown"],
         "inspect": ("*.md", "Markdown files"),
     },

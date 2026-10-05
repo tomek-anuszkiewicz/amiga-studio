@@ -9,7 +9,7 @@ the full text-JSON request redesign belongs to roadmap 1.1.
 Analyzes each page vertically from top to bottom, classifying bands into explicit semantic types:
 - `header`: Running top headers.
 - `footer`: Page numbers, publisher bottom lines.
-- `toc_header`: Banner title introducing the Table of Contents (e.g. "TABLE OF CONTENTS").
+- `toc_heading`: Banner title introducing the Table of Contents (e.g. "TABLE OF CONTENTS").
 - `toc`: Table of contents listings and page references.
 - `thumb_index`: Printed edge tabs, chapter bookmark tabs, and thumb navigation markers along page margins.
 - `heading`: Chapter, section, and subsection headings.

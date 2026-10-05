@@ -3,7 +3,7 @@
 stages/11_emit_markdown/emit_markdown.py:
 Serializes partitioned chapter node streams into final Markdown documents:
 1. Emits one file per section: <output_dir>/{index:02d}_{slug}.md.
-2. Explicitly ignores and skips any segment of type 'toc_header'.
+2. Explicitly ignores and skips any segment of type 'toc_heading'.
 3. Skips child continuation nodes whose content was rendered by the head node.
 4. Copies all referenced assets from workspace/assets/ to <output_dir>/assets/.
 """
@@ -117,8 +117,8 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
         for node in nodes:
             n_type = node.get("type")
 
-            # Ignore and skip toc_header segments per design specification
-            if n_type == "toc_header":
+            # Ignore and skip toc_heading segments per design specification
+            if n_type == "toc_heading":
                 continue
 
             # Skip child continuation nodes

@@ -3,7 +3,7 @@
 ## Objective
 Serializes chapter streams into standalone Markdown files formatted as `<output_dir>/{index:02d}_{slug}.md`:
 1. Emits clean Markdown body content for each chapter partition.
-2. Explicitly ignores and skips any segment of type `toc_header` (eliminating redundant raw TOC banners).
+2. Explicitly ignores and skips any segment of type `toc_heading` (eliminating redundant raw TOC banners).
 3. Skips child continuation nodes whose content was synthesized into the head node.
 4. Synchronizes visual assets and RAG sidecars into `<output_dir>/assets/`.
 

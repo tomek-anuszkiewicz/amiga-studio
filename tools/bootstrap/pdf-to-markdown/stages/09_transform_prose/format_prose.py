@@ -200,7 +200,7 @@ def process_prose(workspace_dir: Path, config: dict):
                     node["rendered_markdown"] = format_heading(raw_text, level=lvl)
                     formatted_count += 1
                     i += 1
-                elif n_type == "toc_header":
+                elif n_type == "toc_heading":
                     node["rendered_markdown"] = ""
                     i += 1
                 elif n_type == "caption":

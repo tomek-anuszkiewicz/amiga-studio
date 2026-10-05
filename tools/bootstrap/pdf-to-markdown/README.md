@@ -76,7 +76,7 @@ tools/bootstrap/pdf-to-markdown/
     │
     ├── 02_page_segmentation/
     │   ├── segment_page.py                  # Vertical banding analysis -> page_XXXX_segments.json
-    │   ├── prompt.md                        # Vision guidelines: header, footer, chapter, heading, prose, code_block, table, graphic, toc, toc_header
+    │   ├── prompt.md                        # Vision guidelines: header, footer, chapter, heading, prose, code_block, table, graphic, toc, toc_heading
     │   └── README.md
     │
     ├── 03_build_raw_stream/
@@ -124,7 +124,7 @@ tools/bootstrap/pdf-to-markdown/
     │   └── README.md
     │
     ├── 11_emit_markdown/
-    │   ├── emit_markdown.py                 # Emits clean Markdown files per partition ({index:02d}_{slug}.md); ignores toc_header
+    │   ├── emit_markdown.py                 # Emits clean Markdown files per partition ({index:02d}_{slug}.md); ignores toc_heading
     │   └── README.md
     │
     ├── 12_generate_properties/

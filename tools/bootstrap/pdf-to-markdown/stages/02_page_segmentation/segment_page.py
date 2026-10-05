@@ -3,7 +3,7 @@
 stages/02_page_segmentation/segment_page.py:
 Analyzes each page vertically from top to bottom.
 Assigns bounding box coordinates and semantic types:
-header, footer, heading, prose, code_block, table, graphic, toc, toc_header.
+header, footer, heading, prose, code_block, table, graphic, toc, toc_heading.
 Emits workspace/segments/page_XXXX_segments.json.
 """
 
@@ -31,7 +31,7 @@ from conversion.pdf_artifacts import validate_preprocess
 def classify_page_with_codex(page_data: dict, png_path: Optional[Path], codex: CodexClient) -> list:
     """
     Uses Codex Vision and semantic layout understanding to classify text blocks
-    into precise semantic zones: header, footer, toc_header, toc, heading, prose, code_block, table, graphic.
+    into precise semantic zones: header, footer, toc_heading, toc, heading, prose, code_block, table, graphic.
     """
     page_num = page_data["page"]
     page_w = page_data.get("width", 612.0)
