@@ -20,7 +20,7 @@ Activate this skill whenever:
 
 ## 2. Core Reintegration Principles
 
-1. **Clean Merges $\to$ Fast-Forward:** If branches have not diverged, fast-forward merges (`git merge --ff-only`) are preferred to maintain a clean linear history.
+1. **Ancestry Permits Fast-Forward:** If the target is an ancestor of the source, prefer `git merge --ff-only`. A conflict-free merge of diverged branches still needs a merge commit.
 2. **Conflicting Merges $\to$ Explicit Merge Commit:** Never silently rebase away conflicts. Create an explicit merge commit documenting the conflict resolution strategy.
 3. **Holistic Resolution:** Never blindly accept `--ours` or `--theirs`. Merge conflicting code, unit tests, and documentation from both branches.
 
@@ -36,12 +36,13 @@ git status
 ```
 
 ### Step 2: Attempt Merge
-Attempt the merge from the source branch:
+Check whether the target is an ancestor of the source:
 ```powershell
-git merge <source-branch> --no-commit
+git merge-base --is-ancestor HEAD <source-branch>
 ```
-- **Scenario A (Clean Merge):** If there are zero conflicts, finalize the merge or use fast-forward.
-- **Scenario B (Merge Conflicts):** Inspect conflicted files:
+- **Ancestor (exit 0):** Verify the source's required results before `git merge --ff-only <source-branch>`; no new merge commit is created.
+- **Diverged (exit 1):** Use `git merge <source-branch> --no-ff --no-commit`, then inspect and validate the merged tree before committing. Other exit codes indicate an error to resolve.
+- **Merge conflicts:** Inspect conflicted files:
   ```powershell
   git status
   ```
@@ -62,9 +63,14 @@ For each conflicted file:
 Never finalize a merge commit without running the full repository verification gate:
 ```powershell
 cargo fmt --all -- --check
+python tools/harness/pre_flight.py --quick
 cargo test -p test_runner --test test_architecture_rules
 cargo test --workspace --exclude test_runner
 ```
+
+Run any additional domain gates required by `AGENTS.md`. Append the merge's
+own diary entry with conflict decisions and observed verification before staging
+the completion commit.
 
 ### Step 5: Author Standardized Merge Commit
 Commit using the mandatory structured merge message schema:
@@ -78,7 +84,7 @@ Conflict Resolution:
 Verification:
 - Passed: cargo fmt --all -- --check
 - Passed: cargo test -p test_runner --test test_architecture_rules
-- Passed: cargo test --workspace"
+- Passed: cargo test --workspace --exclude test_runner"
 ```
 
 ### Step 6: Worktree Teardown & Cleanup (If Using Worktrees)

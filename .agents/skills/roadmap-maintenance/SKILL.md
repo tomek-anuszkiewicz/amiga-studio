@@ -21,10 +21,12 @@ Activate this skill whenever:
 ## Completion Evidence
 
 Before pruning a step, confirm its implementation is complete and relevant tests
-pass. For a milestone, run `python tools/harness/pre_flight.py`,
+pass. For a milestone, run `python tools/harness/pre_flight.py --milestone`,
 `python tools/harness/run_tests.py --unit`, and
 `python tools/harness/run_tests.py --integration`. For a major milestone, update
 the concise baseline deliverables in Section 1 as well as pruning Section 2.
+Perform the mandatory semantic parity review, design synchronization, and diary
+compaction in [AGENTS.md](../../../AGENTS.md) before declaring completion.
 
 ## 2. Core Principle: Zero Retention of Completed Backlog Items
 

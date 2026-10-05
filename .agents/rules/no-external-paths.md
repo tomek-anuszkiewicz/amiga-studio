@@ -1,6 +1,5 @@
-# Strict Path Privacy & Isolation Rule (Zero External Paths)
+# Path Privacy and Portability
 
-- **Never use external paths**: Never write, hardcode, or commit paths outside the project workspace (such as private directories, personal drives, `D:\...`, `/home/...`, Google Drive, user folders) into any code, configuration, scripts, or documentation within the Amiga project.
-- **Privacy & Portability**: Hardcoded external paths leak private user information and break project reproducibility across environments.
-- **Use Placeholders in Documentation**: Always use generic placeholders in examples, templates, and documentation (e.g. `<PATH_TO_VAULT>`, `<PATH_TO_CACHE_DIR>`, `<repo_path>`).
-- **Ask Before Resolving External Paths**: If an external path appears to be needed for configuration, tooling, or runtime, **you must stop and ask the user how to solve it** (e.g., via `.env` variables, CLI arguments, or relative paths) rather than assuming, embedding, or exposing external host paths.
+- Never hardcode or commit private host paths in repository code, configuration, scripts, or documentation. Use repository-relative paths, environment variables, CLI arguments, or generic placeholders such as `<repo_path>`.
+- Using an already authorized local path supplied through untracked configuration or a CLI argument does not require another permission request. Keep its value out of committed artifacts and unnecessary output.
+- If required configuration is missing, ask for the missing value or preferred configuration mechanism; do not invent, embed, or expose a personal host path.

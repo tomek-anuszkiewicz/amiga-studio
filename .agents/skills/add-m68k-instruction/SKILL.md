@@ -10,6 +10,10 @@ Every instruction must adhere to the 2-clock Color Clock micro-step state machin
 
 ---
 
+
+For handler names and bitfield examples, read [opcode-reference](references/opcode-reference.md) when implementing decoding.
+
+
 ## 1. Core Architectural Philosophy: Micro-Step State Machine
 
 Modern host CPUs (x86_64, aarch64) feature deeply pipelined execution (14–20+ stages). Cascaded dynamic branches (`match opcode`, `match ea_mode`, `match size`) in the hot instruction dispatch loop flush the pipeline and waste 15–20 host cycles per misprediction.
@@ -422,14 +426,10 @@ Registers in `CpuState` are strictly private fields. Always use size-specific ac
 
 ## 6. Module Organization & 800-Line Limit Compliance
 
-Per `AGENTS.md` Rule 7, no Rust source file under `crates/*/src/` may exceed 800 lines:
-- For medium instructions ($\le 800$ lines, e.g. `suba.rs`, `subi.rs`, `subq.rs`, `subx.rs`): keep as a single cohesive `.rs` file.
-- For large instructions with bidirectional addressing modes (e.g. `sub.rs` which would be ~1,200 lines):
-  Split into a clean submodule directory:
-  - `instructions/sub/mod.rs` (ALU functions, callbacks, decoder, re-exports)
-  - `instructions/sub/ea_dn.rs` (`<ea>, Dn` slices across sizes)
-  - `instructions/sub/dn_ea.rs` (`Dn, <ea>` alterable memory slices across sizes)
-  Each submodule is ~300–550 lines, well within the sweet spot.
+Apply [file-size-and-cohesion.md](../../rules/file-size-and-cohesion.md):
+- Keep instruction modules flat under `crates/cpu/src/instructions/`, with the documented mnemonic and family exceptions.
+- Never split an instruction into a subdirectory. Exhaustive linear instruction files above 800 lines require a registered exception approved under the rule.
+- Remove a stale exception when a file reaches 800 lines or fewer. Use `refactor-split-module` only for modules whose decomposition is permitted.
 
 ---
 
@@ -472,7 +472,7 @@ cargo test -p test_runner --test test_architecture_rules
 > [!IMPORTANT]
 > The automated test `test_inlining_guidelines_compliance` automatically validates that all leaf ALU functions have `#[inline(always)]`, all cold exception/trap triggers have `#[inline(never)]`, and CCR mutators have `#[inline(always)]`. If an inlining attribute is missing or misconfigured, `test_architecture_rules` will fail immediately.
 
-When completing a milestone or batch, run the full, exhaustive SingleStepTests without limits:
+Before completing any CPU change, run the full, exhaustive SingleStepTests without limits:
 ```powershell
 $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
 ```

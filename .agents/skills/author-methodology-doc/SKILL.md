@@ -104,10 +104,10 @@ Readers start at the top and want the core takeaway immediately. Content must pr
   - If it represents a **First-Step Methodology** (e.g. proof-of-concept verification) $\rightarrow$ Place it in Layer 3 (Phase 1 of Core Patterns).
   - If it represents an **Operational Guardrail or Command** $\rightarrow$ Place it in Layer 5 (Tactical Execution).
 
-### B. 100% Content & Thought Preservation Standard
-- Re-hierarchization must be **purely structural**.
-- **Zero Dilution Policy:** Never discard, dilute, or summarize away substantive technical thoughts, code snippets, mathematical formulas, timing tables, or Mermaid diagrams during restructuring.
-- Rearrange and polish the narrative flow while strictly preserving 100% of the conceptual substance.
+### B. Preserve Substantive Content
+- Preserve mechanisms, evidence, caveats, formulas, timing tables, and useful diagrams when restructuring.
+- Remove repeated wording when concision is requested. Move detailed examples to linked owning references when the task calls for that separation; verify they remain reachable.
+- Do not discard unique technical reasoning merely to meet an arbitrary size target.
 
 ---
 
@@ -130,7 +130,7 @@ When auditing or restructuring an existing document:
 
 4. **Step 4: Verify Substantive Completeness**
    - Run a comparative diff (`git diff` or before/after inspection).
-   - Verify that every technical detail, formula, code block, diagram, and link from the original document is present and intact.
+   - Verify that unique technical reasoning, evidence, caveats, formulas, and useful links remain present or reachable in explicitly moved references. Confirm that removed material is duplicated or within the authorized edit scope.
 
 5. **Step 5: Atomic Git Commit**
    - Commit the restructured document with an atomic, intent-driven Conventional Commit:

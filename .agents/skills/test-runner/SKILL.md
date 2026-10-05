@@ -21,6 +21,32 @@ This skill standardizes test execution across the 4 testing tiers, persists exec
 
 ---
 
+## Focused Defect Reproduction
+
+Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
+
+1. Identify an existing isolated regression or add a focused test in the owning suite. For Rust, use `crates/<crate>/tests/`; harness fixtures use `tests/`.
+2. Run it before the repair and confirm the expected failure, rather than a missing fixture or unrelated setup error:
+   ```powershell
+   cargo test -p <crate> --test <suite> -- <filter>
+   python -m unittest discover -s tests -p <fixture_file.py> -q
+   ```
+3. Repair the demonstrated mechanism, rerun the focused case, and retain its regression protection.
+4. Run adjacent domain tests and the per-commit gates. Before completing CPU changes, run full silicon vectors; CPU/bus changes also require full Cartesian DMA verification:
+   ```powershell
+   $env:SINGLESTEP_FULL = "1"
+   cargo test -p test_runner --test test_singlestep -- --quiet
+   cargo test -p test_runner --test test_dma_cartesian -- --quiet
+   ```
+   GUI interaction regressions use `cargo test -p gui --test test_interactions`.
+
+## Background Checks and Result Collection
+
+- Use targeted filters during iteration; collect required full results before completion.
+- Start long checks with a short supported initial yield, retain returned session IDs, and resume only running sessions when their result is needed.
+- Parallelize independent checks; Cargo commands sharing a target directory may serialize. Do not edit the validated source snapshot while a check runs.
+- Keep successful output concise with a single quiet-flag placement, preserving exit codes and failure diagnostics. Report checks not run separately from passing results.
+
 ## 2. Directory Structure for Snapshots (`.test_results/`)
 
 Test executions maintain rotating state to detect regressions across runs:

@@ -660,3 +660,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick pre-flight passed
   - Architecture suite passed 20 tests
   - Full documentation audit reports 8 remaining findings: 7 direct-reference findings and 1 unregistered diary rule
+---
+
+### [2026-10-05 21:57 CET] — Separate agent policy from execution procedures
+- **Affected Subsystems**:
+  - `.agents/rules`
+  - `.agents/skills`
+  - `AGENTS.md`
+  - `docs`
+  - `tools/harness`
+  - `tests`
+  - `crates/test_runner/tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Retain 27 concise rules and remove only the Graphify redirect
+  - Move naming, layout, cohesion and inlining examples into five references owned by existing skills
+  - Keep mandatory Graphify navigation in AGENTS.md while removing redundant skill routing
+  - Preserve the parallel auditor simplification and reconcile companion classifications, workflow commands and regression fixtures
+- **Architectural Rationale & Trade-Offs**:
+  - Keep obligations and exceptions in rules
+  - execution in skills
+  - and deterministic checks bounded to their observed coverage. Preserve existing hardware and golden-reference policy without emulator runtime changes.
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture suite passed 19 tests
+  - Python fixture suite passed 41 tests
+  - Selected size, skill, locality, companion and workflow audits reported zero issues
+  - Verified 66 new local links and the unchanged Graphify skill
+  - Refreshed the AST graph. Full emulator domain suites were not run because runtime code was unchanged.

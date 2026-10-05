@@ -1,41 +1,12 @@
-# Specification Compliance & Divergence Escalation Rule (Zero Silent Spec Violations)
+# Specification Compliance and Golden References
 
-Design specifications under `Obsidian/Amiga/Design/` and guidelines in `AGENTS.md` are the authoritative ground truth for this project.
+Design specifications and [AGENTS.md](../../AGENTS.md) govern implementation. Never silently contradict or bypass documented behavior, timing, memory semantics, or architectural boundaries.
 
-## 1. Zero Unilateral Divergence
-- Agents must **never silently implement code that contradicts or bypasses existing design specifications or rules**.
-- Examples of prohibited silent divergences:
-  - Returning `$00` instead of `$FF` on unmapped memory reads.
-  - Silently skipping or altering bus contention and wait states.
-  - Violating endianness rules without explicit permission.
-  - Silently changing data structures or architectural boundaries.
+- When a requirement, test expectation, or reference emulator conflicts with the specification, stop the conflicting change and present the current rule, contrary evidence, and concrete options.
+- Obtain an explicit recorded user decision before deviating or amending the specification. Otherwise implement the documented behavior.
 
-## 2. Mandatory Conflict Detection & Escalation
-Whenever an implementation requirement, external test harness expectation (e.g. SingleStepTests flat memory model assumptions), or reference emulator quirk conflicts with the documented specification:
-- **You MUST STOP immediately and present the conflict to the USER before modifying code.**
-- Clearly outline:
-  1. **Current Specification:** What the existing design document / hardware rule states.
-  2. **Conflicting Expectation:** What the external test suite or scenario expects.
-  3. **Proposed Options:** Concrete architectural solutions (e.g., configurable parameters, test adapters, or formal specification amendments).
+## Golden Test Vector & Hash Invariance (Anti-Tamper Rule)
 
-## 3. Explicit User Decision Required
-No code may deviate from existing documentation without an explicit, recorded decision by the user. Either:
-- The design documentation is officially modified with user approval, OR
-- The code strictly adheres to the specification.
-
-## 4. Golden Test Vector & Hash Invariance (Anti-Tamper Rule)
-- **Zero Blind Hash Updates**: Golden master hashes, checksums, and cycle reference vectors (e.g. `GOLDEN_CATALOG_STRUCTURE_HASH`, `GOLDEN_CSV_HASH_*` in benchmark tests) represent verified architectural ground truth.
-- **Prohibited Behavior**: Modifying golden constants in test files to make a failing test pass without root-cause investigation is strictly prohibited.
-- **Escalation Protocol**: If an instruction's cycle timing or catalog definition legitimately changes due to an approved hardware model correction:
-  1. Document the exact hardware justification (referencing PRM/Amiga Hardware Manual).
-  2. Escalate the proposed timing change to the user.
-  3. Only update golden constants after explicit user approval.
-
----
-
-## 5. Authoritative Baseline Specifications & Scorecards
-
-When validating hardware compliance and regression benchmarks, agents must consult:
-- [`Platform Quirks and Invariants Catalog.md`](../../Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md): Centralized repository of silicon idiosyncrasies, non-intuitive timings, and hardware anti-tamper invariants.
-- [`vAmigaTS Verification Scorecard.md`](../../Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md): Authoritative ground-truth pass rates and regression benchmark history.
-
+- Golden hashes, checksums, cycle totals, and reference vectors are protected baselines. Never change them merely to make a failing test pass.
+- A justified golden correction requires root-cause investigation, precise hardware evidence, presentation of the proposed change, and explicit user approval before updating constants.
+- For hardware/regression review, consult the [Platform Quirks and Invariants Catalog](../../Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md) and relevant [vAmigaTS Verification Scorecard](../../Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md).

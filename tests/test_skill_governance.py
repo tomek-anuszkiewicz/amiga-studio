@@ -42,6 +42,17 @@ class TestSkillGovernance(unittest.TestCase):
         self.skill("sync-design-docs")
         self.assertEqual(AUDIT.check_skill_and_rule_governance()["rule_issues"], [])
 
+    def test_diary_rule_requires_compaction_procedure(self):
+        self.write(".agents/rules/diary-maintenance.md")
+        issues = AUDIT.check_skill_and_rule_governance()["rule_issues"]
+        self.assertEqual([issue["type"] for issue in issues], ["missing_rule_skill"])
+        self.skill("compact-diary")
+        self.assertEqual(AUDIT.check_skill_and_rule_governance()["rule_issues"], [])
+
+    def test_commit_policy_does_not_require_merge_or_worktree_skills(self):
+        self.write(".agents/rules/git-commits.md")
+        self.assertEqual(AUDIT.check_skill_and_rule_governance()["rule_issues"], [])
+
     def test_passive_rule_keeps_redundant_skill_detection(self):
         self.write(".agents/rules/language-policy.md")
         self.skill("language-policy")

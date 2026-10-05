@@ -9,6 +9,10 @@ This skill guides the collection, analysis, and verification of emulator executi
 
 ---
 
+
+For inlining decisions, read [inlining-examples](references/inlining-examples.md) alongside measured profiles.
+
+
 ## 1. Core Architecture: Two-Tier Performance Monitoring
 
 The emulator employs a two-tier performance monitoring strategy:

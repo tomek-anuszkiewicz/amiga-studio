@@ -21,17 +21,17 @@ Read applicable domain rules before editing that domain. Use [Graphify](.agents/
 | Task | Rules and procedures |
 | --- | --- |
 | Rust implementation | [Rust practices](.agents/rules/rust-best-practices.md), [performance](.agents/rules/performance-and-readability.md), [inlining](.agents/rules/method-inlining.md), [file cohesion](.agents/rules/file-size-and-cohesion.md), [workspace boundaries](.agents/rules/workspace-structure-and-reexports.md), [clean refactoring](.agents/rules/clean-break-refactoring.md) |
-| CPU instructions | [Opcode conventions](.agents/rules/opcode-naming.md), [add-m68k-instruction](.agents/skills/add-m68k-instruction/SKILL.md), [m68k-singlestep-test](.agents/skills/m68k-singlestep-test/SKILL.md) |
+| CPU instructions | [Opcode conventions and required implementation procedure](.agents/rules/opcode-naming.md) |
 | Chip, DMA, or bus behavior | [Hardware topology](.agents/rules/hardware-bus-topology.md), [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md) |
-| Tests or defect repair | [Testing policy](.agents/rules/unit-testing-policy.md), [repro-first](.agents/rules/repro-first.md), [test-runner](.agents/skills/test-runner/SKILL.md) |
-| GUI | [egui practices](.agents/rules/egui-best-practices.md), [egui-vision-debugger](.agents/skills/egui-vision-debugger/SKILL.md) |
+| Tests or defect repair | [Testing policy](.agents/rules/unit-testing-policy.md), [repro-first](.agents/rules/repro-first.md) |
+| GUI | [egui practices and visual verification](.agents/rules/egui-best-practices.md) |
 | Documentation | [Documentation maintenance](.agents/rules/docs-maintenance.md), [vault links](.agents/rules/vault-linking-and-graph-integrity.md), [information hierarchy](.agents/rules/information-hierarchy.md), [writing style](.agents/rules/practitioner-voice-and-tone.md) |
-| Commit or milestone | [Diary](.agents/rules/diary-maintenance.md), [roadmap](.agents/rules/roadmap-maintenance.md), [compact-diary](.agents/skills/compact-diary/SKILL.md) |
-| Merge or worktree | [Merge policy](.agents/rules/git-merge-commits.md), [git-worktree](.agents/skills/git-worktree/SKILL.md), [git-resolve-merge](.agents/skills/git-resolve-merge/SKILL.md) |
+| Commit or milestone | [Diary](.agents/rules/diary-maintenance.md), [roadmap](.agents/rules/roadmap-maintenance.md) |
+| Merge or worktree | [Merge policy and required procedures](.agents/rules/git-merge-commits.md) |
 | Reference conversion bootstrap | [Conversion programs](docs/developers.md#processing-raw-documents-into-markdown) |
 | Long-running checks | [Parallel execution](.agents/rules/parallel-execution.md) |
 
-Skills live in `.agents/skills/*/SKILL.md`; invoke with `$skill-name` or `/skills`, or select by task relevance. Roles live in `.codex/agents/*.toml`; delegate only when requested by the user or applicable instructions. MCP configuration is `.codex/config.toml`.
+Codex discovers skill names and descriptions in `.agents/skills/` and reads full instructions when selected; a separate skill catalog is unnecessary here. Rule files are referenced Markdown and must be read as routed above. Roles live in `.codex/agents/*.toml`; delegate only when requested by the user or applicable instructions. MCP configuration is `.codex/config.toml`.
 
 ## Machine Invariants
 

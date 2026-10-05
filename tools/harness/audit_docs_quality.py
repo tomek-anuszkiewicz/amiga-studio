@@ -22,13 +22,15 @@ Audits nine critical documentation and agent governance dimensions across the re
    - Verifies native skill entrypoints and companion coverage for active remediation rules.
 7. Frontmatter & Inverted Pyramid Specification Compliance:
    - Verifies YAML frontmatter metadata in `Obsidian/Amiga/Design/` (tags, tracked_paths, last_synced_commit).
-8. Design Docs Reflection in Rules:
-   - Enforces that 100% of design specifications are reflected and delegated in agent rules.
-9. Semantic Documentation-to-Code Validator (Double-Check Engine):
+8. Semantic Documentation-to-Code Validator (Double-Check Engine):
    - Validates custom register matrix, memory map ranges, Mermaid crate topology, cross-chip signals, and quirks test coverage.
-10. Rule Audit Coverage & Governance Invariants:
-   - Verifies 100% of rules in `.agents/rules/*.md` are registered and audited.
-   - Validates diagram sidecars (`.txt`), DIARY.md Section 10 chronology, and ROADMAP.md zero-retention.
+9. Workflow Invariants:
+   - Validates DIARY.md presence, Section 10, and nondecreasing parsed timestamps.
+   - Validates ROADMAP.md presence and absence of completed task checkboxes.
+
+These static checks do not prove full semantic parity, per-commit diary logging,
+or milestone compaction. Rule files need no manual audit registry; specifications
+need no duplicated direct links from agent rules.
 """
 
 import argparse
@@ -520,13 +522,12 @@ def check_skill_and_rule_governance():
 
     ACTIVE_RULE_COMPANIONS = {
         "amiga-rag.md": {"index-amiga-rag"},
+        "diary-maintenance.md": {"compact-diary"},
         "docs-maintenance.md": {"sync-design-docs", "obsidian-vault-linking", "audit-docs-quality", "audit-semantic-parity"},
         "vault-linking-and-graph-integrity.md": {"obsidian-vault-linking", "audit-docs-quality"},
         "egui-best-practices.md": {"egui-vision-debugger", "capture-gui-screenshot"},
         "file-size-and-cohesion.md": {"refactor-split-module"},
-        "git-commits.md": {"git-resolve-merge", "git-worktree"},
         "git-merge-commits.md": {"git-resolve-merge", "git-worktree"},
-        "graphify.md": {"graphify"},
         "hardware-bus-topology.md": {"audit-hardware-quality"},
         "opcode-naming.md": {"add-m68k-instruction"},
         "repro-first.md": {"m68k-singlestep-test", "test-runner", "synthesize-test-fixes"},
@@ -537,6 +538,7 @@ def check_skill_and_rule_governance():
     PASSIVE_INVARIANT_RULES = {
         "audio-transcription.md",
         "clean-break-refactoring.md",
+        "git-commits.md",
         "information-hierarchy.md",
         "language-policy.md",
         "method-inlining.md",
@@ -614,120 +616,7 @@ def check_frontmatter_compliance():
     }
 
 # ---------------------------------------------------------------------------
-# Pillar 8: Design Documentation Reflection & Delegation in Agent Rules
-# ---------------------------------------------------------------------------
-
-DESIGN_DOC_GOVERNANCE_MAP = {
-    # Subsystems & Bus Topology
-    "Agnus.md": ("hardware-bus-topology.md", "Agnus DMA address mastership and custom chip execution"),
-    "Copper.md": ("hardware-bus-topology.md", "Copper coprocessor state machine, MOVE, WAIT, SKIP"),
-    "Blitter.md": ("hardware-bus-topology.md", "4-channel DMA Blitter, 256 minterms ALU, Bresenham line drawing"),
-    "DMA.md": ("hardware-bus-topology.md", "DMA channel arbitration, 227.5 CCK slot scheduling, and Agnus address mastership"),
-    "Denise.md": ("hardware-bus-topology.md", "Denise display pipeline, bitplanes, and passive RGA latching"),
-    "Sprites.md": ("hardware-bus-topology.md", "Denise 8 hardware sprites, position comparators, attached pairs"),
-    "Frame Buffer.md": ("hardware-bus-topology.md", "Denise raster scanline pixel compositor, RGB palette DAC, and ARGB frame buffer"),
-    "Paula.md": ("hardware-bus-topology.md", "Paula audio and interrupt handling"),
-    "Interrupts.md": ("hardware-bus-topology.md", "Central interrupt multiplexer, 14-source priority encoder, IPL 1..6"),
-    "Audio.md": ("hardware-bus-topology.md", "Paula 4-channel DMA audio engine, volume scaling, period counters"),
-    "CIA.md": ("hardware-bus-topology.md", "8520 CIA timers, TOD counters, and peripheral handshaking"),
-    "Floppy.md": ("hardware-bus-topology.md", "Floppy drive subsystem, MFM encoding, and DMA transfers"),
-    "MemoryBus.md": ("hardware-bus-topology.md", "Address decoding, bus arbitration, and wait states"),
-    "Main loop A500.md": ("hardware-bus-topology.md", "Color clock CCK stepping and subsystem coordination"),
-    "Custom Chip Register Ownership and Access Matrix.md": ("hardware-bus-topology.md", "Custom chip register read/write privileges and strobe routing"),
-    "Cross-Chip Signals and Action Dispatch Catalog.md": ("hardware-bus-topology.md", "Inter-chip signal dispatch and decoupled interrupt routing"),
-    "SaveState.md": ("hardware-bus-topology.md", "Hardware circuit simulation state serialization"),
-    # Peripherals
-    "Keyboard.md": ("hardware-bus-topology.md", "Keyboard matrix, handshaking, and CIA-A serial shift register"),
-    "Mouse.md": ("hardware-bus-topology.md", "Mouse quadrature counter registers and game port latching"),
-    "Joystick.md": ("hardware-bus-topology.md", "Digital joystick direction switches and fire button routing"),
-    "Game Ports.md": ("hardware-bus-topology.md", "Port 1/2 controller pinouts and POTGO resistance measuring"),
-    "RTC.md": ("unit-testing-policy.md", "Ricoh RP5C01 / Oki MSM6242 real-time clock registers"),
-    # CPU & Execution
-    "CPU Motorola M68000.md": ("opcode-naming.md", "M68000 programmer model and execution semantics"),
-    "CPU Micro-Step State Machine.md": ("opcode-naming.md", "Bus cycle phases CCK1/CCK2 and IDLE micro-steps"),
-    "CPU SingleStepTests.md": ("opcode-naming.md", "Tom Harte silicon validation test suite"),
-    "CPU Instruction Benchmarking.md": ("performance-and-readability.md", "Instruction cycle timings and empirical benchmarks"),
-    "CPU Instruction Benchmark Catalog.md": ("performance-and-readability.md", "Golden instruction cycle counts and catalog"),
-    "CPU Instruction Benchmark Strategies.md": ("performance-and-readability.md", "Contention-free benchmark harness strategies"),
-    "CPU Benchmark Analysis Guide.md": ("performance-and-readability.md", "Cycle timing discrepancy triage and analysis"),
-    "Performance Profiling and Optimization Strategy.md": ("performance-and-readability.md", "Host CPU execution efficiency and profiler metrics"),
-    # Frontend, GUI & Debugger
-    "GUI.md": ("egui-best-practices.md", "Immediate-mode egui Developer Studio"),
-    "GUI Specification.md": ("egui-best-practices.md", "View modes, panel docks, and layout stability"),
-    "egui Guidelines.md": ("egui-best-practices.md", "Zero-alloc UI rendering and synchronous state pull"),
-    "Debugger.md": ("egui-best-practices.md", "Disassembly view, memory hex editors, and breakpoints"),
-    # System & Quality Guidelines
-    "General Architecture.md": ("workspace-structure-and-reexports.md", "Workspace crate dependency topology and named roots"),
-    "Configuration.md": ("workspace-structure-and-reexports.md", "Decoupled machine configuration and video standards"),
-    "Rust Guidelines.md": ("rust-best-practices.md", "Safe borrowing, zero unwraps, and numeric wrapping"),
-    "Testing Strategy and Quality Assurance.md": ("unit-testing-policy.md", "four verification tiers and behavior-based coverage"),
-    "Platform Quirks and Invariants Catalog.md": ("spec-compliance.md", "Amiga 500 silicon traps and hardware quirks"),
-    "vAmigaTS Verification Scorecard.md": ("spec-compliance.md", "vAmigaTS verification scorecard and pass rates"),
-}
-
-def check_design_docs_to_rules_reflection():
-    """Audits that every Obsidian design specification is reflected and delegated in agent rules."""
-    design_dir = REPO_ROOT / "Obsidian" / "Amiga" / "Design"
-    rules_dir = REPO_ROOT / ".agents" / "rules"
-    agents_md = REPO_ROOT / "AGENTS.md"
-
-    if not design_dir.exists():
-        return {"total_docs": 0, "reflected_count": 0, "issues": []}
-
-    md_files = sorted(design_dir.glob("*.md"))
-
-    rule_texts = {}
-    if rules_dir.exists():
-        for rf in rules_dir.glob("*.md"):
-            try:
-                rule_texts[rf.name] = rf.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                pass
-    if agents_md.exists():
-        try:
-            rule_texts["AGENTS.md"] = agents_md.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            pass
-
-    combined_rule_text = "\n".join(rule_texts.values())
-
-    issues = []
-    reflected_count = 0
-
-    for doc in md_files:
-        doc_name = doc.name
-        doc_stem = doc.stem
-        encoded_stem = doc_stem.replace(" ", "%20")
-        is_referenced = (
-            doc_name in combined_rule_text
-            or f"Design/{doc_name}" in combined_rule_text
-            or f"Design/{doc_stem}" in combined_rule_text
-            or f"Design/{encoded_stem}" in combined_rule_text
-            or f"/{doc_name}" in combined_rule_text
-        )
-
-        governing_rule, domain_desc = DESIGN_DOC_GOVERNANCE_MAP.get(
-            doc_name, ("docs-maintenance.md", "General architectural design")
-        )
-
-        if is_referenced:
-            reflected_count += 1
-        else:
-            issues.append({
-                "doc": doc_name,
-                "governing_rule": governing_rule,
-                "domain": domain_desc,
-                "message": f"Design spec `{doc_name}` ({domain_desc}) is not reflected or delegated in agent rules. Delegate in `.agents/rules/{governing_rule}`.",
-            })
-
-    return {
-        "total_docs": len(md_files),
-        "reflected_count": reflected_count,
-        "issues": issues,
-    }
-
-# ---------------------------------------------------------------------------
-# Pillar 9: Semantic Documentation-to-Code Validator ("The Double-Check Engine")
+# Pillar 8: Semantic Documentation-to-Code Validator ("The Double-Check Engine")
 # ---------------------------------------------------------------------------
 
 def check_semantic_registers():
@@ -1029,58 +918,8 @@ def check_semantic_sync():
     }
 
 # ---------------------------------------------------------------------------
-# Pillar 10: Rule Audit Coverage & Governance Invariants
+# Pillar 9: Workflow Invariants
 # ---------------------------------------------------------------------------
-
-REGISTERED_RULE_AUDITS = {
-    "amiga-rag.md": ["rag_qdrant", "audit_docs_quality.py (Pillar 5)"],
-    "audio-transcription.md": ["skills (Conscience Check 1)"],
-    "clean-break-refactoring.md": ["test_architecture_rules.rs (test_zero_backward_compatibility_shims_and_stale_aliases)"],
-    "docs-maintenance.md": ["audit_docs_quality.py (Pillar 1 code drift)"],
-    "egui-best-practices.md": ["crates/gui/tests/test_interactions.rs"],
-    "file-size-and-cohesion.md": ["test_architecture_rules.rs (test_file_size_limits)"],
-    "git-commits.md": ["tools/harness/pre_flight.py", "tools/harness/check_polish.py"],
-    "git-merge-commits.md": [".agents/skills/git-resolve-merge/SKILL.md"],
-    "graphify.md": ["audit_docs_quality.py (Pillar 6 graphify skill)"],
-    "hardware-bus-topology.md": ["audit_hardware_quality.py (Pillars 1 & 2)"],
-    "information-hierarchy.md": ["test_architecture_rules.rs (test_rule_files_size_limit...)", "audit_docs_quality.py (Pillars 3 & 7)"],
-    "language-policy.md": ["tools/harness/check_polish.py (language-policy check)"],
-    "method-inlining.md": ["test_architecture_rules.rs (test_inlining_guidelines_compliance)"],
-    "model-reasoning-advisory.md": ["skills (Conscience Check 1)"],
-    "no-external-paths.md": ["test_architecture_rules.rs (test_no_external_hardcoded_paths)"],
-    "opcode-naming.md": ["test_architecture_rules.rs (test_idle_microstep_naming...)", "audit_hardware_quality.py (Pillar 4)"],
-    "parallel-execution.md": ["skills (parallel execution)"],
-    "performance-and-readability.md": ["test_architecture_rules.rs (test_zero_user_defined_macros)", "audit_code_quality.py (Pillar 3 condition soup)"],
-    "practitioner-voice-and-tone.md": ["skills (Conscience Checks 4 & 5)"],
-    "repro-first.md": ["skills (repro-first verification)"],
-    "roadmap-maintenance.md": ["audit_docs_quality.py (Pillar 10 roadmap zero-retention)"],
-    "rust-best-practices.md": ["test_architecture_rules.rs (test_zero_runtime_panics_or_unwraps)", "audit_code_quality.py (Pillars 1, 2, & 4)"],
-    "spec-compliance.md": ["test_architecture_rules.rs (test_golden_hash_anti_tamper_policy_compliance)", "skills (Conscience Check 2)"],
-    "structural-root-cause.md": ["skills (Conscience Check 3)"],
-    "unit-testing-policy.md": ["test_architecture_rules.rs (test_every_crate_has_dedicated_external_tests_suite)", "audit_hardware_quality.py (Pillar 5)"],
-    "vault-linking-and-graph-integrity.md": ["test_architecture_rules.rs (test_obsidian_design_docs_links_integrity)", "audit_docs_quality.py (Pillars 2 & 7)"],
-    "workspace-structure-and-reexports.md": ["test_architecture_rules.rs (test_named_crate_roots_and_zero_generic_lib_rs)", "audit_docs_quality.py (Pillar 9)"],
-}
-
-def check_rule_audit_coverage():
-    """Audits that 100% of rule files in .agents/rules/ are registered and have active audit coverage."""
-    rules_dir = REPO_ROOT / ".agents" / "rules"
-    on_disk_rules = {f.name for f in rules_dir.glob("*.md")} if rules_dir.exists() else set()
-
-    unregistered = sorted(on_disk_rules - set(REGISTERED_RULE_AUDITS.keys()))
-    phantom = sorted(set(REGISTERED_RULE_AUDITS.keys()) - on_disk_rules)
-
-    issues = []
-    for r in unregistered:
-        issues.append({"message": f"Rule `{r}` is present on disk but not registered with an audit mechanism in REGISTERED_RULE_AUDITS"})
-    for p in phantom:
-        issues.append({"message": f"Registered rule `{p}` does not exist in .agents/rules/"})
-
-    return {
-        "total_rules": len(on_disk_rules),
-        "audited_rules": len(on_disk_rules - set(unregistered)),
-        "issues": issues,
-    }
 
 def check_diary_structure_and_chronology():
     """Verifies that DIARY.md exists, contains Section 10, and entries are strictly chronological per diary-maintenance.md."""
@@ -1119,15 +958,13 @@ def check_roadmap_zero_retention():
 
     return {"issues": issues}
 
-def check_rule_audit_and_governance():
-    """Aggregates all checks for Pillar 10: Rule Audit Coverage & Governance Invariants."""
-    rac = check_rule_audit_coverage()
+def check_workflow_invariants():
+    """Check diary structure, timestamp ordering, and retained completed roadmap items."""
     dsc = check_diary_structure_and_chronology()
     rzr = check_roadmap_zero_retention()
 
-    all_issues = rac["issues"] + dsc["issues"] + rzr["issues"]
+    all_issues = dsc["issues"] + rzr["issues"]
     return {
-        "rule_coverage": rac,
         "diary_chronology": dsc,
         "roadmap_retention": rzr,
         "issues": all_issues,
@@ -1149,9 +986,8 @@ def main():
     parser.add_argument("--scripts", action="store_true", help="Audit two-way script locality and harness placement governance")
     parser.add_argument("--governance", action="store_true", help="Audit native skills and active rule companion coverage")
     parser.add_argument("--frontmatter", action="store_true", help="Audit YAML frontmatter properties in design specs")
-    parser.add_argument("--rules-delegation", action="store_true", help="Audit that design specifications are reflected and delegated in agent rules")
     parser.add_argument("--semantic-sync", action="store_true", help="Audit semantic consistency between documentation and code (Double-Check engine)")
-    parser.add_argument("--rule-coverage", action="store_true", help="Audit 100% rule audit coverage and governance invariants (Pillar 10)")
+    parser.add_argument("--workflow-invariants", action="store_true", help="Audit diary structure, chronological timestamps, and completed roadmap checkboxes")
     parser.add_argument("--strict", action="store_true", help="Enforce 0-commit strict drift check (disables grace tolerance window)")
 
     args = parser.parse_args()
@@ -1169,7 +1005,7 @@ def main():
     run_all = args.all or not any([
         args.design_sync, args.vault_links, args.size_limits,
         args.skills, args.scripts, args.governance, args.frontmatter,
-        args.rules_delegation, args.semantic_sync, args.rule_coverage
+        args.semantic_sync, args.workflow_invariants
     ])
 
     print("=" * 76)
@@ -1299,24 +1135,9 @@ def main():
         else:
             print("  - Status: [PASS] All design specs define valid YAML frontmatter properties.")
 
-    # 8. Design Docs Reflection in Rules
-    if run_all or args.rules_delegation:
-        print("\n[8. DESIGN DOCS TO AGENT RULES REFLECTION & DELEGATION]")
-        ref_res = check_design_docs_to_rules_reflection()
-        r_issues = ref_res["issues"]
-        print(f"  - Inspected Design Specs: {ref_res['total_docs']}")
-        print(f"  - Reflected in Agent Rules: {ref_res['reflected_count']}")
-        if r_issues:
-            total_issues += len(r_issues)
-            print(f"  - Status: [UNREFLECTED] {len(r_issues)} design spec(s) lack agent rule delegation:")
-            for item in r_issues:
-                print(f"    * {item['doc']}: {item['message']}")
-        else:
-            print("  - Status: [PASS] 100% of design specifications are reflected and delegated in agent rules.")
-
-    # 9. Semantic Documentation-to-Code Double-Check
+    # 8. Semantic Documentation-to-Code Double-Check
     if run_all or args.semantic_sync:
-        print("\n[9. SEMANTIC DOCUMENTATION-TO-CODE DOUBLE-CHECK]")
+        print("\n[8. SEMANTIC DOCUMENTATION-TO-CODE DOUBLE-CHECK]")
         sem_res = check_semantic_sync()
         regs = sem_res["registers"]
         mmap = sem_res["memory_map"]
@@ -1339,18 +1160,16 @@ def main():
         else:
             print("  - Status: [PASS] Configured static consistency checks passed; full semantic parity requires manual review.")
 
-    # 10. Rule Audit Coverage & Governance Invariants
-    if run_all or args.rule_coverage:
-        print("\n[10. RULE AUDIT COVERAGE & GOVERNANCE INVARIANTS]")
-        gov_inv = check_rule_audit_and_governance()
-        rc = gov_inv["rule_coverage"]
+    # 9. Workflow Invariants
+    if run_all or args.workflow_invariants:
+        print("\n[9. WORKFLOW INVARIANTS]")
+        gov_inv = check_workflow_invariants()
         dc = gov_inv["diary_chronology"]
         rm = gov_inv["roadmap_retention"]
         g_issues = gov_inv["issues"]
 
-        print(f"  - Rule Audit Coverage: {rc['audited_rules']}/{rc['total_rules']} rules audited (100% coverage)")
-        print(f"  - Engineering Diary Integrity: {dc['total_entries']} chronological entries in Section 10")
-        print(f"  - Roadmap Zero Retention: Verified (zero completed items retained)")
+        print(f"  - Diary Timestamps Inspected: {dc['total_entries']} in Section 10")
+        print(f"  - Roadmap Check: {len(rm['issues'])} issue(s) in file presence and completed checkboxes")
 
         if g_issues:
             total_issues += len(g_issues)
@@ -1358,7 +1177,7 @@ def main():
             for issue in g_issues:
                 print(f"    * {issue['message']}")
         else:
-            print("  - Status: [PASS] 100% rule audit coverage and governance invariants satisfied.")
+            print("  - Status: [PASS] Diary structure and timestamp order, and roadmap file/checkbox checks passed.")
 
     print("\n" + "=" * 76)
     print(f"Documentation Audit Summary: {total_issues} total issue(s) detected.")

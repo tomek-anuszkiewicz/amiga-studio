@@ -16,7 +16,7 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 - **Zero Host Panics (`performance-and-readability.md`):** No `.unwrap()` or `.expect()` in runtime emulation hot paths.
 - **Hardware Efficiency & Readability:** Zero custom macros (`macro_rules!`), zero const-generic instruction handlers, contiguous memory layouts, and zero heap allocations in execution loops.
 - **Amiga RAG Knowledge Base (`amiga-rag.md`):** Targeted domain/reference retrieval through the CLI or optional MCP adapter; consult developer notes when project evidence is insufficient.
-- **Graphify AST Knowledge Graph (`graphify.md`):** Consult the code knowledge graph for AST queries and adhere to scoped subtree re-indexing (`crates/` vs `ref_src/`).
+- **Graphify AST Knowledge Graph:** Follow the mandatory routing in `AGENTS.md` and the [Graphify skill](../.agents/skills/graphify/SKILL.md) for source navigation and explicit graph refresh.
 - **Information Hierarchy (`information-hierarchy.md`):** Inverted pyramid structure, leading with key architectural conclusions.
 - **Practitioner Voice & Tone (`practitioner-voice-and-tone.md`):** Hands-on lead architect persona, in-depth tech blog standard, and zero academic/dissertation jargon.
 - **Scoped Changes & Root-Cause Resolution (`structural-root-cause.md`):** Fix the mechanism, reuse existing definitions, and keep changes within the requested task.
@@ -40,7 +40,7 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 - **What is Indexed:** Graphify parses Abstract Syntax Trees (AST), symbol relationships, and call hierarchies across two distinct codebases:
   - **Active Emulator Crates (`crates/`):** Core Rust workspace (`m68000`, `memory_bus`, `debugger`, `gui`, `config`, `rtc`, `test_runner`).
   - **Reference Emulator Sources (`ref_src/`):** Clean C++ reference implementation (`ref_src/vAmiga`) and external test harnesses.
-- **Incremental Knowledge Graph Updates ([`graphify.md`](../.agents/rules/graphify.md)):**
+- **Incremental Knowledge Graph Updates ([Graphify skill](../.agents/skills/graphify/SKILL.md)):**
   - Graphify maintains an AST cache that extracts only modified files in 1–2 seconds without LLM calls.
   - After modifications to code in `crates/` or `ref_src/`, run `graphify update .` from the repository root (or via `.\tools\bootstrap\bootstrap.ps1 -Graphify`).
   - This keeps a single unified knowledge graph in `graphify-out/` connecting active emulator crates and reference implementations.
@@ -110,8 +110,73 @@ The procedures in Section 3 include execution ordering, targeted commands,
 verification, and reporting. Conditional detail is linked from the owning skill,
 such as the [manual diff checklist](../.agents/skills/audit-code-quality/references/manual-diff-checklist.md).
 
+`AGENTS.md` does not need to repeat this skill catalog. It retains shared
+obligations and required actions; task rules route to procedures that must run.
+Rules are explicitly read Markdown, while skill selection starts from `name`
+and `description`. Keep trigger boundaries in that description, not only in a
+later section of the skill body.
+
 See [OpenAI's skill documentation](https://learn.chatgpt.com/docs/build-skills)
 for discovery and invocation behavior.
+
+### Agent Tooling Maintenance
+
+- Rules own obligations, scope, and exceptions. Skills own steps, commands,
+  diagnostics, and templates; conditional examples live in the owning skill's
+  `references/` directory. Mechanical requirements belong in scripts and tests.
+- Reserve `tools/harness/` for shared or universal gates. A specialized script
+  used by at most one skill belongs under that skill's `scripts/`; a script used
+  by multiple skills belongs in the shared harness. Supporting references count
+  as part of their owning skill, not as additional consumers.
+- Keep all active skills documented in Section 3. Adding or removing a skill
+  requires updating the catalog; keep descriptions scoped and entrypoints valid.
+- Adding, removing, or renaming a rule requires updating active links and
+  applicable companion classifications. No manual audit registry is required.
+  Historical diary references remain historical. Reach design specifications
+  through domain rules or the design index; do not duplicate every document link.
+- Passive rules do not need duplicate skills. Active procedures must remain
+  reachable through their owning skills. Report concrete executed checks and
+  their limits; static checks do not establish complete behavioral enforcement.
+- Verify the affected governance with explicit commands:
+  ```powershell
+  python tools/harness/audit_docs_quality.py --size-limits --skills --scripts --governance --workflow-invariants
+  python -m unittest discover -s tests -p test_skill_governance.py -q
+  ```
+
+### Recording and Validating Changes
+
+Commit policy is in [git-commits.md](../.agents/rules/git-commits.md); diary policy
+is in [diary-maintenance.md](../.agents/rules/diary-maintenance.md). Inspect the
+diff, stage intended paths, run the per-commit gates, and append observed results:
+
+```powershell
+python tools/harness/log_diary.py `
+  --title "<Commit-sized change>" `
+  --subsystems "<relative components>" `
+  --changes "<change 1>; <change 2>" `
+  --rationale "<reason or trade-off>" `
+  --results "<observed verification>"
+```
+
+Entries use `### [YYYY-MM-DD HH:MM CET/CEST] — <Title>`; use `--date` for an
+explicit local timestamp. Record failures and unrun checks honestly.
+
+Use an English Conventional Commit message, for example:
+
+```text
+docs(rules): separate policy from execution procedures
+
+Explain the concrete change and rationale.
+Verification: list checks actually run and their observed results.
+```
+
+Usual types are `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, and `chore`;
+scope names identify the affected subsystem or tooling. Implementation, tests,
+design updates, and diary for the same concern belong together.
+
+For an explicit language scan, use `python tools/harness/check_polish.py <path>`
+or `python tools/harness/check_polish.py --staged`. The milestone gate includes
+the staged scan. Invoke validation explicitly; use no lifecycle or Git hooks.
 
 ---
 

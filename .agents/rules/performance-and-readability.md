@@ -1,36 +1,12 @@
-# High Performance & Readability — Core Invariants
+# Performance and Readability
 
-## Hot Path Constraints (All Emulation Crates)
-- **Zero heap allocation** in `step()`, `step_cck()`, memory access, interrupt polling:
-  no `Vec::new`, `Box::new`, `format!`, `String` inside the execution loop.
-- **No cascaded runtime branches** in hot paths — avoid `match opcode { match size { match ea_mode { } } }`.
-  Favor flat dispatch or compile-time specialized handlers.
-- **Contiguous memory layouts:** flat arrays over pointer-chased dynamic structures.
+Applies to emulation execution, memory access, and interrupt paths.
 
-## Inlining Policy
-- `#[inline(always)]` — ultra-hot ALU/CCR calculations and CPU register accessors used by instruction micro-steps. Ordinary configuration getters and setters use `#[inline]`; see [method-inlining.md](method-inlining.md).
-- `#[inline]` — lightweight public getters and cross-crate forwarding wrappers.
-- `#[inline(never)]` — mandatory on cold exception/trap paths to keep the hot dispatch linear.
-- No forced inlining on functions > 15–20 lines of control flow.
+- Allocate no heap memory in hot loops. Use fixed-capacity or in-place state and contiguous arrays instead of pointer-chased dynamic structures.
+- Avoid cascaded runtime opcode/size/addressing dispatch; use flat dispatch or concrete specialized handlers. Language-level prohibitions are owned by [rust-best-practices.md](rust-best-practices.md).
+- Keep code traceable to registers, signals, and clock phases. Explain non-obvious silicon states with concise hardware rationale, and preserve lazy short-circuit evaluation when naming predicates.
+- Use `inline(always)` for ultra-hot ALU/CCR helpers and CPU register accessors; use `inline` for small public accessors and cross-crate forwarding helpers. Use `inline(never)` for cold exception/trap handlers.
+- Do not force inline large control-flow functions (over roughly 15-20 lines) or indirect dispatch-table targets. Attribute choices must preserve the project's architecture checks; performance conclusions require measurement.
+- Avoid clever optimizations without evidence. Use [profile-external](../skills/profile-external/SKILL.md) for profiling and baseline comparisons, and [audit-code-quality](../skills/audit-code-quality/SKILL.md) for review.
 
-## Strict Code Prohibitions (Compiler-Enforced via Clippy)
-- **Zero `macro_rules!`** across the entire workspace. Write explicit specialized functions.
-- **Zero const-generic instruction handlers** (`fn op<const S: usize>()`). Write concrete functions.
-- **No condition soup:** decompose multi-clause `&&`/`||` chains into named explaining variables
-  or domain predicate methods (`self.is_active()`, `step.has_work()`).
-- **No eager speculative variable computation:** explaining variables must not force evaluation
-  of sub-expressions that boolean short-circuit (`&&`, `||`) would otherwise skip.
-
-## Readability Non-Negotiable
-- Code reads like a hardware specification — name the register, the clock phase, the signal.
-- No clever micro-optimizations that LLVM already handles.
-- Accompany non-obvious silicon states with a 1-line comment explaining the *hardware rule*.
-
-## CPU Micro-Step Details (M68000 — Closed Gate)
-CCK phase fusion, dual staging (`addr1`/`addr2`), `WRITE_ADDR2_*` write patterns, Address Error
-invariance, and IDLE constant naming apply exclusively to `crates/cpu/`. Consult the
-[`add-m68k-instruction`](../skills/add-m68k-instruction/SKILL.md) skill when working there.
-
-## Code Review Checklist
-Full performance & readability audit checklist → [`$audit-code-quality`](../skills/audit-code-quality/SKILL.md) skill ([manual diff checklist](../skills/audit-code-quality/references/manual-diff-checklist.md)).
-Benchmarking specs → `Obsidian/Amiga/Design/CPU Instruction Benchmarking.md`.
+CPU-only micro-step fusion, dual staging, and idle naming belong to [add-m68k-instruction](../skills/add-m68k-instruction/SKILL.md) and the CPU specifications.

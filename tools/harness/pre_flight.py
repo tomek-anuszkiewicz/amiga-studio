@@ -145,7 +145,7 @@ def check_docs_quality():
     if code != 0:
         output = stdout.strip() or stderr.strip()
         return False, f"Docs quality audit failed:\n{output}", elapsed
-    return True, "10/10 pillars 100% compliant", elapsed
+    return True, "Configured documentation and workflow checks passed", elapsed
 
 def main():
     quick_mode = "--quick" in sys.argv

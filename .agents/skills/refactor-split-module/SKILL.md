@@ -9,6 +9,10 @@ This skill provides the operational procedure for refactoring and splitting over
 
 ---
 
+
+For decomposition examples, read [module-examples](references/module-examples.md); for crate extraction or re-exports, read [workspace-layout](references/workspace-layout.md).
+
+
 ## 1. When to Use This Skill
 
 Activate this skill whenever:

@@ -38,6 +38,7 @@ This skill provides on-demand verification across the repository's documentation
 - **Zero Phantom References:** Every skill linked in `docs/ai_agents.md` must actually exist on disk.
 
 ### Pillar 5: Two-Way Script Locality & Harness Governance (`--scripts`)
+The canonical placement and catalog policy is [agent tooling maintenance](../../../docs/ai_agents.md#agent-tooling-maintenance).
 - **Harness Reservation:** `tools/harness/` is reserved strictly for universal, shared infrastructure used across multiple subsystems (pre-flight gates, explicit validation commands, universal test runners, global rules).
 - **Rule A (Specialized Locality):** Any script in `tools/harness/` referenced by $\le 1$ skill (and not part of global pre-commit/pre-flight) must be relocated to `.agents/skills/<skill>/scripts/`.
 - **Rule B (Shared Promotion):** Any script inside `.agents/skills/<skill>/scripts/` referenced by $> 1$ distinct skills must be promoted into `tools/harness/` to avoid cross-skill leakage.
@@ -47,22 +48,25 @@ This skill provides on-demand verification across the repository's documentation
 - Invoke them as `$skill-name` or let Codex select them from the task and description.
 - Active remediation rules require corresponding skills; passive invariants remain lean rules.
 - Supporting references belong to their owning skill and count as the same script consumer.
+- Presence checks confirm configured files and mappings, not correct skill activation or complete semantic coverage. Review rule brevity and procedure ownership separately.
 
 ### Pillar 7: Frontmatter & Inverted Pyramid Structure (`--frontmatter`)
 - **Line 1 Frontmatter:** Every specification under `Obsidian/Amiga/Design/` must define YAML frontmatter starting on Line 1 with `tags: [spec, ...]`.
 - **Inverted Pyramid:** Decisive architectural conclusions, invariants, and memory maps presented in opening 20–50 lines before implementation details.
 
-### Pillar 8: Design Docs to Agent Rules Reflection & Delegation (`--rules-delegation`)
-- **Task Routing:** Verify that domain rules or the design index route the task to its authoritative specification. Do not require a duplicated direct rule link for every document.
-- **Legacy Scanner Limitation:** `--rules-delegation` still checks direct rule references; its seven previously reported findings and scanner redesign are deferred. Report its result separately from the actual routing review.
-
-### Pillar 9: Semantic Documentation-to-Code Parity (`--semantic-sync`)
+### Pillar 8: Semantic Documentation-to-Code Parity (`--semantic-sync`)
 - **Deterministic Field Validator (The Double-Check Engine):** Validates five deep semantic dimensions against live Rust source code:
   1. *Custom Register Matrix:* 100+ offsets, R/W permissions, and chip ownership (`Agnus`, `Denise`, `Paula`) vs `crates/config/src/registers.rs`.
   2. *Memory Map Boundaries:* 24-bit physical ranges and Gary bank constants vs `crates/memory_bus/src/memory_bus.rs`.
   3. *Crate Topology Sync:* 100% bidirectional parity between Mermaid graph in `General Architecture.md` and `Cargo.toml`.
   4. *Cross-Chip Signal Parity:* All action methods and `poll_*` queries in `Cross-Chip Signals Catalog` confirmed in `crates/*/src/`.
   5. *Silicon Quirks Coverage:* All 13 hardware errata in `Platform Quirks Catalog` covered by active regression test sentinels.
+
+### Pillar 9: Workflow Invariants (`--workflow-invariants`)
+- Verify that `DIARY.md` exists, contains Section 10, and has nondecreasing parsed entry timestamps.
+- Verify that `ROADMAP.md` exists and contains no completed `[x]` task checkboxes.
+- These checks do not verify an entry in every commit, milestone compaction, or full roadmap completion semantics.
+- Rule files need no manual audit registration. Reach specifications through domain rules or the design index; do not duplicate a direct rule link for every document.
 
 ---
 
@@ -121,8 +125,8 @@ python tools/harness/audit_docs_quality.py --scripts
 # Audit skill and rule governance
 python tools/harness/audit_docs_quality.py --governance
 
-# Audit design docs reflection and delegation in agent rules
-python tools/harness/audit_docs_quality.py --rules-delegation
+# Audit diary structure and timestamps, and retained roadmap checkboxes
+python tools/harness/audit_docs_quality.py --workflow-invariants
 
 # Audit semantic documentation-to-code parity (The Double-Check Engine)
 python tools/harness/audit_docs_quality.py --semantic-sync
@@ -141,8 +145,8 @@ Report observed results; mark checks that were not run instead of copying the ex
 - **Script Locality & Harness Governance:** [PASS | <count> anomalies]
 - **Skill & Rule Governance:** [PASS | <count> issues]
 - **Frontmatter Compliance:** [PASS | <count> missing frontmatter]
-- **Design Docs to Rules Reflection:** [PASS | <count> unreflected] (verified <count> specs)
 - **Semantic Documentation-to-Code:** [PASS | <count> discrepancies] (registers, memory map, crate topology, signals, quirks)
-- **Verbal Double-Check Conscience Review:** [CONFIRMED - 5/5 heuristics verified]
+- **Workflow Invariants:** [PASS | <count> issues] (diary structure/timestamps, roadmap file/checkboxes)
+- **Manual Review:** <inspected scope and unresolved questions; mark unrun reviews>
 - **Verification:** `pre_flight.py` (PASS), `test_architecture_rules` (PASS)
 ```

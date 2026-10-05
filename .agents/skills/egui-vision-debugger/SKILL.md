@@ -9,6 +9,10 @@ This skill enables the AI agent to test, visually inspect, and iteratively debug
 
 ---
 
+
+When creating panels or tooltips, read [gui-authoring](references/gui-authoring.md) for layout and documentation detail.
+
+
 ## 1. When to Use This Skill
 
 Activate this skill whenever:

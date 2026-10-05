@@ -1,20 +1,5 @@
-# Audio Input Transcription & Spoken Prompt Confirmation Rule
+# Audio Transcription
 
-## 1. Rule Mandate
-Whenever the user communicates using a voice recording (an audio file attached to `<USER_REQUEST>` or prompt):
-- The agent **MUST ALWAYS** begin its response by displaying a clean, textual transcription of what the user said in the language they spoke (e.g. Polish).
-- The transcription should be lightly cleaned up and reformatted for readability (fixing minor colloquial stutters or punctuation while strictly preserving the user's exact meaning and intent).
-- Following the transcript echo, respond and explain in the user's spoken language. Repository plans, documentation, commit messages, and code remain in English per the Language Policy.
+When the user supplies a voice recording, begin the response with a readable transcription in the spoken language. Clean punctuation and minor stutters while preserving meaning and technical terms; identify uncertain passages rather than guessing.
 
-## 2. Standard Output Format
-Present the transcription at the very top of the response using a blockquote or callout:
-
-```markdown
-> 🎙️ **Transcribed User Voice Input:**
-> _"[Formatted transcript of user speech in spoken language]"_
-
----
-```
-
-## 3. Rationale
-The chat UI does not automatically render speech-to-text transcripts for uploaded audio clips. Echoing the transcript provides the user with immediate visual certainty that their intent, technical terms, and instructions were recognized accurately before reviewing the agent's work.
+Present it as a blockquote labelled **Transcribed User Voice Input**, then answer in the user's language. Repository artifacts follow [language-policy.md](language-policy.md).

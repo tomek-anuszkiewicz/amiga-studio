@@ -323,7 +323,7 @@ Generates the Abstract Syntax Tree (AST) code knowledge graph connecting active 
 - **What is Indexed:** Graphify parses Abstract Syntax Trees (AST), symbol relationships, and call hierarchies across two distinct codebases:
   - **Active Emulator Crates (`crates/`):** Core Rust workspace (`m68000`, `memory_bus`, `debugger`, `gui`, `config`, `rtc`, `test_runner`).
   - **Reference Emulator Sources (`ref_src/`):** Clean C++ reference implementation (`ref_src/vAmiga`) and external test harnesses.
-- **Incremental Knowledge Graph Updates ([`graphify.md`](../.agents/rules/graphify.md)):**
+- **Incremental Knowledge Graph Updates ([Graphify skill](../.agents/skills/graphify/SKILL.md)):**
   - Graphify maintains an AST cache that extracts only modified files in 1–2 seconds without LLM calls.
   - After modifications to code in `crates/` or `ref_src/`, run `graphify update .` from the repository root (or via `.\tools\bootstrap\bootstrap.ps1 -Graphify`).
   - Keeps a single unified knowledge graph in `graphify-out/` connecting active emulator crates and reference implementations.
