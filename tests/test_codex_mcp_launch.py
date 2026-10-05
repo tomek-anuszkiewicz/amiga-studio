@@ -12,7 +12,7 @@ import time
 import unittest
 
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 CODEX_EXECUTABLE = shutil.which("codex")
 HAS_FASTMCP = importlib.util.find_spec("fastmcp") is not None
 

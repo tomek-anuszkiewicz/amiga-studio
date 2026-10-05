@@ -41,7 +41,7 @@ directory, creates an ephemeral session at the repository root without a model
 turn, and verifies the server connects and exposes all three tools:
 
 ```powershell
-python -m unittest discover -s tools/amiga-rag-mcp-server/tests -p test_codex_mcp_launch.py -q
+python -m unittest discover -s tests -p test_codex_mcp_launch.py -q
 ```
 
 This check requires the Codex CLI on `PATH`, a trusted project, and the server

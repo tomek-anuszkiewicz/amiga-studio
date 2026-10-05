@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 BOOTSTRAP_SCRIPT = REPOSITORY_ROOT / "tools" / "bootstrap" / "bootstrap.ps1"
 COMPATIBILITY_BOOTSTRAP_SCRIPT = REPOSITORY_ROOT / "tools" / "bootstrap" / "bootstrap_rag.ps1"
 QDRANT_BOOTSTRAP_SCRIPT = REPOSITORY_ROOT / "tools" / "bootstrap" / "ensure_qdrant.ps1"
