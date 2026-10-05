@@ -39,7 +39,7 @@ Codex loads this file as project instructions. Read every universal rule before 
 - **[Repro-First Defect Resolution](.agents/rules/repro-first.md)**: Mandatory isolated failing test before modifying production code.
 - **[egui & Frontend Best Practices](.agents/rules/egui-best-practices.md)**: Synchronous state pull, bounded time-slicing, WASM/DPI adaptation.
 - **[Git Merge Commits & Worktrees](.agents/rules/git-merge-commits.md)**: Mandatory merge commits on conflict resolution; worktree lifecycle.
-- **[Graphify Knowledge Graph](.agents/rules/graphify.md)**: AST query before file inspection; updates via `graphify update .`.
+- **[Graphify Knowledge Graph](.agents/skills/graphify/SKILL.md)**: Read the skill before code navigation and graph refresh work.
 - **[Parallel Execution & Async Tasks](.agents/rules/parallel-execution.md)**: Non-blocking background tasks, targeted sub-suite testing.
 - **[Practitioner Voice & Tone](.agents/rules/practitioner-voice-and-tone.md)**: Practical engineering prose.
 
@@ -135,7 +135,7 @@ Codex loads this file as project instructions. Read every universal rule before 
 
 ## 5. Knowledge Base & Reference Navigation
 
-- **Knowledge Retrieval Precedence**: Mandatory `graphify query` before viewing source files and `rag_qdrant search ... --index-json $env:RAG_INDEX_JSON --json` before opening reference manuals per [`graphify.md`](.agents/rules/graphify.md) and [`amiga-rag.md`](.agents/rules/amiga-rag.md).
+- **Knowledge Retrieval Precedence**: Follow the [Graphify skill](.agents/skills/graphify/SKILL.md) for source navigation and [Amiga RAG rule](.agents/rules/amiga-rag.md) for reference retrieval.
 - **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
 - **Platform Quirks & Invariants**: Centralized hardware silicon idiosyncrasies reside in [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md).
 - **Official Hardware Documentation**: Hardware manuals and PRMs reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) (searchable via `rag_search`).

@@ -1,11 +1,26 @@
 ---
 name: graphify
-description: Query and navigate codebase AST relationships, call hierarchies, and architectural dependencies via graphify.
+description: Query and navigate codebase AST relationships, call hierarchies, and architectural dependencies, and refresh repository graphs after code changes via graphify.
 ---
 
 # $graphify
 
 Turn any folder of files into a navigable knowledge graph with community detection, an honest audit trail, and three outputs: interactive HTML, GraphRAG-ready JSON, and a plain-language GRAPH_REPORT.md.
+
+## Repository navigation and refresh (Amiga 500 Emulator Policy)
+
+This repository keeps its unified knowledge graph in `graphify-out/`, connecting active emulator code in `crates/` and reference implementations in `ref_src/`, with community structure and cross-file relationships.
+
+- When the user types `/graphify` or invokes `$graphify`, read this skill before selecting the command or workflow.
+- For codebase and architecture questions, when `graphify-out/graph.json` exists, first run `graphify query "<question>"`. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. When a Graphify MCP adapter is available, the corresponding tools are `query_graph`, `shortest_path`, and `get_node`. These return a scoped subgraph.
+- Before investigating functions, structs, callers, or symbol relationships in `crates/`, query or explain the relevant symbol. Once located, read a targeted source slice of at most 50 lines around it. Do not use whole-file reads or broad `rg` searches as the initial symbol-navigation method.
+- Dirty `graphify-out/` files after incremental updates are not a reason to skip Graphify. Skip this navigation precedence only when investigating stale or incorrect graph output, or when the user explicitly asks to skip Graphify.
+- If `graphify-out/wiki/index.md` exists, use it for broad navigation. Read `graphify-out/GRAPH_REPORT.md` only for broad architecture reviews or when query/path/explain provide insufficient context.
+- After code changes, run `graphify update .` explicitly from the repository root. This is an incremental AST refresh without LLM calls or API cost; it does not perform semantic document extraction or establish automatic lifecycle refresh.
+- When asked to run or update Graphify, execute the appropriate command. If the user wants to run the code refresh themselves, provide `graphify update .` for their terminal.
+- Run commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks.
+
+For existing-graph traversal details, load [references/query.md](references/query.md). Use the build and semantic extraction workflows below only when the requested operation calls for them.
 
 ## Usage
 
@@ -41,12 +56,6 @@ $graphify query "<question>" --budget 1500            # cap answer at N tokens
 $graphify path "AuthModule" "Database"                # shortest path between two concepts
 $graphify explain "SwinTransformer"                   # plain-language explanation of a node
 ```
-
-## Incremental Re-indexing (Amiga 500 Emulator Policy)
-
-Per project rule [`.agents/rules/graphify.md`](../../rules/graphify.md), graphify maintains an incremental AST cache. When code in `crates/` or `ref_src/` changes, run an incremental update from the repository root to keep the unified cross-codebase knowledge graph up to date:
-- **Incremental Update after Code Changes:** Run `graphify update .` (or `.\tools\bootstrap\bootstrap.ps1 -Graphify`).
-- This preserves a single, unified knowledge graph in `graphify-out/` linking active emulator crates and reference implementations, taking only 1–2 seconds without LLM calls.
 
 ## What graphify is for
 
@@ -702,12 +711,6 @@ Before traversal, expand the question against the graph's own vocabulary so a wo
 ## For $graphify add and --watch
 
 Neither is part of the default build. When the user runs `$graphify add <url>` to fetch a URL into the corpus, or passes `--watch` to auto-rebuild on file changes, see `references/add-watch.md`.
-
----
-
-## Codex project integration
-
-The project instruction entry point is `AGENTS.md`; see `.agents/rules/graphify.md` for graph navigation. Run Graphify commands explicitly. Do not install lifecycle, code, or Git hooks.
 
 ---
 
