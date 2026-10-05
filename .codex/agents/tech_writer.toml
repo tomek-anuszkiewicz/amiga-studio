@@ -1,7 +1,9 @@
 name = "tech_writer"
 description = "Narrative Technical Writer. Authors, audits, and restructures long-form retrospective essays, methodology documents, and engineering devlogs (e.g. docs/how_this_emulator_was_written.md). Uses the 6-layer Inverted Pyramid hierarchy and practitioner-voice tone. Does NOT touch Obsidian design specs, ROADMAP.md, or Rust source — those belong to doc_curator and the main session respectively."
 
-# Inherit the session model, reasoning effort, tools, and permissions.
+model = "gpt-6.1-sol"
+model_reasoning_effort = "medium"
+# Inherit session tools and permissions.
 developer_instructions = '''
 # tech_writer — Narrative Technical Writer
 

@@ -1,7 +1,9 @@
 name = "cpu_verifier"
 description = "Specialized subagent for cycle-exact Motorola 68000 CPU verification, Tom Harte single-step test diagnosis, and microcode cycle traces."
 
-# Inherit the session model, reasoning effort, tools, and permissions.
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
+# Inherit session tools and permissions.
 developer_instructions = '''
 # CPU Silicon Verifier Subagent Instructions
 

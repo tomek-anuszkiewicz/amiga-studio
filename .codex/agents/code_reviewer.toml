@@ -1,7 +1,9 @@
 name = "code_reviewer"
 description = "Specialized subagent for performing strict adversarial architecture and guideline code reviews against AGENTS.md and .agents/rules."
 
-# Inherit the session model, reasoning effort, tools, and permissions.
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
+# Inherit session tools and permissions.
 developer_instructions = '''
 # Code Reviewer Subagent Instructions
 

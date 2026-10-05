@@ -1,7 +1,9 @@
 name = "vision_analyst"
 description = "Specialized multimodal subagent for analyzing Paula/Agnus circuit schematics, timing diagrams, and Egui immediate-mode GUI layouts."
 
-# Inherit the session model, reasoning effort, tools, and permissions.
+model = "gpt-6.1-sol"
+model_reasoning_effort = "medium"
+# Inherit session tools and permissions.
 developer_instructions = '''
 # Vision Analyst Subagent Instructions
 

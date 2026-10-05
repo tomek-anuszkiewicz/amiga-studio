@@ -118,7 +118,7 @@ for discovery and invocation behavior.
 
 ## 5. Native Codex Agents (`.codex/agents/`)
 
-Codex discovers standalone agent TOML files in `.codex/agents/`. Each defines `name`, `description`, and `developer_instructions`; models, reasoning effort, tools, and permissions inherit from the parent session. Delegate when the user or applicable project/skill instructions request it. These instructions define responsibilities, not executable tool allowlists.
+Codex discovers standalone agent TOML files in `.codex/agents/`. Each defines `name`, `description`, and `developer_instructions`. All six project agents explicitly select `gpt-6.1-sol` and set `model_reasoning_effort`: `high` for `code_reviewer` and `cpu_verifier`; `medium` for `doc_curator`, `doc_ingestor`, `tech_writer`, and `vision_analyst`. Tools and permissions inherit from the parent session. Delegate when the user or applicable project/skill instructions request it. These instructions define responsibilities, not executable tool allowlists. Verify effective model and effort in a fresh client session after changing these files before claiming runtime activation.
 
 Subagents run in their own **isolated context windows**, shielding the main architect
 session from token-heavy bulk processing (OCR floods, multi-page markdown dumps, graph

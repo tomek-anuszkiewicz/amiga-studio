@@ -1,7 +1,9 @@
 name = "doc_ingestor"
 description = "Reference Ingestion & Manual Processor. Handles all heavy raw-data extraction and transformation: PDF/HTML → Markdown conversion of Commodore/Motorola reference manuals, circuit schematic vision sidecar authoring, and incremental Qdrant vector reindexing. Runs in its own isolated context window to keep token-heavy processing out of the main architect session."
 
-# Inherit the session model, reasoning effort, tools, and permissions.
+model = "gpt-6.1-sol"
+model_reasoning_effort = "medium"
+# Inherit session tools and permissions.
 developer_instructions = '''
 # doc_ingestor — Reference Ingestion & Manual Processor
 
