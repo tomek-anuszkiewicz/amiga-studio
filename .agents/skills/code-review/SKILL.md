@@ -69,7 +69,7 @@ Analyze all modified and added files using `git diff`:
 1. **Defect Retrospection (if bug fix / refactor)**: Did the author perform root-cause analysis ("Why did this happen?")? Are dedicated regression tests in place covering edge cases? Were systemic safeguards (architectural rules, lints, or DoD criteria) added to ensure this class of defect never recurs?
 2. **Design Documents**: If documented architecture changed or a milestone completed, were affected specifications reconciled and checkpoints updated per `docs-maintenance.md`? Mechanical changes can rely on existing documentation. Remove obsolete proposals and duplicate implemented code where the affected documents require it.
 3. **Engineering Diary (`DIARY.md`)**: Does every commit under review include its own Section 10 entry describing changes, rationale, and actual verification? At a completed minor roadmap point or milestone, were its settled entries compacted into a dedicated digest? Routine commits log entries; they do not trigger compaction.
-4. **Roadmap**: If a step in `ROADMAP.md` is 100% complete, was it **completely deleted and removed** from the active backlog (zero `[COMPLETED]` tags or finished task descriptions retained in Section 2 per [`roadmap-maintenance`](../roadmap-maintenance/SKILL.md)), and summarized in the baseline summary if applicable?
+4. **Roadmap**: If a step in `ROADMAP.md` is fully implemented and verified, was it removed from the active backlog per [`roadmap-maintenance`](../roadmap-maintenance/SKILL.md)? Keep only remaining scope for partial delivery and preserve completion evidence in diary and Git.
 5. **Crate Graph**: Were crate dependencies in `General Architecture.md` updated if `Cargo.toml` was touched?
 
 
@@ -92,7 +92,7 @@ Provide the audit report using the following standard template:
 - [ ] **Rust File Size, Cohesion & Flat Instructions:** All Rust source files in `crates/*/src/` <= 800 lines (or recognized exception). Zero subdirectories in `crates/cpu/src/instructions/` (strict flat instruction hierarchy, 1:1 mnemonic files, zero umbrella files). Technical documentation has no line limits.
 - [ ] **Inlining Strategy:** Cross-crate `#[inline]`, CCR `#[inline(always)]`, cold paths `#[inline(never)]`.
 - [ ] **Defect Retrospection & Prevention:** Root cause analyzed, regression tests added, systemic safeguards/docs updated (if bug fix).
-- [ ] **Design Docs Pruning, Roadmap & Diary:** Living docs updated, speculative code pruned, code snippets removed, completed roadmap steps deleted (zero `[COMPLETED]` markers in Section 2), and `DIARY.md` chronological changelog updated.
+- [ ] **Design Docs Pruning, Roadmap & Diary:** Living docs updated, speculative code pruned, code snippets removed, verified roadmap steps deleted, and `DIARY.md` chronological changelog updated.
 - [ ] **Path Privacy:** Zero external host paths.
 - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
 - [ ] **Practitioner Voice & Tone:** Documentation written from hands-on lead architect perspective (tech blog standard), zero academic jargon, and top-down information hierarchy.

@@ -687,3 +687,31 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Selected size, skill, locality, companion and workflow audits reported zero issues
   - Verified 66 new local links and the unchanged Graphify skill
   - Refreshed the AST graph. Full emulator domain suites were not run because runtime code was unchanged.
+---
+
+### [2026-10-05 22:11 CEST] — Consolidate the active roadmap and maintenance procedure
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `.agents/rules/roadmap-maintenance.md`
+  - `.agents/skills/roadmap-maintenance`
+  - `.agents/skills/code-review`
+- **What Was Changed (The Concrete Reality)**:
+  - Group manual conversion and ingestion first, test orientation and profiling second, and chipset reconstruction third
+  - remove historical baseline and duplicated methodology while preserving pending extensions
+  - consolidate conversion requirements and remap remaining task references
+  - retain missing harness architecture and eval work after checking native Codex and MCP evidence
+  - surface the reset proposal's timing and quirks conflict before implementation
+  - align the roadmap rule and skills with a backlog-only document
+- **Architectural Rationale & Trade-Offs**:
+  - Make immediate work readable without discarding artifact validation, source fidelity, manual handoffs, or deferred capabilities
+  - keep policy in rules and execution procedure in skills
+  - this reorganization does not certify or complete any planned subsystem milestone
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 19 tests
+  - governance, MCP contract, and live Codex discovery regressions passed 19 tests total
+  - documentation audit passed with zero issues
+  - both changed skills validated, using Python UTF-8 mode after a Windows decoding failure on the existing code-review file
+  - language and diff checks passed
+  - numbering and local-link check passed for 11 steps, 44 tasks, 7 sub-suites, and 20 links
+  - full subsystem milestone and semantic-parity gates were not run because no implementation milestone was completed

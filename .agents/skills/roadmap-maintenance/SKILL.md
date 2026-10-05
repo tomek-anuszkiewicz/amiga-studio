@@ -1,95 +1,27 @@
 ---
 name: roadmap-maintenance
-description: Audit, prune completed steps, and synchronize ROADMAP.md with zero retention of completed items.
+description: Review completion evidence, consolidate related work, reorder priorities, and prune verified tasks from ROADMAP.md.
 ---
 
-# Recipe: Roadmap Maintenance & Backlog Pruning
+# Roadmap Maintenance
 
-This skill provides the mandatory procedure for maintaining and pruning [`ROADMAP.md`](../../../ROADMAP.md) per [`.agents/rules/roadmap-maintenance.md`](../../rules/roadmap-maintenance.md).
+Use this procedure when reorganizing [ROADMAP.md](../../../ROADMAP.md), reviewing task status, or finishing a listed task. The [roadmap policy](../../rules/roadmap-maintenance.md) defines what belongs in the backlog.
 
----
+## Review and Reorganize
 
-## 1. When to Use This Skill
+1. Read the affected tasks and the user's intended next actions. Distinguish project descriptions, methods, completed history, and pending work before editing.
+2. Check current implementation, relevant commits, and recorded validation for suspected completed tasks. A plan, prompt, or prepared output directory does not prove delivery. If evidence is incomplete, keep a concrete verification task; for partial delivery, keep only the missing scope.
+3. Consolidate related tasks into one workstream with concise scope and acceptance evidence. Preserve substantive requirements, dependencies, unresolved decisions, and failure handling; remove repeated objectives and generic process prose. Detailed execution plans belong in `.agent/tasks/`.
+4. Order work by the user's priorities and hardware dependencies. Preparatory conversion, test orientation, or profiling may precede hardware implementation; within that implementation preserve bus/clocks -> DMA -> video -> peripherals -> firmware.
+5. Renumber tasks and update internal references and affected consumers. Preserve pending extensions when removing project summaries. Keep maintenance instructions here and in the rule rather than copying them into the roadmap.
 
-Activate this skill whenever:
-- Finishing any task, milestone, or sub-step documented in [`ROADMAP.md`](../../../ROADMAP.md).
-- Running the [`$code-review`](../code-review/SKILL.md) skill to verify that [`ROADMAP.md`](../../../ROADMAP.md) contains zero completed task descriptions.
-- Re-aligning project priorities and renumbering remaining backlog steps.
+## Complete a Listed Task
 
----
+- Confirm implementation and relevant domain tests. Run the per-commit gates in [AGENTS.md](../../../AGENTS.md); milestone completion additionally requires `python tools/harness/pre_flight.py --milestone`, `python tools/harness/run_tests.py --unit`, and `python tools/harness/run_tests.py --integration`.
+- Before declaring a minor roadmap point or major milestone complete, perform the required semantic parity review, affected design synchronization, checkpoint review, and diary compaction. A reorganization alone does not trigger subsystem milestone completion.
+- Delete the verified task entirely. Leave any distinct unfinished work with its own gate; keep evidence in diary and Git rather than a completed-capability section.
+- Update the [vAmigaTS Verification Scorecard](../../../Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md) when the policy's scorecard triggers apply.
 
-## Completion Evidence
+## Verify and Report
 
-Before pruning a step, confirm its implementation is complete and relevant tests
-pass. For a milestone, run `python tools/harness/pre_flight.py --milestone`,
-`python tools/harness/run_tests.py --unit`, and
-`python tools/harness/run_tests.py --integration`. For a major milestone, update
-the concise baseline deliverables in Section 1 as well as pruning Section 2.
-Perform the mandatory semantic parity review, design synchronization, and diary
-compaction in [AGENTS.md](../../../AGENTS.md) before declaring completion.
-
-## 2. Core Principle: Zero Retention of Completed Backlog Items
-
-[`ROADMAP.md`](../../../ROADMAP.md) is strictly a **forward-looking backlog** of pending and active work. It is NOT a historical changelog or execution archive:
-
-- **Strict Prohibition of Completed Tags:**
-  - Never mark tasks with `[COMPLETED]`, `[Completed: ...]`, `[x]`, or strikethrough (`~~...~~`).
-  - Leaving completed tasks or detailed implementation checklists sitting in Section 2 clutters the backlog, wastes context tokens, and obscures active priorities.
-- **Mandatory Complete Deletion:**
-  - When an item, step, or milestone is 100% completed and verified (all tests pass), **completely remove and delete its text** from Section 2 ("Core Implementation Strategy (Remaining Milestones)").
-- **Separation of Concerns:**
-  - **Granular Historical Detail:** Belongs in [`DIARY.md`](../../../DIARY.md) (Section 10) and Git commit history.
-  - **Active Backlog:** Belongs in Section 2 of [`ROADMAP.md`](../../../ROADMAP.md) (strictly uncompleted items).
-  - **Verified Capabilities:** When a major milestone is completed, summarize its capabilities into a concise 1-paragraph or high-level bullet under Section 1 ("Hardware Roadmap & Milestones / Baseline Deliverables").
-
----
-
-## 3. Step-by-Step Execution Workflow
-
-### Step 1: Verify Full Implementation & Testing
-Ensure the task or milestone is genuinely complete:
-1. All relevant unit, integration, and architecture tests pass.
-2. Code formatting passes (`cargo fmt --all -- --check`).
-3. Relevant design specifications under `Obsidian/Amiga/Design/` are updated.
-
-### Step 2: Delete Completed Steps from Section 2
-1. Open [`ROADMAP.md`](../../../ROADMAP.md).
-2. Locate the completed step or sub-step under Section 2 ("Core Implementation Strategy (Remaining Milestones)").
-3. **Delete the entire block** (title, description, sub-bullets, and test references).
-
-### Step 3: Update Baseline Summary in Section 1 (If Major Milestone)
-If the completed work represents an architectural milestone or major subsystem capability:
-1. Locate Section 1 ("Hardware Roadmap & Milestones") under the active phase (e.g. "Phase 1: Baseline Amiga 500").
-2. Add or update a concise baseline bullet summarizing the deliverable and key verified capabilities (e.g., supported modes, test coverage).
-3. Keep baseline entries concise and high-level—avoid pasting verbose task breakdowns.
-
-### Step 4: Renumber & Reorder Remaining Steps (Substrate-First Invariant)
-1. Renumber remaining steps and sub-steps in Section 2 so that numbering remains contiguous.
-2. **Apply the Substrate-First Invariant:** Ensure remaining tasks strictly follow physical hardware causality rather than folder taxonomy:
-   - Layer 0: Bus Arbitration, Clock Phases, Refresh, Contention & Stalls
-   - Layer 1: Autonomous Coprocessors & DMA Channels (Copper, Blitter)
-   - Layer 2: Video Serializer & Display Pipeline (Denise, DIW/DDF, Sprites)
-   - Layer 3: Peripherals & External I/O (Paula Audio/Floppy, CIAs, Ports)
-   - Layer 4: System Integration & Firmware Exec
-3. Ensure the step marked `[Active Focus]` accurately reflects the immediate next task.
-
-### Step 5: Synchronize Verification Scorecard (If Applicable)
-If a sub-suite milestone was finished or global timing changed:
-1. Update [`Obsidian/Amiga/Design/vAmigaTS Verification Scorecard.md`](../../../Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md) with updated test counts and pass rates.
-2. Ensure `ROADMAP.md` only links to the scorecard rather than containing transient test run percentages.
-
-### Step 6: Verify Cleanliness
-1. Search [`ROADMAP.md`](../../../ROADMAP.md) for any stray occurrences of `COMPLETED` or `Completed:` in Section 2:
-   Ensure zero matches in the active backlog.
-
-
-## 4. Output Contract
-Conclude with the standardized summary report:
-```markdown
-### 🗺️ Roadmap Maintenance Summary
-- **Completed Steps Purged:** <list of purged step titles>
-- **Section 1 Baseline Deliverable Added/Updated:** <deliverable title or N/A>
-- **Remaining Backlog Items Renumbered:** <count> active steps
-- **Substrate Causality Verified:** [PASS (Layer 0 -> Layer 4)]
-- **Zero Completed Tasks In Section 2:** [PASS]
-```
+Check contiguous numbering, valid references, retained pending scope, and absence of completed-task markers. Report the resulting next actions, any tasks removed on verified evidence, unresolved status, and checks actually run. Do not present reorganization as completion of the work being planned.
