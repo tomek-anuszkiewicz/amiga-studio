@@ -1,11 +1,3 @@
----
-trigger: always_on
-description: >
-  Core unit testing invariants: tests/ directory placement, test_ naming prefix,
-  no inline #[cfg(test)] in src/, change-coupling gate, 3-tier taxonomy labels,
-  and repro-first bug mandate. Full audit playbook lives in audit-code-quality skill.
----
-
 # Unit Testing Policy — Core Invariants
 
 ## Placement & Structure

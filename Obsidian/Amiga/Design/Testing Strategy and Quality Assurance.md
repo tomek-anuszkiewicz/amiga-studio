@@ -275,8 +275,8 @@ When building, extending, or refactoring any part of the emulator, execute tests
 | Tool / Script | Purpose | Enforcement Layer |
 | :--- | :--- | :--- |
 | [`tools/harness/run_tests.py`](../../../tools/harness/run_tests.py) | CLI runner for Tier 1 (`--unit`), Tier 2 (`--integration`), and Tier 3 (`--harness`). | Developer workflow & CI |
-| [`tools/harness/pre_flight.py`](../../../tools/harness/pre_flight.py) | Master pre-commit quality checker (Formatting, AGENTS.md size, Test Coupling, API Coverage, Architecture rules). | Git pre-commit hook & CI |
-| [`tools/harness/check_test_coupling.py`](../../../tools/harness/check_test_coupling.py) | Verifies that changes to `crates/<crate>/src/` are coupled with changes to `crates/<crate>/tests/`. | Git pre-commit hook |
+| [`tools/harness/pre_flight.py`](../../../tools/harness/pre_flight.py) | Master pre-commit quality checker (Formatting, AGENTS.md size, Test Coupling, API Coverage, Architecture rules). | Explicit agent/developer command & CI |
+| [`tools/harness/check_test_coupling.py`](../../../tools/harness/check_test_coupling.py) | Verifies that changes to `crates/<crate>/src/` are coupled with changes to `crates/<crate>/tests/`. | Explicit agent/developer command |
 | [`tools/harness/audit_api_coverage.py`](../../../tools/harness/audit_api_coverage.py) | Statically verifies that public functions (`pub fn`) are referenced and tested in unit/integration suites. | Pre-flight gate (`--strict`) |
 | [`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs) | 20 automated tests validating architectural rules, test naming, and multi-module parity. | `cargo test` & pre-flight gate |
 | [`$test-runner`](../../../.agents/skills/test-runner/SKILL.md) | Standardized execution runner across tiers, writing snapshots to `.test_results/` and diffing regressions. | Codex skill |

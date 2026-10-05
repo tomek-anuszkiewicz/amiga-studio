@@ -1,8 +1,3 @@
----
-trigger: model_decision
-description: Rust source file size limits (<= 800 lines in crates/*/src/), cohesion rules, and flat 1:1 opcode hierarchy under crates/cpu/src/instructions/.
----
-
 # Module Cohesion & Rust Source File Size Guidelines (`.rs` Files Only)
 
 ## 1. Scope: Rust Source Code Files (`.rs`) Only

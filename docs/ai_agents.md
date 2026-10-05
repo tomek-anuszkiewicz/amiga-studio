@@ -10,8 +10,8 @@ This repository is engineered from the ground up for autonomous AI agent pair-pr
 
 All automated modifications and agent sessions must strictly adhere to [`AGENTS.md`](../AGENTS.md) and modularized rules under [`.agents/rules/`](../.agents/rules/):
 
-- **Language Policy (`language-policy.md`):** Strict English for all code, identifiers, comments, documentation, and commits.
-- **Audio Voice Transcription (`audio-transcription.md`):** Transcribe spoken user voice recordings at the top of responses before proceeding in English.
+- **Language Policy (`language-policy.md`):** User's language in conversation; English for code, identifiers, comments, documentation, and commits.
+- **Audio Voice Transcription (`audio-transcription.md`):** Transcribe spoken user voice recordings at the top of responses before responding in the user's language.
 - **Strict Path Privacy (`no-external-paths.md`):** Zero external host paths in committed files; use generic placeholders.
 - **Zero Host Panics (`performance-and-readability.md`):** No `.unwrap()` or `.expect()` in runtime emulation hot paths.
 - **Hardware Efficiency & Readability:** Zero custom macros (`macro_rules!`), zero const-generic instruction handlers, contiguous memory layouts, and zero heap allocations in execution loops.
@@ -116,7 +116,9 @@ for discovery and invocation behavior.
 
 ---
 
-## 5. Native Subagents (`.agents/agents/`)
+## 5. Native Codex Agents (`.codex/agents/`)
+
+Codex discovers standalone agent TOML files in `.codex/agents/`. Each defines `name`, `description`, and `developer_instructions`; models, reasoning effort, tools, and permissions inherit from the parent session. Delegate when the user or applicable project/skill instructions request it. These instructions define responsibilities, not executable tool allowlists.
 
 Subagents run in their own **isolated context windows**, shielding the main architect
 session from token-heavy bulk processing (OCR floods, multi-page markdown dumps, graph
@@ -125,12 +127,12 @@ high-signal verdict or diff.
 
 | Subagent | File | Context Profile | Primary Responsibility |
 | :--- | :--- | :--- | :--- |
-| **`cpu_verifier`** | [`cpu_verifier/agent.md`](../.agents/agents/cpu_verifier/agent.md) | 🔬 Precision / Low volume | Tom Harte single-step silicon test execution, cycle-exact ALU/CCR verification, and timing regression isolation. |
-| **`code_reviewer`** | [`code_reviewer/agent.md`](../.agents/agents/code_reviewer/agent.md) | 🔍 Adversarial / Medium volume | 18-point pre-commit and architectural compliance audit against AGENTS.md rules, file size limits, and inlining policy. |
-| **`vision_analyst`** | [`vision_analyst/agent.md`](../.agents/agents/vision_analyst/agent.md) | 🖼️ Multimodal / Medium volume | Circuit schematic interpretation, timing diagram analysis, and `egui` visual layout debugging via multimodal vision. |
-| **`doc_curator`** | [`doc_curator/agent.md`](../.agents/agents/doc_curator/agent.md) | 📐 Structural / Low volume | Semantic parity between `Obsidian/Amiga/Design/` specs and Rust code, vault graph integrity, ROADMAP.md pruning, DIARY.md compaction. |
-| **`doc_ingestor`** | [`doc_ingestor/agent.md`](../.agents/agents/doc_ingestor/agent.md) | 📦 Heavy data / Isolated | PDF/HTML → Markdown conversion of reference manuals, circuit schematic vision sidecars, and Qdrant vector reindexing. |
-| **`tech_writer`** | [`tech_writer/agent.md`](../.agents/agents/tech_writer/agent.md) | ✍️ Narrative / Medium volume | Long-form retrospective essays, engineering devlogs, and methodology documents under `docs/` using practitioner voice and 6-layer Inverted Pyramid. |
+| **`cpu_verifier`** | [`cpu_verifier.toml`](../.codex/agents/cpu_verifier.toml) | 🔬 Precision / Low volume | Tom Harte single-step silicon test execution, cycle-exact ALU/CCR verification, and timing regression isolation. |
+| **`code_reviewer`** | [`code_reviewer.toml`](../.codex/agents/code_reviewer.toml) | 🔍 Adversarial / Medium volume | 18-point pre-commit and architectural compliance audit against AGENTS.md rules, file size limits, and inlining policy. |
+| **`vision_analyst`** | [`vision_analyst.toml`](../.codex/agents/vision_analyst.toml) | 🖼️ Multimodal / Medium volume | Circuit schematic interpretation, timing diagram analysis, and `egui` visual layout debugging via multimodal vision. |
+| **`doc_curator`** | [`doc_curator.toml`](../.codex/agents/doc_curator.toml) | 📐 Structural / Low volume | Semantic parity between `Obsidian/Amiga/Design/` specs and Rust code, vault graph integrity, ROADMAP.md pruning, DIARY.md compaction. |
+| **`doc_ingestor`** | [`doc_ingestor.toml`](../.codex/agents/doc_ingestor.toml) | 📦 Heavy data / Isolated | PDF/HTML → Markdown conversion of reference manuals, circuit schematic vision sidecars, and Qdrant vector reindexing. |
+| **`tech_writer`** | [`tech_writer.toml`](../.codex/agents/tech_writer.toml) | ✍️ Narrative / Medium volume | Long-form retrospective essays, engineering devlogs, and methodology documents under `docs/` using practitioner voice and 6-layer Inverted Pyramid. |
 
 ### Documentation Subagent Split: Why Two Agents?
 
@@ -154,3 +156,13 @@ Main Session (Lead Architect)
 - Reasoning about *existing* architectural specs → `doc_curator`.
 - *Transforming raw external data* (manuals, PDFs, HTML archives) → `doc_ingestor`.
 - *Narrating architectural decisions* as long-form prose for human readers → `tech_writer`.
+
+## 6. Configuration and Explicit Validation
+
+`AGENTS.md` routes universal and domain-specific rule reading. Rule files are referenced Markdown, not automatically activated by frontmatter triggers. Repository skills are discovered directly; no JSON catalog is required.
+
+The Amiga RAG stdio adapter is declared in [`.codex/config.toml`](../.codex/config.toml). Project configuration requires a trusted project in Codex. MCP connectivity and Graphify runtime repairs are separate from format conversion.
+
+Run validation commands explicitly, including `python tools/harness/pre_flight.py --quick` and the separate architecture test. Language checks support file paths or `python tools/harness/check_polish.py --staged` for staged additions. Do not install or use lifecycle, code, or Git hooks.
+
+Format references: [Codex agents](https://learn.chatgpt.com/docs/agent-configuration/subagents), [project instructions](https://learn.chatgpt.com/docs/agent-configuration/agents-md), and [configuration](https://learn.chatgpt.com/docs/config-file/config-reference).

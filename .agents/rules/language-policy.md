@@ -1,8 +1,3 @@
----
-trigger: model_decision
-description: Reply in the user's language while keeping repository artifacts and commit messages in English.
----
-
 # Language Policy Rule: Match the User's Language in Conversation
 
 ## 1. Core Mandate
@@ -25,9 +20,8 @@ description: Reply in the user's language while keeping repository artifacts and
 - After the transcription header, continue the conversation in the language used by the user in that request. Repository artifacts and code remain in English.
 
 ## 3. Automated Milestone Enforcement (`check_polish.py`)
-- **Minor Roadmap Point Gate**: Automated batch scanning (`python tools/harness/check_polish.py --git`) is executed during **Minor Roadmap Point Milestone Gates** (`pre_flight.py --milestone`). Routine micro-commits do not run this scanner to prevent commit friction.
+- **Minor Roadmap Point Gate**: Explicit batch scanning (`python tools/harness/check_polish.py --staged`) runs when the agent or developer invokes **Minor Roadmap Point Milestone Gates** (`pre_flight.py --milestone`). Routine micro-commits do not run this scanner. No lifecycle, code, or Git hooks are used.
 - **Diacritics-Independent Detection**: Powered by `lingua-language-detector` and `tools/harness/check_polish.py`. Evaluates text using statistical n-gram models and lexical dictionaries, identifying Polish words even when written without diacritics ("ogonki").
 - **Verification Commands**:
   - Run CLI check on any target file: `python tools/harness/check_polish.py [path]`.
-  - Run check across staged git files: `python tools/harness/check_polish.py --git`.
-
+  - Run check across staged additions: `python tools/harness/check_polish.py --staged`.

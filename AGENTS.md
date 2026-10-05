@@ -6,40 +6,49 @@ All agent work on this cycle-exact Rust Amiga 500 emulator must follow these arc
 
 ## 1. Operating & Behavioral Rules (`.agents/rules/`)
 
-Rules in `.agents/rules/` use two trigger tiers:
+Codex loads this file as project instructions. Read every universal rule before task work and relevant domain rules before working in that domain. Linked rule files require explicit reads.
 
-### A. Universal Invariants (`trigger: always_on`)
-- **Audio Voice Transcription** ([`audio-transcription.md`](.agents/rules/audio-transcription.md)): Mandatory spoken language transcript echo before responses.
-- **Dynamic Model Advisory** ([`model-reasoning-advisory.md`](.agents/rules/model-reasoning-advisory.md)): Advisory on `Medium` vs `High`/`Pro` reasoning.
-- **Strict Path Privacy** ([`no-external-paths.md`](.agents/rules/no-external-paths.md)): Zero external host paths; use generic placeholders.
-- **Specification Compliance** ([`spec-compliance.md`](.agents/rules/spec-compliance.md)): Zero silent divergence; mandatory user escalation.
-- **Hardware Efficiency & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros/const-generics, zero hot-path heap allocations.
-- **Amiga RAG Knowledge Base** ([`amiga-rag.md`](.agents/rules/amiga-rag.md)): Pre-task conceptual retrieval and CLI indexing/search via `rag_qdrant`.
-- **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit tests in dedicated `tests/`; zero inline tests in `src/`.
-- **Immediate Atomic Commits** ([`git-commits.md`](.agents/rules/git-commits.md)): Mandatory atomic commit after every task; Conventional Commits.
-- **Structural Root-Cause Resolution** ([`structural-root-cause.md`](.agents/rules/structural-root-cause.md)): Mandatory structural fixes; prohibition of local symptom patches (nudges, ad-hoc regexes).
-- **Strict Scope Discipline** ([`strict-scope-discipline.md`](.agents/rules/strict-scope-discipline.md)): Minimal diffs, task containment, zero unsolicited refactoring, delivered vs suggested reporting.
-- **Clean-Break Refactoring** ([`clean-break-refactoring.md`](.agents/rules/clean-break-refactoring.md)): Zero legacy aliases/shims, complete workspace cutover on changes.
+### A. Universal Rules (read for every task)
+- **[Audio Voice Transcription](.agents/rules/audio-transcription.md)**: Echo spoken prompts in their language.
+- **[Dynamic Model Advisory](.agents/rules/model-reasoning-advisory.md)**: Advise on reasoning effort.
+- **[Strict Path Privacy](.agents/rules/no-external-paths.md)**: Use portable paths and placeholders.
+- **[Specification Compliance](.agents/rules/spec-compliance.md)**: Escalate specification conflicts.
+- **[Hardware Efficiency & Readability](.agents/rules/performance-and-readability.md)**: Flat, allocation-free hot paths; no macros/const-generics.
+- **[Amiga RAG Knowledge Base](.agents/rules/amiga-rag.md)**: Pre-task retrieval and CLI indexing/search.
+- **[Unit Testing Policy](.agents/rules/unit-testing-policy.md)**: Dedicated `tests/`; no inline tests in `src/`.
+- **[Immediate Atomic Commits](.agents/rules/git-commits.md)**: Atomic Conventional Commits.
+- **[Structural Root-Cause Resolution](.agents/rules/structural-root-cause.md)**: Fix upstream mechanisms; no symptom patches.
+- **[Strict Scope Discipline](.agents/rules/strict-scope-discipline.md)**: Minimal diffs and task containment.
+- **[Prime Directives](.agents/rules/prime-directives.md)**: Model invariants, reuse existing definitions, and contain edits to requested work.
+- **[Clean-Break Refactoring](.agents/rules/clean-break-refactoring.md)**: Complete cutover; no legacy shims.
 
-### B. Domain-Specific Rules (`trigger: model_decision`)
-- **Language Policy** ([`language-policy.md`](.agents/rules/language-policy.md)): Match the user's language in conversation; use English for repository plans, artifacts, code, and commit messages.
-- **Asset Descriptions & Markdown Fallbacks** ([`asset-descriptions.md`](.agents/rules/asset-descriptions.md)): One-time conversion-bootstrap contract for visual relevance, RAG sidecars, and collapsible Markdown fallbacks.
-- **Hardware Bus Topology** ([`hardware-bus-topology.md`](.agents/rules/hardware-bus-topology.md)): Agnus DMA address mastership, passive latching, zero inter-chip signal smuggling. Continuous + Per-Commit: AST verified in `pre_flight.py --quick` (Hardware Quality Pillar 1 & 2).
-- **Design Docs Maintenance** ([`docs-maintenance.md`](.agents/rules/docs-maintenance.md)): Sync `Obsidian/Amiga/Design/` specs with code; prune draft proposals.
-- **Roadmap Maintenance** ([`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md)): Substrate-first ordering, zero completed items retention in `ROADMAP.md`.
-- **Information Hierarchy & Limits** ([`information-hierarchy.md`](.agents/rules/information-hierarchy.md)): Inverted pyramid model, AGENTS.md ceiling ($\le 14,000$ bytes), non-redundancy.
-- **Vault Linking & Graph Integrity** ([`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md)): Line 1 YAML properties, dual-layer linking, zero broken links.
-- **Source File Size & Cohesion** ([`file-size-and-cohesion.md`](.agents/rules/file-size-and-cohesion.md)): Source files $\le 800$ lines in `crates/*/src/`, single responsibility.
-- **Opcode Naming & Micro-Steps** ([`opcode-naming.md`](.agents/rules/opcode-naming.md)): Canonical `IDLE` micro-steps, 1:1 opcode files, dual staging registers (`addr1`/`addr2`).
-- **Method Inlining Strategy** ([`method-inlining.md`](.agents/rules/method-inlining.md)): Targeted `#[inline]`, `#[inline(always)]`, and `#[inline(never)]` annotations.
-- **Workspace Architecture & Re-Exports** ([`workspace-structure-and-reexports.md`](.agents/rules/workspace-structure-and-reexports.md)): Flat crate layout, named roots, 3-tier re-export hierarchy.
-- **Rust Best Practices** ([`rust-best-practices.md`](.agents/rules/rust-best-practices.md)): Safe borrowing, zero runtime unwraps, wrapping math, minimum visibility.
-- **Repro-First Defect Resolution** ([`repro-first.md`](.agents/rules/repro-first.md)): Mandatory isolated failing test before modifying production code.
-- **egui & Frontend Best Practices** ([`egui-best-practices.md`](.agents/rules/egui-best-practices.md)): Synchronous state pull, bounded time-slicing, WASM/DPI adaptation.
-- **Git Merge Commits & Worktrees** ([`git-merge-commits.md`](.agents/rules/git-merge-commits.md)): Mandatory merge commits on conflict resolution; worktree lifecycle.
-- **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): AST query before file inspection; updates via `graphify update .`.
-- **Parallel Execution & Async Tasks** ([`parallel-execution.md`](.agents/rules/parallel-execution.md)): Non-blocking background tasks, targeted sub-suite testing.
-- **Practitioner Voice & Tone** ([`practitioner-voice-and-tone.md`](.agents/rules/practitioner-voice-and-tone.md)): Hands-on lead architect persona, tech blog standard, zero academic jargon.
+### B. Domain Rules (read when relevant)
+- **[Language Policy](.agents/rules/language-policy.md)**: User's language in chat; English in repository artifacts.
+- **[Asset Descriptions & Markdown Fallbacks](.agents/rules/asset-descriptions.md)**: One-time bootstrap contract for visuals and RAG sidecars.
+- **[Hardware Bus Topology](.agents/rules/hardware-bus-topology.md)**: Agnus DMA address mastership, passive latching, zero inter-chip signal smuggling. Continuous + Per-Commit: AST verified in `pre_flight.py --quick` (Hardware Quality Pillar 1 & 2).
+- **[Design Docs Maintenance](.agents/rules/docs-maintenance.md)**: Sync `Obsidian/Amiga/Design/` specs with code; prune draft proposals.
+- **[Diary Maintenance](.agents/rules/diary-maintenance.md)**: Log and compact completed milestones.
+- **[Roadmap Maintenance](.agents/rules/roadmap-maintenance.md)**: Substrate-first ordering, zero completed items retention in `ROADMAP.md`.
+- **[Information Hierarchy & Limits](.agents/rules/information-hierarchy.md)**: Top-down structure; AGENTS.md $\le 14,000$ bytes.
+- **[Vault Linking & Graph Integrity](.agents/rules/vault-linking-and-graph-integrity.md)**: Line 1 YAML properties, dual-layer linking, zero broken links.
+- **[Source File Size & Cohesion](.agents/rules/file-size-and-cohesion.md)**: Source files $\le 800$ lines in `crates/*/src/`, single responsibility.
+- **[Opcode Naming & Micro-Steps](.agents/rules/opcode-naming.md)**: `IDLE` steps, 1:1 files, `addr1`/`addr2` staging.
+- **[Method Inlining Strategy](.agents/rules/method-inlining.md)**: Targeted inlining annotations.
+- **[Workspace Architecture & Re-Exports](.agents/rules/workspace-structure-and-reexports.md)**: Flat crates and 3-tier re-exports.
+- **[Rust Best Practices](.agents/rules/rust-best-practices.md)**: Safe borrowing, zero runtime unwraps, wrapping math, minimum visibility.
+- **[Repro-First Defect Resolution](.agents/rules/repro-first.md)**: Mandatory isolated failing test before modifying production code.
+- **[egui & Frontend Best Practices](.agents/rules/egui-best-practices.md)**: Synchronous state pull, bounded time-slicing, WASM/DPI adaptation.
+- **[Git Merge Commits & Worktrees](.agents/rules/git-merge-commits.md)**: Mandatory merge commits on conflict resolution; worktree lifecycle.
+- **[Graphify Knowledge Graph](.agents/rules/graphify.md)**: AST query before file inspection; updates via `graphify update .`.
+- **[Parallel Execution & Async Tasks](.agents/rules/parallel-execution.md)**: Non-blocking background tasks, targeted sub-suite testing.
+- **[Practitioner Voice & Tone](.agents/rules/practitioner-voice-and-tone.md)**: Practical engineering prose.
+
+### Codex Harness
+
+- Skills: `.agents/skills/*/SKILL.md`; invoke with `$skill-name` or select through `/skills`.
+- Custom agents: `.codex/agents/*.toml`; delegate when requested by the user or applicable instructions.
+- MCP: `.codex/config.toml`.
+- Run validation commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks.
 
 ### Reasoning Before Scripts
 
@@ -133,4 +142,3 @@ Rules in `.agents/rules/` use two trigger tiers:
 - **RAG Tooling & Infrastructure**: Canonical `rag_qdrant` CLI plus the optional FastMCP adapter in [`tools/amiga-rag-mcp-server`](tools/amiga-rag-mcp-server), backed by Qdrant (`projects_docs` collection, `amiga` source).
 - **Reference Emulator Source Code**: Reference emulator (vAmiga) and test suite (vAmigaTS) in [ref_src](ref_src).
 - **Single-Step Test Vectors**: M68000 silicon vectors in [ref_src/SingleStepTests-680x0/68000/v1](ref_src/SingleStepTests-680x0/68000/v1).
-

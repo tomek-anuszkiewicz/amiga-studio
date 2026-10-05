@@ -1,0 +1,7 @@
+# Project MCP adapter; runtime connectivity is verified separately.
+[mcp_servers.amiga-rag]
+command = "python"
+args = ["tools/amiga-rag-mcp-server/amiga_rag_mcp_server.py"]
+
+[mcp_servers.amiga-rag.env]
+PYTHONPATH = "tools/amiga-rag-mcp-server"

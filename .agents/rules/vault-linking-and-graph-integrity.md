@@ -1,8 +1,3 @@
----
-trigger: model_decision
-description: Mandatory dual-layer linking standard, inverted pyramid information hierarchy, and zero broken links across Obsidian design documentation.
----
-
 # Obsidian Vault Linking, Information Hierarchy & Graph Integrity Rule
 
 This rule governs all design specifications, hardware reference links, architectural guidelines, and markdown documentation located under `Obsidian/Amiga/Design/`.

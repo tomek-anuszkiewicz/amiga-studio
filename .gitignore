@@ -23,6 +23,10 @@ Obsidian/Amiga/.obsidian/plugins/remember-cursor-position/cursor-positions.json
 __pycache__/
 *.py[cod]
 
+# Local agent execution plans and disposable diagnostics.
+.agent/tasks/
+.agent/tmp/
+
 # ------------------------------------------------------------------------------
 # 5. Rust Cargo Build Outputs (Safe to delete / Regenerated on build)
 # ------------------------------------------------------------------------------

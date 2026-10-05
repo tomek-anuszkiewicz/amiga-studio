@@ -1,18 +1,13 @@
----
-trigger: always_on
-description: Proactively advise the user to switch between Medium and High/Pro reasoning effort based on task complexity.
----
-
 # Dynamic Model & Reasoning Effort Advisory Rule
 
 ## 1. Rule Mandate
 The agent actively monitors the active model and reasoning effort level (e.g. `Medium` vs `High` thinking) from session metadata and proactively advises the user when a switch is recommended based on the nature and complexity of the current task.
 
-Because model selection is controlled directly by the user in the IDE UI, the agent cannot change the model automatically. Instead, it must issue a concise, clear hint/recommendation.
+Use the active Codex session metadata when available; do not guess the model or effort. Keep the user's selected model and reasoning effort unless the user requests a change. Offer a concise recommendation using levels supported by that model and client.
 
 ## 2. Advisory Criteria
 
-### A. When to Recommend `High` (e.g. Gemini 3.8 Flash High / Pro High):
+### A. When to Recommend Higher Reasoning Effort:
 Recommend switching to `High` whenever the task involves deep architectural analysis, cycle-exact timing intricacies, or complex hardware circuit modeling:
 - **CPU Micro-Architecture & Pipeline**: Designing or refactoring the M68000 micro-operation state machine, prefetch queue (`IR`/`IRC`) progression, or bus cycle phases (`CCK1`/`CCK2`).
 - **Single-Step Test Failures & Edge Cases**: Diagnosing subtle timing discrepancies in `SingleStepTests`, complex address error exception frames, stack order quirks, or atypical ALU/CCR behavior (e.g. `ABCD`/`SBCD`/`NBCD`, multi-cycle division/multiplication, `MOVEM`).
@@ -29,7 +24,7 @@ Recommend switching back to `Medium` whenever the task is repetitive, mechanical
 When an advisory trigger is met and the active model is suboptimal for the task, include a prominent callout at the beginning of the response (right below the audio transcript if voice input was used):
 
 ```markdown
-> 💡 **Model Recommendation:** For the current task ([brief rationale, e.g. debugging prefetch queue progression in SingleStepTests]), switching to higher reasoning effort (**High** / **Pro**) is recommended to ensure precise cycle-by-cycle analysis.
+> 💡 **Model Recommendation:** For the current task ([brief rationale, e.g. debugging prefetch queue progression in SingleStepTests]), switching to higher reasoning effort (**High**) is recommended to ensure precise cycle-by-cycle analysis.
 ```
 
 Or for reverting to Medium:

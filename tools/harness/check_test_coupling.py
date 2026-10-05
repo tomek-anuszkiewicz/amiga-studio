@@ -26,7 +26,7 @@ def run_cmd(cmd):
 
 def get_modified_files(mode):
     if mode == "--staged":
-        # Staged files in git index (for pre-commit hook)
+        # Explicitly requested staged files in the Git index
         code, out = run_cmd(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"])
         return out.splitlines() if out else []
     elif mode == "--last-commit":

@@ -31,14 +31,14 @@ This skill provides on-demand verification across the repository's documentation
 
 ### Pillar 3: Constitutional Byte Size Ceilings (`--size-limits`)
 - **AGENTS.md Ceiling ($\le 14,000$ bytes):** Must serve strictly as a lean architectural constitution and index; zero duplicated rule bodies per [`.agents/rules/information-hierarchy.md`](../../rules/information-hierarchy.md).
-- **Rule Files Safety Ceiling ($\le 23,000$ bytes):** Individual files under `.agents/rules/*.md` and `GEMINI.md` must stay under 23 KB to eliminate silent prompt truncation at ~24 KB.
+- **Rule Files Safety Ceiling ($\le 23,000$ bytes):** Individual referenced files under `.agents/rules/*.md` must stay under the repository's 23 KB instruction budget. Codex project-instruction discovery has its own configurable byte limit.
 
 ### Pillar 4: Agent Skills Catalog Synchronization (`--skills`)
 - **Complete Skill Index Integrity:** Every active skill directory under `.agents/skills/` containing a `SKILL.md` must be cataloged in [`docs/ai_agents.md`](../../../docs/ai_agents.md).
 - **Zero Phantom References:** Every skill linked in `docs/ai_agents.md` must actually exist on disk.
 
 ### Pillar 5: Two-Way Script Locality & Harness Governance (`--scripts`)
-- **Harness Reservation:** `tools/harness/` is reserved strictly for universal, shared infrastructure used across multiple subsystems (pre-flight gates, git hooks, universal test runners, global rules).
+- **Harness Reservation:** `tools/harness/` is reserved strictly for universal, shared infrastructure used across multiple subsystems (pre-flight gates, explicit validation commands, universal test runners, global rules).
 - **Rule A (Specialized Locality):** Any script in `tools/harness/` referenced by $\le 1$ skill (and not part of global pre-commit/pre-flight) must be relocated to `.agents/skills/<skill>/scripts/`.
 - **Rule B (Shared Promotion):** Any script inside `.agents/skills/<skill>/scripts/` referenced by $> 1$ distinct skills must be promoted into `tools/harness/` to avoid cross-skill leakage.
 

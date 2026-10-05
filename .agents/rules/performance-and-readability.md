@@ -1,12 +1,3 @@
----
-trigger: always_on
-description: >
-  Zero-allocation hot paths, zero macro_rules!, zero const-generic handlers,
-  no cascaded runtime branches, intelligent inlining, and self-documenting
-  boolean logic. Full audit checklist in audit-code-quality skill;
-  CPU micro-step CCK details in add-m68k-instruction skill.
----
-
 # High Performance & Readability — Core Invariants
 
 ## Hot Path Constraints (All Emulation Crates)

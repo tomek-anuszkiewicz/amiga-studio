@@ -61,9 +61,9 @@ cargo run -p gui --bin gui-inspector -- --scenario baseline --output target/gui_
 ```
 
 ### Step 2: Inspect via Native Multimodal Vision
-Call `view_file` to load the rendered PNG into the agent's multimodal vision:
-```rust
-view_file(AbsolutePath: "D:/Programowanie/Amiga/target/gui_captures/baseline.png")
+Call `view_image` to load the rendered PNG into the agent's multimodal vision:
+```javascript
+view_image({ path: "<repo_path>/target/gui_captures/baseline.png" })
 ```
 The agent inspects:
 1. Are the 3 columns (CPU Registers, Amiga Viewport, Memory Hex Editor) balanced?

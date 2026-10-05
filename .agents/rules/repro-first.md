@@ -1,8 +1,3 @@
----
-trigger: model_decision
-description: Mandate writing an isolated, failing reproduction test in tests/ before modifying production code.
----
-
 # Repro-First & Regression Guard Rule
 
 This rule governs all defect resolution, bug fixing, hardware divergence corrections, and edge-case handling across the emulator codebase.

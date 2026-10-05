@@ -65,10 +65,10 @@ cargo run -p gui --bin gui-inspector -- --scenario game_mode --output target/gui
 
 ## 3. Visual Inspection Workflow (Agent Eyes)
 
-After capturing an image, the agent **MUST** inspect it using `view_file`:
+After capturing an image, the agent **MUST** inspect it using `view_image`:
 
-```rust
-view_file(AbsolutePath: "D:/Programowanie/Amiga/target/gui_captures/<capture_name>.png")
+```javascript
+view_image({ path: "<repo_path>/target/gui_captures/<capture_name>.png" })
 ```
 
 The agent uses its native multimodal vision to inspect:
@@ -98,7 +98,7 @@ Follow this strict cycle to resolve any UI issue:
 
 ```mermaid
 graph TD
-    A["1. Run gui-inspector scenario"] --> B["2. Inspect PNG with view_file"]
+    A["1. Run gui-inspector scenario"] --> B["2. Inspect PNG with view_image"]
     B --> C{"Visual defect detected?"}
     C -- Yes --> D["3. Locate code in crates/gui/src/layout/"]
     D --> E["4. Edit layout / styling / focus logic"]
@@ -108,10 +108,10 @@ graph TD
 ```
 
 1. **Repro:** Run `gui-inspector` with the scenario reproducing the defect.
-2. **Inspect:** View the screenshot with `view_file`.
+2. **Inspect:** View the screenshot with `view_image`.
 3. **Diagnose:** Analyze the visual defect and identify the root cause in `crates/gui/src/layout/` or `app.rs`.
 4. **Fix:** Edit the relevant Rust file cleanly.
-5. **Verify:** Re-run `gui-inspector` and re-inspect with `view_file` to visually verify the fix.
+5. **Verify:** Re-run `gui-inspector` and re-inspect with `view_image` to visually verify the fix.
 6. **Test Gate:** Add a headless integration test in `crates/gui/tests/test_interactions.rs` to prevent future regressions.
 
 ---

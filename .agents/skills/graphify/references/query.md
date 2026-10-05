@@ -179,7 +179,7 @@ Replace `ORIGINAL_QUESTION` with the user's verbatim question, `ANSWER` with you
 - `dead_end` — the question/path led nowhere; don't re-derive it next time.
 - `corrected` — the saved answer was wrong; `--correction` records what was right.
 
-At the **start** of graph work, refresh and read the lessons: run `graphify reflect --if-stale` (cheap, deterministic, no LLM; `--if-stale` makes it a no-op when `LESSONS.md` is already newer than every input, e.g. when the git hook just refreshed it), then read `graphify-out/reflections/LESSONS.md`. It lists **preferred sources** (start there), **known dead ends** (skip them), and prior **corrections**. Running `reflect` yourself keeps the lessons current even without the git hook installed; if the post-commit hook *is* installed, `--if-stale` means your session-start run costs almost nothing.
+At the **start** of graph work, refresh and read the lessons: run `graphify reflect --if-stale` (cheap, deterministic, no LLM; a no-op when `LESSONS.md` is newer than every input), then read `graphify-out/reflections/LESSONS.md`. It lists **preferred sources** (start there), **known dead ends** (skip them), and prior **corrections**. Run this command explicitly to keep the lessons current.
 
 ---
 

@@ -1,8 +1,3 @@
----
-trigger: always_on
-description: Mandatory structural root-cause resolution; strict prohibition of local symptom patches (pixel nudging, ad-hoc regexes, special-case branches).
----
-
 # Structural Root-Cause Resolution Rule (Zero Local Symptom Patches)
 
 ---

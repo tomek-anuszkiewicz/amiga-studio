@@ -1,8 +1,3 @@
----
-trigger: always_on
-description: Strict scope discipline, minimal diffs, task containment, zero unsolicited refactoring or defect expansion, and mandatory delivered vs suggested reporting.
----
-
 # Strict Scope Discipline & Anti-Scope Creep Rule
 
 This rule governs all agent pair-programming interactions, defect resolutions, refactorings, and feature additions across the workspace. It enforces strict task boundaries and prevents unsolicited scope expansion.

@@ -1,8 +1,3 @@
----
-trigger: model_decision
-description: Mandatory updating and pruning of ROADMAP.md whenever an active milestone or step is completed and verified.
----
-
 # Roadmap Maintenance & Milestone Completion Rule (`ROADMAP.md`)
 
 This rule governs the continuous synchronization, pruning, substrate-first ordering, and milestone completion workflow for [`ROADMAP.md`](../../ROADMAP.md).

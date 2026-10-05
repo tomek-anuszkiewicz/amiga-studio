@@ -1,8 +1,3 @@
----
-trigger: model_decision
-description: Parallel execution, targeted sub-suite testing, and asynchronous background task management.
----
-
 # Parallel Execution & Asynchronous Task Optimization Rule
 
 This rule governs how the agent executes tests, validation suites, and long-running operations to maximize execution velocity, eliminate unnecessary blocking latency, and leverage background parallelism.
@@ -28,7 +23,7 @@ This rule governs how the agent executes tests, validation suites, and long-runn
 ## 2. Asynchronous Background Task Execution
 
 1. **Non-Blocking Execution for Heavy Operations**:
-   - Heavy tasks (compilations, full SingleStepTests, cartesian DMA verification, RAG indexing) should be dispatched as asynchronous background tasks using `run_command` with low `WaitMsBeforeAsync` (e.g. 500ms).
+   - Heavy tasks (compilations, full SingleStepTests, cartesian DMA verification, RAG indexing) should be dispatched as asynchronous background tasks using the Codex shell tool with a short initial yield (for example, `yield_time_ms: 1000`).
    - Once dispatched, the agent should proceed with non-blocking tasks—such as formulating the Definition of Done checklist, inspecting git diffs, drafting walkthrough notes, or updating design documentation.
 
 2. **Parallel Task Dispatching**:
@@ -36,14 +31,11 @@ This rule governs how the agent executes tests, validation suites, and long-runn
      - Task 1: `cargo fmt --all -- --check`
      - Task 2: `cargo test -p test_runner --test test_architecture_rules`
      - Task 3: `cargo test -p test_runner --test test_dma_cartesian`
-   - Alternatively, execute compound commands in a single pipeline:
-     ```powershell
-     cargo fmt --all -- --check; cargo test -p test_runner --test test_architecture_rules
-     ```
+   - Batch independent tool calls when supported. Cargo processes sharing one target directory may serialize on locks; do not treat them as independent builds.
 
-3. **Reactive Wakeup (Zero Polling)**:
-   - Antigravity's message broker automatically wakes up the agent when any background task completes.
-   - The agent must **never busy-poll** or loop on `manage_task(Action='status')`. Simply proceed with other work or yield turn to let the platform notify upon completion.
+3. **Resume Background Sessions Without Busy Polling**:
+   - Preserve the shell session ID returned for an unfinished command and continue independent work.
+   - When its result is needed, resume it with the available session-wait tool (for example, `write_stdin`). Wait only on sessions that actually exist. Keep the user informed during long checks.
 
 ---
 
@@ -63,7 +55,7 @@ This rule governs how the agent executes tests, validation suites, and long-runn
 
 ## 4. Output Compression & Log Vomit Suppression Standard
 
-Terminal outputs from commands (`run_command`) are permanently stored in conversation history and re-transmitted on every subsequent turn. To prevent context saturation:
+Terminal outputs from commands (the Codex shell tool) are permanently stored in conversation history and re-transmitted on every subsequent turn. To prevent context saturation:
 1. **Silent on Success, Loud on Failure**:
    - Commands should suppress passing lines and status noise when exit code is 0.
    - Diagnostic outputs (stack traces, failure lines, diffs) must be surfaced strictly when an error occurs.
@@ -71,4 +63,4 @@ Terminal outputs from commands (`run_command`) are permanently stored in convers
    - Always run compiler checks with `--quiet`: `cargo check --quiet`.
    - In test suites, pass `--quiet` to the test harness: `cargo test -p <crate> -- --quiet`. This suppresses hundreds of passing `test ... ok` lines and prints strictly the concise summary line.
 3. **Unified Pre-Flight Quality Gate**:
-   - Use `python tools/harness/pre_flight.py` (or `--quick`) to run `cargo fmt`, `AGENTS.md` byte ceiling checks, test coupling, and architecture rules in a single fast pass. On success, it outputs a clean summary, saving tokens per turn.
+   - Use `python tools/harness/pre_flight.py` (or `--quick`) to run `cargo fmt`, `AGENTS.md` byte ceiling checks, test coupling, and quick code/hardware checks in a single pass; run architecture tests separately. On success, it outputs a clean summary, saving tokens per turn.

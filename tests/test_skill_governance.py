@@ -47,6 +47,17 @@ class TestSkillGovernance(unittest.TestCase):
         self.skill("language-policy")
         self.assertEqual(AUDIT.check_skill_and_rule_governance()["rule_issues"][0]["type"], "redundant_passive_skill")
 
+    def test_instruction_budgets_cover_root_and_referenced_rules(self):
+        self.write("AGENTS.md", "x" * AUDIT.MAX_AGENTS_MD_BYTES)
+        self.write(".agents/rules/fixture.md", "x" * AUDIT.MAX_RULE_FILE_BYTES)
+        self.assertEqual(AUDIT.check_size_limits(), [])
+        self.write("AGENTS.md", "x" * (AUDIT.MAX_AGENTS_MD_BYTES + 1))
+        self.write(".agents/rules/fixture.md", "x" * (AUDIT.MAX_RULE_FILE_BYTES + 1))
+        self.assertEqual(
+            {issue["file"] for issue in AUDIT.check_size_limits()},
+            {"AGENTS.md", ".agents/rules/fixture.md"},
+        )
+
     def test_reference_and_entrypoint_count_as_one_consumer(self):
         self.skill("consumer")
         self.write("tools/harness/special.py")

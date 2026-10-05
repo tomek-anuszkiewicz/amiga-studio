@@ -1,8 +1,3 @@
----
-trigger: model_decision
-description: Maintaining and synchronizing technical design documentation under Obsidian/Amiga/Design/ with active emulator code and architecture.
----
-
 # Design Documentation Maintenance & Code Synchronization Rule
 
 This rule governs the continuous synchronization, cleanup, and maintenance of technical design documentation under [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Design/).
@@ -101,7 +96,7 @@ Design specifications under [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Desi
 ## 9. Two-Way Script Locality & Harness Placement Governance
 
 To prevent script sprawl and maintain clear boundaries between global infrastructure and specialized procedures:
-- **`tools/harness/` Reservation:** `tools/harness/` is reserved strictly for universal, shared infrastructure used across multiple subsystems (pre-flight gates, pre-commit hooks, universal test runners, and workspace-wide rules).
+- **`tools/harness/` Reservation:** `tools/harness/` is reserved strictly for universal, shared infrastructure used across multiple subsystems (pre-flight gates, explicit validation commands, universal test runners, and workspace-wide rules).
 - **Rule A (Specialized Locality):** Any script in `tools/harness/` referenced by $\le 1$ skill (including its supporting references, and not part of global pre-commit/pre-flight) must be relocated to `.agents/skills/<skill>/scripts/`.
 - **Rule B (Shared Promotion):** Any script inside `.agents/skills/<skill>/scripts/` referenced by $> 1$ distinct skills must be promoted into `tools/harness/` to avoid cross-skill coupling.
 - **Continuous Audit:** Enforced via `python tools/harness/audit_docs_quality.py --scripts`.

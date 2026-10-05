@@ -1,8 +1,3 @@
----
-trigger: always_on
-description: Mandatory immediate atomic Git commit after every completed task, zero accumulated uncommitted changes, Conventional Commits, and pre-commit test gates.
----
-
 # Git Commits & Immediate Atomic History Protocol
 
 ---

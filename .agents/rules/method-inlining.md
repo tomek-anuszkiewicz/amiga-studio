@@ -1,8 +1,3 @@
----
-trigger: model_decision
-description: Inlining strategy (#[inline], #[inline(always)], #[inline(never)]) for performance-critical and cross-crate Rust methods.
----
-
 # Method Inlining Strategy (`#[inline]`, `#[inline(always)]`, `#[inline(never)]`)
 
 ## 1. Core Mechanics in Rust

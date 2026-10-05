@@ -146,7 +146,7 @@ POLISH_CHECK_SCRIPT = Path(__file__).resolve().parent / "check_polish.py"
 def check_polish_language():
     if not POLISH_CHECK_SCRIPT.exists():
         return False, f"Polish check script not found at {POLISH_CHECK_SCRIPT}", 0.0
-    code, stdout, stderr, elapsed = run_cmd([sys.executable, str(POLISH_CHECK_SCRIPT), "--git"])
+    code, stdout, stderr, elapsed = run_cmd([sys.executable, str(POLISH_CHECK_SCRIPT), "--staged"])
     if code != 0:
         output = stdout.strip() or stderr.strip()
         return False, f"Language policy check failed:\n{output}", elapsed

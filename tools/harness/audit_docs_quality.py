@@ -12,7 +12,7 @@ Audits nine critical documentation and agent governance dimensions across the re
    - Validates URL-encoded characters, anchors, and target file presence.
 3. Constitutional Byte Size Ceilings & Truncation Safety:
    - `AGENTS.md` <= 14,000 bytes (constitutional non-redundancy).
-   - Rule files (`.agents/rules/*.md`, `GEMINI.md`) <= 23,000 bytes (prompt truncation safety at ~24 KB).
+   - Rule files (`.agents/rules/*.md`) <= 23,000 bytes (repository instruction budget).
 4. Agent Skills Catalog Synchronization (`docs/ai_agents.md`):
    - Verifies 100% parity between `.agents/skills/` and `docs/ai_agents.md` (zero missing, zero phantom).
 5. Two-Way Script Locality & Harness Governance:
@@ -356,7 +356,7 @@ def check_vault_links():
 # ---------------------------------------------------------------------------
 
 def check_size_limits():
-    """Checks AGENTS.md, GEMINI.md, and .agents/rules/*.md file size thresholds."""
+    """Checks AGENTS.md and referenced .agents/rules/*.md file size budgets."""
     issues = []
 
     # 1. Root AGENTS.md
@@ -371,19 +371,7 @@ def check_size_limits():
                 "message": f"AGENTS.md is {size:,} bytes (exceeds {MAX_AGENTS_MD_BYTES:,} constitutional ceiling by {size - MAX_AGENTS_MD_BYTES:,} bytes)",
             })
 
-    # 2. GEMINI.md
-    gemini_path = REPO_ROOT / "GEMINI.md"
-    if gemini_path.exists():
-        size = gemini_path.stat().st_size
-        if size > MAX_RULE_FILE_BYTES:
-            issues.append({
-                "file": "GEMINI.md",
-                "size": size,
-                "limit": MAX_RULE_FILE_BYTES,
-                "message": f"GEMINI.md is {size:,} bytes (exceeds safety ceiling of {MAX_RULE_FILE_BYTES:,} bytes; silent truncation risk)",
-            })
-
-    # 3. .agents/rules/*.md
+    # 2. .agents/rules/*.md
     rules_dir = REPO_ROOT / ".agents" / "rules"
     if rules_dir.exists():
         for rule_file in sorted(rules_dir.glob("*.md")):

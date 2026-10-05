@@ -1,8 +1,3 @@
----
-trigger: model_decision
-description: Information hierarchy, inverted pyramid structure, constitutional AGENTS.md size ceiling (<= 14,000 bytes), and non-redundancy policy. Load on major roadmap milestones and doc restructuring tasks.
----
-
 # Information Hierarchy, Inverted Pyramid & Document Limits Rule
 
 This rule governs how information, architecture guidelines, specifications, and central constitutions are structured, prioritized, and bounded across this repository to eliminate bottom-heavy bloat, duplicate sprawl, and context truncation.
@@ -25,7 +20,7 @@ This rule governs how information, architecture guidelines, specifications, and 
 
 ### Byte Budget & Automated CI Enforcement
 - **Strict Size Ceiling:** `AGENTS.md` must strictly remain $\le 14,000$ bytes on disk.
-- **Rationale:** Antigravity silently truncates rule files exceeding ~24,000 bytes. Keeping `AGENTS.md` under 14,000 bytes prevents prompt bloat, conserves context token budget, and eliminates truncation risk.
+- **Rationale:** The 14,000-byte root limit and 23,000-byte rule limit are repository budgets for concise instructions. Codex has a separate configurable `project_doc_max_bytes` limit for discovered project instructions; linked rule files are read explicitly.
 - **Automated Verification Gate:** Enforced on every build via `check_agents_md()` in `tools/harness/pre_flight.py` and `test_rule_files_size_limit_and_truncation_safety` in `crates/test_runner/tests/test_architecture_rules.rs`.
 
 ---

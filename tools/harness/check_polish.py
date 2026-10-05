@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 """
-Polish Language Detection Hook & Quality Gate
+Standalone Polish Language Detection & Quality Gate
 Enforces .agents/rules/language-policy.md (Strict English mandate).
 Detects Polish words and phrases even without diacritics ('ogonki').
 Supports:
-  1. CLI file scanning: python tools/check_polish.py [file_path]
-  2. Antigravity Lifecycle Hook: python tools/check_polish.py --hook
-  3. Git staged files check: python tools/check_polish.py --git
+  1. CLI file scanning: python tools/harness/check_polish.py [file_path ...]
+  2. Explicit staged-additions scanning: python tools/harness/check_polish.py --staged
 """
 
 import sys
-import os
+import argparse
 import re
-import json
 import subprocess
 from pathlib import Path
 
@@ -221,41 +219,17 @@ def scan_file(file_path: Path):
     return detect_polish_in_text(content)
 
 
-def handle_antigravity_hook():
-    """
-    Handles Antigravity PreToolUse lifecycle hook.
-    Reads JSON from stdin, inspects write_to_file / replace_file_content arguments.
-    Outputs decision to stdout.
-    """
-    try:
-        payload = json.load(sys.stdin)
-    except Exception as e:
-        # Fallback allow on decode failure so agent is not blocked
-        print(json.dumps({"decision": "allow", "reason": f"Failed to parse hook payload: {e}"}))
-        return 0
-
-    tool_call = payload.get("toolCall", {})
-    name = tool_call.get("name", "")
-    args = tool_call.get("args", {})
-
-    # Tool interception disabled: Strict English checks run exclusively at Minor Roadmap Point gates (pre_flight.py --milestone)
-    print(json.dumps({"decision": "allow"}))
-    return 0
-
-
-def handle_git_hook():
+def scan_staged_additions():
     """Checks git staged diffs for Polish language violations in newly added lines."""
     cmd = ["git", "diff", "--cached", "-U0"]
-    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
+    res = subprocess.run(cmd, cwd=REPO_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
     if res.returncode != 0:
         print("Git diff check failed", file=sys.stderr)
         return 1
 
     excluded_files = {
-        "tools/check_polish.py",
         "tools/harness/check_polish.py",
         ".agents/rules/language-policy.md",
-        ".agents/hooks/check_polish.py",
         "DIARY.md"
     }
 
@@ -301,19 +275,17 @@ def handle_git_hook():
 
 
 def main():
-    if "--hook" in sys.argv:
-        return handle_antigravity_hook()
-
-    if "--git" in sys.argv:
-        return handle_git_hook()
+    parser = argparse.ArgumentParser(description="Scan explicit files or staged additions for Polish text.")
+    parser.add_argument("files", nargs="*", type=Path, help="Files to scan (default: language-policy.md)")
+    parser.add_argument("--staged", action="store_true", help="Scan added lines in the Git index")
+    args = parser.parse_args()
+    if args.staged:
+        if args.files:
+            parser.error("--staged cannot be combined with file paths")
+        return scan_staged_additions()
 
     # CLI mode: process target files or default to language-policy.md
-    target_args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
-
-    if not target_args:
-        targets = [DEFAULT_TARGET_FILE]
-    else:
-        targets = [Path(arg) for arg in target_args]
+    targets = args.files or [DEFAULT_TARGET_FILE]
 
     all_violations = 0
     for target in targets:

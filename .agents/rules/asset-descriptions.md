@@ -1,8 +1,3 @@
----
-trigger: model_decision
-description: One-time conversion-bootstrap contract for deciding whether visual assets matter and making retained visuals searchable in Markdown and RAG.
----
-
 # Asset Descriptions and Markdown Fallbacks
 
 Apply this rule when bootstrapping a source-faithful HTML- or PDF-to-Markdown conversion that contains tables, images, diagrams, or ASCII art. It governs the conversion artefacts, not ordinary emulator source-code documentation.

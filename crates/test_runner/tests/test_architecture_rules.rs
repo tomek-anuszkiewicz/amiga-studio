@@ -684,9 +684,8 @@ fn test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs() {
     );
 }
 
-/// Maximum allowable byte size for any rule file (`.agents/rules/*.md` or `GEMINI.md`).
-/// Antigravity prompt injection silently truncates individual rule files exceeding ~24,000 bytes.
-/// A strict safety ceiling of 23,000 bytes guarantees zero risk of truncation across all agent sessions.
+/// Repository instruction budget for explicitly referenced `.agents/rules/*.md` files.
+/// Codex project-instruction discovery has a separate configurable byte limit.
 const MAX_RULE_FILE_BYTES: u64 = 23_000;
 
 /// Maximum allowable byte size for root constitutional file (`AGENTS.md`).
@@ -714,20 +713,6 @@ fn test_rule_files_size_limit_and_truncation_safety() {
         }
     }
 
-    // Check GEMINI.md against prompt injection safety ceiling
-    let gemini_path = repo_root.join("GEMINI.md");
-    if gemini_path.exists() {
-        if let Ok(meta) = fs::metadata(&gemini_path) {
-            if meta.len() > MAX_RULE_FILE_BYTES {
-                violations.push(format!(
-                    "GEMINI.md is {} bytes (exceeds safety ceiling of {} bytes; risk of silent prompt truncation at ~24 KB)",
-                    meta.len(),
-                    MAX_RULE_FILE_BYTES
-                ));
-            }
-        }
-    }
-
     // 2. Check all markdown rule files in .agents/rules/
     let rules_dir = repo_root.join(".agents").join("rules");
     if rules_dir.is_dir() {
@@ -738,7 +723,7 @@ fn test_rule_files_size_limit_and_truncation_safety() {
                     if let Ok(meta) = fs::metadata(&path) {
                         if meta.len() > MAX_RULE_FILE_BYTES {
                             violations.push(format!(
-                                ".agents/rules/{} is {} bytes (exceeds safety ceiling of {} bytes; risk of silent prompt truncation at ~24 KB)",
+                                ".agents/rules/{} is {} bytes (exceeds safety ceiling of {} bytes; repository instruction budget)",
                                 path.file_name().unwrap_or_default().to_string_lossy(),
                                 meta.len(),
                                 MAX_RULE_FILE_BYTES
@@ -753,7 +738,6 @@ fn test_rule_files_size_limit_and_truncation_safety() {
     assert!(
         violations.is_empty(),
         "Architecture Rule Violation: Rule file(s) exceed size safety thresholds:\n{}\n\
-        Antigravity silently truncates rule files exceeding ~24,000 bytes with `<truncated N bytes>`. \
         Keep AGENTS.md (<= {} bytes) and individual .agents/rules/*.md files (<= {} bytes) concise and modularized.",
         violations.join("\n"),
         MAX_AGENTS_MD_BYTES,

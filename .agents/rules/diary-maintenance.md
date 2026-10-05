@@ -1,8 +1,3 @@
----
-trigger: model_decision
-description: Log completed minor roadmap points and major milestones in DIARY.md; never log routine micro-commits.
----
-
 # Engineering Diary Maintenance Rule (`DIARY.md`)
 
 This rule governs milestone entries in the engineering chronicle in [`DIARY.md`](../../DIARY.md).

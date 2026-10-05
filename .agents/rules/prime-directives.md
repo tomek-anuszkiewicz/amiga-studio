@@ -1,8 +1,3 @@
----
-trigger: always_on
-description: Prime Directives on thinking mode and code modifications (invariant modeling over hardcoded fixes, explicit request before modification, and exhaustive search before declaring).
----
-
 # Prime Directives: Thinking Mode & Code Modifications
 
 This rule defines foundational engineering invariants governing how all code modifications, bug fixes, refactorings, and architectural designs must be approached across the repository.

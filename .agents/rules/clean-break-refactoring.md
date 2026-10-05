@@ -1,8 +1,3 @@
----
-trigger: always_on
-description: Zero legacy aliases, forwarding wrappers, deprecated annotations, or dual-path fallbacks. Complete workspace-wide cutover on every rename or redesign.
----
-
 # Clean-Break Refactoring & Zero Unsolicited Backward Compatibility
 
 
@@ -66,6 +61,6 @@ AI coding models often default to backward-compatibility shims because their tra
 ## 5. Refactoring Verification Checklist
 Before completing any refactoring or renaming task, verify:
 - [ ] Are all old methods, structs, and aliases completely deleted (zero legacy shims)?
-- [ ] Was `grep_search` executed across the entire repository to confirm zero remaining references to old symbols?
+- [ ] Was `rg` executed across the entire repository to confirm zero remaining references to old symbols?
 - [ ] Are all test files and fixtures updated to the new API?
 - [ ] Are all dual-path fallback branches eliminated?
