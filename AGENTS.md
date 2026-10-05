@@ -10,7 +10,7 @@ Read these shared rules before task work; linked files require explicit reads:
 
 Answer in the user's language; repository content and commits are English. Read [language-policy.md](.agents/rules/language-policy.md) for language checks, [audio-transcription.md](.agents/rules/audio-transcription.md) when audio is supplied, and [model-reasoning-advisory.md](.agents/rules/model-reasoning-advisory.md) when reasoning-effort advice is relevant. Do not guess unavailable model metadata.
 
-Run validation commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks. Use `.agent/tasks/` for English execution plans and `.agent/tmp/` for disposable diagnostics and artifacts. Treat existing temporary artifacts as unverified until their assumptions are checked.
+Run validation commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks. Use `.agent/tasks/` for English execution plans and `.agent/tmp/` for disposable diagnostics and artifacts. Follow the [execution-plan lifecycle](.agents/rules/structural-root-cause.md#execution-plan-lifecycle) when closing tasks. Treat existing temporary artifacts as unverified until their assumptions are checked.
 
 First identify the question and whether existing evidence resolves it. Use scripts for concrete measurement, verification, or data processing; do not repair a tool unless that repair is needed for the task.
 

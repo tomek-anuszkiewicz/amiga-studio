@@ -1262,3 +1262,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Converter semantic parity closure review preserved implemented behavior and bounded claims with no Python-code diff from 5a9add8
   - Settled implementation compaction reduced diary line count from 1253 to 1236 before adding this closure entry while preserving source-stream wrappers Unicode geometry restart cache regressions and sample evidence
   - No additional conversion model calls RAG ingestion unrelated Rust repair or golden-reference change performed
+---
+
+### [2026-10-06 01:16 CEST] — Remove closed execution plans as part of task closure
+- **Affected Subsystems**:
+  - `AGENTS.md`
+  - `.agents/rules/structural-root-cause.md`
+  - `.agent/tasks/`
+- **What Was Changed (The Concrete Reality)**:
+  - Add a shared execution-plan lifecycle rule and route it from root agent instructions
+  - Require agents to delete a closed task plan after its durable closure record is committed without separate cleanup confirmation
+  - Preserve active paused blocked and unrelated plans and keep verification limits in permanent history
+  - Remove the ignored roadmap-1.1-pdf-text-layer.md plan after confirming its closure is already recorded in DIARY.md and commits 5a9add8 and 98eaa9f
+- **Architectural Rationale & Trade-Offs**:
+  - Execution plans guide active work and should not accumulate as duplicate completed-task history
+  - Plan cleanup belongs to the agent closing workflow with no hooks or background services
+  - Explicit user closure may end scope while failed or unrun checks remain accurately recorded
+- **Verification & Test Results**:
+  - Closed plan absence verified
+  - Skill-governance tests 9/9 and documentation-auditor tests 7/7 passed
+  - Quick preflight passed with AGENTS.md at 7895 bytes within its 14000-byte ceiling
+  - Architecture suite 18/19 with the same 62 pre-existing missing Design links
+  - No implementation or unrelated plan changed
