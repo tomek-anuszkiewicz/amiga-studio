@@ -118,7 +118,7 @@ for discovery and invocation behavior.
 
 ## 5. Native Codex Agents (`.codex/agents/`)
 
-Codex discovers standalone agent TOML files in `.codex/agents/`. Each defines `name`, `description`, and `developer_instructions`. All six project agents explicitly select `gpt-6.1-sol` and set `model_reasoning_effort`: `high` for `code_reviewer` and `cpu_verifier`; `medium` for `doc_curator`, `doc_ingestor`, `tech_writer`, and `vision_analyst`. Tools and permissions inherit from the parent session. Delegate when the user or applicable project/skill instructions request it. These instructions define responsibilities, not executable tool allowlists. Verify effective model and effort in a fresh client session after changing these files before claiming runtime activation.
+Codex discovers standalone agent TOML files in `.codex/agents/`. Each defines `name`, `description`, and `developer_instructions`. All seven project agents explicitly select `gpt-6.1-sol` and set `model_reasoning_effort`: `high` for `code_reviewer`, `cpu_verifier`, and `image_analyst`; `medium` for `doc_curator`, `doc_ingestor`, `tech_writer`, and `vision_analyst`. Tools and permissions inherit from the parent session unless a role configures an override; `image_analyst` sets `sandbox_mode = "workspace-write"` for assigned output assets. Delegate when the user or applicable project/skill instructions request it. These instructions define responsibilities, not executable tool allowlists. Verify effective model and effort in a fresh client session after changing these files before claiming runtime activation.
 
 Subagents run in their own **isolated context windows**, shielding the main architect
 session from token-heavy bulk processing (OCR floods, multi-page markdown dumps, graph
@@ -130,9 +130,12 @@ high-signal verdict or diff.
 | **`cpu_verifier`** | [`cpu_verifier.toml`](../.codex/agents/cpu_verifier.toml) | 🔬 Precision / Low volume | Tom Harte single-step silicon test execution, cycle-exact ALU/CCR verification, and timing regression isolation. |
 | **`code_reviewer`** | [`code_reviewer.toml`](../.codex/agents/code_reviewer.toml) | 🔍 Adversarial / Medium volume | 18-point pre-commit and architectural compliance audit against AGENTS.md rules, file size limits, and inlining policy. |
 | **`vision_analyst`** | [`vision_analyst.toml`](../.codex/agents/vision_analyst.toml) | 🖼️ Multimodal / Medium volume | Circuit schematic interpretation, timing diagram analysis, and `egui` visual layout debugging via multimodal vision. |
+| **`image_analyst`** | [`image_analyst.toml`](../.codex/agents/image_analyst.toml) | Illustration / Scoped assets | Detailed descriptions of assigned illustrations, schematics, and diagrams; explicitly assigned lossless crop extraction and technical sidecars. |
 | **`doc_curator`** | [`doc_curator.toml`](../.codex/agents/doc_curator.toml) | 📐 Structural / Low volume | Semantic parity between `Obsidian/Amiga/Design/` specs and Rust code, vault graph integrity, ROADMAP.md pruning, DIARY.md compaction. |
 | **`doc_ingestor`** | [`doc_ingestor.toml`](../.codex/agents/doc_ingestor.toml) | 📦 Heavy data / Isolated | PDF/HTML → Markdown conversion of reference manuals, circuit schematic vision sidecars, and Qdrant vector reindexing. |
 | **`tech_writer`** | [`tech_writer.toml`](../.codex/agents/tech_writer.toml) | ✍️ Narrative / Medium volume | Long-form retrospective essays, engineering devlogs, and methodology documents under `docs/` using practitioner voice and 6-layer Inverted Pyramid. |
+
+For document illustrations, assign `image_analyst` the source image, any crop region, and the requested description format. Assign output paths when requesting description files or crop assets. Crop coordinates are integer pixels on the original image, measured from the top left with exclusive upper bounds. The agent preserves the source and verifies saved crops; the parent integrates text, descriptions, and assets into the document. Use `vision_analyst` for GUI layout and hardware-behavior analysis. Page OCR remains with the parent or the conversion toolchain.
 
 ### Documentation Subagent Split: Why Two Agents?
 
