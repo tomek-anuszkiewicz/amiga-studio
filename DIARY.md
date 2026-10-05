@@ -981,3 +981,31 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite: 18 passed and 1 failed because Design links target 62 missing Reference materials
   - Staged English scan reported the Python standard-library identifier copytree as Polish; manually verified this false positive without changing the scanner
   - Graphify code refresh completed without inference
+---
+
+### [2026-10-05 23:48 CEST] — Reset PDF conversion dependents within independent workspaces
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/lineage.py`
+  - `tools/bootstrap/pdf-to-markdown/pipeline.py`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Validate retained predecessors and rebuild missing working manifests from snapshots
+  - Clear all stage outputs and manual tasks from the requested restart stage onward
+  - Resume from the earliest missing stage artifact
+  - Preserve upstream assets and current manual edits during apply
+  - Default final output to the selected workspace
+- **Architectural Rationale & Trade-Offs**:
+  - Task 1.1 follow-up: one workspace owns one source/page experiment
+  - Whole downstream cleanup avoids ambiguous selective page invalidation
+  - Missing artifacts are supported while modified retained artifacts remain incompatible
+  - Conversion-quality changes remain deferred
+- **Verification & Test Results**:
+  - Confirmed four restart regressions failed before the repair and passed afterward
+  - 32 conversion tests and 4 bootstrap tests passed
+  - Page 19 passed stages 01-14 using only cached responses in a separate workspace
+  - Stage 05 reset passed with missing manifests and chapter output then resume completed stages 06-14
+  - Preserved stages and original workspace remained unchanged with zero live inference requests
+  - Python compilation and quick pre-flight passed
+  - Architecture suite remains 18 passed and 1 failed due to 62 missing Reference links
+  - Graphify code refresh passed
+  - Staged English scanner false-positive on standard-library copytree was verified manually

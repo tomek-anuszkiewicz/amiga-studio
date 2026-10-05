@@ -24,6 +24,8 @@ The Codex cache is separate from legacy Gemini data. Its identity includes engin
 
 ## Implementation and pending scope
 
+Each PDF workspace owns one source/page selection and its intermediate conversion state. Explicit restart from stage N validates stages before N, clears all outputs/status/manual tasks from N onward, and restores predecessor manifest snapshots. Final output defaults to the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored; modified retained artifacts are rejected rather than automatically repaired. Broader manual content editing and conversion quality remain separate work.
+
 HTML and PDF use the shared Codex transport and strict stage configuration. PDF completion records validate predecessor artifacts and source/configuration/procedure identities; prepared manual tasks carry matching identity records. All 14 PDF stages passed on one physical page, and completed-run resume passed without inference. This is integration evidence, not source-fidelity acceptance or proof of all recovery paths. The current user-directed scope defers conversion-quality repairs. Broader branch and manual-recovery validation remains necessary before roadmap 1.1 can close. Do not treat arbitrary existing artifacts as validated predecessors.
 
 Roadmap 1.2–1.6 remain pending: Stage 00 text provenance, PNG-to-Markdown redesign, visual reclip, the new description stage, representative recovery checks and bulk conversion/indexing. Current source-fidelity requirements are acceptance criteria, not a claim that all legacy workers already enforce them. Test minimal individual pages or adjacent fragments before expanding a pilot.

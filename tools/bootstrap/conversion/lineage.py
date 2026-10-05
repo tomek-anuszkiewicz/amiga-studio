@@ -8,6 +8,22 @@ import shutil
 from .cache import CONTRACT_VERSION, digest
 from .transport import SDK_VERSION
 
+SHARED_MANIFESTS = {"01": ("pages_manifest.json",), "05": ("chapters_manifest.json",), "10": ("chapters_manifest.json",)}
+
+
+def first_incomplete_stage(state, registry, workspace, output):
+    """Resume at the first missing result, without repairing modified artifacts."""
+    for index, stage in enumerate(registry):
+        record = state.get("stages", {}).get(stage["id"])
+        if not record or record.get("status") != "completed":
+            return index
+        for relative in record["files"]:
+            anchor, name = relative.split(":", 1)
+            base = workspace if anchor == "workspace" else output
+            if base is None or not (base / name).is_file():
+                return index
+    return len(registry)
+
 
 def file_hash(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -59,10 +75,13 @@ def validate_prefix(state, registry, count, config, source, skill_dir, workspace
     current_shared = {}
     for record in state.get("stages", {}).values():
         current_shared.update(record.get("shared_outputs", {}))
-    for name, entry in current_shared.items():
+    for name in shared_outputs:
+        entry = current_shared[name]
         path = workspace / name
-        if not path.is_file() or file_hash(path) != entry["hash"]:
-            raise ValueError(f"Changed/missing shared conversion manifest: {name}")
+        # Missing working copies are reconstructed from validated snapshots.
+        # Only manifests needed by retained predecessors affect a restart.
+        if path.exists() and (not path.is_file() or file_hash(path) != entry["hash"]):
+            raise ValueError(f"Changed shared conversion manifest: {name}")
     return previous
 
 
@@ -70,6 +89,8 @@ def restore_shared(state, registry, count, workspace):
     outputs = {}
     for stage in registry[:count]:
         outputs.update(state["stages"][stage["id"]].get("shared_outputs", {}))
+    for name in {name for names in SHARED_MANIFESTS.values() for name in names} - outputs.keys():
+        (workspace / name).unlink(missing_ok=True)
     for name, entry in outputs.items():
         shutil.copyfile(workspace / entry["snapshot"], workspace / name)
 
@@ -78,12 +99,11 @@ def complete_stage(state, stage, identity, workspace, output):
     paths = []
     directory = workspace / stage["dir"]
     shared_outputs = {}
-    for number, name in (("01", "pages_manifest.json"), ("05", "chapters_manifest.json"), ("10", "chapters_manifest.json")):
-        if stage["id"] == number:
-            snapshot = directory / ".manifests" / name
-            snapshot.parent.mkdir(exist_ok=True)
-            shutil.copyfile(workspace / name, snapshot)
-            shared_outputs[name] = {"hash": file_hash(snapshot), "snapshot": snapshot.relative_to(workspace).as_posix()}
+    for name in SHARED_MANIFESTS.get(stage["id"], ()):
+        snapshot = directory / ".manifests" / name
+        snapshot.parent.mkdir(exist_ok=True)
+        shutil.copyfile(workspace / name, snapshot)
+        shared_outputs[name] = {"hash": file_hash(snapshot), "snapshot": snapshot.relative_to(workspace).as_posix()}
     paths.extend(("workspace", p) for p in sorted(directory.rglob("*")) if p.is_file())
     if stage["id"] == "14" and output is not None:
         paths.extend(("output", p) for p in sorted(output.rglob("*")) if p.is_file() and p.suffix != ".json")

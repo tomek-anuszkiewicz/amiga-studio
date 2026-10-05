@@ -20,6 +20,25 @@ The workspace holds intermediate page images, JSON streams, task files, a config
 
 Use `--page-ranges "19"` for a single physical PDF page. Keep the same source/page selection, workspace, output directory and configuration when continuing a stage interval. `--resume` validates completed predecessor artifacts and their source, procedure and stage model/effort identities before reuse. An incompatible or legacy workspace requires explicit regeneration from the reported stage. Prepared manual tasks also record their predecessor identity. Runtime/schema failures stop the pipeline without model or provider substitution.
 
+## Independent test workspaces and restarts
+
+Use a separate `--workspace` for each source/page-range experiment. Final Markdown defaults to `<WORKSPACE>/14_link_toc`; `--output-dir` is an explicit override and must identify the same conversion when restarting. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
+
+For example, first prepare stages 01–04 for physical pages 5–10 in `<WORKSPACE_A>`. Then restart from stage 05:
+
+```powershell
+python tools/bootstrap/pdf-to-markdown/pipeline.py `
+  --workspace "<WORKSPACE_A>" `
+  --config "tools/bootstrap/pdf-to-markdown/config.yaml" `
+  --page-ranges "5-10" --from-stage 05
+```
+
+Before running stage 05, the orchestrator validates retained stages 01–04, clears all stage 05–14 artifacts and completion/status records, removes their manual tasks and final Markdown/assets, and restores shared working manifests from retained snapshots. Cleanup covers the entire downstream conversion, even when `--to-stage` requests only one stage. It never selectively clears individual pages. A different page range requires a separate workspace or explicit regeneration from stage 01; stages 01–04 from another range cannot supply stage 05.
+
+Missing downstream files do not prevent explicit restart. Missing shared working manifests are restored from retained snapshots. `--resume` returns to the earliest completed stage with missing artifacts, clears that stage and all dependents, and regenerates them. A missing retained predecessor in an explicit interval requires restarting at its owning stage. Regenerating stage 01 requires `--pdf`; resumed page selection is retained even when `--page-ranges` is omitted. Modified retained artifacts remain incompatible; automatic corruption repair is outside this workflow.
+
+Manual `--prepare-stage` also resets that stage and all dependents. `--apply-stage` preserves the current stage's prepared edits while clearing old stage outputs and later tasks. Earlier source assets remain intact.
+
 ## Processing Model
 
 - **Deterministic Python Scripts** handle mechanical tasks (page extraction, 300 DPI rendering, text geometry, asset slicing with 10% margins, stream stitching, chapter partitioning, Markdown emission, and TOC link resolution).

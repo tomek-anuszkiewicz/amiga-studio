@@ -2,6 +2,10 @@
 
 Status: active. The shared Codex client, HTML migration and PDF caller/configuration migration are implemented. One physical PDF page passed all 14 stages; broader acceptance remains pending. Roadmap 1.1 is not complete.
 
+Restart follow-up: whole-workspace downstream cleanup now includes manual tasks and preserves upstream assets. Missing working manifests restore from retained snapshots; resume selects the earliest missing stage artifact. Default output belongs to the selected workspace. Explicit stage intervals retain only matching source/page predecessors; corruption repair is outside scope. Focused offline regressions cover stages 5–10 page selection, stage 05 cleanup, missing outputs/manifests, manual reset/apply and independent workspaces. Conversion-quality changes remain deferred.
+
+Restart validation: 10 additional PDF regressions passed (17 PDF and 15 shared/HTML tests total), plus 4 bootstrap tests. A separate page-19 workspace completed all stages from cached responses, then passed stage-05 reset with missing page/chapter manifests and chapter output, followed by resume through stage 14. Earlier artifacts and the original workspace remained unchanged; no live inference ran. Evidence is under `.agent/tmp/pdf-restart-pilot/verification.json`. Quick pre-flight passed; architecture remains 18/19 because 62 Design links target missing Reference materials.
+
 ## Current execution evidence
 
 - Installed and pinned Python SDK and bundled runtime 0.160.1 in a disposable environment. Verified ChatGPT authentication, runtime model catalog, explicit `gpt-6.1-sol` / `medium`, fresh ephemeral read-only threads, no repository instruction sources, and disabled inherited tools. An empty MCP override merges with user configuration, so the client explicitly disables inherited server names and verifies the effective configuration.
