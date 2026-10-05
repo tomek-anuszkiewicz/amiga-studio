@@ -4,27 +4,23 @@
 
 Prepare source-faithful Markdown and searchable assets once, before routine emulator development. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
-- **1.1: PDF Text-Layer Acceptance**
-  - On user-selected/requested fragments, verify native-copy, mixed native/scanned and blank/graphic-only paths, plus positioned-text alignment on any rotated/cropped pages in those fragments. Preserve source/native content, full page identity and geometry; certify only selected preparation coverage.
-  - **Gate:** The remaining source categories demonstrate byte-identical separate output when OCR is unnecessary, selective OCR, reopened-PDF text JSON, explicit no-text classification and PNG alignment. Complete repository milestone gates, semantic parity review and diary/document closure before removing this point. Fragment selection and content assessment follow the developer-led conversion workflow.
-
-- **1.2: PNG-to-Markdown and Crops with OCR Text JSON**
-  - For every page-conversion request, supply Codex Vision with both the source-page PNG and its matching text-layer JSON from Step 1.1, including OCR-derived text and positions. Use the JSON to support accurate transcription and the PNG to verify layout, reading order, table structure, crop boundaries, and conflicting text.
-  - Persist ordered Markdown and table/image crop definitions with stable segment identifiers and explicit page coordinates for Step 1.3. Consume validated predecessor artifacts; reject absent, stale, or mismatched PNG/JSON pairs and record legitimate blank-page text explicitly.
+- **1.1: PNG-to-Markdown and Crops with OCR Text JSON**
+  - For every page-conversion request, supply Codex Vision with both the source-page PNG and its matching validated Stage 01 text-layer JSON, including OCR-derived text and positions. Use the JSON to support accurate transcription and the PNG to verify layout, reading order, table structure, crop boundaries, and conflicting text.
+  - Persist ordered Markdown and table/image crop definitions with stable segment identifiers and explicit page coordinates for Step 1.2. Consume validated predecessor artifacts; reject absent, stale, or mismatched PNG/JSON pairs and record legitimate blank-page text explicitly.
   - **Gate:** Inspect assembled model requests to prove both inputs reach the conversion model; representative pages verify Markdown and crop geometry, invalid input pairs are rejected, and blank pages and resumed runs retain the same page mapping.
 
-- **1.3: Iterative Table and Image Crop Review**
+- **1.2: Iterative Table and Image Crop Review**
   - Add `02b_reclip` between segmentation and `03_build_raw_stream`. Review each rectangle on the full source-page PNG; apply corrections, regenerate the crop and annotated page, and review again until acceptance or an iteration limit requiring manual review.
   - Persist stable segment IDs, verdicts, coordinate revisions, previews, and accepted crops for resumption. Raw-stream construction must consume finalized reclip output, preserve accepted geometry, and reject stale or unresolved results.
   - **Gate:** Samples cover immediate acceptance, correction/review/acceptance, iteration-limit handoff, and resumption; saved artifacts prove review and downstream use without silent recropping.
 
-- **1.4: Table, Image, and ASCII-Art Descriptions**
+- **1.3: Table, Image, and ASCII-Art Descriptions**
   - Add a runnable stage consuming validated Markdown/assets and source context. Preserve HTML tables, images, and `text`-fenced ASCII art; place actual closed `<details><summary>...</summary>...</details>` HTML directly below each element, collapsed by default.
   - Describe source-visible purpose, labels, values, and spatial/logical/timing relationships. Table descriptions cover headers and material relationships and include a GFM fallback preserving cell order and span semantics.
   - Write each image's identical description beside its asset as `<asset filename>.txt`. Persist enriched Markdown and sidecars; rerunning must not duplicate blocks or create mismatches.
   - **Gate:** Inspect rendered table/image/ASCII samples and written files for placement, faithful content, matching sidecars, and idempotent reruns.
 
-- **1.5: Validate Bulk Conversion and RAG Ingestion**
+- **1.4: Validate Bulk Conversion and RAG Ingestion**
   - After approving the sample pipeline, convert the manuals and validate Markdown, links, assets, and descriptions before indexing. Verify fresh and incremental `amiga` ingestion, hashing, chunk fidelity, embeddings, and sidecar retrieval through the canonical `rag_qdrant` CLI.
   - **Gate:** Accepted converted artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](docs/developers.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag); unchanged input does not cause unnecessary reindexing.
 

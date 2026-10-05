@@ -1218,36 +1218,47 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - All conversion checks used fake transport and temporary directories with no live inference
 ---
 
-### [2026-10-06 01:03 CEST] — Prepare validated OCR PDFs and persist positioned text (PDF-TEXT-1.1-A/B/C)
-- **Affected Subsystems**:
-  - `tools/bootstrap/conversion/`
-  - `tools/bootstrap/pdf-to-markdown/`
-  - `tests/test_pdf_conversion_codex.py`
-  - `tests/test_conversion_codex.py`
-  - `ROADMAP.md`
-  - `docs/developers.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Add Stage 00 with separate OCR PDF publication and native/OCR/no-text provenance
-  - Route deterministic Stage 01 exclusively through validated preparation and persist physical page IDs with displayed text geometry and PNG transforms
-  - Enforce artifact contents and exact coverage in lineage plus Stage 02 input validation
-  - Adapt registry positions and configuration and preserve compatible OCR recovery on restart
-  - Add focused missing-handoff and q/Q source-stream regressions and extend the existing invalid-cache test with inverted OCR boxes
-  - Synchronize converter documentation and retain only outstanding source-category acceptance in roadmap 1.1
+### [2026-10-06 01:03 CEST] — Milestone Digest: PDF Text-Layer Implementation (PDF-TEXT-1.1)
+- **Timestamp & Context**: Implementation commit `5a9add8` on 2026-10-06 delivered PDF-TEXT-1.1-A/B/C. The user subsequently closed the task using page-64 evidence and the known verification limits; this digest records settled implementation, not a fully passing repository milestone.
+- **Affected Subsystems**: `tools/bootstrap/conversion/`, PDF stages 00/01 and Stage 02 input validation, converter configuration/orchestration, both converter test suites, converter documentation and roadmap.
+- **What Was Changed**:
+  - Stage 00 publishes a separate validated OCR PDF and native/OCR/no-text provenance. Deterministic Stage 01 exclusively reads that reopened PDF and persists physical page IDs, displayed text geometry and matching PNG transforms.
+  - Shared lineage checks artifact contents and exact page coverage before reuse/cleanup. Registry position lookup replaces numeric asset-propagation offsets; restart retains only validated predecessors and compatible OCR recovery.
+  - Two focused regressions protect missing Stage 00 rejection and original stream preservation with q/Q wrappers. The existing invalid-cache test also protects schema-valid inverted OCR boxes; each defect was reproduced before repair.
 - **Architectural Rationale & Trade-Offs**:
-  - Keep source/native content intact and make reopened prepared PDFs authoritative
-  - Validate serialization and rendered fidelity before publication rather than accepting cached model JSON as the final text layer
-  - Keep dependent stage and configuration changes in one atomic implementation without redesigning Stage 02 requests or expanding fragment scope
+  - Preserve original/native content and certify only selected preparation coverage. Reopened PDF text, geometry and identical selected-page renders establish publication safety; cached OCR JSON is not the final text-layer artifact.
+  - PyMuPDF adds q/Q wrappers to unwrapped streams. Verification permits those wrappers while requiring byte-identical source streams in order, unchanged native/unselected content and exact selected-page renders.
+  - Validate OCR semantics before cache publication and on hits. Ship dependent stage/configuration/restart changes atomically; keep the Stage 02 model-request redesign and additional fragment selection separate.
+- **Verification & Invariants**:
+  - At implementation: PDF suite 19/19, shared-client suite 19/19, quick preflight and CLI help passed. Semantic parity and Graphify refresh completed; all 26 tracked emulator specifications were within audit tolerance.
+  - Authorized TestBook page 64 matched source-manual page 5 by render and exercised actual OCR. Source hash and all 160 page geometries/native or unselected content survived; Stage 01 extracted 20 blocks from the reopened PDF, with identical selected-page render/PNG and zero inference.
+  - One live OCR request produced the response; successful reruns reused cache. Restart at 01 retained preparation and physical selection; modified retained JSON was rejected. A disposable Unicode probe verified serializer positions through all four rotations and a nonzero crop offset.
+  - Architecture at implementation: 18/19, with 62 pre-existing broken Design-to-Reference links in untouched documents. Native-copy, mixed, blank/graphic-only and real rotated/cropped fragment acceptance remained unverified. No full-book conversion or RAG indexing occurred. Final closure checks are reported in the separate closure entry.
+---
+
+### [2026-10-06 01:12 CEST] — Close PDF-TEXT-1.1 with recorded evidence limits
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `DIARY.md`
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_segmentation/README.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Close PDF-TEXT-1.1 by the explicit user decision after outstanding acceptance limits were stated
+  - Remove its acceptance-only roadmap point and renumber remaining conversion work 1.1-1.4 with matching active references
+  - Compact the settled implementation entry for 5a9add8 into its own evidence-preserving digest and retain unrelated active diary entries
+  - Record administrative scope closure separately from source-category verification and repository milestone health
+- **Architectural Rationale & Trade-Offs**:
+  - The user accepts closing this scope using existing page-64 evidence without requesting additional native mixed blank or rotated/cropped fragments
+  - Preserve the distinction between verified converter behavior and untested categories or failing repository gates
+  - Keep source fidelity and publication safeguards unchanged
 - **Verification & Test Results**:
-  - Reproduced missing Stage 00 rejection failure and source-stream wrapper rejection before repair
-  - Reproduced schema-valid inverted OCR caching before moving semantic validation inside cache checks
-  - PDF suite 19/19 and shared client suite 19/19 passed
-  - Quick preflight and pipeline help passed
-  - Authorized TestBook page 64 matched source-manual page 5 by render and completed stages 00-01 with actual OCR and 20 reopened-PDF text blocks
-  - Original source hash and all 160 page geometries/native or unselected content retained with selected-page render and PNG equality
-  - One live OCR request total and compatible response cache reuse on successful reruns with zero Stage 01 inference
-  - Restart at 01 retained the prepared PDF and physical selection and modified retained JSON was rejected
-  - Disposable Unicode serializer probe verified positions for all four rotations with nonzero crop offset
-  - Converter semantic parity review and Graphify refresh completed and all 26 tracked emulator specs remain within audit tolerance
-  - Architecture gate 18/19 failed on 62 existing broken Design-to-Reference links with no task diff in those notes or the test
-  - Native-copy mixed blank/graphic-only and real rotated/cropped fragment acceptance remain unverified
-  - No full-book conversion RAG indexing milestone gate or diary compaction performed
+  - Quick preflight passed
+  - Tier 1 unit and Tier 2 integration harnesses passed
+  - PDF tests 19/19 and shared client tests 19/19 passed
+  - Milestone preflight executed and failed Architecture Rules plus Docs Quality on 62 existing broken links and Code Quality on 22 compound conditions in unchanged Rust code
+  - Separate architecture run 18/19
+  - Design-sync review passed with all 26 tracked emulator specifications within tolerance and no affected checkpoints
+  - Converter semantic parity closure review preserved implemented behavior and bounded claims with no Python-code diff from 5a9add8
+  - Settled implementation compaction reduced diary line count from 1253 to 1236 before adding this closure entry while preserving source-stream wrappers Unicode geometry restart cache regressions and sample evidence
+  - No additional conversion model calls RAG ingestion unrelated Rust repair or golden-reference change performed

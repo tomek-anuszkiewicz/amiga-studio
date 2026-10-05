@@ -51,8 +51,12 @@ hashes before downstream cleanup and requests; restart at 01 retains Stage 00, w
 restart at 00 invalidates dependents and validates retained OCR recovery data before
 reuse. Legacy workspaces require explicit regeneration from 00 with the original PDF.
 
-Roadmap 1.1 retains acceptance on source categories absent from the requested scanned
-fragment. Roadmap 1.2–1.5 remain pending: PNG-to-Markdown redesign, visual reclip,
+The user closed PDF-TEXT-1.1 on 2026-10-06 using the page-64 fragment evidence,
+without requesting additional source-category runs. Native-copy, mixed,
+blank/graphic-only and real rotated/cropped fragment coverage remain unverified;
+closure does not certify those categories or a passing repository milestone gate.
+The implementation and closure record are retained in DIARY.md and Git.
+Roadmap 1.1–1.4 remain pending: PNG-to-Markdown redesign, visual reclip,
 the new description stage and bulk conversion/indexing. Current source-fidelity
 requirements remain criteria for conversion work, not a claim that all legacy
 workers already enforce them. Fragment selection and any expansion follow the

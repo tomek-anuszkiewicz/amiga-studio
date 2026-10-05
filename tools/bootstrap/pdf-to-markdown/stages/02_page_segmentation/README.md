@@ -3,7 +3,7 @@
 Before deleting outputs or making model requests, this worker validates the
 prepared-PDF identity and the exact Stage 01 PNG/JSON page set, hashes, text,
 geometry and raster transforms. The existing model request is unchanged;
-the full text-JSON request redesign belongs to roadmap 1.2.
+the full text-JSON request redesign belongs to roadmap 1.1.
 
 ## Objective
 Analyzes each page vertically from top to bottom, classifying bands into explicit semantic types:

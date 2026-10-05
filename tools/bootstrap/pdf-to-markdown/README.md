@@ -22,7 +22,7 @@ The workspace holds intermediate page images, JSON streams, task files, a config
 
 [Stage 00](stages/00_text_layer/README.md) prepares `00_text_layer/<source stem> - OCR.pdf` plus a validated text-layer manifest. It retains native spans, adds invisible OCR only to selected textless pages containing text, and explicitly classifies blank/graphic-only pages. If no text addition is needed, the separate output is a byte-for-byte copy. The complete page tree, geometry, native content and selected-page renders remain unchanged. Only the selected fragment is certified. The original PDF must remain outside the workspace.
 
-[Stage 01](stages/01_preprocess/README.md) reads only that validated PDF and deterministically emits PNGs and positioned text JSON. Text comes from the reopened PDF, including its OCR spans. Page IDs retain physical source numbers; manifests record relative paths, hashes, provenance, displayed-page coordinates and actual raster transforms. Missing or invalid predecessors and mismatched page pairs stop conversion before cleanup or requests. Stage 02 keeps its existing block-summary/PNG request; supplying complete matching text JSON to the redesigned model request belongs to roadmap 1.2.
+[Stage 01](stages/01_preprocess/README.md) reads only that validated PDF and deterministically emits PNGs and positioned text JSON. Text comes from the reopened PDF, including its OCR spans. Page IDs retain physical source numbers; manifests record relative paths, hashes, provenance, displayed-page coordinates and actual raster transforms. Missing or invalid predecessors and mismatched page pairs stop conversion before cleanup or requests. Stage 02 keeps its existing block-summary/PNG request; supplying complete matching text JSON to the redesigned model request belongs to roadmap 1.1.
 
 Use `--page-ranges "19"` for a single physical PDF page. Keep the same source/page selection, workspace, output directory and configuration when continuing a stage interval. `--resume` validates completed predecessor artifacts and their source, procedure and stage model/effort identities before reuse. An incompatible or legacy workspace requires explicit regeneration from the reported stage. Prepared manual tasks also record their predecessor identity. Runtime/schema failures stop the pipeline without model or provider substitution.
 
@@ -243,7 +243,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --c
 ```
 
 
-## Fragment evidence and remaining acceptance
+## Fragment evidence and closure limits
 
 On 2026-10-06, physical TestBook page 64 completed stages 00-01. Its source render
 matched physical page 5 of the A500/A2000 Technical Reference Manual. The source
@@ -255,6 +255,10 @@ OCR request produced a reusable response; the successful rerun used the cache.
 This establishes the scanned path for that fragment, not native-copy, mixed,
 blank/graphic-only or real rotated/cropped sample acceptance. The user assesses
 transcription and content quality. No downstream stage or full-book conversion ran.
+
+The user closed PDF-TEXT-1.1 on 2026-10-06 with these recorded limits. No additional
+source-category conversion was requested; no additional coverage or successful
+repository milestone gate is implied by that closure.
 
 ### Historical migration pilot
 
