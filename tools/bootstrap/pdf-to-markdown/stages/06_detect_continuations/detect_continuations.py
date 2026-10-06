@@ -15,6 +15,7 @@ from typing import Optional
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import UniqueLoader
 
 
@@ -24,7 +25,7 @@ if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
 from conversion import CodexClient
-from conversion import pdf_schemas
+from common import pdf_schemas
 
 
 def check_continuation_with_codex(

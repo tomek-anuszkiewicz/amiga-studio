@@ -7,10 +7,11 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
-from conversion.pdf_artifacts import read_json, write_json, validate_preprocess
-from conversion.pdf_page_conversion import RESPONSE, validate_page
+from common.pdf_artifacts import read_json, write_json, validate_preprocess
+from common.pdf_page_conversion import RESPONSE, validate_page
 
 
 def convert_pages(workspace, config):

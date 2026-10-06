@@ -9,9 +9,10 @@ import sys
 
 from PIL import Image, ImageDraw, ImageFont
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
-from conversion.pdf_page_conversion import validate_conversion
-from conversion.pdf_artifacts import require
+from common.pdf_page_conversion import validate_conversion
+from common.pdf_artifacts import require
 
 FRAME_WIDTH = 2
 

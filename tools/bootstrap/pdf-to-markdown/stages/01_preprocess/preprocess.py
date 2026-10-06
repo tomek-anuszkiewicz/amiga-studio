@@ -7,11 +7,12 @@ import sys
 import pymupdf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
-from conversion.lineage import file_hash
-from conversion.pdf_artifacts import validate_text_layer, validate_preprocess, write_json, require
-from conversion.pdf_geometry import SCHEMA_VERSION, COORDINATES, page_geometry, text_blocks, raster_transform
-from conversion.pdf_selection import selected_pages
+from common.lineage import file_hash
+from common.pdf_artifacts import validate_text_layer, validate_preprocess, write_json, require
+from common.pdf_geometry import SCHEMA_VERSION, COORDINATES, page_geometry, text_blocks, raster_transform
+from common.pdf_selection import selected_pages
 
 
 def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):

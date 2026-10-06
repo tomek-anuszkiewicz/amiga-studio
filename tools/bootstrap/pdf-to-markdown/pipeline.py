@@ -16,11 +16,12 @@ import yaml
 import pymupdf
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conversion.config import load_config as parse_config, validate_config, PDF_STAGES, selection
 from conversion.transport import CodexTransport
-from conversion.lineage import read_state, write_state, file_hash, stage_identity, validate_prefix, restore_shared, complete_stage, first_incomplete_stage, artifact_predecessor
-from conversion.pdf_artifacts import validate_text_layer
-from conversion.pdf_selection import parse_page_ranges, selected_pages
+from common.lineage import read_state, write_state, file_hash, stage_identity, validate_prefix, restore_shared, complete_stage, first_incomplete_stage, artifact_predecessor
+from common.pdf_artifacts import validate_text_layer
+from common.pdf_selection import parse_page_ranges, selected_pages
 from conversion.publication import book_directory, check_destination, publish_output
 
 MANUAL_TASKS = {"06": "continuations", "07": "tables", "08": "graphics", "09": "prose"}

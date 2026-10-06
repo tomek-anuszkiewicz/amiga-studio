@@ -8,13 +8,14 @@ import sys
 import pymupdf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.cache import digest
 from conversion.config import load_config, PDF_STAGES
-from conversion.lineage import file_hash, read_state, stage_identity
-from conversion.pdf_artifacts import write_json, read_json, require, validate_text_layer
-from conversion.pdf_geometry import (SCHEMA_VERSION, page_geometry,
+from common.lineage import file_hash, read_state, stage_identity
+from common.pdf_artifacts import write_json, read_json, require, validate_text_layer
+from common.pdf_geometry import (SCHEMA_VERSION, page_geometry,
                                      text_blocks)
-from conversion.pdf_selection import selected_pages
+from common.pdf_selection import selected_pages
 
 
 def tesseract_settings(config):

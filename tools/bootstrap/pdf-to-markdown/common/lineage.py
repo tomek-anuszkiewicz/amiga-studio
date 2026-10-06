@@ -5,8 +5,8 @@ import hashlib
 import json
 import shutil
 
-from .cache import CONTRACT_VERSION, digest
-from .transport import SDK_VERSION
+from conversion.cache import CONTRACT_VERSION, digest
+from conversion.transport import SDK_VERSION
 
 SHARED_MANIFESTS = {"01": ("pages_manifest.json",), "05": ("chapters_manifest.json",), "10": ("chapters_manifest.json",)}
 
@@ -43,9 +43,12 @@ def write_state(workspace, state):
 
 def stage_identity(stage, config, source, predecessor, skill_dir):
     directory = skill_dir / "stages" / stage["dir"]
-    shared = Path(__file__).resolve().parent
+    shared = Path(__file__).resolve().parents[2] / "conversion"
+    pdf_common = Path(__file__).resolve().parent
     procedure = {p.relative_to(directory).as_posix(): file_hash(p) for p in sorted(directory.iterdir()) if p.suffix in (".py", ".md")}
-    hashes = {p.name: file_hash(p) for p in sorted(shared.glob("*.py"))}
+    hashes = {f"{directory.name}/{p.name}": file_hash(p)
+              for directory in (shared, pdf_common)
+              for p in sorted(directory.glob("*.py"))}
     procedure["shared"] = digest(hashes)
     return {"contract": CONTRACT_VERSION, "sdk_runtime": SDK_VERSION, "stage": stage["dir"],
             "selection": config["llm"]["stages"].get(stage["dir"]),

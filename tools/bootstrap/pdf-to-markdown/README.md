@@ -17,7 +17,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --config "tools/bootstrap/pdf-to-markdown/config.yaml"
 ```
 
-The workspace holds intermediate page images, JSON streams, task files, a configuration snapshot, stage status and `.conversion-state.json`. Stage directories are created when their stages execute; a partial run through `02.5` does not create `14_link_toc`. Final Markdown and assets remain in workspace/14_link_toc. The shared `../conversion/` package owns configuration, Codex transport, response schemas, cache and predecessor validation. Use `--cache-dir` to select a disposable cache; the default is `.cache/codex`. Completed schema-validated responses are cached separately from legacy Gemini data.
+The workspace holds intermediate page images, JSON streams, task files, a configuration snapshot, stage status and `.conversion-state.json`. Stage directories are created when their stages execute; a partial run through `02.5` does not create `14_link_toc`. Final Markdown and assets remain in workspace/14_link_toc. The shared `../conversion/` package owns configuration, Codex transport, cache and publication for both converters. The PDF-only `common/` package owns stage lineage, artifact validation, page geometry, page selection and response schemas. Stage procedure identities fingerprint both packages; this relocation changes those identities, so existing saved completions require regeneration before reuse. Use `--cache-dir` to select a disposable cache; the default is `.cache/codex`. Completed schema-validated responses are cached separately from legacy Gemini data.
 
 [Stage 00](stages/00_text_layer/README.md) prepares `00_text_layer/<source stem>-ocr.pdf` plus a validated text-layer manifest. It retains native spans, adds invisible OCR only to selected textless pages containing text, using local Tesseract through PyMuPDF; pages with no recognized lines retain empty text provenance. If no text addition is needed, the separate output is a byte-for-byte copy. The complete page tree, geometry, native content and selected-page renders remain unchanged. Only the selected fragment is certified. The original PDF must remain outside the workspace.
 
@@ -88,6 +88,7 @@ tools/bootstrap/pdf-to-markdown/
 ├── README.md                                # Program usage and stage workflow
 ├── pipeline.py                              # Master CLI orchestrator & task manager
 ├── config.yaml                              # Global configuration (DPI, paths, heuristics)
+├── common/                                  # PDF-only infrastructure and stage contracts
 └── stages/
     ├── 00_text_layer/
     │   ├── prepare_text_layer.py            # Validates/publishes a separate native/OCR PDF

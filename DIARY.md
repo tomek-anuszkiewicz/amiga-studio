@@ -2241,3 +2241,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Publication suite passes 9 of 10 tests, with the isolated unmodified PDF resume case failing its validation-depth assertion (1 versus 16)
   - Graphify code update completed
   - No LLM fragment conversion or full crawl transcription was run
+---
+
+### [2026-10-06 23:46 CET] — Move PDF-only conversion modules into the PDF common package
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Relocate six PDF-only modules to pdf-to-markdown/common without compatibility aliases
+  - Update worker and orchestrator imports, existing test imports and package documentation
+  - Fingerprint both shared conversion and PDF common modules for stage reuse
+- **Architectural Rationale & Trade-Offs**:
+  - Keep conversion limited to infrastructure shared by HTML and PDF while placing PDF stage contracts and helpers with their converter
+  - Existing stage identities change and saved completions require regeneration
+- **Verification & Test Results**:
+  - PDF technical tests passed 30/30
+  - Shared Codex tests passed 19/19
+  - CLI import smoke checks passed for 14 scripts
+  - Publication tests passed 9/10 with the same pre-existing resume assertion failure before and after relocation (1 versus 16)
+  - Quick pre-flight passed
+  - Architecture suite passed 19/19
+  - Graphify code update completed
+  - No source conversion run

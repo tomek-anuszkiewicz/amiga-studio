@@ -12,11 +12,12 @@ from unittest.mock import patch
 from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap/pdf-to-markdown"))
 from conversion import load_config
 from conversion.config import PDF_STAGES
-from conversion.lineage import complete_stage, validate_prefix, restore_shared, stage_identity, file_hash, artifact_predecessor
-from conversion.pdf_geometry import text_blocks
-from conversion.pdf_page_conversion import validate_page
+from common.lineage import complete_stage, validate_prefix, restore_shared, stage_identity, file_hash, artifact_predecessor
+from common.pdf_geometry import text_blocks
+from common.pdf_page_conversion import validate_page
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -134,7 +135,7 @@ class PdfRestartTests(unittest.TestCase):
         self.pipeline = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.pipeline)
         # These fixtures prove restart orchestration, not PDF content validity.
-        contracts = patch("conversion.pdf_artifacts.validate_stage_artifacts")
+        contracts = patch("common.pdf_artifacts.validate_stage_artifacts")
         contracts.start()
         self.addCleanup(contracts.stop)
         self.tmp = tempfile.TemporaryDirectory()

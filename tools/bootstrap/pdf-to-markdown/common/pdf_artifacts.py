@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import pymupdf
 
-from .cache import digest
+from conversion.cache import digest
 from .lineage import file_hash, read_state
 from .pdf_geometry import (SCHEMA_VERSION, COORDINATES, page_geometry, text_blocks,
                            valid_box, valid_text, raster_transform)

@@ -17,6 +17,7 @@ from typing import Optional
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import UniqueLoader
 
 # Import CodexClient and extract_assets_for_nodes
@@ -29,7 +30,7 @@ if str(STAGE3_DIR) not in sys.path:
     sys.path.insert(0, str(STAGE3_DIR))
 
 from conversion import CodexClient
-from conversion import pdf_schemas
+from common import pdf_schemas
 
 try:
     from extract_initial_assets import extract_assets_for_nodes

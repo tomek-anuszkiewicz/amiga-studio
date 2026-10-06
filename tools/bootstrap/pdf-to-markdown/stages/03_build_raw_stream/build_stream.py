@@ -11,8 +11,9 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import UniqueLoader
-from conversion.pdf_page_conversion import validate_conversion
+from common.pdf_page_conversion import validate_conversion
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from extract_initial_assets import extract_assets_for_nodes
