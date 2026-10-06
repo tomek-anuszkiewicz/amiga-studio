@@ -36,7 +36,7 @@ The Codex cache is separate from legacy Gemini data. Its identity includes engin
 
 ## Implementation and pending scope
 
-Keep PDF conversion workspaces under `<book>-tmp/workspace/`: use this directory for a single conversion or named children for independent attempts, such as `workspace/page-64/`. Set `--workspace` explicitly when running the PDF CLI; it does not infer the staging directory from the source path. During local development, the original PDF may remain in `<book>/`, outside the workspace.
+Keep PDF conversion workspaces in the source PDF directory's `workspace/` subdirectory. Use `<PDF_DIRECTORY>/workspace/` for a single conversion or named children for independent attempts, such as `workspace/page-64/`. With `--pdf` and no explicit `--workspace`, the CLI defaults to this subdirectory. Set `--workspace` explicitly for independent attempts or continuation without `--pdf`. The original PDF stays outside the workspace. Bootstrap downloads PDFs into `<book>-tmp/`, so its workspace remains `<book>-tmp/workspace/`; a locally supplied PDF in `<book>/` uses `<book>/workspace/`.
 
 Each PDF workspace owns one source/page selection and its intermediate conversion state. Explicit restart from stage N validates stages before N, clears all outputs/status/manual tasks from N onward, and restores predecessor manifest snapshots. Final output stays in the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored; modified retained artifacts are rejected rather than automatically repaired. Broader manual content editing and conversion quality remain separate work.
 

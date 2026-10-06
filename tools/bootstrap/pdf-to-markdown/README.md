@@ -13,7 +13,7 @@ Run from the repository root. Install the pinned shared dependencies with `pytho
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --pdf "<PDF_FILE>" `
-  --workspace "<WORKSPACE>" `
+  --workspace "<PDF_DIRECTORY>/workspace" `
   --config "tools/bootstrap/pdf-to-markdown/config.yaml"
 ```
 
@@ -27,7 +27,7 @@ Use `--page-ranges "19"` for a single physical PDF page. Keep the same source/pa
 
 ## Independent test workspaces and restarts
 
-Keep conversion workspaces under `<book>-tmp/workspace/`. Use that directory for a single conversion, or a separate child for each source/page-range experiment, such as `<book>-tmp/workspace/page-64/` or `<book>-tmp/workspace/all-pages-00-01/`. Pass the selected path explicitly with `--workspace`; the CLI does not derive the `-tmp` directory from the source path. The original PDF may remain in `<book>/` outside the workspace during local development. Final Markdown stays in `<WORKSPACE>/14_link_toc`; `--output-dir` has been removed. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
+Keep conversion workspaces in the source PDF directory's `workspace/` subdirectory. Use `<PDF_DIRECTORY>/workspace/` for a single conversion, or a separate child for each source/page-range experiment, such as `<PDF_DIRECTORY>/workspace/page-64/` or `<PDF_DIRECTORY>/workspace/all-pages-00-01/`. When `--pdf` is supplied without `--workspace`, the CLI defaults to `<PDF_DIRECTORY>/workspace/`. Pass `--workspace` explicitly for an independent attempt or when continuing without `--pdf`. The original PDF stays outside the workspace. Final Markdown stays in `<WORKSPACE>/14_link_toc`; `--output-dir` has been removed. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
 
 Add `--publish` to copy completed Markdown and assets into the sibling book directory
 without `-tmp`. The workspace must be inside `<book>-tmp/`. The target must be absent

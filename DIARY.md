@@ -1567,3 +1567,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - PASS quick pre-flight, 19 architecture checks and git diff --check. Documentation only
   - no conversion run.
+---
+
+### [2026-10-06 14:27 CET] — Place PDF workspaces beside their source PDF
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the staging-only convention with a workspace subdirectory of the source PDF directory
+  - align the quick-start path and explain the existing CLI default and optional experiment children
+- **Architectural Rationale & Trade-Offs**:
+  - The user corrected the directory convention: conversion state belongs under the directory containing the PDF
+  - including locally supplied sources outside bootstrap staging.
+- **Verification & Test Results**:
+  - PASS quick pre-flight, 19 architecture checks and git diff --check. Documentation only
+  - no conversion run or artifact relocation.
