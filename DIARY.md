@@ -1698,3 +1698,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - 19 architecture checks and git diff --check. Graphify updated. Page-20 Stage 02k regenerated and visually inspected: 14 JSON-ordered labels
   - coincident graphic boxes sharing a port
   - and zero model calls. No full Markdown conversion run. Close PDF-JSON-STREAM-ORDER.
+---
+
+### [2026-10-06 16:01 CET] — PDF-INDEPENDENT-02D-02M: plan the separate page-conversion branch
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `.agent/tasks/pdf-independent-02d-02m.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Record pending Stage 02d independent object grouping, new classifications and raw_text/md_text output
+  - define deterministic Stage 02m review and dependency-aware restart
+  - preserve the existing 01-02-02k branch unchanged
+  - retain the active local execution plan
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested planning only the new 01-02d-02m branch
+  - with OCR JSON as assistance and no Markdown formatting hints. Later stream integration is deferred.
+- **Verification & Test Results**:
+  - PASS quick pre-flight, 19 architecture checks and git diff --check. Planning documentation only
+  - no converter implementation, model calls or fragment conversion. PDF-INDEPENDENT-02D-02M remains planned and open.
