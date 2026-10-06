@@ -44,6 +44,26 @@ class PdfTextBoundsTests(unittest.TestCase):
 
 
 class PdfOcrValidationTests(unittest.TestCase):
+    def test_tesseract_line_bounds_clip_before_integer_normalization(self):
+        spec = importlib.util.spec_from_file_location(
+            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
+        stage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(stage)
+        page = SimpleNamespace(rect=pymupdf.Rect(0, 0, 541.44, 720.72))
+        pixmap = SimpleNamespace(pdfocr_tobytes=lambda **kwargs: b"unused")
+        for box, expected in (
+            ([-0.000061, 713.75995, 4.06794, 720.96716], [990, 0, 1000, 8]),
+            ([-10, -10, 550, 730], [0, 0, 1000, 1000]),
+            ([550, 730, 560, 740], [1000, 1000, 1000, 1000]),
+        ):
+            page.get_text = lambda *args: {"blocks": [{"type": 0, "lines": [
+                {"bbox": box, "spans": [{"text": "Retained OCR"}]}]}]}
+            with self.subTest(box=box), patch.object(stage.pymupdf, "open") as opened:
+                opened.return_value.__enter__.return_value = [page]
+                response = stage.tesseract_ocr(pixmap, "eng", "unused")
+                self.assertEqual(response["blocks"][0]["box_2d"], expected)
+                self.assertEqual(validate_ocr(response), response)
+
     def test_quantized_ocr_bounds_allow_zero_extent_but_not_reversed_edges(self):
         for box in ([220, 980, 239, 980], [220, 980, 220, 990], [220, 980, 220, 980]):
             response = {"page_type": "text_page", "caption": None,

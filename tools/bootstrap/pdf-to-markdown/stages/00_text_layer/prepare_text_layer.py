@@ -48,7 +48,8 @@ def tesseract_ocr(pixmap, language, tessdata):
                 text = "".join(span["text"] for span in line["spans"]).strip()
                 if not text:
                     continue
-                x0, y0, x1, y1 = valid_box(line["bbox"], page.rect.width, page.rect.height)
+                x0, y0, x1, y1 = valid_box(line["bbox"], page.rect.width, page.rect.height,
+                                         clip=True, allow_zero=True)
                 box = [y0 / page.rect.height * 1000,
                        x0 / page.rect.width * 1000, y1 / page.rect.height * 1000,
                        x1 / page.rect.width * 1000]

@@ -26,8 +26,11 @@ def valid_box(box, width, height, *, tolerance=GEOMETRY_TOLERANCE, clip=False, a
     if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in box):
         raise ValueError("Text bounding box must be finite")
     x0, y0, x1, y1 = box
+    if x0 > x1 or y0 > y1:
+        raise ValueError(f"Invalid or out-of-page text bounding box: {box}")
     if clip:
-        x0, y0, x1, y1 = max(0, x0), max(0, y0), min(width, x1), min(height, y1)
+        x0, x1 = min(width, max(0, x0)), min(width, max(0, x1))
+        y0, y1 = min(height, max(0, y0)), min(height, max(0, y1))
         box = [x0, y0, x1, y1]
     reversed_edges = x0 > x1 or y0 > y1
     zero_extent = x0 == x1 or y0 == y1

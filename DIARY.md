@@ -1598,3 +1598,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Regression failed before repair and passed after repair. PASS 24 PDF conversion tests, quick pre-flight, 19 architecture checks and git diff --check. Graphify updated. Synthetic zero-width, zero-height and point-box insertion each failed reopened text preservation
   - full source conversion not rerun and remains unresolved.
+---
+
+### [2026-10-06 14:44 CET] — Clamp OCR coordinates to displayed page bounds
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/pdf_geometry.py`
+  - `tools/bootstrap/pdf-to-markdown/stages/00_text_layer`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Clamp all OCR line coordinates before integer 0-1000 normalization
+  - retain zero extents and reject reversed corners before clipping
+  - update the conversion contract and stage documentation
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested clipping OCR bounds after the selected PDF failed on page 64 with a line extending beyond page height.
+- **Verification & Test Results**:
+  - Regression failed before repair and passed afterward. PASS 25 PDF conversion tests, quick pre-flight, 19 architecture checks and git diff --check. Graphify updated. Requested all-page 00-01 conversion processed 160 pages but Stage 00 failed reopened text preservation with missing or extra lines
+  - Stage 01 did not run. Repeat using compatible OCR recovery confirmed the same failure.

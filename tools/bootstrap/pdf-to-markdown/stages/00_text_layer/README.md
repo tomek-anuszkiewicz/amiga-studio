@@ -38,10 +38,12 @@ classification. Native classification remains inferred from extracted spans.
 
 ## Text insertion and publication
 
-OCR text and bounding boxes pass directly through validation. The stage does
-not clip boxes, reorder reversed corners, replace unreadable markers or omit
-marker-only blocks. Invalid text or geometry stops preparation. Converting
-coordinates to the integer 0-1000 schema remains part of the Tesseract adapter.
+OCR line coordinates are clamped to the displayed page bounds before conversion
+to the integer 0-1000 schema. Zero width and height are accepted, including extents
+collapsed by clipping or rounding. Reversed corners and nonfinite coordinates
+still fail. The stage does not replace unreadable markers or omit marker-only
+blocks. Invalid text stops preparation. Zero extents still face the downstream
+text insertion and reopened-PDF preservation checks.
 
 The worker adds invisible lines (`render_mode=3`) using embedded Unicode fonts.
 Each line is fitted to its recognized box using serialized font metrics, mapped

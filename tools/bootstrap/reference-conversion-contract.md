@@ -73,8 +73,9 @@ Stage 00 retains its validation manifest and compatible recovery records.
 Stage 01 owns per-page positioned text JSON extraction from the prepared PDF;
 Stage 00 does not duplicate those reads in separate inspection JSON. Recovery identity includes rendered image bytes, procedure,
 geometry, source selection, language-data hashes and the PyMuPDF version; old
-Codex OCR recovery is incompatible. OCR text and geometry are validated without
-clipping boxes, correcting reversed corners or substituting unreadable markers.
+Codex OCR recovery is incompatible. OCR line coordinates are clamped to the displayed
+page bounds before integer normalization. Reversed corners are rejected and
+unreadable markers are not substituted.
 Normalized integer OCR boxes may have zero width or height after rounding; OCR
 validation accepts these extents while rejecting reversed edges and out-of-range
 coordinates. This does not guarantee successful text insertion: fitting text to
