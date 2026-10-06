@@ -9,8 +9,11 @@ detail and its explicit `02d_page_conversion` model/effort configuration.
 Output: `02d_page_conversion/page_NNNN_segments.json`, recording `page`,
 `image_width`, `image_height` and ordered `segments`. Each segment has its
 post-parse deterministic `segment_id`, `type`, `heading_level`, `md_text` and `bbox`.
-Only `table` and `graphic` have boxes: integer original-PNG pixels, top-left origin,
-`[x0,y0,x1,y1]`, exclusive upper bounds. Textual boxes are null. No raw_text is emitted.
+Every object has a nonempty box: integer original-PNG pixels, top-left origin,
+`[x0,y0,x1,y1]`, exclusive upper bounds. The model bounds complete logical objects,
+including text, captions, legends and page furniture. No raw_text is emitted.
+Text boxes support graphical review; later Markdown assembly may ignore them.
+Table/graphic boxes can also define crops. No OCR geometry is substituted.
 Schema and contextual geometry/page validation run before response caching.
 Standard JSON serialization preserves decoded Markdown without pre-escaping.
 
@@ -26,3 +29,7 @@ establish that role. General table explanations are prose; source table numbers
 and titles are captions; individually referenced notes remain footnotes.
 Existing artifacts with the former classification require regeneration through
 02d/02m rather than relabeling their saved JSON. Stage 02k does not classify objects.
+
+The earlier crop-only contract allowed null boxes on text. Such 02d/02m artifacts
+require regeneration for the current all-object review; no boxes are synthesized
+from OCR or inserted into existing saved JSON.

@@ -32,7 +32,9 @@ Unrelated running headers remain header. Preserve source markers.
 
 heading_level is 1 through 6 for chapter, heading, toc_heading, index_heading,
 list_of_tables_heading and list_of_figures_heading; otherwise null.
-bbox is required only for table and graphic, and null for textual objects.
+Provide bbox for every object, including all textual objects, captions, table
+legends, footnotes, headers and footers. Bound the complete logical object visible
+in the source image, not an individual OCR block or line. Do not return null boxes.
 Use integer pixels of the original PNG, top-left origin, [x0,y0,x1,y1], with
 exclusive upper bounds and a nonempty rectangle inside the recorded image dimensions.
 Return only valid JSON matching the schema, including the supplied physical page

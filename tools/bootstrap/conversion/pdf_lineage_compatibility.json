@@ -22,7 +22,7 @@
     "metrics.py": "339736440f4914d5eb987645c13e10a1ec49b514bfcbddcefbb82ddaf09dc184",
     "pdf_artifacts.py": "eafc5829903b375a44173c6d91a52a2b84ccc928454fbc83c038a1ba74a63155",
     "pdf_geometry.py": "50a998abb117f3d3a5aa862b0a44aa71ed143629d03aeae5b7c09f98117194e8",
-    "pdf_page_conversion.py": "240cd708e98ab90ad5408d1085c8c818d2d50422dea60ee4dc8c19124d118419",
+    "pdf_page_conversion.py": "48615e43023353519c53bd38aae2fea16e3d046b734d2ec29a51f70be50a262a",
     "pdf_schemas.py": "d006550291a7bc5beaba91e1426a1a7a8521e23dfc173f4d0a121b3a023d6057",
     "pdf_selection.py": "d8c8edd80a0298509c15cf7623b4543d81ff3ad90c4f470806279860056279e9",
     "publication.py": "bde63df1dd0c12dc4174277a817663e41b255643c530ef907b573204e51f04e8",

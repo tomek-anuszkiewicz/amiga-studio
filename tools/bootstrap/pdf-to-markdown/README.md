@@ -40,7 +40,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --c
 [Stage 02d](stages/02d_page_conversion/README.md) independently groups complete
 source objects and converts their text to Markdown using full Stage 01 PNG/JSON
 input. [Stage 02m](stages/02m_page_conversion_review/README.md) reviews its ordered
-classifications, with frames only for tables and graphics. Neither stage feeds the
+classifications, with model-selected frames for every object. Neither stage feeds the
 existing Stages 03-14. Execution order is explicit: `01, 02, 02d, 02k, 02m`.
 To run through the reviews from a validated Stage 01 workspace:
 

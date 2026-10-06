@@ -14,7 +14,7 @@ SEGMENT = object_schema({
     "type": {"type": "string", "enum": TYPES},
     "heading_level": {"type": ["integer", "null"], "minimum": 1, "maximum": 6},
     "md_text": STRING,
-    "bbox": {"type": ["array", "null"], "items": {"type": "integer"}, "minItems": 4, "maxItems": 4},
+    "bbox": {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4},
 })
 RESPONSE = object_schema({
     "page": {"type": "integer", "minimum": 1},
@@ -38,12 +38,10 @@ def validate_page(value, entry, *, stored=False):
                     "Stage 02d segment identity/order mismatch")
         kind, box, level = segment["type"], segment["bbox"], segment["heading_level"]
         require((level is not None) == (kind in HEADING_TYPES), "Stage 02d heading level/type mismatch")
-        require((box is not None) == (kind in ("table", "graphic")), "Stage 02d crop/type mismatch")
-        if box is not None:
-            require(all(type(v) is int for v in box), "Stage 02d crop coordinates must be integer pixels")
-            x0, y0, x1, y1 = box
-            require(0 <= x0 < x1 <= value["image_width"] and 0 <= y0 < y1 <= value["image_height"],
-                    "Stage 02d crop lies outside the original PNG")
+        require(all(type(v) is int for v in box), "Stage 02d bbox coordinates must be integer pixels")
+        x0, y0, x1, y1 = box
+        require(0 <= x0 < x1 <= value["image_width"] and 0 <= y0 < y1 <= value["image_height"],
+                "Stage 02d bbox lies outside the original PNG")
     return value
 
 

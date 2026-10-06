@@ -1758,3 +1758,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - 19 architecture checks
   - compileall and git diff --check. Graphify updated. Runtime diagnostic accepted table_legend and rejected the former enum
   - validated existing 00/01/02/02k records and confirmed earlier 02d identity requires regeneration. No new conversion or model calls. Previous eight-page outputs remain available for review with their former classification.
+---
+
+### [2026-10-06 16:52 CET] — PDF-INDEPENDENT-02D-02M: require bounds for every logical object
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/pdf_page_conversion.py`
+  - `tools/bootstrap/conversion/pdf_lineage_compatibility.json`
+  - `tools/bootstrap/pdf-to-markdown/stages/02d_page_conversion`
+  - `tools/bootstrap/pdf-to-markdown/stages/02m_page_conversion_review`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Require a nonempty original-PNG integer bbox for every Stage 02d object
+  - request complete logical bounds independently of OCR blocks
+  - render frames and straight leaders for every Stage 02m object by reusing the unchanged Stage 02k renderer with an identity pixel transform
+  - update documentation and the active plan
+  - preserve compatible old-branch identities
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested textual object geometry to support graphical review, even where downstream Markdown assembly does not need it. Keep model array order and Markdown unchanged
+  - reject null or invalid bounds before caching and handoff without synthesizing OCR rectangles.
+- **Verification & Test Results**:
+  - PASS 26 PDF tests, quick pre-flight, 19 architecture checks, compileall and git diff --check. Graphify updated. Technical diagnostic verified caption/table/legend/footer boxes, rejection of null/outside/empty/noninteger rectangles, four ordered frames and leaders, review dimensions, and retained 00/01/02/02k lineage. No live model calls or real fragment conversion
+  - prior 02d/02m artifacts require regeneration for this contract.

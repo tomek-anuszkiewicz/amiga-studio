@@ -5,10 +5,12 @@ are not inputs. Save `02m_page_conversion_review/page_NNNN_review.png` at origin
 page height and twice its width, with a blank equal-width right panel.
 
 Labels show every object's ordinal, type and optional heading level in exact JSON
-array order. Only table/graphic objects receive containing 2-pixel frames and straight
-review leaders, using unchanged [Stage 02k](../02k_segmentation_review/README.md)
-drawing primitives and edge handling. Text objects have no frames or leaders;
-no OCR geometry is synthesized. Labels contain neither text nor coordinates.
+array order. Every object receives a containing 2-pixel frame and straight review
+leader, using the unchanged [Stage 02k](../02k_segmentation_review/README.md)
+renderer with an identity pixel transform. This includes prose, captions, table
+legends, footnotes, headers and footers. All geometry comes from the validated
+Stage 02d model output; no OCR geometry is synthesized. Crossed leaders can expose
+order inversions for any object. Labels contain neither text nor coordinates.
 No inference, segmentation correction, sorting or line rerouting occurs.
 
 Use the [orchestrator](../../README.md) with `--from-stage 02m --to-stage 02m`

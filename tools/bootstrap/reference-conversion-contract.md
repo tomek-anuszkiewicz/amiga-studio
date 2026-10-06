@@ -63,8 +63,11 @@ existing Stages 03-14. Stage 02d reads only validated Stage 01 PNG/complete text
 JSON pairs and defines independent logical objects in model array order, with
 `md_text` and no `raw_text`. `02d_page_conversion/page_NNNN_segments.json` records
 physical page identity, original PNG dimensions, deterministic page-scoped IDs,
-classifications and heading levels. Only tables and graphics have nonempty integer
-pixel rectangles `[x0,y0,x1,y1]` with exclusive upper bounds. The eight additional
+classifications and heading levels. Every object has a nonempty integer pixel
+rectangle `[x0,y0,x1,y1]` with exclusive upper bounds. The model bounds complete
+logical objects, including textual ones, independently of OCR blocks. Text boxes
+serve review; downstream consumers may ignore them. Table/graphic boxes may also
+serve cropping. Previous text objects with null boxes require 02d regeneration. The eight additional
 classifications distinguish footnotes, source table legends, index and listing
 headings/entries; they do not change Stage 02's vocabulary.
 `table_legend` is a source-written block below a table defining its symbols,
@@ -78,9 +81,10 @@ remains a renderer for the old Stage 02 vocabulary, not a classification stage.
 Stage 02m reads Stage 02d JSON and the exact Stage 01 PNG independently of 02/02k.
 Its `02m_page_conversion_review/page_NNNN_review.png` preserves resolution and adds
 an equal-width blank right panel. Every object has an ordered type/heading label;
-only tables and graphics have containing 2-pixel frames and straight review leaders.
-Text objects have no geometry, frames or leaders. This cannot diagnose textual
-spatial order, and neither review stage corrects segmentation or calls a model.
+all objects have containing 2-pixel frames and straight review leaders based on
+their model-selected boxes. This supports review of textual spatial order as well
+as tables and graphics. No OCR geometry is synthesized; neither review stage
+corrects segmentation or calls a model.
 Stages 03-14 continue consuming the old stream; new-stream assembly is deferred.
 
 Restart 02d invalidates only 02d/02m; restart 02 retains the new branch while
