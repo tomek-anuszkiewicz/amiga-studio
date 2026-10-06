@@ -480,7 +480,7 @@ def main():
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--prepare-stage")
     parser.add_argument("--apply-stage")
-    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (01, 03, 05, 11, 14)")
+    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (00, 01, 03, 05, 11, 14)")
     args = parser.parse_args()
     skill_dir = Path(__file__).resolve().parent
     config_source = args.config.resolve()
@@ -516,7 +516,7 @@ def main():
     elif args.run_deterministic:
         start = completed
         end = start
-        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("01", "03", "05", "11", "14"):
+        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("00", "01", "03", "05", "11", "14"):
             raise ValueError("Next stage requires inference; use an explicit stage interval")
     elif args.resume:
         start, end = completed, len(STAGE_REGISTRY)-1

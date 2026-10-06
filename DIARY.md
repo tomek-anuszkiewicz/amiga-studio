@@ -1492,3 +1492,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Page reads 1-72 retained
   - Ten live calls and no cache hits
   - Graphify refresh attempted but graphify module unavailable
+---
+
+### [2026-10-06 09:32 CEST] — PDF-OCR-TESSERACT: replace Stage 00 model OCR with local Tesseract
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/00_text_layer`
+  - `tools/bootstrap/conversion`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Use PyMuPDF Tesseract OCR on selected textless page renders and publish <source stem>-ocr.pdf
+  - remove Stage 00 model selection and obsolete prompt
+  - preserve native text, invisible insertion, publication validation and compatible per-page recovery
+  - retain existing uncommitted reversed-box normalization changes
+  - update artifact consumers, deterministic dispatch and documentation
+  - normalize fractional Tesseract bounds into the integer 0-1000 schema
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested the local Tesseract text-layer mechanism used by the reference OCR script instead of Codex. Keep the validated Stage 00 to Stage 01 handoff and source fidelity without copying margin filters or schematic omission heuristics.
+- **Verification & Test Results**:
+  - PASS 25 PDF conversion tests
+  - 19 shared Codex tests
+  - 10 publication tests
+  - quick pre-flight
+  - 19 architecture checks and git diff --check. Real Tesseract synthetic-image recognition
+  - blank-image result and reopened invisible-text geometry passed after fixing the initially observed fractional-coordinate schema rejection. Graphify incremental update completed. No user source fragment
+  - full-book conversion or milestone gate run.

@@ -68,11 +68,11 @@ def validate_text_layer(workspace, source=None, *, require_completion=False):
             "Stage 00 source identity is invalid")
     procedure = manifest.get("ocr_procedure", {})
     require(procedure.get("source") == identity and procedure.get("stage") == "00_text_layer"
-            and isinstance(procedure.get("selection"), dict) and bool(procedure.get("procedure")),
+            and procedure.get("selection") is None and bool(procedure.get("procedure")),
             "Stage 00 OCR procedure/configuration identity is missing")
     require(identity.get("pages") is None and manifest["selected_pages"] == list(range(1, manifest["source_page_count"] + 1))
             or identity.get("pages") == manifest["selected_pages"], "Stage 00 selection differs from its source identity")
-    relative = f"00_text_layer/{Path(identity['name']).stem} - OCR.pdf"
+    relative = f"00_text_layer/{Path(identity['name']).stem}-ocr.pdf"
     require(manifest.get("pdf_file") == relative, "Unexpected Stage 00 prepared PDF path")
     pdf = artifact_path(workspace, relative)
     require(pdf.is_file() and file_hash(pdf) == manifest.get("pdf_sha256"), "Stage 00 prepared PDF is missing or modified")
@@ -102,7 +102,7 @@ def validate_text_layer(workspace, source=None, *, require_completion=False):
             kind = entry.get("page_type")
             require(provenance in ("native", "ocr", "none") and kind in ("text_page", "schematic", "diagram", "blank", "pure_graphic"),
                     "Unresolved Stage 00 page classification/provenance")
-            require(entry.get("classification_basis") in ("inferred_from_native_spans", "observed_by_codex"),
+            require(entry.get("classification_basis") in ("inferred_from_native_spans", "inferred_from_tesseract_lines"),
                     "Missing Stage 00 classification evidence")
             blocks = text_blocks(page)
             require(bool(blocks) == (provenance != "none") and (kind in ("blank", "pure_graphic")) == (provenance == "none"),

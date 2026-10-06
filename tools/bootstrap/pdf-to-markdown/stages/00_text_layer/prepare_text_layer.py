@@ -2,7 +2,6 @@
 """Prepare a separate validated PDF; publish no manifest on incomplete OCR."""
 
 import argparse
-from contextlib import ExitStack
 from pathlib import Path
 import shutil
 import sys
@@ -10,7 +9,7 @@ import pymupdf
 from jsonschema import validate
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from conversion import CodexClient, pdf_schemas
+from conversion import pdf_schemas
 from conversion.cache import digest
 from conversion.config import load_config, PDF_STAGES
 from conversion.lineage import file_hash, read_state, stage_identity
@@ -18,6 +17,45 @@ from conversion.pdf_artifacts import write_json, read_json, require, validate_te
 from conversion.pdf_geometry import (SCHEMA_VERSION, GEOMETRY_TOLERANCE, page_geometry,
                                      text_blocks, valid_box, validate_ocr, insert_ocr, validate_inserted)
 from conversion.pdf_selection import selected_pages
+
+
+def tesseract_settings(config):
+    """Resolve language data and fingerprint it without recording host paths."""
+    settings = config.get("ocr", {})
+    require(isinstance(settings, dict) and not set(settings) - {"language", "tessdata"},
+            "ocr supports only language and tessdata")
+    language = settings.get("language", "eng")
+    require(isinstance(language, str) and language and all(
+        code and all(c.isalnum() or c == "_" for c in code) for code in language.split("+")),
+        "ocr.language must contain Tesseract language identifiers")
+    tessdata = Path(pymupdf.get_tessdata(settings.get("tessdata")))
+    files = {code: tessdata / f"{code}.traineddata" for code in language.split("+")}
+    require(all(path.is_file() for path in files.values()),
+            "Missing Tesseract language data; configure ocr.tessdata or TESSDATA_PREFIX")
+    identity = {"engine": "tesseract", "language": language, "pymupdf": pymupdf.__version__,
+                "traineddata": {code: file_hash(path) for code, path in files.items()}}
+    return language, str(tessdata), identity
+
+
+def tesseract_ocr(pixmap, language, tessdata):
+    """Read rendered-page OCR lines in the shared normalized coordinate frame."""
+    blocks = []
+    with pymupdf.open("pdf", pixmap.pdfocr_tobytes(language=language, tessdata=tessdata)) as ocr:
+        page = ocr[0]
+        for block in page.get_text("dict")["blocks"]:
+            if block["type"] != 0:
+                continue
+            for line in block["lines"]:
+                text = "".join(span["text"] for span in line["spans"]).strip()
+                if not text:
+                    continue
+                x0, y0, x1, y1 = valid_box(line["bbox"], page.rect.width, page.rect.height, clip=True)
+                box = [y0 / page.rect.height * 1000,
+                       x0 / page.rect.width * 1000, y1 / page.rect.height * 1000,
+                       x1 / page.rect.width * 1000]
+                blocks.append({"text": text, "box_2d": [round(value) for value in box]})
+    # This is an extraction result, not visual page-type classification.
+    return {"page_type": "text_page" if blocks else "pure_graphic", "caption": None, "blocks": blocks}
 
 
 def text_layer_ocr(response):
@@ -28,11 +66,13 @@ def text_layer_ocr(response):
     blocks = []
     for block in response["blocks"]:
         y0, x0, y1, x1 = block["box_2d"]
+        y0, y1 = min(y0, y1), max(y0, y1)
+        x0, x1 = min(x0, x1), max(x0, x1)
         valid_box([x0, y0, x1, y1], 1000, 1000, tolerance=0)
         text = block["text"].replace("\ufffd", " ")
         if "\ufffd" in block["text"] and not text.strip():
             continue
-        blocks.append({**block, "text": text})
+        blocks.append({**block, "text": text, "box_2d": [y0, x0, y1, x1]})
     return validate_ocr({**response, "blocks": blocks})
 
 
@@ -51,7 +91,11 @@ def record_ocr_read(path, source, entry, response):
         raise
     record["text_layer_response"] = prepared
     record["text_validation"] = {"status": "passed", "omitted_unreadable_markers":
-                                 sum(block["text"].count("\ufffd") for block in response["blocks"])}
+                                 sum(block["text"].count("\ufffd") for block in response["blocks"]),
+                                 "normalized_bounding_boxes": sum(
+                                     block["box_2d"][0] > block["box_2d"][2]
+                                     or block["box_2d"][1] > block["box_2d"][3]
+                                     for block in response["blocks"])}
     write_json(path, record)
     return response
 
@@ -95,9 +139,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
     source = {"name": pdf_path.name, "sha256": source_hash, "pages": None}
     dpi = config.get("render", {}).get("dpi", 300)
     require(type(dpi) is int and dpi > 0, "render.dpi must be a positive integer")
-    prompt_path = Path(__file__).with_name("prompt_ocr.md")
-    prompt = prompt_path.read_text(encoding="utf-8")
-    with pymupdf.open(pdf_path) as document, ExitStack() as stack:
+    with pymupdf.open(pdf_path) as document:
         require(document.is_pdf and not document.needs_pass, "Only readable, unencrypted PDFs are supported")
         pages = selected_pages(page_ranges, len(document))
         source["pages"] = pages if page_ranges is not None else None
@@ -106,7 +148,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
         stage_dir.mkdir(parents=True, exist_ok=True)
         manifest_path = stage_dir / "text_layer_manifest.json"
         manifest_path.unlink(missing_ok=True)
-        output = stage_dir / f"{pdf_path.stem} - OCR.pdf"
+        output = stage_dir / f"{pdf_path.stem}-ocr.pdf"
         candidate = stage_dir / ".candidate.pdf"
         candidate.unlink(missing_ok=True)
         recovery = stage_dir / "recovery"
@@ -114,7 +156,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
         page_reads = stage_dir / "page_reads"
         page_reads.mkdir(exist_ok=True)
         procedure = stage_identity({"id": "00", "dir": "00_text_layer"}, config, source, None, Path(__file__).resolve().parents[2])
-        entries, client, added_text = [], None, False
+        entries, engine, added_text = [], None, False
         try:
             for number in pages:
                 page = document[number - 1]
@@ -130,12 +172,14 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                     print(f"[native] {entry['page_id']}: retained existing text spans")
                 else:
                     image = stage_dir / ".request.png"
-                    page.get_pixmap(dpi=dpi).save(image)
+                    pixmap = page.get_pixmap(dpi=dpi, colorspace=pymupdf.csRGB, alpha=False)
+                    pixmap.save(image)
+                    if engine is None:
+                        engine = tesseract_settings(config)
+                    language, tessdata, engine_identity = engine
                     identity = {"source": source, "page": number, "image_sha256": file_hash(image),
                                 "geometry": entry["geometry"], "schema": pdf_schemas.OCR, "procedure": procedure,
-                                "prompt_sha256": file_hash(prompt_path), "pymupdf": pymupdf.__version__}
-                    if client is None:
-                        client = stack.enter_context(CodexClient(config, stage="00_text_layer", images=True))
+                                "engine": engine_identity}
                     recovery_file = recovery / f"{entry['page_id']}.json"
                     response = None
                     if recovery_file.is_file():
@@ -146,16 +190,15 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                             response = record_ocr_read(read_path, source, entry, retained["response"])
                             print(f"[recovery] {entry['page_id']}: compatible validated OCR result")
                     if response is None:
-                        response = client.generate_json(
-                            prompt, image_path=image, schema=pdf_schemas.OCR,
-                            validator=lambda result: record_ocr_read(read_path, source, entry, result))
+                        response = tesseract_ocr(pixmap, language, tessdata)
+                        record_ocr_read(read_path, source, entry, response)
                         record = {"identity": identity, "response": response}
                         record["digest"] = digest(record)
                         write_json(recovery_file, record)
                     response = text_layer_ocr(response)
                     image.unlink()
                     entry.update(page_type=response["page_type"], caption=response["caption"],
-                                 classification_basis="observed_by_codex", provenance="ocr" if response["blocks"] else "none")
+                                 classification_basis="inferred_from_tesseract_lines", provenance="ocr" if response["blocks"] else "none")
                     if response["blocks"]:
                         entry["ocr_lines"] = insert_ocr(page, response)
                         added_text = True
@@ -194,7 +237,7 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--page-ranges")
     args = parser.parse_args()
-    config = load_config(args.config, known_stages=PDF_STAGES, required_stages={"00_text_layer"})
+    config = load_config(args.config, known_stages=PDF_STAGES, required_stages=())
     prepare_text_layer(args.pdf, args.workspace, config, args.page_ranges)
 
 

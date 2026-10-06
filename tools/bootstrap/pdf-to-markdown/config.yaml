@@ -4,11 +4,14 @@ render:
   dpi: 300
   image_format: "png"
 
+ocr:
+  language: "eng"
+  tessdata: null  # Auto-detect or use TESSDATA_PREFIX; override locally if needed.
+
 llm:
   timeout_seconds: 180
   concurrency: 1
   stages:
-    00_text_layer: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     02_page_segmentation: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     04_stream_reduction: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     06_detect_continuations: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

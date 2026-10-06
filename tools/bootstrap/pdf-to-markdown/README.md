@@ -19,7 +19,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py `
 
 The workspace holds intermediate page images, JSON streams, task files, a configuration snapshot, stage status and `.conversion-state.json`. Final Markdown and assets remain in workspace/14_link_toc. The shared `../conversion/` package owns configuration, Codex transport, response schemas, cache and predecessor validation. Use `--cache-dir` to select a disposable cache; the default is `.cache/codex`. Completed schema-validated responses are cached separately from legacy Gemini data.
 
-[Stage 00](stages/00_text_layer/README.md) prepares `00_text_layer/<source stem> - OCR.pdf` plus a validated text-layer manifest. It retains native spans, adds invisible OCR only to selected textless pages containing text, and explicitly classifies blank/graphic-only pages. If no text addition is needed, the separate output is a byte-for-byte copy. The complete page tree, geometry, native content and selected-page renders remain unchanged. Only the selected fragment is certified. The original PDF must remain outside the workspace.
+[Stage 00](stages/00_text_layer/README.md) prepares `00_text_layer/<source stem>-ocr.pdf` plus a validated text-layer manifest. It retains native spans, adds invisible OCR only to selected textless pages containing text, using local Tesseract through PyMuPDF; pages with no recognized lines retain empty text provenance. If no text addition is needed, the separate output is a byte-for-byte copy. The complete page tree, geometry, native content and selected-page renders remain unchanged. Only the selected fragment is certified. The original PDF must remain outside the workspace.
 
 [Stage 01](stages/01_preprocess/README.md) reads only that validated PDF and deterministically emits PNGs and positioned text JSON. Text comes from the reopened PDF, including its OCR spans. Page IDs retain physical source numbers; manifests record relative paths, hashes, provenance, displayed-page coordinates and actual raster transforms. Missing or invalid predecessors and mismatched page pairs stop conversion before cleanup or requests. Stage 02 keeps its existing block-summary/PNG request; supplying complete matching text JSON to the redesigned model request belongs to roadmap 1.1.
 
@@ -54,7 +54,7 @@ Manual `--prepare-stage` also resets that stage and all dependents. `--apply-sta
 ## Processing Model
 
 - **Deterministic Python Scripts** handle mechanical tasks (page extraction, 300 DPI rendering, text geometry, asset slicing with 10% margins, stream stitching, chapter partitioning, Markdown emission, and TOC link resolution).
-- **Codex text and original-detail image input** handle OCR, segmentation, continuation decisions, table and graphic transcription, prose formatting, title normalization and properties generation through the shared stage-bound client. Stages requiring inference have no offline fallback. Stage 10 currently normalizes titles/slugs and copies rendered node text; it does not perform a separate body-proofreading request.
+- **Codex text and original-detail image input** handle segmentation, continuation decisions, table and graphic transcription, prose formatting, title normalization and properties generation through the shared stage-bound client. Stages requiring inference have no offline fallback. Stage 10 currently normalizes titles/slugs and copies rendered node text; it does not perform a separate body-proofreading request.
 
 ---
 
@@ -68,7 +68,6 @@ tools/bootstrap/pdf-to-markdown/
 └── stages/
     ├── 00_text_layer/
     │   ├── prepare_text_layer.py            # Validates/publishes a separate native/OCR PDF
-    │   ├── prompt_ocr.md                    # Textless-page triage and positioned OCR
     │   └── README.md
     ├── 01_preprocess/
     │   ├── preprocess.py                    # Renders PDF -> 300 DPI PNG, text blocks and page geometry JSON
@@ -164,7 +163,7 @@ tools/bootstrap/pdf-to-markdown/
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02`
 > - **Prepare and preprocess specific pages in a new workspace**:
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 00 --to-stage 01`
-> - **Next ready deterministic stage (01, 03, 05, 11, 14)**: `--run-deterministic` runs one ready stage and rejects an inference stage.
+> - **Next ready deterministic stage (00, 01, 03, 05, 11, 14)**: `--run-deterministic` runs one ready stage and rejects an inference stage.
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --run-deterministic`
 > - **Optional manual review stages (06, 07, 08, 09)**:
 >   - Prepare task items: `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --prepare-stage 07`
