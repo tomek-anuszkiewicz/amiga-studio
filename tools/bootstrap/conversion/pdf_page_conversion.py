@@ -10,6 +10,7 @@ TYPES = ["cover", "header", "footer", "toc_heading", "toc", "thumb_index", "chap
          "list_of_tables_heading", "list_of_tables", "list_of_figures_heading", "list_of_figures"]
 HEADING_TYPES = {"chapter", "heading", "toc_heading", "index_heading",
                  "list_of_tables_heading", "list_of_figures_heading"}
+DEFERRED_TEXT_TYPES = {"graphic", "table", "cover"}
 SEGMENT = object_schema({
     "type": {"type": "string", "enum": TYPES},
     "continuation": BOOL,
@@ -38,6 +39,8 @@ def validate_page(value, entry, *, stored=False):
             require(segment["segment_id"] == f"{entry['page_id']}_seg_{ordinal:03d}",
                     "Stage 02 segment identity/order mismatch")
         kind, box, level = segment["type"], segment["bbox"], segment["heading_level"]
+        require(kind not in DEFERRED_TEXT_TYPES or segment["md_text"] == "",
+                "Stage 02 graphic/table/cover md_text must be empty")
         require((level is not None) == (kind in HEADING_TYPES), "Stage 02 heading level/type mismatch")
         require(all(type(v) is int for v in box), "Stage 02 bbox coordinates must be integer pixels")
         x0, y0, x1, y1 = box

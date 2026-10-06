@@ -12,16 +12,20 @@ and explanations as separate objects.
 
 Return segments in intended reading order: top to bottom, left to right for
 objects beside each other. Do not alternate lines from adjacent paragraphs.
-Convert each object's source text to Markdown in md_text. An object without
-source text may have an empty string. Figure text is only source-visible text,
-not an authored description. Do not invent links to assets that do not exist.
+For graphic, table and cover objects, return md_text as the empty string "".
+Do not transcribe their internal text, reconstruct tables or diagrams, or generate
+descriptions or asset links. Only identify, classify and bound these complete
+objects; their content processing is deferred to later stages using the image crop.
+For all other object types, convert source text to Markdown in md_text. An object
+without source text may have an empty string. Do not invent links to assets that
+do not exist.
 
 Establish each complete logical object's boundaries before classifying it by
 its internal content and structure. An enclosing border
 used only for visual emphasis does not make its contents a graphic. A regular
 grid of text or numbers is a table, even when enclosed in a larger decorative
-frame or captioned "Figure". Preserve cell boundaries. Retain lines and shapes
-that convey meaning, such as arrows, connections or diagram geometry.
+frame or captioned "Figure". Include all cells, lines and shapes that convey
+meaning, such as arrows, connections or diagram geometry, within the object bounds.
 
 Classify each complete logical object into exactly one of the schema types:
 
@@ -29,7 +33,7 @@ Classify each complete logical object into exactly one of the schema types:
   title, edition or revision details, publisher branding and optional artwork.
   Treat the complete cover as one object, including all its visible text and
   logos, even when the artwork occupies only part of the page. Bound the whole
-  cover and transcribe its source-visible text in md_text; do not split its
+  cover and leave md_text empty; do not split its
   title, publication details, branding or artwork into heading, prose or graphic
   objects. Set heading_level to null and continuation to false. A plain interior
   title page or chapter opener is not a cover solely because it has a large title;
@@ -75,14 +79,14 @@ Classify each complete logical object into exactly one of the schema types:
   parameter lists and horizontal instruction banners with parallel columns for
   mnemonic, title and processor models. Regular text or number grids remain
   tables despite decorative frames or "Figure" captions. Keep the complete table
-  together and preserve cell boundaries; its separate title is `caption`.
+  together within its bounds and leave md_text empty; its separate title is `caption`.
 - `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts,
   photographs and diagram artwork. A decorative border alone does not make an
   object a graphic. Preserve meaningful arrows, connections and geometry.
   Bound the artwork, its internal labels and visually connected explanatory
   text boxes as one object; keep separate source captions
-  and explanations outside this object. Its text contains only source-visible
-  text, not an authored description.
+  and explanations outside this object. Leave md_text empty, including for
+  internal labels and connected explanatory text.
 - `caption`: A separate formal figure or table number/title, such as "Figure 5-2:
   Digitized Amplitude Values" or "Table 5-8: Five Octave Even-tempered Scale".
   Do not absorb the caption into the table or graphic.

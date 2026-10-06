@@ -27,7 +27,7 @@ Crop coordinates refer to the original rendered image: integer pixels, top-left 
 Markdown begins with valid YAML frontmatter and a document heading. TOC entries must resolve to actual headings. Asset paths must resolve; check rendered output and source fidelity before bulk use. Parser checks cannot certify visual or semantic completeness.
 
 Stage 02 has a user-requested exception to the Markdown formatting recipes above.
-Its effective request asks only for each object's Markdown conversion in `md_text`,
+Its effective request asks for textual objects' Markdown conversion in `md_text`,
 with layout, classification, fidelity and JSON constraints. It supplies no Markdown
 style recipes, formatting examples or hints. The shared transport's base/developer
 instructions contain no such recipes; repository instructions are disabled and this
@@ -52,7 +52,14 @@ The former segmentation and review stages have been removed. Stage 02 reads only
 JSON pairs and defines independent logical objects in model array order, with
 `md_text` and no `raw_text`. `02_page_conversion/page_NNNN_segments.json` records
 physical page identity, original PNG dimensions, deterministic page-scoped IDs,
-classifications, heading levels and a required boolean `continuation`. A title,
+classifications, heading levels and a required boolean `continuation`.
+For `graphic`, `table` and `cover`, `md_text` is required and must be `""`.
+Stage 02 only identifies, classifies and bounds these objects; internal text,
+table reconstruction and graphic/cover content processing are deferred to later
+stages using original image crops. Complete bounds still include internal labels
+and connected explanatory text. Validation rejects nonempty content before
+caching and when reading saved artifacts. Existing objects with nonempty content
+for these types require regeneration from 02, not in-place clearing. A title,
 heading or caption at the top of the page has `continuation: true` only when its
 source-visible name explicitly indicates continuation from the previous page,
 including Continued, Concluded or a later sheet/part number. It keeps its normal

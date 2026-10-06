@@ -2,9 +2,13 @@
 
 Read validated Stage 01 original-resolution PNGs and their complete text JSON.
 The model defines logical objects independently of OCR block boundaries, returns
-reading order and converts source text into `md_text` without supplied Markdown
-formatting recipes. The isolated authenticated Codex request uses original image
-detail and its explicit `02_page_conversion` model/effort configuration.
+reading order and converts textual objects into `md_text` without supplied Markdown
+formatting recipes. For `graphic`, `table` and `cover`, `md_text` must be the empty
+string: internal transcription and content reconstruction are deferred to later
+stages using the original image crop. Classification and complete bounds remain
+required, including internal labels and connected explanatory text. The isolated
+authenticated Codex request uses original image detail and its explicit
+`02_page_conversion` model/effort configuration.
 
 Output: `02_page_conversion/page_NNNN_segments.json`, recording `page`,
 `image_width`, `image_height` and ordered `segments`. Each segment has its
@@ -49,3 +53,7 @@ alone do not make text part of a graphic. Regenerate 02/02.5 to apply this group
 The earlier crop-only contract allowed null boxes on text. Such 02/02.5 artifacts
 require regeneration for the current all-object review; no boxes are synthesized
 from OCR or inserted into existing saved JSON.
+
+Existing Stage 02 objects with nonempty `md_text` for `graphic`, `table` or `cover`
+require regeneration from 02; do not clear saved content in place. Validation
+rejects such responses before caching and rejects incompatible stored artifacts.

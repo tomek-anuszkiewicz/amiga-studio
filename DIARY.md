@@ -2014,3 +2014,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - JSON and review PNG contain one footnote encompassing both source lines
   - git diff --check passed
   - no full-book conversion or new tests
+---
+
+### [2026-10-06 CEST] — PDF-02-DEFERRED-TEXT: defer graphic table and cover content
+- **Affected Subsystems**:
+  - `PDF Stage 02`
+  - `page conversion validation`
+- **What Was Changed (The Concrete Reality)**:
+  - Require empty md_text for graphic/table/cover in the prompt and response/artifact validation
+  - Preserve complete classification and pixel bounds
+  - Update the conversion contract and existing contract test
+- **Architectural Rationale & Trade-Offs**:
+  - Defer internal transcription and content reconstruction until later image-crop processing
+  - Reject incompatible saved content rather than silently clearing it
+- **Verification & Test Results**:
+  - PDF conversion suite: 30 tests passed
+  - Quick pre-flight passed
+  - Architecture suite: 19 tests passed
+  - Graphify incremental update completed
+  - No source fragment conversion requested or run

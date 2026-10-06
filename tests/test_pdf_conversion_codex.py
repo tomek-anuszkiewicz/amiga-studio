@@ -48,11 +48,23 @@ class PdfCoverContractTests(unittest.TestCase):
                  "raster": {"pixel_width": 200, "pixel_height": 300}}
         value = {"page": 1, "image_width": 200, "image_height": 300,
                  "segments": [{"type": "cover", "continuation": False,
-                               "heading_level": None, "md_text": "Manual title\nPublisher",
+                               "heading_level": None, "md_text": "",
                                "bbox": [0, 0, 200, 300]}]}
         validate_page(value, entry)
         value["segments"][0]["segment_id"] = "page_0001_seg_001"
         validate_page(value, entry, stored=True)
+        for kind in ("cover", "table", "graphic"):
+            with self.subTest(kind=kind):
+                value["segments"][0]["type"] = kind
+                validate_page(value, entry, stored=True)
+                for stored in (False, True):
+                    candidate = {**value, "segments": [dict(value["segments"][0])]}
+                    if not stored:
+                        candidate["segments"][0].pop("segment_id")
+                    validate_page(candidate, entry, stored=stored)
+                    candidate["segments"][0]["md_text"] = "Generated content"
+                    with self.assertRaisesRegex(ValueError, "md_text must be empty"):
+                        validate_page(candidate, entry, stored=stored)
 
 
 class PdfTextBoundsTests(unittest.TestCase):
