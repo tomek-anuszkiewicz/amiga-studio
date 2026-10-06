@@ -2132,3 +2132,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19/19
   - git diff --check passed
   - no fragment conversion run after prompt change
+---
+
+### [2026-10-06 19:10 CEST] — Preserve visible order around offset headings
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace semantic heading promotion with visible source-row ordering
+  - Keep short blocks before adjacent multiline headings when visually above most of the heading
+  - Document Stage 02 and review regeneration
+- **Architectural Rationale & Trade-Offs**:
+  - Page 81 review showed Equipment Flags after its adjacent heading because the previous prompt explicitly allowed heading promotion
+  - Subject association must not override the requested visible order
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture suite passed 19/19
+  - Fragment conversion not run after prompt change and model adherence remains unverified

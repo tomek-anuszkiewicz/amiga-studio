@@ -22,11 +22,15 @@ paragraph, heading, caption, list, table or figure together. A table or figure i
 one object even when OCR provides many labels. Preserve separate source captions
 and explanations as separate objects.
 
-Return segments in intended reading order. Use top-to-bottom, left-to-right order
-as the default. Adjust it when the page layout and semantic relationships clearly
-indicate a different reading order, such as a heading preceding its associated
-content despite their relative vertical positions. Do not alternate lines from
-adjacent paragraphs.
+Return segments in source reading order: top to bottom within the page's reading
+flow, left to right for objects on the same visual row. For vertically offset
+objects beside each other, use their visible text rows rather than just the top
+edge of each bounding box. A short block beside a multiline heading may appear
+above most of that heading even when their bounding-box top edges nearly align;
+return that block before the heading. Do not move a heading ahead of an earlier
+code_block, parameter block or other source object merely because their subjects
+are related. Semantic association does not override this visible order.
+Do not alternate lines from adjacent paragraphs.
 For graphic, table and cover objects, return md_text as the empty string "".
 Do not transcribe their internal text, reconstruct tables or diagrams, or generate
 descriptions or asset links. Only identify, classify and bound these complete

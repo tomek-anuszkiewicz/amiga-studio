@@ -27,6 +27,10 @@ Standard JSON serialization preserves decoded Markdown without pre-escaping.
 Use the [orchestrator](../../README.md); do not run workers for real conversions.
 Stage 02.5 reviews these objects. Stage 03 reads them directly to build the
 downstream stream; review PNGs are not stream inputs.
+Reading order follows visible source rows. A short block beside and visually
+above most of a multiline heading precedes that heading, even when their box
+top edges nearly align. Subject association does not promote the heading ahead
+of that block. Regenerate 02/02.5 to apply this rule to saved results.
 Aligned register assignments and input/output parameter blocks are `code_block`,
 including their shared labels and wrapped descriptions, regardless of source font.
 Column alignment alone does not establish a `table`.

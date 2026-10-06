@@ -110,6 +110,11 @@ character-based drawings as `code_block`, preserving characters, line breaks,
 spaces and alignment in fenced `text` blocks. Drawn lines and shapes remain
 `graphic`, even when later ASCII conversion is possible.
 
+Stage 02 orders objects by visible source rows. A short block beside and visually
+above most of a multiline heading precedes that heading even when their box top
+edges nearly align. Semantic association does not move headings ahead of earlier
+source content. Regenerate 02/02.5 to apply this ordering to saved results.
+
 Stage 02.5 reads Stage 02 JSON and the exact Stage 01 PNG.
 Its `02.5_page_conversion_review/page_NNNN_review.png` preserves resolution and adds
 an equal-width blank right panel. Every object has an ordered type/heading label
