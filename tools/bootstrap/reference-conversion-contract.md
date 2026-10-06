@@ -92,6 +92,12 @@ Determine complete object boundaries before classification: a marker-referenced
 footnote includes its continuation lines and paragraphs, even when they define
 symbols or abbreviations. A table legend must be an independent source block.
 
+Stage 02 preserves register-map and bit-assignment tables as `table` when repeated
+address/offset rows organize bit positions and field descriptions. Drawn brackets
+or leader lines connecting bits to descriptions stay inside the complete table;
+they do not make it a graphic, and cell borders are not required. This rule takes
+precedence over graphic and drawing-sheet grouping. Regenerate 02/02.5 to apply it.
+
 Stage 02 groups a complete technical drawing sheet as one `graphic`, including
 integrated identification text, introductory descriptions, views, dimensions,
 notes and technical tables. Shared drawing layout, orientation and subject may

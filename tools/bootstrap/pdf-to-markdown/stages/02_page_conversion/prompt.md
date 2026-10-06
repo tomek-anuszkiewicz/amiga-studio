@@ -35,6 +35,13 @@ For all other object types, convert source text to Markdown in md_text. An objec
 without source text may have an empty string. Do not invent links to assets that
 do not exist.
 
+First recognize register-map and bit-assignment tables: repeated rows of
+addresses or offsets, bit positions and corresponding field descriptions are
+one table, even without cell borders and even when some rows use drawn brackets
+or leader lines to connect bits to descriptions. Keep those lines and descriptions
+inside the complete table bounds. They do not turn the table into a graphic or
+a technical drawing sheet. This table rule takes precedence over graphic grouping.
+
 Treat a complete technical drawing sheet as one graphic when its views,
 dimensions, title or introductory description, notes and embedded technical
 tables form one drawing composition. Include connection/pin tables, their titles
@@ -131,6 +138,9 @@ Classify each complete logical object into exactly one of the schema types:
   its separate title is `caption`.
 - `graphic`: Circuit schematics, drawn timing waveforms, block diagrams, IC pinouts,
   photographs, complete technical drawing sheets and diagram artwork.
+  Do not classify register-map or bit-assignment tables as graphic merely because
+  brackets or leader lines connect their bit positions to field descriptions.
+  Repeated address/offset rows with bit positions and descriptions remain table.
   Drawing sheets include their integrated titles, descriptions, notes and
   technical tables under the sheet grouping rule above.
   Independent character-based diagrams that look like ASCII art use code_block
