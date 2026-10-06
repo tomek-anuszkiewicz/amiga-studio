@@ -26,6 +26,13 @@ Crop coordinates refer to the original rendered image: integer pixels, top-left 
 
 Markdown begins with valid YAML frontmatter and a document heading. TOC entries must resolve to actual headings. Asset paths must resolve; check rendered output and source fidelity before bulk use. Parser checks cannot certify visual or semantic completeness.
 
+Stage 02d has a user-requested exception to the Markdown formatting recipes above.
+Its effective request asks only for each object's Markdown conversion in `md_text`,
+with layout, classification, fidelity and JSON constraints. It supplies no Markdown
+style recipes, formatting examples or hints. The shared transport's base/developer
+instructions contain no such recipes; repository instructions are disabled and this
+contract is not injected into the request. Existing stage instructions remain unchanged.
+
 ## Codex boundary
 
 Use ChatGPT authentication through the pinned Python SDK and app-server runtime. API-key billing is not a fallback. Each inference stage selects its own explicit model and reasoning effort. Validate the runtime catalog and required input capabilities; a completed live request establishes access for that request, not future entitlement or a quota estimate.
@@ -38,7 +45,7 @@ The Codex cache is separate from legacy Gemini data. Its identity includes engin
 
 Keep PDF conversion workspaces in the source PDF directory's `workspace/` subdirectory. Use `<PDF_DIRECTORY>/workspace/` for a single conversion or named children for independent attempts, such as `workspace/page-64/`. With `--pdf` and no explicit `--workspace`, the CLI defaults to this subdirectory. Set `--workspace` explicitly for independent attempts or continuation without `--pdf`. The original PDF stays outside the workspace. Bootstrap downloads PDFs into `<book>-tmp/`, so its workspace remains `<book>-tmp/workspace/`; a locally supplied PDF in `<book>/` uses `<book>/workspace/`.
 
-Each PDF workspace owns one source/page selection and its intermediate conversion state. Explicit restart from stage N validates stages before N, clears all outputs/status/manual tasks from N onward, and restores predecessor manifest snapshots. Final output stays in the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored; modified retained artifacts are rejected rather than automatically repaired. Broader manual content editing and conversion quality remain separate work.
+Each PDF workspace owns one source/page selection and its intermediate conversion state. Explicit restart validates retained artifact inputs, clears the selected stage and its artifact descendants (including their status/manual tasks), and restores retained manifest snapshots. Final output stays in the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored; modified retained artifacts are rejected rather than automatically repaired. Broader manual content editing and conversion quality remain separate work.
 
 Deterministic Stage 02k follows Stage 02 and renders a graphical review PNG:
 the original page with containing 2-pixel segment frames, plus an equal-width
@@ -50,6 +57,42 @@ labels by geometry, and its straight panel leaders expose vertical order
 inversions. Stage 03 preserves each array's order when building the raw stream,
 instead of sorting segments by bounding-box coordinates. Crossings are a visual
 review signal, not an automatic correction or a model-quality verdict.
+
+The explicit execution sequence is `01 -> 02 -> 02d -> 02k -> 02m`, then the
+existing Stages 03-14. Stage 02d reads only validated Stage 01 PNG/complete text
+JSON pairs and defines independent logical objects in model array order, with
+`md_text` and no `raw_text`. `02d_page_conversion/page_NNNN_segments.json` records
+physical page identity, original PNG dimensions, deterministic page-scoped IDs,
+classifications and heading levels. Only tables and graphics have nonempty integer
+pixel rectangles `[x0,y0,x1,y1]` with exclusive upper bounds. The eight additional
+classifications distinguish footnotes, source table descriptions, index and listing
+headings/entries; they do not change Stage 02's vocabulary.
+
+Stage 02m reads Stage 02d JSON and the exact Stage 01 PNG independently of 02/02k.
+Its `02m_page_conversion_review/page_NNNN_review.png` preserves resolution and adds
+an equal-width blank right panel. Every object has an ordered type/heading label;
+only tables and graphics have containing 2-pixel frames and straight review leaders.
+Text objects have no geometry, frames or leaders. This cannot diagnose textual
+spatial order, and neither review stage corrects segmentation or calls a model.
+Stages 03-14 continue consuming the old stream; new-stream assembly is deferred.
+
+Restart 02d invalidates only 02d/02m; restart 02 retains the new branch while
+invalidating 02/02k and the old downstream stream; restart 01 invalidates both.
+A requested interval executes missing/invalidated stages in registry order and
+keeps validated independent stages. Before cleanup, all retained records and
+external inputs of the interval are validated. Shared snapshot restoration follows
+retained stages in execution order. Completion identities follow artifact inputs,
+not adjacent execution stages; 02m binds both the 01 and 02d completion digests.
+
+`conversion/pdf_lineage_compatibility.json` records the exact pre-branch shared-code
+fingerprints and the reviewed compatible replacement fingerprints. When the whole
+current shared-code set exactly matches that replacement, old stages retain their
+original shared procedure digest. Any further shared-code change fails this bridge
+and invalidates old identities normally. Stage-specific procedures, source/page
+selection, model/effort and artifact hashes still validate; records and old JSON
+are never relabeled or migrated. New stages use the current shared digest, and 02m
+also fingerprints its unchanged 02k drawing primitives. This bridge preserves
+compatible 00-14 artifacts without regenerating inference merely for branch wiring.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
 in the source book's `workspace/html_to_markdown/`; PDF output stays in `workspace/14_link_toc/`.

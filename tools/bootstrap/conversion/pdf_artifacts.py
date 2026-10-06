@@ -168,3 +168,16 @@ def validate_stage_artifacts(stage, workspace, source, *, snapshot=False):
     elif contract == "pdf_preprocess":
         path = workspace / stage["dir"] / ".manifests/pages_manifest.json" if snapshot else None
         validate_preprocess(workspace, source, manifest_path=path)
+
+    elif contract in ("pdf_page_conversion", "pdf_page_conversion_review"):
+        from .pdf_page_conversion import validate_conversion
+        pages = validate_conversion(workspace, source)
+        if contract == "pdf_page_conversion_review":
+            directory = workspace / stage["dir"]
+            expected = {f"{entry['page_id']}_review.png" for entry, value in pages}
+            require({p.name for p in directory.glob("page_*_review.png")} == expected,
+                    "Stage 02m review coverage mismatch")
+            for entry, value in pages:
+                image = pymupdf.Pixmap(directory / f"{entry['page_id']}_review.png")
+                require(image.width == value["image_width"]*2 and image.height == value["image_height"],
+                        "Stage 02m review dimensions mismatch")

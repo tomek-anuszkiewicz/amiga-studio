@@ -45,11 +45,27 @@ def stage_identity(stage, config, source, predecessor, skill_dir):
     directory = skill_dir / "stages" / stage["dir"]
     shared = Path(__file__).resolve().parent
     procedure = {p.relative_to(directory).as_posix(): file_hash(p) for p in sorted(directory.iterdir()) if p.suffix in (".py", ".md")}
-    procedure["shared"] = digest({p.name: file_hash(p) for p in sorted(shared.glob("*.py"))})
+    hashes = {p.name: file_hash(p) for p in sorted(shared.glob("*.py"))}
+    # Preserve the exact pre-branch identity only for reviewed compatible code.
+    compatibility = json.loads((shared / "pdf_lineage_compatibility.json").read_text(encoding="utf-8"))
+    if stage["id"] not in ("02d", "02m") and hashes == compatibility["current"]:
+        hashes = compatibility["legacy"]
+    procedure["shared"] = digest(hashes)
+    if stage["id"] == "02m":
+        procedure["review_primitives"] = file_hash(skill_dir / "stages/02k_segmentation_review/render_review.py")
     return {"contract": CONTRACT_VERSION, "sdk_runtime": SDK_VERSION, "stage": stage["dir"],
             "selection": config["llm"]["stages"].get(stage["dir"]),
             "settings": {key: value for key, value in config.items() if key != "llm"},
             "source": source, "predecessor": predecessor, "procedure": procedure}
+
+
+def artifact_predecessor(state, registry, stage):
+    position = next(i for i, item in enumerate(registry) if item["id"] == stage["id"])
+    inputs = stage.get("inputs", [registry[position-1]["id"]] if position else [])
+    completions = {key: state.get("stages", {}).get(key, {}).get("completion") for key in inputs}
+    if any(value is None for value in completions.values()):
+        raise ValueError(f"Missing validated artifact inputs for Stage {stage['id']}")
+    return next(iter(completions.values())) if len(completions) == 1 else (completions or None)
 
 
 def validate_prefix(state, registry, count, config, source, skill_dir, workspace, output):
@@ -61,7 +77,7 @@ def validate_prefix(state, registry, count, config, source, skill_dir, workspace
             raise ValueError(f"Missing validated predecessor: regenerate Stage {stage['id']}")
         if record.get("completion") != digest({key: value for key, value in record.items() if key != "completion"}):
             raise ValueError(f"Damaged Stage {stage['id']} completion record")
-        expected = stage_identity(stage, config, source, previous, skill_dir)
+        expected = stage_identity(stage, config, source, artifact_predecessor(state, registry, stage), skill_dir)
         if record["identity"] != expected:
             raise ValueError(f"Incompatible conversion: regenerate Stage {stage['id']} and dependents")
         for relative, expected_hash in record["files"].items():

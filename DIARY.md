@@ -1715,3 +1715,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - PASS quick pre-flight, 19 architecture checks and git diff --check. Planning documentation only
   - no converter implementation, model calls or fragment conversion. PDF-INDEPENDENT-02D-02M remains planned and open.
+---
+
+### [2026-10-06 16:13 CET] — PDF-INDEPENDENT-02D-02M: implement independent page conversion and review
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_pdf_conversion_codex.py`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add explicit execution order 01-02-02d-02k-02m with artifact-specific dependencies and selective restart
+  - add strict independent logical objects and ordered md_text with full PNG/text JSON
+  - add deterministic crop-only graphical review
+  - preserve existing 02/02k workers and compatible old completion identities through exact fingerprint bridge
+  - document the Stage 02d formatting exception
+  - retain the active plan for user review
+- **Architectural Rationale & Trade-Offs**:
+  - The new page conversion must group logical source objects independently of OCR blocks while retaining the old downstream stream and authenticated original-detail Codex transport. Validate every selected interval external input before cleanup.
+- **Verification & Test Results**:
+  - PASS 26 PDF technical tests, 19 shared Codex tests, quick pre-flight, 19 architecture checks, compileall, CLI help and git diff --check. Graphify updated. Offline fake-transport diagnostic confirmed complete inputs, decoded Markdown and model order, cache reuse, deterministic review PNG dimensions/bytes and selective 02d/02m restart with unchanged old records. The missing-external-input regression failed before repair and passed afterward. No live inference or real fragment conversion
+  - user-selected conversion/review and downstream 03-14 integration remain pending. No roadmap milestone completion.

@@ -37,6 +37,27 @@ or modify segment classifications. Run only this stage after completed Stage 02:
 python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "tools/bootstrap/pdf-to-markdown/config.yaml" --from-stage 02k --to-stage 02k
 ```
 
+[Stage 02d](stages/02d_page_conversion/README.md) independently groups complete
+source objects and converts their text to Markdown using full Stage 01 PNG/JSON
+input. [Stage 02m](stages/02m_page_conversion_review/README.md) reviews its ordered
+classifications, with frames only for tables and graphics. Neither stage feeds the
+existing Stages 03-14. Execution order is explicit: `01, 02, 02d, 02k, 02m`.
+To run through the reviews from a validated Stage 01 workspace:
+
+```powershell
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "tools/bootstrap/pdf-to-markdown/config.yaml" --from-stage 02 --to-stage 02m
+```
+
+Use only user-selected source fragments. Restart `02d` clears `02d/02m` and retains
+`02/02k` and the old downstream stream. Restart `02` retains `02d/02m` while
+clearing its old descendants. Restart `01` clears both branches. Valid retained
+stages inside an interval are skipped. `02m` can run alone with validated 01/02d;
+it requires no 02/02k results. Missing external interval inputs fail before cleanup.
+Compatible existing stage records retain their identities via the exact shared-code
+fingerprint bridge described in the [conversion contract](../reference-conversion-contract.md).
+Old workspaces with no 02d/02m can still explicitly continue the old downstream path;
+`--resume` starts at the first absent new stage and retains valid old-stage results.
+
 Keep conversion workspaces in the source PDF directory's `workspace/` subdirectory. Use `<PDF_DIRECTORY>/workspace/` for a single conversion, or a separate child for each source/page-range experiment, such as `<PDF_DIRECTORY>/workspace/page-64/` or `<PDF_DIRECTORY>/workspace/all-pages-00-01/`. When `--pdf` is supplied without `--workspace`, the CLI defaults to `<PDF_DIRECTORY>/workspace/`. Pass `--workspace` explicitly for an independent attempt or when continuing without `--pdf`. The original PDF stays outside the workspace. Final Markdown stays in `<WORKSPACE>/14_link_toc`; `--output-dir` has been removed. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
 
 Add `--publish` to copy completed Markdown and assets into the sibling book directory

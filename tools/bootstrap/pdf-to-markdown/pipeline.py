@@ -18,7 +18,7 @@ import pymupdf
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from conversion.config import load_config as parse_config, validate_config, PDF_STAGES, selection
 from conversion.transport import CodexTransport
-from conversion.lineage import read_state, write_state, file_hash, stage_identity, validate_prefix, restore_shared, complete_stage, first_incomplete_stage
+from conversion.lineage import read_state, write_state, file_hash, stage_identity, validate_prefix, restore_shared, complete_stage, first_incomplete_stage, artifact_predecessor
 from conversion.pdf_artifacts import validate_text_layer
 from conversion.pdf_selection import parse_page_ranges, selected_pages
 from conversion.publication import book_directory, check_destination, publish_output
@@ -53,12 +53,26 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("page_*_segments.json", "segment JSON files"),
     },
     {
+        "id": "02d", "dir": "02d_page_conversion", "script": "convert_page.py",
+        "desc": "Independently group page objects and convert their text to Markdown",
+        "targets": ["02d_page_conversion"],
+        "inspect": ("page_*_segments.json", "page conversion JSON files"),
+        "artifact_contract": "pdf_page_conversion",
+    },
+    {
         "id": "02k",
         "dir": "02k_segmentation_review",
         "script": "render_review.py",
         "desc": "Render segment frames and classification labels for visual review",
         "targets": ["02k_segmentation_review"],
         "inspect": ("page_*_review.png", "segmentation review PNGs"),
+    },
+    {
+        "id": "02m", "dir": "02m_page_conversion_review", "script": "render_review.py",
+        "desc": "Review independent page objects without textual geometry",
+        "targets": ["02m_page_conversion_review"],
+        "inspect": ("page_*_review.png", "page conversion review PNGs"),
+        "artifact_contract": "pdf_page_conversion_review",
     },
     {
         "id": "03",
@@ -157,6 +171,21 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("*.md", "Markdown files"),
     },
 ]
+
+# Execution order and artifact dependencies are deliberately separate.
+for index, stage in enumerate(STAGE_REGISTRY):
+    stage["inputs"] = {
+        "02d": ["01"], "02k": ["02"], "02m": ["01", "02d"], "03": ["02k"],
+    }.get(stage["id"], [STAGE_REGISTRY[index-1]["id"]] if index else [])
+
+
+def invalidated_stages(start_idx):
+    invalid = {STAGE_REGISTRY[start_idx]["id"]}
+    for stage in STAGE_REGISTRY:
+        if invalid.intersection(stage["inputs"]):
+            invalid.add(stage["id"])
+    return invalid
+
 
 STAGE_DEFINITIONS = [(s["id"], s["dir"], s["script"], s["desc"]) for s in STAGE_REGISTRY]
 STAGE_OUTPUT_TARGETS = {s["id"]: s["targets"] for s in STAGE_REGISTRY}
@@ -417,9 +446,11 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], sta
             raise ValueError("Cleanup directory escapes its conversion workspace/output")
         shutil.rmtree(path)
 
-    stages_to_clean = [s["id"] for s in STAGE_REGISTRY[start_idx:]]
-    print(f"[*] Invalidation: Wiping intermediate and output artifacts from Stage {stages_to_clean[0]} onwards...")
-    for s in STAGE_REGISTRY[start_idx:]:
+    stages_to_clean = invalidated_stages(start_idx)
+    print(f"[*] Invalidation: Wiping Stage {STAGE_REGISTRY[start_idx]['id']} and its descendants...")
+    for s in STAGE_REGISTRY:
+        if s["id"] not in stages_to_clean:
+            continue
         s_id = s["id"]
         if s_id in MANUAL_TASKS and s_id != keep_tasks_for:
             task_dir = workspace_dir / "tasks" / MANUAL_TASKS[s_id]
@@ -488,7 +519,7 @@ def main():
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--prepare-stage")
     parser.add_argument("--apply-stage")
-    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (00, 01, 02k, 03, 05, 11, 14)")
+    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (00, 01, 02k, 02m, 03, 05, 11, 14)")
     args = parser.parse_args()
     skill_dir = Path(__file__).resolve().parent
     config_source = args.config.resolve()
@@ -524,7 +555,7 @@ def main():
     elif args.run_deterministic:
         start = completed
         end = start
-        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("00", "01", "02k", "03", "05", "11", "14"):
+        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("00", "01", "02k", "02m", "03", "05", "11", "14"):
             raise ValueError("Next stage requires inference; use an explicit stage interval")
     elif args.resume:
         start, end = completed, len(STAGE_REGISTRY)-1
@@ -554,9 +585,13 @@ def main():
             selected_pages(",".join(map(str, source["pages"])) if source["pages"] is not None else None, len(document))
     if pdf and pdf.is_relative_to(workspace):
         raise ValueError("Keep the original source PDF outside the conversion workspace")
-    predecessor = validate_prefix(state, STAGE_REGISTRY, start, config, source, skill_dir, workspace, output)
+    invalid = invalidated_stages(start) if start < len(STAGE_REGISTRY) else set()
+    retained_registry = [item for item in STAGE_REGISTRY if item["id"] not in invalid and item["id"] in state.get("stages", {})]
+    validate_prefix(state, retained_registry, len(retained_registry), config, source, skill_dir, workspace, output)
+    if start < len(STAGE_REGISTRY):
+        predecessor = artifact_predecessor(state, STAGE_REGISTRY, STAGE_REGISTRY[start])
     if start == len(STAGE_REGISTRY):
-        restore_shared(state, STAGE_REGISTRY, start, workspace)
+        restore_shared(state, retained_registry, len(retained_registry), workspace)
         print("[+] All PDF stages have validated completion records.")
         if destination is not None:
             publish_output(output, destination)
@@ -565,7 +600,13 @@ def main():
     if start == 0 and pdf is None:
         raise ValueError("--pdf is required to regenerate Stage 00")
     selected = STAGE_REGISTRY[start:end+1]
-    required = {stage["dir"] for stage in selected if stage["dir"] in PDF_STAGES}
+    selected_ids = {stage["id"] for stage in selected}
+    for stage in selected:
+        for input_id in stage["inputs"]:
+            if input_id not in selected_ids and input_id not in {item["id"] for item in retained_registry}:
+                raise ValueError(f"Missing validated artifact input Stage {input_id} for Stage {stage['id']}")
+    required = {stage["dir"] for stage in selected
+                if stage["id"] not in {item["id"] for item in retained_registry} and stage["dir"] in PDF_STAGES}
     validate_config(config, PDF_STAGES, required)
     if required and not manual:
         transport = CodexTransport()
@@ -590,11 +631,11 @@ def main():
         shutil.copyfile(config_source, config_path)
     if args.cache_dir:
         os.environ["CONVERSION_CACHE_DIR"] = str(args.cache_dir.resolve())
-    restore_shared(state, STAGE_REGISTRY, start, workspace)
+    restore_shared(state, retained_registry, len(retained_registry), workspace)
     clean_downstream_stages(workspace, output, start, workspace / "stage_status.json",
                             keep_tasks_for=stage["id"] if args.apply_stage else None)
     state["source"] = source
-    retained_ids = {item["id"] for item in STAGE_REGISTRY[:start]}
+    retained_ids = {item["id"] for item in retained_registry}
     state["stages"] = {key: value for key, value in state.get("stages", {}).items() if key in retained_ids}
     write_state(workspace, state)
     if manual:
@@ -610,8 +651,17 @@ def main():
         return
     print(f"[*] PDF source: {source['name']}; selected pages: {source['pages']}; stages: {[stage['id'] for stage in selected]}")
     for stage in selected:
-        position = next(index for index, item in enumerate(STAGE_REGISTRY) if item["id"] == stage["id"])
-        predecessor = validate_prefix(state, STAGE_REGISTRY, position, config, source, skill_dir, workspace, output)
+        if stage["id"] in retained_ids:
+            print(f"[*] Retaining validated Stage {stage['id']}")
+            continue
+        inputs = set(stage["inputs"])
+        ancestors = set(inputs)
+        for item in reversed(STAGE_REGISTRY):
+            if item["id"] in ancestors:
+                ancestors.update(item["inputs"])
+        input_registry = [item for item in STAGE_REGISTRY if item["id"] in ancestors]
+        validate_prefix(state, input_registry, len(input_registry), config, source, skill_dir, workspace, output)
+        predecessor = artifact_predecessor(state, STAGE_REGISTRY, stage)
         identity = stage_identity(stage, config, source, predecessor, skill_dir)
         page_ranges = ",".join(map(str, source["pages"])) if source["pages"] else None
         if not run_stage(stage, skill_dir, workspace, pdf, output, config_path, args.verbose, page_ranges):

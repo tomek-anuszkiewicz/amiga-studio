@@ -14,7 +14,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap"))
 from conversion import load_config
 from conversion.config import PDF_STAGES
-from conversion.lineage import complete_stage, validate_prefix, restore_shared, stage_identity, file_hash
+from conversion.lineage import complete_stage, validate_prefix, restore_shared, stage_identity, file_hash, artifact_predecessor
 from conversion.pdf_geometry import text_blocks
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -106,7 +106,7 @@ class PdfRestartTests(unittest.TestCase):
         previous = None
         for stage in self.pipeline.STAGE_REGISTRY:
             self.write_artifacts(stage)
-            identity = stage_identity(stage, self.config, self.source, previous, ROOT / "tools/bootstrap/pdf-to-markdown")
+            identity = stage_identity(stage, self.config, self.source, artifact_predecessor(self.state, self.pipeline.STAGE_REGISTRY, stage), ROOT / "tools/bootstrap/pdf-to-markdown")
             previous = complete_stage(self.state, stage, identity, self.workspace, self.output)
         for number, name in (("06", "continuations"), ("07", "tables"), ("08", "graphics"), ("09", "prose")):
             task = self.workspace / "tasks" / name / "old.md"
@@ -143,7 +143,7 @@ class PdfRestartTests(unittest.TestCase):
         def worker(stage, *args):
             self.assertEqual(stage["id"], "02k")
             retained = json.loads((self.workspace / ".conversion-state.json").read_text())["stages"]
-            self.assertEqual(set(retained), {"00", "01", "02"})
+            self.assertEqual(set(retained), {"00", "01", "02", "02d", "02m"})
             self.assertFalse((self.workspace / "03_build_raw_stream").exists())
             self.write_artifacts(stage)
             return True
@@ -152,6 +152,18 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual(after["02"], before)
         self.assertEqual(after["02k"]["status"], "completed")
         self.assertNotIn("03", after)
+
+    def test_missing_input_of_later_selected_branch_rejects_before_cleanup(self):
+        state_path = self.workspace / ".conversion-state.json"
+        state = json.loads(state_path.read_text())
+        del state["stages"]["02d"]
+        del state["stages"]["02m"]
+        state_path.write_text(json.dumps(state))
+        before = (self.workspace / "02k_segmentation_review/artifact.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "02d"):
+            self.run_pipeline(["--from-stage", "02k", "--to-stage", "02m"],
+                              lambda *args: self.fail("Worker must not run before all external inputs validate"))
+        self.assertEqual((self.workspace / "02k_segmentation_review/artifact.json").read_bytes(), before)
 
     def test_restart_five_clears_all_dependents_and_tasks_with_missing_manifest(self):
         (self.workspace / "chapters_manifest.json").unlink()
@@ -172,7 +184,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual((self.workspace / "04_stream_reduction/artifact.json").read_bytes(), before)
         self.assertEqual(other_output.read_text(), "Independent conversion")
         state = json.loads((self.workspace / ".conversion-state.json").read_text())
-        self.assertEqual(list(state["stages"]), ["00", "01", "02", "02k", "03", "04", "05"])
+        self.assertEqual(list(state["stages"]), ["00", "01", "02", "02d", "02k", "02m", "03", "04", "05"])
 
     def test_missing_current_manifest_is_restored_from_preserved_snapshot(self):
         (self.workspace / "pages_manifest.json").unlink()
