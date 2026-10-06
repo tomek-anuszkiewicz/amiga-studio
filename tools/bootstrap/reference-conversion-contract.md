@@ -202,7 +202,7 @@ without requesting additional source-category runs. Native-copy, mixed,
 blank/graphic-only and real rotated/cropped fragment coverage remain unverified;
 closure does not certify those categories or a passing repository milestone gate.
 The implementation and closure record are retained in DIARY.md and Git.
-Roadmap 1.1–1.4 remain pending: PNG-to-Markdown redesign, visual reclip,
+Roadmap 1.2-1.5 remain pending: PNG-to-Markdown redesign, visual reclip,
 the new description stage and bulk conversion/indexing. Current source-fidelity
 requirements remain criteria for conversion work, not a claim that all legacy
 workers already enforce them. Fragment selection and any expansion follow the

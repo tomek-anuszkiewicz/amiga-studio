@@ -4,23 +4,30 @@
 
 Prepare source-faithful Markdown and searchable assets once, before routine emulator development. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
-- **1.1: PNG-to-Markdown and Crops with OCR Text JSON**
+- **1.1: Compare RunPod Document Models on the Test PDF (RUNPOD-PDF-MODELS)**
+  - Evaluate `Qwen3-VL-32B-Instruct`, `Chandra OCR 2`, and `olmOCR-2-7B-1025` on the 160-page test PDF, starting with a user-selected representative fragment before a full-book run. Compare their native PDF/page conversion workflows and their suitability for the existing converter separately.
+  - Qwen3-VL: assess OCR, page layout, controllable output and crop reanalysis. Chandra: assess PDF-to-Markdown/HTML/JSON, block positions and complex tables/layouts. olmOCR: establish a specialized baseline for text, tables and reading order.
+  - Measure source fidelity, reading order, register tables, ASCII art, figures/captions and block/crop geometry; record manual corrections and failed/retried pages. Record model/version, precision, GPU/VRAM, settings, page selection, startup/model-download time, processing time, throughput and actual RunPod cost per accepted page.
+  - Treat initial weight-memory figures as estimates to verify: Qwen3-VL-32B approximately 64 GB BF16 or 32 GB FP8; Chandra BF16 model files approximately 10.6 GB. Include runtime, vision and KV-cache overhead when sizing GPUs; determine olmOCR memory requirements from the selected release.
+  - **Gate:** Review the selected fragment against the source and compare accepted output, correction effort, elapsed time and cost with the Codex baseline. Choose a model and integration approach from measured evidence before full-book conversion; report Codex weekly usage separately from GPU cost and raw token counts.
+
+- **1.2: PNG-to-Markdown and Crops with OCR Text JSON**
   - Request a source fragment and assess Stage 02 objects, decoded `md_text`, classifications and table/graphic crops through Stage 02.5 (task `PDF-INDEPENDENT-02D-02M`). Technical implementation and Stage 03 consumption of Stage 02 objects are available; user assessment remains pending.
   - Connect the new stream explicitly to Stages 03-14 after review: preserve `md_text` without automatic reformatting, let text assembly ignore review boxes, and adapt table/asset handling. Never concatenate the branches or implicitly reinterpret old schemas.
   - **Gate:** User-selected fragments establish source fidelity and reading order for those pages; technical JSON/lineage checks do not establish conversion quality. Verify explicit new-stream assembly, input identity and retained artifacts before later crop review and bulk conversion.
 
-- **1.2: Iterative Table and Image Crop Review**
+- **1.3: Iterative Table and Image Crop Review**
   - Add `02b_reclip` between segmentation and `03_build_raw_stream`. Review each rectangle on the full source-page PNG; apply corrections, regenerate the crop and annotated page, and review again until acceptance or an iteration limit requiring manual review.
   - Persist stable segment IDs, verdicts, coordinate revisions, previews, and accepted crops for resumption. Raw-stream construction must consume finalized reclip output, preserve accepted geometry, and reject stale or unresolved results.
   - **Gate:** Samples cover immediate acceptance, correction/review/acceptance, iteration-limit handoff, and resumption; saved artifacts prove review and downstream use without silent recropping.
 
-- **1.3: Table, Image, and ASCII-Art Descriptions**
+- **1.4: Table, Image, and ASCII-Art Descriptions**
   - Add a runnable stage consuming validated Markdown/assets and source context. Preserve HTML tables, images, and `text`-fenced ASCII art; place actual closed `<details><summary>...</summary>...</details>` HTML directly below each element, collapsed by default.
   - Describe source-visible purpose, labels, values, and spatial/logical/timing relationships. Table descriptions cover headers and material relationships and include a GFM fallback preserving cell order and span semantics.
   - Write each image's identical description beside its asset as `<asset filename>.txt`. Persist enriched Markdown and sidecars; rerunning must not duplicate blocks or create mismatches.
   - **Gate:** Inspect rendered table/image/ASCII samples and written files for placement, faithful content, matching sidecars, and idempotent reruns.
 
-- **1.4: Validate Bulk Conversion and RAG Ingestion**
+- **1.5: Validate Bulk Conversion and RAG Ingestion**
   - After approving the sample pipeline, convert the manuals and validate Markdown, links, assets, and descriptions before indexing. Verify fresh and incremental `amiga` ingestion, hashing, chunk fidelity, embeddings, and sidecar retrieval through the canonical `rag_qdrant` CLI.
   - **Gate:** Accepted converted artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](docs/developers.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag); unchanged input does not cause unnecessary reindexing.
 

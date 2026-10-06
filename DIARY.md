@@ -2183,3 +2183,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick preflight passed
   - architecture rules passed (19 tests)
   - documentation-only change, no conversion requested or run
+---
+
+### [2026-10-06 19:34 CET] — Prioritize RunPod document-model comparison
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add RUNPOD-PDF-MODELS as Step 1.1 for Qwen3-VL-32B-Instruct, Chandra OCR 2 and olmOCR-2-7B-1025 on the test PDF
+  - record source-quality, correction-effort, GPU runtime and cost acceptance criteria
+  - renumber remaining Step 1 tasks
+- **Architectural Rationale & Trade-Offs**:
+  - Select the conversion model from measured source fidelity and actual GPU cost before bulk conversion
+  - keeping subscription quota and token counts separate
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 19/19
+  - git diff --check passed
+  - planning only, no GPU rental or conversion run
