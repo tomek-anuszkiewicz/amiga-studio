@@ -1424,3 +1424,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture tests 19/19 PASS
   - Graphify incremental update completed
   - No fragment conversion requested or run
+---
+
+### [2026-10-06 02:03 CEST] — Clip extracted PDF text bounds to the displayed page
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/pdf_geometry.py`
+  - `PDF stages 00-01`
+- **What Was Changed (The Concrete Reality)**:
+  - Intersect extracted text bounding boxes with the displayed page before validation and normalization
+  - Preserve complete extracted text and original PDF content
+  - Retain strict OCR geometry validation and reject malformed or fully outside extraction boxes
+  - Document the approved clipping behavior
+- **Architectural Rationale & Trade-Offs**:
+  - PDF-BOUNDS-1: user approved clipping existing native text bounds after physical TestBook page 2 exceeded the page width
+- **Verification & Test Results**:
+  - Focused regression failed before the fix and passed afterward
+  - PDF conversion tests 21/21 PASS
+  - Quick per-commit gate PASS
+  - Architecture tests 19/19 PASS
+  - All-page stages 00-01 rerun passed page 2 and reached page 65 where invalid OCR text stopped Stage 00
+  - Stage 01 did not run
+  - Stage 00 recorded 2 live calls and 1 cache hit
+  - Graphify refresh attempted but unavailable because the graphify Python module is not installed

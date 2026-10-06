@@ -9,13 +9,36 @@ import tempfile
 import unittest
 import pymupdf
 from unittest.mock import patch
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap"))
 from conversion import load_config
 from conversion.config import PDF_STAGES
 from conversion.lineage import complete_stage, validate_prefix, restore_shared, stage_identity, file_hash
+from conversion.pdf_geometry import text_blocks
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class PdfTextBoundsTests(unittest.TestCase):
+    def extract(self, box):
+        page = SimpleNamespace(rect=pymupdf.Rect(0, 0, 504, 649),
+                               rotation_matrix=pymupdf.Matrix(1, 1),
+                               get_text=lambda *args, **kwargs: {"blocks": [
+                                   {"type": 0, "number": 0, "bbox": box,
+                                    "lines": [{"spans": [{"text": "Retained text"}]}]}]})
+        return text_blocks(page)
+
+    def test_native_text_bounds_clip_without_truncating_text(self):
+        block = self.extract([-2, -3, 507.405, 652])[0]
+        self.assertEqual(block["bbox"], [0, 0, 504, 649])
+        self.assertEqual(block["bbox_norm"], [0, 0, 1, 1])
+        self.assertEqual(block["text"], "Retained text\n")
+
+    def test_invalid_or_fully_outside_bounds_still_fail(self):
+        for box in ([505, 10, 510, 20], [20, 10, 10, 20], [0, 0, float("nan"), 20]):
+            with self.subTest(box=box), self.assertRaises(ValueError):
+                self.extract(box)
 
 
 

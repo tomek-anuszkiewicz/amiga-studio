@@ -54,7 +54,10 @@ HTML and PDF use the shared Codex transport and strict stage configuration. PDF 
 PDF Stage 00 now publishes a separate validated `- OCR.pdf` and text-layer manifest;
 Stage 01 reads only this PDF and persists positioned text JSON with matching PNGs.
 Native spans are preserved regardless of length; textless pages use configured OCR
-triage. Blank and graphic-only classifications have explicit empty text and physical
+triage. Extracted text bounding boxes are intersected with the displayed page before
+validation and normalization, retaining the complete extracted text and leaving PDF
+content unchanged. Nonfinite, inverted or fully out-of-page boxes still fail.
+Blank and graphic-only classifications have explicit empty text and physical
 page identities. Publication checks reopened text/positions, source hashes, page
 geometry, retained source streams/native text and identical selected-page renders.
 Fragment coverage never certifies unselected pages. Schema/coverage checks supplement

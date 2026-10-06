@@ -20,12 +20,15 @@ def page_geometry(page):
             "pdf_to_extraction": list(page.transformation_matrix)}
 
 
-def valid_box(box, width, height, *, tolerance=GEOMETRY_TOLERANCE):
+def valid_box(box, width, height, *, tolerance=GEOMETRY_TOLERANCE, clip=False):
     if not isinstance(box, (list, tuple)) or len(box) != 4:
         raise ValueError("Text bounding box must contain four coordinates")
     if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in box):
         raise ValueError("Text bounding box must be finite")
     x0, y0, x1, y1 = box
+    if clip:
+        x0, y0, x1, y1 = max(0, x0), max(0, y0), min(width, x1), min(height, y1)
+        box = [x0, y0, x1, y1]
     if x0 >= x1 or y0 >= y1 or x0 < -tolerance or y0 < -tolerance or x1 > width + tolerance or y1 > height + tolerance:
         raise ValueError(f"Invalid or out-of-page text bounding box: {box}")
     return list(box)
@@ -52,7 +55,7 @@ def text_blocks(page):
             continue
         valid_text(text)
         box = list(pymupdf.Rect(block["bbox"]) * page.rotation_matrix)
-        valid_box(box, page.rect.width, page.rect.height)
+        box = valid_box(box, page.rect.width, page.rect.height, clip=True)
         blocks.append({"block_id": block["number"], "type": 0, "text": text + "\n", "bbox": box,
                        "bbox_norm": [box[0] / page.rect.width, box[1] / page.rect.height,
                                      box[2] / page.rect.width, box[3] / page.rect.height]})
