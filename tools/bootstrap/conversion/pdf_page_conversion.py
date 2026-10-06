@@ -32,27 +32,27 @@ def validate_page(value, entry, *, stored=False):
     validate(value, ARTIFACT if stored else RESPONSE)
     raster = entry["raster"]
     require(value["page"] == entry["page"] and value["image_width"] == raster["pixel_width"]
-            and value["image_height"] == raster["pixel_height"], "Stage 02d page/raster identity mismatch")
+            and value["image_height"] == raster["pixel_height"], "Stage 02 page/raster identity mismatch")
     for ordinal, segment in enumerate(value["segments"], 1):
         if stored:
             require(segment["segment_id"] == f"{entry['page_id']}_seg_{ordinal:03d}",
-                    "Stage 02d segment identity/order mismatch")
+                    "Stage 02 segment identity/order mismatch")
         kind, box, level = segment["type"], segment["bbox"], segment["heading_level"]
-        require((level is not None) == (kind in HEADING_TYPES), "Stage 02d heading level/type mismatch")
-        require(all(type(v) is int for v in box), "Stage 02d bbox coordinates must be integer pixels")
+        require((level is not None) == (kind in HEADING_TYPES), "Stage 02 heading level/type mismatch")
+        require(all(type(v) is int for v in box), "Stage 02 bbox coordinates must be integer pixels")
         x0, y0, x1, y1 = box
         require(0 <= x0 < x1 <= value["image_width"] and 0 <= y0 < y1 <= value["image_height"],
-                "Stage 02d bbox lies outside the original PNG")
+                "Stage 02 bbox lies outside the original PNG")
     return value
 
 
 def validate_conversion(workspace, source=None):
     manifest = validate_preprocess(workspace, source,
                                    manifest_path=workspace / "01_preprocess/.manifests/pages_manifest.json")
-    directory = workspace / "02d_page_conversion"
+    directory = workspace / "02_page_conversion"
     expected = {f"{entry['page_id']}_segments.json" for entry in manifest["pages"]}
     require({p.name for p in directory.glob("page_*_segments.json")} == expected,
-            "Stage 02d objects do not cover the selected page set")
+            "Stage 02 objects do not cover the selected page set")
     pages = []
     for entry in manifest["pages"]:
         value = read_json(directory / f"{entry['page_id']}_segments.json")

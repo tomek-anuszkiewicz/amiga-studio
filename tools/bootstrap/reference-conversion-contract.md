@@ -26,7 +26,7 @@ Crop coordinates refer to the original rendered image: integer pixels, top-left 
 
 Markdown begins with valid YAML frontmatter and a document heading. TOC entries must resolve to actual headings. Asset paths must resolve; check rendered output and source fidelity before bulk use. Parser checks cannot certify visual or semantic completeness.
 
-Stage 02d has a user-requested exception to the Markdown formatting recipes above.
+Stage 02 has a user-requested exception to the Markdown formatting recipes above.
 Its effective request asks only for each object's Markdown conversion in `md_text`,
 with layout, classification, fidelity and JSON constraints. It supplies no Markdown
 style recipes, formatting examples or hints. The shared transport's base/developer
@@ -47,10 +47,10 @@ Keep PDF conversion workspaces in the source PDF directory's `workspace/` subdir
 
 Each PDF workspace owns one source/page selection and its intermediate conversion state. Explicit restart validates retained artifact inputs, clears the selected stage and its artifact descendants (including their status/manual tasks), and restores retained manifest snapshots. Final output stays in the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored; modified retained artifacts are rejected rather than automatically repaired. Broader manual content editing and conversion quality remain separate work.
 
-The usable execution sequence is `00 -> 01 -> 02d -> 02m`.
-The former segmentation and review stages have been removed. Stage 02d reads only validated Stage 01 PNG/complete text
+The execution sequence is `00 -> 01 -> 02 -> 02.5 -> 03`, then 04-14.
+The former segmentation and review stages have been removed. Stage 02 reads only validated Stage 01 PNG/complete text
 JSON pairs and defines independent logical objects in model array order, with
-`md_text` and no `raw_text`. `02d_page_conversion/page_NNNN_segments.json` records
+`md_text` and no `raw_text`. `02_page_conversion/page_NNNN_segments.json` records
 physical page identity, original PNG dimensions, deterministic page-scoped IDs,
 classifications, heading levels and a required boolean `continuation`. A title,
 heading or caption at the top of the page has `continuation: true` only when its
@@ -58,8 +58,8 @@ source-visible name explicitly indicates continuation from the previous page,
 including Continued, Concluded or a later sheet/part number. It keeps its normal
 type (for example `toc_heading`, `list_of_figures_heading` or `caption`) and its
 complete source name. Other objects, including bodies beneath these titles,
-have `continuation: false`. Stage 02d no longer accepts `caption_continuation`;
-old objects without this boolean require 02d/02m regeneration, not in-place
+have `continuation: false`. Stage 02 no longer accepts `caption_continuation`;
+old objects without this boolean require 02/02.5 regeneration, not in-place
 migration.
 Every object has a nonempty integer pixel
 rectangle `[x0,y0,x1,y1]` with exclusive upper bounds. The model bounds complete
@@ -67,37 +67,44 @@ logical objects, including textual ones, independently of OCR blocks. Text boxes
 serve review; downstream consumers may ignore them. Table/graphic boxes may also
 serve cropping. A complete front or back book cover is one `cover` object,
 including its artwork, logos and source-visible publication text, with null
-`heading_level` and false `continuation`. Existing cover pages require 02d/02m
+`heading_level` and false `continuation`. Existing cover pages require 02/02.5
 regeneration to apply that classification; saved objects are not relabeled.
-Previous text objects with null boxes require 02d regeneration. The eight additional
+Previous text objects with null boxes require 02 regeneration. The eight additional
 classifications distinguish footnotes, source table legends, index and listing
 headings/entries.
 `table_legend` is a source-written block below a table defining its symbols,
 notation or abbreviations, including an appropriately placed NOTES/DESCRIPTION
 block with that role. General explanations are prose, table numbers/titles are
 captions and individually referenced notes are footnotes. The former broader
-classification is not accepted by the new schema; regenerate affected 02d/02m
+classification is not accepted by the new schema; regenerate affected 02/02.5
 artifacts without modifying saved source classifications in place.
 
-Stage 02m reads Stage 02d JSON and the exact Stage 01 PNG.
-Its `02m_page_conversion_review/page_NNNN_review.png` preserves resolution and adds
+Stage 02.5 reads Stage 02 JSON and the exact Stage 01 PNG.
+Its `02.5_page_conversion_review/page_NNNN_review.png` preserves resolution and adds
 an equal-width blank right panel. Every object has an ordered type/heading label
 with explicit `continuation: true/false`.
 All objects have containing 2-pixel frames and straight review leaders based on
 their model-selected boxes. This supports review of textual spatial order as well
 as tables and graphics. No OCR geometry is synthesized; the review stage
 does not correct conversion or call a model.
-Stages 03-14 retain their legacy workers. Stage 03 rejects execution because
-its input was removed; adapting assembly to Markdown text, pixel coordinates
-and the new object types remains separate work. Stop fragment runs at 02m.
+Stage 03 consumes validated Stage 02 objects directly, independently of the
+02.5 review. It preserves page/array order, object types, heading levels,
+segment IDs, continuation flags, `md_text` and original `bbox_pixels`.
+The downstream `raw_text` field contains the same Markdown, not re-extracted OCR;
+`bbox_norm` divides by original PNG dimensions, and `bbox` scales those fractions
+by displayed-page dimensions for the existing point-based consumers/cropper.
+Later formatting and merging workers retain their current behavior; this adapter
+does not redesign the remaining pipeline or certify conversion quality.
 
-Restart 02d invalidates 02m and later stream stages; restart 01 invalidates
+Restart 02 invalidates 02.5 and later stream stages. Restart 02.5 retains the
+stream; Stage 03 binds only the 02 completion digest. Restart 01 invalidates
 page conversion and its dependents. Before cleanup, all retained records and
 external inputs are validated. Completion identities follow artifact inputs;
-02m binds both the 01 and 02d completion digests. Drawing primitives now live
-in 02m and are fingerprinted with its procedure. The former shared-code
+02.5 binds both the 01 and 02 completion digests. Drawing primitives now live
+in 02.5 and are fingerprinted with its procedure. The former shared-code
 compatibility bridge has been removed; changed shared procedures invalidate
-old identities normally. Existing artifacts are never relabeled or migrated.
+old identities normally. Renamed stage directories and configuration keys require
+regeneration; old 02d/02m artifacts are never relabeled or migrated.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
 in the source book's `workspace/html_to_markdown/`; PDF output stays in `workspace/14_link_toc/`.

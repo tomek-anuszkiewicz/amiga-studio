@@ -17,7 +17,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --config "tools/bootstrap/pdf-to-markdown/config.yaml"
 ```
 
-The workspace holds intermediate page images, JSON streams, task files, a configuration snapshot, stage status and `.conversion-state.json`. Stage directories are created when their stages execute; a partial run through `02m` does not create `14_link_toc`. Final Markdown and assets remain in workspace/14_link_toc. The shared `../conversion/` package owns configuration, Codex transport, response schemas, cache and predecessor validation. Use `--cache-dir` to select a disposable cache; the default is `.cache/codex`. Completed schema-validated responses are cached separately from legacy Gemini data.
+The workspace holds intermediate page images, JSON streams, task files, a configuration snapshot, stage status and `.conversion-state.json`. Stage directories are created when their stages execute; a partial run through `02.5` does not create `14_link_toc`. Final Markdown and assets remain in workspace/14_link_toc. The shared `../conversion/` package owns configuration, Codex transport, response schemas, cache and predecessor validation. Use `--cache-dir` to select a disposable cache; the default is `.cache/codex`. Completed schema-validated responses are cached separately from legacy Gemini data.
 
 [Stage 00](stages/00_text_layer/README.md) prepares `00_text_layer/<source stem>-ocr.pdf` plus a validated text-layer manifest. It retains native spans, adds invisible OCR only to selected textless pages containing text, using local Tesseract through PyMuPDF; pages with no recognized lines retain empty text provenance. If no text addition is needed, the separate output is a byte-for-byte copy. The complete page tree, geometry, native content and selected-page renders remain unchanged. Only the selected fragment is certified. The original PDF must remain outside the workspace.
 
@@ -27,24 +27,27 @@ Use `--page-ranges "19"` for a single physical PDF page. Keep the same source/pa
 
 ## Independent test workspaces and restarts
 
-[Stage 02d](stages/02d_page_conversion/README.md) groups complete source objects
+[Stage 02](stages/02_page_conversion/README.md) groups complete source objects
 and converts their text to Markdown using full Stage 01 PNG/JSON input.
-[Stage 02m](stages/02m_page_conversion_review/README.md) renders ordered labels
-and model-selected frames for every object. The current usable sequence is
-`00 -> 01 -> 02d -> 02m`; segmentation and its former review were removed.
-Stages 03-14 retain their legacy code, but Stage 03 rejects execution until
-raw-stream assembly is redesigned for `md_text`, pixel boxes and the new types.
-Use an explicit end stage to stop at the usable review:
+[Stage 02.5](stages/02.5_page_conversion_review/README.md) renders ordered labels
+and model-selected frames for every object. Execution order is `00 -> 01 -> 02 -> 02.5 -> 03`, then Stages 04-14.
+Stage 03 reads validated Stage 02 objects directly; the 02.5 review is not an
+artifact input to the stream. Use an explicit end stage for a review-only run:
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "tools/bootstrap/pdf-to-markdown/config.yaml" --from-stage 02d --to-stage 02m
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "tools/bootstrap/pdf-to-markdown/config.yaml" --from-stage 02 --to-stage 02.5
 ```
 
-Use only user-selected source fragments. Restart `02d` invalidates its review
+Use only user-selected source fragments. Restart `02` invalidates its review
 and later stream stages; restart `01` also invalidates page conversion.
-`02m` can run alone with validated Stage 01/02d artifacts. Missing external
-interval inputs fail before cleanup. The renderer lives entirely within 02m.
-Changed shared procedure fingerprints require explicit regeneration from the
+Restart `02.5` invalidates only the review and retains the stream.
+`02.5` can run alone with validated Stage 01/02 artifacts. Missing external
+interval inputs fail before cleanup. The renderer lives entirely within 02.5. Stage 03 keeps `md_text`, object types,
+IDs, continuation flags and pixel boxes. It copies Markdown into the legacy
+`raw_text` field and derives point/normalized boxes for existing downstream
+consumers; those later workers retain their current formatting and merging behavior.
+Renamed configuration keys and workspace directories require regeneration;
+old 02d/02m artifacts are not automatically moved. Changed shared procedure fingerprints require explicit regeneration from the
 reported stage; existing saved artifacts are not migrated or relabeled.
 
 Keep conversion workspaces in the source PDF directory's `workspace/` subdirectory. Use `<PDF_DIRECTORY>/workspace/` for a single conversion, or a separate child for each source/page-range experiment, such as `<PDF_DIRECTORY>/workspace/page-64/` or `<PDF_DIRECTORY>/workspace/all-pages-00-01/`. When `--pdf` is supplied without `--workspace`, the CLI defaults to `<PDF_DIRECTORY>/workspace/`. Pass `--workspace` explicitly for an independent attempt or when continuing without `--pdf`. The original PDF stays outside the workspace. Final Markdown stays in `<WORKSPACE>/14_link_toc`; `--output-dir` has been removed. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
@@ -93,12 +96,12 @@ tools/bootstrap/pdf-to-markdown/
     │   ├── preprocess.py                    # Renders PDF -> 300 DPI PNG, text blocks and page geometry JSON
     │   └── README.md
     │
-    ├── 02d_page_conversion/
+    ├── 02_page_conversion/
     │   ├── convert_page.py                  # Complete page objects with Markdown and pixel boxes
     │   ├── prompt.md
     │   └── README.md
     │
-    ├── 02m_page_conversion_review/
+    ├── 02.5_page_conversion_review/
     │   ├── render_review.py                 # Page frames, ordered labels and continuation flags
     │   └── README.md
     │
@@ -170,7 +173,7 @@ tools/bootstrap/pdf-to-markdown/
 ## 2. Core Execution Invariant: Master Orchestrator Mandate
 
 > [!IMPORTANT]
-> **NEVER invoke stage worker scripts directly** (e.g. `python stages/01_preprocess/preprocess.py` or `python stages/02d_page_conversion/convert_page.py`).
+> **NEVER invoke stage worker scripts directly** (e.g. `python stages/01_preprocess/preprocess.py` or `python stages/02_page_conversion/convert_page.py`).
 >
 > **ALL execution MUST go through `pipeline.py`**.
 > Directly executing sub-scripts bypasses:
@@ -184,10 +187,10 @@ tools/bootstrap/pdf-to-markdown/
 > - **Full pipeline**: `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>"`
 > - **Stage interval**: `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 05`
 > - **Single stage**: Set `--from-stage` and `--to-stage` to the exact same stage number:
->   `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02d --to-stage 02d`
+>   `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02`
 > - **Prepare and preprocess specific pages in a new workspace**:
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 00 --to-stage 01`
-> - **Next ready deterministic stage (00, 01, 02m; legacy stages 03, 05, 11, 14 require downstream redesign)**: `--run-deterministic` runs one ready stage and rejects an inference stage.
+> - **Next ready deterministic stage (00, 01, 02.5, 03, 05, 11, 14)**: `--run-deterministic` runs one ready stage and rejects an inference stage.
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --run-deterministic`
 > - **Optional manual review stages (06, 07, 08, 09)**:
 >   - Prepare task items: `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --prepare-stage 07`

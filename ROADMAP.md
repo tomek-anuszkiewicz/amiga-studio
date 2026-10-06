@@ -5,7 +5,7 @@
 Prepare source-faithful Markdown and searchable assets once, before routine emulator development. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
 - **1.1: PNG-to-Markdown and Crops with OCR Text JSON**
-  - Request a source fragment and assess independent Stage 02d objects, decoded `md_text`, classifications and table/graphic crops through Stage 02m (task `PDF-INDEPENDENT-02D-02M`). Technical implementation is available; user assessment remains pending. Preserve the separate existing Stage 02/02k stream.
+  - Request a source fragment and assess Stage 02 objects, decoded `md_text`, classifications and table/graphic crops through Stage 02.5 (task `PDF-INDEPENDENT-02D-02M`). Technical implementation and Stage 03 consumption of Stage 02 objects are available; user assessment remains pending.
   - Connect the new stream explicitly to Stages 03-14 after review: preserve `md_text` without automatic reformatting, let text assembly ignore review boxes, and adapt table/asset handling. Never concatenate the branches or implicitly reinterpret old schemas.
   - **Gate:** User-selected fragments establish source fidelity and reading order for those pages; technical JSON/lineage checks do not establish conversion quality. Verify explicit new-stream assembly, input identity and retained artifacts before later crop review and bulk conversion.
 

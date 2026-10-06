@@ -176,8 +176,8 @@ def validate_stage_artifacts(stage, workspace, source, *, snapshot=False):
             directory = workspace / stage["dir"]
             expected = {f"{entry['page_id']}_review.png" for entry, value in pages}
             require({p.name for p in directory.glob("page_*_review.png")} == expected,
-                    "Stage 02m review coverage mismatch")
+                    "Stage 02.5 review coverage mismatch")
             for entry, value in pages:
                 image = pymupdf.Pixmap(directory / f"{entry['page_id']}_review.png")
                 require(image.width == value["image_width"]*2 and image.height == value["image_height"],
-                        "Stage 02m review dimensions mismatch")
+                        "Stage 02.5 review dimensions mismatch")

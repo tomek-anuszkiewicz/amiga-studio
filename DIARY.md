@@ -1951,3 +1951,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - graphify update completed
   - no fragment conversion run. Current fragment runs must stop at 02m
   - Stage 03-14 end-to-end conversion remains unavailable. Shared procedure changes require explicit regeneration of incompatible workspace records.
+---
+
+### [2026-10-06 17:46 CET] — Renumber PDF page stages and connect raw-stream assembly
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion`
+  - `tests/test_pdf_conversion_codex.py`
+  - `docs/developers.md`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Rename page conversion 02d to 02 and review 02m to 02.5 across stage directories, registry, configuration, validation, tests and documentation
+  - make Stage 03 depend directly on Stage 02
+  - assemble validated objects preserving Markdown, classifications, IDs, continuation flags and pixel boxes
+  - derive legacy text and geometry fields for downstream workers
+- **Architectural Rationale & Trade-Offs**:
+  - Make page conversion the canonical stream input while keeping graphical review independent of stream lineage and restart invalidation
+- **Verification & Test Results**:
+  - 30 PDF converter tests and 19 shared converter tests passed
+  - quick pre-flight passed
+  - 19 architecture tests passed
+  - CLI help and git diff --check passed
+  - Graphify refreshed. No fragment conversion requested or run. Old stage/configuration identities require regeneration
+  - later stream formatting and merging behavior remains unchanged.

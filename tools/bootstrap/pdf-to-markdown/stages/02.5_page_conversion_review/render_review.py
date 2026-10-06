@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage 02m: ordered labels and model-selected boxes for every object."""
+"""Stage 02.5: ordered labels and model-selected boxes for every object."""
 
 import argparse
 import colorsys
@@ -89,7 +89,7 @@ def review_image(image, value):
 
 def render_reviews(workspace):
     pages = validate_conversion(workspace)
-    output = workspace / "02m_page_conversion_review"
+    output = workspace / "02.5_page_conversion_review"
     output.mkdir(parents=True, exist_ok=True)
     for entry, value in pages:
         with Image.open(workspace / entry["png_file"]) as image:
@@ -98,7 +98,7 @@ def render_reviews(workspace):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 02m: independent page-conversion review")
+    parser = argparse.ArgumentParser(description="Stage 02.5: independent page-conversion review")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     args = parser.parse_args()

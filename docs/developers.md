@@ -248,9 +248,9 @@ PDF conversion starts with [Stage 00](../tools/bootstrap/pdf-to-markdown/stages/
 
 1. **PDF Scans to Markdown ([`pdf-to-markdown`](../tools/bootstrap/pdf-to-markdown/README.md)):**
    - Prepares a separate native/OCR PDF and matching positioned-text JSON/PNG pairs.
-   - Stage 02d uses Codex text and original-detail image input to group page objects and produce Markdown text, types and pixel boxes.
-   - Stage 02m renders frames and ordered labels for user assessment. Stop current fragment runs with `--to-stage 02m`.
-   - The former segmentation and review stages were removed. Legacy Stages 03-14 require stream redesign before end-to-end chapter/asset publication is available.
+   - Stage 02 uses Codex text and original-detail image input to group page objects and produce Markdown text, types and pixel boxes.
+   - Stage 02.5 renders frames and ordered labels for user assessment. Use `--to-stage 02.5` for review-only runs.
+   - Stage 03 consumes Stage 02 objects directly, preserving Markdown, classifications, order and continuation flags while providing point-based geometry and text fields for the existing downstream workers.
 
 2. **Web Crawls to Markdown ([`html-to-markdown`](../tools/bootstrap/html-to-markdown/README.md)):**
    - Converts downloaded multi-page HTML hierarchies (e.g. Kuba Winnicki's *Achtung! Amiga*).
