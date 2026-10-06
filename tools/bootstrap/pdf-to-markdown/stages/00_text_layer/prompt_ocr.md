@@ -7,7 +7,8 @@ visible text, including labels, key codes, captions and titles inside diagrams;
 never replace labels with a diagram description. Every text-bearing classification
 must contain nonempty text blocks. Reserve `pure_graphic` for artwork with no
 readable text. If text is unreadable, report it with the replacement character
-U+FFFD so preparation stops for review; do not invent a transcription.
+U+FFFD for review; do not invent a transcription. Preparation retains this marker
+in the inspection JSON but omits it from the invisible PDF text layer.
 
 ### Step 1: Page Type Triage
 Examine the image and classify it into one of the following categories:

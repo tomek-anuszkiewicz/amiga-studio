@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import sys
 import pymupdf
+from jsonschema import validate
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from conversion import CodexClient, pdf_schemas
@@ -15,8 +16,24 @@ from conversion.config import load_config, PDF_STAGES
 from conversion.lineage import file_hash, read_state, stage_identity
 from conversion.pdf_artifacts import write_json, read_json, require, validate_text_layer
 from conversion.pdf_geometry import (SCHEMA_VERSION, GEOMETRY_TOLERANCE, page_geometry,
-                                     text_blocks, validate_ocr, insert_ocr, validate_inserted)
+                                     text_blocks, valid_box, validate_ocr, insert_ocr, validate_inserted)
 from conversion.pdf_selection import selected_pages
+
+
+def text_layer_ocr(response):
+    """Omit unreadable markers without joining readable fragments across them."""
+    validate(response, pdf_schemas.OCR)
+    if response["page_type"] in ("blank", "pure_graphic"):
+        return validate_ocr(response)
+    blocks = []
+    for block in response["blocks"]:
+        y0, x0, y1, x1 = block["box_2d"]
+        valid_box([x0, y0, x1, y1], 1000, 1000, tolerance=0)
+        text = block["text"].replace("\ufffd", " ")
+        if "\ufffd" in block["text"] and not text.strip():
+            continue
+        blocks.append({**block, "text": text})
+    return validate_ocr({**response, "blocks": blocks})
 
 
 def record_ocr_read(path, source, entry, response):
@@ -26,13 +43,15 @@ def record_ocr_read(path, source, entry, response):
               "text_validation": {"status": "pending"}}
     write_json(path, record)
     try:
-        validate_ocr(response)
+        prepared = text_layer_ocr(response)
     except Exception as error:
         record["text_validation"] = {"status": "failed", "error_type": type(error).__name__,
                                      "error": str(error)}
         write_json(path, record)
         raise
-    record["text_validation"] = {"status": "passed"}
+    record["text_layer_response"] = prepared
+    record["text_validation"] = {"status": "passed", "omitted_unreadable_markers":
+                                 sum(block["text"].count("\ufffd") for block in response["blocks"])}
     write_json(path, record)
     return response
 
@@ -133,6 +152,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                         record = {"identity": identity, "response": response}
                         record["digest"] = digest(record)
                         write_json(recovery_file, record)
+                    response = text_layer_ocr(response)
                     image.unlink()
                     entry.update(page_type=response["page_type"], caption=response["caption"],
                                  classification_basis="observed_by_codex", provenance="ocr" if response["blocks"] else "none")

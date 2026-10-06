@@ -52,7 +52,7 @@ class PdfPageReadTests(unittest.TestCase):
         config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
                              known_stages=PDF_STAGES, required_stages={"00_text_layer"})
         response = {"page_type": "text_page", "caption": None,
-                    "blocks": [{"text": "Unreadable \ufffd", "box_2d": [100, 100, 200, 900]}]}
+                    "blocks": [{"text": "Unsupported \u0000", "box_2d": [100, 100, 200, 900]}]}
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "source.pdf"
             workspace = Path(directory) / "workspace"
@@ -77,6 +77,40 @@ class PdfPageReadTests(unittest.TestCase):
             self.assertIn("defective text", rejected["text_validation"]["error"])
             self.assertFalse((workspace / "00_text_layer/recovery/page_0002.json").exists())
             self.assertFalse((workspace / "00_text_layer/text_layer_manifest.json").exists())
+
+    def test_unreadable_markers_are_retained_in_json_but_omitted_from_pdf(self):
+        spec = importlib.util.spec_from_file_location(
+            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
+        stage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(stage)
+        response = {"page_type": "text_page", "caption": None, "blocks": [
+            {"text": "\ufffd", "box_2d": [100, 100, 200, 900]},
+            {"text": "Left\ufffdRight", "box_2d": [300, 100, 400, 900]}]}
+        with self.assertRaisesRegex(ValueError, "empty OCR"):
+            stage.text_layer_ocr({**response, "blocks": response["blocks"][:1]})
+        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
+                             known_stages=PDF_STAGES, required_stages={"00_text_layer"})
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.pdf"
+            workspace = Path(directory) / "workspace"
+            with pymupdf.open() as document:
+                document.new_page()
+                document.save(source)
+            with patch.object(stage, "CodexClient") as client:
+                def respond(*args, **kwargs):
+                    kwargs["validator"](response)
+                    return response
+                client.return_value.__enter__.return_value.generate_json.side_effect = respond
+                stage.prepare_text_layer(source, workspace, config)
+            record = json.loads((workspace / "00_text_layer/page_reads/page_0001.json").read_text(encoding="utf-8"))
+            self.assertEqual(record["ocr_response"], response)
+            self.assertEqual(record["text_layer_response"]["blocks"], [
+                {"text": "Left Right", "box_2d": [300, 100, 400, 900]}])
+            self.assertEqual(record["text_validation"]["omitted_unreadable_markers"], 2)
+            with pymupdf.open(workspace / "00_text_layer/source - OCR.pdf") as prepared:
+                text = prepared[0].get_text()
+                self.assertNotIn("\ufffd", text)
+                self.assertIn("Left Right", text)
 
 
 class PdfRestartTests(unittest.TestCase):

@@ -1468,3 +1468,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Stage 00 still halted on unreadable OCR and Stage 01 did not run
   - One live request and two cache hits
   - Graphify refresh attempted but graphify module unavailable
+---
+
+### [2026-10-06 02:26 CEST] — Omit unreadable OCR markers from invisible PDF text
+- **Affected Subsystems**:
+  - `PDF Stage 00`
+  - `OCR inspection records`
+- **What Was Changed (The Concrete Reality)**:
+  - PDF-OCR-OMIT-1: replace OCR U+FFFD markers with spaces and omit marker-only blocks before insertion
+  - Keep raw OCR and the derived insertion response with omitted-marker counts in per-page JSON
+  - Preserve strict native text and OCR geometry/control-character validation
+  - Align the OCR prompt and conversion contract with the user-approved policy
+- **Architectural Rationale & Trade-Offs**:
+  - Unreadable markers indicate missing transcription and should not become searchable PDF text
+  - Spaces preserve separation between readable fragments without inventing missing content
+- **Verification & Test Results**:
+  - Focused regression failed before implementation
+  - PDF tests 23/23 PASS including reopening a generated PDF with readable text and no U+FFFD
+  - Quick per-commit gate PASS
+  - Architecture tests 19/19 PASS
+  - All-page stages 00-01 rerun passed page 65 with one marker omitted and reached page 72
+  - Stage 00 halted on an inverted OCR bounding box on page 72 and Stage 01 did not run
+  - Page reads 1-72 retained
+  - Ten live calls and no cache hits
+  - Graphify refresh attempted but graphify module unavailable

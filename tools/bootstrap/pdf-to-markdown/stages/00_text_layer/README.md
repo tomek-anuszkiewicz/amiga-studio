@@ -10,9 +10,15 @@ the worker never overwrites a partial native layer. Native classification is
 inferred from existing spans, rather than a visual completeness assessment.
 For selected pages without text, the configured Codex client classifies the page
 and transcribes visible text, including diagram labels. Text-bearing pages with
-empty OCR, invalid boxes, inconsistent classifications or unsupported characters
+empty OCR, invalid boxes, inconsistent classifications or unsupported control characters
 fail. Blank and graphic-only classifications require empty blocks and retain
 their physical page identities.
+
+Unreadable OCR markers (U+FFFD) remain in the raw inspection response but are
+replaced by spaces in the text-layer response to avoid joining words. Blocks
+containing only such markers and whitespace are omitted. Readable text is retained;
+the scanned image is unchanged. A text-bearing page with no remaining readable
+blocks still fails rather than being silently classified as blank or graphic-only.
 
 The worker adds invisible text (`render_mode=3`) using embedded Unicode fonts.
 Each block must be supported by one of the bundled Nimbus Sans, Droid Sans
@@ -48,9 +54,10 @@ never certifies a partially prepared PDF.
 Each read page also writes `page_reads/page_XXXX.json` immediately. Native reads
 contain `native_blocks` with extracted text and displayed-page boxes. OCR reads
 contain the model's `ocr_response`, including its normalized `box_2d` coordinates,
-and a `text_validation` status. Schema-shaped OCR responses rejected for unreadable
-text (including U+FFFD), invalid boxes or inconsistent classification remain in
-this file with the validation error. Accepted cache/recovery responses produce
+and a `text_validation` status. Accepted reads also contain `text_layer_response`
+and an omitted-marker count, exposing the exact text selected for insertion.
+Schema-shaped OCR responses rejected for invalid boxes, unsupported controls or
+inconsistent classification remain in this file with the validation error. Accepted cache/recovery responses produce
 the same read record. Transport failures and responses rejected before the OCR
 validator runs do not produce an OCR read record.
 

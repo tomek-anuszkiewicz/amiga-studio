@@ -69,6 +69,11 @@ Stage 00 also writes immediate per-page inspection records under
 `00_text_layer/page_reads/`: native extracted blocks or the schema-shaped OCR
 response, with text-validation status and any rejection error. Rejected text is
 retained for review but never promoted into recovery or a consumable prepared PDF.
+OCR unreadable markers (U+FFFD) are retained in the raw response and omitted from
+insertion: replace them with spaces, drop marker-only blocks and retain readable
+text. Inspection JSON records the derived text-layer response and omission count.
+A text-bearing page with no remaining readable blocks still fails; native PDF
+text is not rewritten by this OCR-only policy.
 These records do not replace the validated Stage 00 manifest. Restart at 00 clears
 the inspection records and rebuilds them from current reads or validated reuse.
 
