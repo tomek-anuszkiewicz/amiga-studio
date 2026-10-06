@@ -13,7 +13,7 @@ Run from the repository root. Install the pinned shared dependencies with `pytho
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --pdf "<PDF_FILE>" `
-  --workspace "<PDF_DIRECTORY>/workspace" `
+  --workspace "<PDF_DIRECTORY>/workspace/attempt-01" `
   --config "tools/bootstrap/pdf-to-markdown/config.yaml"
 ```
 
@@ -50,7 +50,7 @@ Renamed configuration keys and workspace directories require regeneration;
 old 02d/02m artifacts are not automatically moved. Changed shared procedure fingerprints require explicit regeneration from the
 reported stage; existing saved artifacts are not migrated or relabeled.
 
-Keep conversion workspaces in the source PDF directory's `workspace/` subdirectory. Use `<PDF_DIRECTORY>/workspace/` for a single conversion, or a separate child for each source/page-range experiment, such as `<PDF_DIRECTORY>/workspace/page-64/` or `<PDF_DIRECTORY>/workspace/all-pages-00-01/`. When `--pdf` is supplied without `--workspace`, the CLI defaults to `<PDF_DIRECTORY>/workspace/`. Pass `--workspace` explicitly for an independent attempt or when continuing without `--pdf`. The original PDF stays outside the workspace. Final Markdown stays in `<WORKSPACE>/14_link_toc`; `--output-dir` has been removed. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
+For agent-run conversions, use the source PDF directory's `workspace/` only as a container for named attempt directories. Create a child from the first attempt, even when `workspace/` is empty, such as `<PDF_DIRECTORY>/workspace/page-64-attempt-01/` or `<PDF_DIRECTORY>/workspace/all-pages-00-01/`. Always pass the child explicitly with `--workspace`: the CLI currently defaults to `<PDF_DIRECTORY>/workspace/` when this option is omitted with `--pdf`. Each independent attempt gets a new child; continuation or explicit restart of the same attempt reuses its existing child. The original PDF stays outside the attempt workspace. Final Markdown stays in `<WORKSPACE>/14_link_toc`; `--output-dir` has been removed. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
 
 Add `--publish` to copy completed Markdown and assets into the sibling book directory
 without `-tmp`. The workspace must be inside `<book>-tmp/`. The target must be absent

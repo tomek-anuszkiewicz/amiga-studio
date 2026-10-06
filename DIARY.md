@@ -2167,3 +2167,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite passed 19/19
   - Source review images and stored classifications inspected
   - No new conversion run and model adherence remains unverified
+---
+
+### [2026-10-06 19:16 CET] — Require named PDF attempt workspaces from the first run
+- **Affected Subsystems**:
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Require an explicit named workspace child even when the workspace container is empty
+  - distinguish independent attempts from continuation and restart
+  - update the quick-start example
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the first and subsequent agent-run attempts organized consistently without changing the CLI default or migrating existing artifacts
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture rules passed (19 tests)
+  - documentation-only change, no conversion requested or run
