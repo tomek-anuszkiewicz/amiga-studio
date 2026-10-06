@@ -78,6 +78,9 @@ block with that role. General explanations are prose, table numbers/titles are
 captions and individually referenced notes are footnotes. The former broader
 classification is not accepted by the new schema; regenerate affected 02/02.5
 artifacts without modifying saved source classifications in place.
+Determine complete object boundaries before classification: a marker-referenced
+footnote includes its continuation lines and paragraphs, even when they define
+symbols or abbreviations. A table legend must be an independent source block.
 
 Stage 02.5 reads Stage 02 JSON and the exact Stage 01 PNG.
 Its `02.5_page_conversion_review/page_NNNN_review.png` preserves resolution and adds

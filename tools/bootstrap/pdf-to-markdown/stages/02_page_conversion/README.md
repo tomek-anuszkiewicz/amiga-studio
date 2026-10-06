@@ -34,6 +34,9 @@ displays its label and frame through the same generic object renderer. Regenerat
 abbreviations used in it. A LEGEND, NOTES or DESCRIPTION title alone does not
 establish that role. General table explanations are prose; source table numbers
 and titles are captions; individually referenced notes remain footnotes.
+Determine complete object boundaries before classification. A marker-referenced
+footnote retains its continuation lines and paragraphs, including symbol or
+abbreviation definitions. Only an independent source block is a table legend.
 Existing artifacts with the former classification require regeneration through
 02/02.5 rather than relabeling their saved JSON.
 

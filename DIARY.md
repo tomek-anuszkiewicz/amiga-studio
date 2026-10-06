@@ -1994,3 +1994,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Stage 02.5 completed with validated lineage and zero model calls
   - Graphify refreshed with no LLM calls
   - git diff --check passed
+---
+
+### [2026-10-06 18:31 CET] — PDF-FOOTNOTE-GROUP: preserve complete referenced notes
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Establish complete object boundaries before classification
+  - retain continuation lines and abbreviation definitions within marker-referenced footnotes
+  - restrict table legends to independent source blocks
+  - synchronize converter documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Prevent sentence-level role classification from splitting one source footnote into footnote and table_legend objects
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture rules passed 19/19
+  - physical page 67 completed stages 00-02.5 in an independent footnote-page-67 workspace with one live Codex request and no cache hits
+  - JSON and review PNG contain one footnote encompassing both source lines
+  - git diff --check passed
+  - no full-book conversion or new tests

@@ -16,7 +16,8 @@ Convert each object's source text to Markdown in md_text. An object without
 source text may have an empty string. Figure text is only source-visible text,
 not an authored description. Do not invent links to assets that do not exist.
 
-Classify objects by their internal content and structure. An enclosing border
+Establish each complete logical object's boundaries before classifying it by
+its internal content and structure. An enclosing border
 used only for visual emphasis does not make its contents a graphic. A regular
 grid of text or numbers is a table, even when enclosed in a larger decorative
 frame or captioned "Figure". Preserve cell boundaries. Retain lines and shapes
@@ -90,12 +91,18 @@ Classify each complete logical object into exactly one of the schema types:
   For example, *Can be used with CPU32 and a numbered note about hexadecimal
   notation are footnotes. Preserve source markers. Do not absorb referenced notes
   into a table legend solely because they are below a table.
+  Keep the complete marker-referenced note together, including continuation lines
+  and paragraphs. Definitions of symbols or abbreviations within that note remain
+  part of the same footnote; do not split them into table_legend objects merely
+  because their content matches the legend definition.
 - `table_legend`: A separate source-written block below a table defining its
   symbols, notation or abbreviations. It may be titled LEGEND, NOTES or
   DESCRIPTION; its role and position determine the type, not the title alone.
   Keep the legend and its internal markers together. General explanations are
   `prose`, individually referenced notes are `footnote`, and table titles are
   `caption`.
+  Use table_legend only for an independent source block, not for a line or
+  paragraph belonging to a marker-referenced footnote.
 - `index_heading`: An index title, including continuation titles.
 - `index`: Alphabetical or subject index entries and their page references.
   These are distinct from Table of Contents entries and marginal navigation tabs.
