@@ -1826,3 +1826,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - PASS quick pre-flight, 19 architecture checks, exact 23-type schema/list comparison and git diff --check. No model calls or fragment conversion
   - existing outputs were not regenerated.
+---
+
+### [2026-10-06 17:24 CET] — PDF-02D-CONTINUATION: represent named page continuations as a boolean
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/pdf_page_conversion.py`
+  - `tools/bootstrap/conversion/pdf_lineage_compatibility.json`
+  - `tools/bootstrap/pdf-to-markdown/stages/02d_page_conversion/prompt.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove caption_continuation from Stage 02d types
+  - require continuation on every response and stored object
+  - recognize explicit top-of-page continuation names including Concluded and later sheets
+  - retain normal caption and dedicated heading types
+  - preserve compatible old-branch procedure identities
+- **Architectural Rationale & Trade-Offs**:
+  - Continuation is an independent property of a source-visible name
+  - rather than a separate caption classification. Reject old 02d artifacts and regenerate 02d/02m instead of migrating saved classifications.
+- **Verification & Test Results**:
+  - PASS 26 PDF unittest tests, quick pre-flight, 19 architecture checks, response/stored boolean diagnostics, rejection of absent or invalid values and former type, exact 22-type prompt comparison, compatibility fingerprint verification and git diff --check. Graphify updated. Initial pytest invocation could not run because pytest is not installed
+  - the suite passed through its native unittest entry point. No model calls or fragment conversion
+  - existing outputs were not regenerated.

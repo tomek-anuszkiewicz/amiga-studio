@@ -2,16 +2,17 @@
 
 from jsonschema import validate
 from .pdf_artifacts import read_json, require, validate_preprocess
-from .pdf_schemas import object_schema, STRING
+from .pdf_schemas import object_schema, STRING, BOOL
 
 TYPES = ["header", "footer", "toc_heading", "toc", "thumb_index", "chapter", "heading",
          "callout", "callout_text", "prose", "code_block", "table", "graphic", "caption",
-         "caption_continuation", "footnote", "table_legend", "index_heading", "index",
+         "footnote", "table_legend", "index_heading", "index",
          "list_of_tables_heading", "list_of_tables", "list_of_figures_heading", "list_of_figures"]
 HEADING_TYPES = {"chapter", "heading", "toc_heading", "index_heading",
                  "list_of_tables_heading", "list_of_figures_heading"}
 SEGMENT = object_schema({
     "type": {"type": "string", "enum": TYPES},
+    "continuation": BOOL,
     "heading_level": {"type": ["integer", "null"], "minimum": 1, "maximum": 6},
     "md_text": STRING,
     "bbox": {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4},

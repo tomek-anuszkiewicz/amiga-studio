@@ -25,13 +25,13 @@ that convey meaning, such as arrows, connections or diagram geometry.
 Classify each complete logical object into exactly one of the schema types:
 
 - `header`: Running top-margin document headers and repeated chapter or section
-  titles. Index, list-of-tables and list-of-figures titles, including continuation
-  titles, use their dedicated heading types instead. Unrelated running headers
+  titles. Table-of-contents, index, list-of-tables and list-of-figures titles,
+  including continuation titles, use their dedicated heading types. Unrelated running headers
   remain `header`.
 - `footer`: Running bottom-margin footers and printed page numbers.
-- `toc_heading`: The opening title of the formal Table of Contents, such as
-  "Contents" or "Table of Contents". Running top-margin continuation headers
-  such as "TABLE OF CONTENTS (Continued)" are `header`. Index and list-of-tables
+- `toc_heading`: The title of the formal Table of Contents, including continuation
+  titles, such as "Contents", "Table of Contents" or
+  "TABLE OF CONTENTS (Continued)". Index and list-of-tables
   or list-of-figures titles use their dedicated heading types.
 - `toc`: Entries in the formal Table of Contents, including chapter or section
   listings and their page references. Marginal navigation tabs are `thumb_index`.
@@ -70,9 +70,6 @@ Classify each complete logical object into exactly one of the schema types:
 - `caption`: A separate formal figure or table number/title, such as "Figure 5-2:
   Digitized Amplitude Values" or "Table 5-8: Five Octave Even-tempered Scale".
   Do not absorb the caption into the table or graphic.
-- `caption_continuation`: A formal figure or table caption indicating continuation
-  across a page break, such as "Table 3-1 (Continued)", "Table 3-1 (Concluded)"
-  or "Figure 4-2 (Cont.)". Running document headers are not continuation captions.
 - `footnote`: A source note referenced by a marker such as *, a superscript
   number or 1), regardless of the referenced object's type or page position.
   For example, *Can be used with CPU32 and a numbered note about hexadecimal
@@ -95,6 +92,27 @@ Classify each complete logical object into exactly one of the schema types:
 - `list_of_figures`: Entries in a list of figures or illustrations, including
   figure identifiers, titles and page references. Actual figure captions are
   `caption`.
+
+Provide continuation as a JSON boolean for every object. Set it to true only
+for a title, heading or caption at the top of the page whose source-visible name
+explicitly indicates continuation from the previous page. Classify that object
+by its normal role, such as toc_heading, list_of_figures_heading or caption;
+continuation is a separate property, not an object type. Preserve the complete
+source name in md_text, including its continuation indicator.
+
+Examples of continuation: true:
+- "TABLE OF CONTENTS (Continued)"
+- "LIST OF ILLUSTRATIONS (Continued)"
+- "LIST OF ILLUSTRATIONS (Concluded)"
+- "Table 2-2. Instruction Set Summary (Sheet 2 of 4)"
+
+These examples are not an exhaustive phrase list. Equivalent wording such as
+"Cont." or a later sheet/part number can also explicitly indicate continuation.
+"Concluded" identifies the final continuation page. A first sheet/part, a repeated
+title without a continuation indicator, or top-of-page placement alone does not
+establish continuation. Set continuation to false for all other objects,
+including the table/list/figure body below a continuation title. Do not infer
+continuation merely because an object starts or ends at a page edge.
 
 A label introducing notes, assumptions, conditions or explanations attached
 to a specific table or figure belongs with the content it introduces.

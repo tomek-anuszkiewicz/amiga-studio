@@ -63,7 +63,16 @@ existing Stages 03-14. Stage 02d reads only validated Stage 01 PNG/complete text
 JSON pairs and defines independent logical objects in model array order, with
 `md_text` and no `raw_text`. `02d_page_conversion/page_NNNN_segments.json` records
 physical page identity, original PNG dimensions, deterministic page-scoped IDs,
-classifications and heading levels. Every object has a nonempty integer pixel
+classifications, heading levels and a required boolean `continuation`. A title,
+heading or caption at the top of the page has `continuation: true` only when its
+source-visible name explicitly indicates continuation from the previous page,
+including Continued, Concluded or a later sheet/part number. It keeps its normal
+type (for example `toc_heading`, `list_of_figures_heading` or `caption`) and its
+complete source name. Other objects, including bodies beneath these titles,
+have `continuation: false`. Stage 02d no longer accepts `caption_continuation`;
+old objects without this boolean require 02d/02m regeneration, not in-place
+migration. The old Stage 02 vocabulary remains unchanged.
+Every object has a nonempty integer pixel
 rectangle `[x0,y0,x1,y1]` with exclusive upper bounds. The model bounds complete
 logical objects, including textual ones, independently of OCR blocks. Text boxes
 serve review; downstream consumers may ignore them. Table/graphic boxes may also
