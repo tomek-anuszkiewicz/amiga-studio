@@ -254,12 +254,11 @@ class ClientTests(unittest.TestCase):
                           FakeTransport(text="truncated {"), FakeTransport(text='{"signal":12}')):
             with self.subTest(text=transport.text, status=transport.status), self.assertRaises(Exception):
                 self.client(transport).generate_json("schema", schema={"type":"object", "properties":{"signal":{"type":"string"}}, "required":["signal"]})
-        from conversion.pdf_geometry import validate_ocr
-        from conversion.pdf_schemas import OCR
-        inverted = {"page_type": "text_page", "caption": None,
-                    "blocks": [{"text": "A", "box_2d": [200, 100, 100, 200]}]}
-        with self.assertRaisesRegex(ValueError, "Invalid.*bounding box"):
-            self.client(FakeTransport(text=json.dumps(inverted))).generate_json("invalid OCR", schema=OCR, validator=validate_ocr)
+        def reject_signal(value):
+            raise ValueError("Rejected signal")
+        with self.assertRaisesRegex(ValueError, "Rejected signal"):
+            self.client(FakeTransport(text='{"signal":"invalid"}')).generate_json(
+                "invalid signal", schema={"type": "object"}, validator=reject_signal)
         self.assertFalse(self.cache.directory.exists())
 
     def test_auth_quota_timeout_propagate_without_retries(self):

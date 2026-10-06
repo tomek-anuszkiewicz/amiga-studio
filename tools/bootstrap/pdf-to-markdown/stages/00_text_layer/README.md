@@ -26,9 +26,9 @@ error stops preparation; there is no model fallback.
 Existing native spans are retained even below 20 characters. Invalid native
 text or geometry stops preparation rather than overwriting a partial layer.
 For selected textless pages, the worker renders RGB at `render.dpi`, runs
-Tesseract on that displayed-page image and extracts complete OCR lines. Each line
-becomes a normalized text block passed to the shared invisible-text insertion
-mechanism. No fixed margin filter or size-based schematic exclusion is applied.
+Tesseract on that displayed-page image and retains its original OCR PDF. Its text
+operators and font resources are overlaid onto the source page at their original
+scale. No fixed margin filter or size-based schematic exclusion is applied.
 
 `classification_basis: inferred_from_tesseract_lines` records extraction evidence.
 Recognized lines use `text_page`; no recognized lines use the legacy
@@ -38,20 +38,15 @@ classification. Native classification remains inferred from extracted spans.
 
 ## Text insertion and publication
 
-OCR line coordinates are clamped to the displayed page bounds before conversion
-to the integer 0-1000 schema. Zero width and height are accepted, including extents
-collapsed by clipping or rounding. Reversed corners and nonfinite coordinates
-still fail. The stage does not replace unreadable markers or omit marker-only
-blocks. Invalid OCR input text stops preparation. Zero extents are passed to the
-PDF writer without checking whether they remain extractable afterward.
-
-The worker adds invisible lines (`render_mode=3`) using embedded Unicode fonts.
-Each line is fitted to its recognized box using serialized font metrics, mapped
-from displayed-page coordinates through rotation into the PDF frame. Stage 00
-trusts PyMuPDF to store the inserted text; it does not compare reopened OCR line
-counts, text or positions with the recognition result. The user assesses the PDF,
-and Stage 01 consumes its actual extractable text. Unsupported characters fail
-instead of being silently replaced. Native text remains unchanged.
+Stage 00 copies the original text layer from Tesseract's PDF, including its font,
+glyph positions, horizontal spacing and invisible-text operators. It does not
+normalize or round coordinates, clamp OCR boxes, join lines, substitute text or
+fit reconstructed strings to bounding boxes. Only the OCR raster is replaced
+with a transparent image because the source page already owns its graphics.
+The overlay maps the displayed-page frame to the source page's rotation without
+resizing the text. Stage 00 trusts the PDF writer and does not compare reopened
+OCR text with recognition results. The user assesses the PDF; Stage 01 extracts
+its actual text. Native text remains unchanged.
 
 If no text is added, the separate PDF is a byte-for-byte copy. Otherwise a
 candidate is saved and reopened. Validation checks the complete page tree and
@@ -67,13 +62,14 @@ at 00 with the original source or another workspace.
 
 Stage 00 publishes the prepared PDF and its validation manifest. Stage 01
 extracts per-page positioned text JSON from that PDF; Stage 00 does not write
-separate native/OCR inspection JSON. Invalid OCR responses never become recovery
-records or a consumable PDF. Recovery reuse validates source, selection, image
-bytes, geometry, schema, procedure, language-data hashes and
-PyMuPDF version. Old Codex recovery records are incompatible and are regenerated.
+separate native/OCR inspection JSON. Recovery holds the unmodified per-page OCR
+PDF plus JSON identity/hash metadata. Unreadable or multi-page OCR artifacts are
+not accepted. Recovery reuse validates source, selection, image bytes, geometry,
+format, procedure, language-data hashes and PyMuPDF version. Legacy normalized
+JSON and Codex recovery records are incompatible and are regenerated.
 
 The manifest records the prepared PDF path/hash, coverage, page geometry,
-provenance, inferred classification evidence, inserted line positions, extracted
+provenance, inferred classification evidence, extracted
 text digests and publication checks.
 
 Run through the pipeline, for example:

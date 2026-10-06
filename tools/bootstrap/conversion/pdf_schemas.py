@@ -10,13 +10,6 @@ NULL_STRING = {"type": ["string", "null"]}
 BOOL = {"type": "boolean"}
 BBOX = {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}
 NULL_BBOX = {**BBOX, "type": ["array", "null"]}
-OCR = object_schema({
-    "page_type": {"type": "string", "enum": ["text_page", "pure_graphic", "schematic", "diagram", "blank"]},
-    "caption": NULL_STRING,
-    "blocks": {"type": "array", "items": object_schema({
-        "text": STRING, "box_2d": {"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 1000}, "minItems": 4, "maxItems": 4},
-    })},
-})
 EMPTY_PAGE = object_schema({"is_blank": BOOL, "type": NULL_STRING, "graphic_bbox_norm": NULL_BBOX, "caption": NULL_STRING})
 SEGMENTATION = object_schema({
     "is_full_page_graphic": BOOL, "graphic_caption": NULL_STRING,

@@ -8,13 +8,12 @@ import sys
 import pymupdf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from conversion import pdf_schemas
 from conversion.cache import digest
 from conversion.config import load_config, PDF_STAGES
 from conversion.lineage import file_hash, read_state, stage_identity
 from conversion.pdf_artifacts import write_json, read_json, require, validate_text_layer
 from conversion.pdf_geometry import (SCHEMA_VERSION, page_geometry,
-                                     text_blocks, valid_box, validate_ocr, insert_ocr)
+                                     text_blocks)
 from conversion.pdf_selection import selected_pages
 
 
@@ -37,25 +36,19 @@ def tesseract_settings(config):
 
 
 def tesseract_ocr(pixmap, language, tessdata):
-    """Read rendered-page OCR lines in the shared normalized coordinate frame."""
-    blocks = []
-    with pymupdf.open("pdf", pixmap.pdfocr_tobytes(language=language, tessdata=tessdata)) as ocr:
-        page = ocr[0]
-        for block in page.get_text("dict")["blocks"]:
-            if block["type"] != 0:
-                continue
-            for line in block["lines"]:
-                text = "".join(span["text"] for span in line["spans"]).strip()
-                if not text:
-                    continue
-                x0, y0, x1, y1 = valid_box(line["bbox"], page.rect.width, page.rect.height,
-                                         clip=True, allow_zero=True)
-                box = [y0 / page.rect.height * 1000,
-                       x0 / page.rect.width * 1000, y1 / page.rect.height * 1000,
-                       x1 / page.rect.width * 1000]
-                blocks.append({"text": text, "box_2d": [round(value) for value in box]})
-    # This is an extraction result, not visual page-type classification.
-    return {"page_type": "text_page" if blocks else "pure_graphic", "caption": None, "blocks": blocks}
+    """Keep the complete PDF emitted by Tesseract without rebuilding its text."""
+    return pixmap.pdfocr_tobytes(language=language, tessdata=tessdata)
+
+
+def insert_ocr_pdf(page, ocr):
+    """Overlay original OCR text operators and fonts at their original scale."""
+    layer = ocr[0]
+    # The source page already owns its graphics. Make the OCR raster transparent
+    # while leaving all text operators, glyph spacing and font resources intact.
+    for image in layer.get_images():
+        layer.delete_image(image[0])
+    target = layer.rect * page.derotation_matrix
+    page.show_pdf_page(target, ocr, 0, rotate=page.rotation)
 
 
 def verify_candidate(source_path, candidate, entries, dpi):
@@ -127,29 +120,38 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                         engine = tesseract_settings(config)
                     language, tessdata, engine_identity = engine
                     identity = {"source": source, "page": number, "image_sha256": file_hash(image),
-                                "geometry": entry["geometry"], "schema": pdf_schemas.OCR, "procedure": procedure,
+                                "geometry": entry["geometry"], "format": "tesseract-pdf-v1", "procedure": procedure,
                                 "engine": engine_identity}
                     recovery_file = recovery / f"{entry['page_id']}.json"
-                    response = None
+                    recovery_pdf = recovery / f"{entry['page_id']}.pdf"
+                    payload = None
                     if recovery_file.is_file():
                         retained = read_json(recovery_file)
                         require(retained.get("digest") == digest({k: v for k, v in retained.items() if k != "digest"}),
                                 "Modified per-page OCR recovery record")
-                        if retained.get("identity") == identity:
-                            response = validate_ocr(retained["response"])
-                            print(f"[recovery] {entry['page_id']}: compatible validated OCR result")
-                    if response is None:
-                        response = tesseract_ocr(pixmap, language, tessdata)
-                        validate_ocr(response)
-                        record = {"identity": identity, "response": response}
+                        if retained.get("identity") == identity and recovery_pdf.is_file():
+                            require(file_hash(recovery_pdf) == retained.get("pdf_sha256"),
+                                    "Modified per-page OCR PDF recovery artifact")
+                            payload = recovery_pdf.read_bytes()
+                            print(f"[recovery] {entry['page_id']}: compatible original OCR PDF")
+                    if payload is None:
+                        payload = tesseract_ocr(pixmap, language, tessdata)
+                        # Check only that the returned artifact can be opened.
+                        with pymupdf.open("pdf", payload) as recovered:
+                            require(len(recovered) == 1, "Tesseract must return one OCR PDF page")
+                        recovery_pdf.write_bytes(payload)
+                        record = {"identity": identity, "pdf_sha256": file_hash(recovery_pdf)}
                         record["digest"] = digest(record)
                         write_json(recovery_file, record)
                     image.unlink()
-                    entry.update(page_type=response["page_type"], caption=response["caption"],
-                                 classification_basis="inferred_from_tesseract_lines", provenance="ocr" if response["blocks"] else "none")
-                    if response["blocks"]:
-                        insert_ocr(page, response)
-                        added_text = True
+                    with pymupdf.open("pdf", payload) as ocr:
+                        has_text = bool(ocr[0].get_text().strip())
+                        entry.update(page_type="text_page" if has_text else "pure_graphic", caption=None,
+                                     classification_basis="inferred_from_tesseract_lines",
+                                     provenance="ocr" if has_text else "none")
+                        if has_text:
+                            insert_ocr_pdf(page, ocr)
+                            added_text = True
                     print(f"[{entry['provenance']}] {entry['page_id']}: {entry['page_type']}")
                 entries.append(entry)
             if added_text:

@@ -61,8 +61,12 @@ pages use local Tesseract through PyMuPDF, configured with `ocr.language` and
 no Codex model selection, prompt or model request. Later inference stages retain
 the shared Codex transport.
 
-OCR lines enter the shared normalized coordinate and invisible Unicode insertion
-path. Stage 00 trusts PyMuPDF to store the inserted OCR text: it does not compare
+Stage 00 retains Tesseract's original OCR PDF and overlays its text operators and
+font resources at their original scale, preserving glyph positions and spacing.
+It does not normalize, round or clamp OCR coordinates, reconstruct lines or fit
+text to boxes. The OCR raster becomes transparent so the original page graphics
+remain visible. Page rotation maps the displayed frame without resizing the text.
+Stage 00 trusts PyMuPDF to store the OCR text: it does not compare
 reopened OCR line counts, text or positions with the recognition result.
 Publication checks source hashes, page geometry,
 retained source streams/native text and identical selected-page renders. A page
@@ -73,16 +77,13 @@ schematic omission is applied. Fragment coverage never certifies unselected page
 
 Stage 00 retains its validation manifest and compatible recovery records.
 Stage 01 owns per-page positioned text JSON extraction from the prepared PDF;
-Stage 00 does not duplicate those reads in separate inspection JSON. Recovery identity includes rendered image bytes, procedure,
-geometry, source selection, language-data hashes and the PyMuPDF version; old
-Codex OCR recovery is incompatible. OCR line coordinates are clamped to the displayed
-page bounds before integer normalization. Reversed corners are rejected and
-unreadable markers are not substituted.
-Normalized integer OCR boxes may have zero width or height after rounding; OCR
-validation accepts these extents while rejecting reversed edges and out-of-range
-coordinates. Stage 00 does not verify whether text fitted to a zero extent remains
-extractable. The user assesses the prepared PDF; Stage 01 consumes its actual
-extractable text. Invalid responses fail; native text is unchanged.
+Stage 00 does not duplicate those reads in separate inspection JSON. Recovery
+retains each unmodified OCR PDF and JSON identity/hash metadata. Its identity
+includes rendered image bytes, procedure, geometry, source selection,
+language-data hashes, raw PDF format and the PyMuPDF version. Legacy normalized
+JSON and Codex recovery are incompatible and regenerated. Unreadable or multi-page
+OCR artifacts fail. The user assesses the prepared PDF; Stage 01 consumes its
+actual extractable text. Native text is unchanged.
 Recovery records do not replace the validated manifest.
 Restart at 01 retains validated Stage 00; legacy workspaces require explicit
 regeneration from 00 with the original PDF after this backend/name change.

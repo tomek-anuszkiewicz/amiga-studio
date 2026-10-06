@@ -1634,3 +1634,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Regression failed before repair and passed afterward. PASS 26 PDF conversion tests, quick pre-flight, 19 architecture checks and git diff --check. Graphify updated. All 160 requested pages completed stages 00 and 01, producing prepared OCR PDF and 160 PNG/JSON pairs with zero Codex calls. Independent completed-state and artifact validation passed. PowerShell capture returned exit 1 after Tesseract stderr warnings despite pipeline completion
   - completion was verified from validated state and artifacts.
+---
+
+### [2026-10-06 15:12 CET] — Preserve the original Tesseract PDF text layer
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/00_text_layer`
+  - `tools/bootstrap/conversion/pdf_geometry.py`
+  - `tools/bootstrap/conversion/pdf_schemas.py`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tests/test_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Overlay original OCR PDF text operators and fonts without rebuilding strings
+  - remove normalized coordinate conversion, rounding, clipping and bounding-box font fitting
+  - replace only the duplicate OCR raster with transparency
+  - preserve native pages and original page rotation
+  - retain original per-page OCR PDFs with recovery identity/hash metadata
+  - remove obsolete normalized OCR schemas, validators and tests
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested passing Tesseract output directly to PyMuPDF without modifying text positions or spacing.
+- **Verification & Test Results**:
+  - Raw-overlay regression failed before repair and passed afterward. PASS 23 PDF conversion tests, 19 shared Codex tests, quick pre-flight, 19 architecture checks and git diff --check. Rotated overlay diagnostic preserved displayed coordinates within 0.000008 points. Graphify updated. All 160 requested pages completed stages 00 and 01 with 160 PNG/JSON pairs and zero Codex calls
+  - completed-record digests and prepared PDF hash verified. PowerShell log capture returned exit 1 after Tesseract stderr warnings despite confirmed pipeline completion. User assessment of text selection remains separate.

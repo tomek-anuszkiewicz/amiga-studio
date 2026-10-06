@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap"))
 from conversion import load_config
 from conversion.config import PDF_STAGES
 from conversion.lineage import complete_stage, validate_prefix, restore_shared, stage_identity, file_hash
-from conversion.pdf_geometry import text_blocks, validate_ocr
+from conversion.pdf_geometry import text_blocks
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -44,95 +44,39 @@ class PdfTextBoundsTests(unittest.TestCase):
 
 
 class PdfOcrValidationTests(unittest.TestCase):
-    def test_preparation_trusts_pdf_writer_when_ocr_text_is_not_reextracted(self):
+    def test_raw_ocr_pdf_overlay_preserves_fractional_text_and_spacing(self):
+        spec = importlib.util.spec_from_file_location(
+            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
+        stage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(stage)
+        with pymupdf.open() as ocr, pymupdf.open() as target:
+            raw = ocr.new_page(width=200, height=200)
+            raw.insert_text((35.251, 80.503), "7 6 5 4", fontsize=12.345, render_mode=3)
+            expected = raw.get_text("rawdict")
+            page = target.new_page(width=200, height=200)
+            stage.insert_ocr_pdf(page, ocr)
+            self.assertEqual(page.get_text("text"), raw.get_text("text"))
+            actual = page.get_text("rawdict")
+            self.assertEqual(actual["blocks"], expected["blocks"])
+
+    def test_failed_ocr_pdf_publishes_no_recovery_or_manifest(self):
         spec = importlib.util.spec_from_file_location(
             "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
         stage = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(stage)
         config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
                              known_stages=PDF_STAGES, required_stages=())
-        response = {"page_type": "text_page", "caption": None,
-                    "blocks": [{"text": "|", "box_2d": [220, 980, 239, 980]}]}
         with tempfile.TemporaryDirectory() as directory:
             source, workspace = Path(directory) / "source.pdf", Path(directory) / "workspace"
             with pymupdf.open() as document:
                 document.new_page()
                 document.save(source)
             with patch.object(stage, "tesseract_settings", return_value=("eng", "unused", {"engine": "tesseract"})), \
-                    patch.object(stage, "tesseract_ocr", return_value=response):
-                manifest = stage.prepare_text_layer(source, workspace, config)
-            self.assertEqual(manifest["pages"][0]["provenance"], "ocr")
-            self.assertNotIn("ocr_lines", manifest["pages"][0])
-            self.assertEqual(manifest["publication_validation"]["ocr_text_insertion"], "trusted_pdf_writer")
-
-    def test_tesseract_line_bounds_clip_before_integer_normalization(self):
-        spec = importlib.util.spec_from_file_location(
-            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
-        stage = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(stage)
-        page = SimpleNamespace(rect=pymupdf.Rect(0, 0, 541.44, 720.72))
-        pixmap = SimpleNamespace(pdfocr_tobytes=lambda **kwargs: b"unused")
-        for box, expected in (
-            ([-0.000061, 713.75995, 4.06794, 720.96716], [990, 0, 1000, 8]),
-            ([-10, -10, 550, 730], [0, 0, 1000, 1000]),
-            ([550, 730, 560, 740], [1000, 1000, 1000, 1000]),
-        ):
-            page.get_text = lambda *args: {"blocks": [{"type": 0, "lines": [
-                {"bbox": box, "spans": [{"text": "Retained OCR"}]}]}]}
-            with self.subTest(box=box), patch.object(stage.pymupdf, "open") as opened:
-                opened.return_value.__enter__.return_value = [page]
-                response = stage.tesseract_ocr(pixmap, "eng", "unused")
-                self.assertEqual(response["blocks"][0]["box_2d"], expected)
-                self.assertEqual(validate_ocr(response), response)
-
-    def test_quantized_ocr_bounds_allow_zero_extent_but_not_reversed_edges(self):
-        for box in ([220, 980, 239, 980], [220, 980, 220, 990], [220, 980, 220, 980]):
-            response = {"page_type": "text_page", "caption": None,
-                        "blocks": [{"text": "|", "box_2d": box}]}
-            with self.subTest(box=box):
-                self.assertEqual(validate_ocr(response), response)
-        for box in ([220, 990, 239, 980], [239, 980, 220, 990]):
-            response = {"page_type": "text_page", "caption": None,
-                        "blocks": [{"text": "|", "box_2d": box}]}
-            with self.subTest(box=box), self.assertRaises(ValueError):
-                validate_ocr(response)
-
-    def test_tesseract_fractional_line_bounds_satisfy_shared_ocr_schema(self):
-        spec = importlib.util.spec_from_file_location(
-            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
-        stage = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(stage)
-        with pymupdf.open() as document:
-            page = document.new_page(width=500, height=180)
-            page.insert_text((35.25, 80.5), "Recognized line", fontsize=23)
-            pixmap = SimpleNamespace(pdfocr_tobytes=lambda **kwargs: document.tobytes())
-            response = stage.tesseract_ocr(pixmap, "eng", "unused")
-        self.assertEqual(stage.validate_ocr(response), response)
-        self.assertEqual(response["blocks"][0]["text"], "Recognized line")
-        self.assertTrue(all(type(value) is int for value in response["blocks"][0]["box_2d"]))
-
-    def test_failed_ocr_publishes_no_recovery_or_manifest(self):
-        spec = importlib.util.spec_from_file_location(
-            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
-        stage = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(stage)
-        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
-                             known_stages=PDF_STAGES, required_stages=())
-        response = {"page_type": "text_page", "caption": None,
-                    "blocks": [{"text": "Unsupported \u0000", "box_2d": [100, 100, 200, 900]}]}
-        with tempfile.TemporaryDirectory() as directory:
-            source = Path(directory) / "source.pdf"
-            workspace = Path(directory) / "workspace"
-            with pymupdf.open() as document:
-                page = document.new_page()
-                page.insert_text((72, 72), "Native page text")
-                document.new_page()
-                document.save(source)
-            with patch.object(stage, "tesseract_settings", return_value=("eng", "unused", {"engine": "tesseract"})), \
-                    patch.object(stage, "tesseract_ocr", return_value=response):
-                with self.assertRaisesRegex(ValueError, "defective text"):
+                    patch.object(stage, "tesseract_ocr", return_value=b"invalid PDF"):
+                with self.assertRaises(pymupdf.FileDataError):
                     stage.prepare_text_layer(source, workspace, config)
-            self.assertFalse((workspace / "00_text_layer/recovery/page_0002.json").exists())
+            self.assertFalse((workspace / "00_text_layer/recovery/page_0001.json").exists())
+            self.assertFalse((workspace / "00_text_layer/recovery/page_0001.pdf").exists())
             self.assertFalse((workspace / "00_text_layer/text_layer_manifest.json").exists())
 
 
@@ -303,7 +247,6 @@ class PdfRestartTests(unittest.TestCase):
 
 class PdfConfigurationTests(unittest.TestCase):
     def test_invisible_text_preserves_wrapped_source_streams(self):
-        from conversion.pdf_geometry import insert_ocr
         script = ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py"
         spec = importlib.util.spec_from_file_location("text_layer_worker", script)
         worker = importlib.util.module_from_spec(spec)
@@ -318,8 +261,10 @@ class PdfConfigurationTests(unittest.TestCase):
                 document.update_stream(page.get_contents()[0], b"20 20 80 80 re S\n")
                 document.save(source)
             with pymupdf.open(source) as document:
-                insert_ocr(document[0], {"page_type": "text_page", "caption": None,
-                                               "blocks": [{"text": "A", "box_2d": [100, 100, 200, 200]}]})
+                with pymupdf.open() as ocr:
+                    layer = ocr.new_page(width=200, height=200)
+                    layer.insert_text((20, 40), "A", render_mode=3)
+                    worker.insert_ocr_pdf(document[0], ocr)
                 document.save(candidate)
             entry = {"page": 1, "provenance": "ocr"}
             worker.verify_candidate(source, candidate, [entry], 72)
