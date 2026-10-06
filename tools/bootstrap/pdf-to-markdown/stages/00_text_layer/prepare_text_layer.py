@@ -6,7 +6,6 @@ from pathlib import Path
 import shutil
 import sys
 import pymupdf
-from jsonschema import validate
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from conversion import pdf_schemas
@@ -49,31 +48,13 @@ def tesseract_ocr(pixmap, language, tessdata):
                 text = "".join(span["text"] for span in line["spans"]).strip()
                 if not text:
                     continue
-                x0, y0, x1, y1 = valid_box(line["bbox"], page.rect.width, page.rect.height, clip=True)
+                x0, y0, x1, y1 = valid_box(line["bbox"], page.rect.width, page.rect.height)
                 box = [y0 / page.rect.height * 1000,
                        x0 / page.rect.width * 1000, y1 / page.rect.height * 1000,
                        x1 / page.rect.width * 1000]
                 blocks.append({"text": text, "box_2d": [round(value) for value in box]})
     # This is an extraction result, not visual page-type classification.
     return {"page_type": "text_page" if blocks else "pure_graphic", "caption": None, "blocks": blocks}
-
-
-def text_layer_ocr(response):
-    """Omit unreadable markers without joining readable fragments across them."""
-    validate(response, pdf_schemas.OCR)
-    if response["page_type"] in ("blank", "pure_graphic"):
-        return validate_ocr(response)
-    blocks = []
-    for block in response["blocks"]:
-        y0, x0, y1, x1 = block["box_2d"]
-        y0, y1 = min(y0, y1), max(y0, y1)
-        x0, x1 = min(x0, x1), max(x0, x1)
-        valid_box([x0, y0, x1, y1], 1000, 1000, tolerance=0)
-        text = block["text"].replace("\ufffd", " ")
-        if "\ufffd" in block["text"] and not text.strip():
-            continue
-        blocks.append({**block, "text": text, "box_2d": [y0, x0, y1, x1]})
-    return validate_ocr({**response, "blocks": blocks})
 
 
 def record_ocr_read(path, source, entry, response):
@@ -83,19 +64,13 @@ def record_ocr_read(path, source, entry, response):
               "text_validation": {"status": "pending"}}
     write_json(path, record)
     try:
-        prepared = text_layer_ocr(response)
+        validate_ocr(response)
     except Exception as error:
         record["text_validation"] = {"status": "failed", "error_type": type(error).__name__,
                                      "error": str(error)}
         write_json(path, record)
         raise
-    record["text_layer_response"] = prepared
-    record["text_validation"] = {"status": "passed", "omitted_unreadable_markers":
-                                 sum(block["text"].count("\ufffd") for block in response["blocks"]),
-                                 "normalized_bounding_boxes": sum(
-                                     block["box_2d"][0] > block["box_2d"][2]
-                                     or block["box_2d"][1] > block["box_2d"][3]
-                                     for block in response["blocks"])}
+    record["text_validation"] = {"status": "passed"}
     write_json(path, record)
     return response
 
@@ -195,7 +170,6 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                         record = {"identity": identity, "response": response}
                         record["digest"] = digest(record)
                         write_json(recovery_file, record)
-                    response = text_layer_ocr(response)
                     image.unlink()
                     entry.update(page_type=response["page_type"], caption=response["caption"],
                                  classification_basis="inferred_from_tesseract_lines", provenance="ocr" if response["blocks"] else "none")

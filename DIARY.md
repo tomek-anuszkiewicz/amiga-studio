@@ -1516,3 +1516,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - 19 architecture checks and git diff --check. Real Tesseract synthetic-image recognition
   - blank-image result and reopened invisible-text geometry passed after fixing the initially observed fractional-coordinate schema rejection. Graphify incremental update completed. No user source fragment
   - full-book conversion or milestone gate run.
+---
+
+### [2026-10-06 12:18 CEST] — PDF-OCR-CLEANUP: remove Stage 00 OCR corrections
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/00_text_layer`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove OCR box clipping, reversed-corner correction, unreadable-marker substitution and marker-only block omission
+  - remove the derived response and correction counters
+  - validate OCR directly and retain raw inspection records
+  - remove obsolete correction tests and update documentation
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested removing model-era OCR corrections after switching Stage 00 to Tesseract. Preserve integer coordinate conversion
+  - validation and PDF publication checks.
+- **Verification & Test Results**:
+  - PASS 23 PDF conversion tests
+  - quick pre-flight
+  - 19 architecture checks and git diff --check. Graphify incremental update completed. No source fragment conversion or milestone gate run.

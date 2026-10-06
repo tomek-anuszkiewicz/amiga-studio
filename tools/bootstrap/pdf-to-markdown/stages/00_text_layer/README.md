@@ -38,11 +38,10 @@ classification. Native classification remains inferred from extracted spans.
 
 ## Text insertion and publication
 
-Raw unreadable markers (U+FFFD) remain in inspection JSON. In the derived response,
-they become spaces to avoid joining words; marker-only blocks are omitted.
-A text-bearing response with no remaining readable blocks fails. Reversed OCR
-corners are normalized per axis; zero-area or out-of-range boxes fail. Original
-coordinates and normalization counts remain available in inspection records.
+OCR text and bounding boxes pass directly through validation. The stage does
+not clip boxes, reorder reversed corners, replace unreadable markers or omit
+marker-only blocks. Invalid text or geometry stops preparation. Converting
+coordinates to the integer 0-1000 schema remains part of the Tesseract adapter.
 
 The worker adds invisible lines (`render_mode=3`) using embedded Unicode fonts.
 Each line is fitted to its recognized box using serialized font metrics, mapped

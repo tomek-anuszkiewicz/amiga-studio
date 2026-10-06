@@ -54,29 +54,9 @@ class PdfPageReadTests(unittest.TestCase):
             page.insert_text((35.25, 80.5), "Recognized line", fontsize=23)
             pixmap = SimpleNamespace(pdfocr_tobytes=lambda **kwargs: document.tobytes())
             response = stage.tesseract_ocr(pixmap, "eng", "unused")
-        self.assertEqual(stage.text_layer_ocr(response), response)
+        self.assertEqual(stage.validate_ocr(response), response)
         self.assertEqual(response["blocks"][0]["text"], "Recognized line")
         self.assertTrue(all(type(value) is int for value in response["blocks"][0]["box_2d"]))
-
-    def test_ocr_boxes_normalize_reversed_axes_without_mutating_raw_response(self):
-        spec = importlib.util.spec_from_file_location(
-            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
-        stage = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(stage)
-        response = {"page_type": "text_page", "caption": None, "blocks": [
-            {"text": "Mfg # high byte", "box_2d": [370, 550, 515, 386]},
-            {"text": "Both axes reversed", "box_2d": [600, 700, 200, 100]}]}
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "page_0072.json"
-            stage.record_ocr_read(path, {}, {"page": 72}, response)
-            record = json.loads(path.read_text(encoding="utf-8"))
-        self.assertEqual(record["ocr_response"], response)
-        self.assertEqual(response["blocks"][0]["box_2d"], [370, 550, 515, 386])
-        self.assertEqual([block["box_2d"] for block in record["text_layer_response"]["blocks"]],
-                         [[370, 386, 515, 550], [200, 100, 600, 700]])
-        self.assertEqual(record["text_validation"]["normalized_bounding_boxes"], 2)
-        with self.assertRaises(ValueError):
-            stage.text_layer_ocr({**response, "blocks": [{"text": "Zero width", "box_2d": [100, 200, 300, 200]}]})
 
     def test_failed_ocr_retains_native_and_rejected_page_reads(self):
         spec = importlib.util.spec_from_file_location(
@@ -111,36 +91,6 @@ class PdfPageReadTests(unittest.TestCase):
             self.assertFalse((workspace / "00_text_layer/recovery/page_0002.json").exists())
             self.assertFalse((workspace / "00_text_layer/text_layer_manifest.json").exists())
 
-    def test_unreadable_markers_are_retained_in_json_but_omitted_from_pdf(self):
-        spec = importlib.util.spec_from_file_location(
-            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
-        stage = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(stage)
-        response = {"page_type": "text_page", "caption": None, "blocks": [
-            {"text": "\ufffd", "box_2d": [100, 100, 200, 900]},
-            {"text": "Left\ufffdRight", "box_2d": [300, 100, 400, 900]}]}
-        with self.assertRaisesRegex(ValueError, "empty OCR"):
-            stage.text_layer_ocr({**response, "blocks": response["blocks"][:1]})
-        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
-                             known_stages=PDF_STAGES, required_stages=())
-        with tempfile.TemporaryDirectory() as directory:
-            source = Path(directory) / "source.pdf"
-            workspace = Path(directory) / "workspace"
-            with pymupdf.open() as document:
-                document.new_page()
-                document.save(source)
-            with patch.object(stage, "tesseract_settings", return_value=("eng", "unused", {"engine": "tesseract"})), \
-                    patch.object(stage, "tesseract_ocr", return_value=response):
-                stage.prepare_text_layer(source, workspace, config)
-            record = json.loads((workspace / "00_text_layer/page_reads/page_0001.json").read_text(encoding="utf-8"))
-            self.assertEqual(record["ocr_response"], response)
-            self.assertEqual(record["text_layer_response"]["blocks"], [
-                {"text": "Left Right", "box_2d": [300, 100, 400, 900]}])
-            self.assertEqual(record["text_validation"]["omitted_unreadable_markers"], 2)
-            with pymupdf.open(workspace / "00_text_layer/source-ocr.pdf") as prepared:
-                text = prepared[0].get_text()
-                self.assertNotIn("\ufffd", text)
-                self.assertIn("Left Right", text)
 
 
 class PdfRestartTests(unittest.TestCase):
