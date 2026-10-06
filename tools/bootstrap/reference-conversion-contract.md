@@ -65,6 +65,13 @@ hashes before downstream cleanup and requests; restart at 01 retains Stage 00, w
 restart at 00 invalidates dependents and validates retained OCR recovery data before
 reuse. Legacy workspaces require explicit regeneration from 00 with the original PDF.
 
+Stage 00 also writes immediate per-page inspection records under
+`00_text_layer/page_reads/`: native extracted blocks or the schema-shaped OCR
+response, with text-validation status and any rejection error. Rejected text is
+retained for review but never promoted into recovery or a consumable prepared PDF.
+These records do not replace the validated Stage 00 manifest. Restart at 00 clears
+the inspection records and rebuilds them from current reads or validated reuse.
+
 The user closed PDF-TEXT-1.1 on 2026-10-06 using the page-64 fragment evidence,
 without requesting additional source-category runs. Native-copy, mixed,
 blank/graphic-only and real rotated/cropped fragment coverage remain unverified;

@@ -43,6 +43,42 @@ class PdfTextBoundsTests(unittest.TestCase):
 
 
 
+class PdfPageReadTests(unittest.TestCase):
+    def test_failed_ocr_retains_native_and_rejected_page_reads(self):
+        spec = importlib.util.spec_from_file_location(
+            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
+        stage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(stage)
+        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
+                             known_stages=PDF_STAGES, required_stages={"00_text_layer"})
+        response = {"page_type": "text_page", "caption": None,
+                    "blocks": [{"text": "Unreadable \ufffd", "box_2d": [100, 100, 200, 900]}]}
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.pdf"
+            workspace = Path(directory) / "workspace"
+            with pymupdf.open() as document:
+                page = document.new_page()
+                page.insert_text((72, 72), "Native page text")
+                document.new_page()
+                document.save(source)
+            with patch.object(stage, "CodexClient") as client:
+                client.return_value.__enter__.return_value.generate_json.side_effect = (
+                    lambda *args, **kwargs: kwargs["validator"](response))
+                with self.assertRaisesRegex(ValueError, "defective text"):
+                    stage.prepare_text_layer(source, workspace, config)
+            reads = workspace / "00_text_layer/page_reads"
+            native = json.loads((reads / "page_0001.json").read_text(encoding="utf-8"))
+            rejected = json.loads((reads / "page_0002.json").read_text(encoding="utf-8"))
+            self.assertEqual(native["native_blocks"][0]["text"], "Native page text\n")
+            self.assertEqual(native["text_validation"]["status"], "passed")
+            self.assertEqual(rejected["ocr_response"], response)
+            self.assertEqual(rejected["text_validation"]["status"], "failed")
+            self.assertEqual(rejected["page"], 2)
+            self.assertIn("defective text", rejected["text_validation"]["error"])
+            self.assertFalse((workspace / "00_text_layer/recovery/page_0002.json").exists())
+            self.assertFalse((workspace / "00_text_layer/text_layer_manifest.json").exists())
+
+
 class PdfRestartTests(unittest.TestCase):
     def setUp(self):
         spec = importlib.util.spec_from_file_location("pdf_pipeline", ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py")

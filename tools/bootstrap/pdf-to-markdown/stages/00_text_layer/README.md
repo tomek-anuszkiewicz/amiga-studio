@@ -45,6 +45,20 @@ records are rejected. Incompatible intact records are replaced only after a new
 validated response. The shared Codex cache remains separately reusable. Recovery
 never certifies a partially prepared PDF.
 
+Each read page also writes `page_reads/page_XXXX.json` immediately. Native reads
+contain `native_blocks` with extracted text and displayed-page boxes. OCR reads
+contain the model's `ocr_response`, including its normalized `box_2d` coordinates,
+and a `text_validation` status. Schema-shaped OCR responses rejected for unreadable
+text (including U+FFFD), invalid boxes or inconsistent classification remain in
+this file with the validation error. Accepted cache/recovery responses produce
+the same read record. Transport failures and responses rejected before the OCR
+validator runs do not produce an OCR read record.
+
+These partial reads support inspection; a passed text check does not certify PDF
+insertion, source preservation or completion of Stage 00. Stage 01 still requires
+the fully validated prepared PDF and manifest. Restart at 00 clears `page_reads/`
+and rebuilds it for the current run, preserving only compatible recovery records.
+
 Run through the orchestrator:
 
 ```powershell

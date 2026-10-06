@@ -1446,3 +1446,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Stage 01 did not run
   - Stage 00 recorded 2 live calls and 1 cache hit
   - Graphify refresh attempted but unavailable because the graphify Python module is not installed
+---
+
+### [2026-10-06 02:19 CEST] — Persist immediate Stage 00 page reads for inspection
+- **Affected Subsystems**:
+  - `PDF Stage 00`
+  - `bootstrap conversion diagnostics`
+- **What Was Changed (The Concrete Reality)**:
+  - PDF-PAGE-READS-1: write per-page JSON under 00_text_layer/page_reads for native extraction and schema-shaped OCR responses
+  - Preserve rejected OCR text and its validation error before aborting
+  - Rebuild read records for cached and compatible recovery responses
+  - Document partial-read and restart semantics
+- **Architectural Rationale & Trade-Offs**:
+  - Make already-read text inspectable when full-document PDF preparation fails without promoting rejected OCR into validated recovery or downstream inputs
+- **Verification & Test Results**:
+  - Focused rejected-OCR regression failed before the fix and passed afterward
+  - PDF tests 22/22 PASS
+  - Quick per-commit gate PASS
+  - Architecture tests 19/19 PASS
+  - Requested all-page stages 00-01 rerun wrote pages 1-65 including rejected page 65
+  - Stage 00 still halted on unreadable OCR and Stage 01 did not run
+  - One live request and two cache hits
+  - Graphify refresh attempted but graphify module unavailable
