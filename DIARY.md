@@ -1553,3 +1553,17 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS 23 PDF conversion tests
   - quick pre-flight
   - 19 architecture checks and git diff --check. Graphify incremental update completed. No source fragment conversion or milestone gate run.
+---
+
+### [2026-10-06 14:24 CET] — Document PDF workspace directory convention
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Keep PDF workspaces under the book staging directory's workspace subdirectory
+  - document named children for independent conversion attempts and explicit --workspace selection
+- **Architectural Rationale & Trade-Offs**:
+  - Record the user-selected directory layout so future conversion runs keep working state in a predictable per-book location.
+- **Verification & Test Results**:
+  - PASS quick pre-flight, 19 architecture checks and git diff --check. Documentation only
+  - no conversion run.

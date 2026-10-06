@@ -27,7 +27,7 @@ Use `--page-ranges "19"` for a single physical PDF page. Keep the same source/pa
 
 ## Independent test workspaces and restarts
 
-Use a separate `--workspace` for each source/page-range experiment. Final Markdown stays in `<WORKSPACE>/14_link_toc`; `--output-dir` has been removed. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
+Keep conversion workspaces under `<book>-tmp/workspace/`. Use that directory for a single conversion, or a separate child for each source/page-range experiment, such as `<book>-tmp/workspace/page-64/` or `<book>-tmp/workspace/all-pages-00-01/`. Pass the selected path explicitly with `--workspace`; the CLI does not derive the `-tmp` directory from the source path. The original PDF may remain in `<book>/` outside the workspace during local development. Final Markdown stays in `<WORKSPACE>/14_link_toc`; `--output-dir` has been removed. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
 
 Add `--publish` to copy completed Markdown and assets into the sibling book directory
 without `-tmp`. The workspace must be inside `<book>-tmp/`. The target must be absent
