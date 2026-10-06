@@ -2049,3 +2049,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19/19
   - git diff --check passed
   - no fragment conversion requested or run
+---
+
+### [2026-10-06 18:48 CEST] — Clarify contextual page reading order
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion`
+- **What Was Changed (The Concrete Reality)**:
+  - Use top-to-bottom and left-to-right as the default reading order
+  - allow clear layout and semantic relationships to place headings before associated content despite vertical offsets
+- **Architectural Rationale & Trade-Offs**:
+  - Geometric sorting alone can place section content before its offset heading
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 19/19
+  - git diff --check passed
+  - no fragment conversion requested or run

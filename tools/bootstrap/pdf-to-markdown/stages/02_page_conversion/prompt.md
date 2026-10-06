@@ -10,8 +10,11 @@ paragraph, heading, caption, list, table or figure together. A table or figure i
 one object even when OCR provides many labels. Preserve separate source captions
 and explanations as separate objects.
 
-Return segments in intended reading order: top to bottom, left to right for
-objects beside each other. Do not alternate lines from adjacent paragraphs.
+Return segments in intended reading order. Use top-to-bottom, left-to-right order
+as the default. Adjust it when the page layout and semantic relationships clearly
+indicate a different reading order, such as a heading preceding its associated
+content despite their relative vertical positions. Do not alternate lines from
+adjacent paragraphs.
 For graphic, table and cover objects, return md_text as the empty string "".
 Do not transcribe their internal text, reconstruct tables or diagrams, or generate
 descriptions or asset links. Only identify, classify and bound these complete
