@@ -3,7 +3,6 @@
 
 import argparse
 import colorsys
-from collections import Counter
 import math
 from pathlib import Path
 import sys
@@ -48,10 +47,9 @@ def review_image(image, page_data, segments):
     row_height = (height - 2*margin) / max(1, count)
     font_size = max(1, min(max(14, width // 65), int(row_height * 0.6)))
     font = ImageFont.load_default(size=font_size)
-    label_x = width + margin*3
+    label_x = width + width//3
+    leader_x = width + margin//2
     frames = [frame_box(segment, page_data["raster"]) for segment in segments]
-    counts = Counter(frames)
-    used = Counter()
     for index, segment in enumerate(segments):
         kind = segment.get("type")
         level = segment.get("heading_level")
@@ -60,17 +58,16 @@ def review_image(image, page_data, segments):
         label = f"{index+1}. {kind}"
         if level is not None:
             label += f" | heading_level: {level}"
-        require(draw.textlength(label, font=font) <= width - margin*4,
+        require(draw.textlength(label, font=font) <= width*2 - label_x - margin,
                 "Segment label does not fit the review panel")
         color = tuple(round(channel*255) for channel in colorsys.hsv_to_rgb((index*0.61803398875) % 1, 0.8, 0.65))
         frame = frames[index]
         left, top, right, bottom = frame
         label_y = round(margin + (index+0.5)*row_height)
-        used[frame] += 1
-        # Coincident boxes retain their true bounds but have separate leaders.
-        anchor_y = round(top + (bottom-top)*used[frame]/(counts[frame]+1))
-        lane_x = width + margin + round(margin*index/max(1, count-1))
-        draw.line([(right, anchor_y), (lane_x, anchor_y), (lane_x, label_y), (label_x-margin//2, label_y)],
+        anchor_y = (top+bottom) // 2
+        # All leaders enter the panel at the same x. Straight links between
+        # these ports and JSON-ordered labels expose vertical order inversions.
+        draw.line([(right, anchor_y), (leader_x, anchor_y), (label_x-margin//2, label_y)],
                   fill=color, width=FRAME_WIDTH)
         draw.rectangle((left, top, right, bottom), outline=color, width=FRAME_WIDTH)
         draw.text((label_x, label_y), label, font=font, fill=color, anchor="lm")

@@ -8,7 +8,13 @@ Frames stop at the page edge.
 
 Numbered labels follow the segment array's JSON order. Each shows the segment
 type and, when present, `heading_level`. Matching colors and connector lines
-link labels to frames. Coordinates and source prose are not printed. Empty
+link labels to frames. Labels are never sorted by bounding-box position: the
+array is the intended downstream reading stream. Leaders start at frame centers,
+reach a common vertical boundary and then run straight to the ordered labels.
+Crossings in that panel expose inversions between stream order and vertical box
+order for the user to assess. Coincident boxes share a port; their multiple labels
+remain visible. The renderer does not hide inversions by moving labels.
+Coordinates and source prose are not printed. Empty
 segment lists produce the page with an empty panel. This is a user review
 artifact; it does not modify segmentation or run inference.
 

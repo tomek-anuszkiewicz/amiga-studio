@@ -43,10 +43,8 @@ def build_raw_stream(workspace_dir: Path, config: dict):
         page_num = data.get("page", 1)
         segments = data.get("segments", [])
 
-        # Sort segments top to bottom, then left to right
-        sorted_segs = sorted(segments, key=lambda s: (s.get("bbox", [0, 0, 0, 0])[1], s.get("bbox", [0, 0, 0, 0])[0]))
-
-        for seg in sorted_segs:
+        # The segment array is the reviewed reading stream, not a spatial index.
+        for seg in segments:
             node_id = f"node_{global_node_counter:05d}"
             node = {
                 "node_id": node_id,

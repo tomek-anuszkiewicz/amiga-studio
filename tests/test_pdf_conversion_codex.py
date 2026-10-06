@@ -263,6 +263,24 @@ class PdfRestartTests(unittest.TestCase):
 
 
 class PdfConfigurationTests(unittest.TestCase):
+    def test_raw_stream_keeps_json_order_when_coordinate_order_differs(self):
+        script = ROOT / "tools/bootstrap/pdf-to-markdown/stages/03_build_raw_stream/build_stream.py"
+        spec = importlib.util.spec_from_file_location("raw_stream_worker", script)
+        worker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(worker)
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            segments = workspace / "02_page_segmentation"
+            segments.mkdir()
+            (segments / "page_0001_segments.json").write_text(json.dumps({"page": 1, "segments": [
+                {"type": "prose", "bbox": [10, 80, 50, 90], "raw_text": "First in JSON"},
+                {"type": "prose", "bbox": [10, 10, 50, 20], "raw_text": "Second in JSON"},
+            ]}))
+            with patch.object(worker, "extract_assets_for_nodes", side_effect=lambda root, nodes, **kwargs: nodes):
+                worker.build_raw_stream(workspace, {})
+            nodes = json.loads((workspace / "03_build_raw_stream/raw_stream.json").read_text())
+            self.assertEqual([node["raw_text"] for node in nodes], ["First in JSON", "Second in JSON"])
+
     def test_invisible_text_preserves_wrapped_source_streams(self):
         script = ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py"
         spec = importlib.util.spec_from_file_location("text_layer_worker", script)

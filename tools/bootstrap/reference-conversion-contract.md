@@ -45,6 +45,11 @@ the original page with containing 2-pixel segment frames, plus an equal-width
 right panel with numbered type/heading-level labels and connector lines in JSON
 order. It preserves segmentation and uses no model calls. Results stay in
 `workspace/02k_segmentation_review/` with normal completion and restart tracking.
+The segment array is the intended reading stream. Stage 02k never rearranges
+labels by geometry, and its straight panel leaders expose vertical order
+inversions. Stage 03 preserves each array's order when building the raw stream,
+instead of sorting segments by bounding-box coordinates. Crossings are a visual
+review signal, not an automatic correction or a model-quality verdict.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
 in the source book's `workspace/html_to_markdown/`; PDF output stays in `workspace/14_link_toc/`.

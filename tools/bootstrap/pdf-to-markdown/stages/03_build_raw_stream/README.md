@@ -2,6 +2,9 @@
 
 ## Objective
 Aggregates segmented page node files into a global, flat, sequential stream `raw_stream.json`.
+Pages remain in physical order; within each page, the segment array's JSON order
+is preserved exactly. Stage 02k exposes that intended reading order for visual
+review. Stage 03 must not reorder segments by coordinates to mask an inversion.
 Simultaneously crops PNG assets for all `table`, `graphic`, and `code_block` nodes into `workspace/03_build_raw_stream/assets/`. Text remains in each JSON node's `raw_text` field; separate raw-text files are not created.
 
 ## Inputs

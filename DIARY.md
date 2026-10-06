@@ -1676,3 +1676,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - PASS 24 PDF conversion tests, quick pre-flight, 19 architecture checks and git diff --check. Graphify updated. User-selected page 20 completed Stage 02k with 14 frames and a visually inspected 4200x2704 PNG from the original 2100x2704 image, with zero model calls. The initial raster-key typo and outdated numeric-stage test expectation were corrected before completion. Earlier source-stage records remain retained. Close PDF-SEGMENTATION-REVIEW-02K
   - no roadmap milestone or broader conversion run.
+---
+
+### [2026-10-06 15:35 CET] — PDF-JSON-STREAM-ORDER: preserve reviewed segment order
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02k_segmentation_review`
+  - `tools/bootstrap/pdf-to-markdown/stages/03_build_raw_stream`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Keep review labels in JSON array order
+  - replace independent elbow routes with shared-boundary straight panel leaders so vertical-order inversions remain visible
+  - use frame-center ports without artificial ranking of coincident boxes
+  - remove Stage 03 coordinate sorting and preserve each page array when assigning sequential nodes
+  - document stream-order semantics
+- **Architectural Rationale & Trade-Offs**:
+  - The user clarified that segmentation JSON represents the intended Markdown reading stream and crossed leaders should expose an ordering problem rather than be hidden by label rearrangement.
+- **Verification & Test Results**:
+  - Focused Stage 03 order regression failed before repair and passed afterward. PASS 25 PDF conversion tests
+  - quick pre-flight
+  - 19 architecture checks and git diff --check. Graphify updated. Page-20 Stage 02k regenerated and visually inspected: 14 JSON-ordered labels
+  - coincident graphic boxes sharing a port
+  - and zero model calls. No full Markdown conversion run. Close PDF-JSON-STREAM-ORDER.
