@@ -1656,3 +1656,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Raw-overlay regression failed before repair and passed afterward. PASS 23 PDF conversion tests, 19 shared Codex tests, quick pre-flight, 19 architecture checks and git diff --check. Rotated overlay diagnostic preserved displayed coordinates within 0.000008 points. Graphify updated. All 160 requested pages completed stages 00 and 01 with 160 PNG/JSON pairs and zero Codex calls
   - completed-record digests and prepared PDF hash verified. PowerShell log capture returned exit 1 after Tesseract stderr warnings despite confirmed pipeline completion. User assessment of text selection remains separate.
+---
+
+### [2026-10-06 15:32 CET] — PDF-SEGMENTATION-REVIEW-02K: add graphical segmentation review
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/pipeline.py`
+  - `tools/bootstrap/pdf-to-markdown/stages/02k_segmentation_review`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add deterministic Stage 02k between segmentation and raw-stream construction
+  - retain original page resolution and add an equal-width right panel
+  - draw containing 2-pixel frames with numbered type and optional heading-level labels in JSON order
+  - distinguish coincident frames through separate connector anchors
+  - use registry order for stage resolution and restart retention
+  - update documentation
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested a quick visual assessment of bounding-box coverage and classification without printing coordinate values or changing segmentation. Preserve completed 00-02 artifacts and avoid new model requests.
+- **Verification & Test Results**:
+  - PASS 24 PDF conversion tests, quick pre-flight, 19 architecture checks and git diff --check. Graphify updated. User-selected page 20 completed Stage 02k with 14 frames and a visually inspected 4200x2704 PNG from the original 2100x2704 image, with zero model calls. The initial raster-key typo and outdated numeric-stage test expectation were corrected before completion. Earlier source-stage records remain retained. Close PDF-SEGMENTATION-REVIEW-02K
+  - no roadmap milestone or broader conversion run.

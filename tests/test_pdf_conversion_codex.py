@@ -136,6 +136,23 @@ class PdfRestartTests(unittest.TestCase):
         with patch.object(sys, "argv", argv), patch.object(self.pipeline, "CodexTransport"), patch.object(self.pipeline, "run_stage", side_effect=worker):
             self.pipeline.main()
 
+    def test_named_review_stage_restarts_by_registry_order(self):
+        self.assertEqual(self.pipeline.resolve_stage_idx("02k"), self.stage_idx("02k"))
+        self.assertEqual(self.pipeline.resolve_stage_idx("3"), self.stage_idx("03"))
+        before = json.loads((self.workspace / ".conversion-state.json").read_text())["stages"]["02"]
+        def worker(stage, *args):
+            self.assertEqual(stage["id"], "02k")
+            retained = json.loads((self.workspace / ".conversion-state.json").read_text())["stages"]
+            self.assertEqual(set(retained), {"00", "01", "02"})
+            self.assertFalse((self.workspace / "03_build_raw_stream").exists())
+            self.write_artifacts(stage)
+            return True
+        self.run_pipeline(["--from-stage", "02k", "--to-stage", "02k"], worker)
+        after = json.loads((self.workspace / ".conversion-state.json").read_text())["stages"]
+        self.assertEqual(after["02"], before)
+        self.assertEqual(after["02k"]["status"], "completed")
+        self.assertNotIn("03", after)
+
     def test_restart_five_clears_all_dependents_and_tasks_with_missing_manifest(self):
         (self.workspace / "chapters_manifest.json").unlink()
         before = (self.workspace / "04_stream_reduction/artifact.json").read_bytes()
@@ -155,7 +172,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual((self.workspace / "04_stream_reduction/artifact.json").read_bytes(), before)
         self.assertEqual(other_output.read_text(), "Independent conversion")
         state = json.loads((self.workspace / ".conversion-state.json").read_text())
-        self.assertEqual(list(state["stages"]), ["00", "01", "02", "03", "04", "05"])
+        self.assertEqual(list(state["stages"]), ["00", "01", "02", "02k", "03", "04", "05"])
 
     def test_missing_current_manifest_is_restored_from_preserved_snapshot(self):
         (self.workspace / "pages_manifest.json").unlink()

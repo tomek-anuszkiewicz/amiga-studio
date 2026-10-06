@@ -40,6 +40,12 @@ Keep PDF conversion workspaces in the source PDF directory's `workspace/` subdir
 
 Each PDF workspace owns one source/page selection and its intermediate conversion state. Explicit restart from stage N validates stages before N, clears all outputs/status/manual tasks from N onward, and restores predecessor manifest snapshots. Final output stays in the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored; modified retained artifacts are rejected rather than automatically repaired. Broader manual content editing and conversion quality remain separate work.
 
+Deterministic Stage 02k follows Stage 02 and renders a graphical review PNG:
+the original page with containing 2-pixel segment frames, plus an equal-width
+right panel with numbered type/heading-level labels and connector lines in JSON
+order. It preserves segmentation and uses no model calls. Results stay in
+`workspace/02k_segmentation_review/` with normal completion and restart tracking.
+
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
 in the source book's `workspace/html_to_markdown/`; PDF output stays in `workspace/14_link_toc/`.
 Bootstrap downloads sources into `<book>-tmp/`; `-Markdown` only converts locally.

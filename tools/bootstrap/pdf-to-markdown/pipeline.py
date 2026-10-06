@@ -53,6 +53,14 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("page_*_segments.json", "segment JSON files"),
     },
     {
+        "id": "02k",
+        "dir": "02k_segmentation_review",
+        "script": "render_review.py",
+        "desc": "Render segment frames and classification labels for visual review",
+        "targets": ["02k_segmentation_review"],
+        "inspect": ("page_*_review.png", "segmentation review PNGs"),
+    },
+    {
         "id": "03",
         "dir": "03_build_raw_stream",
         "script": "build_stream.py",
@@ -217,7 +225,7 @@ def resolve_stage_idx(arg_val: str) -> Optional[int]:
         s_dir = s["dir"].lower()
         if val in (s_id, s_dir, s_id.lstrip("0")):
             return idx
-        if val.isdigit() and int(val) == int(s["id"]):
+        if val.isdigit() and s["id"].isdigit() and int(val) == int(s["id"]):
             return idx
     return None
 
@@ -480,7 +488,7 @@ def main():
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--prepare-stage")
     parser.add_argument("--apply-stage")
-    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (00, 01, 03, 05, 11, 14)")
+    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (00, 01, 02k, 03, 05, 11, 14)")
     args = parser.parse_args()
     skill_dir = Path(__file__).resolve().parent
     config_source = args.config.resolve()
@@ -516,7 +524,7 @@ def main():
     elif args.run_deterministic:
         start = completed
         end = start
-        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("00", "01", "03", "05", "11", "14"):
+        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("00", "01", "02k", "03", "05", "11", "14"):
             raise ValueError("Next stage requires inference; use an explicit stage interval")
     elif args.resume:
         start, end = completed, len(STAGE_REGISTRY)-1
@@ -586,7 +594,8 @@ def main():
     clean_downstream_stages(workspace, output, start, workspace / "stage_status.json",
                             keep_tasks_for=stage["id"] if args.apply_stage else None)
     state["source"] = source
-    state["stages"] = {key: value for key, value in state.get("stages", {}).items() if int(key) < int(stage["id"])}
+    retained_ids = {item["id"] for item in STAGE_REGISTRY[:start]}
+    state["stages"] = {key: value for key, value in state.get("stages", {}).items() if key in retained_ids}
     write_state(workspace, state)
     if manual:
         script = skill_dir / "stages" / stage["dir"] / stage["script"]

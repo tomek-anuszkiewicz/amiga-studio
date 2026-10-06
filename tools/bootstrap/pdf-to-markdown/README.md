@@ -27,6 +27,16 @@ Use `--page-ranges "19"` for a single physical PDF page. Keep the same source/pa
 
 ## Independent test workspaces and restarts
 
+[Stage 02k](stages/02k_segmentation_review/README.md) renders the Stage 02
+segmentation for visual assessment. Its PNG keeps the page at its original
+resolution, adds an equal-width panel on the right, and links each 2-pixel frame
+to a numbered type/heading-level label in JSON order. It does not run inference
+or modify segment classifications. Run only this stage after completed Stage 02:
+
+```powershell
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "tools/bootstrap/pdf-to-markdown/config.yaml" --from-stage 02k --to-stage 02k
+```
+
 Keep conversion workspaces in the source PDF directory's `workspace/` subdirectory. Use `<PDF_DIRECTORY>/workspace/` for a single conversion, or a separate child for each source/page-range experiment, such as `<PDF_DIRECTORY>/workspace/page-64/` or `<PDF_DIRECTORY>/workspace/all-pages-00-01/`. When `--pdf` is supplied without `--workspace`, the CLI defaults to `<PDF_DIRECTORY>/workspace/`. Pass `--workspace` explicitly for an independent attempt or when continuing without `--pdf`. The original PDF stays outside the workspace. Final Markdown stays in `<WORKSPACE>/14_link_toc`; `--output-dir` has been removed. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
 
 Add `--publish` to copy completed Markdown and assets into the sibling book directory
@@ -76,6 +86,10 @@ tools/bootstrap/pdf-to-markdown/
     ├── 02_page_segmentation/
     │   ├── segment_page.py                  # Vertical banding analysis -> page_XXXX_segments.json
     │   ├── prompt.md                        # Vision guidelines: header, footer, chapter, heading, prose, code_block, table, graphic, toc, toc_heading
+    │   └── README.md
+    │
+    ├── 02k_segmentation_review/
+    │   ├── render_review.py                 # Original page + frames and classification labels -> review PNG
     │   └── README.md
     │
     ├── 03_build_raw_stream/
@@ -163,7 +177,7 @@ tools/bootstrap/pdf-to-markdown/
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02`
 > - **Prepare and preprocess specific pages in a new workspace**:
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 00 --to-stage 01`
-> - **Next ready deterministic stage (00, 01, 03, 05, 11, 14)**: `--run-deterministic` runs one ready stage and rejects an inference stage.
+> - **Next ready deterministic stage (00, 01, 02k, 03, 05, 11, 14)**: `--run-deterministic` runs one ready stage and rejects an inference stage.
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --run-deterministic`
 > - **Optional manual review stages (06, 07, 08, 09)**:
 >   - Prepare task items: `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --prepare-stage 07`
