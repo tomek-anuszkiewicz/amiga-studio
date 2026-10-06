@@ -16,8 +16,22 @@ from conversion import load_config
 from conversion.config import PDF_STAGES
 from conversion.lineage import complete_stage, validate_prefix, restore_shared, stage_identity, file_hash, artifact_predecessor
 from conversion.pdf_geometry import text_blocks
+from conversion.pdf_page_conversion import validate_page
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class PdfCoverContractTests(unittest.TestCase):
+    def test_cover_supported_in_response_and_stored_artifact(self):
+        entry = {"page": 1, "page_id": "page_0001",
+                 "raster": {"pixel_width": 200, "pixel_height": 300}}
+        value = {"page": 1, "image_width": 200, "image_height": 300,
+                 "segments": [{"type": "cover", "continuation": False,
+                               "heading_level": None, "md_text": "Manual title\nPublisher",
+                               "bbox": [0, 0, 200, 300]}]}
+        validate_page(value, entry)
+        value["segments"][0]["segment_id"] = "page_0001_seg_001"
+        validate_page(value, entry, stored=True)
 
 
 class PdfTextBoundsTests(unittest.TestCase):

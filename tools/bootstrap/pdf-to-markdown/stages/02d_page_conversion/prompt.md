@@ -24,6 +24,15 @@ that convey meaning, such as arrows, connections or diagram geometry.
 
 Classify each complete logical object into exactly one of the schema types:
 
+- `cover`: A book's front or back cover, recognized by its publication design,
+  title, edition or revision details, publisher branding and optional artwork.
+  Treat the complete cover as one object, including all its visible text and
+  logos, even when the artwork occupies only part of the page. Bound the whole
+  cover and transcribe its source-visible text in md_text; do not split its
+  title, publication details, branding or artwork into heading, prose or graphic
+  objects. Set heading_level to null and continuation to false. A plain interior
+  title page or chapter opener is not a cover solely because it has a large title;
+  page number or first-page position alone does not establish this role.
 - `header`: Running top-margin document headers and repeated chapter or section
   titles. Table-of-contents, index, list-of-tables and list-of-figures titles,
   including continuation titles, use their dedicated heading types. Unrelated running headers

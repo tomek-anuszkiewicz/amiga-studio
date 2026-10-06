@@ -1847,3 +1847,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS 26 PDF unittest tests, quick pre-flight, 19 architecture checks, response/stored boolean diagnostics, rejection of absent or invalid values and former type, exact 22-type prompt comparison, compatibility fingerprint verification and git diff --check. Graphify updated. Initial pytest invocation could not run because pytest is not installed
   - the suite passed through its native unittest entry point. No model calls or fragment conversion
   - existing outputs were not regenerated.
+---
+
+### [2026-10-06 17:28 CET] — PDF-02D-COVER: classify complete book covers as one object
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/pdf_page_conversion.py`
+  - `tools/bootstrap/conversion/pdf_lineage_compatibility.json`
+  - `tools/bootstrap/pdf-to-markdown/stages/02d_page_conversion`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add cover to response and stored schemas
+  - define one complete cover object including artwork, branding and source-visible publication text
+  - document regeneration and preserve compatible old-branch fingerprints
+- **Architectural Rationale & Trade-Offs**:
+  - The reviewed cover was split into graphic
+  - heading and prose because the independent stage vocabulary lacked cover. Stage 02m already renders arbitrary validated object labels.
+- **Verification & Test Results**:
+  - Reproduced schema rejection with the retained cover regression before repair. PASS 27 PDF unittest tests, quick pre-flight, 19 architecture checks, exact 23-type prompt/schema comparison, compatibility fingerprint verification, generic cover rendering diagnostic and git diff --check. Graphify updated. No model calls or fragment conversion
+  - existing outputs were not regenerated.

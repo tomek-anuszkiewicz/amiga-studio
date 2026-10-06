@@ -4,7 +4,7 @@ from jsonschema import validate
 from .pdf_artifacts import read_json, require, validate_preprocess
 from .pdf_schemas import object_schema, STRING, BOOL
 
-TYPES = ["header", "footer", "toc_heading", "toc", "thumb_index", "chapter", "heading",
+TYPES = ["cover", "header", "footer", "toc_heading", "toc", "thumb_index", "chapter", "heading",
          "callout", "callout_text", "prose", "code_block", "table", "graphic", "caption",
          "footnote", "table_legend", "index_heading", "index",
          "list_of_tables_heading", "list_of_tables", "list_of_figures_heading", "list_of_figures"]

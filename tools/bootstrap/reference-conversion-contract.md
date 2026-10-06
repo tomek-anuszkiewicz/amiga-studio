@@ -76,7 +76,11 @@ Every object has a nonempty integer pixel
 rectangle `[x0,y0,x1,y1]` with exclusive upper bounds. The model bounds complete
 logical objects, including textual ones, independently of OCR blocks. Text boxes
 serve review; downstream consumers may ignore them. Table/graphic boxes may also
-serve cropping. Previous text objects with null boxes require 02d regeneration. The eight additional
+serve cropping. A complete front or back book cover is one `cover` object,
+including its artwork, logos and source-visible publication text, with null
+`heading_level` and false `continuation`. Existing cover pages require 02d/02m
+regeneration to apply that classification; saved objects are not relabeled.
+Previous text objects with null boxes require 02d regeneration. The eight additional
 classifications distinguish footnotes, source table legends, index and listing
 headings/entries; they do not change Stage 02's vocabulary.
 `table_legend` is a source-written block below a table defining its symbols,

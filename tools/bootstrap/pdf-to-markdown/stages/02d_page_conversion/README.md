@@ -23,6 +23,12 @@ The [prompt](prompt.md) defines source roles, including footnote, table_legend,
 index and dedicated table/figure listing headings and entries. Source captions stay
 separate from source explanations and generated asset descriptions remain deferred.
 
+`cover` identifies a complete front or back book cover as one object, including
+its artwork, logos and source-visible title and publication text. Its box bounds
+the whole cover; `heading_level` is null and `continuation` is false. Stage 02m
+displays its label and frame through the same generic object renderer. Regenerate
+02d/02m to classify existing cover pages; saved objects are not relabeled in place.
+
 `table_legend` is source text below a table explaining symbols, notation or
 abbreviations used in it. A LEGEND, NOTES or DESCRIPTION title alone does not
 establish that role. General table explanations are prose; source table numbers
