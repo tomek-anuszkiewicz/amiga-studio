@@ -236,7 +236,7 @@ and derives the book destination from its enclosing `<Document_Name>-tmp/` direc
 <a id="multi-page-web-crawling-engine"></a>
 ##### Multi-Page Web Crawling Engine
 For multi-page web publications, the bootstrapper incorporates an autonomous crawling engine:
-- **Kuba Winnicki's *Achtung! Amiga*:** Downloads the root index and all 16 technical subpages (`Copper.html`, `Sprite_Hardware.html`, `Freeing_the_DMA.html`, `More_sprites_in_one_line.html`, `Disappearing_sprites.html`, `UHRES_Display.html`, `Speed_Up_Tricks.html`, `Faster_Chipmem_bus_in_PAL_mode.html`, `Other_Amiga_Native_Hardware.html`, `CD32_Controller.html`, `Battery_Backed_Clock.html`, `Desaturation_Control_Bit.html`, `Video_timings.html`, `Links.html`, `Last_Words.html`, `What_is_this_all_about.html`).
+- **Kuba Winnicki's *Achtung! Amiga*:** Downloads the root index and all 17 technical subpages (`What_is_this_all_about.html`, `Copper.html`, `More_register_changes_in_a_scanline.html`, `Sprite_Hardware.html`, `Freeing_the_DMA.html`, `More_sprites_in_one_line.html`, `Disappearing_sprites.html`, `UHRES_Display.html`, `Speed_Up_Tricks.html`, `Faster_Chipmem_bus_in_PAL_mode.html`, `Other_Amiga_Native_Hardware.html`, `CD32_Controller.html`, `Battery_Backed_Clock.html`, `Desaturation_Control_Bit.html`, `Video_timings.html`, `Links.html`, `Last_Words.html`).
 - If the primary live server at `winnicki.net` is unreachable or blocks requests, the crawler automatically switches to the permanent Wayback Machine snapshot mirror.
 
 <a id="processing-raw-documents-into-markdown"></a>

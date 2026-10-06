@@ -2200,3 +2200,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19/19
   - git diff --check passed
   - planning only, no GPU rental or conversion run
+---
+
+### [2026-10-06 23:33 CEST] — Complete Achtung Amiga subpage download catalog
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add More_register_changes_in_a_scanline.html to the download catalog
+  - Order index and 17 subpages according to the requested publication hierarchy
+  - Correct catalog and developer documentation page counts
+- **Architectural Rationale & Trade-Offs**:
+  - The fixed download list omitted the available Copper subchapter, leaving its content out of conversion
+- **Verification & Test Results**:
+  - PowerShell AST parsing passed and catalog matched index plus all 17 requested subpages in order
+  - Quick pre-flight passed
+  - Architecture rules passed 19/19
+  - git diff --check passed
+  - No download or conversion run

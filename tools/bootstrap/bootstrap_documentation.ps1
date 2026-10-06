@@ -14,7 +14,7 @@
     - Multi-source resilience: 2-3 verified mirrors per document with automated failover.
     - All-sources mode (-AllSources): downloads from all available mirrors
       for comprehensive testing or archival redundancy.
-    - Full web crawling for multi-page articles (e.g. Kuba Winnicki's 16-page 'Achtung! Amiga').
+    - Multi-page downloads (e.g. Kuba Winnicki's 'Achtung! Amiga' index and 17 subpages).
     - Clear error reporting if all mirror sources for an item are unavailable.
 
 .PARAMETER All
@@ -248,10 +248,12 @@ $Catalog = @(
         Name        = "Undocumented features of OCS, ECS and AGA chipsets"
         Folder      = "Undocumented features of OCS, ECS and AGA chipsets"
         Type        = "Crawl"
-        Description = "Kuba Winnicki's 16-page publication on Copper, Sprites, DMA, UHRES (2002)"
+        Description = "Kuba Winnicki's publication on Copper, Sprites, DMA, UHRES (index and 17 subpages)"
         SubPages    = @(
             "index.html",
+            "What_is_this_all_about.html",
             "Copper.html",
+            "More_register_changes_in_a_scanline.html",
             "Sprite_Hardware.html",
             "Freeing_the_DMA.html",
             "More_sprites_in_one_line.html",
@@ -265,8 +267,7 @@ $Catalog = @(
             "Desaturation_Control_Bit.html",
             "Video_timings.html",
             "Links.html",
-            "Last_Words.html",
-            "What_is_this_all_about.html"
+            "Last_Words.html"
         )
         Mirrors     = @(
             @{
