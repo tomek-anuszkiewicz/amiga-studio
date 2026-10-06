@@ -22,23 +22,79 @@ grid of text or numbers is a table, even when enclosed in a larger decorative
 frame or captioned "Figure". Preserve cell boundaries. Retain lines and shapes
 that convey meaning, such as arrows, connections or diagram geometry.
 
-Use the schema classifications. footnote is a source note referenced by a marker
-such as *, a superscript number or 1), regardless of the referenced object's type
-or page position. For example, *Can be used with CPU32 and a numbered note about
-hexadecimal notation are footnotes. table_legend is a separate source-written block
-below a table that explains symbols, notation or abbreviations used in that table.
-It may be titled LEGEND, NOTES or DESCRIPTION; its role and position determine the
-classification, not the title alone. Keep the legend and its internal markers together.
-A general explanation of a table without definitions of its notation is prose,
-not table_legend. A table number/title is caption. Notes referenced by markers remain
-footnote; do not absorb them into a legend solely because they are below a table.
-index is distinct from toc and thumb_index. Index, list-of-tables and list-of-figures
-titles, including continuation titles, use their dedicated heading classifications.
-Unrelated running headers remain header. Preserve source markers.
+Classify each complete logical object into exactly one of the schema types:
 
-Use heading only for titles that establish a section or subsection in the
-document's hierarchy. Bold text, a separate line or a trailing colon alone
-does not make text a heading.
+- `header`: Running top-margin document headers and repeated chapter or section
+  titles. Index, list-of-tables and list-of-figures titles, including continuation
+  titles, use their dedicated heading types instead. Unrelated running headers
+  remain `header`.
+- `footer`: Running bottom-margin footers and printed page numbers.
+- `toc_heading`: The opening title of the formal Table of Contents, such as
+  "Contents" or "Table of Contents". Running top-margin continuation headers
+  such as "TABLE OF CONTENTS (Continued)" are `header`. Index and list-of-tables
+  or list-of-figures titles use their dedicated heading types.
+- `toc`: Entries in the formal Table of Contents, including chapter or section
+  listings and their page references. Marginal navigation tabs are `thumb_index`.
+- `thumb_index`: Printed edge tabs, chapter bookmark tabs and navigation markers
+  along page margins. These are not formal Table of Contents or index entries.
+- `chapter`: A new chapter or appendix opening, such as "Chapter 1", "Appendix A"
+  or a major standalone chapter opening banner.
+- `heading`: A title establishing a section or subsection in the document's
+  hierarchy. Bold text, a separate line or a trailing colon alone does not make
+  text a heading. A run-in title followed by body sentences in the same logical
+  paragraph belongs to `prose`. Standalone advisory labels are `callout`;
+  multi-column instruction header banners are `table`.
+- `callout`: A standalone advisory label or banner introducing a note, warning,
+  caution or tip, such as "NOTE", "WARNING", "CAUTION", "IMPORTANT" or "TIP".
+  Labels introducing explanations attached to a specific table or figure follow
+  the attached-note rule below instead.
+- `callout_text`: The body paragraphs, bullet lists or mathematical formulas of
+  an advisory callout, visually grouped beneath its label or inside its box.
+  Do not classify these as ordinary `prose` solely because they contain sentences.
+- `prose`: Narrative body paragraphs, including paragraphs with run-in titles
+  and general explanations of tables or figures. Attached explanations without
+  marker references or definitions of table notation also belong here.
+- `code_block`: Monospace code listings, assembly language, memory hex dumps
+  and preformatted numeric waveform or sample arrays, such as 16 values per row.
+- `table`: Formal tabular data, multi-column register bit assignments, structured
+  parameter lists and horizontal instruction banners with parallel columns for
+  mnemonic, title and processor models. Regular text or number grids remain
+  tables despite decorative frames or "Figure" captions. Keep the complete table
+  together and preserve cell boundaries; its separate title is `caption`.
+- `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts,
+  photographs and diagram artwork. A decorative border alone does not make an
+  object a graphic. Preserve meaningful arrows, connections and geometry.
+  Bound only the artwork and its internal labels; keep separate source captions
+  and explanations outside this object. Its text contains only source-visible
+  text, not an authored description.
+- `caption`: A separate formal figure or table number/title, such as "Figure 5-2:
+  Digitized Amplitude Values" or "Table 5-8: Five Octave Even-tempered Scale".
+  Do not absorb the caption into the table or graphic.
+- `caption_continuation`: A formal figure or table caption indicating continuation
+  across a page break, such as "Table 3-1 (Continued)", "Table 3-1 (Concluded)"
+  or "Figure 4-2 (Cont.)". Running document headers are not continuation captions.
+- `footnote`: A source note referenced by a marker such as *, a superscript
+  number or 1), regardless of the referenced object's type or page position.
+  For example, *Can be used with CPU32 and a numbered note about hexadecimal
+  notation are footnotes. Preserve source markers. Do not absorb referenced notes
+  into a table legend solely because they are below a table.
+- `table_legend`: A separate source-written block below a table defining its
+  symbols, notation or abbreviations. It may be titled LEGEND, NOTES or
+  DESCRIPTION; its role and position determine the type, not the title alone.
+  Keep the legend and its internal markers together. General explanations are
+  `prose`, individually referenced notes are `footnote`, and table titles are
+  `caption`.
+- `index_heading`: An index title, including continuation titles.
+- `index`: Alphabetical or subject index entries and their page references.
+  These are distinct from Table of Contents entries and marginal navigation tabs.
+- `list_of_tables_heading`: A list-of-tables title, including continuation titles.
+- `list_of_tables`: Entries in a list of tables, including table identifiers,
+  titles and page references. Actual table captions are `caption`.
+- `list_of_figures_heading`: A list-of-figures or list-of-illustrations title,
+  including continuation titles.
+- `list_of_figures`: Entries in a list of figures or illustrations, including
+  figure identifiers, titles and page references. Actual figure captions are
+  `caption`.
 
 A label introducing notes, assumptions, conditions or explanations attached
 to a specific table or figure belongs with the content it introduces.

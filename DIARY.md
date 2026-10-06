@@ -1812,3 +1812,17 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - prompt diff reviewed and git diff --check passed
   - no fragment conversion or model calls
   - existing outputs were not regenerated
+---
+
+### [2026-10-06 17:15 CET] — PDF-02D-TYPE-DESCRIPTIONS: enumerate logical object classifications
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02d_page_conversion/prompt.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Describe all 23 schema types in individual bullet points
+  - clarify callouts, code listings, instruction banners, continuation captions and navigation entries
+  - preserve independent object grouping, attached-note rules and pixel bounds
+- **Architectural Rationale & Trade-Offs**:
+  - Make the Stage 02d classification vocabulary explicit like Stage 02 while retaining the independent branch contract and dedicated index/list headings.
+- **Verification & Test Results**:
+  - PASS quick pre-flight, 19 architecture checks, exact 23-type schema/list comparison and git diff --check. No model calls or fragment conversion
+  - existing outputs were not regenerated.
