@@ -48,6 +48,9 @@ Keep PDF conversion workspaces in the source PDF directory's `workspace/` subdir
 Each PDF workspace owns one source/page selection and its intermediate conversion state. Explicit restart validates retained artifact inputs, clears the selected stage and its artifact descendants (including their status/manual tasks), and restores retained manifest snapshots. Final output stays in the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored; modified retained artifacts are rejected rather than automatically repaired. Broader manual content editing and conversion quality remain separate work.
 
 The execution sequence is `00 -> 01 -> 02 -> 02.5 -> 03`, then 04-14.
+Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
+including associated text. Edge contact or incompleteness alone does not justify
+omission; intended-page content and uncertain ownership are preserved.
 The former segmentation and review stages have been removed. Stage 02 reads only validated Stage 01 PNG/complete text
 JSON pairs and defines independent logical objects in model array order, with
 `md_text` and no `raw_text`. `02_page_conversion/page_NNNN_segments.json` records

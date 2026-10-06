@@ -1,6 +1,9 @@
 # Stage 02: Independent Page Conversion
 
 Read validated Stage 01 original-resolution PNGs and their complete text JSON.
+The model excludes scan artifacts and incidental fragments from adjacent pages,
+including their associated text. Image-edge contact or incompleteness alone does
+not justify exclusion: intended-page content and uncertain ownership are preserved.
 The model defines logical objects independently of OCR block boundaries, returns
 reading order and converts textual objects into `md_text` without supplied Markdown
 formatting recipes. For `graphic`, `table` and `cover`, `md_text` must be the empty

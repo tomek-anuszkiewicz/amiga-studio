@@ -2064,3 +2064,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19/19
   - git diff --check passed
   - no fragment conversion requested or run
+---
+
+### [2026-10-06 18:51 CEST] — Exclude incidental adjacent-page fragments from page conversion
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Identify intended-page content before extraction
+  - exclude adjacent-page fragments and associated text
+  - preserve incomplete intended-page objects and uncertain ownership
+- **Architectural Rationale & Trade-Offs**:
+  - Preserving every visible mark can classify clipped neighboring-page artwork as intended-page content
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 19/19
+  - git diff --check passed
+  - no fragment conversion requested or run
