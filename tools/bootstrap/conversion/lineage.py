@@ -46,13 +46,7 @@ def stage_identity(stage, config, source, predecessor, skill_dir):
     shared = Path(__file__).resolve().parent
     procedure = {p.relative_to(directory).as_posix(): file_hash(p) for p in sorted(directory.iterdir()) if p.suffix in (".py", ".md")}
     hashes = {p.name: file_hash(p) for p in sorted(shared.glob("*.py"))}
-    # Preserve the exact pre-branch identity only for reviewed compatible code.
-    compatibility = json.loads((shared / "pdf_lineage_compatibility.json").read_text(encoding="utf-8"))
-    if stage["id"] not in ("02d", "02m") and hashes == compatibility["current"]:
-        hashes = compatibility["legacy"]
     procedure["shared"] = digest(hashes)
-    if stage["id"] == "02m":
-        procedure["review_primitives"] = file_hash(skill_dir / "stages/02k_segmentation_review/render_review.py")
     return {"contract": CONTRACT_VERSION, "sdk_runtime": SDK_VERSION, "stage": stage["dir"],
             "selection": config["llm"]["stages"].get(stage["dir"]),
             "settings": {key: value for key, value in config.items() if key != "llm"},

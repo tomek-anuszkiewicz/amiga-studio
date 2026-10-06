@@ -34,7 +34,7 @@ abbreviations used in it. A LEGEND, NOTES or DESCRIPTION title alone does not
 establish that role. General table explanations are prose; source table numbers
 and titles are captions; individually referenced notes remain footnotes.
 Existing artifacts with the former classification require regeneration through
-02d/02m rather than relabeling their saved JSON. Stage 02k does not classify objects.
+02d/02m rather than relabeling their saved JSON.
 
 Explanatory text boxes connected to diagram artwork by arrows, leader lines,
 shared borders or other meaningful geometry belong inside one complete `graphic`.

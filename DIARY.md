@@ -1926,3 +1926,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture rules passed 19/19
   - Graphify updated
   - no model calls or fragment conversion
+---
+
+### [2026-10-06 17:40 CET] — Remove obsolete PDF segmentation and review stages
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion`
+  - `tests/test_pdf_conversion_codex.py`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove stages 02 and 02k, their configuration and response schemas
+  - move review drawing primitives into 02m
+  - remove obsolete lineage compatibility bridge
+  - adapt restart and lineage tests and documentation
+  - reject legacy Stage 03 assembly until its input contract is redesigned
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the user-selected 02d/02m page-conversion workflow without dependencies on deleted stages or silently adapting incompatible Markdown/pixel objects into legacy raw-text/PDF-point nodes
+- **Verification & Test Results**:
+  - PDF conversion tests: 29 passed
+  - shared conversion tests: 19 passed
+  - quick pre-flight passed
+  - architecture tests: 19 passed
+  - CLI help and git diff --check passed
+  - graphify update completed
+  - no fragment conversion run. Current fragment runs must stop at 02m
+  - Stage 03-14 end-to-end conversion remains unavailable. Shared procedure changes require explicit regeneration of incompatible workspace records.

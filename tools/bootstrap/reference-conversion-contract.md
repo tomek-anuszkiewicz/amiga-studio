@@ -47,19 +47,8 @@ Keep PDF conversion workspaces in the source PDF directory's `workspace/` subdir
 
 Each PDF workspace owns one source/page selection and its intermediate conversion state. Explicit restart validates retained artifact inputs, clears the selected stage and its artifact descendants (including their status/manual tasks), and restores retained manifest snapshots. Final output stays in the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored; modified retained artifacts are rejected rather than automatically repaired. Broader manual content editing and conversion quality remain separate work.
 
-Deterministic Stage 02k follows Stage 02 and renders a graphical review PNG:
-the original page with containing 2-pixel segment frames, plus an equal-width
-right panel with numbered type/heading-level labels and connector lines in JSON
-order. It preserves segmentation and uses no model calls. Results stay in
-`workspace/02k_segmentation_review/` with normal completion and restart tracking.
-The segment array is the intended reading stream. Stage 02k never rearranges
-labels by geometry, and its straight panel leaders expose vertical order
-inversions. Stage 03 preserves each array's order when building the raw stream,
-instead of sorting segments by bounding-box coordinates. Crossings are a visual
-review signal, not an automatic correction or a model-quality verdict.
-
-The explicit execution sequence is `01 -> 02 -> 02d -> 02k -> 02m`, then the
-existing Stages 03-14. Stage 02d reads only validated Stage 01 PNG/complete text
+The usable execution sequence is `00 -> 01 -> 02d -> 02m`.
+The former segmentation and review stages have been removed. Stage 02d reads only validated Stage 01 PNG/complete text
 JSON pairs and defines independent logical objects in model array order, with
 `md_text` and no `raw_text`. `02d_page_conversion/page_NNNN_segments.json` records
 physical page identity, original PNG dimensions, deterministic page-scoped IDs,
@@ -71,7 +60,7 @@ type (for example `toc_heading`, `list_of_figures_heading` or `caption`) and its
 complete source name. Other objects, including bodies beneath these titles,
 have `continuation: false`. Stage 02d no longer accepts `caption_continuation`;
 old objects without this boolean require 02d/02m regeneration, not in-place
-migration. The old Stage 02 vocabulary remains unchanged.
+migration.
 Every object has a nonempty integer pixel
 rectangle `[x0,y0,x1,y1]` with exclusive upper bounds. The model bounds complete
 logical objects, including textual ones, independently of OCR blocks. Text boxes
@@ -82,42 +71,33 @@ including its artwork, logos and source-visible publication text, with null
 regeneration to apply that classification; saved objects are not relabeled.
 Previous text objects with null boxes require 02d regeneration. The eight additional
 classifications distinguish footnotes, source table legends, index and listing
-headings/entries; they do not change Stage 02's vocabulary.
+headings/entries.
 `table_legend` is a source-written block below a table defining its symbols,
 notation or abbreviations, including an appropriately placed NOTES/DESCRIPTION
 block with that role. General explanations are prose, table numbers/titles are
 captions and individually referenced notes are footnotes. The former broader
 classification is not accepted by the new schema; regenerate affected 02d/02m
-artifacts without modifying saved source classifications in place. Stage 02k
-remains a renderer for the old Stage 02 vocabulary, not a classification stage.
+artifacts without modifying saved source classifications in place.
 
-Stage 02m reads Stage 02d JSON and the exact Stage 01 PNG independently of 02/02k.
+Stage 02m reads Stage 02d JSON and the exact Stage 01 PNG.
 Its `02m_page_conversion_review/page_NNNN_review.png` preserves resolution and adds
 an equal-width blank right panel. Every object has an ordered type/heading label
-with explicit `continuation: true/false`; Stage 02k retains its existing labels.
+with explicit `continuation: true/false`.
 All objects have containing 2-pixel frames and straight review leaders based on
 their model-selected boxes. This supports review of textual spatial order as well
-as tables and graphics. No OCR geometry is synthesized; neither review stage
-corrects segmentation or calls a model.
-Stages 03-14 continue consuming the old stream; new-stream assembly is deferred.
+as tables and graphics. No OCR geometry is synthesized; the review stage
+does not correct conversion or call a model.
+Stages 03-14 retain their legacy workers. Stage 03 rejects execution because
+its input was removed; adapting assembly to Markdown text, pixel coordinates
+and the new object types remains separate work. Stop fragment runs at 02m.
 
-Restart 02d invalidates only 02d/02m; restart 02 retains the new branch while
-invalidating 02/02k and the old downstream stream; restart 01 invalidates both.
-A requested interval executes missing/invalidated stages in registry order and
-keeps validated independent stages. Before cleanup, all retained records and
-external inputs of the interval are validated. Shared snapshot restoration follows
-retained stages in execution order. Completion identities follow artifact inputs,
-not adjacent execution stages; 02m binds both the 01 and 02d completion digests.
-
-`conversion/pdf_lineage_compatibility.json` records the exact pre-branch shared-code
-fingerprints and the reviewed compatible replacement fingerprints. When the whole
-current shared-code set exactly matches that replacement, old stages retain their
-original shared procedure digest. Any further shared-code change fails this bridge
-and invalidates old identities normally. Stage-specific procedures, source/page
-selection, model/effort and artifact hashes still validate; records and old JSON
-are never relabeled or migrated. New stages use the current shared digest, and 02m
-also fingerprints its shared 02k drawing primitives. This bridge preserves
-compatible 00-14 artifacts without regenerating inference merely for branch wiring.
+Restart 02d invalidates 02m and later stream stages; restart 01 invalidates
+page conversion and its dependents. Before cleanup, all retained records and
+external inputs are validated. Completion identities follow artifact inputs;
+02m binds both the 01 and 02d completion digests. Drawing primitives now live
+in 02m and are fingerprinted with its procedure. The former shared-code
+compatibility bridge has been removed; changed shared procedures invalidate
+old identities normally. Existing artifacts are never relabeled or migrated.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
 in the source book's `workspace/html_to_markdown/`; PDF output stays in `workspace/14_link_toc/`.

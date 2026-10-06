@@ -45,27 +45,11 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "artifact_contract": "pdf_preprocess",
     },
     {
-        "id": "02",
-        "dir": "02_page_segmentation",
-        "script": "segment_page.py",
-        "desc": "Vertical banding & zone classification",
-        "targets": ["02_page_segmentation"],
-        "inspect": ("page_*_segments.json", "segment JSON files"),
-    },
-    {
         "id": "02d", "dir": "02d_page_conversion", "script": "convert_page.py",
         "desc": "Independently group page objects and convert their text to Markdown",
         "targets": ["02d_page_conversion"],
         "inspect": ("page_*_segments.json", "page conversion JSON files"),
         "artifact_contract": "pdf_page_conversion",
-    },
-    {
-        "id": "02k",
-        "dir": "02k_segmentation_review",
-        "script": "render_review.py",
-        "desc": "Render segment frames and classification labels for visual review",
-        "targets": ["02k_segmentation_review"],
-        "inspect": ("page_*_review.png", "segmentation review PNGs"),
     },
     {
         "id": "02m", "dir": "02m_page_conversion_review", "script": "render_review.py",
@@ -175,7 +159,7 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
 # Execution order and artifact dependencies are deliberately separate.
 for index, stage in enumerate(STAGE_REGISTRY):
     stage["inputs"] = {
-        "02d": ["01"], "02k": ["02"], "02m": ["01", "02d"], "03": ["02k"],
+        "02d": ["01"], "02m": ["01", "02d"],
     }.get(stage["id"], [STAGE_REGISTRY[index-1]["id"]] if index else [])
 
 
@@ -519,7 +503,7 @@ def main():
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--prepare-stage")
     parser.add_argument("--apply-stage")
-    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (00, 01, 02k, 02m, 03, 05, 11, 14)")
+    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (00, 01, 02m, 03, 05, 11, 14)")
     args = parser.parse_args()
     skill_dir = Path(__file__).resolve().parent
     config_source = args.config.resolve()
@@ -555,7 +539,7 @@ def main():
     elif args.run_deterministic:
         start = completed
         end = start
-        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("00", "01", "02k", "02m", "03", "05", "11", "14"):
+        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("00", "01", "02m", "03", "05", "11", "14"):
             raise ValueError("Next stage requires inference; use an explicit stage interval")
     elif args.resume:
         start, end = completed, len(STAGE_REGISTRY)-1

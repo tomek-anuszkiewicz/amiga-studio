@@ -40,13 +40,6 @@ class PdfReviewContinuationTests(unittest.TestCase):
             "1. caption | continuation: true",
             "2. heading | heading_level: 2 | continuation: false",
         ])
-        with patch.object(ImageDraw.ImageDraw, "text") as draw_text:
-            renderer.review.review_image(Image.new("RGB", (1200, 1600)),
-                {"raster": {"display_to_pixels": [1, 0, 0, 1, 0, 0],
-                            "pixel_width": 1200, "pixel_height": 1600}}, segments)
-        self.assertEqual([call.args[1] for call in draw_text.call_args_list], [
-            "1. caption", "2. heading | heading_level: 2",
-        ])
 
 
 class PdfCoverContractTests(unittest.TestCase):
@@ -179,20 +172,21 @@ class PdfRestartTests(unittest.TestCase):
             self.pipeline.main()
 
     def test_named_review_stage_restarts_by_registry_order(self):
-        self.assertEqual(self.pipeline.resolve_stage_idx("02k"), self.stage_idx("02k"))
-        self.assertEqual(self.pipeline.resolve_stage_idx("3"), self.stage_idx("03"))
-        before = json.loads((self.workspace / ".conversion-state.json").read_text())["stages"]["02"]
+        self.assertIsNone(self.pipeline.resolve_stage_idx("02"))
+        self.assertIsNone(self.pipeline.resolve_stage_idx("02k"))
+        self.assertEqual(self.pipeline.resolve_stage_idx("02m"), self.stage_idx("02m"))
+        before = json.loads((self.workspace / ".conversion-state.json").read_text())["stages"]["02d"]
         def worker(stage, *args):
-            self.assertEqual(stage["id"], "02k")
+            self.assertEqual(stage["id"], "02m")
             retained = json.loads((self.workspace / ".conversion-state.json").read_text())["stages"]
-            self.assertEqual(set(retained), {"00", "01", "02", "02d", "02m"})
+            self.assertEqual(set(retained), {"00", "01", "02d"})
             self.assertFalse((self.workspace / "03_build_raw_stream").exists())
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "02k", "--to-stage", "02k"], worker)
+        self.run_pipeline(["--from-stage", "02m", "--to-stage", "02m"], worker)
         after = json.loads((self.workspace / ".conversion-state.json").read_text())["stages"]
-        self.assertEqual(after["02"], before)
-        self.assertEqual(after["02k"]["status"], "completed")
+        self.assertEqual(after["02d"], before)
+        self.assertEqual(after["02m"]["status"], "completed")
         self.assertNotIn("03", after)
 
     def test_partial_page_conversion_does_not_create_final_output(self):
@@ -220,11 +214,11 @@ class PdfRestartTests(unittest.TestCase):
         del state["stages"]["02d"]
         del state["stages"]["02m"]
         state_path.write_text(json.dumps(state))
-        before = (self.workspace / "02k_segmentation_review/artifact.json").read_bytes()
-        with self.assertRaisesRegex(ValueError, "02d"):
-            self.run_pipeline(["--from-stage", "02k", "--to-stage", "02m"],
+        before = (self.workspace / "02m_page_conversion_review/artifact.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "Stage 02m"):
+            self.run_pipeline(["--from-stage", "02m", "--to-stage", "02m"],
                               lambda *args: self.fail("Worker must not run before all external inputs validate"))
-        self.assertEqual((self.workspace / "02k_segmentation_review/artifact.json").read_bytes(), before)
+        self.assertEqual((self.workspace / "02m_page_conversion_review/artifact.json").read_bytes(), before)
 
     def test_restart_five_clears_all_dependents_and_tasks_with_missing_manifest(self):
         (self.workspace / "chapters_manifest.json").unlink()
@@ -245,7 +239,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual((self.workspace / "04_stream_reduction/artifact.json").read_bytes(), before)
         self.assertEqual(other_output.read_text(), "Independent conversion")
         state = json.loads((self.workspace / ".conversion-state.json").read_text())
-        self.assertEqual(list(state["stages"]), ["00", "01", "02", "02d", "02k", "02m", "03", "04", "05"])
+        self.assertEqual(list(state["stages"]), ["00", "01", "02d", "02m", "03", "04", "05"])
 
     def test_missing_current_manifest_is_restored_from_preserved_snapshot(self):
         (self.workspace / "pages_manifest.json").unlink()
@@ -336,23 +330,16 @@ class PdfRestartTests(unittest.TestCase):
 
 
 class PdfConfigurationTests(unittest.TestCase):
-    def test_raw_stream_keeps_json_order_when_coordinate_order_differs(self):
+    def test_raw_stream_rejects_removed_input_before_writing(self):
         script = ROOT / "tools/bootstrap/pdf-to-markdown/stages/03_build_raw_stream/build_stream.py"
         spec = importlib.util.spec_from_file_location("raw_stream_worker", script)
         worker = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(worker)
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
-            segments = workspace / "02_page_segmentation"
-            segments.mkdir()
-            (segments / "page_0001_segments.json").write_text(json.dumps({"page": 1, "segments": [
-                {"type": "prose", "bbox": [10, 80, 50, 90], "raw_text": "First in JSON"},
-                {"type": "prose", "bbox": [10, 10, 50, 20], "raw_text": "Second in JSON"},
-            ]}))
-            with patch.object(worker, "extract_assets_for_nodes", side_effect=lambda root, nodes, **kwargs: nodes):
+            with self.assertRaisesRegex(ValueError, "Stage 03 is unavailable"):
                 worker.build_raw_stream(workspace, {})
-            nodes = json.loads((workspace / "03_build_raw_stream/raw_stream.json").read_text())
-            self.assertEqual([node["raw_text"] for node in nodes], ["First in JSON", "Second in JSON"])
+            self.assertEqual(list(workspace.iterdir()), [])
 
     def test_invisible_text_preserves_wrapped_source_streams(self):
         script = ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py"
@@ -433,7 +420,7 @@ class LineageTests(unittest.TestCase):
         self.workspace = Path(self.tmp.name) / "workspace"
         self.workspace.mkdir()
         self.skill = Path(self.tmp.name) / "skill"
-        self.registry = [{"id": "00", "dir": "00_text_layer"}, {"id": "01", "dir": "01_preprocess"}, {"id": "02", "dir": "02_page_segmentation"}]
+        self.registry = [{"id": "00", "dir": "00_text_layer"}, {"id": "01", "dir": "01_preprocess"}, {"id": "02d", "dir": "02d_page_conversion"}]
         self.config = {"llm": {"stages": {stage["dir"]: {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}
                                           for stage in self.registry if stage["dir"] in PDF_STAGES}}}
         self.source = {"name": "sample.pdf", "sha256": "source-identity", "pages": [19]}
@@ -454,10 +441,10 @@ class LineageTests(unittest.TestCase):
         return validate_prefix(self.state, self.registry, len(self.registry), self.config, self.source, self.skill, self.workspace, None)
 
     def test_unchanged_predecessors_validate(self):
-        self.assertEqual(self.validate(), self.state["stages"]["02"]["completion"])
+        self.assertEqual(self.validate(), self.state["stages"]["02d"]["completion"])
 
     def test_changed_effort_identifies_earliest_affected_stage(self):
-        self.config["llm"]["stages"]["02_page_segmentation"]["reasoning_effort"] = "high"
+        self.config["llm"]["stages"]["02d_page_conversion"]["reasoning_effort"] = "high"
         with self.assertRaisesRegex(ValueError, "Stage 02"):
             self.validate()
 
