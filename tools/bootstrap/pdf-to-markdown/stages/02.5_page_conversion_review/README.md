@@ -3,8 +3,8 @@
 Consume validated Stage 02 JSON and the exact Stage 01 PNG. Save `02.5_page_conversion_review/page_NNNN_review.png` at original
 page height and twice its width, with a blank equal-width right panel.
 
-Labels show every object's ordinal, type, optional heading level and explicit
-`continuation: true/false` in exact JSON
+Labels show every object's ordinal, type, optional heading level and
+`continuation: true` only when the flag is true, in exact JSON
 array order. Every object receives a containing 2-pixel frame and straight review
 leader, using the local renderer with an identity pixel transform and
 continuation labels enabled. This includes prose, captions, table

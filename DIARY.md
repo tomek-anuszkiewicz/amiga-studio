@@ -1974,3 +1974,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - CLI help and git diff --check passed
   - Graphify refreshed. No fragment conversion requested or run. Old stage/configuration identities require regeneration
   - later stream formatting and merging behavior remains unchanged.
+---
+
+### [2026-10-06 18:17 CET] — PDF-REVIEW-TRUE: omit false continuation labels
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Render continuation labels only when true
+  - adapt the existing label test and documentation
+  - regenerate the 37 selected workspace review PNGs through Stage 02.5
+- **Architectural Rationale & Trade-Offs**:
+  - Reduce review label clutter while preserving required boolean validation and the Stage 02 data contract
+- **Verification & Test Results**:
+  - PDF converter tests: 30 passed
+  - quick pre-flight passed
+  - architecture rules: 19 passed
+  - Stage 02.5 completed with validated lineage and zero model calls
+  - Graphify refreshed with no LLM calls
+  - git diff --check passed

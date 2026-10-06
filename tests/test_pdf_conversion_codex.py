@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class PdfReviewContinuationTests(unittest.TestCase):
-    def test_02_5_labels_show_both_continuation_values(self):
+    def test_02_5_labels_show_only_true_continuation(self):
         from PIL import Image, ImageDraw
         spec = importlib.util.spec_from_file_location(
             "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review/render_review.py")
@@ -38,7 +38,7 @@ class PdfReviewContinuationTests(unittest.TestCase):
             renderer.review_image(Image.new("RGB", (1200, 1600)), {"segments": segments})
         self.assertEqual([call.args[1] for call in draw_text.call_args_list], [
             "1. caption | continuation: true",
-            "2. heading | heading_level: 2 | continuation: false",
+            "2. heading | heading_level: 2",
         ])
 
 

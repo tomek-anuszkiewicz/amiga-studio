@@ -82,7 +82,7 @@ artifacts without modifying saved source classifications in place.
 Stage 02.5 reads Stage 02 JSON and the exact Stage 01 PNG.
 Its `02.5_page_conversion_review/page_NNNN_review.png` preserves resolution and adds
 an equal-width blank right panel. Every object has an ordered type/heading label
-with explicit `continuation: true/false`.
+with `continuation: true` only when the flag is true; false flags are omitted from labels.
 All objects have containing 2-pixel frames and straight review leaders based on
 their model-selected boxes. This supports review of textual spatial order as well
 as tables and graphics. No OCR geometry is synthesized; the review stage

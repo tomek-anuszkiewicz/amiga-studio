@@ -61,7 +61,8 @@ def draw_review_image(image, page_data, segments, *, include_continuation=False)
         if include_continuation:
             continuation = segment.get("continuation")
             require(type(continuation) is bool, "Invalid segment continuation")
-            label += f" | continuation: {str(continuation).lower()}"
+            if continuation:
+                label += " | continuation: true"
         require(draw.textlength(label, font=font) <= width*2 - label_x - margin,
                 "Segment label does not fit the review panel")
         color = tuple(round(channel*255) for channel in colorsys.hsv_to_rgb((index*0.61803398875) % 1, 0.8, 0.65))
