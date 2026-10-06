@@ -22,9 +22,11 @@ do not exist.
 
 Establish each complete logical object's boundaries before classifying it by
 its internal content and structure. An enclosing border
-used only for visual emphasis does not make its contents a graphic. A regular
-grid of text or numbers is a table, even when enclosed in a larger decorative
-frame or captioned "Figure". Include all cells, lines and shapes that convey
+used only for visual emphasis does not make its contents a graphic. Column
+alignment alone does not make a table: first distinguish aligned technical
+text whose spacing or indentation expresses a listing or assignment structure
+as code_block. A regular grid of tabular data is a table, even when enclosed in
+a larger decorative frame or captioned "Figure". Include all cells, lines and shapes that convey
 meaning, such as arrows, connections or diagram geometry, within the object bounds.
 
 Classify each complete logical object into exactly one of the schema types:
@@ -75,11 +77,21 @@ Classify each complete logical object into exactly one of the schema types:
   alone does not establish such a connection.
 - `code_block`: Monospace code listings, assembly language, memory hex dumps
   and preformatted numeric waveform or sample arrays, such as 16 values per row.
+  Also aligned technical text whose spacing or indentation expresses structure,
+  such as register assignments, input/output parameters, calling conventions
+  or symbol definitions, even when the source font is not monospace.
+  A shared INPUT or OUTPUT label followed by entries such as "AL = ...",
+  "BL = ..." and "BH = ..." is one code_block, including wrapped description
+  lines, even when the entries form visually aligned columns. Preserve source
+  labels, assignments and meaningful indentation; do not invent column headers
+  or convert these blocks into tables.
 - `table`: Formal tabular data, multi-column register bit assignments, structured
-  parameter lists and horizontal instruction banners with parallel columns for
+  parameter tables and horizontal instruction banners with parallel columns for
   mnemonic, title and processor models. Regular text or number grids remain
-  tables despite decorative frames or "Figure" captions. Keep the complete table
-  together within its bounds and leave md_text empty; its separate title is `caption`.
+  tables despite decorative frames or "Figure" captions. First exclude aligned
+  parameter or assignment blocks that meet the code_block definition above.
+  Keep the complete table together within its bounds and leave md_text empty;
+  its separate title is `caption`.
 - `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts,
   photographs and diagram artwork. A decorative border alone does not make an
   object a graphic. Preserve meaningful arrows, connections and geometry.

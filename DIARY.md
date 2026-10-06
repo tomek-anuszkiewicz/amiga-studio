@@ -2033,3 +2033,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite: 19 tests passed
   - Graphify incremental update completed
   - No source fragment conversion requested or run
+---
+
+### [2026-10-06 18:42 CET] — Classify aligned parameter assignments as code blocks
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion`
+- **What Was Changed (The Concrete Reality)**:
+  - Distinguish aligned input/output and register assignment blocks from tables regardless of font
+  - preserve shared labels and wrapped descriptions
+  - document the classification boundary
+- **Architectural Rationale & Trade-Offs**:
+  - Column alignment alone led to parameter blocks being treated as tables and invented column headers
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 19/19
+  - git diff --check passed
+  - no fragment conversion requested or run

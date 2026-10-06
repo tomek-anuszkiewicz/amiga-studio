@@ -24,6 +24,10 @@ Standard JSON serialization preserves decoded Markdown without pre-escaping.
 Use the [orchestrator](../../README.md); do not run workers for real conversions.
 Stage 02.5 reviews these objects. Stage 03 reads them directly to build the
 downstream stream; review PNGs are not stream inputs.
+Aligned register assignments and input/output parameter blocks are `code_block`,
+including their shared labels and wrapped descriptions, regardless of source font.
+Column alignment alone does not establish a `table`.
+
 The [prompt](prompt.md) defines source roles, including footnote, table_legend,
 index and dedicated table/figure listing headings and entries. Source captions stay
 separate from source explanations and generated asset descriptions remain deferred.
