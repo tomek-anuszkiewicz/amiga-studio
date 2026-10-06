@@ -39,11 +39,16 @@ drawings are also `code_block`, including character-built timing waveforms.
 Transcribe them into fenced `text` blocks with their characters, line breaks,
 spaces and alignment preserved. Drawn lines and shapes remain `graphic`;
 the possibility of later ASCII conversion does not change their source type.
+Character-built timing and bit-field layouts retain integrated aligned values,
+labels and explanations in the same code block. This recognition precedes
+register-table classification and drawing-sheet grouping. Column headings,
+repeated offsets, bit numbers and "Table" captions do not override it.
 
 Register-map and bit-assignment tables with repeated address/offset rows, bit
 positions and field descriptions remain `table`, including drawn brackets or
 leader lines connecting bits to descriptions. Cell borders are not required.
-This rule takes precedence over graphic and drawing-sheet grouping; the complete
+First exclude character-built layouts classified as `code_block`. The remaining
+table rule takes precedence over graphic and drawing-sheet grouping; the complete
 table bounds include those lines and descriptions. Regenerate 02/02.5 to apply it.
 
 Complete technical drawing sheets are one `graphic`, including integrated

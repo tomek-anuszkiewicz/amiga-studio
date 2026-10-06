@@ -2149,3 +2149,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick pre-flight passed
   - Architecture suite passed 19/19
   - Fragment conversion not run after prompt change and model adherence remains unverified
+---
+
+### [2026-10-06 19:14 CEST] — Prioritize character-built layouts over table and graphic classification
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Recognize character-built timing and bit-field structures before register tables and drawing-sheet grouping
+  - Add explicit table exclusions for character geometry despite column headings offsets and captions
+  - Preserve integrated aligned data and explanations inside code blocks
+- **Architectural Rationale & Trade-Offs**:
+  - Reviewed page 153 was grouped as graphic and page 156 bit-field layout as table
+  - Earlier classification precedence overrode the ASCII-art rule
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture suite passed 19/19
+  - Source review images and stored classifications inspected
+  - No new conversion run and model adherence remains unverified

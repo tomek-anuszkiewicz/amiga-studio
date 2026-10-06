@@ -92,7 +92,14 @@ Determine complete object boundaries before classification: a marker-referenced
 footnote includes its continuation lines and paragraphs, even when they define
 symbols or abbreviations. A table legend must be an independent source block.
 
-Stage 02 preserves register-map and bit-assignment tables as `table` when repeated
+Stage 02 first recognizes character-built timing and bit-field layouts as
+`code_block`, including integrated aligned values, labels and explanations.
+Column headings, repeated offsets, bit numbers and "Table" captions do not
+override this source-representation rule. It precedes register-table recognition
+and drawing-sheet grouping; meaningful character geometry is preserved as text.
+
+After excluding these character-built layouts, Stage 02 preserves genuine
+register-map and bit-assignment tables as `table` when repeated
 address/offset rows organize bit positions and field descriptions. Drawn brackets
 or leader lines connecting bits to descriptions stay inside the complete table;
 they do not make it a graphic, and cell borders are not required. This rule takes

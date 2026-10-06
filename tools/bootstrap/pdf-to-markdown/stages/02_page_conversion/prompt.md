@@ -39,14 +39,27 @@ For all other object types, convert source text to Markdown in md_text. An objec
 without source text may have an empty string. Do not invent links to assets that
 do not exist.
 
-First recognize register-map and bit-assignment tables: repeated rows of
+First distinguish character-built structures from tables and drawn artwork.
+Timing waveforms and bit-field layouts built from aligned text characters,
+such as dashes, underscores, vertical bars, slashes and arrowheads, are
+code_block. Keep their integrated labels, aligned values, descriptions and
+symbol definitions in the same code_block. Apply this source-representation
+rule before register-table recognition and technical drawing-sheet grouping.
+Do not classify these blocks as table or graphic because they have columns,
+column headings, repeated offsets, bit numbers, timing values or a "Table" or
+"Figure" caption. Preserve their character geometry rather than treating the
+characters as cell borders or drawn leader lines.
+
+Then recognize genuine register-map and bit-assignment tables: repeated rows of
 addresses or offsets, bit positions and corresponding field descriptions are
 one table, even without cell borders and even when some rows use drawn brackets
 or leader lines to connect bits to descriptions. Keep those lines and descriptions
 inside the complete table bounds. They do not turn the table into a graphic or
-a technical drawing sheet. This table rule takes precedence over graphic grouping.
+a technical drawing sheet. This table rule takes precedence over graphic grouping,
+but never overrides the character-built code_block rule above.
 
-Treat a complete technical drawing sheet as one graphic when its views,
+After excluding character-built code blocks, treat a complete technical drawing
+sheet as one graphic when its views,
 dimensions, title or introductory description, notes and embedded technical
 tables form one drawing composition. Include connection/pin tables, their titles
 and drawing identification text within the same graphic bounds. They need not
@@ -63,7 +76,8 @@ its internal content and structure. An enclosing border
 used only for visual emphasis does not make its contents a graphic. Column
 alignment alone does not make a table: first distinguish aligned technical
 text whose spacing or indentation expresses a listing or assignment structure
-as code_block. A regular grid of tabular data is a table, even when enclosed in
+as code_block. After excluding these blocks and character-built layouts, a
+regular grid of tabular data is a table, even when enclosed in
 a larger decorative frame or captioned "Figure", unless it is an embedded
 component of a complete technical drawing sheet as defined above.
 Include all cells, lines and shapes that convey
@@ -123,6 +137,8 @@ Classify each complete logical object into exactly one of the schema types:
   inside a fenced text code block. Do not redraw, simplify or replace their
   geometry with prose. Classify by the source representation: drawn lines and
   shapes remain graphic even when they could be converted to ASCII art later.
+  Character-built timing and bit-field layouts retain their integrated aligned
+  data and explanations, even with numeric column headings or table captions.
   Also aligned technical text whose spacing or indentation expresses structure,
   such as register assignments, input/output parameters, calling conventions
   or symbol definitions, even when the source font is not monospace.
@@ -134,8 +150,12 @@ Classify each complete logical object into exactly one of the schema types:
 - `table`: Formal tabular data, multi-column register bit assignments, structured
   parameter tables and horizontal instruction banners with parallel columns for
   mnemonic, title and processor models. Regular text or number grids remain
-  tables despite decorative frames or "Figure" captions. First exclude aligned
-  parameter or assignment blocks that meet the code_block definition above.
+  tables despite decorative frames or "Figure" captions. Do not use table for
+  character-built timing waveforms, bit-field layouts or aligned parameter and
+  assignment blocks that meet the code_block definition above. A table caption,
+  monospace font, column headings or aligned numbers alone does not decide the
+  type. Use table when rows and columns express cell relationships; use code_block
+  when meaningful character geometry or preformatted structure must be preserved.
   Embedded technical tables belonging to a complete drawing sheet remain
   inside that graphic instead of becoming separate table objects.
   Keep the complete independent table together within its bounds and leave md_text empty;
@@ -144,7 +164,8 @@ Classify each complete logical object into exactly one of the schema types:
   photographs, complete technical drawing sheets and diagram artwork.
   Do not classify register-map or bit-assignment tables as graphic merely because
   brackets or leader lines connect their bit positions to field descriptions.
-  Repeated address/offset rows with bit positions and descriptions remain table.
+  Repeated address/offset rows with bit positions and descriptions remain table
+  only after excluding character-built layouts under the code_block rule.
   Drawing sheets include their integrated titles, descriptions, notes and
   technical tables under the sheet grouping rule above.
   Independent character-based diagrams that look like ASCII art use code_block
