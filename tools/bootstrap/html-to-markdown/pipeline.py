@@ -16,6 +16,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import List
+from urllib.parse import unquote, urlsplit
 
 # Reconfigure output for Windows consoles
 if hasattr(sys.stdout, "reconfigure"):
@@ -47,6 +48,36 @@ def clean_html_text(text: str) -> str:
     text = re.sub(r"\r\n", "\n", text)
     text = re.sub(r"[ \t]+", " ", text)
     return text.strip()
+
+
+def embed_assembly_sources(html_content: str, source_file: Path) -> str:
+    """Inline local linked .s listings as source data before transcription."""
+    if BeautifulSoup is None:
+        raise RuntimeError("BeautifulSoup is required to resolve HTML assembly attachments")
+    soup = BeautifulSoup(html_content, "html.parser")
+    source_root = source_file.parent.resolve()
+    for link in soup.find_all("a", href=True):
+        url = urlsplit(link["href"])
+        path = Path(unquote(url.path))
+        if url.scheme or url.netloc or path.suffix.lower() != ".s":
+            continue
+        attachment = (source_root / path).resolve()
+        if not attachment.is_relative_to(source_root):
+            raise ValueError(f"Assembly attachment leaves the source directory: {link['href']}")
+        # Missing attachments must stop conversion rather than leave a dead link.
+        listing = attachment.read_text(encoding="utf-8-sig")
+        figure = soup.new_tag("figure")
+        caption = soup.new_tag("figcaption")
+        caption.string = f"{path.name} (assembly source)"
+        figure.append(caption)
+        pre = soup.new_tag("pre")
+        code = soup.new_tag("code", attrs={"class": "language-m68k"})
+        code.string = listing
+        pre.append(code)
+        figure.append(pre)
+        (link.find_parent("p") or link).insert_after(figure)
+        link.replace_with(link.get_text())
+    return str(soup)
 
 
 def extract_assets(input_path: Path, assets_dir: Path):
@@ -191,6 +222,7 @@ def convert_single_html(input_file: Path, output_dir: Path, doc_title: str, clie
     extract_assets(input_file, assets_dir)
 
     # 2. Transcribe HTML
+    raw_html = embed_assembly_sources(raw_html, input_file)
     prompt_file = SKILL_DIR / "references" / "llm-transcription-prompt.md"
     md_content = convert_with_llm(raw_html, title, prompt_file, client)
 
@@ -250,11 +282,11 @@ def convert_crawl_directory(input_dir: Path, output_dir: Path, doc_title: str, c
                         nav = content_cell.find("div", id="navigator")
                         if nav:
                             nav.decompose()
-                        aggregated_sections.append(f"<!-- Page: {p_name} -->\n" + str(content_cell))
+                        aggregated_sections.append(f"<!-- Page: {p_name} -->\n" + embed_assembly_sources(str(content_cell), p_path))
                         continue
-            aggregated_sections.append(f"<!-- Page: {p_name} -->\n" + str(p_soup.body or p_soup))
+            aggregated_sections.append(f"<!-- Page: {p_name} -->\n" + embed_assembly_sources(str(p_soup.body or p_soup), p_path))
         else:
-            aggregated_sections.append(f"<!-- Page: {p_name} -->\n" + p_html)
+            aggregated_sections.append(f"<!-- Page: {p_name} -->\n" + embed_assembly_sources(p_html, p_path))
 
     aggregated_html = "\n\n<hr/>\n\n".join(aggregated_sections)
     prompt_file = SKILL_DIR / "references" / "llm-transcription-prompt.md"

@@ -248,7 +248,7 @@ $Catalog = @(
         Name        = "Undocumented features of OCS, ECS and AGA chipsets"
         Folder      = "Undocumented features of OCS, ECS and AGA chipsets"
         Type        = "Crawl"
-        Description = "Kuba Winnicki's publication on Copper, Sprites, DMA, UHRES (index and 17 subpages)"
+        Description = "Kuba Winnicki's publication on Copper, Sprites, DMA, UHRES (index, 17 subpages and assembly source)"
         SubPages    = @(
             "index.html",
             "What_is_this_all_about.html",
@@ -264,6 +264,7 @@ $Catalog = @(
             "Other_Amiga_Native_Hardware.html",
             "CD32_Controller.html",
             "Battery_Backed_Clock.html",
+            "readclock.s",
             "Desaturation_Control_Bit.html",
             "Video_timings.html",
             "Links.html",

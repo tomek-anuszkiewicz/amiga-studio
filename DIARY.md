@@ -2218,3 +2218,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture rules passed 19/19
   - git diff --check passed
   - No download or conversion run
+---
+
+### [2026-10-06 23:43 CET] — Embed linked assembly sources in HTML reference conversion
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `tools/bootstrap/html-to-markdown`
+  - `tests/test_html_assembly_sources.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add readclock.s to the undocumented-chipset download catalog
+  - Resolve local linked .s files into filename-captioned m68k listings before single-page and crawl transcription
+  - Require complete assembly source preservation and replace download references with embedded listings in the prompt
+  - Document attachment handling and retain focused regression protection
+- **Architectural Rationale & Trade-Offs**:
+  - Downloading a source attachment alone did not expose it to the HTML-only transcription input
+  - leaving the battery-clock listing absent and its relative link unresolved.
+- **Verification & Test Results**:
+  - Regression failed on original code for both conversion routes and passes after the fix (2 tests)
+  - Shared Codex conversion suite passes (19 tests)
+  - Bootstrap -Undocumented downloaded readclock.s from the live source (1174 bytes, 77 lines), and local preparation preserves its full text
+  - Quick pre-flight passes and architecture suite passes (19 tests)
+  - Publication suite passes 9 of 10 tests, with the isolated unmodified PDF resume case failing its validation-depth assertion (1 versus 16)
+  - Graphify code update completed
+  - No LLM fragment conversion or full crawl transcription was run

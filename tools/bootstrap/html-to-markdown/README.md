@@ -25,6 +25,11 @@ python tools/bootstrap/html-to-markdown/pipeline.py `
 
 The input is a local HTML file or an already downloaded crawl directory. Markdown
 and referenced images stay in `<source-directory>/workspace/html_to_markdown/`.
+Relative links to local `.s` assembly sources are expanded into named code listings
+before transcription, for both single articles and crawls. Keep these files beside
+the referring HTML (or in its subdirectories); missing files and paths outside that
+source directory stop conversion. The prompt requires complete `m68k` listings
+inside the referring Markdown section, so no separate `.s` output link is needed.
 For a bootstrap crawl under `<book>-tmp/live/`, this workspace belongs to `<book>-tmp/`.
 The pipeline no longer accepts `--output-dir` or mirrors Markdown into `Reference`.
 Add `--publish` to copy finished Markdown and assets into the sibling book directory
