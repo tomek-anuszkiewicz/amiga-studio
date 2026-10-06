@@ -106,6 +106,12 @@ Classify each complete logical object into exactly one of the schema types:
   alone does not establish such a connection.
 - `code_block`: Monospace code listings, assembly language, memory hex dumps
   and preformatted numeric waveform or sample arrays, such as 16 values per row.
+  Also diagrams that visibly look like ASCII art or character-based drawings,
+  including timing waveforms, boxes and arrows built from aligned text characters.
+  Preserve their visible characters, line breaks, spaces and column alignment
+  inside a fenced text code block. Do not redraw, simplify or replace their
+  geometry with prose. Classify by the source representation: drawn lines and
+  shapes remain graphic even when they could be converted to ASCII art later.
   Also aligned technical text whose spacing or indentation expresses structure,
   such as register assignments, input/output parameters, calling conventions
   or symbol definitions, even when the source font is not monospace.
@@ -123,10 +129,12 @@ Classify each complete logical object into exactly one of the schema types:
   inside that graphic instead of becoming separate table objects.
   Keep the complete independent table together within its bounds and leave md_text empty;
   its separate title is `caption`.
-- `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts,
+- `graphic`: Circuit schematics, drawn timing waveforms, block diagrams, IC pinouts,
   photographs, complete technical drawing sheets and diagram artwork.
   Drawing sheets include their integrated titles, descriptions, notes and
   technical tables under the sheet grouping rule above.
+  Independent character-based diagrams that look like ASCII art use code_block
+  under the source-representation rule above.
   A decorative border alone does not make an
   object a graphic. Preserve meaningful arrows, connections and geometry.
   Bound the artwork, its internal labels and visually connected explanatory

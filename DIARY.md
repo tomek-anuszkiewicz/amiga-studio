@@ -2098,3 +2098,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19/19
   - git diff --check passed
   - no fragment conversion requested or run
+---
+
+### [2026-10-06 18:56 CEST] — Classify source ASCII art as code blocks
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Include visibly character-based diagrams and timing waveforms in code_block
+  - preserve characters spaces line breaks and alignment in fenced text blocks
+  - distinguish drawn graphics from source ASCII art
+- **Architectural Rationale & Trade-Offs**:
+  - Character-built geometry requires faithful text transcription rather than graphic reconstruction
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 19/19
+  - git diff --check passed
+  - no fragment conversion requested or run

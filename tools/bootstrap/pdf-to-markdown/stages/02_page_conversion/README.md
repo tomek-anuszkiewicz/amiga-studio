@@ -30,6 +30,11 @@ downstream stream; review PNGs are not stream inputs.
 Aligned register assignments and input/output parameter blocks are `code_block`,
 including their shared labels and wrapped descriptions, regardless of source font.
 Column alignment alone does not establish a `table`.
+Independent diagrams that visibly look like ASCII art or character-based
+drawings are also `code_block`, including character-built timing waveforms.
+Transcribe them into fenced `text` blocks with their characters, line breaks,
+spaces and alignment preserved. Drawn lines and shapes remain `graphic`;
+the possibility of later ASCII conversion does not change their source type.
 
 Complete technical drawing sheets are one `graphic`, including integrated
 titles or introductory descriptions, views, dimensions, notes and technical

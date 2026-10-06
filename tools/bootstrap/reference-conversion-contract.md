@@ -99,6 +99,11 @@ establish membership without leader lines. This grouping precedes individual
 table/caption classification; independent document content and running page
 headers/footers remain separate. Regenerate 02/02.5 to apply it to saved results.
 
+Stage 02 classifies independent diagrams that visibly look like ASCII art or
+character-based drawings as `code_block`, preserving characters, line breaks,
+spaces and alignment in fenced `text` blocks. Drawn lines and shapes remain
+`graphic`, even when later ASCII conversion is possible.
+
 Stage 02.5 reads Stage 02 JSON and the exact Stage 01 PNG.
 Its `02.5_page_conversion_review/page_NNNN_review.png` preserves resolution and adds
 an equal-width blank right panel. Every object has an ordered type/heading label
