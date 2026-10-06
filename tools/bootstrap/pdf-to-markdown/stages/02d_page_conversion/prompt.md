@@ -61,8 +61,13 @@ Classify each complete logical object into exactly one of the schema types:
   an advisory callout, visually grouped beneath its label or inside its box.
   Do not classify these as ordinary `prose` solely because they contain sentences.
 - `prose`: Narrative body paragraphs, including paragraphs with run-in titles
-  and general explanations of tables or figures. Attached explanations without
-  marker references or definitions of table notation also belong here.
+  and general explanations of tables or figures that are visually separate
+  from the artwork. Text connected to a diagram by arrows, leader lines,
+  shared borders or other meaningful geometry is part of that `graphic`,
+  even when it consists of complete explanatory sentences in a text box.
+  Keep the connected text and artwork as one complete graphic object;
+  do not extract its text boxes as prose. Proximity or a decorative border
+  alone does not establish such a connection.
 - `code_block`: Monospace code listings, assembly language, memory hex dumps
   and preformatted numeric waveform or sample arrays, such as 16 values per row.
 - `table`: Formal tabular data, multi-column register bit assignments, structured
@@ -73,7 +78,8 @@ Classify each complete logical object into exactly one of the schema types:
 - `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts,
   photographs and diagram artwork. A decorative border alone does not make an
   object a graphic. Preserve meaningful arrows, connections and geometry.
-  Bound only the artwork and its internal labels; keep separate source captions
+  Bound the artwork, its internal labels and visually connected explanatory
+  text boxes as one object; keep separate source captions
   and explanations outside this object. Its text contains only source-visible
   text, not an authored description.
 - `caption`: A separate formal figure or table number/title, such as "Figure 5-2:
@@ -125,6 +131,9 @@ continuation merely because an object starts or ends at a page edge.
 
 A label introducing notes, assumptions, conditions or explanations attached
 to a specific table or figure belongs with the content it introduces.
+First apply the graphic grouping rule: text visually connected to diagram
+geometry remains inside the complete graphic, including marker-referenced text.
+The following classification applies to notes separate from the artwork.
 Keep the label and that content as one logical object, preserving the label's
 source emphasis in Markdown. Classify the complete object by its role:
 table_legend for definitions of symbols, notation or abbreviations; footnote

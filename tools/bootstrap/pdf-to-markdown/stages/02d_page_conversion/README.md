@@ -36,6 +36,12 @@ and titles are captions; individually referenced notes remain footnotes.
 Existing artifacts with the former classification require regeneration through
 02d/02m rather than relabeling their saved JSON. Stage 02k does not classify objects.
 
+Explanatory text boxes connected to diagram artwork by arrows, leader lines,
+shared borders or other meaningful geometry belong inside one complete `graphic`.
+This grouping also covers connected marker-referenced text. Separate explanations
+remain prose or footnotes according to their role; proximity and decorative borders
+alone do not make text part of a graphic. Regenerate 02d/02m to apply this grouping.
+
 The earlier crop-only contract allowed null boxes on text. Such 02d/02m artifacts
 require regeneration for the current all-object review; no boxes are synthesized
 from OCR or inserted into existing saved JSON.

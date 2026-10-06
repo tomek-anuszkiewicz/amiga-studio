@@ -1885,3 +1885,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS 28 PDF unittest tests, quick pre-flight and 19 architecture checks
   - Graphify updated
   - no model calls or fragment conversion, existing review PNGs were not regenerated
+---
+
+### [2026-10-06 17:35 CET] — Group diagram-connected explanations into graphics
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02d_page_conversion`
+- **What Was Changed (The Concrete Reality)**:
+  - Clarify prose exclusions and complete graphic boundaries for visually connected explanatory text
+  - Apply graphic grouping before separate note classification
+  - Document regeneration requirement
+- **Architectural Rationale & Trade-Offs**:
+  - Complete explanatory sentences connected by meaningful diagram geometry belong to the figure rather than independent prose objects
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture rules passed 19/19
+  - git diff --check passed
+  - selected physical page 96 converted in an independent workspace through 00, 01, 02d and 02m with validated lineage
+  - 02d made one fresh Codex call and emitted heading, graphic and footer
+  - both former prose objects and the connected note are inside the graphic
+  - original and new page PNG hashes match
+  - no other fragment or downstream conversion run
