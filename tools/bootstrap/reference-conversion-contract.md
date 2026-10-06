@@ -65,8 +65,15 @@ JSON pairs and defines independent logical objects in model array order, with
 physical page identity, original PNG dimensions, deterministic page-scoped IDs,
 classifications and heading levels. Only tables and graphics have nonempty integer
 pixel rectangles `[x0,y0,x1,y1]` with exclusive upper bounds. The eight additional
-classifications distinguish footnotes, source table descriptions, index and listing
+classifications distinguish footnotes, source table legends, index and listing
 headings/entries; they do not change Stage 02's vocabulary.
+`table_legend` is a source-written block below a table defining its symbols,
+notation or abbreviations, including an appropriately placed NOTES/DESCRIPTION
+block with that role. General explanations are prose, table numbers/titles are
+captions and individually referenced notes are footnotes. The former broader
+classification is not accepted by the new schema; regenerate affected 02d/02m
+artifacts without modifying saved source classifications in place. Stage 02k
+remains a renderer for the old Stage 02 vocabulary, not a classification stage.
 
 Stage 02m reads Stage 02d JSON and the exact Stage 01 PNG independently of 02/02k.
 Its `02m_page_conversion_review/page_NNNN_review.png` preserves resolution and adds

@@ -16,6 +16,13 @@ Standard JSON serialization preserves decoded Markdown without pre-escaping.
 
 Use the [orchestrator](../../README.md); do not run workers for real conversions.
 Stage 02m reviews these objects. Stages 03-14 continue using the separate old branch.
-The [prompt](prompt.md) defines source roles, including footnote, table_description,
+The [prompt](prompt.md) defines source roles, including footnote, table_legend,
 index and dedicated table/figure listing headings and entries. Source captions stay
 separate from source explanations and generated asset descriptions remain deferred.
+
+`table_legend` is source text below a table explaining symbols, notation or
+abbreviations used in it. A LEGEND, NOTES or DESCRIPTION title alone does not
+establish that role. General table explanations are prose; source table numbers
+and titles are captions; individually referenced notes remain footnotes.
+Existing artifacts with the former classification require regeneration through
+02d/02m rather than relabeling their saved JSON. Stage 02k does not classify objects.

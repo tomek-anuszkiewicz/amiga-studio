@@ -6,7 +6,7 @@ from .pdf_schemas import object_schema, STRING
 
 TYPES = ["header", "footer", "toc_heading", "toc", "thumb_index", "chapter", "heading",
          "callout", "callout_text", "prose", "code_block", "table", "graphic", "caption",
-         "caption_continuation", "footnote", "table_description", "index_heading", "index",
+         "caption_continuation", "footnote", "table_legend", "index_heading", "index",
          "list_of_tables_heading", "list_of_tables", "list_of_figures_heading", "list_of_figures"]
 HEADING_TYPES = {"chapter", "heading", "toc_heading", "index_heading",
                  "list_of_tables_heading", "list_of_figures_heading"}

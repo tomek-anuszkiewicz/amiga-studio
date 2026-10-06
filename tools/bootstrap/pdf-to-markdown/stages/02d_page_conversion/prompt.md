@@ -19,9 +19,13 @@ not an authored description. Do not invent links to assets that do not exist.
 Use the schema classifications. footnote is a source note referenced by a marker
 such as *, a superscript number or 1), regardless of the referenced object's type
 or page position. For example, *Can be used with CPU32 and a numbered note about
-hexadecimal notation are footnotes. table_description is a separate source-written
-explanation, legend or NOTES block, including applicability and symbol definitions;
-keep its internal markers together. A table number/title is caption.
+hexadecimal notation are footnotes. table_legend is a separate source-written block
+below a table that explains symbols, notation or abbreviations used in that table.
+It may be titled LEGEND, NOTES or DESCRIPTION; its role and position determine the
+classification, not the title alone. Keep the legend and its internal markers together.
+A general explanation of a table without definitions of its notation is prose,
+not table_legend. A table number/title is caption. Notes referenced by markers remain
+footnote; do not absorb them into a legend solely because they are below a table.
 index is distinct from toc and thumb_index. Index, list-of-tables and list-of-figures
 titles, including continuation titles, use their dedicated heading classifications.
 Unrelated running headers remain header. Preserve source markers.

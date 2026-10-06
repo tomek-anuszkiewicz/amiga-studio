@@ -1735,3 +1735,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - PASS 26 PDF technical tests, 19 shared Codex tests, quick pre-flight, 19 architecture checks, compileall, CLI help and git diff --check. Graphify updated. Offline fake-transport diagnostic confirmed complete inputs, decoded Markdown and model order, cache reuse, deterministic review PNG dimensions/bytes and selective 02d/02m restart with unchanged old records. The missing-external-input regression failed before repair and passed afterward. No live inference or real fragment conversion
   - user-selected conversion/review and downstream 03-14 integration remain pending. No roadmap milestone completion.
+---
+
+### [2026-10-06 16:46 CET] — PDF-INDEPENDENT-02D-02M: narrow table descriptions to source legends
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/pdf_page_conversion.py`
+  - `tools/bootstrap/conversion/pdf_lineage_compatibility.json`
+  - `tools/bootstrap/pdf-to-markdown/stages/02d_page_conversion`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Rename table_description to table_legend in the separate Stage 02d schema and prompt
+  - require source text below a table defining its symbols, notation or abbreviations
+  - classify general explanations as prose while retaining captions and individually referenced footnotes
+  - update documentation and active plan
+  - preserve old-branch lineage compatibility
+- **Architectural Rationale & Trade-Offs**:
+  - The user narrowed the role to a table notation legend. Classification belongs to Stage 02d
+  - Stage 02k only renders the older branch. Existing JSON is not relabeled in place and the new schema/prompt invalidates previous 02d responses.
+- **Verification & Test Results**:
+  - PASS 26 PDF tests
+  - quick pre-flight
+  - 19 architecture checks
+  - compileall and git diff --check. Graphify updated. Runtime diagnostic accepted table_legend and rejected the former enum
+  - validated existing 00/01/02/02k records and confirmed earlier 02d identity requires regeneration. No new conversion or model calls. Previous eight-page outputs remain available for review with their former classification.
