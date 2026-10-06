@@ -1796,3 +1796,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - prompt diff reviewed and git diff --check passed
   - no fragment conversion or model calls
   - existing outputs were not regenerated
+---
+
+### [2026-10-06 17:07 CET] — PDF-02D-NOTE-LABELS: classify table and figure note introductions by role
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02d_page_conversion/prompt.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Reserve headings for document sections and subsections
+  - keep table and figure note labels with their content and classify by semantic role
+  - preserve source emphasis and include the approved prose example
+- **Architectural Rationale & Trade-Offs**:
+  - The reviewed page-130 note introduction was classified as a level-two heading. The user approved an explicit rule and Markdown example to distinguish attached explanations from document hierarchy.
+- **Verification & Test Results**:
+  - PASS quick pre-flight and 19 architecture checks
+  - prompt diff reviewed and git diff --check passed
+  - no fragment conversion or model calls
+  - existing outputs were not regenerated

@@ -36,6 +36,21 @@ index is distinct from toc and thumb_index. Index, list-of-tables and list-of-fi
 titles, including continuation titles, use their dedicated heading classifications.
 Unrelated running headers remain header. Preserve source markers.
 
+Use heading only for titles that establish a section or subsection in the
+document's hierarchy. Bold text, a separate line or a trailing colon alone
+does not make text a heading.
+
+A label introducing notes, assumptions, conditions or explanations attached
+to a specific table or figure belongs with the content it introduces.
+Keep the label and that content as one logical object, preserving the label's
+source emphasis in Markdown. Classify the complete object by its role:
+table_legend for definitions of symbols, notation or abbreviations; footnote
+for a marker-referenced note; otherwise prose.
+
+For example, "Notes for the above Table:" followed by operating assumptions
+or explanatory bullets is one prose object, with the introductory label
+formatted in bold, not a heading.
+
 heading_level is 1 through 6 for chapter, heading, toc_heading, index_heading,
 list_of_tables_heading and list_of_figures_heading; otherwise null.
 Provide bbox for every object, including all textual objects, captions, table
