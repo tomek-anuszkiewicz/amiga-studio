@@ -62,7 +62,9 @@ no Codex model selection, prompt or model request. Later inference stages retain
 the shared Codex transport.
 
 OCR lines enter the shared normalized coordinate and invisible Unicode insertion
-path. Publication checks reopened text/positions, source hashes, page geometry,
+path. Stage 00 trusts PyMuPDF to store the inserted OCR text: it does not compare
+reopened OCR line counts, text or positions with the recognition result.
+Publication checks source hashes, page geometry,
 retained source streams/native text and identical selected-page renders. A page
 with no recognized lines uses the legacy `pure_graphic` classification with
 `inferred_from_tesseract_lines` evidence; it is not a visual confirmation that the
@@ -78,9 +80,9 @@ page bounds before integer normalization. Reversed corners are rejected and
 unreadable markers are not substituted.
 Normalized integer OCR boxes may have zero width or height after rounding; OCR
 validation accepts these extents while rejecting reversed edges and out-of-range
-coordinates. This does not guarantee successful text insertion: fitting text to
-a zero extent currently produces text missing on PDF reopening, which still fails
-publication validation. Invalid responses fail; native text is unchanged.
+coordinates. Stage 00 does not verify whether text fitted to a zero extent remains
+extractable. The user assesses the prepared PDF; Stage 01 consumes its actual
+extractable text. Invalid responses fail; native text is unchanged.
 Recovery records do not replace the validated manifest.
 Restart at 01 retains validated Stage 00; legacy workspaces require explicit
 regeneration from 00 with the original PDF after this backend/name change.

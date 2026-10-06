@@ -44,6 +44,27 @@ class PdfTextBoundsTests(unittest.TestCase):
 
 
 class PdfOcrValidationTests(unittest.TestCase):
+    def test_preparation_trusts_pdf_writer_when_ocr_text_is_not_reextracted(self):
+        spec = importlib.util.spec_from_file_location(
+            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
+        stage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(stage)
+        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
+                             known_stages=PDF_STAGES, required_stages=())
+        response = {"page_type": "text_page", "caption": None,
+                    "blocks": [{"text": "|", "box_2d": [220, 980, 239, 980]}]}
+        with tempfile.TemporaryDirectory() as directory:
+            source, workspace = Path(directory) / "source.pdf", Path(directory) / "workspace"
+            with pymupdf.open() as document:
+                document.new_page()
+                document.save(source)
+            with patch.object(stage, "tesseract_settings", return_value=("eng", "unused", {"engine": "tesseract"})), \
+                    patch.object(stage, "tesseract_ocr", return_value=response):
+                manifest = stage.prepare_text_layer(source, workspace, config)
+            self.assertEqual(manifest["pages"][0]["provenance"], "ocr")
+            self.assertNotIn("ocr_lines", manifest["pages"][0])
+            self.assertEqual(manifest["publication_validation"]["ocr_text_insertion"], "trusted_pdf_writer")
+
     def test_tesseract_line_bounds_clip_before_integer_normalization(self):
         spec = importlib.util.spec_from_file_location(
             "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
@@ -297,10 +318,10 @@ class PdfConfigurationTests(unittest.TestCase):
                 document.update_stream(page.get_contents()[0], b"20 20 80 80 re S\n")
                 document.save(source)
             with pymupdf.open(source) as document:
-                lines = insert_ocr(document[0], {"page_type": "text_page", "caption": None,
+                insert_ocr(document[0], {"page_type": "text_page", "caption": None,
                                                "blocks": [{"text": "A", "box_2d": [100, 100, 200, 200]}]})
                 document.save(candidate)
-            entry = {"page": 1, "provenance": "ocr", "ocr_lines": lines}
+            entry = {"page": 1, "provenance": "ocr"}
             worker.verify_candidate(source, candidate, [entry], 72)
 
     def test_preprocess_rejects_missing_text_layer_before_worker(self):

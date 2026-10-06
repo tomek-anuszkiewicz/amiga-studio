@@ -7,7 +7,7 @@ import pymupdf
 from .cache import digest
 from .lineage import file_hash, read_state
 from .pdf_geometry import (SCHEMA_VERSION, COORDINATES, page_geometry, text_blocks,
-                           valid_box, valid_text, validate_inserted, raster_transform)
+                           valid_box, valid_text, raster_transform)
 
 
 def write_json(path, value):
@@ -105,15 +105,10 @@ def validate_text_layer(workspace, source=None, *, require_completion=False):
             require(entry.get("classification_basis") in ("inferred_from_native_spans", "inferred_from_tesseract_lines"),
                     "Missing Stage 00 classification evidence")
             blocks = text_blocks(page)
-            require(bool(blocks) == (provenance != "none") and (kind in ("blank", "pure_graphic")) == (provenance == "none"),
+            require((provenance == "ocr" or bool(blocks) == (provenance != "none"))
+                    and (kind in ("blank", "pure_graphic")) == (provenance == "none"),
                     "Inconsistent Stage 00 text/classification")
             require(entry.get("text_digest") == digest(blocks), "Stage 00 extracted text differs from its manifest")
-            if provenance == "ocr":
-                require(bool(entry.get("ocr_lines")), "Stage 00 OCR positions are missing")
-                for line in entry["ocr_lines"]:
-                    valid_text(line["text"])
-                    valid_box(line["bbox"], page.rect.width, page.rect.height, tolerance=0)
-                validate_inserted(page, entry["ocr_lines"])
     return manifest, pdf
 
 

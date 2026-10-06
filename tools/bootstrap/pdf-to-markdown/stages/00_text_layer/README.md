@@ -42,14 +42,16 @@ OCR line coordinates are clamped to the displayed page bounds before conversion
 to the integer 0-1000 schema. Zero width and height are accepted, including extents
 collapsed by clipping or rounding. Reversed corners and nonfinite coordinates
 still fail. The stage does not replace unreadable markers or omit marker-only
-blocks. Invalid text stops preparation. Zero extents still face the downstream
-text insertion and reopened-PDF preservation checks.
+blocks. Invalid OCR input text stops preparation. Zero extents are passed to the
+PDF writer without checking whether they remain extractable afterward.
 
 The worker adds invisible lines (`render_mode=3`) using embedded Unicode fonts.
 Each line is fitted to its recognized box using serialized font metrics, mapped
-from displayed-page coordinates through rotation into the PDF frame. Reopened
-extraction must recover text and positions within 0.02 PDF points. Unsupported
-characters fail instead of being silently replaced. Native text remains unchanged.
+from displayed-page coordinates through rotation into the PDF frame. Stage 00
+trusts PyMuPDF to store the inserted text; it does not compare reopened OCR line
+counts, text or positions with the recognition result. The user assesses the PDF,
+and Stage 01 consumes its actual extractable text. Unsupported characters fail
+instead of being silently replaced. Native text remains unchanged.
 
 If no text is added, the separate PDF is a byte-for-byte copy. Otherwise a
 candidate is saved and reopened. Validation checks the complete page tree and

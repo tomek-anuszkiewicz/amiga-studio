@@ -67,11 +67,6 @@ def text_blocks(page):
     return blocks
 
 
-def normalized_text(text):
-    """PDF extraction may insert whitespace between independently placed lines."""
-    return re.sub(r"\s+", "", text)
-
-
 def validate_ocr(response):
     from jsonschema import validate
     from .pdf_schemas import OCR
@@ -134,10 +129,9 @@ def insert_ocr(page, response):
 
     Each nonempty OCR line occupies an equal-height slice of its supplied box.
     Its font metrics determine an explicit affine fit; no text is truncated.
-    Return intended line positions for reopened-PDF verification.
+    Trust the PDF writer to store the requested text and placement.
     """
     fonts = [pymupdf.Font("helv"), pymupdf.Font("cjk"), pymupdf.Font(script=0)]
-    expected = []
     for block in validate_ocr(response)["blocks"]:
         characters = set(block["text"]) - set("\r\n\t")
         choice = next((i for i, font in enumerate(fonts)
@@ -169,27 +163,6 @@ def insert_ocr(page, response):
             shape.insert_text(point, line, fontsize=1, fontname=fontname, render_mode=3,
                               morph=(point, matrix))
             shape.commit()
-            expected.append({"text": line, "bbox": [box.x0, box.y0 + index * line_height,
-                                                       box.x1, box.y0 + (index + 1) * line_height]})
-    return expected
-
-
-def validate_inserted(page, expected):
-    flags = pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES
-    lines = []
-    for block in page.get_text("dict", flags=flags, sort=False)["blocks"]:
-        if block["type"] == 0:
-            for line in block["lines"]:
-                text = "".join(span["text"] for span in line["spans"])
-                if text.strip():
-                    lines.append({"text": text, "bbox": list(pymupdf.Rect(line["bbox"]) * page.rotation_matrix)})
-    if len(lines) != len(expected):
-        raise ValueError("Reopened OCR PDF has missing or extra text lines")
-    for actual, intended in zip(lines, expected):
-        if normalized_text(actual["text"]) != normalized_text(intended["text"]):
-            raise ValueError("Reopened OCR PDF text differs from validated OCR")
-        if any(abs(a - b) > GEOMETRY_TOLERANCE for a, b in zip(actual["bbox"], intended["bbox"])):
-            raise ValueError(f"Reopened OCR PDF text position differs: {actual['bbox']} != {intended['bbox']}")
 
 
 def raster_transform(page, pixmap, dpi):

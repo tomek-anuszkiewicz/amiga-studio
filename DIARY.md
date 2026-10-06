@@ -1615,3 +1615,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Regression failed before repair and passed afterward. PASS 25 PDF conversion tests, quick pre-flight, 19 architecture checks and git diff --check. Graphify updated. Requested all-page 00-01 conversion processed 160 pages but Stage 00 failed reopened text preservation with missing or extra lines
   - Stage 01 did not run. Repeat using compatible OCR recovery confirmed the same failure.
+---
+
+### [2026-10-06 15:00 CET] — Trust PyMuPDF OCR text insertion in Stage 00
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/pdf_geometry.py`
+  - `tools/bootstrap/conversion/pdf_artifacts.py`
+  - `tools/bootstrap/pdf-to-markdown/stages/00_text_layer`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove OCR line count, text and position comparisons after PDF insertion and from predecessor validation
+  - remove unused expected-line metadata and validator
+  - retain source, native-content, geometry, visible-render and artifact identity checks
+  - document the user-selected trusted-writer contract
+- **Architectural Rationale & Trade-Offs**:
+  - The user approved the review PDF and requested trusting PyMuPDF text insertion rather than testing its line segmentation and round-trip placement.
+- **Verification & Test Results**:
+  - Regression failed before repair and passed afterward. PASS 26 PDF conversion tests, quick pre-flight, 19 architecture checks and git diff --check. Graphify updated. All 160 requested pages completed stages 00 and 01, producing prepared OCR PDF and 160 PNG/JSON pairs with zero Codex calls. Independent completed-state and artifact validation passed. PowerShell capture returned exit 1 after Tesseract stderr warnings despite pipeline completion
+  - completion was verified from validated state and artifacts.

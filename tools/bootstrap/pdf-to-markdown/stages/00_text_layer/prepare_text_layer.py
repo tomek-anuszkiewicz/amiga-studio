@@ -13,8 +13,8 @@ from conversion.cache import digest
 from conversion.config import load_config, PDF_STAGES
 from conversion.lineage import file_hash, read_state, stage_identity
 from conversion.pdf_artifacts import write_json, read_json, require, validate_text_layer
-from conversion.pdf_geometry import (SCHEMA_VERSION, GEOMETRY_TOLERANCE, page_geometry,
-                                     text_blocks, valid_box, validate_ocr, insert_ocr, validate_inserted)
+from conversion.pdf_geometry import (SCHEMA_VERSION, page_geometry,
+                                     text_blocks, valid_box, validate_ocr, insert_ocr)
 from conversion.pdf_selection import selected_pages
 
 
@@ -76,9 +76,7 @@ def verify_candidate(source_path, candidate, entries, dpi):
                 require(match is not None, "Preparation changed source content streams")
                 cursor = match + 1
             entry = selected.get(number + 1)
-            if entry and entry["provenance"] == "ocr":
-                validate_inserted(after, entry["ocr_lines"])
-            else:
+            if not entry or entry["provenance"] != "ocr":
                 require(before.get_text("rawdict") == after.get_text("rawdict"), "Preparation changed retained native content")
                 require(old_streams == new_streams, "Preparation changed a page outside OCR coverage")
             if entry:
@@ -150,7 +148,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                     entry.update(page_type=response["page_type"], caption=response["caption"],
                                  classification_basis="inferred_from_tesseract_lines", provenance="ocr" if response["blocks"] else "none")
                     if response["blocks"]:
-                        entry["ocr_lines"] = insert_ocr(page, response)
+                        insert_ocr(page, response)
                         added_text = True
                     print(f"[{entry['provenance']}] {entry['page_id']}: {entry['page_type']}")
                 entries.append(entry)
@@ -165,7 +163,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                         "pdf_sha256": file_hash(candidate), "pages": entries, "ocr_procedure": procedure,
                         "publication_validation": {"dpi": dpi, "selected_page_renders": "identical",
                                                    "all_page_geometry": "identical", "source_streams": "retained",
-                                                   "text_geometry_tolerance_points": GEOMETRY_TOLERANCE,
+                                                   "ocr_text_insertion": "trusted_pdf_writer",
                                                    "unselected_pages": "unchanged; outside preparation coverage"}}
             candidate.replace(output)
             write_json(manifest_path, manifest)
