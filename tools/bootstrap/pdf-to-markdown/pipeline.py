@@ -625,7 +625,6 @@ def main():
             raise ValueError("Prepared tasks do not match source, predecessor, model/effort or procedure; prepare again")
     # All configuration and predecessor validation precedes writes and cleanup.
     workspace.mkdir(parents=True, exist_ok=True)
-    output.mkdir(parents=True, exist_ok=True)
     config_path = workspace / "config.yaml"
     if config_source != config_path:
         shutil.copyfile(config_source, config_path)

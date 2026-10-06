@@ -195,6 +195,25 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual(after["02k"]["status"], "completed")
         self.assertNotIn("03", after)
 
+    def test_partial_page_conversion_does_not_create_final_output(self):
+        (self.output / "artifact.json").unlink()
+        self.output.rmdir()
+        state_path = self.workspace / ".conversion-state.json"
+        state = json.loads(state_path.read_text())
+        del state["stages"]["14"]
+        state_path.write_text(json.dumps(state))
+        executed = []
+
+        def worker(stage, *args):
+            self.assertFalse(self.output.exists(), "Stage 14 directory must wait for Stage 14 execution")
+            executed.append(stage["id"])
+            self.write_artifacts(stage)
+            return True
+
+        self.run_pipeline(["--from-stage", "02d", "--to-stage", "02m"], worker)
+        self.assertEqual(executed, ["02d", "02m"])
+        self.assertFalse(self.output.exists())
+
     def test_missing_input_of_later_selected_branch_rejects_before_cleanup(self):
         state_path = self.workspace / ".conversion-state.json"
         state = json.loads(state_path.read_text())

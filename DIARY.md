@@ -1905,3 +1905,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - both former prose objects and the connected note are inside the graphic
   - original and new page PNG hashes match
   - no other fragment or downstream conversion run
+---
+
+### [2026-10-06 17:37 CET] — PDF-WORKSPACE-DIRS: create final output only when Stage 14 executes
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/pipeline.py`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove unconditional final output directory creation during pipeline initialization
+  - retain a regression for partial execution through 02m
+  - document lazy stage directory creation
+  - verify the reported Stage 14 directory is absent at completion
+- **Architectural Rationale & Trade-Offs**:
+  - Independent page-conversion restarts retain the old stream and therefore did not clean the prematurely created final output directory
+- **Verification & Test Results**:
+  - Regression failed on original code for premature Stage 14 directory creation
+  - all 29 PDF tests passed after repair
+  - quick pre-flight passed
+  - architecture rules passed 19/19
+  - Graphify updated
+  - no model calls or fragment conversion
