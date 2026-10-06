@@ -2081,3 +2081,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19/19
   - git diff --check passed
   - no fragment conversion requested or run
+---
+
+### [2026-10-06 18:52 CEST] — Group complete technical drawing sheets as graphics
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Group integrated drawing descriptions titles views dimensions notes and connection tables into one graphic
+  - apply sheet grouping before table and caption classification
+  - retain independent document content and page furniture separately
+- **Architectural Rationale & Trade-Offs**:
+  - Technical drawing composition can establish object membership without explicit leader lines
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 19/19
+  - git diff --check passed
+  - no fragment conversion requested or run

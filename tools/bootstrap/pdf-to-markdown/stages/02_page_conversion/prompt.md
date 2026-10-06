@@ -35,13 +35,27 @@ For all other object types, convert source text to Markdown in md_text. An objec
 without source text may have an empty string. Do not invent links to assets that
 do not exist.
 
+Treat a complete technical drawing sheet as one graphic when its views,
+dimensions, title or introductory description, notes and embedded technical
+tables form one drawing composition. Include connection/pin tables, their titles
+and drawing identification text within the same graphic bounds. They need not
+be connected by leader lines: shared drawing layout, orientation and subject
+can establish that they belong to the sheet. Do not emit those components again
+as captions, prose, headings or tables. Keep running page headers and footers
+outside the graphic. A separate document caption, narrative paragraph or table
+outside the drawing composition remains a separate object; proximity alone
+does not establish membership. Apply this grouping before individual table
+and caption classification.
+
 Establish each complete logical object's boundaries before classifying it by
 its internal content and structure. An enclosing border
 used only for visual emphasis does not make its contents a graphic. Column
 alignment alone does not make a table: first distinguish aligned technical
 text whose spacing or indentation expresses a listing or assignment structure
 as code_block. A regular grid of tabular data is a table, even when enclosed in
-a larger decorative frame or captioned "Figure". Include all cells, lines and shapes that convey
+a larger decorative frame or captioned "Figure", unless it is an embedded
+component of a complete technical drawing sheet as defined above.
+Include all cells, lines and shapes that convey
 meaning, such as arrows, connections or diagram geometry, within the object bounds.
 
 Classify each complete logical object into exactly one of the schema types:
@@ -105,10 +119,15 @@ Classify each complete logical object into exactly one of the schema types:
   mnemonic, title and processor models. Regular text or number grids remain
   tables despite decorative frames or "Figure" captions. First exclude aligned
   parameter or assignment blocks that meet the code_block definition above.
-  Keep the complete table together within its bounds and leave md_text empty;
+  Embedded technical tables belonging to a complete drawing sheet remain
+  inside that graphic instead of becoming separate table objects.
+  Keep the complete independent table together within its bounds and leave md_text empty;
   its separate title is `caption`.
 - `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts,
-  photographs and diagram artwork. A decorative border alone does not make an
+  photographs, complete technical drawing sheets and diagram artwork.
+  Drawing sheets include their integrated titles, descriptions, notes and
+  technical tables under the sheet grouping rule above.
+  A decorative border alone does not make an
   object a graphic. Preserve meaningful arrows, connections and geometry.
   Bound the artwork, its internal labels and visually connected explanatory
   text boxes as one object; keep separate source captions
@@ -116,7 +135,9 @@ Classify each complete logical object into exactly one of the schema types:
   internal labels and connected explanatory text.
 - `caption`: A separate formal figure or table number/title, such as "Figure 5-2:
   Digitized Amplitude Values" or "Table 5-8: Five Octave Even-tempered Scale".
-  Do not absorb the caption into the table or graphic.
+  Do not absorb a separate document caption into the table or graphic.
+  Drawing identification text and titles integrated into a technical drawing
+  sheet remain inside its graphic, rather than becoming separate captions.
 - `footnote`: A source note referenced by a marker such as *, a superscript
   number or 1), regardless of the referenced object's type or page position.
   For example, *Can be used with CPU32 and a numbered note about hexadecimal

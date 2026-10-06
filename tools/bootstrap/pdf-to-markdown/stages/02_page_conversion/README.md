@@ -31,8 +31,16 @@ Aligned register assignments and input/output parameter blocks are `code_block`,
 including their shared labels and wrapped descriptions, regardless of source font.
 Column alignment alone does not establish a `table`.
 
+Complete technical drawing sheets are one `graphic`, including integrated
+titles or introductory descriptions, views, dimensions, notes and technical
+tables such as connection/pin tables. Shared drawing layout, orientation and
+subject can establish membership without leader lines. Separate document
+captions, narrative and independent tables remain separate; page headers and
+footers stay outside the drawing. This grouping precedes table/caption
+classification. Regenerate 02/02.5 to apply it to existing results.
+
 The [prompt](prompt.md) defines source roles, including footnote, table_legend,
-index and dedicated table/figure listing headings and entries. Source captions stay
+index and dedicated table/figure listing headings and entries. Separate document captions stay
 separate from source explanations and generated asset descriptions remain deferred.
 
 `cover` identifies a complete front or back book cover as one object, including
