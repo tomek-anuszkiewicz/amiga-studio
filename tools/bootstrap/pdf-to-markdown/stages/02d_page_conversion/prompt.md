@@ -16,6 +16,12 @@ Convert each object's source text to Markdown in md_text. An object without
 source text may have an empty string. Figure text is only source-visible text,
 not an authored description. Do not invent links to assets that do not exist.
 
+Classify objects by their internal content and structure. An enclosing border
+used only for visual emphasis does not make its contents a graphic. A regular
+grid of text or numbers is a table, even when enclosed in a larger decorative
+frame or captioned "Figure". Preserve cell boundaries. Retain lines and shapes
+that convey meaning, such as arrows, connections or diagram geometry.
+
 Use the schema classifications. footnote is a source note referenced by a marker
 such as *, a superscript number or 1), regardless of the referenced object's type
 or page position. For example, *Can be used with CPU32 and a numbered note about

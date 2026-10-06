@@ -1780,3 +1780,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - PASS 26 PDF tests, quick pre-flight, 19 architecture checks, compileall and git diff --check. Graphify updated. Technical diagnostic verified caption/table/legend/footer boxes, rejection of null/outside/empty/noninteger rectangles, four ordered frames and leaders, review dimensions, and retained 00/01/02/02k lineage. No live model calls or real fragment conversion
   - prior 02d/02m artifacts require regeneration for this contract.
+---
+
+### [2026-10-06 17:05 CEST] — PDF-02D-TABLE-CLASSIFICATION: distinguish decorative frames from graphics
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02d_page_conversion/prompt.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Classify objects by internal content and structure
+  - recognize regular text or number grids as tables despite decorative frames or Figure captions
+  - preserve cell boundaries and meaningful diagram lines
+- **Architectural Rationale & Trade-Offs**:
+  - The reviewed page-126 grid was classified as graphic. Clarify the classification criterion without changing Markdown formatting recipes.
+- **Verification & Test Results**:
+  - PASS quick pre-flight and 19 architecture checks
+  - prompt diff reviewed and git diff --check passed
+  - no fragment conversion or model calls
+  - existing outputs were not regenerated
