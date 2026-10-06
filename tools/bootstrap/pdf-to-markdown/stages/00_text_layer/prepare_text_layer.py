@@ -57,24 +57,6 @@ def tesseract_ocr(pixmap, language, tessdata):
     return {"page_type": "text_page" if blocks else "pure_graphic", "caption": None, "blocks": blocks}
 
 
-def record_ocr_read(path, source, entry, response):
-    """Keep schema-shaped OCR output even when text validation rejects it."""
-    record = {"schema_version": SCHEMA_VERSION, "source": source, **entry,
-              "read_method": "ocr", "ocr_response": response,
-              "text_validation": {"status": "pending"}}
-    write_json(path, record)
-    try:
-        validate_ocr(response)
-    except Exception as error:
-        record["text_validation"] = {"status": "failed", "error_type": type(error).__name__,
-                                     "error": str(error)}
-        write_json(path, record)
-        raise
-    record["text_validation"] = {"status": "passed"}
-    write_json(path, record)
-    return response
-
-
 def verify_candidate(source_path, candidate, entries, dpi):
     selected = {entry["page"]: entry for entry in entries}
     with pymupdf.open(source_path) as original, pymupdf.open(candidate) as prepared:
@@ -128,8 +110,6 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
         candidate.unlink(missing_ok=True)
         recovery = stage_dir / "recovery"
         recovery.mkdir(exist_ok=True)
-        page_reads = stage_dir / "page_reads"
-        page_reads.mkdir(exist_ok=True)
         procedure = stage_identity({"id": "00", "dir": "00_text_layer"}, config, source, None, Path(__file__).resolve().parents[2])
         entries, engine, added_text = [], None, False
         try:
@@ -137,13 +117,8 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                 page = document[number - 1]
                 entry = {"page": number, "page_id": f"page_{number:04d}", "source_index": number - 1,
                          "geometry": page_geometry(page)}
-                read_path = page_reads / f"{entry['page_id']}.json"
-                native_blocks = text_blocks(page)
-                if native_blocks:
+                if text_blocks(page):
                     entry.update(provenance="native", page_type="text_page", classification_basis="inferred_from_native_spans")
-                    write_json(read_path, {"schema_version": SCHEMA_VERSION, "source": source, **entry,
-                                           "read_method": "native", "native_blocks": native_blocks,
-                                           "text_validation": {"status": "passed"}})
                     print(f"[native] {entry['page_id']}: retained existing text spans")
                 else:
                     image = stage_dir / ".request.png"
@@ -162,11 +137,11 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                         require(retained.get("digest") == digest({k: v for k, v in retained.items() if k != "digest"}),
                                 "Modified per-page OCR recovery record")
                         if retained.get("identity") == identity:
-                            response = record_ocr_read(read_path, source, entry, retained["response"])
+                            response = validate_ocr(retained["response"])
                             print(f"[recovery] {entry['page_id']}: compatible validated OCR result")
                     if response is None:
                         response = tesseract_ocr(pixmap, language, tessdata)
-                        record_ocr_read(read_path, source, entry, response)
+                        validate_ocr(response)
                         record = {"identity": identity, "response": response}
                         record["digest"] = digest(record)
                         write_json(recovery_file, record)

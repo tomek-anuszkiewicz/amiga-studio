@@ -59,17 +59,18 @@ Fragment preparation retains all physical pages but certifies only selected
 pages. Unselected pages remain unchanged. Expanding selection requires restart
 at 00 with the original source or another workspace.
 
-## Inspection, recovery and downstream handoff
+## Recovery and downstream handoff
 
-`page_reads/page_NNNN.json` records native blocks or raw OCR responses immediately,
-including validation status and rejection details. Rejected responses never
-become recovery records or a consumable PDF. Recovery reuse validates source,
-selection, image bytes, geometry, schema, procedure, language-data hashes and
+Stage 00 publishes the prepared PDF and its validation manifest. Stage 01
+extracts per-page positioned text JSON from that PDF; Stage 00 does not write
+separate native/OCR inspection JSON. Invalid OCR responses never become recovery
+records or a consumable PDF. Recovery reuse validates source, selection, image
+bytes, geometry, schema, procedure, language-data hashes and
 PyMuPDF version. Old Codex recovery records are incompatible and are regenerated.
 
 The manifest records the prepared PDF path/hash, coverage, page geometry,
 provenance, inferred classification evidence, inserted line positions, extracted
-text digests and publication checks. Inspection JSON does not replace it.
+text digests and publication checks.
 
 Run through the pipeline, for example:
 

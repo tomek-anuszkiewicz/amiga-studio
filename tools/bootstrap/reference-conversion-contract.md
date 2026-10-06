@@ -67,13 +67,14 @@ with no recognized lines uses the legacy `pure_graphic` classification with
 page contains no text. Tesseract can miss text. No margin filter or size-based
 schematic omission is applied. Fragment coverage never certifies unselected pages.
 
-Stage 00 retains per-page inspection JSON, validation failures and compatible
-recovery records. Recovery identity includes rendered image bytes, procedure,
+Stage 00 retains its validation manifest and compatible recovery records.
+Stage 01 owns per-page positioned text JSON extraction from the prepared PDF;
+Stage 00 does not duplicate those reads in separate inspection JSON. Recovery identity includes rendered image bytes, procedure,
 geometry, source selection, language-data hashes and the PyMuPDF version; old
 Codex OCR recovery is incompatible. OCR text and geometry are validated without
 clipping boxes, correcting reversed corners or substituting unreadable markers.
 Invalid responses fail; native text is unchanged.
-These records do not replace the validated manifest.
+Recovery records do not replace the validated manifest.
 Restart at 01 retains validated Stage 00; legacy workspaces require explicit
 regeneration from 00 with the original PDF after this backend/name change.
 

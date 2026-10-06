@@ -43,7 +43,7 @@ class PdfTextBoundsTests(unittest.TestCase):
 
 
 
-class PdfPageReadTests(unittest.TestCase):
+class PdfOcrValidationTests(unittest.TestCase):
     def test_tesseract_fractional_line_bounds_satisfy_shared_ocr_schema(self):
         spec = importlib.util.spec_from_file_location(
             "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
@@ -58,7 +58,7 @@ class PdfPageReadTests(unittest.TestCase):
         self.assertEqual(response["blocks"][0]["text"], "Recognized line")
         self.assertTrue(all(type(value) is int for value in response["blocks"][0]["box_2d"]))
 
-    def test_failed_ocr_retains_native_and_rejected_page_reads(self):
+    def test_failed_ocr_publishes_no_recovery_or_manifest(self):
         spec = importlib.util.spec_from_file_location(
             "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
         stage = importlib.util.module_from_spec(spec)
@@ -79,15 +79,6 @@ class PdfPageReadTests(unittest.TestCase):
                     patch.object(stage, "tesseract_ocr", return_value=response):
                 with self.assertRaisesRegex(ValueError, "defective text"):
                     stage.prepare_text_layer(source, workspace, config)
-            reads = workspace / "00_text_layer/page_reads"
-            native = json.loads((reads / "page_0001.json").read_text(encoding="utf-8"))
-            rejected = json.loads((reads / "page_0002.json").read_text(encoding="utf-8"))
-            self.assertEqual(native["native_blocks"][0]["text"], "Native page text\n")
-            self.assertEqual(native["text_validation"]["status"], "passed")
-            self.assertEqual(rejected["ocr_response"], response)
-            self.assertEqual(rejected["text_validation"]["status"], "failed")
-            self.assertEqual(rejected["page"], 2)
-            self.assertIn("defective text", rejected["text_validation"]["error"])
             self.assertFalse((workspace / "00_text_layer/recovery/page_0002.json").exists())
             self.assertFalse((workspace / "00_text_layer/text_layer_manifest.json").exists())
 

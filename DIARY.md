@@ -1535,3 +1535,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS 23 PDF conversion tests
   - quick pre-flight
   - 19 architecture checks and git diff --check. Graphify incremental update completed. No source fragment conversion or milestone gate run.
+---
+
+### [2026-10-06 12:19 CEST] — PDF-STAGE00-READS: remove duplicate preparation text JSON
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/00_text_layer`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove page_reads directory generation and immediate native/OCR inspection JSON introduced by 2077f3d
+  - validate OCR directly before insertion or recovery publication
+  - keep failure-publication protection in the adapted test
+  - document Stage 01 ownership of per-page positioned text JSON
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested removing the Stage 00 inspection feature because Stage 01 extracts the prepared PDF into JSON. Retain the validation manifest and restart recovery independently of content extraction.
+- **Verification & Test Results**:
+  - PASS 23 PDF conversion tests
+  - quick pre-flight
+  - 19 architecture checks and git diff --check. Graphify incremental update completed. No source fragment conversion or milestone gate run.
