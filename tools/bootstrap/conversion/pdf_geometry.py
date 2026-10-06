@@ -20,7 +20,7 @@ def page_geometry(page):
             "pdf_to_extraction": list(page.transformation_matrix)}
 
 
-def valid_box(box, width, height, *, tolerance=GEOMETRY_TOLERANCE, clip=False):
+def valid_box(box, width, height, *, tolerance=GEOMETRY_TOLERANCE, clip=False, allow_zero=False):
     if not isinstance(box, (list, tuple)) or len(box) != 4:
         raise ValueError("Text bounding box must contain four coordinates")
     if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in box):
@@ -29,7 +29,9 @@ def valid_box(box, width, height, *, tolerance=GEOMETRY_TOLERANCE, clip=False):
     if clip:
         x0, y0, x1, y1 = max(0, x0), max(0, y0), min(width, x1), min(height, y1)
         box = [x0, y0, x1, y1]
-    if x0 >= x1 or y0 >= y1 or x0 < -tolerance or y0 < -tolerance or x1 > width + tolerance or y1 > height + tolerance:
+    reversed_edges = x0 > x1 or y0 > y1
+    zero_extent = x0 == x1 or y0 == y1
+    if reversed_edges or (zero_extent and not allow_zero) or x0 < -tolerance or y0 < -tolerance or x1 > width + tolerance or y1 > height + tolerance:
         raise ValueError(f"Invalid or out-of-page text bounding box: {box}")
     return list(box)
 
@@ -80,7 +82,8 @@ def validate_ocr(response):
     for block in blocks:
         valid_text(block["text"])
         y0, x0, y1, x1 = block["box_2d"]
-        valid_box([x0, y0, x1, y1], 1000, 1000, tolerance=0)
+        # Integer normalization can collapse a valid sub-unit OCR extent.
+        valid_box([x0, y0, x1, y1], 1000, 1000, tolerance=0, allow_zero=True)
     return response
 
 

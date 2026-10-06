@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap"))
 from conversion import load_config
 from conversion.config import PDF_STAGES
 from conversion.lineage import complete_stage, validate_prefix, restore_shared, stage_identity, file_hash
-from conversion.pdf_geometry import text_blocks
+from conversion.pdf_geometry import text_blocks, validate_ocr
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -44,6 +44,18 @@ class PdfTextBoundsTests(unittest.TestCase):
 
 
 class PdfOcrValidationTests(unittest.TestCase):
+    def test_quantized_ocr_bounds_allow_zero_extent_but_not_reversed_edges(self):
+        for box in ([220, 980, 239, 980], [220, 980, 220, 990], [220, 980, 220, 980]):
+            response = {"page_type": "text_page", "caption": None,
+                        "blocks": [{"text": "|", "box_2d": box}]}
+            with self.subTest(box=box):
+                self.assertEqual(validate_ocr(response), response)
+        for box in ([220, 990, 239, 980], [239, 980, 220, 990]):
+            response = {"page_type": "text_page", "caption": None,
+                        "blocks": [{"text": "|", "box_2d": box}]}
+            with self.subTest(box=box), self.assertRaises(ValueError):
+                validate_ocr(response)
+
     def test_tesseract_fractional_line_bounds_satisfy_shared_ocr_schema(self):
         spec = importlib.util.spec_from_file_location(
             "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")

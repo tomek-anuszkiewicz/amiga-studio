@@ -1582,3 +1582,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - PASS quick pre-flight, 19 architecture checks and git diff --check. Documentation only
   - no conversion run or artifact relocation.
+---
+
+### [2026-10-06 14:38 CET] — Accept zero extents in normalized OCR boxes
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/pdf_geometry.py`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Allow zero width and height only in normalized OCR validation
+  - retain reversed-edge and range checks and strict native geometry validation
+  - add the reproduced quantization regression and document downstream insertion limits
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested keeping integer 0-1000 coordinates while accepting extents collapsed by rounding.
+- **Verification & Test Results**:
+  - Regression failed before repair and passed after repair. PASS 24 PDF conversion tests, quick pre-flight, 19 architecture checks and git diff --check. Graphify updated. Synthetic zero-width, zero-height and point-box insertion each failed reopened text preservation
+  - full source conversion not rerun and remains unresolved.

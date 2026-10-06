@@ -75,7 +75,11 @@ Stage 00 does not duplicate those reads in separate inspection JSON. Recovery id
 geometry, source selection, language-data hashes and the PyMuPDF version; old
 Codex OCR recovery is incompatible. OCR text and geometry are validated without
 clipping boxes, correcting reversed corners or substituting unreadable markers.
-Invalid responses fail; native text is unchanged.
+Normalized integer OCR boxes may have zero width or height after rounding; OCR
+validation accepts these extents while rejecting reversed edges and out-of-range
+coordinates. This does not guarantee successful text insertion: fitting text to
+a zero extent currently produces text missing on PDF reopening, which still fails
+publication validation. Invalid responses fail; native text is unchanged.
 Recovery records do not replace the validated manifest.
 Restart at 01 retains validated Stage 00; legacy workspaces require explicit
 regeneration from 00 with the original PDF after this backend/name change.
