@@ -37,7 +37,7 @@ def frame_box(segment, raster):
             max(0, min(width-1, right)), max(0, min(height-1, bottom)))
 
 
-def review_image(image, page_data, segments):
+def review_image(image, page_data, segments, *, include_continuation=False):
     width, height = image.size
     canvas = Image.new("RGB", (width*2, height), "white")
     canvas.paste(image.convert("RGB"), (0, 0))
@@ -58,6 +58,10 @@ def review_image(image, page_data, segments):
         label = f"{index+1}. {kind}"
         if level is not None:
             label += f" | heading_level: {level}"
+        if include_continuation:
+            continuation = segment.get("continuation")
+            require(type(continuation) is bool, "Invalid segment continuation")
+            label += f" | continuation: {str(continuation).lower()}"
         require(draw.textlength(label, font=font) <= width*2 - label_x - margin,
                 "Segment label does not fit the review panel")
         color = tuple(round(channel*255) for channel in colorsys.hsv_to_rgb((index*0.61803398875) % 1, 0.8, 0.65))

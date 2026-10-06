@@ -1866,3 +1866,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Reproduced schema rejection with the retained cover regression before repair. PASS 27 PDF unittest tests, quick pre-flight, 19 architecture checks, exact 23-type prompt/schema comparison, compatibility fingerprint verification, generic cover rendering diagnostic and git diff --check. Graphify updated. No model calls or fragment conversion
   - existing outputs were not regenerated.
+---
+
+### [2026-10-06 17:30 CET] — PDF-02M-CONTINUATION-LABELS: display continuation in review labels
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02m_page_conversion_review`
+  - `tools/bootstrap/pdf-to-markdown/stages/02k_segmentation_review/render_review.py`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Show explicit continuation true/false on every Stage 02m object label
+  - opt in through the shared renderer while preserving Stage 02k labels
+  - document the review output
+- **Architectural Rationale & Trade-Offs**:
+  - Stage 02d already stores the boolean but Stage 02m omitted it from graphical review
+- **Verification & Test Results**:
+  - Reproduced missing labels with the focused regression before repair
+  - PASS 28 PDF unittest tests, quick pre-flight and 19 architecture checks
+  - Graphify updated
+  - no model calls or fragment conversion, existing review PNGs were not regenerated

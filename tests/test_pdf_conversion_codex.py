@@ -21,6 +21,34 @@ from conversion.pdf_page_conversion import validate_page
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class PdfReviewContinuationTests(unittest.TestCase):
+    def test_02m_labels_show_both_continuation_values(self):
+        from PIL import Image, ImageDraw
+        spec = importlib.util.spec_from_file_location(
+            "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02m_page_conversion_review/render_review.py")
+        renderer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(renderer)
+        segments = [
+            {"type": "caption", "heading_level": None, "continuation": True,
+             "bbox": [10, 10, 100, 40]},
+            {"type": "heading", "heading_level": 2, "continuation": False,
+             "bbox": [10, 50, 100, 80]},
+        ]
+        with patch.object(ImageDraw.ImageDraw, "text") as draw_text:
+            renderer.review_image(Image.new("RGB", (1200, 1600)), {"segments": segments})
+        self.assertEqual([call.args[1] for call in draw_text.call_args_list], [
+            "1. caption | continuation: true",
+            "2. heading | heading_level: 2 | continuation: false",
+        ])
+        with patch.object(ImageDraw.ImageDraw, "text") as draw_text:
+            renderer.review.review_image(Image.new("RGB", (1200, 1600)),
+                {"raster": {"display_to_pixels": [1, 0, 0, 1, 0, 0],
+                            "pixel_width": 1200, "pixel_height": 1600}}, segments)
+        self.assertEqual([call.args[1] for call in draw_text.call_args_list], [
+            "1. caption", "2. heading | heading_level: 2",
+        ])
+
+
 class PdfCoverContractTests(unittest.TestCase):
     def test_cover_supported_in_response_and_stored_artifact(self):
         entry = {"page": 1, "page_id": "page_0001",

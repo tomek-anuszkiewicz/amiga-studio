@@ -21,7 +21,8 @@ def review_image(image, value):
     width, height = image.size
     raster = {"display_to_pixels": [1, 0, 0, 1, 0, 0],
               "pixel_width": width, "pixel_height": height}
-    return review.review_image(image, {"raster": raster}, value["segments"])
+    return review.review_image(image, {"raster": raster}, value["segments"],
+                               include_continuation=True)
 
 
 def render_reviews(workspace):

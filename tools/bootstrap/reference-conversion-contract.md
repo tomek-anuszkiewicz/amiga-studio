@@ -93,8 +93,9 @@ remains a renderer for the old Stage 02 vocabulary, not a classification stage.
 
 Stage 02m reads Stage 02d JSON and the exact Stage 01 PNG independently of 02/02k.
 Its `02m_page_conversion_review/page_NNNN_review.png` preserves resolution and adds
-an equal-width blank right panel. Every object has an ordered type/heading label;
-all objects have containing 2-pixel frames and straight review leaders based on
+an equal-width blank right panel. Every object has an ordered type/heading label
+with explicit `continuation: true/false`; Stage 02k retains its existing labels.
+All objects have containing 2-pixel frames and straight review leaders based on
 their model-selected boxes. This supports review of textual spatial order as well
 as tables and graphics. No OCR geometry is synthesized; neither review stage
 corrects segmentation or calls a model.
@@ -115,7 +116,7 @@ original shared procedure digest. Any further shared-code change fails this brid
 and invalidates old identities normally. Stage-specific procedures, source/page
 selection, model/effort and artifact hashes still validate; records and old JSON
 are never relabeled or migrated. New stages use the current shared digest, and 02m
-also fingerprints its unchanged 02k drawing primitives. This bridge preserves
+also fingerprints its shared 02k drawing primitives. This bridge preserves
 compatible 00-14 artifacts without regenerating inference merely for branch wiring.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
