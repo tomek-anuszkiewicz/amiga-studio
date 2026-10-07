@@ -2376,3 +2376,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - plan language scan passed
   - plan relative links passed
   - no implementation, live inference or fragment conversion ran
+---
+
+### [2026-10-07 17:30 CEST] — Track Test Book source PDFs and conversion artifacts
+- **Affected Subsystems**:
+  - `.gitignore`
+  - `Obsidian/Amiga/Reference/Test Book example-4567`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the disabled Test Book ignore rule
+  - Add both source/OCR PDFs, the page tracker, and the pages-all conversion workspace (653 files)
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the complete existing Test Book fixture and conversion snapshot in Git at the user's explicit request
+- **Verification & Test Results**:
+  - pre_flight.py --quick passed
+  - test_architecture_rules passed 19/19
+  - parsed all 325 JSON files successfully and scanned text/configuration for private host paths and common secret patterns with zero findings
+  - git diff --cached --check passed; optional staged language scan failed with 29 false positives in OCR noise, proper names and technical labels (including Kokomo, ADKCON and todmid); preserved the existing conversion artifacts
+  - conversion output was not regenerated or semantically reviewed

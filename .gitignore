@@ -68,7 +68,6 @@ tests/singlestep/
 /Obsidian/Amiga/Reference/Undocumented features of OCS, ECS and AGA chipsets*
 Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis-*.md
 /Obsidian/Amiga/Reference/.cache/
-/Obsidian/Amiga/Reference/Test Book example-4567*/
 
 # Graphify AST knowledge graph database, semantic indices, and architecture maps.
 # Physically copied as a seed for new worktrees, then refreshed locally with graphify update.
