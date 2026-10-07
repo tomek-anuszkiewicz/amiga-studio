@@ -31,6 +31,10 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
   - After approving the sample pipeline, convert the manuals and validate Markdown, links, assets, and descriptions before indexing. Verify fresh and incremental `amiga` ingestion, hashing, chunk fidelity, embeddings, and sidecar retrieval through the canonical `rag_qdrant` CLI.
   - **Gate:** Accepted converted artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](docs/developers.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag); unchanged input does not cause unnecessary reindexing.
 
+- **1.6: Remove Test Book Files from the Branch (TEST-BOOK-CLEANUP)**
+  - After conversion and RAG ingestion verification, remove all files under `Obsidian/Amiga/Reference/Test Book example-4567/` from the branch's tracked tree while preserving the local test fixture and conversion artifacts. Restore the directory's `.gitignore` rule.
+  - **Gate:** `git ls-files -- "Obsidian/Amiga/Reference/Test Book example-4567"` returns no files, and `git check-ignore` confirms that the local directory is ignored.
+
 ## Step 2: Understand Tests and Establish a Profiling Workflow
 
 - **2.1: Test Suite Review and Structural Orientation**

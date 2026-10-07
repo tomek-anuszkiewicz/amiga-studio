@@ -2393,3 +2393,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - parsed all 325 JSON files successfully and scanned text/configuration for private host paths and common secret patterns with zero findings
   - git diff --cached --check passed; optional staged language scan failed with 29 false positives in OCR noise, proper names and technical labels (including Kokomo, ADKCON and todmid); preserved the existing conversion artifacts
   - conversion output was not regenerated or semantically reviewed
+---
+
+### [2026-10-07 17:31 CET] — Plan final Step 1 Test Book branch cleanup
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add Step 1.6 (TEST-BOOK-CLEANUP) after conversion and RAG ingestion verification
+  - Plan removal of tracked Test Book files, retention of the local fixture, and restoration of its ignore rule
+- **Architectural Rationale & Trade-Offs**:
+  - Record the requested final Step 1 cleanup with explicit Git verification criteria
+- **Verification & Test Results**:
+  - pre_flight.py --quick passed
+  - architecture tests passed 19/19
+  - ROADMAP.md English language scan and git diff --check passed
+  - Step 1 numbering remains contiguous
+  - cleanup is planned and was not executed
