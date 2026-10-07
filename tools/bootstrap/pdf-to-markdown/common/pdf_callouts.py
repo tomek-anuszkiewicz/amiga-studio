@@ -1,7 +1,7 @@
 """Advisory vocabulary and explicit frozen-page edit interpretation."""
 
 import re
-from .pdf_schemas import object_schema, STRING
+from .pdf_schemas import object_schema, STRING, BBOX
 from .pdf_page_conversion import CALLOUT_STAGE
 
 CANDIDATE_TYPES = {"prose", "code_block", "chapter", "heading", "toc_heading",
@@ -12,7 +12,7 @@ INITIAL_KEYWORDS = {"NOTE", "CAUTION", "WARNING"}
 SEGMENT_IDS = {"type": "array", "items": STRING, "minItems": 1}
 REPLACEMENT = object_schema({
     "type": {"type": "string", "enum": sorted(TEXT_TYPES)},
-    "md_text": STRING, "source_segment_ids": SEGMENT_IDS,
+    "md_text": STRING, "bbox": BBOX, "source_segment_ids": SEGMENT_IDS,
 })
 RESPONSE = object_schema({
     "replacements": {"type": "array", "items": object_schema({
@@ -122,12 +122,10 @@ def apply_replacements(page, objects, response):
                         suffix += 1
                     identity = f"{identity}_callout_{suffix}"
                 used_ids.add(identity)
-                boxes = [item["bbox"] for item in contributors]
                 kind = replacement["type"]
                 produced.append({**first, "segment_id": identity, "type": kind,
                     "md_text": replacement["md_text"],
-                    "bbox": [min(b[0] for b in boxes), min(b[1] for b in boxes),
-                             max(b[2] for b in boxes), max(b[3] for b in boxes)],
+                    "bbox": replacement["bbox"],
                     "heading_level": first.get("heading_level") if kind == first["type"] and kind not in {"callout", "callout_text"} else None,
                     "continuation": any(item.get("continuation", False) for item in contributors),
                     "source_segment_ids": [item["segment_id"] for item in contributors],

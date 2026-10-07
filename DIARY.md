@@ -3301,3 +3301,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite passed 19/19
   - Git diff whitespace check passed
   - No new source conversion or additional page quality assessment ran for this artifact commit
+---
+
+### [2026-10-07 23:02 CET] — PDF-CALLOUT-BOX-2.4: preserve distinct replacement geometry
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/common/pdf_callouts.py`
+  - `Stage 02.4`
+  - `reference conversion contract`
+  - `tests/test_pdf_callout_geometry.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add the shared BBOX schema to every replacement segment
+  - request tight image-derived boxes for labels, bodies and residual text
+  - save model coordinates directly instead of contributor unions
+  - document explicit restart for existing overrides
+- **Architectural Rationale & Trade-Offs**:
+  - User approved replacing shared split geometry with independent model-provided boxes so a standalone NOTE label no longer inherits its entire source paragraph box. Source IDs and lineage remain contributor-derived.
+- **Verification & Test Results**:
+  - Focused regression failed before repair with three identical contributor boxes and passed after repair (1 test)
+  - existing PDF conversion suite passed (29 tests)
+  - quick pre-flight passed
+  - architecture rules passed (19 tests). No live fragment conversion or visual quality assessment performed.

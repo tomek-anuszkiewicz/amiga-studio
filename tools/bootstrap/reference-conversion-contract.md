@@ -34,7 +34,9 @@ trigger one joint vision request per page; model proposals explicitly consume co
 text ranges and return complete label/body and residual objects. Ambiguous IDs,
 overlaps and read-only anchors retain source ranges with concise console messages.
 Responses contain only replacements using stable source segment IDs, without
-attachment decisions. Local geometry/IDs and lineage derive from contributors.
+attachment decisions. Each replacement includes its own tight pixel box inferred
+from the original image, separating label, body and retained remainder geometry.
+The program preserves those boxes directly; IDs and lineage derive from contributors.
 No framed companions, response dumps or decision reports are created.
 The prompt excludes numbered/symbol-marked footnotes, table/figure legends and
 explanatory lists. Distinct NOTE labels introducing their own advisory paragraphs
