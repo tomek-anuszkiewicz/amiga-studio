@@ -28,12 +28,14 @@ YAML metadata remains.
 Review Stage 02.5 uses complete resolved page objects for presentation decisions;
 its annotation suppression and prose grouping do not remove source content.
 
-Stage 02.4 recovers independent advisories using frozen Stage 02 text and complete
-original Stage 01 images plus numbered-frame companions. Keyword hits trigger
-one joint vision request per page; model proposals explicitly consume contiguous
+Stage 02.4 recovers advisory callouts using frozen Stage 02 text and one complete
+original Stage 01 image at original detail per candidate-bearing page. Keyword hits
+trigger one joint vision request per page; model proposals explicitly consume contiguous
 text ranges and return complete label/body and residual objects. Ambiguous IDs,
-overlaps, conflicting decisions and read-only anchors retain source ranges with
-diagnostics. Local geometry/IDs and source lineage derive from contributing frames.
+overlaps and read-only anchors retain source ranges with concise console messages.
+Responses contain only replacements using stable source segment IDs, without
+attachment decisions. Local geometry/IDs and lineage derive from contributors.
+No framed companions, response dumps or decision reports are created.
 Only changed pages receive complete-page overrides; predecessors remain intact.
 Review 02.5, filtering 02.8 and explicit table predecessor `02` share the sparse
 resolver. Completed overrides are eligible, absent optional status means skipped,

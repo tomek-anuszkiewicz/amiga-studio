@@ -34,7 +34,7 @@ def frame_box(segment, raster):
             max(0, min(width-1, right)), max(0, min(height-1, bottom)))
 
 
-def draw_review_image(image, page_data, segments, *, include_continuation=False, labels=None, colors=None, leaders=True):
+def draw_review_image(image, page_data, segments, *, include_continuation=False):
     width, height = image.size
     canvas = Image.new("RGB", (width*2, height), "white")
     canvas.paste(image.convert("RGB"), (0, 0))
@@ -59,18 +59,15 @@ def draw_review_image(image, page_data, segments, *, include_continuation=False,
             continuation = segment.get("continuation")
             if continuation:
                 label += " | continuation: true"
-        if labels is not None:
-            label = labels[index]
-        color = (colors[index] if colors is not None else TYPE_COLORS.get(kind, "#444444"))
+        color = TYPE_COLORS.get(kind, "#444444")
         frame = frames[index]
         left, top, right, bottom = frame
         label_y = round(margin + (index+0.5)*row_height)
         anchor_y = (top+bottom) // 2
         # All leaders enter the panel at the same x. Straight links between
         # these ports and JSON-ordered labels expose vertical order inversions.
-        if leaders:
-            draw.line([(right, anchor_y), (leader_x, anchor_y), (label_x-margin//2, label_y)],
-                      fill=color, width=FRAME_WIDTH)
+        draw.line([(right, anchor_y), (leader_x, anchor_y), (label_x-margin//2, label_y)],
+                  fill=color, width=FRAME_WIDTH)
         draw.rectangle((left, top, right, bottom), outline=color, width=FRAME_WIDTH)
         draw.text((label_x, label_y), label, font=font, fill=color, anchor="lm")
     return canvas

@@ -128,15 +128,16 @@ skip pre-TOC removal. Retain the actual TOC subject to whole-page exclusions.
 Surviving fields, IDs, text and geometry remain unchanged; empty pages are omitted
 and an empty filtered result is valid. Generated YAML metadata remains unchanged.
 
-Stage 02.4 sends complete original Stage 01 PNGs and numbered-frame companions
-with frozen source texts to recover independent advisory ranges. It writes sparse
-complete-page overrides without modifying Stage 02. Review 02.5, filtering 02.8
+Stage 02.4 sends one complete original Stage 01 PNG per candidate-bearing page
+with frozen source texts and stable segment IDs to recover advisory ranges. It
+writes sparse complete-page overrides without modifying Stage 02. Review 02.5, filtering 02.8
 and explicit table predecessor `02` enumerate Stage 02 pages and select completed
 same-name overrides. Absent 02.4 status uses Stage 02; running/failed status blocks
 direct consumers. Filtering output remains authoritative for default 02.81 input:
 omitted pages are never restored. See the [02.4 contract](stages/02.4_reclassify_callouts/README.md)
-for decision reports and replacement provenance. To deliberately skip 02.4,
-finish at 02 and restart at 02.5 with no current 02.4 status.
+for the replacement-only response and contributor provenance. Only changed page
+JSONs are written; counts and retained-range errors go to the console. To deliberately
+skip 02.4, finish at 02 and restart at 02.5 with no current 02.4 status.
 
 ## Restart, status and publication
 

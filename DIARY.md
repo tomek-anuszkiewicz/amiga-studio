@@ -3224,3 +3224,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick preflight passed
   - Architecture suite passed 19/19
   - Plan uses portable paths and English repository content
+---
+
+### [2026-10-07 22:32 CEST] — PDF-CALLOUT-SIMPLE-2.4: Simplify advisory recovery to one original image
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace frame and attachment decisions with stable segment IDs and replacement-only responses
+  - Send one unmodified original-detail page image with source objects and containing pixel boxes
+  - Remove inference-only frame rendering options and stage diagnostics while preserving sparse routing and review presentation
+  - Regenerate only physical pages 64/130/144 through 02.4 in workspace/callouts-simple-64-130-144
+- **Architectural Rationale & Trade-Offs**:
+  - A nearby table or figure must not automatically suppress a visibly distinct advisory
+  - Keep content geometry and lineage derived from contributors and leave unresolved or overlapping ranges unchanged
+  - Preserve existing attempts and configuration and retain the plan pending user content assessment
+- **Verification & Test Results**:
+  - Compilation and worker CLI checks passed
+  - Bounded synthetic one-image/mixed-block/no-change/sparse-routing check passed
+  - 21 shared conversion technical tests and 29 retained PDF technical tests passed
+  - Quick preflight and 19 architecture tests passed
+  - Graphify incremental AST update completed
+  - Three live requests completed in 16.31 seconds and wrote page_0064_segments.json / page_0130_segments.json / page_0144_segments.json with callout labels and bodies
+  - No other source pages or later conversion stages ran and content quality remains for user assessment

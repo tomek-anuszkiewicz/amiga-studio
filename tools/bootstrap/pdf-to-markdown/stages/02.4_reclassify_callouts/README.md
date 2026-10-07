@@ -7,19 +7,20 @@ objects provide context. Tables, graphics, covers and other non-target roles are
 read-only anchors.
 
 Each candidate-bearing page receives one joint Codex vision request containing
-all source objects, frame IDs, unchanged text, pixel boxes and page metadata.
-Images are the complete original Stage 01 PNG followed by a newly generated
-original-scale framed companion. The shared renderer draws thin external outlines
-and a side legend mapping B1, B2, ... to stable segment IDs; colors convey identity.
-Inference frames neither group prose nor suppress objects as review 02.5 does.
-Both images use original detail, ChatGPT authentication, existing cache and metrics.
-Their bytes and the full request context participate in cache identity.
+the complete unmodified Stage 01 PNG, actual image dimensions, candidate segment
+IDs/keywords and all source-ordered objects with text, types, stable IDs and boxes.
+Boxes locate containing objects in original-image pixels, not individual words;
+their top-left origin and exclusive upper bounds are explained once. The image
+uses original detail, ChatGPT authentication, existing cache and metrics. Its bytes,
+the new prompt and replacement schema participate in cache identity.
 
-The [prompt](prompt.md) asks for candidate decisions, attachment evidence and
-explicit contiguous multi-object replacements. The program interprets proposals
-against the frozen input. Unresolved, overlapping, contradictory or anchor-crossing
-ranges remain unchanged and are reported. Replacement text comes from the model;
-there is no local transcription-quality certification or generic schema gate.
+The [prompt](prompt.md) asks whether each keyword introduces a Markdown advisory
+callout. A nearby table or figure alone does not disqualify a distinct advisory.
+Return only explicit contiguous replacements using source_segment_ids; no or
+uncertain advisories return no replacement. The program interprets proposals
+against the frozen input. Unresolved, overlapping or anchor-crossing ranges
+remain unchanged with a concise console message. Replacement text comes from
+the model; there is no local transcription-quality certification or generic schema gate.
 Labels become `callout`, complete bodies become `callout_text`, and any ordinary
 remainder keeps its source role. Replacement IDs retain the first contributor
 where available, with deterministic suffixes for splits. Geometry is original or
@@ -28,12 +29,11 @@ Continuation and source segment lineage are retained; cross-page restructuring
 is outside scope.
 
 Write complete `page_NNNN_segments.json` overrides only for changed pages.
-`diagnostics/` contains framed PNGs, raw JSON responses and per-page decision
-reports with exact frame mappings, proposals, applied/retained ranges and output
-objects. Original request PNGs remain in `01_preprocess/`; reports reference them.
-Aggregate counts are printed to the console. No candidates or no accepted changes means
-success with an empty override set. Missing imagery and transport/parsing failures
-fail the stage normally.
+No request images, response dumps, diagnostics directory or decision reports
+are created. Page/candidate/change counts and retained-range errors go to the
+console. No candidates or no accepted changes means successful empty output.
+Shared request cache, stage status and metrics retain their established locations.
+Missing imagery and transport/parsing failures fail the stage normally.
 
 Review 02.5, filtering 02.8 and the explicit table predecessor `02` resolve the
 authoritative Stage 02 filenames through completed sparse overrides. An absent

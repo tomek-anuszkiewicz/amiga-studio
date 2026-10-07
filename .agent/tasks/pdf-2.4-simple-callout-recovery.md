@@ -1,7 +1,8 @@
 # Stage 02.4: simplify callout recovery
 
 Task ID: PDF-CALLOUT-SIMPLE-2.4.
-Status: planned; implementation and user-selected fragment review pending.
+Status: implemented; selected pages 64, 130 and 144 regenerated through 02.4;
+user content assessment pending.
 Created: 2026-10-07.
 
 ## Result
@@ -13,10 +14,8 @@ modified Stage 02 page JSONs in 02.4 only when a callout changes. Downstream
 consumers use the same-name 02.4 JSON when available in a successful layer,
 otherwise the original Stage 02 JSON.
 
-This replaces the closed PDF-CALLOUT-2.83 plan. Its implementation remains active
-until this change is implemented. The previously inspected user run completed
-with zero changed pages; that result does not establish classification quality.
-This plan authorizes no source conversion or model run.
+This replaces the closed PDF-CALLOUT-2.83 implementation. The user authorized
+only physical pages 64, 130 and 144 for this run and excluded other source pages.
 
 ## Request and prompt
 
@@ -123,3 +122,19 @@ select in a named attempt. Report changed page filenames and execution errors;
 the user evaluates whether the callouts are correctly identified and preserved.
 Keep this plan active until implementation and requested review finish, or the
 user explicitly closes the remaining scope.
+
+## Execution evidence
+
+- Implemented the replacement-only schema and stable segment IDs, one original
+  image request, console-only edit reporting and removal of inference-only
+  renderer options. Sparse routing and review 02.5 presentation remain intact.
+- Passed compilation and worker CLI checks, one bounded synthetic replacement,
+  no-change and routing check, 21 shared conversion tests, 29 retained PDF
+  technical tests, quick preflight and the separate 19-test architecture suite.
+- Reused successful 01/02 artifacts for exactly the selected three physical
+  pages in `workspace/callouts-simple-64-130-144/` beside the existing attempt.
+  Attempt model/effort configuration was preserved; 02.4 made three model calls
+  and completed successfully in 16.31 seconds with three changed page JSONs.
+- Outputs: `02.4_reclassify_callouts/page_0064_segments.json`,
+  `page_0130_segments.json` and `page_0144_segments.json`. No other source pages
+  or later conversion stages ran. The user assesses the callout content.
