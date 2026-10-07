@@ -45,7 +45,7 @@ errors stop execution normally. No older-stage inputs or alternative models are 
 
 ## Stage data and execution
 
-Execution order is `00 -> 01 -> 02 -> 02.4 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
+Execution order is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
 Each worker reads the predecessor's own directory and writes its own results:
 
 | Stage | Input and result |
@@ -54,8 +54,9 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [01](stages/01_preprocess/README.md) | Prepared PDF -> physical-page PNGs and positioned text JSON |
 | [02](stages/02_page_conversion/README.md) | Stage 01 -> ordered logical objects, Markdown and pixel boxes |
 | [02.4](stages/02.4_reclassify_callouts/README.md) | Stage 01/02 -> vision-assisted advisory range replacements on changed pages only |
-| [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01/02 -> review frames and ordered labels |
-| [02.8](stages/02.8_filter_page_content/README.md) | Stage 01/02 -> retained objects after source-content and fixed NXP-logo exclusions |
+| [02.41](stages/02.41_split_tables/README.md) | Stage 01 and resolved 02/02.4 -> vision-assisted splits of grouped tables, changed pages only |
+| [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01 and resolved 02/02.4/02.41 -> review frames and ordered labels |
+| [02.8](stages/02.8_filter_page_content/README.md) | Stage 01 and resolved 02/02.4/02.41 -> retained objects after source-content and fixed NXP-logo exclusions |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.8 -> table markup, saved crops and inferred HTML group text |
 | [02.82](stages/02.82_table_conversion_review/README.md) | Stage 01/02.81 -> side-by-side table review PNGs, no inference |
 | [02.9](stages/02.9_emit_page_markdown/README.md) | Stage 01/02.81 -> `document.md`, converted tables and required raster assets |
@@ -93,7 +94,8 @@ Omission means all available pages, regardless of a previous run or legacy confi
 | 01 | Extract only selected physical pages from the prepared PDF |
 | 02 | Select Stage 01 files before inference |
 | 02.4 | Select Stage 02 files before collecting keywords and requesting advisory recovery |
-| 02.5 | Select resolved Stage 02/02.4 pages before review rendering |
+| 02.41 | Select resolved Stage 02/02.4 pages before requesting per-table vision splits |
+| 02.5 | Select resolved Stage 02/02.4/02.41 pages before review rendering |
 | 02.8 | Select resolved pages before TOC-boundary detection and content exclusions |
 | 02.81 | Select pages from the completed 02.8 predecessor before table inference |
 | 02.82 | Select Stage 02.81 pages before rendering table comparisons |
@@ -110,7 +112,8 @@ filter. Establish the intended page subset in the page stages before stream crea
 Restart cleanup still clears the entire selected stage and every later stage,
 regardless of the page selection; this is not an incremental single-page update.
 
-Stage 02 request schemas guide model output. Stage 02.4 interprets explicit edit
+Stage 02 request schemas guide model output. Stage 02.41 replaces grouped table objects with model-provided individual boxes.
+Stage 02.4 interprets explicit edit
 ranges and retains ambiguous proposals; this does not certify text fidelity.
 The PDF path does not locally enforce
 schemas, geometry, identifiers, response types or text content. Review images and
@@ -136,7 +139,7 @@ objects directly, using Stage 01 geometry and original PNGs. HTML tables publish
 collapsed literal-text and original-image companions after their source groups.
 Markdown tables need no published crop. Tables retain their separate converted
 fragments through stream reduction, continuation detection and Stage 07.
-Existing attempt settings are retained; missing 02.4/02.81 model settings are added
+Existing attempt settings are retained; missing 02.4/02.41/02.81 model settings are added
 only when their stage is selected. Review backend setup is in the Stage 02.82 README.
 Stage 02.5 uses resolved complete page input for type-colored review annotations,
 consolidates unobstructed consecutive prose, and hides header/footer/thumb-index
@@ -166,7 +169,17 @@ direct consumers. Filtering output remains authoritative for default 02.81 input
 omitted pages are never restored. See the [02.4 contract](stages/02.4_reclassify_callouts/README.md)
 for the replacement-only response and contributor provenance. Only changed page
 JSONs are written; counts and retained-range errors go to the console. To deliberately
-skip 02.4, finish at 02 and restart at 02.5 with no current 02.4 status.
+skip 02.4, finish at 02 and restart at 02.41 or 02.5 with no current 02.4 status.
+
+Stage 02.41 sends one complete unmodified Stage 01 PNG per existing table with
+its JSON/bbox and frozen page context. A singleton response retains the original;
+a list of independent tables supplies separate boxes and continuation flags.
+Transcription remains deferred to 02.81. Only changed complete-page overrides
+are saved. The shared resolver applies completed sparse layers in order
+`02 -> 02.4 -> 02.41` for review 02.5 and filtering 02.8; absent optional status
+means skipped, while running/failed status blocks direct consumers. Stage 02.41
+reads only predecessor layers. Restarting it preserves 01/02/02.4 and clears
+every later stage. See the [02.41 contract](stages/02.41_split_tables/README.md).
 
 ## Restart, status and publication
 

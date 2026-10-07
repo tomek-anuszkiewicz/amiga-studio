@@ -49,6 +49,7 @@ console. No candidates or no accepted changes means successful empty output.
 Shared request cache, stage status and metrics retain their established locations.
 Missing imagery and transport/parsing failures fail the stage normally.
 
+Stage 02.41 reads these corrections before table splitting.
 Review 02.5 and filtering 02.8 resolve the
 authoritative Stage 02 filenames through completed sparse overrides. An absent
 02.4 status means deliberately skipped; running/failed status blocks these inputs.

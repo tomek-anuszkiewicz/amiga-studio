@@ -62,6 +62,15 @@ carries lineage in node metadata, and Stage 09 assembles native callouts, includ
 decorated leading labels. The model supplies faithful text; successful execution
 does not certify recovery quality. See [Stage 02.4](pdf-to-markdown/stages/02.4_reclassify_callouts/README.md).
 
+Stage 02.41 reviews each existing table using its JSON/bbox, frozen page context
+and the complete unmodified Stage 01 image. A singleton response retains the
+original; multiple table objects replace it with separate model-provided boxes.
+Transcription stays deferred to 02.81. Completed sparse overrides layer as
+`02 -> 02.4 -> 02.41` for review/filtering, with absent optional status meaning
+skipped and failed/running status blocking direct consumers. Stage 02.41 reads
+only predecessors. No generic local geometry/schema or quality gate is added.
+See [Stage 02.41](pdf-to-markdown/stages/02.41_split_tables/README.md).
+
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.
 
 Use Mermaid with an ASCII fallback when it faithfully represents a diagram; avoid duplicating the same diagram as an embedded raster. Use images for schematics, photographs, dense waveforms and figures that cannot be represented faithfully. Keep accompanying labels and decoded bit fields visible. Preserve original image assets and recovery artifacts. Technical image descriptions must explain what the source shows without adding inferred hardware behavior as fact.
@@ -133,7 +142,7 @@ Full runs, intervals and individual deterministic/inference stages use
 process automatically with their inference calls and no manual task files.
 The normal pipeline has no legacy reader.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.4 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
+The execution sequence is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.

@@ -309,7 +309,7 @@ class PdfRestartTests(unittest.TestCase):
         def worker(stage, *args):
             self.assertEqual(stage["id"], "02.5")
             retained = read_json(self.workspace / "stage_status.json")
-            self.assertEqual(set(retained), {"00", "01", "02", "02.4"})
+            self.assertEqual(set(retained), {"00", "01", "02", "02.4", "02.41"})
             for later in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.5"):]:
                 self.assertFalse((self.workspace / later["dir"]).exists())
             self.write_artifacts(stage)
@@ -336,7 +336,7 @@ class PdfRestartTests(unittest.TestCase):
             return True
 
         self.run_pipeline(["--from-stage", "02", "--to-stage", "02.5"], worker)
-        self.assertEqual(executed, ["02", "02.4", "02.5"])
+        self.assertEqual(executed, ["02", "02.4", "02.41", "02.5"])
         self.assertFalse(self.output.exists())
 
     def test_missing_input_of_later_selected_branch_rejects_before_cleanup(self):
@@ -367,7 +367,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual((self.workspace / "04_stream_reduction/artifact.json").read_bytes(), before)
         self.assertEqual(other_output.read_text(), "Independent conversion")
         state = read_json(self.workspace / "stage_status.json")
-        self.assertEqual(list(state), ["00", "01", "02", "02.4", "02.5", "02.8", "02.81", "02.82", "02.9", "03", "04", "05"])
+        self.assertEqual(list(state), ["00", "01", "02", "02.4", "02.41", "02.5", "02.8", "02.81", "02.82", "02.9", "03", "04", "05"])
 
 
     def test_explicit_restart_rebuilds_missing_output_and_later_stages(self):
@@ -451,7 +451,7 @@ class PdfRestartTests(unittest.TestCase):
     def test_individual_stage_uses_matching_interval(self):
         self.run_pipeline(["--from-stage", "02.5", "--to-stage", "02.5"],
                           lambda stage, *args: self.write_artifacts(stage) or True)
-        self.assertEqual(set(read_json(self.workspace / "stage_status.json")), {"00", "01", "02", "02.4", "02.5"})
+        self.assertEqual(set(read_json(self.workspace / "stage_status.json")), {"00", "01", "02", "02.4", "02.41", "02.5"})
         self.assertFalse(self.output.exists())
 
 
