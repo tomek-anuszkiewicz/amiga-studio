@@ -75,6 +75,20 @@ skipped and failed/running status blocking direct consumers. Stage 02.41 reads
 only predecessors. No generic local geometry/schema or quality gate is added.
 See [Stage 02.41](pdf-to-markdown/stages/02.41_split_tables/README.md).
 
+Stage 02.42 reviews resolved table objects with their JSON/bbox, frozen full-page
+context and the complete unmodified Stage 01 PNG. Different cell backgrounds,
+including white and shaded cells, force `graphic` even if HTML could represent
+the table. Otherwise retain genuine tables, reclassify unsuitable drawings,
+transcribe prose/code, or split independent elements into source-ordered existing
+types. Singleton replacements retain bbox/continuation; children receive stable
+IDs and lineage. Only changed pages receive complete-page overrides, layered as
+`02 -> 02.4 -> 02.41 -> 02.42`; the worker reads only predecessors. Shared optional
+status and selection rules apply. Graphics carry `image_only` through Stage 03,
+receive exact original-pixel crops and remain independent raster images through
+04/08. Existing sidecar processing remains. Review 02.5/filtering 02.8 resolve the
+new layer; 02.81 receives only remaining tables. Restart clears 02.42 and every
+later stage. See [Stage 02.42](pdf-to-markdown/stages/02.42_reclassify_tables/README.md).
+
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.
 
 Use Mermaid with an ASCII fallback when it faithfully represents a diagram; avoid duplicating the same diagram as an embedded raster. Use images for schematics, photographs, dense waveforms and figures that cannot be represented faithfully. Keep accompanying labels and decoded bit fields visible. Preserve original image assets and recovery artifacts. Technical image descriptions must explain what the source shows without adding inferred hardware behavior as fact.

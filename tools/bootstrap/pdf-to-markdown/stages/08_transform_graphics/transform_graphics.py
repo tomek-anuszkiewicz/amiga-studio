@@ -86,7 +86,8 @@ def process_graphics(workspace_dir: Path, config: dict):
             png_path = workspace_dir / png_rel if png_rel else None
 
             # First, classify with Codex if this is a flowchart, ascii_art (register/bitfield), or circuit schematic
-            triage = codex.generate_json(triage_prompt, image_path=png_path, schema=pdf_schemas.GRAPHIC_TRIAGE) if png_path and triage_prompt else {}
+            image_only = node.get("metadata", {}).get("image_only", False)
+            triage = codex.generate_json(triage_prompt, image_path=png_path, schema=pdf_schemas.GRAPHIC_TRIAGE) if png_path and triage_prompt and not image_only else {}
             graphic_type = triage.get("type", "schematic")
 
             # Check for genuine figure caption from raw_text or separate caption nodes

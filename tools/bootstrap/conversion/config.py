@@ -6,7 +6,7 @@ import math
 import yaml
 
 PDF_STAGES = frozenset((
-    "02_page_conversion", "02.4_reclassify_callouts", "02.41_split_tables",
+    "02_page_conversion", "02.4_reclassify_callouts", "02.41_split_tables", "02.42_reclassify_tables",
     "02.81_transform_page_tables", "04_stream_reduction",
     "06_detect_continuations", "07_transform_tables", "08_transform_graphics",
     "09_transform_prose", "10_proofread_stream", "12_generate_properties",
