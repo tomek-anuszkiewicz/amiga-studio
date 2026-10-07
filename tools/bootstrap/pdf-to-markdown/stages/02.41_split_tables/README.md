@@ -14,8 +14,11 @@ that target with individual table objects in model-provided reading order.
 Empty responses fail rather than removing the target. Table transcription
 remains deferred to Stage 02.81.
 
-Each split carries its own model-provided original-PNG pixel `bbox`, continuation
-and empty `md_text`. IDs retain the original for the first child, then receive
+Each split carries its own model-provided original-PNG pixel `bbox`,
+`continuation: false` and empty `md_text`. The prompt and response schema prohibit
+the model from returning true, and the worker forces false for split objects.
+Singleton responses still preserve the predecessor object unchanged, including
+its existing continuation flag. IDs retain the original for the first child, then receive
 deterministic collision-free `_table_N` suffixes. Source-segment lineage and
 replacement-stage metadata accompany each child. Other objects remain unchanged.
 There is no generic local schema/geometry gate or quality certification.
@@ -39,3 +42,7 @@ Restart clears 02.41 and every later stage, preserving 01/02/02.4 and the
 request cache. Restarting 02.4 also clears 02.41. Existing attempt model/effort
 settings stay intact; missing settings initialize to `gpt-6.1-sol` / `medium`
 only when this stage is selected. The user selects fragments and assesses splits.
+
+The prompt/schema change retires cached responses that inferred continuation.
+Existing attempt artifacts require an explicit restart at 02.41 to regenerate;
+that restart also clears 02.5 and all later outputs.

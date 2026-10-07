@@ -64,7 +64,10 @@ does not certify recovery quality. See [Stage 02.4](pdf-to-markdown/stages/02.4_
 
 Stage 02.41 reviews each existing table using its JSON/bbox, frozen page context
 and the complete unmodified Stage 01 image. A singleton response retains the
-original; multiple table objects replace it with separate model-provided boxes.
+original; multiple table objects replace it with separate model-provided boxes
+and forced `continuation: false`. The prompt/schema prohibit the model from
+returning true; this stage does not infer continuation relationships. A singleton
+retains its predecessor flag along with the unchanged source object.
 Transcription stays deferred to 02.81. Completed sparse overrides layer as
 `02 -> 02.4 -> 02.41` for review/filtering, with absent optional status meaning
 skipped and failed/running status blocking direct consumers. Stage 02.41 reads

@@ -173,7 +173,9 @@ skip 02.4, finish at 02 and restart at 02.41 or 02.5 with no current 02.4 status
 
 Stage 02.41 sends one complete unmodified Stage 01 PNG per existing table with
 its JSON/bbox and frozen page context. A singleton response retains the original;
-a list of independent tables supplies separate boxes and continuation flags.
+a list of independent tables supplies separate boxes with `continuation: false`.
+The prompt/schema forbid inferred continuation and the worker forces false on
+split objects; singleton responses retain the predecessor object unchanged.
 Transcription remains deferred to 02.81. Only changed complete-page overrides
 are saved. The shared resolver applies completed sparse layers in order
 `02 -> 02.4 -> 02.41` for review 02.5 and filtering 02.8; absent optional status
