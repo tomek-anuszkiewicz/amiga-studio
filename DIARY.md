@@ -2911,3 +2911,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Edge rendered three formats and HTML fixture visually inspected
   - Graphify incremental update PASS. No live inference or existing attempt regeneration. First user-selected fragment and fidelity review pending
   - RAG details ingestion deferred. Active plan retained.
+---
+
+### [2026-10-07 20:51 CEST] — PDF-CALLOUT-2.83: Plan text-only callout recovery
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.83-callout-reclassification.md`
+  - `tools/bootstrap/pdf-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Save an active local execution plan while keeping table review at Stage 02.82 as confirmed by the user
+  - plan Stage 02.83 keyword-triggered text-only model classification with adjacent context
+  - inventory 307 existing page JSONs across Stage 02 and 02.8 yielding 18 distinct callout labels and NOTE CAUTION WARNING vocabulary
+  - identify 18 distinct non-callout candidates including eight prose three code blocks four footnotes and three table legends
+  - plan complete page overrides only for changed pages with per-page Stage 02.81 fallback in 02.9 and 03
+  - preserve predecessor data table assets group metadata and source text
+- **Architectural Rationale & Trade-Offs**:
+  - Recover advisory roles missed by initial classification while leaving ordinary keyword mentions and attached notes to model review
+  - preserve existing table review numbering and use sparse page replacements
+  - retain the active plan under its existing Git exclusion until implementation and user-selected review are resolved
+- **Verification & Test Results**:
+  - Planning inspection and inventory completed without inference or regeneration
+  - quick preflight passed all six gates
+  - architecture suite passed 19 of 19
+  - implementation fragment conversion and user fidelity assessment remain pending
