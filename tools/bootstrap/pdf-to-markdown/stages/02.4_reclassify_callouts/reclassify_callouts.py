@@ -17,7 +17,8 @@ from common.pdf_callouts import RESPONSE, advisory_keywords, request_objects, ap
 
 
 def reclassify_callouts(workspace, config):
-    paths = page_files(workspace / "02_page_conversion", "page_*_segments.json")
+    paths = page_files(workspace / "02_page_conversion", "page_*_segments.json",
+                       config.get("input", {}).get("pages"))
     pages = [read_json(path) for path in paths]
     keywords = advisory_keywords(pages)
     output = workspace / CALLOUT_STAGE

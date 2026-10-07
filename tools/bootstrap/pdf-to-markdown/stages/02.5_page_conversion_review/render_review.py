@@ -79,8 +79,8 @@ def review_image(image, value, *, annotations=None):
     return canvas
 
 
-def render_reviews(workspace):
-    pages = list(read_conversion(workspace))
+def render_reviews(workspace, pages=None):
+    pages = list(read_conversion(workspace, pages=pages))
     output = workspace / "02.5_page_conversion_review"
     output.mkdir(parents=True, exist_ok=True)
     for entry, value in pages:
@@ -100,8 +100,8 @@ def main():
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     args = parser.parse_args()
-    load_config(args.config, known_stages=PDF_STAGES, required_stages=())
-    render_reviews(args.workspace.resolve())
+    config = load_config(args.config, known_stages=PDF_STAGES, required_stages=())
+    render_reviews(args.workspace.resolve(), pages=config.get("input", {}).get("pages"))
 
 
 if __name__ == "__main__":

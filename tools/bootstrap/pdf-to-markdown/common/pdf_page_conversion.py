@@ -23,10 +23,10 @@ def callout_layer_completed(workspace):
     return True
 
 
-def resolved_page_files(workspace):
+def resolved_page_files(workspace, pages=None):
     """Enumerate Stage 02 identities and select completed sparse replacements."""
     completed = callout_layer_completed(workspace)
-    for path in page_files(workspace / "02_page_conversion", "page_*_segments.json"):
+    for path in page_files(workspace / "02_page_conversion", "page_*_segments.json", pages):
         override = workspace / CALLOUT_STAGE / path.name
         yield override if completed and override.exists() else path
 
@@ -46,10 +46,10 @@ RESPONSE = object_schema({
 })
 
 
-def read_conversion(workspace, page_object_directory="02_page_conversion"):
+def read_conversion(workspace, page_object_directory="02_page_conversion", *, pages=None):
     """Read the specified page objects with Stage 01 data in physical-page order."""
-    paths = (resolved_page_files(workspace) if page_object_directory == "02_page_conversion"
-             else page_files(workspace / page_object_directory, "page_*_segments.json"))
+    paths = (resolved_page_files(workspace, pages) if page_object_directory == "02_page_conversion"
+             else page_files(workspace / page_object_directory, "page_*_segments.json", pages))
     for path in paths:
         page_id = path.stem.removesuffix("_segments")
         entry = read_json(workspace / "01_preprocess" / f"{page_id}.json")

@@ -6,6 +6,11 @@ selected input. A hit triggers review, not reclassification. Existing callout
 objects provide context. Tables, graphics, covers and other non-target roles are
 read-only anchors.
 
+Apply the workspace configuration's `input.pages` before reading Stage 02 pages,
+collecting keywords or issuing requests. An absent or null selection reads all
+available predecessor pages. A later-stage restart with `--page-ranges 64-64`
+therefore processes only physical page 64 even in an all-page workspace.
+
 Each candidate-bearing page receives one joint Codex vision request containing
 the complete unmodified Stage 01 PNG, actual image dimensions, candidate segment
 IDs/keywords and all source-ordered objects with text, types, stable IDs and boxes.
