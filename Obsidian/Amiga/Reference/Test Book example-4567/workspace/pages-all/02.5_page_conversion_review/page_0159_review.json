@@ -1,0 +1,110 @@
+{
+  "page": 159,
+  "annotations": [
+    {
+      "type": "code_block",
+      "heading_level": null,
+      "bbox": [
+        357,
+        225,
+        1632,
+        1155
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1
+      ],
+      "source_ids": [
+        "page_0159_seg_001"
+      ]
+    },
+    {
+      "type": "footnote",
+      "heading_level": null,
+      "bbox": [
+        360,
+        1212,
+        1518,
+        1248
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        2
+      ],
+      "source_ids": [
+        "page_0159_seg_002"
+      ]
+    },
+    {
+      "type": "footnote",
+      "heading_level": null,
+      "bbox": [
+        360,
+        1253,
+        1953,
+        1412
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        3
+      ],
+      "source_ids": [
+        "page_0159_seg_003"
+      ]
+    },
+    {
+      "type": "footnote",
+      "heading_level": null,
+      "bbox": [
+        360,
+        1420,
+        801,
+        1454
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        4
+      ],
+      "source_ids": [
+        "page_0159_seg_004"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        360,
+        1518,
+        2155,
+        1618
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        5
+      ],
+      "source_ids": [
+        "page_0159_seg_005"
+      ]
+    },
+    {
+      "type": "code_block",
+      "heading_level": null,
+      "bbox": [
+        538,
+        1673,
+        1810,
+        1909
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        6
+      ],
+      "source_ids": [
+        "page_0159_seg_006"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": [
+    7
+  ]
+}

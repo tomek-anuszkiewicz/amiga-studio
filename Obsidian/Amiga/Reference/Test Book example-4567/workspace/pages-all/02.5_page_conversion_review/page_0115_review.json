@@ -1,0 +1,76 @@
+{
+  "page": 115,
+  "annotations": [
+    {
+      "type": "caption",
+      "heading_level": null,
+      "bbox": [
+        838,
+        284,
+        1655,
+        328
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1
+      ],
+      "source_ids": [
+        "page_0115_seg_001"
+      ]
+    },
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        779,
+        417,
+        1720,
+        1798
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        2
+      ],
+      "source_ids": [
+        "page_0115_seg_002"
+      ]
+    },
+    {
+      "type": "footnote",
+      "heading_level": null,
+      "bbox": [
+        357,
+        1966,
+        931,
+        2012
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        3
+      ],
+      "source_ids": [
+        "page_0115_seg_003"
+      ]
+    },
+    {
+      "type": "footnote",
+      "heading_level": null,
+      "bbox": [
+        357,
+        2019,
+        1390,
+        2066
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        4
+      ],
+      "source_ids": [
+        "page_0115_seg_004"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": [
+    5
+  ]
+}

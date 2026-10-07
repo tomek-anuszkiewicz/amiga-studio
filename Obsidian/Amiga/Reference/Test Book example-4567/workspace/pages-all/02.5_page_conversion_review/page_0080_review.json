@@ -1,0 +1,25 @@
+{
+  "page": 80,
+  "annotations": [
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        242,
+        294,
+        2041,
+        2673
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1
+      ],
+      "source_ids": [
+        "page_0080_seg_001"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": [
+    2
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "page": 32,
+  "annotations": [
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        201,
+        210,
+        1814,
+        926
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "source_ids": [
+        "page_0032_seg_001",
+        "page_0032_seg_002",
+        "page_0032_seg_003",
+        "page_0032_seg_004",
+        "page_0032_seg_005"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        201,
+        974,
+        1809,
+        1326
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        7,
+        8,
+        9
+      ],
+      "source_ids": [
+        "page_0032_seg_007",
+        "page_0032_seg_008",
+        "page_0032_seg_009"
+      ]
+    },
+    {
+      "type": "heading",
+      "heading_level": 3,
+      "bbox": [
+        201,
+        1387,
+        710,
+        1437
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        10
+      ],
+      "source_ids": [
+        "page_0032_seg_010"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        201,
+        1462,
+        1808,
+        1828
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        11
+      ],
+      "source_ids": [
+        "page_0032_seg_011"
+      ]
+    },
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        299,
+        1910,
+        1718,
+        2318
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        12
+      ],
+      "source_ids": [
+        "page_0032_seg_012"
+      ]
+    },
+    {
+      "type": "caption",
+      "heading_level": null,
+      "bbox": [
+        594,
+        2367,
+        1414,
+        2413
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        13
+      ],
+      "source_ids": [
+        "page_0032_seg_013"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": [
+    6,
+    14,
+    15,
+    16
+  ]
+}

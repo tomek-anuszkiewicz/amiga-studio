@@ -41,3 +41,5 @@ markers:
 input:
   source_pdf: ../../Amiga TestBook example-4567.pdf
   pages: null
+table_conversion:
+  predecessor: '02.8'

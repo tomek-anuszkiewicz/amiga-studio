@@ -1,0 +1,187 @@
+{
+  "page": 42,
+  "annotations": [
+    {
+      "type": "graphic",
+      "heading_level": null,
+      "bbox": [
+        29,
+        36,
+        288,
+        132
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1
+      ],
+      "source_ids": [
+        "page_0042_seg_001"
+      ]
+    },
+    {
+      "type": "heading",
+      "heading_level": 3,
+      "bbox": [
+        262,
+        197,
+        1009,
+        278
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        3
+      ],
+      "source_ids": [
+        "page_0042_seg_003"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        262,
+        317,
+        2265,
+        678
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        4,
+        5
+      ],
+      "source_ids": [
+        "page_0042_seg_004",
+        "page_0042_seg_005"
+      ]
+    },
+    {
+      "type": "graphic",
+      "heading_level": null,
+      "bbox": [
+        660,
+        736,
+        1865,
+        884
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        6
+      ],
+      "source_ids": [
+        "page_0042_seg_006"
+      ]
+    },
+    {
+      "type": "caption",
+      "heading_level": null,
+      "bbox": [
+        787,
+        928,
+        1738,
+        997
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        7
+      ],
+      "source_ids": [
+        "page_0042_seg_007"
+      ]
+    },
+    {
+      "type": "heading",
+      "heading_level": 3,
+      "bbox": [
+        262,
+        1041,
+        1077,
+        1122
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        8
+      ],
+      "source_ids": [
+        "page_0042_seg_008"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        262,
+        1160,
+        2265,
+        1580
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        9,
+        10
+      ],
+      "source_ids": [
+        "page_0042_seg_009",
+        "page_0042_seg_010"
+      ]
+    },
+    {
+      "type": "graphic",
+      "heading_level": null,
+      "bbox": [
+        660,
+        1629,
+        1865,
+        1775
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        11
+      ],
+      "source_ids": [
+        "page_0042_seg_011"
+      ]
+    },
+    {
+      "type": "caption",
+      "heading_level": null,
+      "bbox": [
+        758,
+        1814,
+        1767,
+        1884
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        12
+      ],
+      "source_ids": [
+        "page_0042_seg_012"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        262,
+        1930,
+        2265,
+        2984
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        13,
+        14
+      ],
+      "source_ids": [
+        "page_0042_seg_013",
+        "page_0042_seg_014"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": [
+    2,
+    15,
+    16,
+    17
+  ]
+}

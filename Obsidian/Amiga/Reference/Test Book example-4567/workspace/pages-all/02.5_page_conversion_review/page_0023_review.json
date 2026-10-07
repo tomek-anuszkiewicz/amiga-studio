@@ -1,0 +1,45 @@
+{
+  "page": 23,
+  "annotations": [
+    {
+      "type": "caption",
+      "heading_level": null,
+      "bbox": [
+        535,
+        233,
+        1474,
+        275
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1
+      ],
+      "source_ids": [
+        "page_0023_seg_001"
+      ]
+    },
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        200,
+        292,
+        1809,
+        2251
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        2
+      ],
+      "source_ids": [
+        "page_0023_seg_002"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": [
+    3,
+    4,
+    5,
+    6
+  ]
+}

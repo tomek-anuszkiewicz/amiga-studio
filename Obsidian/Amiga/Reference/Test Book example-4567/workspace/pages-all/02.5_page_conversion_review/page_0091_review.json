@@ -1,0 +1,246 @@
+{
+  "page": 91,
+  "annotations": [
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        795,
+        312,
+        2035,
+        359
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1
+      ],
+      "source_ids": [
+        "page_0091_seg_001"
+      ]
+    },
+    {
+      "type": "code_block",
+      "heading_level": null,
+      "bbox": [
+        846,
+        413,
+        1793,
+        857
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        2
+      ],
+      "source_ids": [
+        "page_0091_seg_002"
+      ]
+    },
+    {
+      "type": "heading",
+      "heading_level": 3,
+      "bbox": [
+        796,
+        920,
+        977,
+        966
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        3
+      ],
+      "source_ids": [
+        "page_0091_seg_003"
+      ]
+    },
+    {
+      "type": "code_block",
+      "heading_level": null,
+      "bbox": [
+        846,
+        1018,
+        1360,
+        1159
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        4
+      ],
+      "source_ids": [
+        "page_0091_seg_004"
+      ]
+    },
+    {
+      "type": "heading",
+      "heading_level": 3,
+      "bbox": [
+        799,
+        1221,
+        1182,
+        1260
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        5
+      ],
+      "source_ids": [
+        "page_0091_seg_005"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        799,
+        1319,
+        1519,
+        1362
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        6
+      ],
+      "source_ids": [
+        "page_0091_seg_006"
+      ]
+    },
+    {
+      "type": "heading",
+      "heading_level": 3,
+      "bbox": [
+        798,
+        1495,
+        914,
+        1535
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        7
+      ],
+      "source_ids": [
+        "page_0091_seg_007"
+      ]
+    },
+    {
+      "type": "heading",
+      "heading_level": 2,
+      "bbox": [
+        146,
+        1496,
+        526,
+        1612
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        8
+      ],
+      "source_ids": [
+        "page_0091_seg_008"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        798,
+        1591,
+        2035,
+        1832
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        9
+      ],
+      "source_ids": [
+        "page_0091_seg_009"
+      ]
+    },
+    {
+      "type": "heading",
+      "heading_level": 3,
+      "bbox": [
+        798,
+        1993,
+        915,
+        2031
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        10
+      ],
+      "source_ids": [
+        "page_0091_seg_010"
+      ]
+    },
+    {
+      "type": "heading",
+      "heading_level": 2,
+      "bbox": [
+        146,
+        1993,
+        618,
+        2168
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        11
+      ],
+      "source_ids": [
+        "page_0091_seg_011"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        799,
+        2086,
+        2040,
+        2330
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        12
+      ],
+      "source_ids": [
+        "page_0091_seg_012"
+      ]
+    },
+    {
+      "type": "caption",
+      "heading_level": null,
+      "bbox": [
+        1007,
+        2387,
+        1836,
+        2431
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        13
+      ],
+      "source_ids": [
+        "page_0091_seg_013"
+      ]
+    },
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        837,
+        2483,
+        2005,
+        2731
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        14
+      ],
+      "source_ids": [
+        "page_0091_seg_014"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": [
+    15
+  ]
+}

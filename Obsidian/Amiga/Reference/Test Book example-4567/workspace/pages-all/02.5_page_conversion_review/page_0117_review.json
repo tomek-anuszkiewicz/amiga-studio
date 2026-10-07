@@ -1,0 +1,148 @@
+{
+  "page": 117,
+  "annotations": [
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        358,
+        226,
+        2156,
+        723
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1,
+        2,
+        3
+      ],
+      "source_ids": [
+        "page_0117_seg_001",
+        "page_0117_seg_002",
+        "page_0117_seg_003"
+      ]
+    },
+    {
+      "type": "code_block",
+      "heading_level": null,
+      "bbox": [
+        506,
+        783,
+        874,
+        1042
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        4
+      ],
+      "source_ids": [
+        "page_0117_seg_004"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        356,
+        1105,
+        2159,
+        1202
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        5
+      ],
+      "source_ids": [
+        "page_0117_seg_005"
+      ]
+    },
+    {
+      "type": "caption",
+      "heading_level": null,
+      "bbox": [
+        731,
+        1319,
+        1771,
+        1364
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        6
+      ],
+      "source_ids": [
+        "page_0117_seg_006"
+      ]
+    },
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        390,
+        1453,
+        2123,
+        1831
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        7
+      ],
+      "source_ids": [
+        "page_0117_seg_007"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        355,
+        1917,
+        2156,
+        2067
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        8
+      ],
+      "source_ids": [
+        "page_0117_seg_008"
+      ]
+    },
+    {
+      "type": "code_block",
+      "heading_level": null,
+      "bbox": [
+        504,
+        2127,
+        1484,
+        2333
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        9
+      ],
+      "source_ids": [
+        "page_0117_seg_009"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        356,
+        2395,
+        2146,
+        2493
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        10
+      ],
+      "source_ids": [
+        "page_0117_seg_010"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": [
+    11
+  ]
+}

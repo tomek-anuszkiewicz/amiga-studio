@@ -1,0 +1,77 @@
+{
+  "page": 122,
+  "annotations": [
+    {
+      "type": "heading",
+      "heading_level": 2,
+      "bbox": [
+        358,
+        307,
+        1217,
+        352
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1
+      ],
+      "source_ids": [
+        "page_0122_seg_001"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        355,
+        445,
+        2158,
+        2263
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "source_ids": [
+        "page_0122_seg_002",
+        "page_0122_seg_003",
+        "page_0122_seg_004",
+        "page_0122_seg_005",
+        "page_0122_seg_006",
+        "page_0122_seg_007",
+        "page_0122_seg_008",
+        "page_0122_seg_009",
+        "page_0122_seg_010",
+        "page_0122_seg_011"
+      ]
+    },
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        566,
+        2346,
+        1940,
+        2590
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        12
+      ],
+      "source_ids": [
+        "page_0122_seg_012"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": [
+    13
+  ]
+}

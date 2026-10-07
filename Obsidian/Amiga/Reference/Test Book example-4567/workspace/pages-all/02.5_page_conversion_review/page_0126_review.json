@@ -1,0 +1,133 @@
+{
+  "page": 126,
+  "annotations": [
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        344,
+        233,
+        2167,
+        759
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1,
+        2,
+        3
+      ],
+      "source_ids": [
+        "page_0126_seg_001",
+        "page_0126_seg_002",
+        "page_0126_seg_003"
+      ]
+    },
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        281,
+        890,
+        2223,
+        1500
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        4
+      ],
+      "source_ids": [
+        "page_0126_seg_004"
+      ]
+    },
+    {
+      "type": "caption",
+      "heading_level": null,
+      "bbox": [
+        807,
+        1566,
+        1667,
+        1611
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        5
+      ],
+      "source_ids": [
+        "page_0126_seg_005"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        344,
+        1727,
+        2143,
+        2202
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        6,
+        7
+      ],
+      "source_ids": [
+        "page_0126_seg_006",
+        "page_0126_seg_007"
+      ]
+    },
+    {
+      "type": "callout",
+      "heading_level": null,
+      "bbox": [
+        1171,
+        2264,
+        1302,
+        2309
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        8
+      ],
+      "source_ids": [
+        "page_0126_seg_008"
+      ]
+    },
+    {
+      "type": "callout_text",
+      "heading_level": null,
+      "bbox": [
+        444,
+        2343,
+        2040,
+        2444
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        9
+      ],
+      "source_ids": [
+        "page_0126_seg_009"
+      ]
+    },
+    {
+      "type": "prose",
+      "heading_level": null,
+      "bbox": [
+        346,
+        2506,
+        2146,
+        2765
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        10
+      ],
+      "source_ids": [
+        "page_0126_seg_010"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": [
+    11
+  ]
+}

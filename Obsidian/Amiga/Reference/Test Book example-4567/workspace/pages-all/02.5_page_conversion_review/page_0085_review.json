@@ -1,0 +1,25 @@
+{
+  "page": 85,
+  "annotations": [
+    {
+      "type": "code_block",
+      "heading_level": null,
+      "bbox": [
+        786,
+        302,
+        2042,
+        2855
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1
+      ],
+      "source_ids": [
+        "page_0085_seg_001"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": [
+    2
+  ]
+}

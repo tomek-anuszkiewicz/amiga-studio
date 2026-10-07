@@ -1,0 +1,59 @@
+{
+  "page": 160,
+  "annotations": [
+    {
+      "type": "index_heading",
+      "heading_level": 1,
+      "bbox": [
+        1124,
+        352,
+        1380,
+        419
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1
+      ],
+      "source_ids": [
+        "page_0160_seg_001"
+      ]
+    },
+    {
+      "type": "index",
+      "heading_level": null,
+      "bbox": [
+        354,
+        834,
+        1187,
+        2766
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        2
+      ],
+      "source_ids": [
+        "page_0160_seg_002"
+      ]
+    },
+    {
+      "type": "index",
+      "heading_level": null,
+      "bbox": [
+        1310,
+        834,
+        1975,
+        2766
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        3
+      ],
+      "source_ids": [
+        "page_0160_seg_003"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": [
+    4
+  ]
+}

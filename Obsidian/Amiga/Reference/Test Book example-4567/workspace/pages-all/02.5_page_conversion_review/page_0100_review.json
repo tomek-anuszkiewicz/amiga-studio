@@ -1,0 +1,23 @@
+{
+  "page": 100,
+  "annotations": [
+    {
+      "type": "graphic",
+      "heading_level": null,
+      "bbox": [
+        0,
+        690,
+        7500,
+        8660
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        1
+      ],
+      "source_ids": [
+        "page_0100_seg_001"
+      ]
+    }
+  ],
+  "hidden_source_ordinals": []
+}
