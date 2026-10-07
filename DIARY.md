@@ -2933,3 +2933,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight passed all six gates
   - architecture suite passed 19 of 19
   - implementation fragment conversion and user fidelity assessment remain pending
+---
+
+### [2026-10-07 20:56 CEST] — PDF-CALLOUT-2.83: Require source-page vision in the plan
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.83-callout-reclassification.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the text-only proposal with a vision request for every keyword candidate as requested by the user
+  - supply the complete original Stage 01 PNG with original detail plus target text identity and pixel bounds
+  - use full-page layout to distinguish independent callouts from table or figure notes
+  - preserve sparse page overrides and Stage 02.81 fallback
+- **Architectural Rationale & Trade-Offs**:
+  - Text alone cannot establish visual attachment to a table or figure
+  - the full original page preserves the surrounding layout without a narrow candidate crop
+  - recorded roles and table groups remain context rather than authoritative classification
+- **Verification & Test Results**:
+  - Quick preflight passed all six gates
+  - architecture suite passed 19 of 19
+  - checked the plan for superseded text-only requirements
+  - planning only with no implementation inference or artifact regeneration
