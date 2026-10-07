@@ -3463,3 +3463,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Quick pre-flight passed
   - architecture rules passed (19 tests). Existing attempt status records success through 02.8 and 14 cached Stage 02.4 requests with zero fresh model calls. This commit turn did not rerun conversion or certify output fidelity. Existing technical test evidence is retained in earlier diary entries.
+---
+
+### [2026-10-07 23:31 CET] — PDF-TABLE-2.41: Split grouped table objects with original-page vision
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion/config.py`
+  - `tests/test_pdf_conversion_codex.py`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add per-table Stage 02.41 vision requests using complete unmodified source pages and target JSON
+  - preserve singleton responses and assign deterministic split IDs with lineage
+  - share ordered 02.4/02.41 sparse override resolution and failed-status blocking
+  - register selection, configuration, metrics and restart cleanup
+  - update stage contracts and existing restart expectations
+- **Architectural Rationale & Trade-Offs**:
+  - Separate independent tables before crop transcription while preserving source page objects and the developer-led conversion workflow
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture 19/19
+  - existing PDF execution/restart 30/30, page selection 6/6, callout geometry 1/1 and transport/cache 21/21
+  - Python compilation and diff checks passed
+  - Graphify incremental update passed
+  - own-layer exclusion and failed retained-layer blocking verified. Stage 02.41 completed on physical pages 50 and 54 in workspace/table-split-50-54 with 4 live calls in 28.74 seconds: page 50 tables 1 to 2, page 54 tables 3 to 5. Selected predecessor hashes and non-table objects unchanged. Initial pages-all restart failed before inference on a locked review directory
+  - all changes to that attempt were restored from its clean Git baseline. Later conversion stages were not run
+  - split quality awaits user assessment. Closes execution plan PDF-TABLE-2.41
+  - source copies and generated results remain local and are not committed.

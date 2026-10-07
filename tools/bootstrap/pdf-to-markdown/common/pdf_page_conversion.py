@@ -9,26 +9,42 @@ TYPES = ["cover", "header", "footer", "toc_heading", "toc", "thumb_index", "chap
          "list_of_tables_heading", "list_of_tables", "list_of_figures_heading", "list_of_figures"]
 DEFERRED_TEXT_TYPES = {"graphic", "table", "cover"}
 CALLOUT_STAGE = "02.4_reclassify_callouts"
+TABLE_SPLIT_STAGE = "02.41_split_tables"
+PAGE_OVERRIDE_LAYERS = (("02.4", CALLOUT_STAGE), ("02.41", TABLE_SPLIT_STAGE))
 
 
-def callout_layer_completed(workspace):
-    """Absent optional stage means skipped; partial execution never falls back."""
+def page_override_layers(before_stage=None):
+    """Return only predecessor layers when an override worker reads its input."""
+    for stage_id, directory in PAGE_OVERRIDE_LAYERS:
+        if stage_id == before_stage:
+            break
+        yield stage_id, directory
+
+
+def completed_page_layers(workspace, before_stage=None):
+    """Absent optional stages mean skipped; partial execution never falls back."""
     status_path = workspace / "stage_status.json"
     status = read_json(status_path) if status_path.exists() else {}
-    entry = status.get("02.4")
-    if entry is None:
-        return False
-    if entry.get("status") != "success":
-        raise ValueError("Incomplete Stage 02.4 blocks direct Stage 02 consumers")
-    return True
+    completed = []
+    for stage_id, directory in page_override_layers(before_stage):
+        entry = status.get(stage_id)
+        if entry is None:
+            continue
+        if entry.get("status") != "success":
+            raise ValueError(f"Incomplete Stage {stage_id} blocks direct Stage 02 consumers")
+        completed.append(directory)
+    return completed
 
 
-def resolved_page_files(workspace, pages=None):
+def resolved_page_files(workspace, pages=None, *, before_stage=None):
     """Enumerate Stage 02 identities and select completed sparse replacements."""
-    completed = callout_layer_completed(workspace)
+    completed = completed_page_layers(workspace, before_stage)
     for path in page_files(workspace / "02_page_conversion", "page_*_segments.json", pages):
-        override = workspace / CALLOUT_STAGE / path.name
-        yield override if completed and override.exists() else path
+        for directory in completed:
+            override = workspace / directory / path.name
+            if override.exists():
+                path = override
+        yield path
 
 
 SEGMENT = object_schema({
