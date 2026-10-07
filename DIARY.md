@@ -3560,3 +3560,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - filtered table objects match the overrides
   - all three review PNGs are readable. Table counts: page 50 1 to 2, page 54 3 to 6, page 112 1 to 2. The recorded stage status reports successful 02.41/02.5/02.8 runs
   - conversion was not rerun for this commit and these checks do not certify content quality. The disposable review-copy directory remains untracked.
+---
+
+### [2026-10-08 00:37 CET] — PDF-TABLE-2.42: Plan reclassification of non-table regions
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-stage-02.42-reclassify-tables.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add an active collaborative Stage 02.42 plan for table-to-image, compound, code-block and prose decisions
+  - record complete original page images plus target JSON/bbox and physical examples 39,62,40,144,94
+  - leave the missing code-block prompt and response/transcription decisions open
+- **Architectural Rationale & Trade-Offs**:
+  - Separate correction of non-table classifications from existing Stage 02.41 table splitting and preserve developer-led fragment assessment
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite 19/19 passed
+  - plan language scan and five relative links passed
+  - staged diff check passed. Planning only: no converter implementation or conversion run.
