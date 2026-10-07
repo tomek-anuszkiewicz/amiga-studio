@@ -3591,3 +3591,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite 19/19 passed
   - plan language scan and diff check passed. Plan update only
   - no conversion run.
+---
+
+### [2026-10-08 00:39 CET] — PDF-TABLE-2.42: Require a retained assessment workspace
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-stage-02.42-reclassify-tables.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Require a post-implementation test covering physical pages 39,40,62,94,144 together
+  - retain a separate named workspace with predecessors, Stage 02.42 results and Stage 02.5 reviews for user assessment
+  - report incomplete pages and preserve the workspace during plan cleanup
+- **Architectural Rationale & Trade-Offs**:
+  - Make the user-requested test and review deliverable explicit without overwriting the existing attempt
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite 19/19 passed
+  - plan language scan and diff check passed. Plan update only
+  - the stage is not implemented and the planned conversion test has not run.
