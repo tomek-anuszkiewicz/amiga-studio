@@ -2817,3 +2817,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick preflight passed all six gates
   - Architecture suite passed 19 of 19 tests
   - Planning only: no implementation or inference performed
+---
+
+### [2026-10-07 19:57 CEST] — PDF-TABLE-2.81: Plan inferred complete RAG companions for HTML tables
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.81-table-transcription.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace deterministic companion concatenation with a separate inference for each HTML table group
+  - Supply original table crop, HTML transcription and full associated caption, footnote and table_legend blocks in source order
+  - Add a dedicated prompt explaining collapsed details and literal text storage for RAG with no summarization, omissions or added content
+  - Replace the table-only companion contract with table_rag_text for the complete group
+  - Keep the primary Markdown or HTML transcription prompt minimal and wrap saved companion text deterministically
+  - Reuse saved text for export and expanded Stage 02.82 review without another inference
+- **Architectural Rationale & Trade-Offs**:
+  - Follow the user clarification that an agent prepares the complete textual companion
+  - Preserve table relationships and complete associated source information in order
+  - Cache the full group inputs and fail normally on companion transport or parsing errors instead of silently substituting concatenation
+  - Keep the active plan local under its Git exclusion
+- **Verification & Test Results**:
+  - Quick preflight passed all six gates
+  - Architecture suite passed 19 of 19 tests
+  - Inspected affected planned contracts and consumers for obsolete companion references
+  - Planning only: implementation and inference have not started
