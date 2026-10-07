@@ -2700,3 +2700,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - pre-existing edited export preserved. Book-wide adequacy remains unverified. Implementation task closed
   - remove its active plan after committing this record.
   - Staged language scan reported two false positives for the proper algorithm name Lanczos in English documentation; reviewed and retained the correct technical name. No language-checker changes made.
+---
+
+### [2026-10-07 19:23 CEST] — PDF-GRAPHIC-EXCLUSION-2: Match upright NXP logos on landscape pages
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.8_filter_page_content`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Orient the fixed reference page dimensions to the candidate canvas while keeping the logo upright
+  - retain all existing geometry and image thresholds
+  - document landscape behavior
+  - add a focused geometry regression for page 63
+- **Architectural Rationale & Trade-Offs**:
+  - The reported page-63 logo is visually identical to the template but its 3300x2550 canvas caused width/height deviations of -22.4%/+29.4% against portrait proportions. Correct the reference orientation instead of loosening image thresholds or special-casing page IDs.
+- **Verification & Test Results**:
+  - Focused regression failed before repair and passed afterward
+  - all 26 PDF technical tests passed
+  - quick preflight passed
+  - architecture suite 19/19 passed
+  - graphify update completed
+  - git diff --check passed. Pipeline stages 02.8-02.9 succeeded for only page 63 in workspace/page-63-nxp-fix-attempt-01 using copied successful Stage 01/02 predecessors, without model requests. Removed page_0063_seg_001 with aspect and RGB differences 0
+  - filtered JSON and new Markdown/assets omit the logo, retaining two table crops. Existing pages-all artifacts and user edits untouched. Book-wide behavior and visual content assessment remain unverified.

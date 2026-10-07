@@ -30,7 +30,8 @@ YAML metadata. Stages 02.9 and 12 keep their metadata behavior.
 After the existing exclusions, compare only surviving standalone `graphic`
 objects with the required [NXP template](resources/nxp.png), resolved relative to
 the stage module. The unmodified supplied page-49 logo is 257 x 94 pixels.
-Expected relative width/height use a fixed 2550 x 3300 reference page; allow 20%
+Expected relative width/height use a fixed 2550 x 3300 portrait reference page,
+or 3300 x 2550 for landscape canvases; the logo remains upright. Allow 20%
 relative difference. Require the whole box inside `[0, 0, 0.13, 0.055]` in page
 fractions. Tables, covers and larger illustrations are retained.
 
@@ -43,7 +44,8 @@ then require normalized mean absolute RGB difference at most 0.02. Geometry
 alone cannot remove content. Retained objects keep their original geometry.
 Print candidate/match counts and removed page/segment IDs with comparison scores.
 No configuration, temporary crops, output manifest or new dependency is added.
-The fixed tolerances derive from the supplied page-49/50 pair; book-wide matching
+The fixed tolerances derive from the supplied page-49/50 pair; page 63 established
+the landscape reference correction. Book-wide matching
 remains unverified. Merged or nonmatching objects remain.
 
 Run through the [orchestrator](../../README.md):
