@@ -3248,3 +3248,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify incremental AST update completed
   - Three live requests completed in 16.31 seconds and wrote page_0064_segments.json / page_0130_segments.json / page_0144_segments.json with callout labels and bodies
   - No other source pages or later conversion stages ran and content quality remains for user assessment
+---
+
+### [2026-10-07 22:39 CEST] — PDF-CALLOUT-SIMPLE-2.4: Exclude table and image notes from callout recovery
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.4_reclassify_callouts`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Tell Stage 02.4 to preserve table/image/figure footnotes and attached explanations in their source roles even when labeled NOTE
+  - Align stage documentation and the active plan with the user refinement
+- **Architectural Rationale & Trade-Offs**:
+  - The user explicitly limited recovery to independent advisories and excluded notes belonging to tables or images
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - Architecture suite passed 19/19
+  - No source conversion or model requests ran
+  - Earlier pages 64/130/144 outputs predate this prompt refinement

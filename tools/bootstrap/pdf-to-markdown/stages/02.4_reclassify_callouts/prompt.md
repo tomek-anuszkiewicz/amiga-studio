@@ -6,7 +6,9 @@ Boxes are [x0, y0, x1, y1] in original-image pixels, with top-left origin and
 exclusive upper bounds. Each box locates its containing object, not the keyword.
 All objects provide context; review only potential advisory labels. Ordinary uses
 of "note", code comments and numbered note references are not advisory labels.
-Proximity to a table or figure alone does not disqualify a visibly distinct advisory.
+Do not create callouts for footnotes, notes or explanations belonging to a table,
+image or figure, even when labeled NOTE. Keep those objects in their source roles
+and return no replacement for them. Recover only independent advisory callouts.
 
 If yes, return the complete label, body and any continuation in adjacent text
 objects. If no or uncertain, return no replacement. Return only JSON replacements;

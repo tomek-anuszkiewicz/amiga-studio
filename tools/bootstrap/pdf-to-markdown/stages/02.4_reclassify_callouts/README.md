@@ -15,7 +15,9 @@ uses original detail, ChatGPT authentication, existing cache and metrics. Its by
 the new prompt and replacement schema participate in cache identity.
 
 The [prompt](prompt.md) asks whether each keyword introduces a Markdown advisory
-callout. A nearby table or figure alone does not disqualify a distinct advisory.
+callout. Footnotes, notes and explanations belonging to tables, images or figures
+remain in their source roles, even when labeled NOTE; only independent advisories
+are recovered as callouts.
 Return only explicit contiguous replacements using source_segment_ids; no or
 uncertain advisories return no replacement. The program interprets proposals
 against the frozen input. Unresolved, overlapping or anchor-crossing ranges
