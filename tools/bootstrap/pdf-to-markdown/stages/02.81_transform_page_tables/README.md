@@ -33,13 +33,11 @@ unconverted tables retain their visible raster. A conservative local HTML heuris
 warns about regular grids without effective merges or complex cell content, including
 cache results; it does not change markup, retry inference or certify fidelity.
 
-Default predecessor is `02.8`. Only when filtering was deliberately skipped for the
-entire selected input, explicitly restart with `--table-predecessor 02`. The selection
-is persisted as `table_conversion.predecessor`; its completed status is required.
-Missing filtered pages never fall back individually to Stage 02.
+Stage 02.8 is the fixed predecessor and must have completed successfully.
+Missing filtered pages never fall back to Stage 02.
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.81 --to-stage 02.81
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.81 --to-stage 02.81
 ```
 
 Use a named attempt and only the fragment selected by the user. Do not rewrite
@@ -48,8 +46,5 @@ See [review](../02.82_table_conversion_review/README.md),
 [page export](../02.9_emit_page_markdown/README.md) and
 [conversion contract](../../../reference-conversion-contract.md).
 
-The explicit whole-input predecessor `02` shares the 02/02.4 page resolver with
-review and filtering: enumerate Stage 02 filenames, select same-name overrides
-only after successful 02.4, and block running/failed 02.4. An absent optional
-status means skipped. Default 02.8 input remains authoritative, including page
-omissions. Table groups and companions are inferred from corrected objects here.
+Stage 02.8 input remains authoritative, including page omissions.
+Table groups and companions are inferred from its corrected objects here.

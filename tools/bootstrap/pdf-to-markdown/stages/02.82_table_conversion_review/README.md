@@ -27,7 +27,7 @@ lines and complete rows. Source aspect ratio is preserved; original PNGs and cro
 are never modified. Review disables page scripts and remote HTTP requests.
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.82 --to-stage 02.82
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.82 --to-stage 02.82
 ```
 
 Restart clears 02.82 and all later results, preserving 01/02/02.8/02.81. Review

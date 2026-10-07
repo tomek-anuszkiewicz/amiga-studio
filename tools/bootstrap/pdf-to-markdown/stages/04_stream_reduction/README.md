@@ -27,5 +27,5 @@ applies only to unconverted legacy fragments.
 
 ## Invocation Through the Orchestrator
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 04 --to-stage 04
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 04 --to-stage 04
 ```

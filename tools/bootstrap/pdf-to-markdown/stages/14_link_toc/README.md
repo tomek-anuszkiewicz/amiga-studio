@@ -18,5 +18,5 @@ Dedicated cross-document wikilink resolution worker:
 
 ## Invocation Through the Orchestrator
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 14 --to-stage 14
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 14 --to-stage 14
 ```

@@ -53,7 +53,7 @@ predecessor, without recovering pages removed by filtering. Stage 03 creates the
 stream from retained 02.81 input; stream workers do not refilter physical pages.
 The [pipeline selection contract](pdf-to-markdown/README.md#physical-page-selection-through-stage-0282)
 records the per-stage behavior and maintenance rule. Restart cleanup remains global.
-Review 02.5, filtering 02.8 and explicit table predecessor `02` share the sparse
+Review 02.5 and filtering 02.8 share the sparse
 resolver. Completed overrides are eligible, absent optional status means skipped,
 and running/failed 02.4 blocks direct consumers. Filtering omissions remain final.
 Restart clears the stage and all later artifacts, preserving 01/02 and cache.
@@ -94,12 +94,14 @@ remain separate from execution status. Existing cached prompts are not rewritten
 
 For agent-run PDF conversions, treat the source PDF directory's `workspace/` as a container for named attempt directories, never as an attempt workspace itself, even when it is empty. Create a named child from the first attempt, such as `<PDF_DIRECTORY>/workspace/page-64-attempt-01/`, and always pass that child explicitly with `--workspace`. Use a new child for each independent attempt; continue or explicitly restart the same attempt in its existing child. The CLI currently defaults to `<PDF_DIRECTORY>/workspace/` when `--pdf` is supplied without `--workspace`, so agents must override that default. The original PDF stays outside the attempt workspace. Bootstrap downloads PDFs into `<book>-tmp/`; agent-run attempts belong under `<book>-tmp/workspace/<attempt>/`. A locally supplied PDF in `<book>/` uses `<book>/workspace/<attempt>/`.
 
-Each attempt persists requested `input.source_pdf` relative to its `config.yaml`.
-Page selection belongs solely to the current CLI invocation. Existing workspace
-config takes precedence; `--config` initializes only a missing config. Explicit
-source arguments update the stored path; omission retains it. Page ranges apply
-only to the current run, and omission selects all available pages. No
-historical source-selection comparison runs.
+Source selection belongs solely to `--pdf`, required for every conversion and
+restart. The path is never persisted. Page ranges apply only to the current run,
+and omission selects all available pages. Existing workspace config takes
+precedence; `--config` initializes only a missing config. Rendering uses fixed
+300 DPI PNGs, inference concurrency 1 and a 180-second request timeout. The next
+pipeline config write retires the former input, render, table predecessor, timeout
+and concurrency fields while retaining model settings. No historical
+source-selection comparison runs.
 
 `stage_status.json` is the only completion/metrics record, written atomically with
 running/success/failed states. Predecessor routing checks successful statuses using
@@ -253,10 +255,8 @@ landscape reference correction. Book-wide adequacy is
 unverified. Merged or nonmatching objects remain.
 
 Stage 02.81 consumes completed 02.8 full page JSONs and original Stage 01 PNGs.
-An explicit whole-input `table_conversion.predecessor: "02"` is allowed only when
-filtering was deliberately skipped; its completed status replaces the 02.8 dependency.
-The CLI persists this selection with `--table-predecessor` on restart at 02.81.
-Never mix predecessor directories page by page or recover removed filtered pages.
+Stage 02.8 is the fixed predecessor; filtering cannot be bypassed.
+Never recover removed filtered pages from Stage 02.
 
 Transcribe each table from its exact unpadded pixel crop using the minimal table
 prompt, existing Codex transport/cache, original detail and explicit model/effort.

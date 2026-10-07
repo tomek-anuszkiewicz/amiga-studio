@@ -33,7 +33,7 @@ Existing prepared PDFs need no Tesseract setup.
 ## Text insertion and publication
 
 On first preparation, existing native spans are retained regardless of length.
-Every textless page is rendered in RGB at `render.dpi` and passed to Tesseract.
+Every textless page is rendered in RGB at the fixed 300 DPI and passed to Tesseract.
 The original OCR PDF's text operators and font resources are overlaid at their
 original scale. The OCR raster becomes transparent because the source page
 already owns its graphics. Rotation maps the displayed-page frame without

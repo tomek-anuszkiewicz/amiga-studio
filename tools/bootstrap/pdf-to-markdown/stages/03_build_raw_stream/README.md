@@ -20,7 +20,7 @@ assembly as page export and review, appending both collapsed HTML companions aft
 the last associated block exactly once, without reinference or appended group text.
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 03
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 03
 ```
 
 Completed Stage 01/02.81 statuses are required even when reviews or 02.9 have not

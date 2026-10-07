@@ -13,6 +13,7 @@ import math
 import shutil
 from pathlib import Path
 from PIL import Image
+from common.pdf_runtime import RENDER_DPI
 from common.pdf_tables import STAGE
 
 
@@ -21,7 +22,7 @@ def extract_assets_for_nodes(
     nodes: list,
     assets_dir: Path = None,
     rel_prefix: str = None,
-    dpi: int = 300,
+    dpi: int = RENDER_DPI,
 ) -> list:
     if assets_dir is None:
         assets_dir = workspace_dir / "03_build_raw_stream" / "assets"

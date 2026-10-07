@@ -19,6 +19,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_runtime import LLM_CONCURRENCY
 
 # Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
@@ -103,7 +104,7 @@ def process_proofread_stream(
         prompt_file = Path(__file__).resolve().parent / "prompt.md"
         base_prompt = prompt_file.read_text(encoding="utf-8")
 
-        concurrency = int(config.get("llm", {}).get("concurrency", 1))
+        concurrency = LLM_CONCURRENCY
         print(f"[*] Stream Proofreading LLM active ({codex.selected.model}). Processing {len(chapters)} partitions (concurrency={concurrency})...")
 
         title_map = {}

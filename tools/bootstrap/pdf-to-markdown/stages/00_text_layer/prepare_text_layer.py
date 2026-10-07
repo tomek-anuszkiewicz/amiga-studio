@@ -9,6 +9,7 @@ import pymupdf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_runtime import RENDER_DPI
 from conversion.config import load_config, PDF_STAGES
 from common.pdf_artifacts import write_json, read_json, prepared_pdf_path
 from common.pdf_geometry import page_geometry, text_blocks
@@ -50,7 +51,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
     pdf_path, workspace = Path(pdf_path).resolve(), Path(workspace).resolve()
     stage_dir = workspace / "00_text_layer"
     source = {"name": pdf_path.name}
-    dpi = config.get("render", {}).get("dpi", 300)
+    dpi = RENDER_DPI
     with pymupdf.open(pdf_path) as document:
         pages = list(range(1, len(document) + 1))
         stage_dir.mkdir(parents=True, exist_ok=True)

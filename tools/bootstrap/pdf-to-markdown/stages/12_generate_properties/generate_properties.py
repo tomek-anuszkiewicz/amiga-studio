@@ -23,6 +23,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_runtime import LLM_CONCURRENCY
 
 # Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
@@ -170,7 +171,7 @@ def process_generate_properties(
             print(f"    [+] {md_path.name} -> title: \"{props['title']}\", chapter: \"{props['chapter']}\"")
             return props
 
-        concurrency = config.get("llm", {}).get("concurrency", 4)
+        concurrency = LLM_CONCURRENCY
         if concurrency > 1 and len(md_files) > 1:
             with ThreadPoolExecutor(max_workers=concurrency) as executor:
                 list(executor.map(process_file, md_files))

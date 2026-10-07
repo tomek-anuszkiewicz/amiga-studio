@@ -11,6 +11,9 @@ from .transport import CodexTransport
 from .metrics import record
 
 
+_REQUEST_TIMEOUT_SECONDS = 180
+
+
 class CodexClient:
     def __init__(self, config, *, stage, transport=None, cache=None, images=False):
         known = HTML_STAGES if stage in HTML_STAGES else PDF_STAGES
@@ -18,7 +21,8 @@ class CodexClient:
         if not self.pdf:
             validate_config(config, known, {stage})
         self.selected = selection(config, stage)
-        self.timeout = config["llm"].get("timeout_seconds", 180)
+        self.timeout = (_REQUEST_TIMEOUT_SECONDS if self.pdf else
+                        config["llm"].get("timeout_seconds", _REQUEST_TIMEOUT_SECONDS))
         self.transport = transport or CodexTransport()
         self.cache = cache or (ResponseCache(os.environ["CONVERSION_CACHE_DIR"]) if os.environ.get("CONVERSION_CACHE_DIR") else ResponseCache())
         self.call_count = 0

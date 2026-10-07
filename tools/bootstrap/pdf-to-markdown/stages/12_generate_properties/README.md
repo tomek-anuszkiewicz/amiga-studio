@@ -22,5 +22,5 @@ Enriches raw Markdown chapter files emitted from Stage 11 with publication-grade
 
 ## Invocation Through the Orchestrator
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 12 --to-stage 12
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 12 --to-stage 12
 ```

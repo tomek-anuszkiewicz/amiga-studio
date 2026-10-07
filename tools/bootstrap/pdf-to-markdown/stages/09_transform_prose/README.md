@@ -22,7 +22,7 @@ Formats narrative body text, programming code listings, section headings, and ta
 
 ## Invocation Through the Orchestrator
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 09 --to-stage 09
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 09 --to-stage 09
 ```
 
 Chapter JSON includes `index`, `slug`, `title`, `target_md_file` and `nodes`.

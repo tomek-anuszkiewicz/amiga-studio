@@ -17,6 +17,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_runtime import RENDER_DPI, LLM_CONCURRENCY
 
 # Import CodexClient and extract_assets_for_nodes
 SKILL_ROOT = Path(__file__).resolve().parents[2]
@@ -67,9 +68,9 @@ def reduce_contiguous_graphics(
     workspace_dir: Path,
     codex: Optional[CodexClient],
     graphics_prompt: str,
-    dpi: int = 300,
+    dpi: int = RENDER_DPI,
     reduced_assets_dir: Path = None,
-    concurrency: int = 1,
+    concurrency: int = LLM_CONCURRENCY,
 ) -> tuple:
     """
     Identifies runs of contiguous graphic nodes on the same page.
@@ -227,7 +228,7 @@ def reduce_contiguous_graphics(
 def reduce_contiguous_tables(
     nodes: list,
     workspace_dir: Path,
-    dpi: int = 300,
+    dpi: int = RENDER_DPI,
     reduced_assets_dir: Path = None,
 ) -> tuple:
     """
@@ -373,8 +374,8 @@ def reduce_stream(workspace_dir: Path, config: dict):
                     n[k] = f"04_stream_reduction/{val}"
 
         # Step 2: Unify contiguous graphic nodes on identical pages
-        concurrency = int(config.get("llm", {}).get("concurrency", 1))
-        dpi = config.get("render", {}).get("dpi", 300)
+        concurrency = LLM_CONCURRENCY
+        dpi = RENDER_DPI
         nodes_after_graphics, num_unifications, num_collapsed_graphics = reduce_contiguous_graphics(
             active_nodes,
             workspace_dir,

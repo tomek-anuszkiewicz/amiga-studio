@@ -2,16 +2,6 @@
 # Stage 02.9 is deterministic: fixed document.md/assets output and exact pixel
 # crops. It has no model/effort selection or configurable geometry adjustment.
 
-input:
-  source_pdf: null  # Initialize with --pdf; persisted relative to this config.
-
-render:
-  dpi: 300
-  image_format: "png"
-
-table_conversion:
-  predecessor: "02.8"  # Explicit whole-input alternative: "02" when filtering was deliberately skipped.
-
 table_review:
   browser_channel: "msedge"  # Or "chrome" / installed Playwright "chromium".
 
@@ -20,8 +10,6 @@ ocr:
   tessdata: null  # Auto-detect or use TESSDATA_PREFIX; override locally if needed.
 
 llm:
-  timeout_seconds: 180
-  concurrency: 1
   stages:
     02_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     02.4_reclassify_callouts: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

@@ -49,7 +49,7 @@ console. No candidates or no accepted changes means successful empty output.
 Shared request cache, stage status and metrics retain their established locations.
 Missing imagery and transport/parsing failures fail the stage normally.
 
-Review 02.5, filtering 02.8 and the explicit table predecessor `02` resolve the
+Review 02.5 and filtering 02.8 resolve the
 authoritative Stage 02 filenames through completed sparse overrides. An absent
 02.4 status means deliberately skipped; running/failed status blocks these inputs.
 Filtering omissions are never filled from earlier stages. Stage 02.81 builds table
@@ -60,7 +60,7 @@ callouts and recognizes decorated leading advisory labels.
 Run through the orchestrator in a named attempt:
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.4 --to-stage 02.4
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.4 --to-stage 02.4
 ```
 
 Restart clears 02.4 and every later stage, preserving 01/02 and the request cache.

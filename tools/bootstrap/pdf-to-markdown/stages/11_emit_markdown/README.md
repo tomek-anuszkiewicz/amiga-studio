@@ -27,5 +27,5 @@ crop from the carried assets bundle; do not reinfer or duplicate companion text.
 
 ## Invocation Through the Orchestrator
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 11 --to-stage 11
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 11 --to-stage 11
 ```

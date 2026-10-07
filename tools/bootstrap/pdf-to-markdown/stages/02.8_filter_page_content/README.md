@@ -52,7 +52,7 @@ remains unverified. Merged or nonmatching objects remain.
 Run through the [orchestrator](../../README.md):
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.8 --to-stage 02.8
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.8 --to-stage 02.8
 ```
 
 Execution requires successful Stage 01/02 statuses. Missing template or candidate

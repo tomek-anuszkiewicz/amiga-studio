@@ -19,7 +19,7 @@ No inference, rewriting, joining, filtering or RAG-text regeneration occurs.
 See [Stage 02.81](../02.81_transform_page_tables/README.md) for group collection.
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.9 --to-stage 02.9
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.9 --to-stage 02.9
 ```
 
 Write a temporary bundle before replacing old output, removing obsolete assets.

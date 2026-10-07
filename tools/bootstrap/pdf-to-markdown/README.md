@@ -28,19 +28,17 @@ a sibling `<source stem>-ocr.pdf`; an existing sibling skips OCR and PDF writing
 Restart cleanup never deletes that sibling. Stage 01 applies the physical page selection.
 
 The existing attempt's `config.yaml` takes precedence over `--config`; the argument
-initializes only a missing configuration. The source PDF path persists there:
+initializes only a missing configuration. Supply `--pdf` for every conversion or
+restart; the source path is never persisted. Status inspection does not require it.
+Rendering uses fixed 300 DPI PNGs, inference runs with concurrency 1 and a
+180-second request timeout. Stage 02.81 always consumes completed Stage 02.8.
+Existing attempt configurations retire the former input, render, table predecessor,
+timeout and concurrency fields on the next pipeline write; model settings remain.
 
-```yaml
-input:
-  source_pdf: ../../source.pdf  # Relative to this config.yaml
-```
-
-Explicit `--pdf` updates the source path; omission retains that configured path.
 `--page-ranges` controls only the current run and is never persisted in config.
 Omitting it selects all available pages. Legacy `input.pages` is ignored by workers
-and removed when the pipeline next writes config. Input configuration describes
-requests; it contains no output inventory or completion history. PDF configuration
-is parsed without local validation. Filesystem, YAML, JSON and image/PDF-library
+and its former section is removed when the pipeline next writes config.
+PDF configuration is parsed without local validation. Filesystem, YAML, JSON and image/PDF-library
 errors stop execution normally. No older-stage inputs or alternative models are substituted.
 
 ## Stage data and execution
@@ -95,7 +93,7 @@ Omission means all available pages, regardless of a previous run or legacy confi
 | 02.4 | Select Stage 02 files before collecting keywords and requesting advisory recovery |
 | 02.5 | Select resolved Stage 02/02.4 pages before review rendering |
 | 02.8 | Select resolved pages before TOC-boundary detection and content exclusions |
-| 02.81 | Select pages from the configured 02.8 or explicit 02 predecessor before table inference |
+| 02.81 | Select pages from the completed 02.8 predecessor before table inference |
 | 02.82 | Select Stage 02.81 pages before rendering table comparisons |
 
 Keep this rule when changing or adding page workers: use the shared page-file
@@ -122,9 +120,9 @@ Select the full pipeline by omitting the interval, a range with start/end, or on
 stage with matching boundaries. Deterministic and inference stages use the same routing:
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02.5
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.9 --to-stage 02.9
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 06 --to-stage 09
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02.5
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.9 --to-stage 02.9
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 06 --to-stage 09
 ```
 
 Stages 06-09 run automatically, including their inference calls. All real conversions
@@ -136,8 +134,6 @@ objects directly, using Stage 01 geometry and original PNGs. HTML tables publish
 collapsed literal-text and original-image companions after their source groups.
 Markdown tables need no published crop. Tables retain their separate converted
 fragments through stream reduction, continuation detection and Stage 07.
-The explicit whole-input alternative `--table-predecessor 02` requires restart at
-02.81 when filtering was deliberately skipped; default remains completed 02.8.
 Existing attempt settings are retained; missing 02.4/02.81 model settings are added
 only when their stage is selected. Review backend setup is in the Stage 02.82 README.
 Stage 02.5 uses resolved complete page input for type-colored review annotations,
@@ -161,8 +157,8 @@ and an empty filtered result is valid. Generated YAML metadata remains unchanged
 
 Stage 02.4 sends one complete original Stage 01 PNG per candidate-bearing page
 with frozen source texts and stable segment IDs to recover advisory ranges. It
-writes sparse complete-page overrides without modifying Stage 02. Review 02.5, filtering 02.8
-and explicit table predecessor `02` enumerate Stage 02 pages and select completed
+writes sparse complete-page overrides without modifying Stage 02. Review 02.5 and filtering 02.8
+enumerate Stage 02 pages and select completed
 same-name overrides. Absent 02.4 status uses Stage 02; running/failed status blocks
 direct consumers. Filtering output remains authoritative for default 02.81 input:
 omitted pages are never restored. See the [02.4 contract](stages/02.4_reclassify_callouts/README.md)

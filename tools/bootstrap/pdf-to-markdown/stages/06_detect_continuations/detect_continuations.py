@@ -15,6 +15,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_runtime import LLM_CONCURRENCY
 
 
 # Import CodexClient from skill root
@@ -87,7 +88,7 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
         chapter_files = sorted(list((path for path in input_dir.iterdir() if path.suffix == ".json")))
         from concurrent.futures import ThreadPoolExecutor
 
-        concurrency = int(config.get("llm", {}).get("concurrency", 1))
+        concurrency = LLM_CONCURRENCY
         print(f"[*] Detecting continuations across {len(chapter_files)} chapter files using Codex (concurrency={concurrency})...")
 
         def _process_chapter(c_file_and_idx):
