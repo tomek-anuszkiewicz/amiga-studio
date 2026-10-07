@@ -173,14 +173,15 @@ Stage 02.5 reads Stage 02 JSON and the exact Stage 01 PNG.
 Its `02.5_page_conversion_review/page_NNNN_review.png` preserves resolution and adds
 an equal-width blank right panel. Displayed roles use stable distinct type colors
 for containing 2-pixel frames, straight leaders and source-ordered labels.
-Consecutive prose in one unobstructed spatial flow shares an enclosing annotation;
-all other displayed roles remain separate. Complete source objects, including
+Consecutive prose shares an enclosing annotation when no other source object's
+rectangle overlaps the proposed union; there are no alignment or spacing thresholds.
+All other displayed roles remain separate. Complete source objects, including
 hidden headers, footers and thumb-index tabs, block inappropriate grouping.
 Those three roles receive no annotations and retain their original pixels.
 Labels show contributing source ordinals and optional heading levels, with
 `continuation: true` if any member has the flag. Review JSON sidecars retain
 source ordinals and available IDs. The [Stage 02.5 README](pdf-to-markdown/stages/02.5_page_conversion_review/README.md)
-defines the conservative adjacency rule. No OCR geometry is synthesized;
+defines the source-order and union-obstacle rule. No OCR geometry is synthesized;
 the review stage changes no source JSON or downstream content and calls no model.
 
 Stage 02.8 reads Stage 02 JSON in numeric physical-page and segment-array order.

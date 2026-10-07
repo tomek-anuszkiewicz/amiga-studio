@@ -10,15 +10,16 @@ contributing object has that flag. False flags are omitted. A merged run uses
 an ordinal range, such as `3-5. prose`; other labels retain their source ordinal.
 Labels contain neither text nor coordinates. JSON source order is preserved.
 
-Only consecutive `prose` objects can form one review annotation. Require a
-downward run with no vertical overlap and stable left alignment: the left edges
-vary by at most 5% of the narrowest member's width, and the common horizontal
-span covers at least 80% of that width. A gap can be at most 10% of the widest
-member's width. Right edges and paragraph heights may differ, so short sentences
-and ordinary paragraph spacing do not split a common column. Distant or shifted
-prose remains separate. Extend a run only when its enclosing union overlaps no other source
-object on the complete page, including hidden annotations and later objects.
-Column transitions, intervening roles and overlapping content block joining.
+Only consecutive `prose` objects in source order can form one review annotation.
+For the current run and the next prose object, compute the smallest enclosing
+rectangle. Join them only if no other source object's rectangle overlaps that
+union. Inspect the complete page, including hidden annotations and later objects,
+and exclude every contributing source object in the proposed run from the check.
+An obstacle closes the current run; start the next run at the rejected prose
+object and continue. A non-prose object in source order also ends the run.
+There are no alignment, column, width, height or spacing thresholds. Overlap
+between contributing prose objects does not block joining; only other objects
+do. Rectangle edges touching without a positive-area intersection are permitted.
 Other roles always remain separate; source text is never assembled or changed.
 
 `header`, `footer` and `thumb_index` receive no frames, leaders or labels.

@@ -35,6 +35,22 @@ class PdfNxpGeometryTests(unittest.TestCase):
 
 
 class PdfReviewContinuationTests(unittest.TestCase):
+    def test_02_5_groups_prose_by_union_obstacles_only(self):
+        spec = importlib.util.spec_from_file_location(
+            "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review/render_review.py")
+        renderer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(renderer)
+        # Empty union space permits joining regardless of alignment or distance.
+        segments = [{"type": "prose", "bbox": box} for box in
+                    [[10, 100, 150, 140], [180, 300, 400, 350], [20, 600, 80, 700]]]
+        annotations = renderer.review_annotations(segments)
+        self.assertEqual([item["source_ordinals"] for item in annotations], [[1, 2, 3]])
+        self.assertEqual(annotations[0]["bbox"], [10, 100, 400, 700])
+        # A blocker ends the current run; the next prose can start a new run.
+        hidden = {"type": "header", "bbox": [160, 200, 170, 220]}
+        blocked = renderer.review_annotations(segments + [hidden])
+        self.assertEqual([item["source_ordinals"] for item in blocked], [[1], [2, 3]])
+
     def test_02_5_joins_same_column_prose_with_short_paragraphs(self):
         spec = importlib.util.spec_from_file_location(
             "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review/render_review.py")
