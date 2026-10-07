@@ -3508,3 +3508,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Python compilation and focused schema/application assertions passed, including a mocked true response forced to false for split children and unchanged singleton source
   - Graphify update passed
   - diff check passed. Existing page artifacts were not rewritten and no conversion was requested or run.
+---
+
+### [2026-10-07 23:39 CET] — PDF-TABLE-2.41: Allow model-assessed continuation for split tables
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.41_split_tables`
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Restore boolean continuation responses and remove forced false from split outputs
+  - explicitly ask vision to mark any split-out table as a continuation when it judges a relationship, including side-by-side table parts
+  - update stage contracts and cache regeneration guidance
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the user decision to assess continuation for each split table using full-page context
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture 19/19
+  - Python compilation and focused assertions passed: boolean schema accepts both values and split outputs preserve independent false/true model decisions without mutating the source
+  - Graphify update and diff checks passed. Singleton responses retain predecessor objects. Existing attempt artifacts were not regenerated
+  - no fragment conversion was requested.

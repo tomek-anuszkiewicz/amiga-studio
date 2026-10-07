@@ -18,7 +18,6 @@ from common.pdf_selection import selected_pages
 
 TABLE = object_schema({**SEGMENT["properties"],
                        "type": {"type": "string", "enum": ["table"]},
-                       "continuation": {"type": "boolean", "enum": [False]},
                        "segment_id": STRING})
 RESPONSE = object_schema({"tables": {"type": "array", "items": TABLE, "minItems": 1}})
 
@@ -39,7 +38,6 @@ def table_replacements(source, tables, reserved_ids):
             identity = f"{identity}_table_{suffix}"
         reserved_ids.add(identity)
         replacements.append({**source, **table, "segment_id": identity,
-                             "continuation": False,
                              "source_segment_ids": [source["segment_id"]],
                              "replacement_stage": TABLE_SPLIT_STAGE})
     return replacements
