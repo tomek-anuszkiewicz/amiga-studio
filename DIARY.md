@@ -3114,3 +3114,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Regenerated only physical page 31 through orchestrator Stage 02.5 in workspace/page-31-prose-review-01 with zero model calls
   - Prose ordinals 4-11 remain one annotation
   - Predecessor artifact and config hashes unchanged
+---
+
+### [2026-10-07 21:38 CEST] — PDF-REVIEW-2.5: commit refreshed Test Book reviews
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Reference/Test Book example-4567/workspace/pages-all`
+- **What Was Changed (The Concrete Reality)**:
+  - Commit 159 changed review PNGs and 160 new review mapping JSONs from the existing 160-page attempt
+  - Record removal of the transient Stage 02.5 metrics file
+  - Preserve the attempt configuration default and execution status changes accompanying the refresh
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested committing the existing Stage 02.5 refresh after the union-only presentation change
+  - Stage status records successful 02.5/02.8 refreshes and invalidation of the older 02.9 status
+  - No source changes or additional conversion execution are part of this commit
+- **Verification & Test Results**:
+  - Inventoried 160 review PNGs and 160 mapping JSONs
+  - Page-31 mapping retains prose source ordinals 4-11 as one annotation with segment IDs
+  - Existing Stage 02.5 status reports success and zero model calls
+  - Quick preflight passed
+  - Architecture suite: 19 tests passed
+  - User visual quality assessment remains separate
