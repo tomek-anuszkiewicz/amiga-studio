@@ -8,7 +8,7 @@ exclusive upper bounds. The target box locates the object to review. Look for
 independent tables placed side by side or stacked within that object. Several
 columns, internal sections, or a nested subtable do not alone justify a split.
 Do not force a split. If the target is one table or you are uncertain, return
-that same table as the only item of {"tables": [...]}.
+that same table as the only item of {"tables": [...]}, with continuation false.
 
 If there are multiple independent tables, return one table object for each,
 with its own tight bbox derived from the image. Account for all the target's
@@ -17,8 +17,10 @@ target, especially those already represented by another page object. Do not
 change separate captions, legends, prose or any other frozen page objects.
 Do not transcribe table text or generate markup: every item uses type "table",
 md_text "" and heading_level null. Include segment_id (the target's source ID;
-the program assigns split IDs), bbox and continuation. Assess continuation
-from each table's visible presentation; do not blindly copy it to every child.
+the program assigns split IDs), bbox and continuation. Always set continuation
+to false. Never return continuation true, infer a continuation relationship,
+or copy a true continuation flag from the input. This stage only separates
+table boundaries; continuation detection belongs to a later stage.
 
 Return tables in visible source reading order: top to bottom in the page's
 reading flow, left to right on the same visual row. For vertically offset
