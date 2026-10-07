@@ -4,6 +4,19 @@
   "image_height": 3300,
   "segments": [
     {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        29,
+        36,
+        288,
+        131
+      ],
+      "segment_id": "page_0050_seg_001"
+    },
+    {
       "type": "chapter",
       "continuation": false,
       "heading_level": 1,
@@ -153,6 +166,45 @@
         2365
       ],
       "segment_id": "page_0050_seg_011"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        287,
+        3109,
+        526,
+        3167
+      ],
+      "segment_id": "page_0050_seg_012"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        718,
+        3109,
+        1858,
+        3167
+      ],
+      "segment_id": "page_0050_seg_013"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "4-1",
+      "bbox": [
+        2227,
+        3109,
+        2288,
+        3167
+      ],
+      "segment_id": "page_0050_seg_014"
     }
   ]
 }

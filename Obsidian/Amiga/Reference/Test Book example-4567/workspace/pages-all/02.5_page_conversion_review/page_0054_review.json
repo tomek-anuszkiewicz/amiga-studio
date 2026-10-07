@@ -113,8 +113,8 @@
       "bbox": [
         528,
         1299,
-        2289,
-        2214
+        1386,
+        1864
       ],
       "continuation": false,
       "source_ordinals": [
@@ -122,6 +122,57 @@
       ],
       "source_ids": [
         "page_0054_seg_010"
+      ]
+    },
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        1431,
+        1299,
+        2289,
+        1864
+      ],
+      "continuation": true,
+      "source_ordinals": [
+        11
+      ],
+      "source_ids": [
+        "page_0054_seg_010_table_2"
+      ]
+    },
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        528,
+        1938,
+        1386,
+        2214
+      ],
+      "continuation": true,
+      "source_ordinals": [
+        12
+      ],
+      "source_ids": [
+        "page_0054_seg_010_table_3"
+      ]
+    },
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        1431,
+        1999,
+        2289,
+        2214
+      ],
+      "continuation": true,
+      "source_ordinals": [
+        13
+      ],
+      "source_ids": [
+        "page_0054_seg_010_table_4"
       ]
     },
     {
@@ -135,7 +186,7 @@
       ],
       "continuation": false,
       "source_ordinals": [
-        11
+        14
       ],
       "source_ids": [
         "page_0054_seg_011"
@@ -152,7 +203,7 @@
       ],
       "continuation": false,
       "source_ordinals": [
-        12
+        15
       ],
       "source_ids": [
         "page_0054_seg_012"
@@ -161,8 +212,8 @@
   ],
   "hidden_source_ordinals": [
     2,
-    13,
-    14,
-    15
+    16,
+    17,
+    18
   ]
 }

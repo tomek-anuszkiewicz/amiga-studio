@@ -30,6 +30,9 @@ llm:
     02.4_reclassify_callouts:
       model: gpt-6.1-sol
       reasoning_effort: medium
+    02.41_split_tables:
+      model: gpt-6.1-sol
+      reasoning_effort: medium
 markers:
   toc_start: <!-- TOC34534 -->
   toc_end: <!-- /TOC34534 -->

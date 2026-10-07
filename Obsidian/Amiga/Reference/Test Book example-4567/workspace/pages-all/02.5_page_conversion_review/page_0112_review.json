@@ -44,7 +44,7 @@
         925,
         619,
         1579,
-        1555
+        1035
       ],
       "continuation": false,
       "source_ordinals": [
@@ -52,6 +52,23 @@
       ],
       "source_ids": [
         "page_0112_seg_004"
+      ]
+    },
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        925,
+        1133,
+        1579,
+        1555
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        5
+      ],
+      "source_ids": [
+        "page_0112_seg_004_table_2"
       ]
     },
     {
@@ -65,7 +82,7 @@
       ],
       "continuation": false,
       "source_ordinals": [
-        5
+        6
       ],
       "source_ids": [
         "page_0112_seg_005"
@@ -82,10 +99,10 @@
       ],
       "continuation": false,
       "source_ordinals": [
-        6,
         7,
         8,
-        9
+        9,
+        10
       ],
       "source_ids": [
         "page_0112_seg_006",
@@ -96,6 +113,6 @@
     }
   ],
   "hidden_source_ordinals": [
-    10
+    11
   ]
 }

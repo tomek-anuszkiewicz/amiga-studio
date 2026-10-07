@@ -66,10 +66,10 @@
       "type": "table",
       "heading_level": null,
       "bbox": [
-        393,
-        2077,
-        2182,
-        2132
+        394,
+        2078,
+        1421,
+        2131
       ],
       "continuation": false,
       "source_ordinals": [
@@ -77,6 +77,23 @@
       ],
       "source_ids": [
         "page_0050_seg_009"
+      ]
+    },
+    {
+      "type": "table",
+      "heading_level": null,
+      "bbox": [
+        1479,
+        2078,
+        2182,
+        2131
+      ],
+      "continuation": true,
+      "source_ordinals": [
+        10
+      ],
+      "source_ids": [
+        "page_0050_seg_009_table_2"
       ]
     },
     {
@@ -90,7 +107,7 @@
       ],
       "continuation": false,
       "source_ordinals": [
-        10
+        11
       ],
       "source_ids": [
         "page_0050_seg_010"
@@ -107,7 +124,7 @@
       ],
       "continuation": false,
       "source_ordinals": [
-        11
+        12
       ],
       "source_ids": [
         "page_0050_seg_011"
@@ -115,8 +132,8 @@
     }
   ],
   "hidden_source_ordinals": [
-    12,
     13,
-    14
+    14,
+    15
   ]
 }

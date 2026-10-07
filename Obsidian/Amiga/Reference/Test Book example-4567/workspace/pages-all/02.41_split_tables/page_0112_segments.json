@@ -140,6 +140,19 @@
         2580
       ],
       "segment_id": "page_0112_seg_009"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "66 Playfield Hardware",
+      "bbox": [
+        359,
+        2971,
+        779,
+        3016
+      ],
+      "segment_id": "page_0112_seg_010"
     }
   ]
 }
