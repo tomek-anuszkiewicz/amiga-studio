@@ -24,7 +24,7 @@ Specialized worker for table blocks across all chapter streams:
 
 ## Invocation Through the Orchestrator
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 07 --to-stage 07
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 07 --to-stage 07
 ```
 
 Chapter JSON includes `index`, `slug`, `title`, `target_md_file` and `nodes`.

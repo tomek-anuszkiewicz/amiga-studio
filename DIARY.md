@@ -3396,3 +3396,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - geometry regression passed (1 test). Quick pre-flight passed
   - architecture suite passed (19 tests)
   - graphify update completed. No live book fragment conversion performed.
+---
+
+### [2026-10-07 23:20 CET] — PDF-FIXED-EXECUTION: remove source and runtime configuration knobs
+- **Affected Subsystems**:
+  - `PDF pipeline and workers`
+  - `shared Codex client`
+  - `converter documentation`
+  - `existing conversion tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Require invocation-scoped --pdf for conversion and restart and pass it to Stage 02.9
+  - remove persisted source configuration and source resolver
+  - fix rendering at 300 DPI PNG, request timeout at 180 seconds and inference concurrency at 1
+  - require completed Stage 02.8 as the table predecessor and remove the bypass switch
+  - retire former fields on the next attempt config write while retaining model settings
+  - update existing tests and CLI examples
+- **Architectural Rationale & Trade-Offs**:
+  - Source identity is supplied by the invocation. Execution constants and stage dependencies belong to code rather than attempt configuration. HTML timeout configuration remains supported. Existing book workspaces were not regenerated or edited.
+- **Verification & Test Results**:
+  - PDF suite passed (30 tests)
+  - page selection passed (6)
+  - callout geometry passed (1)
+  - publication passed (10)
+  - transport/configuration passed (21)
+  - quick pre-flight passed
+  - architecture passed (19)
+  - changed Python files parsed and diff check passed
+  - graphify update completed. No live fragment conversion or quality assessment performed.

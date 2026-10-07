@@ -18,6 +18,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_runtime import LLM_CONCURRENCY
 
 # Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
@@ -54,7 +55,7 @@ def process_tables(workspace_dir: Path, config: dict):
 
         from concurrent.futures import ThreadPoolExecutor
 
-        concurrency = int(config.get("llm", {}).get("concurrency", 1))
+        concurrency = LLM_CONCURRENCY
         print(f"[*] Table Worker LLM active ({codex.selected.model}). Transforming tables (concurrency={concurrency})...")
 
         chapter_files = sorted(list((path for path in input_dir.iterdir() if path.suffix == ".json")))

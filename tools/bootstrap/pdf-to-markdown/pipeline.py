@@ -273,7 +273,7 @@ def run_stage(
     ]
 
     # Stage-specific standard parameter injection
-    if stage_num == "00":
+    if stage_num in {"00", "02.9"}:
         cmd.extend(["--pdf", str(pdf_path)])
     elif stage_num == "01":
         prepared_pdf = prepared_pdf_path(pdf_path)
@@ -488,8 +488,6 @@ def main():
     parser.add_argument("--from-stage", help="Start stage (default: 00); clears this stage and all later results")
     parser.add_argument("--to-stage", help="Last stage to execute; does not limit cleanup")
     parser.add_argument("--page-ranges", help="Physical 1-based pages for this run only; omitted selects all available pages")
-    parser.add_argument("--table-predecessor", choices=["02.8", "02"],
-                        help="Whole-input table source; 02 only when filtering was deliberately skipped")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--status", action="store_true")
     args = parser.parse_args()
@@ -508,6 +506,8 @@ def main():
     if args.status:
         print_pipeline_status(workspace, output)
         return
+    if pdf is None:
+        parser.error("--pdf is required for conversion and restart")
     start = resolve_stage_idx(args.from_stage) if args.from_stage else 0
     end = resolve_stage_idx(args.to_stage) if args.to_stage else len(STAGE_REGISTRY) - 1
     if start is None or end is None or start > end:
@@ -518,30 +518,18 @@ def main():
     config_path = workspace / "config.yaml"
     config_source = config_path if config_path.exists() else args.config.resolve()
     config = parse_config(config_source, known_stages=PDF_STAGES, required_stages=())
-    table_config = config.setdefault("table_conversion", {})
-    if args.table_predecessor is not None:
-        if STAGE_REGISTRY[start]["id"] != "02.81":
-            raise ValueError("Changing table predecessor requires restart at Stage 02.81")
-        table_config["predecessor"] = args.table_predecessor
-    table_predecessor = table_config.setdefault("predecessor", "02.8")
-    next(s for s in STAGE_REGISTRY if s["id"] == "02.81")["inputs"] = ["01", table_predecessor]
     if start <= resolve_stage_idx("02.81") <= end:
         config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
             "02.81_transform_page_tables", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
     if start <= resolve_stage_idx("02.4") <= end:
         config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
             "02.4_reclassify_callouts", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
-    inputs = config.setdefault("input", {})
-    if pdf is not None:
-        inputs["source_pdf"] = Path(os.path.relpath(pdf, workspace)).as_posix()
-    else:
-        # Existing workspace inputs take precedence; initial template paths are
-        # relative to the template until the attempt config is persisted.
-        pdf = (config_source.parent / inputs["source_pdf"]).resolve()
-        inputs["source_pdf"] = Path(os.path.relpath(pdf, workspace)).as_posix()
+    # Retire former settings from existing attempt configurations.
+    for key in ("input", "render", "table_conversion"):
+        config.pop(key, None)
+    for key in ("timeout_seconds", "concurrency"):
+        config.get("llm", {}).pop(key, None)
     pages = selected_pages(args.page_ranges)
-    # Retire legacy persisted selection; CLI arguments alone control this run.
-    inputs.pop("pages", None)
 
     status_file = workspace / "stage_status.json"
     statuses = read_json(status_file) if status_file.exists() else {}

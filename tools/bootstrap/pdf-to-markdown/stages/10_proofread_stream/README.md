@@ -10,5 +10,5 @@ Write `10_proofread_stream/{index:02d}_{slug}.json` with `index`, `slug`, `title
 outputs directly, without a chapter registry or older-stage fallback.
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 10 --to-stage 10
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 10 --to-stage 10
 ```

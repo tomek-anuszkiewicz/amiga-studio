@@ -26,8 +26,7 @@ def transform_tables(workspace, config, pages=None):
     directory = Path(__file__).parent
     prompt = (directory / "prompt.md").read_text(encoding="utf-8")
     group_prompt = (directory / "group_prompt.md").read_text(encoding="utf-8")
-    predecessor = config.get("table_conversion", {}).get("predecessor", "02.8")
-    input_dir = {"02.8": "02.8_filter_page_content", "02": "02_page_conversion"}[predecessor]
+    input_dir = "02.8_filter_page_content"
     output = workspace / STAGE
     assets = output / "assets"
     assets.mkdir(parents=True, exist_ok=True)

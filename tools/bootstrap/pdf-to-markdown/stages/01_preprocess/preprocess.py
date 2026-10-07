@@ -8,13 +8,14 @@ import pymupdf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_runtime import RENDER_DPI
 from conversion.config import load_config, PDF_STAGES
 from common.pdf_artifacts import write_json, prepared_text_metadata
 from common.pdf_geometry import SCHEMA_VERSION, COORDINATES, page_geometry, text_blocks, raster_transform
 from common.pdf_selection import parse_page_ranges
 
 
-def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):
+def preprocess_pdf(pdf_path, workspace_dir, dpi=RENDER_DPI, page_ranges=None):
     directory = Path(workspace_dir) / "01_preprocess"
     directory.mkdir(parents=True, exist_ok=True)
     for old in directory.glob("page_*.*"):
@@ -48,7 +49,7 @@ def main():
     parser.add_argument("--page-ranges")
     args = parser.parse_args()
     config = load_config(args.config, known_stages=PDF_STAGES, required_stages=())
-    preprocess_pdf(args.pdf, args.workspace, config.get("render", {}).get("dpi", 300), args.page_ranges)
+    preprocess_pdf(args.pdf, args.workspace, RENDER_DPI, args.page_ranges)
 
 
 if __name__ == "__main__":

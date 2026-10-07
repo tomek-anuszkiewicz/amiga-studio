@@ -147,7 +147,7 @@ class PdfOcrValidationTests(unittest.TestCase):
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("[skip] Stage 00", result.stdout)
-            result = subprocess.run(command + ["--workspace", str(second), "--from-stage", "01", "--to-stage", "01"],
+            result = subprocess.run(command + ["--pdf", str(source), "--workspace", str(second), "--from-stage", "01", "--to-stage", "01"],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertEqual(prepared.read_bytes(), before)
@@ -165,7 +165,6 @@ class PdfOcrValidationTests(unittest.TestCase):
         spec.loader.exec_module(stage)
         config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
                              known_stages=PDF_STAGES, required_stages=())
-        config["render"]["dpi"] = 72
         with tempfile.TemporaryDirectory() as directory, pymupdf.open() as ocr:
             source, workspace = Path(directory) / "source.pdf", Path(directory) / "workspace"
             ocr.new_page(width=200, height=200).insert_text((20, 40), "Recovered text", render_mode=3)
@@ -196,7 +195,6 @@ class PdfOcrValidationTests(unittest.TestCase):
         preprocess = load_stage("preprocess_fragment", "tools/bootstrap/pdf-to-markdown/stages/01_preprocess/preprocess.py")
         config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
                              known_stages=PDF_STAGES, required_stages=())
-        config["render"]["dpi"] = 72
         with tempfile.TemporaryDirectory() as directory:
             source, workspace = Path(directory) / "source.pdf", Path(directory) / "workspace"
             with pymupdf.open() as document:
@@ -295,7 +293,7 @@ class PdfRestartTests(unittest.TestCase):
         return next(index for index, stage in enumerate(self.pipeline.STAGE_REGISTRY) if stage["id"] == stage_id)
 
     def run_pipeline(self, flags, worker, *, page_ranges="5-10"):
-        argv = ["pipeline.py", "--workspace", str(self.workspace), "--config", str(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")]
+        argv = ["pipeline.py", "--pdf", str(self.pdf), "--workspace", str(self.workspace), "--config", str(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")]
         if page_ranges:
             argv.extend(["--page-ranges", page_ranges])
         argv.extend(flags)
@@ -390,7 +388,7 @@ class PdfRestartTests(unittest.TestCase):
         self.run_pipeline(["--from-stage", "5", "--to-stage", "5", "--page-ranges", "6-10"],
                           worker)
         config = yaml.safe_load((self.workspace / "config.yaml").read_text())
-        self.assertNotIn("pages", config["input"])
+        self.assertNotIn("input", config)
 
     def test_interrupted_cleanup_has_already_invalidated_completion(self):
         with patch.object(self.pipeline, "clean_downstream_stages", side_effect=OSError("Interrupted cleanup")):
@@ -442,7 +440,7 @@ class PdfRestartTests(unittest.TestCase):
         self.run_pipeline(["--from-stage", "01", "--pdf", str(pdf)], worker, page_ranges=None)
         self.assertEqual(executed[0], "01")
         state = read_json(self.workspace / "stage_status.json")
-        self.assertNotIn("pages", yaml.safe_load((self.workspace / "config.yaml").read_text())["input"])
+        self.assertNotIn("input", yaml.safe_load((self.workspace / "config.yaml").read_text()))
 
     def test_resume_option_is_rejected_without_cleanup(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:

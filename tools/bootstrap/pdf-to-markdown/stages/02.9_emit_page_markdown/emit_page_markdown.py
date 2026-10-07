@@ -12,14 +12,13 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
-from common.pdf_artifacts import source_pdf
 from common.pdf_page_conversion import read_conversion
 from common.pdf_page_markdown import crop_objects, document_markdown
 from common.pdf_tables import STAGE
 
 
-def emit_page_markdown(workspace, config_path=None):
-    source = {"name": source_pdf(config_path or workspace / "config.yaml").name}
+def emit_page_markdown(workspace, pdf_path):
+    source = {"name": Path(pdf_path).name}
     pages = list(read_conversion(workspace, STAGE))
     crops = list(crop_objects(pages))
     crops_by_page = {}
@@ -69,11 +68,12 @@ def emit_page_markdown(workspace, config_path=None):
 
 def main():
     parser = argparse.ArgumentParser(description="Stage 02.9: page Markdown and original-PNG crops")
+    parser.add_argument("--pdf", type=Path, required=True)
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     args = parser.parse_args()
     load_config(args.config, known_stages=PDF_STAGES, required_stages=())
-    emit_page_markdown(args.workspace.resolve(), args.config)
+    emit_page_markdown(args.workspace.resolve(), args.pdf)
 
 
 if __name__ == "__main__":

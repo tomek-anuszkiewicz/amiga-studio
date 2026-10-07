@@ -2,7 +2,6 @@
 
 import json
 from pathlib import Path
-import yaml
 
 
 def write_json(path, value):
@@ -17,12 +16,6 @@ def write_json(path, value):
 
 def read_json(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
-
-
-def source_pdf(config_path):
-    config_path = Path(config_path)
-    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-    return (config_path.parent / config["input"]["source_pdf"]).resolve()
 
 
 def prepared_pdf_path(source):

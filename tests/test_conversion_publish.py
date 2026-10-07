@@ -126,7 +126,7 @@ class PublicationTests(unittest.TestCase):
         (self.output.parent / "config.yaml").write_text(yaml.safe_dump({
             "input": {"source_pdf": "../../source.pdf", "pages": None}}))
         (self.output.parent / "stage_status.json").write_text(json.dumps({"13": {"status": "success"}}))
-        argv = ["pipeline.py", "--workspace", str(self.output.parent), "--from-stage", "14", "--publish",
+        argv = ["pipeline.py", "--pdf", str(self.root / "source.pdf"), "--workspace", str(self.output.parent), "--from-stage", "14", "--publish",
                 "--config", str(root / "tools/bootstrap/pdf-to-markdown/config.yaml")]
         def worker(stage, *args):
             self.assertEqual(stage["id"], "14")

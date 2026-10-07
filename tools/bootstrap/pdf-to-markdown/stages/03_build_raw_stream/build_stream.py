@@ -12,6 +12,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_runtime import RENDER_DPI
 from common.pdf_page_conversion import read_conversion
 from common.pdf_tables import STAGE, FIELDS, ASSOCIATED, converted
 
@@ -56,7 +57,7 @@ def build_raw_stream(workspace_dir: Path, config: dict):
         if old_file.is_file():
             old_file.unlink()
     nodes = extract_assets_for_nodes(workspace_dir, nodes, assets_dir=assets,
-                                    dpi=config.get("render", {}).get("dpi", 300))
+                                    dpi=RENDER_DPI)
     for node in nodes:
         if node["type"] == "cover":
             node["rendered_markdown"] = f"![Cover](assets/{Path(node['png_path']).name})"
