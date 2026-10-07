@@ -1,0 +1,150 @@
+{
+  "page": 50,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        29,
+        36,
+        288,
+        131
+      ],
+      "segment_id": "page_0050_seg_001"
+    },
+    {
+      "type": "chapter",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "SECTION 4\nINTEGER INSTRUCTIONS",
+      "bbox": [
+        287,
+        499,
+        1205,
+        686
+      ],
+      "segment_id": "page_0050_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This section contains detailed information about the integer instructions for the M68000 family. A detailed discussion of each instruction description is arranged in alphabetical order by instruction mnemonic.",
+      "bbox": [
+        287,
+        758,
+        2290,
+        945
+      ],
+      "segment_id": "page_0050_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Each instruction description identifies the differences among the M68000 family for that instruction. Noted under the title of the instruction are all specific processors that apply to that instruction—for example:",
+      "bbox": [
+        287,
+        983,
+        2288,
+        1170
+      ],
+      "segment_id": "page_0050_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**Test Bit Field and Change**\n**(MC68030, MC68040)**",
+      "bbox": [
+        980,
+        1209,
+        1609,
+        1337
+      ],
+      "segment_id": "page_0050_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The MC68HC000 is identical to the MC68000 except for power dissipation; therefore, all instructions that apply to the MC68000 also apply to the MC68HC000. All references to the MC68000, MC68020, and MC68030 include references to the corresponding embedded controllers, MC68EC000, MC68EC020, and MC68EC030. All references to the MC68040 include the MC68LC040 and MC68EC040. This referencing applies throughout this section unless otherwise specified.",
+      "bbox": [
+        287,
+        1375,
+        2290,
+        1736
+      ],
+      "segment_id": "page_0050_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Identified within the paragraphs are the specific processors that use different instruction fields, instruction formats, etc.—for example:",
+      "bbox": [
+        287,
+        1775,
+        2288,
+        1903
+      ],
+      "segment_id": "page_0050_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**MC68020, MC68030, and MC68040 only**",
+      "bbox": [
+        395,
+        1995,
+        1163,
+        2054
+      ],
+      "segment_id": "page_0050_seg_008"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        393,
+        2077,
+        2182,
+        2132
+      ],
+      "segment_id": "page_0050_seg_009"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "\\*\\*Can be used with CPU32 processor",
+      "bbox": [
+        403,
+        2147,
+        1029,
+        2199
+      ],
+      "segment_id": "page_0050_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**Appendix A Processor Instruction Summary** provides a listing of all processors and the instructions that apply to them for quick reference.",
+      "bbox": [
+        287,
+        2237,
+        2288,
+        2365
+      ],
+      "segment_id": "page_0050_seg_011"
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "page": 31,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        419,
+        200,
+        1759,
+        1216
+      ],
+      "segment_id": "page_0031_seg_001"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "5",
+      "bbox": [
+        11,
+        941,
+        185,
+        1046
+      ],
+      "segment_id": "page_0031_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 5-7. Word and Byte Write-Cycle Timing Diagram",
+      "bbox": [
+        566,
+        1273,
+        1611,
+        1317
+      ],
+      "segment_id": "page_0031_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The descriptions of the eight states of a write cycle are as follows:",
+      "bbox": [
+        289,
+        1374,
+        1457,
+        1416
+      ],
+      "segment_id": "page_0031_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 0 The write cycle starts in S0. The processor places valid function codes on FC2–FC0 and drives $R/\\overline{W}$ high (if a preceding write cycle has left $R/\\overline{W}$ low).",
+      "bbox": [
+        290,
+        1438,
+        1896,
+        1525
+      ],
+      "segment_id": "page_0031_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 1 Entering S1, the processor drives a valid address on the address bus.",
+      "bbox": [
+        290,
+        1571,
+        1768,
+        1613
+      ],
+      "segment_id": "page_0031_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 2 On the rising edge of S2, the processor asserts $\\overline{AS}$ and drives $R/\\overline{W}$ low.",
+      "bbox": [
+        290,
+        1654,
+        1800,
+        1700
+      ],
+      "segment_id": "page_0031_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 3 During S3, the data bus is driven out of the high-impedance state as the data to be written is placed on the bus.",
+      "bbox": [
+        290,
+        1745,
+        1902,
+        1831
+      ],
+      "segment_id": "page_0031_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 4 At the rising edge of S4, the processor asserts $\\overline{UDS}$, or $\\overline{LDS}$. The processor waits for a cycle termination signal ($\\overline{DTACK}$ or $\\overline{BERR}$) or $\\overline{VPA}$, an M6800 peripheral signal. When $\\overline{VPA}$ is asserted during S4, the cycle becomes a peripheral cycle (refer to **Appendix B M6800 Peripheral Interface**. If neither termination signal is asserted before the falling edge at the end of S4, the processor inserts wait states (full clock cycles) until either $\\overline{DTACK}$ or $\\overline{BERR}$ is asserted.",
+      "bbox": [
+        290,
+        1874,
+        1908,
+        2193
+      ],
+      "segment_id": "page_0031_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 5 During S5, no bus signals are altered.",
+      "bbox": [
+        292,
+        2243,
+        1211,
+        2286
+      ],
+      "segment_id": "page_0031_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 6 During S6, no bus signals are altered.",
+      "bbox": [
+        292,
+        2330,
+        1211,
+        2372
+      ],
+      "segment_id": "page_0031_seg_011"
+    }
+  ]
+}

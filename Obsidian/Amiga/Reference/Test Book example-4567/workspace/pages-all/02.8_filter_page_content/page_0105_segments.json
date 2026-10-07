@@ -1,0 +1,163 @@
+{
+  "page": 105,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "The WAIT Instruction",
+      "bbox": [
+        356,
+        354,
+        997,
+        418
+      ],
+      "segment_id": "page_0105_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The WAIT instruction causes the Copper to wait until the video beam counters are equal to (or greater than) the coordinates specified in the instruction. While waiting, the Copper is off the bus and not using memory cycles.",
+      "bbox": [
+        355,
+        533,
+        2159,
+        683
+      ],
+      "segment_id": "page_0105_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The first instruction word contains the vertical and horizontal coordinates of the beam position. The second word contains enable bits that are used to form a “mask” that tells the system which bits of the beam position to use in making the comparison.",
+      "bbox": [
+        356,
+        745,
+        2158,
+        898
+      ],
+      "segment_id": "page_0105_seg_003"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "FIRST INSTRUCTION WORD (IR1)",
+      "bbox": [
+        900,
+        987,
+        1602,
+        1031
+      ],
+      "segment_id": "page_0105_seg_004"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        639,
+        1093,
+        1593,
+        1289
+      ],
+      "segment_id": "page_0105_seg_005"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "SECOND INSTRUCTION WORD (IR2)",
+      "bbox": [
+        872,
+        1405,
+        1630,
+        1450
+      ],
+      "segment_id": "page_0105_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        638,
+        1514,
+        1860,
+        1893
+      ],
+      "segment_id": "page_0105_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following example WAIT instruction waits for scan line 150 ($96) with the horizontal position masked off.",
+      "bbox": [
+        356,
+        1979,
+        2146,
+        2076
+      ],
+      "segment_id": "page_0105_seg_008"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nDC.W    $9601,$FF00     ;Wait for line 150,\n                       ;   ignore horizontal counters.\n```",
+      "bbox": [
+        535,
+        2132,
+        1757,
+        2211
+      ],
+      "segment_id": "page_0105_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following example WAIT instruction waits for scan line 255 and horizontal position 254. This event will never occur, so the Copper stops until the next vertical blanking interval begins.",
+      "bbox": [
+        356,
+        2276,
+        2152,
+        2375
+      ],
+      "segment_id": "page_0105_seg_010"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nDC.W    $FFFF,$FFFE     ;Wait for line 255,\n                       ;   H = 254 (ends Copper list).\n```",
+      "bbox": [
+        535,
+        2431,
+        1771,
+        2508
+      ],
+      "segment_id": "page_0105_seg_011"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "To understand why position VP=$FF HP=$FE will never occur, you must look at the comparison operation of the Copper and the size restrictions of the position information. Line number 255 is a valid line to wait for, in fact it is the maximum value that will fit into this field. Since 255 is the maximum number, the next line will wrap to zero (line 256 will appear as a zero in the",
+      "bbox": [
+        357,
+        2572,
+        2157,
+        2776
+      ],
+      "segment_id": "page_0105_seg_012"
+    }
+  ]
+}

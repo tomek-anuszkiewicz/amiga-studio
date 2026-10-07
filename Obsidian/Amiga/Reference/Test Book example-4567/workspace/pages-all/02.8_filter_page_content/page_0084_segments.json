@@ -1,0 +1,137 @@
+{
+  "page": 84,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "INCLUDE FILES",
+      "bbox": [
+        228,
+        306,
+        609,
+        354
+      ],
+      "segment_id": "page_0084_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**janus.[hi]:**\n\ngives interface to janus.library. All definitions in this file are amiga specific. The most useful thing in this file are the definitions for janus memory allocation types",
+      "bbox": [
+        873,
+        305,
+        2068,
+        499
+      ],
+      "segment_id": "page_0084_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**janusreg.[hi]:**\n\nhardware constants. Most people should not need this. If you do, we need to hide more information.",
+      "bbox": [
+        873,
+        555,
+        2101,
+        695
+      ],
+      "segment_id": "page_0084_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**janusvar.[hi]:**\n\nthe shared data structure between the amiga and the pc. Once again, you should not need direct access to these routines. We have tried to provide interface routines to do all the normal things.",
+      "bbox": [
+        873,
+        757,
+        2123,
+        1001
+      ],
+      "segment_id": "page_0084_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**i86block.i:**\n\ncommand blocks for calling pc’s interrupt’s directly and for the hard disk.",
+      "bbox": [
+        878,
+        1057,
+        2128,
+        1195
+      ],
+      "segment_id": "page_0084_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**services.[hi]:**\n\nhard coded constants for interrupt numbers. Eventually these numbers will be gotten at run time, but for now they are constants. These numbers correspond to the “jintnum” parameters below.",
+      "bbox": [
+        878,
+        1257,
+        2111,
+        1507
+      ],
+      "segment_id": "page_0084_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**setupsig.[hi]:**\n\ndata structure for SetupJanusSig( ) call.",
+      "bbox": [
+        879,
+        1560,
+        1710,
+        1650
+      ],
+      "segment_id": "page_0084_seg_007"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "LISTINGS",
+      "bbox": [
+        259,
+        1822,
+        490,
+        1869
+      ],
+      "segment_id": "page_0084_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "i86block.i — interface definitions between amiga and commodore-pc\n\nCopyright © 1986, Commodore-Amiga Inc., All rights reserved",
+      "bbox": [
+        874,
+        1798,
+        2121,
+        2034
+      ],
+      "segment_id": "page_0084_seg_009"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\n        IFND                        JANUS_I86BLOCK_I\nJANUS_I86BLOCK_I                            SET 1\n\n; All registers in this section are arranged to be read and written\n; from the WordAccessOffset area of the shared memory. If you really\n; need to use the ByteAccessArea, all the words will need to be byte\n; swapped.\n```",
+      "bbox": [
+        875,
+        2090,
+        2110,
+        2440
+      ],
+      "segment_id": "page_0084_seg_010"
+    }
+  ]
+}

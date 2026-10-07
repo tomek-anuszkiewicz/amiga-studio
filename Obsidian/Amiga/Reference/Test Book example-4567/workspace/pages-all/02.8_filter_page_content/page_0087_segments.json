@@ -1,0 +1,46 @@
+{
+  "page": 87,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "janus.h—the software data structures for the janus board",
+      "bbox": [
+        904,
+        383,
+        1978,
+        433
+      ],
+      "segment_id": "page_0087_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Copyright © 1986, Commodore Amiga Inc., All rights reserved",
+      "bbox": [
+        909,
+        434,
+        2073,
+        483
+      ],
+      "segment_id": "page_0087_seg_002"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\n/* all bytes described here are described in the byte order of the\n * 8088. Note that words and longwords in these structures will be\n * accessed from the word access space to preserve the byte order in\n * a word — the 8088 will access longwords by reversing the words:\n * like a 68000 access to the word access memory.\n */\n/* JanusMemHead — a data structure roughly analogous to an exec\n   mem chunk.\n * It is used to keep track of memory used between the 8088 and the\n   68000.\n */\n\nstruct JanusMemHead [\n        UBYTE  jmh_Lock;         /* lock byte between\n                                   processors */\n        UBYTE  jmh_pad0;\n        APTR   jmh_68000Base;    /* rptr's are relative to this */\n        UWORD  jmh_8088Segment;  /* segment base for 8088 */\n        RPTR   jmh_First;        /* offset to first free chunk */\n        RPTR   jmh_Max;          /* max allowable index */\n        UWORD  jmh_Free;         /* total number of free\n                                   bytes -1 */\n];\n\n/* JanusMemChunk — keep track of individualy freed chunks of\nmemory.\n * Memory Chunks are longword aligned in this memory.\n */\n\nstruct JanusMemChunk [\n        RPTR   jmc_Next;         /* rptr to next free chunk */\n        UWORD  jmc_Size;         /* size of chunk -1*/\n];\n\n#ifdef undef\nthis stuff is saved for future use, but is not yet thought out\n/* JanusList — an RPTR/Exec style list header.\n */\nstruct JanusList [\n        RPTR   jl_Head;\n        RPTR   jl_Tail;\n        RPTR   jl_TailPred;\n        UBYTE  jl_Lock;          /* lock byte between\n                                   processors\n```",
+      "bbox": [
+        859,
+        609,
+        2090,
+        2808
+      ],
+      "segment_id": "page_0087_seg_003"
+    }
+  ]
+}

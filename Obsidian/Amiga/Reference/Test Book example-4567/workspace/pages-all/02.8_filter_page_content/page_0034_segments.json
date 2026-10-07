@@ -1,0 +1,137 @@
+{
+  "page": 34,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "supervisor mode. Therefore, when instruction execution resumes at the address specified to process the exception, the processor is in the supervisor privilege mode.",
+      "bbox": [
+        200,
+        232,
+        1797,
+        319
+      ],
+      "segment_id": "page_0034_seg_001"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        942,
+        363,
+        1054,
+        398
+      ],
+      "segment_id": "page_0034_seg_002"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The transition from supervisor to user mode can be accomplished by any of four instructions: return from exception (RTE) (MC68010 only), move to status register (MOVE to SR), AND immediate to status register (ANDI to SR), and exclusive OR immediate to status register (EORI to SR). The RTE instruction in the MC68010 fetches the new status register and program counter from the supervisor stack and loads each into its respective register. Next, it begins the instruction fetch at the new program counter address in the privilege mode determined by the S bit of the new contents of the status register.",
+      "bbox": [
+        439,
+        432,
+        1557,
+        938
+      ],
+      "segment_id": "page_0034_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The MOVE to SR, ANDI to SR, and EORI to SR instructions fetch all operands in the supervisor mode, perform the appropriate update to the status register, and then fetch the next instruction at the next sequential program counter address in the privilege mode determined by the new S bit.",
+      "bbox": [
+        200,
+        983,
+        1798,
+        1164
+      ],
+      "segment_id": "page_0034_seg_004"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "6",
+      "bbox": [
+        1918,
+        1083,
+        2090,
+        1187
+      ],
+      "segment_id": "page_0034_seg_005"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "6.1.4 Reference Classification",
+      "bbox": [
+        200,
+        1226,
+        861,
+        1265
+      ],
+      "segment_id": "page_0034_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "When the processor makes a reference, it classifies the reference according to the encoding of the three function code output lines. This classification allows external translation of addresses, control of access, and differentiation of special processor states, such as CPU space (used by interrupt acknowledge cycles). Table 6-1 lists the classification of references.",
+      "bbox": [
+        200,
+        1300,
+        1799,
+        1522
+      ],
+      "segment_id": "page_0034_seg_007"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 6-1. Reference Classification",
+      "bbox": [
+        667,
+        1597,
+        1329,
+        1633
+      ],
+      "segment_id": "page_0034_seg_008"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        581,
+        1654,
+        1407,
+        2227
+      ],
+      "segment_id": "page_0034_seg_009"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "*Address space 3 is reserved for user definition, while 0 and 4 are reserved for future use by Motorola.",
+      "bbox": [
+        582,
+        2241,
+        1380,
+        2305
+      ],
+      "segment_id": "page_0034_seg_010"
+    }
+  ]
+}

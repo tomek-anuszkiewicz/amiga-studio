@@ -1,0 +1,59 @@
+{
+  "page": 141,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        274,
+        419,
+        2230,
+        1188
+      ],
+      "segment_id": "page_0141_seg_001"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 8-9: The Amiga 1000 Keyboard, Showing Keycodes in Hexadecimal",
+      "bbox": [
+        605,
+        1339,
+        1995,
+        1384
+      ],
+      "segment_id": "page_0141_seg_002"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        281,
+        1613,
+        2209,
+        2424
+      ],
+      "segment_id": "page_0141_seg_003"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 8-10: The Amiga 500/2000 Keyboard, Showing Keycodes in Hexadecimal",
+      "bbox": [
+        555,
+        2555,
+        2047,
+        2600
+      ],
+      "segment_id": "page_0141_seg_004"
+    }
+  ]
+}

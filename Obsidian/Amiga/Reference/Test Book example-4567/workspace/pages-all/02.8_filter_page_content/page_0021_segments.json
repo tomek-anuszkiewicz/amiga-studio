@@ -1,0 +1,46 @@
+{
+  "page": 21,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        444,
+        239,
+        1547,
+        2338
+      ],
+      "segment_id": "page_0021_seg_001"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2",
+      "bbox": [
+        1920,
+        482,
+        2082,
+        586
+      ],
+      "segment_id": "page_0021_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 2-6. Data Organization in Memory",
+      "bbox": [
+        612,
+        2393,
+        1384,
+        2437
+      ],
+      "segment_id": "page_0021_seg_003"
+    }
+  ]
+}

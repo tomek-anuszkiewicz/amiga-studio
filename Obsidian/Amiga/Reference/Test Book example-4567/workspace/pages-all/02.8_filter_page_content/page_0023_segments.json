@@ -1,0 +1,46 @@
+{
+  "page": 23,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 2-2. Instruction Set Summary (Sheet 1 of 4)",
+      "bbox": [
+        535,
+        233,
+        1474,
+        275
+      ],
+      "segment_id": "page_0023_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        200,
+        292,
+        1809,
+        2251
+      ],
+      "segment_id": "page_0023_seg_002"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2",
+      "bbox": [
+        1920,
+        490,
+        2087,
+        595
+      ],
+      "segment_id": "page_0023_seg_003"
+    }
+  ]
+}

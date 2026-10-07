@@ -1,0 +1,124 @@
+{
+  "page": 36,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 7-1. Effective Address Calculation Times",
+      "bbox": [
+        636,
+        241,
+        1527,
+        276
+      ],
+      "segment_id": "page_0036_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        280,
+        298,
+        1892,
+        1051
+      ],
+      "segment_id": "page_0036_seg_002"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "\\*The size of the index register (Xn) does not affect execution time.",
+      "bbox": [
+        284,
+        1065,
+        1161,
+        1097
+      ],
+      "segment_id": "page_0036_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "7.2 MOVE INSTRUCTION EXECUTION TIMES",
+      "bbox": [
+        283,
+        1175,
+        1276,
+        1216
+      ],
+      "segment_id": "page_0036_seg_004"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "7",
+      "bbox": [
+        9,
+        1223,
+        179,
+        1328
+      ],
+      "segment_id": "page_0036_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Tables 7-2, 7-3, and 7-4 list the numbers of clock periods for the move instructions. The totals include instruction fetch, operand reads, and operand writes. The total number of clock periods, the number of read cycles, and the number of write cycles are shown in the previously described format.",
+      "bbox": [
+        285,
+        1250,
+        1882,
+        1430
+      ],
+      "segment_id": "page_0036_seg_006"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 7-2. Move Byte Instruction Execution Times",
+      "bbox": [
+        612,
+        1503,
+        1559,
+        1544
+      ],
+      "segment_id": "page_0036_seg_007"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        286,
+        1560,
+        1895,
+        2226
+      ],
+      "segment_id": "page_0036_seg_008"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "\\*The size of the index register (Xn) does not affect execution time.",
+      "bbox": [
+        289,
+        2240,
+        1169,
+        2272
+      ],
+      "segment_id": "page_0036_seg_009"
+    }
+  ]
+}

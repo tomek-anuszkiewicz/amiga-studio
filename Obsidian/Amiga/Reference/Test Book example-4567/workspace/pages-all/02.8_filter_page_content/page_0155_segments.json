@@ -1,0 +1,72 @@
+{
+  "page": 155,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "## BIT MAP OF REGISTER CRA",
+      "bbox": [
+        358,
+        328,
+        986,
+        367
+      ],
+      "segment_id": "page_0155_seg_001"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nREG# NAME  UNUSED  SPMODE   INMODE  LOAD     RUNMODE  OUTMODE  PBON     START\n\n E   CRA   unused  0=input  0=02   1=force  0=cont.  0=pulse  0=PB6OFF 0=stop\n           unused  1=output 1=CNT    load   1=one-   1=toggle 1=PB6ON  1=start\n                                 (strobe)   shot\n\n                           |<--------- Timer A Variables ----------------->|\n```",
+      "bbox": [
+        358,
+        464,
+        2059,
+        740
+      ],
+      "segment_id": "page_0155_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "All unused register bits are unaffected by a write and forced to 0 on a read.",
+      "bbox": [
+        358,
+        810,
+        1720,
+        853
+      ],
+      "segment_id": "page_0155_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "### CONTROL REGISTER B:",
+      "bbox": [
+        491,
+        914,
+        917,
+        946
+      ],
+      "segment_id": "page_0155_seg_004"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        490,
+        996,
+        1953,
+        2146
+      ],
+      "segment_id": "page_0155_seg_005"
+    }
+  ]
+}

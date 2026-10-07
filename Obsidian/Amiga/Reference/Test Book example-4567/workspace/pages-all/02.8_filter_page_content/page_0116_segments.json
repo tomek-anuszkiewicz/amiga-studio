@@ -1,0 +1,124 @@
+{
+  "page": 116,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "hardware in the same manner as the original words that were first loaded into the control registers. If the VSTART value contained in these words is lower than the current beam position, this sprite will not be reused in this display field. For consistency, the value 0 should be used for both words when ending the usage of a sprite. Sprite reuse is discussed later.",
+      "bbox": [
+        356,
+        218,
+        2157,
+        425
+      ],
+      "segment_id": "page_0116_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following data structure is for the spaceship sprite. It will be located at V = 65 and H = 128 on the normally visible part of the screen.",
+      "bbox": [
+        355,
+        486,
+        2156,
+        584
+      ],
+      "segment_id": "page_0116_seg_002"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nSPRITE:\n        DC.W    $6D60,$7200     ;VSTART, HSTART, VSTOP\n        DC.W    $0990,$07E0     ;First pair of descriptor words\n        DC.W    $13C8,$0FF0\n        DC.W    $23C4,$1FF8\n        DC.W    $13C8,$0FF0\n        DC.W    $0990,$07E0\n        DC.W    $0000,$0000     ;End of sprite data\n```",
+      "bbox": [
+        357,
+        647,
+        1766,
+        965
+      ],
+      "segment_id": "page_0116_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Displaying a Sprite",
+      "bbox": [
+        357,
+        1104,
+        898,
+        1168
+      ],
+      "segment_id": "page_0116_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "After building the data structure, you need to tell the system to display it. This section describes the display of sprites in “automatic” mode. In this mode, once the sprite DMA channel begins to retrieve and display the data, the display continues until the VSTOP position is reached. Manual mode is described later on in this chapter.",
+      "bbox": [
+        356,
+        1282,
+        2158,
+        1489
+      ],
+      "segment_id": "page_0116_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following steps are used in displaying the sprite:",
+      "bbox": [
+        355,
+        1550,
+        1320,
+        1595
+      ],
+      "segment_id": "page_0116_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "1. Decide which of the eight sprite DMA channels to use (making certain that the chosen channel is available).\n2. Set the sprite pointers to tell the system where to find the sprite data.\n3. Turn on sprite direct memory access if it is not already on.\n4. For each subsequent display field, during the vertical blanking interval, rewrite the sprite pointers.",
+      "bbox": [
+        437,
+        1658,
+        2159,
+        2135
+      ],
+      "segment_id": "page_0116_seg_007"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "CAUTION",
+      "bbox": [
+        1186,
+        2197,
+        1399,
+        2242
+      ],
+      "segment_id": "page_0116_seg_008"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "If sprite DMA is turned off while a sprite is being displayed (that is, after VSTART but before VSTOP), the system will continue to display the line of sprite data that was most recently fetched. This causes a vertical bar to appear on the screen. It is recommended that sprite DMA be turned off only during vertical blanking or during some portion of the display where you are *sure* that no sprite is being displayed.",
+      "bbox": [
+        458,
+        2277,
+        2056,
+        2535
+      ],
+      "segment_id": "page_0116_seg_009"
+    }
+  ]
+}

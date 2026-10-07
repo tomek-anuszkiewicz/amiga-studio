@@ -1,0 +1,176 @@
+{
+  "page": 45,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        288,
+        131
+      ],
+      "segment_id": "page_0045_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "2.2.1 Data Register Direct Mode",
+      "bbox": [
+        287,
+        197,
+        1176,
+        278
+      ],
+      "segment_id": "page_0045_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "In the data register direct mode, the effective address field specifies the data register containing the operand.",
+      "bbox": [
+        287,
+        317,
+        2289,
+        445
+      ],
+      "segment_id": "page_0045_seg_004"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nGENERATION:                       EA = Dn\nASSEMBLER SYNTAX:                 Dn\nEA MODE FIELD:                    000\nEA REGISTER FIELD:                REG. NO.\nNUMBER OF EXTENSION WORDS:        0\n```",
+      "bbox": [
+        479,
+        628,
+        1121,
+        824
+      ],
+      "segment_id": "page_0045_seg_005"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        479,
+        880,
+        2089,
+        941
+      ],
+      "segment_id": "page_0045_seg_006"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "2.2.2 Address Register Direct Mode",
+      "bbox": [
+        287,
+        1013,
+        1283,
+        1095
+      ],
+      "segment_id": "page_0045_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "In the address register direct mode, the effective address field specifies the address register containing the operand.",
+      "bbox": [
+        287,
+        1133,
+        2290,
+        1261
+      ],
+      "segment_id": "page_0045_seg_008"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nGENERATION:                       EA = An\nASSEMBLER SYNTAX:                 An\nEA MODE FIELD:                    001\nEA REGISTER FIELD:                REG. NO.\nNUMBER OF EXTENSION WORDS:        0\n```",
+      "bbox": [
+        483,
+        1450,
+        1113,
+        1645
+      ],
+      "segment_id": "page_0045_seg_009"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        483,
+        1704,
+        2098,
+        1765
+      ],
+      "segment_id": "page_0045_seg_010"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "2.2.3 Address Register Indirect Mode",
+      "bbox": [
+        287,
+        1838,
+        1329,
+        1920
+      ],
+      "segment_id": "page_0045_seg_011"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "In the address register indirect mode, the operand is in memory. The effective address field specifies the address register containing the address of the operand in memory.",
+      "bbox": [
+        287,
+        1958,
+        2290,
+        2086
+      ],
+      "segment_id": "page_0045_seg_012"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nGENERATION:                       EA = (An)\nASSEMBLER SYNTAX:                 (An)\nEA MODE FIELD:                    010\nEA REGISTER FIELD:                REG. NO.\nNUMBER OF EXTENSION WORDS:        0\n```",
+      "bbox": [
+        460,
+        2269,
+        1103,
+        2464
+      ],
+      "segment_id": "page_0045_seg_013"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        460,
+        2468,
+        2108,
+        2739
+      ],
+      "segment_id": "page_0045_seg_014"
+    }
+  ]
+}

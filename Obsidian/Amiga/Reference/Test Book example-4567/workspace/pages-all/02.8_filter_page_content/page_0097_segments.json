@@ -1,0 +1,33 @@
+{
+  "page": 97,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "A2000 PAL Equations",
+      "bbox": [
+        207,
+        354,
+        982,
+        438
+      ],
+      "segment_id": "page_0097_seg_002"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nPAL20L8'                                           PAL DESIGN SPECIFICATION\nPART NO.: 380 XXX-01  DESCRPT.:PALEN    REV.2        FRANK ULLMANN   03-09-86\nMEM- AND DTACK-DECODER FOR A2500 MAINBOARD (U26) ASSY 380...\nCOMMODORE BSW         !! PRELIMENARY !!\n\nA23 A22 A21 A20 A19 A18 PRW AS DBR OVL OVR GND\nC1 C3 VPA MYRAME CLKE RGAE RE DTACK BLS ROME XRDY VCC\n\n\nIF (OVR) /VPA = /AS*A23*/A22*A21                    ; PERIPHERAL ACCESS\n                                                   ; $A00000-BFFFFF\n\n/MYRAME  = /AS*DTACK*A23*A22*A21*OVR*/C1*C3          ; $E00000-FFFFFF\n         + /AS*DTACK*/A23*/A22*/A21*OVR*OVL*/C1*C3   ; $000000-1FFFFF IF\n                                                   ; OVL=H, OVR=H !\n         + /AS*DTACK*A23*A22*/A21*A20*A19*/A18*OVR*/C1*C3   ; $D80000-DBFFFF\n         + /MYRAME*/C1\n         + /MYRAME*/C3\n\n/RE      = DBR*/AS*DTACK*/A23*/A22*/A21*OVR*/OVL*    ; $000000-1FFFFF IF\n           /C1*C3                                  ; OVL=L, OVR=H !\n         + /RE*/C1\n         + /RE*/C3\n\nIF (OVR) /DTACK =\n           /AS*/A23*/A22*A21*XRDY                   ; $200000-3FFFFF EXP RAM\n         + /AS*/A23*A22*XRDY                        ; $400000-7FFFFF  \"   \"\n         + /AS*A23*/A22*/A21*XRDY                   ; $800000-9FFFFF  \"   \"\n         + /MYRAME*XRDY*/C3                        ; $000000-1FFFFF OVL=H\n                                                   ; AND $E00000-FFFFFF\n         + /RE*/C3                                 ; $000000-1FFFFF OVL=L\n         + /RGAE*/C3                               ; $C00000-D7FFFF\n                                                   ; AND $DC0000-DF0000\n         + /DTACK*/AS*XRDY\n\n/RGAE    = DBR*/AS*DTACK*A23*A22*/A21*A20*/A19*   OVR*/C1*C3;$D00000-$D7FFFF\n         + DBR*/AS*DTACK*A23*A22*/A21*A20*A19*A18*OVR*/C1*C3;$DC0000-$DFFFFF\n         + DBR*/AS*DTACK*A23*A22*/A21*/A20*       OVR*/C1*C3;$C00000-$CFFFFF\n         + /RGAE*/C1\n         + /RGAE*/C3\n\n/BLS     = /AS*DTACK*/A23*/A22*/A21*OVR*/OVL*/C1*C3 ; $000000-1FFFFF OVL=L\n         + /AS*DTACK*A23*A22*/A21*OVR*/C1*C3         ; $C00000-DFFFFF\n         + /BLS*/C1\n         + /BLS*/C3\n```",
+      "bbox": [
+        458,
+        575,
+        1858,
+        2827
+      ],
+      "segment_id": "page_0097_seg_003"
+    }
+  ]
+}

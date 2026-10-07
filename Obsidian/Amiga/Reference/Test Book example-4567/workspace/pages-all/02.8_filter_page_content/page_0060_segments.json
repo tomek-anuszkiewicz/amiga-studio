@@ -1,0 +1,46 @@
+{
+  "page": 60,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        288,
+        131
+      ],
+      "segment_id": "page_0060_seg_001"
+    },
+    {
+      "type": "caption",
+      "continuation": true,
+      "heading_level": null,
+      "md_text": "Table A-1. M68000 Family Instruction Set And\nProcessor Cross-Reference (Continued)",
+      "bbox": [
+        722,
+        250,
+        1817,
+        378
+      ],
+      "segment_id": "page_0060_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        301,
+        403,
+        2224,
+        2326
+      ],
+      "segment_id": "page_0060_seg_004"
+    }
+  ]
+}

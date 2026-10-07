@@ -1,0 +1,137 @@
+{
+  "page": 40,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        288,
+        131
+      ],
+      "segment_id": "page_0040_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "supported, where T0 is always zero, and only one system stack where the M-bit is always zero. I2, I1, and I0 define the interrupt mask level.",
+      "bbox": [
+        287,
+        200,
+        2289,
+        328
+      ],
+      "segment_id": "page_0040_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        386,
+        501,
+        2196,
+        1601
+      ],
+      "segment_id": "page_0040_seg_004"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 1-8. Status Register",
+      "bbox": [
+        970,
+        1634,
+        1605,
+        1703
+      ],
+      "segment_id": "page_0040_seg_005"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "1.3.3 Vector Base Register (VBR)",
+      "bbox": [
+        287,
+        1747,
+        1215,
+        1828
+      ],
+      "segment_id": "page_0040_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The VBR contains the base address of the exception vector table in memory. The displacement of an exception vector adds to the value in this register, which accesses the vector table.",
+      "bbox": [
+        287,
+        1867,
+        2289,
+        2053
+      ],
+      "segment_id": "page_0040_seg_007"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "1.3.4 Alternate Function Code Registers (SFC and DFC)",
+      "bbox": [
+        287,
+        2088,
+        1837,
+        2170
+      ],
+      "segment_id": "page_0040_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The alternate function code registers contain 3-bit function codes. Function codes can be considered extensions of the 32-bit logical address that optionally provides as many as eight 4-Gbyte address spaces. The processor automatically generates function codes to select address spaces for data and programs at the user and supervisor modes. Certain instructions use SFC and DFC to specify the function codes for operations.",
+      "bbox": [
+        287,
+        2208,
+        2290,
+        2511
+      ],
+      "segment_id": "page_0040_seg_009"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "1.3.5 Acu Status Register (MC68EC030 only)",
+      "bbox": [
+        287,
+        2547,
+        1530,
+        2628
+      ],
+      "segment_id": "page_0040_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The access control unit status register (ACUSR) is a 16-bit register containing the status information returned by execution of the PTEST instruction. The PTEST instruction searches the access control (AC) registers to determine a match for a specified address. A match in either or both of the AC registers sets bit 6 in the ACUSR. All other bits in the ACUSR are undefined and must not be used.",
+      "bbox": [
+        287,
+        2667,
+        2289,
+        2970
+      ],
+      "segment_id": "page_0040_seg_011"
+    }
+  ]
+}

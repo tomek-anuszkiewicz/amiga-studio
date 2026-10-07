@@ -1,0 +1,98 @@
+{
+  "page": 146,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        359,
+        229,
+        1852,
+        385
+      ],
+      "segment_id": "page_0146_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "These addresses each read a pair of 8-bit mouse counters. 0=left controller pair, 1=right controller pair (four counters total). The bit usage for both left and right addresses is shown below. Each counter is clocked by signals from two controller pins. Bits 1 and 0 of each counter may be read to determine the state of these two clock pins. This allows these pins to double as joystick switch inputs.",
+      "bbox": [
+        735,
+        435,
+        1872,
+        800
+      ],
+      "segment_id": "page_0146_seg_002"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nMouse counter usage:\n(pins 1,3=Yclock, pins 2,4=Xclock)\n\nBIT# 15,14,13,12,11,10,09,08  07,06,05,04,03,02,01,00\n     -----------------------  -----------------------\n0DAT Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0  X7 X6 X5 X4 X3 X2 X1 X0\n1DAT Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0  X7 X6 X5 X4 X3 X2 X1 X0\n```",
+      "bbox": [
+        735,
+        849,
+        1926,
+        1127
+      ],
+      "segment_id": "page_0146_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following table shows the mouse/joystick connector pin usage. The pins (and their functions) are sampled (multiplexed) into the DENISE chip during the clock times shown in the table. This table is for reference only and should not be needed by the programmer. (Note that the joystick functions are all \"active low\" at the connector pins.)",
+      "bbox": [
+        735,
+        1178,
+        1897,
+        1505
+      ],
+      "segment_id": "page_0146_seg_004"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        735,
+        1551,
+        1724,
+        2038
+      ],
+      "segment_id": "page_0146_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "After being sampled, these connector pin signals are used in quadrature to clock the mouse counters. The LEFT and RIGHT joystick functions (active high) are directly available on the Y1 and X1 bits of each counter. In order to recreate the FORWARD and BACK joystick functions, however, it is necessary to logically combine (exclusive OR) the lower two bits of each counter. This is illustrated in the following table.",
+      "bbox": [
+        735,
+        2087,
+        1888,
+        2454
+      ],
+      "segment_id": "page_0146_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        735,
+        2501,
+        1922,
+        2744
+      ],
+      "segment_id": "page_0146_seg_007"
+    }
+  ]
+}

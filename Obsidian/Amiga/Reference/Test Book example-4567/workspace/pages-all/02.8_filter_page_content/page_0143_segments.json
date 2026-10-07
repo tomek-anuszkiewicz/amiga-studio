@@ -1,0 +1,98 @@
+{
+  "page": 143,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        374,
+        291,
+        1990,
+        1053
+      ],
+      "segment_id": "page_0143_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "HOW OUTPUT DATA IS TRANSMITTED",
+      "bbox": [
+        356,
+        1195,
+        1221,
+        1241
+      ],
+      "segment_id": "page_0143_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "You send data out on the transmit lines by writing into the serial data output register (SERDAT). This register is write-only.",
+      "bbox": [
+        355,
+        1332,
+        2153,
+        1434
+      ],
+      "segment_id": "page_0143_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Data will be sent out at the same rate as you have established for the read. Immediately after you write the data into this register, the system will begin the transmission at the baud rate you selected.",
+      "bbox": [
+        356,
+        1496,
+        2155,
+        1649
+      ],
+      "segment_id": "page_0143_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "At the start of the operation, this data is transferred from SERDAT into an internal serial shift register. When the transfer to the serial shift register has been completed, SERDAT can accept new data; the TBE interrupt signals this fact.",
+      "bbox": [
+        356,
+        1709,
+        2157,
+        1862
+      ],
+      "segment_id": "page_0143_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Data will be moved out of the shift register, one bit during each time interval, starting with the least significant bit. The shifting continues until all 1 bits have been shifted out. Any number or combination of data and stop bits may be specified this way.",
+      "bbox": [
+        356,
+        1922,
+        2158,
+        2077
+      ],
+      "segment_id": "page_0143_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "SERDAT is a 16-bit register that allows you to control the format (appearance) of the transmitted data. To form a typical data sequence, such as one start bit, eight data bits, and one stop bit, you write into SERDAT the contents shown in Figures 8-11 and 8-12.",
+      "bbox": [
+        357,
+        2138,
+        2156,
+        2291
+      ],
+      "segment_id": "page_0143_seg_007"
+    }
+  ]
+}

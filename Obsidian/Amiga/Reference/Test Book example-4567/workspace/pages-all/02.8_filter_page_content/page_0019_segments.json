@@ -1,0 +1,124 @@
+{
+  "page": 19,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 2-1. Data Addressing Modes",
+      "bbox": [
+        664,
+        240,
+        1320,
+        279
+      ],
+      "segment_id": "page_0019_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        414,
+        297,
+        1702,
+        1230
+      ],
+      "segment_id": "page_0019_seg_002"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2",
+      "bbox": [
+        1912,
+        497,
+        2086,
+        601
+      ],
+      "segment_id": "page_0019_seg_003"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTES: 1. The VBR, SFC, and DFC apply to the MC68010 only",
+      "bbox": [
+        392,
+        1240,
+        1274,
+        1273
+      ],
+      "segment_id": "page_0019_seg_004"
+    },
+    {
+      "type": "table_legend",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "EA = Effective Address\n\nDn = Data Register\n\nAn = Address Register\n\n( ) = Contents of\n\nPC = Program Counter\n\nd₈ = 8-Bit Offset (Displacement)\n\nd₁₆ = 16-Bit Offset (Displacement)\n\nN = 1 for byte, 2 for word, and 4 for long word. If An is the stack pointer and the operand size is byte, N = 2 to keep the stack pointer on a word boundary.\n\n← = Replaces\n\nXn = Address or Data Register used as Index Register\n\nSR = Status Register\n\nUSP = User Stack Pointer\n\nSSP = Supervisor Stack Pointer\n\nCP = Program Counter\n\nVBR = Vector Base Register",
+      "bbox": [
+        530,
+        1278,
+        1702,
+        1856
+      ],
+      "segment_id": "page_0019_seg_005"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "2.3 DATA ORGANIZATION IN REGISTERS",
+      "bbox": [
+        192,
+        1936,
+        1183,
+        1978
+      ],
+      "segment_id": "page_0019_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The eight data registers support data operands of 1, 8, 16, or 32 bits. The seven address registers and the active stack pointer support address operands of 32 bits.",
+      "bbox": [
+        192,
+        2011,
+        1800,
+        2095
+      ],
+      "segment_id": "page_0019_seg_007"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "2.3.1 Data Registers",
+      "bbox": [
+        193,
+        2160,
+        665,
+        2207
+      ],
+      "segment_id": "page_0019_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Each data register is 32 bits wide. Byte operands occupy the low-order 8 bits, word operands the low-order 16 bits, and long-word operands, the entire 32 bits. The least significant bit is addressed as bit zero; the most significant bit is addressed as bit 31.",
+      "bbox": [
+        193,
+        2234,
+        1805,
+        2369
+      ],
+      "segment_id": "page_0019_seg_009"
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "page": 63,
+  "image_width": 3300,
+  "image_height": 2550,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        288,
+        131
+      ],
+      "segment_id": "page_0063_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        338,
+        488,
+        3001,
+        605
+      ],
+      "segment_id": "page_0063_seg_003"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure B-21. MC68040 Idle Stack Frame",
+      "bbox": [
+        1230,
+        739,
+        2129,
+        805
+      ],
+      "segment_id": "page_0063_seg_004"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        318,
+        1227,
+        3063,
+        2049
+      ],
+      "segment_id": "page_0063_seg_005"
+    },
+    {
+      "type": "table_legend",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Reserved",
+      "bbox": [
+        312,
+        2100,
+        713,
+        2162
+      ],
+      "segment_id": "page_0063_seg_006"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure B-22. MC68040 Unimplimented Instruction Stack Frame",
+      "bbox": [
+        1030,
+        2143,
+        2493,
+        2212
+      ],
+      "segment_id": "page_0063_seg_007"
+    }
+  ]
+}

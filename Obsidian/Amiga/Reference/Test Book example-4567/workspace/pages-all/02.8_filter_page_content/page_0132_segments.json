@@ -1,0 +1,124 @@
+{
+  "page": 132,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The C and D pointer registers should be initialized to the word containing the first pixel of the line; the C and D modulo registers should be set to the width of the bitplane in bytes.",
+      "bbox": [
+        357,
+        231,
+        2156,
+        331
+      ],
+      "segment_id": "page_0132_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The SRCA, SRCC, and DEST bits of BLTCON0 should be set to one, and the SRCB flag should be set to zero. The OVFLAG should be cleared. If only a single bit per horizontal row is desired, the ONEDOT bit of BLTCON1 should be set; otherwise it should be cleared.",
+      "bbox": [
+        357,
+        393,
+        2156,
+        545
+      ],
+      "segment_id": "page_0132_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The logic function remains. The C DMA channel represents the original source, the A channel the bit to set in the line, and the B channel the pattern to draw. Thus, to draw a line, the function \\(AB+\\overline{A}C\\) is the most common. To draw the line using exclusive-or mode, so it can be easily erased by drawing it again, the function \\(AB\\overline{C}+\\overline{A}C\\) can be used.",
+      "bbox": [
+        357,
+        605,
+        2157,
+        815
+      ],
+      "segment_id": "page_0132_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "We set the blit height to the length of the line, which is *dx* + 1. The width must be set to two for all line drawing. (Of course, the BLTSIZE register should not be written until the very end, when all other registers have been filled.)",
+      "bbox": [
+        358,
+        877,
+        2159,
+        1030
+      ],
+      "segment_id": "page_0132_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "REGISTER SUMMARY FOR LINE MODE",
+      "bbox": [
+        358,
+        1150,
+        1232,
+        1196
+      ],
+      "segment_id": "page_0132_seg_005"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Preliminary setup:",
+      "bbox": [
+        357,
+        1288,
+        694,
+        1334
+      ],
+      "segment_id": "page_0132_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The line goes from (*x1,y1*) to (*x2,y2*).",
+      "bbox": [
+        504,
+        1396,
+        1188,
+        1443
+      ],
+      "segment_id": "page_0132_seg_007"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\ndx = max(abs(x2 - x1), abs(y2 - y1)) ;\ndy = min(abs(x2 - x1), abs(y2 - y1)) ;\n```",
+      "bbox": [
+        506,
+        1500,
+        1370,
+        1575
+      ],
+      "segment_id": "page_0132_seg_008"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nRegister setup:\n\n    BLTADAT = $8000\n    BLTBDAT = line texture pattern ($FFFF for a solid line)\n\n    BLTAFWM = $FFFF\n    BLTALWM = $FFFF\n\n    BLTAMOD = 4 * (dy - dx)\n    BLTBMOD = 4 * dy\n    BLTCMOD = width of the bitplane in bytes\n    BLTDMOD = width of the bitplane in bytes\n\n    BLTAPT  = (4 * dy) - (2 * dx)\n    BLTBPT  = unused\n    BLTCPT  = word containing the first pixel of the line\n    BLTDPT  = word containing the first pixel of the line\n```",
+      "bbox": [
+        356,
+        1639,
+        1553,
+        2546
+      ],
+      "segment_id": "page_0132_seg_009"
+    }
+  ]
+}

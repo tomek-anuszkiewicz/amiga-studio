@@ -1,0 +1,137 @@
+{
+  "page": 126,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Each of the DMA channels can be independently enabled or disabled. The enable bits are bits SRCA, SRCB, SRCC, and DEST in control register zero (BLTCON0).",
+      "bbox": [
+        344,
+        233,
+        2144,
+        331
+      ],
+      "segment_id": "page_0126_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "When disabled, no memory cycles will be executed for that channel and, for a source channel, the constant value stored in the data register of that channel will be used for each blitter cycle. For this purpose, each of the three source channels have preloadable data registers, called BLTxDAT.",
+      "bbox": [
+        344,
+        395,
+        2147,
+        546
+      ],
+      "segment_id": "page_0126_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Images in memory are usually stored in a linear fashion; each word of data on a line is located at an address that is one greater than the word on its left. i.e. Each line is a “plus one” continuation of the previous line. (See Figure 6-1.)",
+      "bbox": [
+        344,
+        606,
+        2167,
+        759
+      ],
+      "segment_id": "page_0126_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        281,
+        890,
+        2223,
+        1500
+      ],
+      "segment_id": "page_0126_seg_004"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 6-1: How Images are Stored in Memory",
+      "bbox": [
+        807,
+        1566,
+        1667,
+        1611
+      ],
+      "segment_id": "page_0126_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The map in Figure 6-1 represents a single bit-plane (one bit of color) of an image at word addresses 20 through 61. Each of these addresses accesses one word (16 pixels) of a single bit-plane. If this image required sixteen colors, four bit-planes like this would be required in memory, and four copy (move) operations would be required to completely move the image.",
+      "bbox": [
+        344,
+        1727,
+        2143,
+        1935
+      ],
+      "segment_id": "page_0126_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The blitter is very efficient at copying such blocks because it needs to be told only the starting address (20), the destination address, and the size of the block (height = 6, width = 7). It will then automatically move the data, one word at a time, whenever the data bus is available. When the transfer is complete, the blitter will signal the processor with a flag and an interrupt.",
+      "bbox": [
+        344,
+        1997,
+        2143,
+        2202
+      ],
+      "segment_id": "page_0126_seg_007"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        1171,
+        2264,
+        1302,
+        2309
+      ],
+      "segment_id": "page_0126_seg_008"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This copy (move) operation operates on memory and may or may not change the memory currently being used for display.",
+      "bbox": [
+        444,
+        2343,
+        2040,
+        2444
+      ],
+      "segment_id": "page_0126_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "All data copy blits are performed as rectangles of words, with a given width and height. All four DMA channels use a single blit size register, called BLTSIZE, used for both the width and height. The width can take a value of from 1 to 64 words (16 to 1024 bits). The height can run from 1 to 1024 rows. The width is stored in the least significant six bits of the BLTSIZE register. If a value of zero is stored, a width count of 64 words is used. This is the only parameter in the blitter",
+      "bbox": [
+        346,
+        2506,
+        2146,
+        2765
+      ],
+      "segment_id": "page_0126_seg_010"
+    }
+  ]
+}

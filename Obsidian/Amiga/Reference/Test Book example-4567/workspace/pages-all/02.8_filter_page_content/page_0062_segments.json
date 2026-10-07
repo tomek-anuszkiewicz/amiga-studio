@@ -1,0 +1,72 @@
+{
+  "page": 62,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        288,
+        131
+      ],
+      "segment_id": "page_0062_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        894,
+        418,
+        1692,
+        807
+      ],
+      "segment_id": "page_0062_seg_003"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure B-7. MC68EC040 and MC68LC040 Floating-Point Unimplemented Stack Frame, Format $4",
+      "bbox": [
+        357,
+        842,
+        2233,
+        970
+      ],
+      "segment_id": "page_0062_seg_004"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        895,
+        1140,
+        1693,
+        2428
+      ],
+      "segment_id": "page_0062_seg_005"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure B-8. MC68040 Access Error Stack Frame, Format $7",
+      "bbox": [
+        583,
+        2459,
+        2007,
+        2528
+      ],
+      "segment_id": "page_0062_seg_006"
+    }
+  ]
+}

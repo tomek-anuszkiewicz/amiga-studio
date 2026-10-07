@@ -1,0 +1,176 @@
+{
+  "page": 51,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        287,
+        131
+      ],
+      "segment_id": "page_0051_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        262,
+        180,
+        2291,
+        358
+      ],
+      "segment_id": "page_0051_seg_003"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nOperation:     Source10 + Destination10 + X → Destination\n```",
+      "bbox": [
+        262,
+        396,
+        1721,
+        466
+      ],
+      "segment_id": "page_0051_seg_004"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nAssembler      ABCD Dy,Dx\nSyntax:        ABCD – (Ay), – (Ax)\n```",
+      "bbox": [
+        262,
+        504,
+        1173,
+        633
+      ],
+      "segment_id": "page_0051_seg_005"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nAttributes:    Size = (Byte)\n```",
+      "bbox": [
+        262,
+        671,
+        1014,
+        741
+      ],
+      "segment_id": "page_0051_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**Description:** Adds the source operand to the destination operand along with the extend bit, and stores the result in the destination location. The addition is performed using binary-coded decimal arithmetic. The operands, which are packed binary-coded decimal numbers, can be addressed in two different ways:",
+      "bbox": [
+        262,
+        779,
+        2265,
+        1024
+      ],
+      "segment_id": "page_0051_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "1. Data Register to Data Register: The operands are contained in the data registers specified in the instruction.\n\n2. Memory to Memory: The operands are addressed with the predecrement addressing mode using the address registers specified in the instruction.",
+      "bbox": [
+        449,
+        1013,
+        2246,
+        1278
+      ],
+      "segment_id": "page_0051_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This operation is a byte operation only.",
+      "bbox": [
+        374,
+        1317,
+        1248,
+        1386
+      ],
+      "segment_id": "page_0051_seg_009"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Condition Codes:",
+      "bbox": [
+        262,
+        1425,
+        692,
+        1495
+      ],
+      "segment_id": "page_0051_seg_010"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        410,
+        1551,
+        1040,
+        1665
+      ],
+      "segment_id": "page_0051_seg_011"
+    },
+    {
+      "type": "table_legend",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "X — Set the same as the carry bit.\n\nN — Undefined.\n\nZ — Cleared if the result is nonzero; unchanged otherwise.\n\nV — Undefined.\n\nC — Set if a decimal carry was generated; cleared otherwise.",
+      "bbox": [
+        406,
+        1717,
+        1782,
+        2020
+      ],
+      "segment_id": "page_0051_seg_012"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        1194,
+        2059,
+        1345,
+        2128
+      ],
+      "segment_id": "page_0051_seg_013"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Normally, the Z condition code bit is set via programming before the start of an operation. This allows successful tests for zero results upon completion of multiple-precision operations.",
+      "bbox": [
+        562,
+        2142,
+        1964,
+        2328
+      ],
+      "segment_id": "page_0051_seg_014"
+    }
+  ]
+}

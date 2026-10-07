@@ -1,0 +1,98 @@
+{
+  "page": 135,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        279,
+        325,
+        2218,
+        721
+      ],
+      "segment_id": "page_0135_seg_001"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 6-11: Time Slots Used by a Six Bit Plane Display",
+      "bbox": [
+        723,
+        873,
+        1765,
+        920
+      ],
+      "segment_id": "page_0135_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "If you specify four high-resolution bit-planes (640 pixels wide), bit-plane DMA needs all of the available memory time slots during the display time just to fetch the 40 data words for each line of the four bit-planes (40 * 4 = 160 time slots). This effectively locks out the 68000 (as well as the blitter or Copper) from any memory access during the display, except during horizontal and vertical blanking.",
+      "bbox": [
+        348,
+        1035,
+        2150,
+        1297
+      ],
+      "segment_id": "page_0135_seg_003"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        281,
+        1449,
+        2223,
+        1849
+      ],
+      "segment_id": "page_0135_seg_004"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 6-12: Time Slots Used by a High Resolution Display",
+      "bbox": [
+        694,
+        1953,
+        1795,
+        2001
+      ],
+      "segment_id": "page_0135_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Each horizontal line in a normal, full-sized display contains 320 pixels in low-resolution mode or 640 pixels in high-resolution mode. Thus, either 20 or 40 words will be fetched during the horizontal line display time. If you want to scroll a playfield, one extra data word per line must be fetched from the memory.",
+      "bbox": [
+        348,
+        2113,
+        2153,
+        2322
+      ],
+      "segment_id": "page_0135_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Display size is adjustable (see Chapter 3, “Playfield Hardware”), and bit-plane DMA takes precedence over sprite DMA. As shown in Figure 6-9, larger displays may block out one or more of the highest-numbered sprites, especially with scrolling.",
+      "bbox": [
+        349,
+        2382,
+        2155,
+        2537
+      ],
+      "segment_id": "page_0135_seg_007"
+    }
+  ]
+}

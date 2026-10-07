@@ -1,0 +1,20 @@
+{
+  "page": 149,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        430,
+        233,
+        2150,
+        1625
+      ],
+      "segment_id": "page_0149_seg_001"
+    }
+  ]
+}

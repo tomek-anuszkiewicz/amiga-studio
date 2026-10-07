@@ -1,0 +1,111 @@
+{
+  "page": 15,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "1",
+      "bbox": [
+        1929,
+        333,
+        2089,
+        437
+      ],
+      "segment_id": "page_0015_seg_001"
+    },
+    {
+      "type": "chapter",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "SECTION 1\nOVERVIEW",
+      "bbox": [
+        220,
+        455,
+        550,
+        567
+      ],
+      "segment_id": "page_0015_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This manual includes hardware details and programming information for the MC68000, the MC68HC000, the MC68HC001, the MC68008, the MC68010, and the MC68EC000. For ease of reading, the name M68000 MPUs will be used when referring to all processors. Refer to M68000PM/AD, *M68000 Programmer's Reference Manual*, for detailed information on the MC68000 instruction set.",
+      "bbox": [
+        219,
+        633,
+        1825,
+        855
+      ],
+      "segment_id": "page_0015_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The six microprocessors are very similar. They all contain the following features",
+      "bbox": [
+        219,
+        902,
+        1634,
+        947
+      ],
+      "segment_id": "page_0015_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "- 16 32-Bit Data and Address Registers\n- 16-Mbyte Direct Addressing Range\n- Program Counter\n- 6 Powerful Instruction Types\n- Operations on Five Main Data Types\n- Memory-Mapped Input/Output (I/O)\n- 14 Addressing Modes",
+      "bbox": [
+        257,
+        988,
+        964,
+        1407
+      ],
+      "segment_id": "page_0015_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following processors contain additional features:",
+      "bbox": [
+        218,
+        1427,
+        1156,
+        1471
+      ],
+      "segment_id": "page_0015_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "- MC68010\n  - Virtual Memory/Machine Support\n  - High-Performance Looping Instructions\n- MC68HC001/MC68EC000\n  - Statically Selectable 8- or 16-Bit Data Bus\n- MC68HC000/MC68EC000/MC68HC001\n  - Low-Power",
+      "bbox": [
+        256,
+        1490,
+        1086,
+        1906
+      ],
+      "segment_id": "page_0015_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "All the processors are basically the same with the exception of the MC68008. The MC68008 differs from the others in that the data bus size is eight bits, and the address range is smaller. The MC68010 has a few additional instructions and instructions that operate differently than the corresponding instructions of the other devices.",
+      "bbox": [
+        217,
+        1932,
+        1823,
+        2116
+      ],
+      "segment_id": "page_0015_seg_008"
+    }
+  ]
+}

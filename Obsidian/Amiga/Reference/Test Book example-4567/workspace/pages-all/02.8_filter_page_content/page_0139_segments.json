@@ -1,0 +1,59 @@
+{
+  "page": 139,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "CIAAPRA/CIABPRB - Disk selection, control and sensing",
+      "bbox": [
+        360,
+        340,
+        1493,
+        386
+      ],
+      "segment_id": "page_0139_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following table lists how 8520 chip bits used by the disk subsystem. Bits labeled \"PA\" are input bits in CIAAPRA ($BFE001). Bits labeled \"PB\" are output bits located in CIAAPRB ($BFD100). More information on how the 8520 chips operate can be found in Appendix F.",
+      "bbox": [
+        358,
+        479,
+        2157,
+        629
+      ],
+      "segment_id": "page_0139_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 8-5: Disk Subsystem",
+      "bbox": [
+        1004,
+        745,
+        1501,
+        790
+      ],
+      "segment_id": "page_0139_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        365,
+        879,
+        2105,
+        2645
+      ],
+      "segment_id": "page_0139_seg_004"
+    }
+  ]
+}

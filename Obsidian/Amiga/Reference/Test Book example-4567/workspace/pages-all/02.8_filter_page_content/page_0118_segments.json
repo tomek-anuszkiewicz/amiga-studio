@@ -1,0 +1,59 @@
+{
+  "page": 118,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 4-6: Color Registers for Single Sprites",
+      "bbox": [
+        840,
+        287,
+        1660,
+        334
+      ],
+      "segment_id": "page_0118_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        746,
+        418,
+        1755,
+        1594
+      ],
+      "segment_id": "page_0118_seg_002"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "\\* Selects transparent mode.",
+      "bbox": [
+        998,
+        1622,
+        1503,
+        1670
+      ],
+      "segment_id": "page_0118_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "If the bit combinations from attached sprites are as shown in Table 4-7, then the colors will be taken from the registers shown.",
+      "bbox": [
+        356,
+        1729,
+        2158,
+        1831
+      ],
+      "segment_id": "page_0118_seg_004"
+    }
+  ]
+}

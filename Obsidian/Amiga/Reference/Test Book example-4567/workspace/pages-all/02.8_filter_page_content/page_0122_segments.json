@@ -1,0 +1,163 @@
+{
+  "page": 122,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Limitations on Selection of Sampling Period",
+      "bbox": [
+        358,
+        307,
+        1217,
+        352
+      ],
+      "segment_id": "page_0122_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The sampling period is limited by the number of DMA cycles allocated to an audio channel. Each audio channel is allocated one DMA slot per horizontal scan line of the screen display. An audio channel can retrieve two data samples during each horizontal scan line. The following calculation gives the maximum sampling rate in samples per second.",
+      "bbox": [
+        356,
+        445,
+        2157,
+        651
+      ],
+      "segment_id": "page_0122_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "*2 samples/line \\* 262.5 lines/frame \\* 59.94 frames/second = 31,469 samples/second*",
+      "bbox": [
+        486,
+        738,
+        2033,
+        784
+      ],
+      "segment_id": "page_0122_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The figure of 31,469 is a theoretical maximum. In order to save buffers, the hardware is designed to handle 28,867 samples/second. The system timing interval is 279.365 nanoseconds, or .279365 microseconds. The maximum sampling rate of 28,867 samples per second is 34.642 microseconds per sample (1/28,867 = .000034642). The formula for calculating the sampling period is:",
+      "bbox": [
+        355,
+        870,
+        2158,
+        1131
+      ],
+      "segment_id": "page_0122_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "$$\\text{Period value} = \\frac{\\text{sample interval}}{\\text{clock interval}} = \\frac{\\text{clock constant}}{\\text{samples per second}}$$",
+      "bbox": [
+        742,
+        1155,
+        1758,
+        1259
+      ],
+      "segment_id": "page_0122_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Thus, the minimum period value is derived by dividing 34.642 microseconds per sample by the number of microseconds per interval:",
+      "bbox": [
+        355,
+        1336,
+        2156,
+        1435
+      ],
+      "segment_id": "page_0122_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "$$\\text{Minimum period} = \\frac{34.642\\ \\text{microseconds/sample}}{0.279365\\ \\text{microseconds/interval}} = 124\\ \\text{timing intervals/sample}$$",
+      "bbox": [
+        483,
+        1459,
+        2016,
+        1565
+      ],
+      "segment_id": "page_0122_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "or:",
+      "bbox": [
+        356,
+        1642,
+        407,
+        1687
+      ],
+      "segment_id": "page_0122_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "$$\\text{Minimum period} = \\frac{3,579,545\\ \\text{ticks/second}}{28,867\\ \\text{samples/second}} = 124\\ \\text{ticks/sample}$$",
+      "bbox": [
+        666,
+        1713,
+        1833,
+        1819
+      ],
+      "segment_id": "page_0122_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Therefore, a value of at least 124 must be written into the period register to assure that the audio system DMA will be able to retrieve the next data sample. If the period value is below 124, by the time the cycle count has reached 0, the audio DMA will not have had enough time to retrieve the next data sample and the previous sample will be reused.",
+      "bbox": [
+        355,
+        1894,
+        2158,
+        2099
+      ],
+      "segment_id": "page_0122_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "28,867 samples/second is also the maximum sampling rate for PAL systems. Thus, for PAL systems, a value of at least 123 ticks/sample must be written into the period register.",
+      "bbox": [
+        355,
+        2163,
+        2147,
+        2263
+      ],
+      "segment_id": "page_0122_seg_011"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        566,
+        2346,
+        1940,
+        2590
+      ],
+      "segment_id": "page_0122_seg_012"
+    }
+  ]
+}

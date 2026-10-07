@@ -1,0 +1,150 @@
+{
+  "page": 54,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        287,
+        131
+      ],
+      "segment_id": "page_0054_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        287,
+        180,
+        2316,
+        358
+      ],
+      "segment_id": "page_0054_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Instruction Fields:",
+      "bbox": [
+        287,
+        396,
+        733,
+        466
+      ],
+      "segment_id": "page_0054_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Register field—Specifies any of the eight data registers.",
+      "bbox": [
+        394,
+        479,
+        1640,
+        549
+      ],
+      "segment_id": "page_0054_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Opmode field",
+      "bbox": [
+        401,
+        587,
+        713,
+        657
+      ],
+      "segment_id": "page_0054_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        548,
+        704,
+        1683,
+        907
+      ],
+      "segment_id": "page_0054_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Effective Address field—Determines addressing mode.",
+      "bbox": [
+        401,
+        954,
+        1624,
+        1024
+      ],
+      "segment_id": "page_0054_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "a. If the location specified is a source operand, all addressing modes can be used as listed in the following tables:",
+      "bbox": [
+        461,
+        1062,
+        2280,
+        1191
+      ],
+      "segment_id": "page_0054_seg_009"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        528,
+        1299,
+        2289,
+        2214
+      ],
+      "segment_id": "page_0054_seg_010"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "\\*Word and long only",
+      "bbox": [
+        532,
+        2230,
+        870,
+        2281
+      ],
+      "segment_id": "page_0054_seg_011"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "\\*\\*Can be used with CPU32.",
+      "bbox": [
+        532,
+        2276,
+        994,
+        2328
+      ],
+      "segment_id": "page_0054_seg_012"
+    }
+  ]
+}

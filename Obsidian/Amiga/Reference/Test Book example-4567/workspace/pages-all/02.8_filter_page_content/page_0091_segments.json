@@ -1,0 +1,189 @@
+{
+  "page": 91,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This four bit field can be used to specify options as indicated below:",
+      "bbox": [
+        795,
+        312,
+        2035,
+        359
+      ],
+      "segment_id": "page_0091_seg_001"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nBit 7 = 0  5 bit correction span (default value)\n      = 1  11 bit correction span\n\nBit 6 = 0  Retries & ECC enabled (default value)\n      = 1  Retries & ECC disabled\n\nBit 5 = 0  Not Used\n\nBit 4 = 0  Not Used\n```",
+      "bbox": [
+        846,
+        413,
+        1793,
+        857
+      ],
+      "segment_id": "page_0091_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Step Rate",
+      "bbox": [
+        796,
+        920,
+        977,
+        966
+      ],
+      "segment_id": "page_0091_seg_003"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nStep Rate 14 = 11.1 usec\nStep Rate 15 = 30 usec\nAll Others   =  3 msec\n```",
+      "bbox": [
+        846,
+        1018,
+        1360,
+        1159
+      ],
+      "segment_id": "page_0091_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Possible Error Codes",
+      "bbox": [
+        799,
+        1221,
+        1182,
+        1260
+      ],
+      "segment_id": "page_0091_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "No error, invalid command, DMA error.",
+      "bbox": [
+        799,
+        1319,
+        1519,
+        1362
+      ],
+      "segment_id": "page_0091_seg_006"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Action",
+      "bbox": [
+        798,
+        1495,
+        914,
+        1535
+      ],
+      "segment_id": "page_0091_seg_007"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Initialize Unit 1\n(Opcode CC)",
+      "bbox": [
+        146,
+        1496,
+        526,
+        1612
+      ],
+      "segment_id": "page_0091_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This command with initialize or set drive parameters of unit 1 only. This allows for the HDC to support two different drive types at the same time. The action of this command is identical to the action of the ‘Set Drive Parameter’ command noted above except that it will effect only unit 1. For command details see section 6.2.9.",
+      "bbox": [
+        798,
+        1591,
+        2035,
+        1832
+      ],
+      "segment_id": "page_0091_seg_009"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Action",
+      "bbox": [
+        798,
+        1993,
+        915,
+        2031
+      ],
+      "segment_id": "page_0091_seg_010"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Change Command Block\n(Class 0, Opcode F)",
+      "bbox": [
+        146,
+        1993,
+        618,
+        2168
+      ],
+      "segment_id": "page_0091_seg_011"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The Change Command Block is used to move the location of the command block from the default on power up to a new location. Bytes 6 and 7 of the command block are used as indirect address pointers for the beginning of a 7 byte block of memory organized as follows:",
+      "bbox": [
+        799,
+        2086,
+        2040,
+        2330
+      ],
+      "segment_id": "page_0091_seg_012"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 5-10. Change Command Block Address",
+      "bbox": [
+        1007,
+        2387,
+        1836,
+        2431
+      ],
+      "segment_id": "page_0091_seg_013"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        837,
+        2483,
+        2005,
+        2731
+      ],
+      "segment_id": "page_0091_seg_014"
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "page": 25,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": true,
+      "heading_level": null,
+      "md_text": "Table 2-2. Instruction Set Summary (Sheet 4 of 4)",
+      "bbox": [
+        631,
+        253,
+        1570,
+        296
+      ],
+      "segment_id": "page_0025_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        297,
+        312,
+        1907,
+        1831
+      ],
+      "segment_id": "page_0025_seg_002"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2",
+      "bbox": [
+        14,
+        482,
+        192,
+        586
+      ],
+      "segment_id": "page_0025_seg_003"
+    },
+    {
+      "type": "table_legend",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE: d is direction, L or R.",
+      "bbox": [
+        300,
+        1840,
+        680,
+        1873
+      ],
+      "segment_id": "page_0025_seg_004"
+    }
+  ]
+}

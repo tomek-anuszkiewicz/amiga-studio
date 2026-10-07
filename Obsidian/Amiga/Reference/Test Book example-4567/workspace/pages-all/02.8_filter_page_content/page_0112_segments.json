@@ -1,0 +1,124 @@
+{
+  "page": 112,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Combination 000 selects transparent mode, to show the color of whatever object (the other playfield, a sprite, or the background color) may be “behind” the playfield.",
+      "bbox": [
+        359,
+        219,
+        2159,
+        317
+      ],
+      "segment_id": "page_0112_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 3-12 shows the color registers for high-resolution, dual-playfield mode.",
+      "bbox": [
+        358,
+        380,
+        1771,
+        425
+      ],
+      "segment_id": "page_0112_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 3-12: Playfields 1 and 2 Color Registers — High-resolution Mode",
+      "bbox": [
+        591,
+        487,
+        1912,
+        531
+      ],
+      "segment_id": "page_0112_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        925,
+        619,
+        1579,
+        1555
+      ],
+      "segment_id": "page_0112_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "DUAL-PLAYFIELD PRIORITY AND CONTROL",
+      "bbox": [
+        357,
+        1701,
+        1353,
+        1746
+      ],
+      "segment_id": "page_0112_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Either playfield 1 or 2 may have priority; that is, either one may be displayed in front of the other. Playfield 1 normally has priority. The bit known as PF2PRI (bit 6) in register BPLCON2 is used to control priority. When PF2PRI = 1, playfield 2 has priority over playfield 1. When PF2PRI = 0, playfield 1 has priority.",
+      "bbox": [
+        356,
+        1840,
+        2156,
+        2045
+      ],
+      "segment_id": "page_0112_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "You can also control the relative priority of playfields and sprites. Chapter 7, “System Control Hardware,” shows you how to control the priority of these objects.",
+      "bbox": [
+        356,
+        2108,
+        2156,
+        2206
+      ],
+      "segment_id": "page_0112_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "You can control the two playfields separately as follows:",
+      "bbox": [
+        356,
+        2271,
+        1388,
+        2315
+      ],
+      "segment_id": "page_0112_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "- They can have different-sized representations in memory, and different portions of each one can be selected for display.\n- They can be scrolled separately.",
+      "bbox": [
+        440,
+        2378,
+        2158,
+        2580
+      ],
+      "segment_id": "page_0112_seg_009"
+    }
+  ]
+}

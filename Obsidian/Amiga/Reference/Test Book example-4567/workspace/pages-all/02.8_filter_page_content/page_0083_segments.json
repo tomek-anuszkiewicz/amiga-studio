@@ -1,0 +1,163 @@
+{
+  "page": 83,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "Janus.Library",
+      "bbox": [
+        225,
+        351,
+        702,
+        433
+      ],
+      "segment_id": "page_0083_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "PREFACE",
+      "bbox": [
+        228,
+        631,
+        460,
+        679
+      ],
+      "segment_id": "page_0083_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This is a brief description of the janus code. This code supports low level access to the “janus” system — the link between a PC and an Amiga.",
+      "bbox": [
+        877,
+        615,
+        2110,
+        773
+      ],
+      "segment_id": "page_0083_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "THE PUBLIC ROUTINES",
+      "bbox": [
+        228,
+        928,
+        814,
+        981
+      ],
+      "segment_id": "page_0083_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "- AllocJanusMem\n- CheckJanusInt\n- CleanupJanusSig\n- FreeJanusMem\n- GetJanusStart\n- GetParamOffset\n- JBCopy\n- JanusLock\n- JanusMemBase\n- JanusMemToOffset\n- JanusMemType\n- JanusUnLock\n- SendJanusInt\n- SetJanusEnable\n- SetJanusHandler\n- SetJanusRequest\n- SetParamOffset\n- SetupJanusSig",
+      "bbox": [
+        1051,
+        923,
+        1463,
+        1825
+      ],
+      "segment_id": "page_0083_seg_006"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Contents",
+      "bbox": [
+        229,
+        1043,
+        459,
+        1093
+      ],
+      "segment_id": "page_0083_seg_007"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Descriptions",
+      "bbox": [
+        239,
+        1986,
+        550,
+        2043
+      ],
+      "segment_id": "page_0083_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The code is packaged as a library (specifically “janus.library”), which is loaded during Autoconfig procedure.",
+      "bbox": [
+        889,
+        1967,
+        2127,
+        2074
+      ],
+      "segment_id": "page_0083_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "All routines that return a value return it in D0. There is a link library for C routines, “jlib.lib”.",
+      "bbox": [
+        891,
+        2118,
+        2134,
+        2224
+      ],
+      "segment_id": "page_0083_seg_010"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\noldHandler = SetJanusHandler( jintnum,  intserver  )\n                               D0        A1\n```",
+      "bbox": [
+        891,
+        2268,
+        2007,
+        2359
+      ],
+      "segment_id": "page_0083_seg_011"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This routine sets up an interrupt handler for a particular janus interrupt. The old interrupt is returned. A null means that there is no interrupt handler. If there is no interrupt handler then interrupts not will be processed for that jintnum.",
+      "bbox": [
+        891,
+        2417,
+        2133,
+        2626
+      ],
+      "segment_id": "page_0083_seg_012"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\noldEnable = SetJanusEnable( jintnum, newvalue )\n                             D0       D1\n```",
+      "bbox": [
+        894,
+        2668,
+        1931,
+        2759
+      ],
+      "segment_id": "page_0083_seg_013"
+    }
+  ]
+}

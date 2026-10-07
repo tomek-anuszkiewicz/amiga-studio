@@ -1,0 +1,59 @@
+{
+  "page": 153,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "PARALLEL CONNECTOR INTERFACE TIMING, OUTPUT CYCLE",
+      "bbox": [
+        357,
+        234,
+        1455,
+        266
+      ],
+      "segment_id": "page_0153_seg_001"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nPA<7:0>\nPB<7:0>_______X_________________________________________X__\n       ______X_________________________________________X__\n           |<-- T1 --->|                                |\n                       |        |<--------- T2 -------->|\n                       V        V\n       _______________            ________________________\nDRDY*                  |________|\n  Output data ready    |<- T3 ->|\n                       |<--- T4 --->|\n                                    |<- T5 -->|\n       _____________________________           ___________\nACK*                                |_________|\n  Output data acknowledge\n\n        Microseconds\n        Min Typ Max\n        --- --- ---\n    T1: 4.3 -x- 5.3         Output data setup to ready delay.\n    T2: nsp -x- upc         Output data hold time.\n    T3: nsp 1.4 nsp         Output data ready width.\n    T4:  0  -x- upc         Ready to acknowledge delay.\n    T5: nsp -x- upc         Acknowledge width.\n\n        nsp = not specified\n        upc = under program control\n```",
+      "bbox": [
+        599,
+        357,
+        1964,
+        1297
+      ],
+      "segment_id": "page_0153_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "PARALLEL CONNECTOR INTERFACE TIMING, INPUT CYCLE",
+      "bbox": [
+        357,
+        1388,
+        1432,
+        1421
+      ],
+      "segment_id": "page_0153_seg_003"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nPA<7:0>\nPB<7:0>_______X_________________________________________X__\n       ______X_________________________________________X__\n           |<-- T1 --->|\n                       |               T2 -->|<------->|\n                       V                     |\n       _______________            ___________|____________\nACK*                   |________|            |\n  Input data ready     |<- T3 ->|             |\n                       |<-- T4 --->|\n                                   |<- T5 -->|\n       ____________________________           ____________\nDRDY*                              |_________|\n  Input data acknowledge\n\n        Microseconds\n        Min Typ Max\n        --- --- ---\n    T1:  0  -x- upc         Input data setup time.\n    T2: nsp -x- upc         Input data hold time.\n    T3: nsp -x- upc         Input data ready width.\n    T4: upc -x- upc         Input data ready to data\n                              acknowledge delay.\n    T5: nsp 1.4 nsp         Input data acknowledge width.\n\n        nsp = not specified\n        upc = under program control\n```",
+      "bbox": [
+        599,
+        1513,
+        1878,
+        2540
+      ],
+      "segment_id": "page_0153_seg_004"
+    }
+  ]
+}

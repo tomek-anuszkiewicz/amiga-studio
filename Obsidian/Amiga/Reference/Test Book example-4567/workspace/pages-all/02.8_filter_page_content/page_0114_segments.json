@@ -1,0 +1,98 @@
+{
+  "page": 114,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        274,
+        269,
+        2229,
+        975
+      ],
+      "segment_id": "page_0114_seg_001"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 3-19: Display Window Horizontal Starting Position",
+      "bbox": [
+        711,
+        1089,
+        1790,
+        1137
+      ],
+      "segment_id": "page_0114_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The eight bits allocated to VSTART are assigned to the first 256 positions counting down from the top of the display.",
+      "bbox": [
+        352,
+        1251,
+        2160,
+        1354
+      ],
+      "segment_id": "page_0114_seg_003"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        276,
+        1396,
+        2230,
+        2097
+      ],
+      "segment_id": "page_0114_seg_004"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 3-20: Display Window Vertical Starting Position",
+      "bbox": [
+        737,
+        2154,
+        1768,
+        2201
+      ],
+      "segment_id": "page_0114_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Recall that you select the values for the starting position as if the display were in low-resolution, non-interlaced mode. Keep in mind, though, that for interlaced mode the display window should be an even number of lines in height to allow for equal-sized odd and even fields.",
+      "bbox": [
+        353,
+        2317,
+        2160,
+        2470
+      ],
+      "segment_id": "page_0114_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "To set the display window starting position, write the value for HSTART into bits 0 through 7 and the value for VSTART into bits 8 through 15 of DIWSTRT.",
+      "bbox": [
+        354,
+        2530,
+        2160,
+        2631
+      ],
+      "segment_id": "page_0114_seg_007"
+    }
+  ]
+}

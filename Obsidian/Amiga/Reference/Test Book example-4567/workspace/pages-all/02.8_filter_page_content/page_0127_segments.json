@@ -1,0 +1,111 @@
+{
+  "page": 127,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Function Generator",
+      "bbox": [
+        358,
+        361,
+        921,
+        424
+      ],
+      "segment_id": "page_0127_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The blitter can combine the data from the three source DMA channels in up to 256 different ways to generate the values stored by the destination DMA channel. These sources might be one bit-plane from each of three separate graphics images. While each of these sources is a rectangular region composed of many points, the same logic operation will be performed on each point throughout the rectangular region. Thus, for purposes of defining the blitter logic operation it is only necessary to consider what happens for all of the possible combinations of one bit from each of the three sources.",
+      "bbox": [
+        357,
+        537,
+        2157,
+        906
+      ],
+      "segment_id": "page_0127_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "There are eight possible combinations of values of the three bits, for each of which we need to specify the corresponding destination bit as a zero or one. This can be visualized with a standard truth table, as shown below. We have listed the three source channels, and the possible values for a single bit from each one.",
+      "bbox": [
+        357,
+        967,
+        2157,
+        1171
+      ],
+      "segment_id": "page_0127_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        739,
+        1260,
+        1765,
+        1802
+      ],
+      "segment_id": "page_0127_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This information is collected in a standard format, the LF control byte in the BLTCON0 register. This byte programs the blitter to perform one of the 256 possible logic operations on three sources for a given blit.",
+      "bbox": [
+        358,
+        1891,
+        2157,
+        2044
+      ],
+      "segment_id": "page_0127_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "To calculate the LF control byte in BLTCON0, fill in the truth table with desired values for D, and read the function value from the bottom of the table up.",
+      "bbox": [
+        358,
+        2105,
+        2156,
+        2203
+      ],
+      "segment_id": "page_0127_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "For example, if we wanted to set all bits in the destination where the corresponding A source bit is 1 or the corresponding B source bit is 1, we would fill in the last four entries of the truth table with 1 (because the A bit is set) and the third, fourth, seven, and eight entries with 1 (because the B bit is set), and all others (the first and second) with 0, because neither A nor B is set. Then, we read the truth table from the bottom up, reading 11111100, or $FC.¹",
+      "bbox": [
+        359,
+        2265,
+        2158,
+        2521
+      ],
+      "segment_id": "page_0127_seg_007"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "¹ “$” indicates hex notation.",
+      "bbox": [
+        404,
+        2648,
+        851,
+        2693
+      ],
+      "segment_id": "page_0127_seg_008"
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "page": 58,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        288,
+        132
+      ],
+      "segment_id": "page_0058_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        262,
+        180,
+        2291,
+        358
+      ],
+      "segment_id": "page_0058_seg_003"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nOperation:      FPn ÷ Source → FPn\n```",
+      "bbox": [
+        262,
+        396,
+        1201,
+        466
+      ],
+      "segment_id": "page_0058_seg_004"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nAssembler      FDIV. < fmt > < ea > ,FPn\nSyntax:        FDIV.X FPm,FPn\n               *FrDIV. < fmt > < ea > ,FPn\n               *FrDIV.X FPm,FPn\n               where r is rounding precision, S or D\n```",
+      "bbox": [
+        262,
+        504,
+        1535,
+        808
+      ],
+      "segment_id": "page_0058_seg_005"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "*Supported by MC68040 only",
+      "bbox": [
+        715,
+        824,
+        1272,
+        882
+      ],
+      "segment_id": "page_0058_seg_006"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nAttributes:    Format = (Byte, Word, Long, Single, Double, Extended, Packed)\n```",
+      "bbox": [
+        262,
+        921,
+        2148,
+        991
+      ],
+      "segment_id": "page_0058_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**Description:** Converts the source operand to extended precision (if necessary) and divides that number into the number in the destination floating-point data register. Stores the result in the destination floating-point data register.",
+      "bbox": [
+        262,
+        1029,
+        2265,
+        1216
+      ],
+      "segment_id": "page_0058_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "FDIV will round the result to the precision selected in the floating-point control register. FSDIV and FDDIV will round the result to single or double precision, respectively, regardless of the rounding precision selected in the floating-point control register.",
+      "bbox": [
+        374,
+        1254,
+        2265,
+        1441
+      ],
+      "segment_id": "page_0058_seg_009"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Operation Table:",
+      "bbox": [
+        262,
+        1479,
+        663,
+        1549
+      ],
+      "segment_id": "page_0058_seg_010"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        361,
+        1603,
+        2164,
+        2054
+      ],
+      "segment_id": "page_0058_seg_011"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTES:\n\n1. If the source operand is a NAN, refer to **1.6.5 Not-A-Numbers** for more information.",
+      "bbox": [
+        378,
+        2070,
+        1858,
+        2170
+      ],
+      "segment_id": "page_0058_seg_012"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2. Sets the DZ bit in the floating-point status register exception byte.",
+      "bbox": [
+        428,
+        2170,
+        1557,
+        2215
+      ],
+      "segment_id": "page_0058_seg_013"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "3. Sets the OPERR bit in the floating-point status register exception byte.",
+      "bbox": [
+        428,
+        2216,
+        1640,
+        2260
+      ],
+      "segment_id": "page_0058_seg_014"
+    }
+  ]
+}

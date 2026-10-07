@@ -1,0 +1,72 @@
+{
+  "page": 119,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        424,
+        314,
+        2079,
+        871
+      ],
+      "segment_id": "page_0119_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        600,
+        931,
+        1895,
+        1997
+      ],
+      "segment_id": "page_0119_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 5-2: Digitized Amplitude Values",
+      "bbox": [
+        923,
+        2219,
+        1659,
+        2267
+      ],
+      "segment_id": "page_0119_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "THE AMIGA SOUND HARDWARE",
+      "bbox": [
+        346,
+        2439,
+        1075,
+        2486
+      ],
+      "segment_id": "page_0119_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The Amiga has four hardware sound channels. You can independently program each of the channels to produce complex sound effects. You can also attach channels so that one channel modulates the sound of another or combine two channels for stereo effects.",
+      "bbox": [
+        345,
+        2576,
+        2138,
+        2726
+      ],
+      "segment_id": "page_0119_seg_005"
+    }
+  ]
+}

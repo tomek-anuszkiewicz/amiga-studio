@@ -1,0 +1,59 @@
+{
+  "page": 150,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "AGNUS PIN ASSIGNMENT",
+      "bbox": [
+        960,
+        233,
+        1410,
+        292
+      ],
+      "segment_id": "page_0150_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        423,
+        355,
+        1880,
+        1211
+      ],
+      "segment_id": "page_0150_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "DENISE PIN ASSIGNMENT",
+      "bbox": [
+        958,
+        1426,
+        1432,
+        1487
+      ],
+      "segment_id": "page_0150_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        421,
+        1550,
+        1879,
+        2368
+      ],
+      "segment_id": "page_0150_seg_004"
+    }
+  ]
+}

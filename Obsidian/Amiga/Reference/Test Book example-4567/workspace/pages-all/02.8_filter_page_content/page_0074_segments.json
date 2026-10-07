@@ -1,0 +1,98 @@
+{
+  "page": 74,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following numbers and notations are used for standard load and drive values:",
+      "bbox": [
+        882,
+        307,
+        2130,
+        409
+      ],
+      "segment_id": "page_0074_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "# 2000 SYSTEM BUS LOADING",
+      "bbox": [
+        230,
+        323,
+        713,
+        433
+      ],
+      "segment_id": "page_0074_seg_002"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        885,
+        452,
+        2133,
+        1171
+      ],
+      "segment_id": "page_0074_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Any lesser input load can be used on a signal in place of a greater load or equivalent load. Varying the number of load elements while still meeting the DC loading criteria can be done if necessary, but it is not a good idea, as it can still exceed the expected capacitive loading on the signal.",
+      "bbox": [
+        889,
+        1229,
+        2137,
+        1483
+      ],
+      "segment_id": "page_0074_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "A final type of drive is the open collector (oc). Some PIC outputs must be open collector, as they are in a wired-or configuration with the same output from other PICs or motherboard signals.",
+      "bbox": [
+        888,
+        1532,
+        2133,
+        1679
+      ],
+      "segment_id": "page_0074_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Most of the system bus signals provide a standard drive to their respective connectors. If your drivers can meet the input specification, don't worry about what is actually required. However, even if your loading doesn't exceed the specified drive capacity of slot signal mentioned above, consult the following chart for specific signals that may provide less drive than a standard signal of that type. Signals that match the STANDARD loading are not separately listed.",
+      "bbox": [
+        889,
+        1730,
+        2135,
+        2076
+      ],
+      "segment_id": "page_0074_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        888,
+        2149,
+        2130,
+        2819
+      ],
+      "segment_id": "page_0074_seg_007"
+    }
+  ]
+}

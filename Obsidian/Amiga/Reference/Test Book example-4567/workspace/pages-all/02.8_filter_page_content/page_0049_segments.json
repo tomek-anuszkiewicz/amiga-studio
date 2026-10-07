@@ -1,0 +1,46 @@
+{
+  "page": 49,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        287,
+        131
+      ],
+      "segment_id": "page_0049_seg_001"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        332,
+        319,
+        2280,
+        2468
+      ],
+      "segment_id": "page_0049_seg_003"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 3-3. Instruction Description Format",
+      "bbox": [
+        788,
+        2517,
+        1787,
+        2587
+      ],
+      "segment_id": "page_0049_seg_004"
+    }
+  ]
+}

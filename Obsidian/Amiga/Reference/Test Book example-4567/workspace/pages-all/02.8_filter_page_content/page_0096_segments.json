@@ -1,0 +1,33 @@
+{
+  "page": 96,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": true,
+      "heading_level": 2,
+      "md_text": "DMA Time Slot Allocation/Horizontal Line (Cont’d)",
+      "bbox": [
+        223,
+        307,
+        770,
+        486
+      ],
+      "segment_id": "page_0096_seg_001"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        699,
+        307,
+        2127,
+        1904
+      ],
+      "segment_id": "page_0096_seg_002"
+    }
+  ]
+}

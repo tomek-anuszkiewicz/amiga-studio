@@ -1,0 +1,176 @@
+{
+  "page": 32,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 12 The write portion of the cycle starts in S12. The valid function codes on FC2–FC0, the address bus lines, $\\overline{\\mathrm{AS}}$, and $\\mathrm{R}/\\overline{\\mathrm{W}}$ remain unaltered.",
+      "bbox": [
+        201,
+        210,
+        1807,
+        294
+      ],
+      "segment_id": "page_0032_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 13 During S13, no bus signals are altered.",
+      "bbox": [
+        201,
+        344,
+        1135,
+        385
+      ],
+      "segment_id": "page_0032_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 14 On the rising edge of S14, the processor drives $\\mathrm{R}/\\overline{\\mathrm{W}}$ low.",
+      "bbox": [
+        201,
+        428,
+        1451,
+        473
+      ],
+      "segment_id": "page_0032_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 15 During S15, the data bus is driven out of the high-impedance state as the data to be written are placed on the bus.",
+      "bbox": [
+        201,
+        519,
+        1805,
+        609
+      ],
+      "segment_id": "page_0032_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 16 At the rising edge of S16, the processor asserts $\\overline{\\mathrm{UDS}}$ or $\\overline{\\mathrm{LDS}}$. The processor waits for $\\overline{\\mathrm{DTACK}}$ or $\\overline{\\mathrm{BERR}}$ or $\\overline{\\mathrm{VPA}}$, an M6800 peripheral signal. When $\\overline{\\mathrm{VPA}}$ is asserted during S16, the cycle becomes a peripheral cycle (refer to **Appendix B M6800 Peripheral Interface**). If neither termination signal is asserted before the falling edge at the close of S16, the processor inserts wait states (full clock cycles) until either $\\overline{\\mathrm{DTACK}}$ or $\\overline{\\mathrm{BERR}}$ is asserted.",
+      "bbox": [
+        201,
+        649,
+        1814,
+        926
+      ],
+      "segment_id": "page_0032_seg_005"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "5",
+      "bbox": [
+        1920,
+        933,
+        2089,
+        1037
+      ],
+      "segment_id": "page_0032_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 17 During S17, no bus signals are altered.",
+      "bbox": [
+        201,
+        974,
+        1135,
+        1014
+      ],
+      "segment_id": "page_0032_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 18 During S18, no bus signals are altered.",
+      "bbox": [
+        201,
+        1060,
+        1135,
+        1101
+      ],
+      "segment_id": "page_0032_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "STATE 19 On the falling edge of the clock entering S19, the processor negates $\\overline{\\mathrm{AS}}$, $\\overline{\\mathrm{UDS}}$, and $\\overline{\\mathrm{LDS}}$. As the clock rises at the end of S19, the processor places the address and data buses in the high-impedance state, and drives $\\mathrm{R}/\\overline{\\mathrm{W}}$ high. The device negates $\\overline{\\mathrm{DTACK}}$ or $\\overline{\\mathrm{BERR}}$ at this time.",
+      "bbox": [
+        201,
+        1142,
+        1809,
+        1326
+      ],
+      "segment_id": "page_0032_seg_009"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "5.1.4 CPU Space Cycle",
+      "bbox": [
+        201,
+        1387,
+        710,
+        1437
+      ],
+      "segment_id": "page_0032_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "A CPU space cycle, indicated when the function codes are all high, is a special processor cycle. Bits A16–A19 of the address bus identify eight types of CPU space cycles. Only the interrupt acknowledge cycle, in which A16–A19 are high, applies to all the microprocessors described in this manual. The MC68010 defines an additional type of CPU space cycle, the breakpoint acknowledge cycle, in which A16–A19 are all low. Other configurations of A16–A19 are reserved by Motorola to define other types of CPU cycles used in other M68000 Family microprocessors. Figure 5-10 shows the encoding of CPU space addresses.",
+      "bbox": [
+        201,
+        1462,
+        1808,
+        1828
+      ],
+      "segment_id": "page_0032_seg_011"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        299,
+        1910,
+        1718,
+        2318
+      ],
+      "segment_id": "page_0032_seg_012"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 5-10. CPU Space Address Encoding",
+      "bbox": [
+        594,
+        2367,
+        1414,
+        2413
+      ],
+      "segment_id": "page_0032_seg_013"
+    }
+  ]
+}

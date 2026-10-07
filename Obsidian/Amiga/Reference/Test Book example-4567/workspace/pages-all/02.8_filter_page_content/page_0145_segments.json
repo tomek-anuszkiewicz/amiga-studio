@@ -1,0 +1,46 @@
+{
+  "page": 145,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        355,
+        242,
+        1540,
+        318
+      ],
+      "segment_id": "page_0145_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "These two control registers are used together to control blitter operations. There are two basic modes, area and line, which are selected by bit 0 of BLTCON1, as shown below.",
+      "bbox": [
+        733,
+        366,
+        1812,
+        520
+      ],
+      "segment_id": "page_0145_seg_002"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\n   AREA MODE (\"normal\")\n-------------------------\nBIT# BLTCON0     BLTCON1\n---- -------     -------\n15   ASH3        BSH3\n14   ASH2        BSH2\n13   ASH1        BSH1\n12   ASA0        BSH0\n11   USEA         X\n10   USEB         X\n09   USEC         X\n08   USED         X\n07   LF7          X\n06   LF6          X\n05   LF5          X\n04   LF4         EFE\n03   LF3         IFE\n02   LF2         FCI\n01   LF1         DESC\n00   LF0         LINE(=0)\n\nASH3-0  Shift value of A source\nBSH3-0  Shift value of B source\nUSEA    Mode control bit to use source A\nUSEB    Mode control bit to use source B\nUSEC    Mode control bit to use source C\nUSED    Mode control bit to use destination D\nLF7-0   Logic function minterm select lines\nEFE     Exclusive fill enable\nIFE     Inclusive fill enable\nFCI     Fill carry input\nDESC    Descending (decreasing address) control bit\nLINE    Line mode control bit (set to 0)\n```",
+      "bbox": [
+        733,
+        568,
+        1880,
+        1920
+      ],
+      "segment_id": "page_0145_seg_003"
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "page": 56,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        288,
+        131
+      ],
+      "segment_id": "page_0056_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        287,
+        180,
+        2316,
+        358
+      ],
+      "segment_id": "page_0056_seg_003"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nOperation:          Source + Destination → Destination\n```",
+      "bbox": [
+        287,
+        396,
+        1545,
+        466
+      ],
+      "segment_id": "page_0056_seg_004"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nAssembler\nSyntax:             ADDA < ea > , An\n```",
+      "bbox": [
+        287,
+        504,
+        1144,
+        633
+      ],
+      "segment_id": "page_0056_seg_005"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nAttributes:         Size = (Word, Long)\n```",
+      "bbox": [
+        287,
+        671,
+        1197,
+        741
+      ],
+      "segment_id": "page_0056_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**Description:** Adds the source operand to the destination address register and stores the result in the address register. The size of the operation may be specified as word or long. The entire destination address register is used regardless of the operation size.",
+      "bbox": [
+        287,
+        779,
+        2289,
+        966
+      ],
+      "segment_id": "page_0056_seg_007"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Condition Codes:",
+      "bbox": [
+        287,
+        1004,
+        717,
+        1074
+      ],
+      "segment_id": "page_0056_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Not affected.",
+      "bbox": [
+        400,
+        1112,
+        698,
+        1182
+      ],
+      "segment_id": "page_0056_seg_009"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Instruction Format:",
+      "bbox": [
+        287,
+        1221,
+        758,
+        1291
+      ],
+      "segment_id": "page_0056_seg_010"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        286,
+        1348,
+        2289,
+        1502
+      ],
+      "segment_id": "page_0056_seg_011"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Instruction Fields:",
+      "bbox": [
+        287,
+        1563,
+        733,
+        1633
+      ],
+      "segment_id": "page_0056_seg_012"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Register field—Specifies any of the eight address registers. This is always the destination.",
+      "bbox": [
+        393,
+        1646,
+        2289,
+        1774
+      ],
+      "segment_id": "page_0056_seg_013"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Opmode field—Specifies the size of the operation.\n\n011— Word operation; the source operand is sign-extended to a long operand and the operation is performed on the address register using all 32 bits.\n\n111— Long operation.",
+      "bbox": [
+        401,
+        1812,
+        2289,
+        2057
+      ],
+      "segment_id": "page_0056_seg_014"
+    }
+  ]
+}

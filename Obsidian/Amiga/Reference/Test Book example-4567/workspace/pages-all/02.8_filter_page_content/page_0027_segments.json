@@ -1,0 +1,202 @@
+{
+  "page": 27,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Address Bus (A23–A0)",
+      "bbox": [
+        302,
+        202,
+        738,
+        242
+      ],
+      "segment_id": "page_0027_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This 24-bit, unidirectional, three-state bus is capable of addressing 16 Mbytes of data. This bus provides the address for bus operation during all cycles except interrupt acknowledge cycles and breakpoint cycles. During interrupt acknowledge cycles, address lines A1, A2, and A3 provide the level number of the interrupt being acknowledged, and address lines A23–A4 and A0 are driven to logic high. In 16-Bit mode, A0 is always driven high.",
+      "bbox": [
+        340,
+        259,
+        1899,
+        534
+      ],
+      "segment_id": "page_0027_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "MC68008 Address Bus",
+      "bbox": [
+        302,
+        582,
+        738,
+        619
+      ],
+      "segment_id": "page_0027_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The unidirectional, three-state buses in the two versions of the MC68008 differ from each other and from the other processor bus only in the number of address lines and the addressing range. The 20-bit address (A19–A0) of the 48-pin version provides a 1-Mbyte address space; the 52-pin version supports a 22-bit address (A21–A0), extending the address space to 4 Mbytes. During an interrupt acknowledge cycle, the interrupt level number is placed on lines A1, A2, and A3. Lines A0 and A4 through the most significant address line are driven to logic high.",
+      "bbox": [
+        340,
+        638,
+        1901,
+        959
+      ],
+      "segment_id": "page_0027_seg_004"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "3",
+      "bbox": [
+        11,
+        623,
+        200,
+        728
+      ],
+      "segment_id": "page_0027_seg_005"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "3.2 DATA BUS (D15–D0; MC68008: D7–D0)",
+      "bbox": [
+        302,
+        1036,
+        1285,
+        1083
+      ],
+      "segment_id": "page_0027_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This bidirectional, three-state bus is the general-purpose data path. It is 16 bits wide in the all the processors except the MC68008 which is 8 bits wide. The bus can transfer and accept data of either word or byte length. During an interrupt acknowledge cycle, the external device supplies the vector number on data lines D7–D0. The MC68EC000 and MC68HC001 use D7–D0 in 8-bit mode, and D15–D8 are undefined.",
+      "bbox": [
+        302,
+        1111,
+        1899,
+        1338
+      ],
+      "segment_id": "page_0027_seg_007"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "3.3 ASYNCHRONOUS BUS CONTROL",
+      "bbox": [
+        302,
+        1416,
+        1197,
+        1456
+      ],
+      "segment_id": "page_0027_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Asynchronous data transfers are controlled by the following signals: address strobe, read/write, upper and lower data strobes, and data transfer acknowledge. These signals are described in the following paragraphs.",
+      "bbox": [
+        342,
+        1491,
+        1901,
+        1625
+      ],
+      "segment_id": "page_0027_seg_009"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Address Strobe ($\\overline{\\mathrm{AS}}$).",
+      "bbox": [
+        304,
+        1665,
+        707,
+        1712
+      ],
+      "segment_id": "page_0027_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This three-state signal indicates that the information on the address bus is a valid address.",
+      "bbox": [
+        343,
+        1727,
+        1900,
+        1809
+      ],
+      "segment_id": "page_0027_seg_011"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Read/Write ($\\mathrm{R}/\\overline{\\mathrm{W}}$).",
+      "bbox": [
+        305,
+        1854,
+        642,
+        1901
+      ],
+      "segment_id": "page_0027_seg_012"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This three-state signal defines the data bus transfer as a read or write cycle. The $\\mathrm{R}/\\overline{\\mathrm{W}}$ signal relates to the data strobe signals described in the following paragraphs.",
+      "bbox": [
+        343,
+        1912,
+        1906,
+        2004
+      ],
+      "segment_id": "page_0027_seg_013"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Upper And Lower Data Strobes ($\\overline{\\mathrm{UDS}}$, $\\overline{\\mathrm{LDS}}$).",
+      "bbox": [
+        305,
+        2043,
+        1130,
+        2092
+      ],
+      "segment_id": "page_0027_seg_014"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "These three-state signals and $\\mathrm{R}/\\overline{\\mathrm{W}}$ control the flow of data on the data bus. Table 3-1 lists the combinations of these signals and the corresponding data on the bus. When the $\\mathrm{R}/\\overline{\\mathrm{W}}$ line is high, the processor reads from the data bus. When the $\\mathrm{R}/\\overline{\\mathrm{W}}$ line is low, the processor drives the data bus. In 8-bit mode, $\\overline{\\mathrm{UDS}}$ is always forced high and the $\\overline{\\mathrm{LDS}}$ signal is used.",
+      "bbox": [
+        344,
+        2100,
+        1906,
+        2333
+      ],
+      "segment_id": "page_0027_seg_015"
+    }
+  ]
+}

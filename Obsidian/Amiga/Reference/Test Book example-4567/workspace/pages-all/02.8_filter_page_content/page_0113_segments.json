@@ -1,0 +1,124 @@
+{
+  "page": 113,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        273,
+        259,
+        2227,
+        655
+      ],
+      "segment_id": "page_0113_seg_001"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 3-16: Data Fetch for the Second Line When Modulo = 40",
+      "bbox": [
+        654,
+        720,
+        1840,
+        765
+      ],
+      "segment_id": "page_0113_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "To display the right half of the big picture, you set up a vertical blanking routine to start the bit-plane pointers at location START+40 rather than START with the modulo remaining at 40. The data layout is shown in Figures 3-17 and 3-18.",
+      "bbox": [
+        349,
+        884,
+        2155,
+        1036
+      ],
+      "segment_id": "page_0113_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        277,
+        1171,
+        2232,
+        1567
+      ],
+      "segment_id": "page_0113_seg_004"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 3-17: Data Layout for First Line—Right Half of Big Picture",
+      "bbox": [
+        628,
+        1617,
+        1868,
+        1663
+      ],
+      "segment_id": "page_0113_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Now, the bit-plane pointers contain the value START+80. The modulo (40) is added to the pointers so that when they begin the data fetch for the second line, the correct data is fetched.",
+      "bbox": [
+        350,
+        1779,
+        2157,
+        1877
+      ],
+      "segment_id": "page_0113_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        275,
+        1921,
+        2232,
+        2319
+      ],
+      "segment_id": "page_0113_seg_007"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 3-18: Data Layout for Second Line—Right Half of Big Picture",
+      "bbox": [
+        603,
+        2386,
+        1894,
+        2432
+      ],
+      "segment_id": "page_0113_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Remember, in high-resolution mode, you need to fetch twice as many bytes as in low-resolution mode. For a normal-sized display, you fetch 80 bytes for each horizontal line instead of 40.",
+      "bbox": [
+        350,
+        2546,
+        2159,
+        2645
+      ],
+      "segment_id": "page_0113_seg_009"
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "page": 33,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        528,
+        221,
+        1346,
+        1956
+      ],
+      "segment_id": "page_0033_seg_001"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "5",
+      "bbox": [
+        1913,
+        940,
+        2090,
+        1044
+      ],
+      "segment_id": "page_0033_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**Notes:**\n1. State machine will not change if the bus is S0 or S1. Refer to BUS ARBITRATION CONTROL. 5.2.3.\n2. The address bus will be placed in the high-impedance state if T is asserted and $\\overline{\\mathrm{AS}}$ is negated.",
+      "bbox": [
+        1265,
+        1967,
+        1697,
+        2178
+      ],
+      "segment_id": "page_0033_seg_003"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nR = Bus Request Internal\nA = Bus Grant Acknowledge Internal\nG = Bus Grant\nT = Three-state Control to Bus Control Logic\nX = Don't Care\n```",
+      "bbox": [
+        309,
+        2027,
+        749,
+        2173
+      ],
+      "segment_id": "page_0033_seg_004"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 5-18. Bus Arbitration Unit State Diagrams",
+      "bbox": [
+        541,
+        2221,
+        1473,
+        2268
+      ],
+      "segment_id": "page_0033_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figures 5-19, 5-20, and 5-21 applies to all processors using 3-wire bus arbitration. Figures 5-22, 5-23, and 5-24 applies to all processors using 2-wire bus arbitration.",
+      "bbox": [
+        200,
+        2320,
+        1808,
+        2407
+      ],
+      "segment_id": "page_0033_seg_006"
+    }
+  ]
+}

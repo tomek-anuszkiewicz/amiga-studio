@@ -1,0 +1,46 @@
+{
+  "page": 142,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 8-10 shows the definitions of the various bit positions within SERDATR.",
+      "bbox": [
+        366,
+        238,
+        1815,
+        283
+      ],
+      "segment_id": "page_0142_seg_001"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 8-9: SERDATR / ADKCON Registers",
+      "bbox": [
+        849,
+        346,
+        1667,
+        391
+      ],
+      "segment_id": "page_0142_seg_002"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        405,
+        476,
+        2150,
+        2655
+      ],
+      "segment_id": "page_0142_seg_003"
+    }
+  ]
+}

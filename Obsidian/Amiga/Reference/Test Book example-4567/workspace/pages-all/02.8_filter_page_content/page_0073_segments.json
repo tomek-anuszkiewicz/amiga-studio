@@ -1,0 +1,33 @@
+{
+  "page": 73,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        244,
+        312,
+        2043,
+        2610
+      ],
+      "segment_id": "page_0073_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Note: The actual reserved values will be FF rather than 00, because the system will invert them. See the section on reading I/O locations for more information.",
+      "bbox": [
+        240,
+        2664,
+        2037,
+        2758
+      ],
+      "segment_id": "page_0073_seg_002"
+    }
+  ]
+}

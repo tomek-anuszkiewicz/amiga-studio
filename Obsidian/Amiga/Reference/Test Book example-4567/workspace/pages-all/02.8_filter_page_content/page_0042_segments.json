@@ -1,0 +1,176 @@
+{
+  "page": 42,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        29,
+        36,
+        288,
+        132
+      ],
+      "segment_id": "page_0042_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "1.6.1 Normalized Numbers",
+      "bbox": [
+        262,
+        197,
+        1009,
+        278
+      ],
+      "segment_id": "page_0042_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Normalized numbers encompass all numbers with exponents laying between the maximum and minimum values. Normalized numbers can be positive or negative. For normalized numbers in single and double precision the implied integer bit is one. In extended precision, the mantissa’s MSB, the explicit integer bit, can only be a one (see Figure 1-13); and the exponent can be zero.",
+      "bbox": [
+        262,
+        317,
+        2265,
+        620
+      ],
+      "segment_id": "page_0042_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": ".",
+      "bbox": [
+        1255,
+        608,
+        1270,
+        678
+      ],
+      "segment_id": "page_0042_seg_005"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        660,
+        736,
+        1865,
+        884
+      ],
+      "segment_id": "page_0042_seg_006"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 1-13. Normalized Number Format",
+      "bbox": [
+        787,
+        928,
+        1738,
+        997
+      ],
+      "segment_id": "page_0042_seg_007"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "1.6.2 Denormalized Numbers",
+      "bbox": [
+        262,
+        1041,
+        1077,
+        1122
+      ],
+      "segment_id": "page_0042_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Denormalized numbers represent real values near the underflow threshold. The detection of the underflow for a given data format and operation occurs when the result’s exponent is less than or equal to the minimum exponent value. Denormalized numbers can be positive or negative. For denormalized numbers in single and double precision the implied integer bit is a zero. In extended precision, the mantissa’s MSB, the explicit integer bit, can only be a zero (see Figure 1-14).",
+      "bbox": [
+        262,
+        1160,
+        2265,
+        1522
+      ],
+      "segment_id": "page_0042_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": ".",
+      "bbox": [
+        1255,
+        1510,
+        1270,
+        1580
+      ],
+      "segment_id": "page_0042_seg_010"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        660,
+        1629,
+        1865,
+        1775
+      ],
+      "segment_id": "page_0042_seg_011"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 1-14. Denormalized Number Format",
+      "bbox": [
+        758,
+        1814,
+        1767,
+        1884
+      ],
+      "segment_id": "page_0042_seg_012"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Traditionally, the detection of underflow causes floating-point number systems to perform a \"flush-to-zero\". This leaves a large gap in the number line between the smallest magnitude normalized number and zero. The IEEE 754 standard implements gradual underflows: the result mantissa is shifted right (denormalized) while the result exponent is incremented until reaching the minimum value. If all the mantissa bits of the result are shifted off to the right during this denormalization, the result becomes zero. Usually a gradual underflow limits the potential underflow damage to no more than a round-off error. This underflow and denormalization description ignores the effects of rounding and the user-selectable rounding modes. Thus, the large gap in the number line created by \"flush-to-zero\" number systems is filled with representable (denormalized) numbers in the IEEE \"gradual underflow\" floating-point number system.",
+      "bbox": [
+        262,
+        1930,
+        2265,
+        2583
+      ],
+      "segment_id": "page_0042_seg_013"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Since the extended-precision data format has an explicit integer bit, a number can be formatted with a nonzero exponent, less than the maximum value, and a zero integer bit. The IEEE 754 standard does not define a zero integer bit. Such a number is an unnormalized number. Hardware does not directly support denormalized and unnormalized numbers, but implicitly supports them by trapping them as unimplemented data types, allowing efficient conversion in software.",
+      "bbox": [
+        262,
+        2622,
+        2265,
+        2984
+      ],
+      "segment_id": "page_0042_seg_014"
+    }
+  ]
+}

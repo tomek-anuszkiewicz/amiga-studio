@@ -1,0 +1,137 @@
+{
+  "page": 117,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Sprites can be attached in the following combinations:",
+      "bbox": [
+        359,
+        226,
+        1349,
+        271
+      ],
+      "segment_id": "page_0117_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Sprite 1 to sprite 0  \nSprite 3 to sprite 2  \nSprite 5 to sprite 4  \nSprite 7 to sprite 6",
+      "bbox": [
+        508,
+        304,
+        857,
+        510
+      ],
+      "segment_id": "page_0117_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Any or all of these attachments can be active during the same display field. As an example, assume that you wish to have more colors in the spaceship sprite and you are using sprite DMA channels 0 and 1. There are five colors plus transparent in this sprite.",
+      "bbox": [
+        358,
+        571,
+        2156,
+        723
+      ],
+      "segment_id": "page_0117_seg_003"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\n0000154444510000\n0001564444651000\n0015676446765100\n0001564444651000\n0000154444510000\n```",
+      "bbox": [
+        506,
+        783,
+        874,
+        1042
+      ],
+      "segment_id": "page_0117_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The first line in this sprite requires the four data words shown in Table 4-4 to form the correct binary color selector numbers.",
+      "bbox": [
+        356,
+        1105,
+        2159,
+        1202
+      ],
+      "segment_id": "page_0117_seg_005"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 4-4: Data Words for First Line of Spaceship Sprite",
+      "bbox": [
+        731,
+        1319,
+        1771,
+        1364
+      ],
+      "segment_id": "page_0117_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        390,
+        1453,
+        2123,
+        1831
+      ],
+      "segment_id": "page_0117_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The highest numbered sprite (number 1, in this example) contributes the highest order bits (leftmost) in the binary number. The high-order data word in each sprite contributes the leftmost digit. Therefore, the lines above are written to the sprite data structures as follows:",
+      "bbox": [
+        355,
+        1917,
+        2156,
+        2067
+      ],
+      "segment_id": "page_0117_seg_008"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nLine 1    Sprite 1 high-order word for sprite line 1\nLine 2    Sprite 1 low-order word for sprite line 1\nLine 3    Sprite 0 high-order word for sprite line 1\nLine 4    Sprite 0 low-order word for sprite line 1\n```",
+      "bbox": [
+        504,
+        2127,
+        1484,
+        2333
+      ],
+      "segment_id": "page_0117_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "See Figure 4-7 for the order these words are stored in memory. Remember that this data is contained in *two* sprite structures.",
+      "bbox": [
+        356,
+        2395,
+        2146,
+        2493
+      ],
+      "segment_id": "page_0117_seg_010"
+    }
+  ]
+}

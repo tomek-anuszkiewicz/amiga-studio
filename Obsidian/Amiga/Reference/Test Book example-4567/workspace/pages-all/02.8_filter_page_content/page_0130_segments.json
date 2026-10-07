@@ -1,0 +1,59 @@
+{
+  "page": 130,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 6-2: Typical Blitter Cycle Sequence",
+      "bbox": [
+        861,
+        284,
+        1636,
+        329
+      ],
+      "segment_id": "page_0130_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        354,
+        414,
+        2152,
+        1401
+      ],
+      "segment_id": "page_0130_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**Notes for the above Table:**\n\n- No fill.\n- No competing bus activity.\n- Three-word blit.\n- Typical operation involves fetching all sources twice before the first destination becomes available. This is due to internal pipelining. Care must be taken with overlapping source and destination regions.",
+      "bbox": [
+        354,
+        1488,
+        2155,
+        2070
+      ],
+      "segment_id": "page_0130_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**NOTE**\n\nThis Table is only meant to be an illustration of the typical order of blitter cycles on the bus. Bus cycles are dynamically allocated based on blitter operating mode; competing bus activity from processor, bit-planes, and other DMA channels; and other factors. Commodore Amiga does not guarantee the accuracy of or future adherence to this chart. We reserve the right to make product improvements or design changes in this area without notice.",
+      "bbox": [
+        456,
+        2131,
+        2052,
+        2523
+      ],
+      "segment_id": "page_0130_seg_004"
+    }
+  ]
+}

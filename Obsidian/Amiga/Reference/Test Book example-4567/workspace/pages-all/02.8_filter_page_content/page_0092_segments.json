@@ -1,0 +1,111 @@
+{
+  "page": 92,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "LINE DRAW: BLTADAT is used as an index register and must be preloaded with 8000. BLTBDAT is used for texture. It must be preloaded with FF if no texture (solid line) is desired.",
+      "bbox": [
+        864,
+        306,
+        2110,
+        498
+      ],
+      "segment_id": "page_0092_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "BLTDDAT — *Blitter destination data register*",
+      "bbox": [
+        865,
+        559,
+        1890,
+        601
+      ],
+      "segment_id": "page_0092_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This register holds the data resulting from each word of Blitter operation until it is sent to a RAM destination. This is a dummy address and cannot be read by the micro. The transfer is automatic during Blitter operation.",
+      "bbox": [
+        862,
+        656,
+        2108,
+        850
+      ],
+      "segment_id": "page_0092_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "BLTCON0 — *Blitter control register 0*\n\nBLTCON1 — *Blitter control register 1*",
+      "bbox": [
+        864,
+        908,
+        1767,
+        1001
+      ],
+      "segment_id": "page_0092_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "These two control registers are used together to control Blitter operations. There are 2 basic modes, area and line, which are selected by bit 0 of BLTCON1, as shown below.",
+      "bbox": [
+        864,
+        1061,
+        2100,
+        1203
+      ],
+      "segment_id": "page_0092_seg_005"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "AREA MODE (\"normal\")",
+      "bbox": [
+        1235,
+        1243,
+        1685,
+        1283
+      ],
+      "segment_id": "page_0092_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        1036,
+        1285,
+        1885,
+        2164
+      ],
+      "segment_id": "page_0092_seg_007"
+    },
+    {
+      "type": "table_legend",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "ASH3-0 — Shift value of A source\n\nBSH3-0 — Shift value of B source\n\nUSEA — Mode control bit to use Surce A\n\nUSEB — Mode control bit to use Source B\n\nUSEC — Mode control bit to use Source C\n\nUSED — Mode control bit to use Destination D\n\nLF7-0 — Logic function minterm select lines\n\nEFE — Exclusive fill enable\n\nIFE — Inclusive fill enable\n\nFCI — Fill carry input\n\nDESC — Descending (decreasing address) control bit\n\nLINE — Line mode control bit (set to 0)",
+      "bbox": [
+        1035,
+        2190,
+        1875,
+        2833
+      ],
+      "segment_id": "page_0092_seg_008"
+    }
+  ]
+}

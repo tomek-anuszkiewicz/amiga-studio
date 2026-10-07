@@ -4,92 +4,6 @@ title: "Amiga TestBook example-4567"
 
 # Amiga TestBook example-4567
 
-![Cover page_0001_seg_001](assets/page_0001_seg_001.png)
-
-Overview 1
-
-Introduction 2
-
-Signal Description 3
-
-8-Bit Bus Operation 4
-
-16-Bit Bus Operation 5
-
-Exception Processing 6
-
-8-Bit Instruction Execution Times 7
-
-16-Bit Instruction Execution Times 8
-
-MC68010 Instruction Execution Times 9
-
-Electrical and Thermal Characteristics 10
-
-Ordering Information and Mechanical Data 11
-
-MC68010 Loop Mode Operation A
-
-M6800 Peripheral Interface B
-
-Index I
-
-![Graphic page_0003_seg_001](assets/page_0003_seg_001.png)
-
-M68000
-
-8-/16-/32-Bit
-Microprocessors User’s Manual
-
-Ninth Edition
-
-Motorola reserves the right to make changes without further notice to any products herein. Motorola makes no warranty, representation or guarantee regarding the suitability of its products for any particular purpose, nor does Motorola assume any liability arising out of the application or use of any product or circuit, and specifically disclaims any and all liability, including without limitation consequential or incidental damages. "Typical" parameters can and do vary in different applications. All operating parameters, including "Typicals" must be validated for each customer application by customer's technical experts. Motorola does not convey any license under its patent rights nor the rights of others. Motorola products are not designed, intended, or authorized for use as components in systems intended for surgical implant into the body, or other applications intended to support or sustain life, or for any other application in which the failure of the Motorola product could create a situation where personal injury or death may occur. Should Buyer purchase or use Motorola products for any such unintended or unauthorized application, Buyer shall indemnify and hold Motorola and its officers, employees, subsidiaries, affiliates, and distributors harmless against all claims, costs, damages, and expenses, and reasonable attorney fees arising out of, directly or indirectly, any claim of personal injury or death associated with such unintended or unauthorized use, even if such claim alleges that Motorola was negligent regarding the design or manufacture of the part. Motorola and Ⓜ are registered trademarks of Motorola, Inc. Motorola, Inc. is an Equal Opportunity/Affirmative Action Employer.
-
-©MOTOROLA INC., 1993
-
-68K FAX-IT
-
-Documentation Comments
-
-**FAX 512-891-8593—Documentation Comments Only**
-
-The Motorola High-End Technical Publications Department provides a fax number for you to submit any questions or comments about this document or how to order other documents. We welcome your suggestions for improving our documentation. Please do not fax technical questions.
-
-Please provide the part number and revision number (located in upper right-hand corner of the cover) and the title of the document. When referring to items in the manual, please reference by the page number, paragraph number, figure number, table number, and line number if needed.
-
-When sending a fax, please provide your name, company, fax number, and phone number including area code.
-
-Applications and Technical Information
-
-For questions or comments pertaining to technical information, questions, and applications, please contact one of the following sales offices nearest you.
-
-— Sales Offices —
-
-UNITED STATES
-
-![Table page_0006_seg_003](assets/page_0006_seg_003.png)
-
-Field Applications Engineering Available
-Through All Sales Offices
-
-CANADA
-
-![Table page_0006_seg_006](assets/page_0006_seg_006.png)
-
-INTERNATIONAL
-
-![Table page_0006_seg_008](assets/page_0006_seg_008.png)
-
-![Table page_0006_seg_009](assets/page_0006_seg_009.png)
-
-FULL LINE REPRESENTATIVES
-
-![Table page_0006_seg_011](assets/page_0006_seg_011.png)
-
-HYBRID COMPONENTS RESELLERS
-
-![Table page_0006_seg_013](assets/page_0006_seg_013.png)
-
 TABLE OF CONTENTS
 
 Paragraph Number — Title — Page Number
@@ -132,10 +46,6 @@ Paragraph Number — Title — Page Number
 3.9 Clock ............................................. 3-9
 3.10 Power Supply ..................................... 3-9
 3.11 Signal Summary ................................... 3-10
-
-MOTOROLA
-M68000 USER’S MANUAL
-vii
 
 TABLE OF CONTENTS (Continued)
 
@@ -186,12 +96,6 @@ Paragraph Number — Title — Page Number
 6.2.2 Kinds Of Exceptions ................................ 6-5
 6.2.3 Multiple Exceptions ................................ 6-8
 
-viii
-
-M68000 USER’S MANUAL
-
-MOTOROLA
-
 # TABLE OF CONTENTS (Continued)
 
 Paragraph Number | Title | Page Number
@@ -222,277 +126,6 @@ Paragraph Number | Title | Page Number
 B.1 Data Transfer Operation ........ B-1
 B.2 Interrupt Interface Operation ........ B-4
 
-MOTOROLA
-
-M68000 USER’S MANUAL
-
-xi
-
-LIST OF ILLUSTRATIONS
-
-Figure Number — Title — Page Number
-
-2-1 User Programmer's Model ... 2-2
-2-2 Supervisor Programmer's Model Supplement ... 2-2
-2-3 Supervisor Programmer's Model Supplement (MC68010) ... 2-3
-2-4 Status Register ... 2-3
-2-5 Word Organization In Memory ... 2-6
-2-6 Data Organization In Memory ... 2-7
-2-7 Memory Data Organization (MC68008) ... 2-3
-
-3-1 Input and Output Signals (MC68000, MC68HC000, MC68010) ... 3-1
-3-2 Input and Output Signals (MC68HC001) ... 3-2
-3-3 Input and Output Signals (MC68EC000) ... 3-2
-3-4 Input and Output Signals (MC68008 48-Pin Version) ... 3-3
-3-5 Input and Output Signals (MC68008 52-Pin Version) ... 3-3
-
-4-1 Byte Read-Cycle Flowchart ... 4-2
-4-2 Read and Write-Cycle Timing Diagram ... 4-2
-4-3 Byte Write-Cycle Flowchart ... 4-4
-4-4 Write-Cycle Timing Diagram ... 4-4
-4-5 Read-Modify-Write Cycle Flowchart ... 4-6
-4-6 Read-Modify-Write Cycle Timing Diagram ... 4-7
-
-5-1 Word Read-Cycle Flowchart ... 5-2
-5-2 Byte Read-Cycle Flowchart ... 5-2
-5-3 Read and Write-Cycle Timing Diagram ... 5-3
-5-4 Word and Byte Read-Cycle Timing Diagram ... 5-3
-5-5 Word Write-Cycle Flowchart ... 5-5
-5-6 Byte Write-Cycle Flowchart ... 5-5
-5-7 Word and Byte Write-Cycle Timing Diagram ... 5-6
-5-8 Read-Modify-Write Cycle Flowchart ... 5-7
-5-9 Read-Modify-Write Cycle Timing Diagram ... 5-8
-5-10 CPU Space Address Encoding ... 5-9
-5-11 Interrupt Acknowledge Cycle Timing Diagram ... 5-10
-5-12 Breakpoint Acknowledge Cycle Timing Diagram ... 5-11
-5-13 3-Wire Bus Arbitration Flowchart
-(NA to 48-Pin MC68008 and MC68EC000 ... 5-12
-5-14 2-Wire Bus Arbitration Cycle Flowchart ... 5-13
-
-xii
-
-M68000 USER'S MANUAL
-
-MOTOROLA
-
-LIST OF ILLUSTRATIONS (Continued)
-
-Figure Number — Title — Page Number
-
-5-15 3-Wire Bus Arbitration Timing Diagram (NA to 48-Pin MC68008 and MC68EC000 — 5-13
-
-5-16 2-Wire Bus Arbitration Timing Diagram — 5-14
-
-5-17 External Asynchronous Signal Synchronization — 5-16
-
-5-18 Bus Arbitration Unit State Diagrams — 5-17
-
-5-19 3-Wire Bus Arbitration Timing Diagram—Processor Active — 5-18
-
-5-20 3-Wire Bus Arbitration Timing Diagram—Bus Active — 5-19
-
-5-21 3-Wire Bus Arbitration Timing Diagram—Special Case — 5-20
-
-5-22 2-Wire Bus Arbitration Timing Diagram—Processor Active — 5-21
-
-5-23 2-Wire Bus Arbitration Timing Diagram—Bus Active — 5-22
-
-5-24 2-Wire Bus Arbitration Timing Diagram—Special Case — 5-23
-
-5-25 Bus Error Timing Diagram — 5-24
-
-5-26 Delayed Bus Error Timing Diagram (MC68010) — 5-25
-
-5-27 Retry Bus Cycle Timing Diagram — 5-26
-
-5-28 Delayed Retry Bus Cycle Timing Diagram — 5-27
-
-5-29 Halt Operation Timing Diagram — 5-28
-
-5-30 Reset Operation Timing Diagram — 5-29
-
-5-31 Fully Asynchronous Read Cycle — 5-32
-
-5-32 Fully Asynchronous Write Cycle — 5-33
-
-5-33 Pseudo-Asynchronous Read Cycle — 5-34
-
-5-34 Pseudo-Asynchronous Write Cycle — 5-35
-
-5-35 Synchronous Read Cycle — 5-37
-
-5-36 Synchronous Write Cycle — 5-38
-
-5-37 Input Synchronizers — 5-38
-
-6-1 Exception Vector Format — 6-4
-
-6-2 Peripheral Vector Number Format — 6-5
-
-6-3 Address Translated from 8-Bit Vector Number — 6-5
-
-6-4 Exception Vector Address Calculation (MC68010) — 6-5
-
-6-5 Group 1 and 2 Exception Stack Frame — 6-10
-
-6-6 MC68010 Stack Frame — 6-10
-
-6-7 Supervisor Stack Order for Bus or Address Error Exception — 6-17
-
-6-8 Exception Stack Order (Bus and Address Error) — 6-18
-
-6-9 Special Status Word Format — 6-19
-
-10-1 MC68000 Power Dissipation (PD) vs Ambient Temperature (TA) — 10-3
-
-10-2 Drive Levels and Test Points for AC Specifications — 10-6
-
-10-3 Clock Input Timing Diagram — 10-9
-
-10-4 Read Cycle Timing Diagram — 10-13
-
-10-5 Write Cycle Timing Diagram — 10-14
-
-10-6 MC68000 to M6800 Peripheral Timing Diagram (Best Case) — 10-16
-
-MOTOROLA
-
-M68000 USER’S MANUAL
-
-xiii
-
-LIST OF ILLUSTRATIONS (Concluded)
-
-Figure Number — Title — Page Number
-
-10-7 Bus Arbitration Timing — 10-18
-10-8 Bus Arbitration Timing — 10-19
-10-9 Bus Arbitration Timing—Idle Bus Case — 10-20
-10-10 Bus Arbitration Timing—Active Bus Case — 10-21
-10-11 Bus Arbitration Timing—Multiple Bus Request — 10-22
-10-12 MC68EC000 Read Cycle Timing Diagram — 10-26
-10-13 MC68EC000 Write Cycle Timing Diagram — 10-27
-10-14 MC68EC000 Bus Arbitration Timing Diagram — 10-29
-
-11-1 64-Pin Dual In Line — 11-2
-11-2 68-Lead Pin Grid Array — 11-3
-11-3 68-Lead Quad Pack — 11-4
-11-4 52-Lead Quad Pack — 11-5
-11-5 48-Pin Dual In Line — 11-6
-11-6 64-Lead Quad Flat Pack — 11-7
-11-7 Case 740-03—L Suffix — 11-8
-11-8 Case 767-02—P Suffix — 11-9
-11-9 Case 746-01—LC Suffix — 11-10
-11-10 Case — Suffix — 11-
-11-11 Case 765A-05—RC Suffix — 11-12
-11-12 Case 778-02—FN Suffix — 11-13
-11-13 Case 779-02—FN Suffix — 11-14
-11-14 Case 847-01—FC Suffix — 11-15
-11-15 Case 840B-01—FU Suffix — 11-16
-
-A-1 DBcc Loop Mode Program Example — A-1
-
-B-1 M6800 Data Transfer Flowchart — B-1
-B-2 Example External $\overline{\mathrm{VMA}}$ Circuit — B-2
-B-3 External $\overline{\mathrm{VMA}}$ Timing — B-2
-B-4 M6800 Peripheral Timing—Best Case — B-3
-B-5 M6800 Peripheral Timing—Worst Case — B-3
-B-6 Autovector Operation Timing Diagram — B-5
-
-xiv
-
-M68000 USER’S MANUAL
-
-MOTOROLA
-
-LIST OF TABLES
-
-| Table Number | Title | Page Number |
-| --- | --- | --- |
-| 2-1 | Data Addressing Modes | 2-4 |
-| 2-2 | Instruction Set Summary | 2-11 |
-| 3-1 | Data Strobe Control of Data Bus | 3-5 |
-| 3-2 | Data Strobe Control of Data Bus (MC68008) | 3-5 |
-| 3-3 | Function Code Output | 3-9 |
-| 3-4 | Signal Summary | 3-10 |
-| 5-1 | \(\overline{\mathrm{DTACK}}\), \(\overline{\mathrm{BERR}}\), and \(\overline{\mathrm{HALT}}\) Assertion Results | 5-31 |
-| 6-1 | Reference Classification | 6-3 |
-| 6-2 | Exception Vector Assignment | 6-7 |
-| 6-3 | Exception Grouping and Priority | 6-9 |
-| 6-4 | MC68010 Format Code | 6-11 |
-| 7-1 | Effective Address Calculation Times | 7-2 |
-| 7-2 | Move Byte Instruction Execution Times | 7-2 |
-| 7-3 | Move Word Instruction Execution Times | 7-3 |
-| 7-4 | Move Long Instruction Execution Times | 7-3 |
-| 7-5 | Standard Instruction Execution Times | 7-4 |
-| 7-6 | Immediate Instruction Execution Times | 7-5 |
-| 7-7 | Single Operand Instruction Execution Times | 7-6 |
-| 7-8 | Shift/Rotate Instruction Execution Times | 7-6 |
-| 7-9 | Bit Manipulation Instruction Execution Times | 7-7 |
-| 7-10 | Conditional Instruction Execution Times | 7-7 |
-| 7-11 | JMP, JSR, LEA, PEA, and MOVEM Instruction Execution Times | 7-8 |
-| 7-12 | Multiprecision Instruction Execution Times | 7-9 |
-| 7-13 | Miscellaneous Instruction Execution Times | 7-10 |
-| 7-14 | Move Peripheral Instruction Execution Times | 7-10 |
-| 7-15 | Exception Processing Instruction Execution Times | 7-11 |
-| 8-1 | Effective Address Calculation Times | 8-2 |
-| 8-2 | Move Byte Instruction Execution Times | 8-2 |
-| 8-3 | Move Word Instruction Execution Times | 8-3 |
-| 8-4 | Move Long Instruction Execution Times | 8-3 |
-
-MOTOROLA
-
-M68000 USER’S MANUAL
-
-xv
-
-LIST OF TABLES (Concluded)
-
-Table Number — Title — Page Number
-
-8-5 Standard Instruction Execution Times ... 8-4
-8-6 Immediate Instruction Execution Times ... 8-5
-8-7 Single Operand Instruction Execution Times ... 8-6
-8-8 Shift/Rotate Instruction Execution Times ... 8-6
-8-9 Bit Manipulation Instruction Execution Times ... 8-7
-8-10 Conditional Instruction Execution Times ... 8-7
-8-11 JMP, JSR, LEA, PEA, and MOVEM Instruction Execution Times ... 8-8
-8-12 Multiprecision Instruction Execution Times ... 8-9
-8-13 Miscellaneous Instruction Execution Times ... 8-10
-8-14 Move Peripheral Instruction Execution Times ... 8-10
-8-15 Exception Processing Instruction Execution Times ... 8-11
-
-9-1 Effective Address Calculation Times ... 9-2
-9-2 Move Byte and Word Instruction Execution Times ... 9-3
-9-3 Move Byte and Word Instruction Loop Mode Execution Times ... 9-3
-9-4 Move Long Instruction Execution Times ... 9-4
-9-5 Move Long Instruction Loop Mode Execution Times ... 9-4
-9-6 Standard Instruction Execution Times ... 9-5
-9-7 Standard Instruction Loop Mode Execution Times ... 9-5
-9-8 Immediate Instruction Execution Times ... 9-6
-9-9 Single Operand Instruction Execution Times ... 9-7
-9-10 Clear Instruction Execution Times ... 9-7
-9-11 Single Operand Instruction Loop Mode Execution Times ... 9-8
-9-12 Shift/Rotate Instruction Execution Times ... 9-8
-9-13 Shift/Rotate Instruction Loop Mode Execution Times ... 9-9
-9-14 Bit Manipulation Instruction Execution Times ... 9-9
-9-15 Conditional Instruction Execution Times ... 9-10
-9-16 JMP, JSR, LEA, PEA, and MOVEM Instruction Execution Times ... 9-10
-9-17 Multiprecision Instruction Execution Times ... 9-11
-9-18 Miscellaneous Instruction Execution Times ... 9-12
-9-19 Exception Processing Instruction Execution Times ... 9-13
-
-10-1 Power Dissipation and Junction Temperature vs Temperature (θJC = θJA) ... 10-4
-10-2 Power Dissipation and Junction Temperature vs Temperature (θJC = θJC) ... 10-4
-
-A-1 MC68010 Loop Mode Instructions ... A-3
-
-xvi
-
-M68000 USER’S MANUAL
-
-MOTOROLA
-
 1
 
 SECTION 1
@@ -522,12 +155,6 @@ The following processors contain additional features:
 
 All the processors are basically the same with the exception of the MC68008. The MC68008 differs from the others in that the data bus size is eight bits, and the address range is smaller. The MC68010 has a few additional instructions and instructions that operate differently than the corresponding instructions of the other devices.
 
-MOTOROLA
-
-M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL
-
-1-1
-
 1.1 MC68000
 
 The MC68000 is the first implementation of the M68000 16/-32 bit microprocessor architecture. The MC68000 has a 16-bit data bus and 24-bit address bus while the full architecture provides for 32-bit address and data buses. It is completely code-compatible with the MC68008 8-bit data bus implementation of the M68000 and is upward code compatible with the MC68010 virtual extensions and the MC68020 32-bit implementation of the architecture. Any user-mode programs using the MC68000 instruction set will run unchanged on the MC68008, MC68010, MC68020, MC68030, and MC68040. This is possible because the user programming model is identical for all processors and the instruction sets are proper subsets of the complete architecture.
@@ -548,12 +175,6 @@ The large nonsegmented linear address space of the MC68008 allows large modular 
 
 The MC68010 utilizies VLSI technology and is a fully implemented 16-bit microprocessor with 32-bit registers, a rich basic instruction set, and versatile addressing modes. The vector base register (VBR) allows the vector table to be dynamically relocated
 
-1-2
-
-M68000 8-/16-/32-BIT MICROPROCESSORS USER’S MANUAL
-
-MOTOROLA
-
 ![Graphic page_0017_seg_001](assets/page_0017_seg_001.png)
 
 2
@@ -570,12 +191,6 @@ The supervisor programmer's model consists of supplementary registers used in th
 Figure 2-2. Supervisor Programmer's Model Supplement
 
 The supervisor programmer's model supplement of the MC68010 is shown in Figure 2-3. In addition to the supervisor stack pointer and status register, it includes the vector base register (VRB) and the alternate function code registers (AFC).The VBR is used to determine the location of the exception vector table in memory to support multiple vector
-
-2-2
-
-M68000 8-/16-/32-BIT MICROPROCESSOR USER'S MANUAL
-
-MOTOROLA
 
 tables. The SFC nad DFC registers allow the supervisor to access user data space or emulate CPU space cycles.
 
@@ -603,12 +218,6 @@ The five basic data types supported are as follows:
 3. Bytes (8 Bits)
 4. Words (16 Bits)
 5. Long Words (32 Bits)
-
-MOTOROLA
-
-M68000 8-/16-/32-BIT MICROPROCESSOR USER'S MANUAL
-
-2-3
 
 Table 2-1. Data Addressing Modes
 
@@ -656,8 +265,6 @@ The eight data registers support data operands of 1, 8, 16, or 32 bits. The seve
 
 Each data register is 32 bits wide. Byte operands occupy the low-order 8 bits, word operands the low-order 16 bits, and long-word operands, the entire 32 bits. The least significant bit is addressed as bit zero; the most significant bit is addressed as bit 31.
 
-MOTOROLA M68000 8-/16-/32-BIT MICROPROCESSOR USER’S MANUAL 2-5
-
 When a data register is used as either a source or a destination operand, only the appropriate low-order portion is changed; the remaining high-order portion is neither used nor changed.
 
 2.3.2 Address Registers
@@ -676,23 +283,11 @@ Figure 2-5. Word Organization in Memory
 
 The data types supported by the M68000 MPUs are bit data, integer data of 8, 16, and 32 bits, 32-bit addresses, and binary-coded-decimal data. Each data type is stored in memory as shown in Figure 2-6. The numbers indicate the order of accessing the data from the processor. For the MC68008 with its 8-bit bus, the appearance of data in memory is identical to the all the M68000 MPUs. The organization of data in the memory of the MC68008 is shown in Figure 2-7.
 
-2-6
-
-M68000 8-/16-/32-BIT MICROPROCESSOR USER’S MANUAL
-
-MOTOROLA
-
 ![Graphic page_0021_seg_001](assets/page_0021_seg_001.png)
 
 2
 
 Figure 2-6. Data Organization in Memory
-
-MOTOROLA
-
-M68000 8-/16-/32-BIT MICROPROCESSOR USER’S MANUAL
-
-2-7
 
 ![Graphic page_0022_seg_001](assets/page_0022_seg_001.png)
 
@@ -704,35 +299,17 @@ Figure 2-7. Memory Data Organization of the MC68008
 
 Table 2-2 provides an alphabetized listing of the M68000 instruction set listed by opcode, operation, and syntax. In the syntax descriptions, the left operand is the source operand, and the right operand is the destination operand. The following list contains the notations used in Table 2-2.
 
-2-8
-
-M68000 8-/16-/32-BIT MICROPROCESSOR USER’S MANUAL
-
-MOTOROLA
-
 Table 2-2. Instruction Set Summary (Sheet 1 of 4)
 
 ![Table page_0023_seg_002](assets/page_0023_seg_002.png)
 
 2
 
-MOTOROLA
-
-M68000 8-/16-/32-BIT MICROPROCESSOR USER’S MANUAL
-
-2-11
-
 Table 2-2. Instruction Set Summary (Sheet 2 of 4)
 
 ![Table page_0024_seg_002](assets/page_0024_seg_002.png)
 
 2
-
-2-12
-
-M68000 8-/16-/32-BIT MICROPROCESSOR USER’S MANUAL
-
-MOTOROLA
 
 Table 2-2. Instruction Set Summary (Sheet 4 of 4)
 
@@ -741,12 +318,6 @@ Table 2-2. Instruction Set Summary (Sheet 4 of 4)
 2
 
 NOTE: d is direction, L or R.
-
-2-14
-
-M68000 8-/16-/32-BIT MICROPROCESSOR USER’S MANUAL
-
-MOTOROLA
 
 SECTION 3
 SIGNAL DESCRIPTION
@@ -763,12 +334,6 @@ The terms **assertion** and **negation** are used extensively in this manual to 
 
 Figure 3-1. Input and Output Signals
 (MC68000, MC68HC000 and MC68010)
-
-MOTOROLA
-
-M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL
-
-3-1
 
 Address Bus (A23–A0)
 
@@ -800,12 +365,6 @@ Upper And Lower Data Strobes ($\overline{\mathrm{UDS}}$, $\overline{\mathrm{LDS}
 
 These three-state signals and $\mathrm{R}/\overline{\mathrm{W}}$ control the flow of data on the data bus. Table 3-1 lists the combinations of these signals and the corresponding data on the bus. When the $\mathrm{R}/\overline{\mathrm{W}}$ line is high, the processor reads from the data bus. When the $\mathrm{R}/\overline{\mathrm{W}}$ line is low, the processor drives the data bus. In 8-bit mode, $\overline{\mathrm{UDS}}$ is always forced high and the $\overline{\mathrm{LDS}}$ signal is used.
 
-3-4
-
-M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL
-
-MOTOROLA
-
 Bus Request ($\overline{\mathrm{BR}}$).
 
 This input can be wire-ORed with bus request signals from all other devices that could be bus masters. This signal indicates to the processor that some other device needs to become the bus master. Bus requests can be issued at any time during a cycle or between cycles.
@@ -835,12 +394,6 @@ NOTE
 
 The 48-pin version of the **MC68008** has only two interrupt control signals: $\overline{\mathrm{IPL0}}/\overline{\mathrm{IPL2}}$ and $\overline{\mathrm{IPL1}}$. $\overline{\mathrm{IPL0}}/\overline{\mathrm{IPL2}}$ is internally connected to both $\overline{\mathrm{IPL0}}$ and $\overline{\mathrm{IPL2}}$, which provides four interrupt priority levels: levels 0, 2, 5, and 7. In all other respects, the interrupt priority levels in this version of the **MC68008** are identical to those levels in the other microprocessors described in this manual.
 
-3-6
-
-M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL
-
-MOTOROLA
-
 Table 3-3. Function Code Outputs
 
 ![Table page_0029_seg_002](assets/page_0029_seg_002.png)
@@ -855,12 +408,6 @@ The clock input is a TTL-compatible signal that is internally buffered for devel
 
 Power is supplied to the processor using these connections. The positive output of the power supply is connected to the V<sub>CC</sub> pins and ground is connected to the GND pins.
 
-MOTOROLA
-
-M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL
-
-3-9
-
 ![Graphic page_0030_seg_001](assets/page_0030_seg_001.png)
 
 4
@@ -870,8 +417,6 @@ Figure 4-1. Byte Read-Cycle Flowchart
 ![Graphic page_0030_seg_004](assets/page_0030_seg_004.png)
 
 Figure 4-2. Read and Write-Cycle Timing Diagram
-
-4-2    M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL    MOTOROLA
 
 ![Graphic page_0031_seg_001](assets/page_0031_seg_001.png)
 
@@ -894,12 +439,6 @@ STATE 4 At the rising edge of S4, the processor asserts $\overline{UDS}$, or $\o
 STATE 5 During S5, no bus signals are altered.
 
 STATE 6 During S6, no bus signals are altered.
-
-5-6
-
-M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL
-
-MOTOROLA
 
 STATE 12 The write portion of the cycle starts in S12. The valid function codes on FC2–FC0, the address bus lines, $\overline{\mathrm{AS}}$, and $\mathrm{R}/\overline{\mathrm{W}}$ remain unaltered.
 
@@ -927,12 +466,6 @@ A CPU space cycle, indicated when the function codes are all high, is a special 
 
 Figure 5-10. CPU Space Address Encoding
 
-MOTOROLA
-
-M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL
-
-5-9
-
 ![Graphic page_0033_seg_001](assets/page_0033_seg_001.png)
 
 5
@@ -952,12 +485,6 @@ X = Don't Care
 Figure 5-18. Bus Arbitration Unit State Diagrams
 
 Figures 5-19, 5-20, and 5-21 applies to all processors using 3-wire bus arbitration. Figures 5-22, 5-23, and 5-24 applies to all processors using 2-wire bus arbitration.
-
-MOTOROLA
-
-M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL
-
-5-17
 
 supervisor mode. Therefore, when instruction execution resumes at the address specified to process the exception, the processor is in the supervisor privilege mode.
 
@@ -979,12 +506,6 @@ Table 6-1. Reference Classification
 
 *Address space 3 is reserved for user definition, while 0 and 4 are reserved for future use by Motorola.
 
-MOTOROLA
-
-M68000 8-/16-/32-BIT MICROPROCESSORS USER’S MANUAL
-
-6-3
-
 shown in Figure 6-9. If the bus cycle is a read, the data at the fault address should be written to the images of the data input buffer, instruction input buffer, or both according to the data fetch (DF) and instruction fetch (IF) bits.* In addition, for read-modify-write cycles, the status register image must be properly set to reflect the read data if the fault occurred during the read portion of the cycle and the write operation (i.e., setting the most significant bit of the memory location) must also be performed. These operations are required because the entire read-modify-write cycle is assumed to have been completed by software. Once the cycle has been completed by software, the rerun (RR) bit in the special status word is set to indicate to the processor that it should not rerun the cycle when the RTE instruction is executed. If the RR bit is set when an RTE instruction executes, the MC68010 reads all the information from the stack, as usual.
 
 ![Graphic page_0035_seg_002](assets/page_0035_seg_002.png)
@@ -1000,12 +521,6 @@ An address error exception occurs when the processor attempts to access a word o
 On the MC68010, the address error exception stacks the same information stacked by a bus error exception. Therefore, the RTE instruction can be used to continue execution of the suspended instruction. However, if the RR flag is not set, the fault address is used when the cycle is retried, and another address error exception occurs. Therefore, the user must be certain that the proper corrections have been made to the stack image and user registers before attempting to continue the instruction. With proper software handling, the address error exception handler could emulate word or long-word accesses to odd addresses if desired.
 
 *If the faulted access was a byte operation, the data should be moved from or to the least significant byte of the data output or input buffer images, unless the high-byte transfer (HB) bit is set. This condition occurs if a MOVEP instruction caused the fault during transfer of bits 8–15 of a word or long word or bits 24–31 of a long word.
-
-MOTOROLA
-
-M68000 8-/16-/32-BIT MICROPROCESSORS USER’S MANUAL
-
-6-19
 
 Table 7-1. Effective Address Calculation Times
 
@@ -1025,106 +540,7 @@ Table 7-2. Move Byte Instruction Execution Times
 
 \*The size of the index register (Xn) does not affect execution time.
 
-7-2
-
-M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL
-
-MOTOROLA
-
-INDEX
-
-–A–
-
-A23–A0 3-3, 3-4
-Acknowledgment Of Mastership 5-15
-Address Bus 3-3
-Address Error 6-8, 6-19
-Address Register 2-5, 2-6
-Address Space 6-2
-Address Strobe ($\overline{\mathrm{AS}}$) 3-4, 3-8, 4-3, 4-5, 4-7, 4-8, 5-4, 5-6, 5-7, 5-8, 5-9, 5-15, 5-16, 5-32, 5-34, 5-36, 5-37
-Addressing Modes 2-4
-Alternate Function Code Registers 2-2
-ANDI to SR 6-3
-$\overline{\mathrm{AS}}$ 3-4, 3-8, 4-3, 4-5, 4-7, 4-8, 5-4, 5-6, 5-7, 5-8, 5-9, 5-15, 5-16, 5-32, 5-34, 5-36, 5-37
-Asynchronous Bus Arbitration 5-15
-Asynchronous Operation 5-32, 5-33
-Auto Vector (AVEC) 5-10, 5-32, 6-13
-AVEC 5-10, 5-32, 6-13
-
-–B–
-
-$\overline{\mathrm{BERR}}$ 3-7, 4-3, 4-5, 4-7, 4-8, 5-4, 5-6, 5-7, 5-8, 5-9, 5-11, 5-24, 5-26, 5-27, 5-30, 5-31, 5-32, 5-37, 5-35, 5-38, 5-39, 6-13
-$\overline{\mathrm{BG}}$ 3-5, 3-6, 5-14, 5-15, 5-16
-$\overline{\mathrm{BGACK}}$ 1-2, 3-5, 3-6, 5-15, 5-16
-Bit Manipulation Instruction Execution Times 7-7, 8-7, 9-9
-$\overline{\mathrm{BR}}$ 3-5, 3-6, 5-14, 5-16
-Breakpoint Acknowledge Cycle 5-11
-Breakpoint Acknowledge Cycle Timing Diagram 5-11
-Bus Arbitration, 2-Wire 5-11
-Bus Arbitration 2-Wire Cycle Flowchart 5-13
-Bus Arbitration 2-Wire Timing Diagram 5-14, 5-23
-Bus Arbitration, 3-5, 5-11
-Bus Arbitration, 3-wire 5-11
-Bus Arbitration 3-Wire Cycle Flowchart 5-12
-Bus Arbitration 3-Wire Timing Diagram 15-3, 5-18
-Bus Arbitration Control 5-15, 5-16
-Bus Arbitration Unit State Diagrams 5-17
-Bus Cycle 5-27, 6-11, 6-18, 6-19
-Bus Cycle Retry 5-26
-
-Bus Error ($\overline{\mathrm{BERR}}$) 3-7, 4-3, 4-5, 4-7, 4-8, 5-4, 5-6, 5-7, 5-8, 5-9, 5-11, 5-24, 5-26, 5-27, 5-30, 5-31, 5-32, 5-37, 5-35, 5-38, 5-39, 6-13
-Bus Error Operation 5-23, 5-26, 5-24, 6-8, 6-13, 6-16, 6-17
-Bus Grant ($\overline{\mathrm{BG}}$) 3-5, 3-6, 5-14, 5-15, 5-16
-Bus Grant Acknowledge ($\overline{\mathrm{BGACK}}$) 1-2, 3-5, 3-6, 5-15, 5-16
-**Bus Operations**
-  16-Bit Mode 3-4, 3-7
-  2-wire Bus Arbitration 5-11
-  3-wire Bus Arbitration 5-11
-  8-bit Data Bus 1-2
-  8-bit Mode 3-4, 3-7
-  Bus Arbitration 3-5, 5-11
-  Bus Arbitration Control 5-15, 5-16
-  Bus Cycle Retry 5-26
-  Delayed Bus Error 5-25
-  Double Bus Fault 5-28
-  Halted Processing State 6-1
-  Interrupt Acknowledge Bus Cycle 6-4
-  Interrupt Request 6-12
-  STOP Instruction 6-2
-Bus Request ($\overline{\mathrm{BR}}$) 3-5, 3-6, 5-14, 5-16
-Byte Read-Cycle Flowchart 5-2
-Byte Write-Cycle Flowchart 5-5
-
-–C–
-
-CHK 6-6
-Clear Instruction Execution Times 9-7
-CLOCK (CLK) 3-9
-Condition Codes 2-3
-Conditional Instruction Execution Times 7-7, 8-7, 9-10
-CPU Space 4-1, 6-3
-CPU Space Address Encoding 5-9
-CPU Space Cycle 5-9
-
-–D–
-
-Data Bus 3-4, 4-1, 3-4, 6-4
-Data Bus 8-bit 1-2
-Data Organization in Memory 2-6
-Data Registers 2-5
-Data Strobe ($\overline{\mathrm{DS}}$) 3-5, 4-3, 4-5, 4-7, 4-8, 5-4, 5-32, 5-36, 5-37
-
-I
-
-MOTOROLA
-
-M68040 USER’S MANUAL
-
-INDEX-1
-
 ![Graphic page_0038_seg_001](assets/page_0038_seg_001.png)
-
-Introduction
 
 1.1 INTEGER UNIT USER PROGRAMMING MODEL
 
@@ -1148,15 +564,7 @@ These registers are for bit and bit field (1 – 32 bits), byte (8 bits), word (
 
 These registers can be used as software stack pointers, index registers, or base address registers. The base address registers can be used for word and long-word operations. Register A7 is used as a hardware stack pointer during stacking for subroutine calls and exception handling. In the user programming model, A7 refers to the user stack pointer (USP).
 
-1-2
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-MOTOROLA
-
 ![Graphic page_0039_seg_001](assets/page_0039_seg_001.png)
-
-Introduction
 
 1.2.2 Floating-Point Control Register (FPCR)
 
@@ -1176,15 +584,7 @@ The FPSR (see Figure 1-2) contains a floating-point condition code (FPCC) byte, 
 
 **1.2.3.1 FLOATING-POINT CONDITION CODE BYTE.** The FPCC byte, illustrated in Figure 1-4, contains four condition code bits that set after completion of all arithmetic instructions involving the floating-point data registers. The move floating-point data register
 
-MOTOROLA
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-1-5
-
 ![Graphic page_0040_seg_001](assets/page_0040_seg_001.png)
-
-Introduction
 
 supported, where T0 is always zero, and only one system stack where the M-bit is always zero. I2, I1, and I0 define the interrupt mask level.
 
@@ -1204,15 +604,7 @@ The alternate function code registers contain 3-bit function codes. Function cod
 
 The access control unit status register (ACUSR) is a 16-bit register containing the status information returned by execution of the PTEST instruction. The PTEST instruction searches the access control (AC) registers to determine a match for a specified address. A match in either or both of the AC registers sets bit 6 in the ACUSR. All other bits in the ACUSR are undefined and must not be used.
 
-MOTOROLA
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-1-11
-
 ![Graphic page_0041_seg_001](assets/page_0041_seg_001.png)
-
-Introduction
 
 1.3.6 Transparent Translation/access Control Registers
 
@@ -1236,15 +628,7 @@ Address Mask
 
 This 8-bit field contains a mask for the address base field. Setting a bit in this field causes the corresponding bit of the address base field to be ignored. Blocks of memory larger than 16 Mbytes can be transparently translated/accessed controlled by setting some logical address mask bits to ones. The low-order bits of this field normally are set to define contiguous blocks larger than 16 Mbytes, although this is not required.
 
-1-12
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-MOTOROLA
-
 ![Graphic page_0042_seg_001](assets/page_0042_seg_001.png)
-
-Introduction
 
 1.6.1 Normalized Numbers
 
@@ -1270,25 +654,11 @@ Traditionally, the detection of underflow causes floating-point number systems t
 
 Since the extended-precision data format has an explicit integer bit, a number can be formatted with a nonzero exponent, less than the maximum value, and a zero integer bit. The IEEE 754 standard does not define a zero integer bit. Such a number is an unnormalized number. Hardware does not directly support denormalized and unnormalized numbers, but implicitly supports them by trapping them as unimplemented data types, allowing efficient conversion in software.
 
-1-18
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-MOTOROLA
-
 ![Graphic page_0043_seg_001](assets/page_0043_seg_001.png)
-
-Introduction
 
 Table 1-4. Single-Precision Real Format Summary Data Format
 
 ![Table page_0043_seg_004](assets/page_0043_seg_004.png)
-
-MOTOROLA
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-1-21
 
 ![Graphic page_0044_seg_001](assets/page_0044_seg_001.png)
 
@@ -1305,15 +675,7 @@ M68000 family instructions consist of at least one word; some have as many as 11
 
 Figure 2-1. Instruction Word General Format
 
-MOTOROLA
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-2-1
-
 ![Graphic page_0045_seg_001](assets/page_0045_seg_001.png)
-
-Addressing Capabilities
 
 2.2.1 Data Register Direct Mode
 
@@ -1357,15 +719,7 @@ NUMBER OF EXTENSION WORDS:        0
 
 ![Graphic page_0045_seg_014](assets/page_0045_seg_014.png)
 
-MOTOROLA
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-2-5
-
 ![Graphic page_0046_seg_001](assets/page_0046_seg_001.png)
-
-Addressing Capabilities
 
 2.5.1 No Memory Indirect Action Mode
 
@@ -1379,11 +733,7 @@ NOTE: S indicates suppressed and A indicates active.
 
 Figure 2-5. No Memory Indirect Action
 
-2-24   M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL   MOTOROLA
-
 ![Graphic page_0047_seg_001](assets/page_0047_seg_001.png)
-
-Instruction Set Summary
 
 Table 3-5. Shift and Rotate Operation Format
 
@@ -1391,11 +741,7 @@ Table 3-5. Shift and Rotate Operation Format
 
 NOTE: X indicates the extend bit and C the carry bit in the CCR.
 
-MOTOROLA     M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL     3-9
-
 ![Graphic page_0048_seg_001](assets/page_0048_seg_001.png)
-
-Instruction Set Summary
 
 ![Graphic page_0048_seg_003](assets/page_0048_seg_003.png)
 
@@ -1403,25 +749,11 @@ Figure 3-2. Rounding Algorithm Flowchart
 
 The three additional bits beyond the extended-precision format, the difference between the intermediate result’s 67-bit mantissa and the storing result’s 64-bit mantissa, allow the FPU to perform all calculations as though it were performing calculations using a float engine with infinite bit prec The result is always correct for the specified destination’s data format before performing rounding (unless an overflow or underflow error occurs). The specified rounding operation then produces a number that is as close as possible to the infinitely precise
 
-3-26
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-MOTOROLA
-
 ![Graphic page_0049_seg_001](assets/page_0049_seg_001.png)
-
-Instruction Set Summary
 
 ![Graphic page_0049_seg_003](assets/page_0049_seg_003.png)
 
 Figure 3-3. Instruction Description Format
-
-MOTOROLA
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-3-33
 
 ![Graphic page_0050_seg_001](assets/page_0050_seg_001.png)
 
@@ -1447,15 +779,7 @@ Identified within the paragraphs are the specific processors that use different 
 
 **Appendix A Processor Instruction Summary** provides a listing of all processors and the instructions that apply to them for quick reference.
 
-MOTOROLA
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-4-1
-
 ![Graphic page_0051_seg_001](assets/page_0051_seg_001.png)
-
-Integer Instructions
 
 ![Table page_0051_seg_003](assets/page_0051_seg_003.png)
 
@@ -1498,15 +822,7 @@ NOTE
 
 Normally, the Z condition code bit is set via programming before the start of an operation. This allows successful tests for zero results upon completion of multiple-precision operations.
 
-4-2
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-MOTOROLA
-
 ![Graphic page_0052_seg_001](assets/page_0052_seg_001.png)
-
-Integer Instructions
 
 ![Table page_0052_seg_003](assets/page_0052_seg_003.png)
 
@@ -1531,15 +847,7 @@ Register Ry field—Specifies the source register.
 If R/M = 0, specifies a data register.
 If R/M = 1, specifies an address register for the predecrement addressing mode.
 
-MOTOROLA
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-4-3
-
 ![Graphic page_0053_seg_001](assets/page_0053_seg_001.png)
-
-Integer Instructions
 
 ![Table page_0053_seg_003](assets/page_0053_seg_003.png)
 
@@ -1576,15 +884,7 @@ Instruction Format:
 
 ![Table page_0053_seg_012](assets/page_0053_seg_012.png)
 
-4-4
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-MOTOROLA
-
 ![Graphic page_0054_seg_001](assets/page_0054_seg_001.png)
-
-Integer Instructions
 
 ![Table page_0054_seg_003](assets/page_0054_seg_003.png)
 
@@ -1606,15 +906,7 @@ a. If the location specified is a source operand, all addressing modes can be us
 
 \*\*Can be used with CPU32.
 
-MOTOROLA
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-4-5
-
 ![Graphic page_0055_seg_001](assets/page_0055_seg_001.png)
-
-Integer Instructions
 
 ![Table page_0055_seg_003](assets/page_0055_seg_003.png)
 
@@ -1638,15 +930,7 @@ The Dn mode is used when the destination is a data register; the destination < e
 
 ADDA is used when the destination is an address register. ADDI and ADDQ are used when the source is immediate data. Most assemblers automatically make this distinction.
 
-4-6
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-MOTOROLA
-
 ![Graphic page_0056_seg_001](assets/page_0056_seg_001.png)
-
-Integer Instructions
 
 ![Table page_0056_seg_003](assets/page_0056_seg_003.png)
 
@@ -1683,15 +967,7 @@ Opmode field—Specifies the size of the operation.
 
 111— Long operation.
 
-MOTOROLA
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-4-7
-
 ![Graphic page_0057_seg_001](assets/page_0057_seg_001.png)
-
-Integer Instructions
 
 ![Table page_0057_seg_003](assets/page_0057_seg_003.png)
 
@@ -1709,15 +985,7 @@ Effective Address field—Specifies the source operand. All addressing modes can
 
 *Can be used with CPU32
 
-4-8
-
-M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-MOTOROLA
-
 ![Graphic page_0058_seg_001](assets/page_0058_seg_001.png)
-
-Floating Point Instructions
 
 ![Table page_0058_seg_003](assets/page_0058_seg_003.png)
 
@@ -1755,8 +1023,6 @@ NOTES:
 
 3. Sets the OPERR bit in the floating-point status register exception byte.
 
-5-36     M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL     MOTOROLA
-
 ![Graphic page_0059_seg_001](assets/page_0059_seg_001.png)
 
 APPENDIX A
@@ -1769,30 +1035,14 @@ Processor Cross-Reference
 
 ![Table page_0059_seg_005](assets/page_0059_seg_005.png)
 
-MOTOROLA
-
-MC68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-A-1
-
 ![Graphic page_0060_seg_001](assets/page_0060_seg_001.png)
-
-Processor Instruction Summary
 
 Table A-1. M68000 Family Instruction Set And
 Processor Cross-Reference (Continued)
 
 ![Table page_0060_seg_004](assets/page_0060_seg_004.png)
 
-A-2
-
-MC68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-MOTOROLA
-
 ![Graphic page_0061_seg_001](assets/page_0061_seg_001.png)
-
-Processor Instruction Summary
 
 Table A-1. M68000 Family Instruction Set And Processor Cross-Reference (Concluded)
 
@@ -1805,15 +1055,7 @@ NOTES:
 4. This instruction is not privileged for the MC68000 and MC68008.
 5. Not applicable to MC68EC030.
 
-MOTOROLA
-
-MC68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-A-7
-
 ![Graphic page_0062_seg_001](assets/page_0062_seg_001.png)
-
-Exception Processing Reference
 
 ![Table page_0062_seg_003](assets/page_0062_seg_003.png)
 
@@ -1823,15 +1065,7 @@ Figure B-7. MC68EC040 and MC68LC040 Floating-Point Unimplemented Stack Frame, Fo
 
 Figure B-8. MC68040 Access Error Stack Frame, Format $7
 
-MOTOROLA
-
-MC68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-B-5
-
 ![Graphic page_0063_seg_001](assets/page_0063_seg_001.png)
-
-Exception Processing Reference
 
 ![Table page_0063_seg_003](assets/page_0063_seg_003.png)
 
@@ -1842,12 +1076,6 @@ Figure B-21. MC68040 Idle Stack Frame
 Reserved
 
 Figure B-22. MC68040 Unimplimented Instruction Stack Frame
-
-B-12
-
-MC68000 FAMILY PROGRAMMER’S REFERENCE MANUAL
-
-MOTOROLA
 
 EXTRA KEYS ON THE KEYBOARD
 
@@ -1870,8 +1098,6 @@ Figure 1.1 Key Codes
 **Note:** On the U.S. keyboard, the keys with codes 44 and 60 are extended to include the European keys with codes 2B and 30, respectively. Also note that England uses the U.S. rather than the European keyboard, but not the U.S. keymap.
 
 See Table 1-1 at the end of this section for a table of the raw key codes.
-
-2
 
 As you will notice, the A500 and 2000 deletes clocks and interrupt lines from the A1000. The +/−5Vdc and reset lines are also deleted. The +/−12Vdc lines are identical to a PC10/20.
 
@@ -1896,24 +1122,16 @@ The A500 and A2000, like the A1000, use a DB23 video connector.
 
 This 23 pin connector contains all the signals necessary to work with a Genlock, but the current Genlock will need to be redesigned in order to meet the physical requirements of the A500 and A2000, in-
 
-4
-
 Table 1-1 RAW KEY CODES
 
 ![Table page_0066_seg_002](assets/page_0066_seg_002.png)
-
-10
 
 ![Table page_0067_seg_001](assets/page_0067_seg_001.png)
 
 ¹ In shifted Forward Arrow and Backward Arrow, note blank space after <CSI>.
 <CSI> stands for Command Sequence Initiator.
 
-11
-
 ![Table page_0068_seg_001](assets/page_0068_seg_001.png)
-
-12
 
 Section 3.1
 
@@ -1937,8 +1155,6 @@ These specifications represent “worst case” design targets. Products that do
 
 Following conservative design practices and allowing the widest safety margins is your best assurance against problems in the field.
 
-17
-
 EXPANSION ARCHITECTURE OVERVIEW
 
 As shown in Figure 3.1, “Expansion Architecture Overview,” the expansion bus is implemented as backplane (an expansion box) which accept PICs (boards). The recommended number of PICs to a backplane is five.
@@ -1952,8 +1168,6 @@ You should also take extreme care in controlling signal radiation from your prod
 ![Graphic page_0070_seg_006](assets/page_0070_seg_006.png)
 
 Figure 3.1. Expansion Architecture Overview
-
-18
 
 requirement is because the eight megabyte space reserved for expansion in the current machine begins at hex 200000 (See auto-config notes below).
 
@@ -1975,17 +1189,11 @@ Descriptions:
 
 ![Table page_0071_seg_007](assets/page_0071_seg_007.png)
 
-26
-
 ![Table page_0072_seg_001](assets/page_0072_seg_001.png)
-
-27
 
 ![Table page_0073_seg_001](assets/page_0073_seg_001.png)
 
 Note: The actual reserved values will be FF rather than 00, because the system will invert them. See the section on reading I/O locations for more information.
-
-28
 
 The following numbers and notations are used for standard load and drive values:
 
@@ -2001,11 +1209,7 @@ Most of the system bus signals provide a standard drive to their respective conn
 
 ![Table page_0074_seg_007](assets/page_0074_seg_007.png)
 
-39
-
 ![Table page_0075_seg_001](assets/page_0075_seg_001.png)
-
-40
 
 TABLE 3-2
 
@@ -2044,8 +1248,6 @@ COLLIS = BUS COLLISION,AOE = ADDR OUTPUT EN,DOE = DATA OE
 RES = RESET,D2P = DATA TO PROCESSOR
 UDS LDS PROTECT AGAINST RDMODIFYWRITE 3STFIGHT & BERR = /DOE
 ```
-
-41
 
 TABLE 3-3
 
@@ -2089,10 +1291,6 @@ DESCRIPTION
 BG1 IS HIGHEST PRIORITY
 ```
 
-42
-
-Section 4.1
-
 Description of PC/XT Emulator for AMIGA 2000
 
 ```text
@@ -2122,8 +1320,6 @@ BIT 5 = SEL1
 BIT 6 = SEL2
 ```
 
-109
-
 PC MEMORY AND
 I/O MAP:
 
@@ -2133,11 +1329,7 @@ AMIGA MEMORY MAP:
 
 ![Table page_0079_seg_004](assets/page_0079_seg_004.png)
 
-110
-
 ![Table page_0080_seg_001](assets/page_0080_seg_001.png)
-
-113
 
 WRITE TELETYPE (AH = 0EH)
 
@@ -2179,8 +1371,6 @@ MEMORY SIZE CHECK VIA S/W INT 12H
 ```text
 OUTPUT: AX = Total Memory size in Kilobytes
 ```
-
-124
 
 INITIALIZE COMM PORT (AH = 00H)
 
@@ -2227,10 +1417,6 @@ INPUT:  DX = Index into device table
 OUTPUT: AH = Line Status (error bits only, = 0 if OK)
         AL = Received Character
 ```
-
-126
-
-Section 4.3
 
 Janus.Library
 
@@ -2279,8 +1465,6 @@ oldEnable = SetJanusEnable( jintnum, newvalue )
                              D0       D1
 ```
 
-131
-
 INCLUDE FILES
 
 **janus.[hi]:**
@@ -2322,8 +1506,6 @@ JANUS_I86BLOCK_I                            SET 1
 ; need to use the ByteAccessArea, all the words will need to be byte
 ; swapped.
 ```
-
-135
 
 ```text
   UWORD  adr_BufferAddr          ; offset into MEMF-
@@ -2380,8 +1562,6 @@ ADR_ERR_BAD_CMD          EQU  $01
 ENDC     IJANUS_I86BLOCK_I
 ```
 
-138
-
 janus.i — software conventions for janus.i
 
 Copyright © 1986, Commodore-Amiga Inc., All rights reserved
@@ -2436,8 +1616,6 @@ APTR        ja_SegList               ; holds a pointer to our
                                       code segment
 ```
 
-139
-
 janus.h—the software data structures for the janus board
 
 Copyright © 1986, Commodore Amiga Inc., All rights reserved
@@ -2488,8 +1666,6 @@ struct JanusList [
         UBYTE  jl_Lock;          /* lock byte between
                                    processors
 ```
-
-151
 
 ```text
       */UBYTE jl_pad0;
@@ -2545,8 +1721,6 @@ Copyright © 1986, Commodore-Amiga Inc., All rights reserved
    memory.
 */
 ```
-
-152
 
 PC JANUS SERVICE
 
@@ -2617,8 +1791,6 @@ Returns:
     AL : Status (J_OK, J_NO_SERVICE)
 ```
 
-155
-
 COMMAND DESCRIPTION
 
 All commands executed by the HDC are summarized in the table below. Fields of the command block not specified are don't cares. Following this summary is a generalized description of the commands.
@@ -2654,8 +1826,6 @@ No error, invalid command, seek in progress, drive not ready, write fault, DMA e
 Action
 
 Restore (Class 0, Opcode 1)
-
-178
 
 This four bit field can be used to specify options as indicated below:
 
@@ -2701,8 +1871,6 @@ Table 5-10. Change Command Block Address
 
 ![Table page_0091_seg_014](assets/page_0091_seg_014.png)
 
-184
-
 LINE DRAW: BLTADAT is used as an index register and must be preloaded with 8000. BLTBDAT is used for texture. It must be preloaded with FF if no texture (solid line) is desired.
 
 BLTDDAT — *Blitter destination data register*
@@ -2743,8 +1911,6 @@ DESC — Descending (decreasing address) control bit
 
 LINE — Line mode control bit (set to 0)
 
-201
-
 LINE DRAW:
 
 LINE MODE (line draw)
@@ -2775,8 +1941,6 @@ The 3 bits above select the Octant for line draw:
 
 Blitter start and size (Window, width height)
 
-202
-
 ![Table page_0094_seg_001](assets/page_0094_seg_001.png)
 
 COP1NS — *Copper instruction fetch identify*
@@ -2802,8 +1966,6 @@ HP = Horizontal Beam Position comparison bit
 VE = Enable comparison (mask bit)
 
 HE = Enable comparison (mask bit)
-
-205
 
 These registers control the horizontal timing of the beginning and end of the Bit Plane DMA display data fetch. The vertical Bit Plane DMA timing is identical to the Display windows described above. The Bit Plane Modulos are dependent on the Bit Plane horizontal size, and on this data fetch window size.
 
@@ -2832,15 +1994,9 @@ This register controls all of the DMA channels, and contains Blitter DMA status 
 
 ![Table page_0095_seg_012](assets/page_0095_seg_012.png)
 
-207
-
 DMA Time Slot Allocation/Horizontal Line (Cont’d)
 
 ![Graphic page_0096_seg_002](assets/page_0096_seg_002.png)
-
-211
-
-Section 7.3
 
 A2000 PAL Equations
 
@@ -2892,10 +2048,6 @@ IF (OVR) /DTACK =
          + /BLS*/C3
 ```
 
-229
-
-Section 7.4
-
 List of B2000 Motherboard Jumpers
 
 ![Graphic page_0098_seg_003](assets/page_0098_seg_003.png)
@@ -2926,21 +2078,13 @@ J500
 
 This jumper is used to enable the 512K of RAM at $C00000. It is normally closed; opening it will disable this extra RAM.
 
-235
-
 ![Graphic page_0099_seg_001](assets/page_0099_seg_001.png)
-
-A-1
 
 ![Graphic page_0100_seg_001](assets/page_0100_seg_001.png)
 
 ![Graphic page_0101_seg_001](assets/page_0101_seg_001.png)
 
-A-8
-
 ![Graphic page_0102_seg_001](assets/page_0102_seg_001.png)
-
-A-9
 
 NOTE
 
@@ -2983,8 +2127,6 @@ The Amiga hardware include files are generally supplied with your compiler or as
 - Related sequential registers which are given individual names with number suffixes in the hardware register list, are generally referenced from a single base register definition in the include files. For example, the color registers in the hardware list (COLOR00, COLOR01, etc.) would be referenced from the “color” label defined in “hardware/custom.i” (color+0, color+2, etc.).
 - Examples of how to define the correct register offset can be found in the hw_examples.i file listed in Appendix J.
 
-8 Introduction
-
 Do not read, write, or use any currently undefined address ranges. The current and future usage of such areas is reserved by Commodore and is definitely subject to change.
 
 If you are using the system libraries, devices, and resources, you must follow the defined interface. Assembler programmers (and compiler writers) must enter functions through the library base jump tables, with arguments passed as longs and library base address in A6. Results returned in D0 must be tested, and the contents of D0-D1/A0-A1 must be assumed gone after a system call.
@@ -3006,8 +2148,6 @@ NOTE
 When strobing any register which responds to either a read or a write, (for example copjmp2) be sure to use a MOVE.W #$00, not CLR.W. The CLR instruction causes a read and a clear (two accesses) on a 68000, but only a single access on 68020 and above. This will give different results on different processors.
 
 If you are programming at the hardware level, you must follow hardware interfacing specifications. All hardware is NOT the same. Do not assume that low level hacks for speed or copy protection will work on all drives, or all keyboards, or all systems, or future systems. Test your software on many different systems, with different processors, OS, hardware, and RAM configurations.
-
-10 Introduction
 
 The WAIT Instruction
 
@@ -3039,8 +2179,6 @@ DC.W    $FFFF,$FFFE     ;Wait for line 255,
 
 To understand why position VP=$FF HP=$FE will never occur, you must look at the comparison operation of the Copper and the size restrictions of the position information. Line number 255 is a valid line to wait for, in fact it is the maximum value that will fit into this field. Since 255 is the maximum number, the next line will wrap to zero (line 256 will appear as a zero in the
 
-Coprocessor Hardware 17
-
 ![Table page_0106_seg_001](assets/page_0106_seg_001.png)
 
 NOTE
@@ -3064,8 +2202,6 @@ genlocked- basic clock frequency plus or minus about 2%.
 THE COMPARISON ENABLE BITS
 
 Bits 14-1 are normally set to all 1s. The use of the comparison enable bits is described later in the “Advanced Topics” section.
-
-Coprocessor Hardware 19
 
 COMPLETE SAMPLE COPPER LIST
 
@@ -3104,8 +2240,6 @@ The complete Copper list follows.
         INCLUDE "hardware/dmabits.i"
         INCLUDE "hardware/hw_examples.i"
 ```
-
-24 Coprocessor Hardware
 
 ```text
 COPPERLIST:
@@ -3156,8 +2290,6 @@ STARTING THE COPPER AFTER RESET
 
 At power-on or reset time, you must initialize one of the Copper location registers (COP1LC or COP2LC) and write to its strobe address before Copper DMA is turned on. This ensures a known start address and known state. Usually, COP1LC is used because this particular register is reused during each vertical blanking time. The following sequence of instructions shows how to
 
-Coprocessor Hardware 25
-
 - Vertical resolution, or interlacing.
 - Data fetch and modulo, which tell the system how much data to put on a horizontal line and how to fetch data from memory to the screen.
 
@@ -3182,8 +2314,6 @@ Table 3-1: Colors in a Single Playfield
 
 ![Table page_0109_seg_010](assets/page_0109_seg_010.png)
 
-Playfield Hardware 39
-
 ## The Color Table
 
 The color table contains 32 registers, and you may load a different color into each of the registers. Here is a condensed view of the contents of the color table:
@@ -3199,8 +2329,6 @@ COLOR00 is always reserved for the background color. The background color shows 
 If you are using the optional genlock board for video input from a camera, VCR, or laser disk, the background color will be replaced by the incoming video display.
 
 Twelve bits of color selection allow you to define, for each of the 32 registers, one of 4,096 possible colors, as shown in Table 3-3.
-
-40 Playfield Hardware
 
 The following example sets DIWSTOP for a basic playfield to $F4 for the vertical position and $C1 for the horizontal position.
 
@@ -3228,8 +2356,6 @@ $$\frac{\$81}{2} - 8.5 = \$38$$
 
 $$\frac{\$81}{2} - 4.5 = \$3C$$
 
-Playfield Hardware 53
-
 Combination 000 selects transparent mode, to show the color of whatever object (the other playfield, a sprite, or the background color) may be “behind” the playfield.
 
 Table 3-12 shows the color registers for high-resolution, dual-playfield mode.
@@ -3249,8 +2375,6 @@ You can control the two playfields separately as follows:
 - They can have different-sized representations in memory, and different portions of each one can be selected for display.
 - They can be scrolled separately.
 
-66 Playfield Hardware
-
 ![Table page_0113_seg_001](assets/page_0113_seg_001.png)
 
 Figure 3-16: Data Fetch for the Second Line When Modulo = 40
@@ -3269,8 +2393,6 @@ Figure 3-18: Data Layout for Second Line—Right Half of Big Picture
 
 Remember, in high-resolution mode, you need to fetch twice as many bytes as in low-resolution mode. For a normal-sized display, you fetch 80 bytes for each horizontal line instead of 40.
 
-70 Playfield Hardware
-
 ![Graphic page_0114_seg_001](assets/page_0114_seg_001.png)
 
 Figure 3-19: Display Window Horizontal Starting Position
@@ -3285,8 +2407,6 @@ Recall that you select the values for the starting position as if the display we
 
 To set the display window starting position, write the value for HSTART into bits 0 through 7 and the value for VSTART into bits 8 through 15 of DIWSTRT.
 
-72 Playfield Hardware
-
 Table 3-19: High-resolution Color Selection
 
 ![Table page_0115_seg_002](assets/page_0115_seg_002.png)
@@ -3294,8 +2414,6 @@ Table 3-19: High-resolution Color Selection
 \* Selects “transparent” mode.
 
 \*\* Color register 0 always defines the background color.
-
-Playfield Hardware 91
 
 hardware in the same manner as the original words that were first loaded into the control registers. If the VSTART value contained in these words is lower than the current beam position, this sprite will not be reused in this display field. For consistency, the value 0 should be used for both words when ending the usage of a sprite. Sprite reuse is discussed later.
 
@@ -3326,8 +2444,6 @@ The following steps are used in displaying the sprite:
 CAUTION
 
 If sprite DMA is turned off while a sprite is being displayed (that is, after VSTART but before VSTOP), the system will continue to display the line of sprite data that was most recently fetched. This causes a vertical bar to appear on the screen. It is recommended that sprite DMA be turned off only during vertical blanking or during some portion of the display where you are *sure* that no sprite is being displayed.
-
-106 Sprite Hardware
 
 Sprites can be attached in the following combinations:
 
@@ -3363,8 +2479,6 @@ Line 4    Sprite 0 low-order word for sprite line 1
 
 See Figure 4-7 for the order these words are stored in memory. Remember that this data is contained in *two* sprite structures.
 
-118 Sprite Hardware
-
 Table 4-6: Color Registers for Single Sprites
 
 ![Table page_0118_seg_002](assets/page_0118_seg_002.png)
@@ -3372,8 +2486,6 @@ Table 4-6: Color Registers for Single Sprites
 \* Selects transparent mode.
 
 If the bit combinations from attached sprites are as shown in Table 4-7, then the colors will be taken from the registers shown.
-
-Sprite Hardware 127
 
 ![Graphic page_0119_seg_001](assets/page_0119_seg_001.png)
 
@@ -3384,8 +2496,6 @@ Figure 5-2: Digitized Amplitude Values
 THE AMIGA SOUND HARDWARE
 
 The Amiga has four hardware sound channels. You can independently program each of the channels to produce complex sound effects. You can also attach channels so that one channel modulates the sound of another or combine two channels for stereo effects.
-
-Audio Hardware 133
 
 Sound data is organized as a set of eight-bit data items; each item is a sample from the waveform. Each data word retrieved for the audio channel consists of two samples. Sample values can range from -128 to +127.
 
@@ -3406,8 +2516,6 @@ Table 5-1: Sample Audio Data Set for Channel 0
 \* Audio data is located on a word-address boundary.
 
 \*\* AUD0LC stands for AUD0LCL and AUD0LCH.
-
-Audio Hardware 135
 
 For a typical output at volume 64, with maximum data values of -128 to 127, the voltage output is between +.4 volts and -.4 volts. Some volume levels and the corresponding decibel values are shown in Table 5-2.
 
@@ -3433,8 +2541,6 @@ NOTE
 
 A low period value corresponds to a higher frequency sound and a high period value corresponds to a lower frequency sound.
 
-Audio Hardware 137
-
 Limitations on Selection of Sampling Period
 
 The sampling period is limited by the number of DMA cycles allocated to an audio channel. Each audio channel is allocated one DMA slot per horizontal scan line of the screen display. An audio channel can retrieve two data samples during each horizontal scan line. The following calculation gives the maximum sampling rate in samples per second.
@@ -3458,8 +2564,6 @@ Therefore, a value of at least 124 must be written into the period register to a
 28,867 samples/second is also the maximum sampling rate for PAL systems. Thus, for PAL systems, a value of at least 123 ticks/sample must be written into the period register.
 
 ![Table page_0122_seg_012](assets/page_0122_seg_012.png)
-
-138 Audio Hardware
 
 Table 5-3: DMA and Audio Channel Enable Bits
 
@@ -3485,8 +2589,6 @@ STOPAUDCHAN0:
         MOVE.W  #(DMAF_AUD0),DMACON(a0)
 ```
 
-Audio Hardware 141
-
 Table 5-6: Sampling Rate and Frequency Relationship
 
 ![Table page_0124_seg_002](assets/page_0124_seg_002.png)
@@ -3502,8 +2604,6 @@ To use direct audio output, do not enable the DMA for the audio channel you wish
 Unlike in the DMA-controlled automatic data output, in direct audio output, if you do not write a new set of data to the output addresses before two sampling intervals have elapsed, the audio output will cease changing. The last value remains as an output of the digital-to-analog converter.
 
 The volume and period registers are set as usual.
-
-Audio Hardware 153
 
 256 Byte Sample
 
@@ -3561,8 +2661,6 @@ Audio Hardware 153
    0   32   64   96  128   96   64   32    0  -32  -64  -96 -127  -96  -64  -32
 ```
 
-158 Audio Hardware
-
 Each of the DMA channels can be independently enabled or disabled. The enable bits are bits SRCA, SRCB, SRCC, and DEST in control register zero (BLTCON0).
 
 When disabled, no memory cycles will be executed for that channel and, for a source channel, the constant value stored in the data register of that channel will be used for each blitter cycle. For this purpose, each of the three source channels have preloadable data registers, called BLTxDAT.
@@ -3583,8 +2681,6 @@ This copy (move) operation operates on memory and may or may not change the memo
 
 All data copy blits are performed as rectangles of words, with a given width and height. All four DMA channels use a single blit size register, called BLTSIZE, used for both the width and height. The width can take a value of from 1 to 64 words (16 to 1024 bits). The height can run from 1 to 1024 rows. The width is stored in the least significant six bits of the BLTSIZE register. If a value of zero is stored, a width count of 64 words is used. This is the only parameter in the blitter
 
-Blitter Hardware 165
-
 Function Generator
 
 The blitter can combine the data from the three source DMA channels in up to 256 different ways to generate the values stored by the destination DMA channel. These sources might be one bit-plane from each of three separate graphics images. While each of these sources is a rectangular region composed of many points, the same logic operation will be performed on each point throughout the rectangular region. Thus, for purposes of defining the blitter logic operation it is only necessary to consider what happens for all of the possible combinations of one bit from each of the three sources.
@@ -3600,8 +2696,6 @@ To calculate the LF control byte in BLTCON0, fill in the truth table with desire
 For example, if we wanted to set all bits in the destination where the corresponding A source bit is 1 or the corresponding B source bit is 1, we would fill in the last four entries of the truth table with 1 (because the A bit is set) and the third, fourth, seven, and eight entries with 1 (because the B bit is set), and all others (the first and second) with 0, because neither A nor B is set. Then, we read the truth table from the bottom up, reading 11111100, or $FC.¹
 
 ¹ “$” indicates hex notation.
-
-168 Blitter Hardware
 
 For another example, an LF control byte of $80 (= 1000 0000 binary) turns on bits only for those points of the D destination rectangle where the corresponding bits of A, B, and C sources were all on (ABC = 1, bit 7 of LF on). All other points in the rectangle, which correspond to other combinations for A, B, and C, will be 0. This is because bits 6 through 0 of the LF control byte, which specify the D output for these situations, are set to 0.
 
@@ -3637,8 +2731,6 @@ These correspond to BLTCON0 bit positions of 6, 4, 7, 3, and 2, according to our
 
 The wide range of logic operations allow some sophisticated graphics techniques. For instance, you can move the image of a car across some pre-existing building images with a few blits. Producing this effect requires predrawn images of the car, the buildings (or background), and a car
 
-Blitter Hardware 169
-
 3. To use a function that is the inverse, or “not”, of one of the sources, such as $\overline{A}$, take all of the minterms not enclosed by the circle represented by A on the above Figure. In this case, we have minterms 0, 1, 2, and 3.
 
 ![Table page_0129_seg_002](assets/page_0129_seg_002.png)
@@ -3659,8 +2751,6 @@ The shift value for the A channel is set with bits 15 through 12 of BLTCON0; the
 
 As an example, let us say we are doing a blit that is three words wide, two words high, and we are using a shift of 4 bits. For simplicity, let us assume we are doing a straight copy from A to D. The first word that will be written to D is the first word fetched from A, shifted right four bits
 
-Blitter Hardware 173
-
 Table 6-2: Typical Blitter Cycle Sequence
 
 ![Table page_0130_seg_002](assets/page_0130_seg_002.png)
@@ -3675,8 +2765,6 @@ Table 6-2: Typical Blitter Cycle Sequence
 **NOTE**
 
 This Table is only meant to be an illustration of the typical order of blitter cycles on the bus. Bus cycles are dynamically allocated based on blitter operating mode; competing bus activity from processor, bit-planes, and other DMA channels; and other factors. Commodore Amiga does not guarantee the accuracy of or future adherence to this chart. We reserve the right to make product improvements or design changes in this area without notice.
-
-Blitter Hardware 183
 
 Table 6-3: BLTCON1 Code Bits for Octant Line Drawing
 
@@ -3714,8 +2802,6 @@ We initialize the A pointer register to 4 * *dy* − 2 * *dx*. If this value is 
 The A data register should be preloaded with $8000. Both word masks should be set to $FFFF. The A shift value should be set to the *x* coordinate of the first point (*x1*) modulo 15.
 
 The B data register should be initialized with the line texture pattern, if any, or $FFFF for a solid line. The B shift value should be set to the bit number at which to start the line texture (zero means the last significant bit.)
-
-Blitter Hardware 185
 
 The C and D pointer registers should be initialized to the word containing the first pixel of the line; the C and D modulo registers should be set to the width of the bitplane in bytes.
 
@@ -3756,8 +2842,6 @@ Register setup:
     BLTDPT  = word containing the first pixel of the line
 ```
 
-186 Blitter Hardware
-
 ## Blitter Speed
 
 The speed of the blitter depends entirely on which DMA channels are enabled. You might be using a DMA channel as a constant, but unless it is enabled, it does not count against you. The minimum blitter cycle is four ticks; the maximum is eight ticks. Use of the A register is always free. Use of the B register always adds two ticks to the blitter cycle. Use of either C or D is free, but use of both adds another two ticks. Thus, a copy cycle, using A and D, takes four clock ticks per cycle; a copy cycle using B and D takes six ticks per cycle, and a generalized bit copy using B, C, and D takes eight ticks per cycle. When in line mode, each pixel takes eight ticks.
@@ -3778,13 +2862,9 @@ $$\frac{4 * 200 * 20}{7.16} = 2235\text{ microseconds.}$$
 
 These timings do not take into account blitter setup time, which is the time required to calculate and load the blitter registers and start the blit. They also ignore DMA contention.
 
-188 Blitter Hardware
-
 ![Graphic page_0134_seg_001](assets/page_0134_seg_001.png)
 
 Figure 6-9: DMA Time Slot Allocation
-
-190 Blitter Hardware
 
 ![Graphic page_0135_seg_001](assets/page_0135_seg_001.png)
 
@@ -3800,8 +2880,6 @@ Each horizontal line in a normal, full-sized display contains 320 pixels in low-
 
 Display size is adjustable (see Chapter 3, “Playfield Hardware”), and bit-plane DMA takes precedence over sprite DMA. As shown in Figure 6-9, larger displays may block out one or more of the highest-numbered sprites, especially with scrolling.
 
-192 Blitter Hardware
-
 Table 7-5: Contents of the Beam Position Counter
 
 ![Table page_0136_seg_002](assets/page_0136_seg_002.png)
@@ -3811,8 +2889,6 @@ As usual, the address pairs VPOSR,VHPOSR and VPOSW,VHPOSW can be read from and w
 Interrupts
 
 This system supports the full range of 68000 processor interrupts. The various kinds of interrupts generated by the hardware are brought into the peripherals chip and are translated into six of the seven available interrupts of the 68000.
-
-System Control Hardware 211
 
 Bit 1, DSKBLK, indicates “disk block finished.” It is used to indicate that the specified disk DMA task that you have requested has been completed. This bit generates a level 1 interrupt.
 
@@ -3830,8 +2906,6 @@ Bit 0, TBE (for “transmit buffer empty”), specifies that the output buffer o
 
 Figure 7-4: Interrupt Priorities
 
-216 System Control Hardware
-
 Table 8-1: Typical Controller Connections
 
 ![Table page_0138_seg_002](assets/page_0138_seg_002.png)
@@ -3844,8 +2918,6 @@ REGISTERS USED WITH THE CONTROLLER PORT
 
 ![Table page_0138_seg_006](assets/page_0138_seg_006.png)
 
-Interface Hardware 223
-
 CIAAPRA/CIABPRB - Disk selection, control and sensing
 
 The following table lists how 8520 chip bits used by the disk subsystem. Bits labeled "PA" are input bits in CIAAPRA ($BFE001). Bits labeled "PB" are output bits located in CIAAPRB ($BFD100). More information on how the 8520 chips operate can be found in Appendix F.
@@ -3854,11 +2926,7 @@ Table 8-5: Disk Subsystem
 
 ![Table page_0139_seg_004](assets/page_0139_seg_004.png)
 
-238 Interface Hardware
-
 ![Table page_0140_seg_001](assets/page_0140_seg_001.png)
-
-Interface Hardware 239
 
 ![Graphic page_0141_seg_001](assets/page_0141_seg_001.png)
 
@@ -3868,15 +2936,11 @@ Figure 8-9: The Amiga 1000 Keyboard, Showing Keycodes in Hexadecimal
 
 Figure 8-10: The Amiga 500/2000 Keyboard, Showing Keycodes in Hexadecimal
 
-Interface Hardware 249
-
 Table 8-10 shows the definitions of the various bit positions within SERDATR.
 
 Table 8-9: SERDATR / ADKCON Registers
 
 ![Table page_0142_seg_003](assets/page_0142_seg_003.png)
-
-252 Interface Hardware
 
 ![Table page_0143_seg_001](assets/page_0143_seg_001.png)
 
@@ -3892,8 +2956,6 @@ Data will be moved out of the shift register, one bit during each time interval,
 
 SERDAT is a 16-bit register that allows you to control the format (appearance) of the transmitted data. To form a typical data sequence, such as one start bit, eight data bits, and one stop bit, you write into SERDAT the contents shown in Figures 8-11 and 8-12.
 
-Interface Hardware 253
-
 ![Table page_0144_seg_001](assets/page_0144_seg_001.png)
 
 **NOTE:** If both period and volume are modulated on the same channel, the period and volume will be alternated. First word xxxxxxxx V6-V0 , Second word P15-P0 (etc)
@@ -3901,8 +2963,6 @@ Interface Hardware 253
 ![Table page_0144_seg_003](assets/page_0144_seg_003.png)
 
 This register is the audio channel x (x=0,1,2,3) DMA data buffer. It contains 2 bytes of data that are each 2’s complement and are outputted sequentially (with digital-to-analog conversion) to the audio output pins. (LSB = 3 MV) The DMA controller automatically transfers data to this register from RAM. The processor can also write directly to this register. When the DMA data is finished (words outputted=length) and the data in this register has been used, an audio channel interrupt request is set.
-
-Appendix A 259
 
 ![Table page_0145_seg_001](assets/page_0145_seg_001.png)
 
@@ -3944,8 +3004,6 @@ DESC    Descending (decreasing address) control bit
 LINE    Line mode control bit (set to 0)
 ```
 
-Appendix A 261
-
 ![Table page_0146_seg_001](assets/page_0146_seg_001.png)
 
 These addresses each read a pair of 8-bit mouse counters. 0=left controller pair, 1=right controller pair (four counters total). The bit usage for both left and right addresses is shown below. Each counter is clocked by signals from two controller pins. Bits 1 and 0 of each counter may be read to determine the state of these two clock pins. This allows these pins to double as joystick switch inputs.
@@ -3968,19 +3026,11 @@ After being sampled, these connector pin signals are used in quadrature to clock
 
 ![Table page_0146_seg_007](assets/page_0146_seg_007.png)
 
-Appendix A 275
-
 ![Table page_0147_seg_001](assets/page_0147_seg_001.png)
-
-Appendix B 283
 
 ![Table page_0148_seg_001](assets/page_0148_seg_001.png)
 
-284 Appendix B
-
 ![Table page_0149_seg_001](assets/page_0149_seg_001.png)
-
-Appendix B 285
 
 AGNUS PIN ASSIGNMENT
 
@@ -3989,8 +3039,6 @@ AGNUS PIN ASSIGNMENT
 DENISE PIN ASSIGNMENT
 
 ![Table page_0150_seg_004](assets/page_0150_seg_004.png)
-
-290 Appendix C
 
 A true software memory map, showing system utilization of the various sections of RAM and free space is not provided, or possible with the Amiga. All memory is dynamically allocated by the memory manager, and the actual locations may change from release-to-release, machine-to-machine or boot-to-boot (see the exec/AllocMem function for details). To find the locations of system structures software must use the defined access procedures, starting by fetching the address of the exec.library from location 4; the only absolute memory location in the system. All software is written so that it can be loaded and relocated anywhere in memory by the loader. What follows is the general layout of memory areas withing the current generation of Amiga computers.
 
@@ -4041,10 +3089,6 @@ F00000-FBFFFF           Reserved. Do not use.
 FC0000-FFFFFF           256K System ROM.
 ```
 
-294 Appendix D
-
-************** PART 2 - MORE OUTSIDE WORLD ********************
-
 PARALLEL INTERFACE CONNECTOR SPECIFICATION
 
 The 25-pin D-type connector with pins (DB25P=male for the A1000, female for A500/A2000 and IBM compatibles) at the rear of the Amiga is nominally used to interface to parallel printers. In this capacity, data flows from the Amiga to the printer. This interface may also be used for input or bidirectional data transfers. The implementation is similar to Centronics, but the pin assignment and drive characteristics vary significantly from that specification (see Pin Assignment). Signal names correspond to those used in the other places in this appendix, when possible.
@@ -4052,8 +3096,6 @@ The 25-pin D-type connector with pins (DB25P=male for the A1000, female for A500
 PARALLEL CONNECTOR PIN ASSIGNMENT (J8)
 
 ![Table page_0152_seg_005](assets/page_0152_seg_005.png)
-
-302 Appendix E
 
 PARALLEL CONNECTOR INTERFACE TIMING, OUTPUT CYCLE
 
@@ -4118,8 +3160,6 @@ DRDY*                              |_________|
         upc = under program control
 ```
 
-Appendix E 303
-
 CIAA Address Map
 
 ![Table page_0154_seg_002](assets/page_0154_seg_002.png)
@@ -4131,8 +3171,6 @@ CIAB Address Map
 ![Table page_0154_seg_005](assets/page_0154_seg_005.png)
 
 **Note:** CIAB can generate INT6.
-
-318 Appendix F
 
 ## BIT MAP OF REGISTER CRA
 
@@ -4151,8 +3189,6 @@ All unused register bits are unaffected by a write and forced to 0 on a read.
 ### CONTROL REGISTER B:
 
 ![Table page_0155_seg_005](assets/page_0155_seg_005.png)
-
-328 Appendix F
 
 ```text
 Board Offset
@@ -4207,8 +3243,6 @@ OFFSET:         Address 1    Address 2                 Description
                                           1 = 8 Meg area preferred
 ```
 
-338 Appendix G
-
 # Keyboard Communications
 
 The keyboard transmits 8-bit data words serially to the main unit. Before the transmission starts, both KCLK and KDAT are high. The keyboard starts the transmission by putting out the first data bit (on KDAT), followed by a pulse on KCLK (low then high); then it puts out the second data bit and pulses KCLK until all eight data bits have been sent. After the end of the last KCLK pulse, the keyboard pulls KDAT high again.
@@ -4233,8 +3267,6 @@ KDAT      \_______X_______X_______X_______X_______X_______X_______X_______/
 The keyboard processor sets the KDAT line about 20 microseconds before it pulls KCLK low. KCLK stays low for about 20 microseconds, then goes high again. The processor waits another 20 microseconds before changing KDAT.
 
 Therefore, the bit rate during transmission is about 60 microseconds per bit, or 17 kbits/sec.
-
-344 Appendix H
 
 Matrix Table
 
@@ -4288,8 +3320,6 @@ Column    (Bit 7) (Bit 6) (Bit 5) (Bit 4) (Bit 3) (Bit 2)
         +-------+-------+-------+-------+-------+-------+
 ```
 
-350 Appendix H
-
 ```text
            Row 5   Row 4   Row 3   Row 2   Row 1   Row 0
 Column    (Bit 7) (Bit 6) (Bit 5) (Bit 4) (Bit 3) (Bit 2)
@@ -4332,83 +3362,3 @@ The following table shows which keys are independently readable. These keys neve
 | (66)  | (64)  | (60)  | (63)  | (67)  | (65)  | (61)  |
 +-------+-------+-------+-------+-------+-------+-------+
 ```
-
-Appendix H 351
-
-INDEX
-
-- 60 Pin Edge Connector, 299
-- 68000, 2, 4, 10, 13-14, 20, 31, 181, 189, 217
-  - instead of Copper, 31
-  - interrupting, 31, 211
-  - normal cycle, 191
-  - Share Memory, 4
-  - synchronizing with the video beam, 210
-  - test-and-set instruction, 191
-- 68010, 2
-- 68010/20/30, 10
-- 68020, 2, 181
-- 68030, 2
-- 8520, 10, 153, 219, 236, 238, 245, 317
-  - alarm, 323
-  - handshaking, 320
-  - input modes, 322
-  - interval timers, 320
-    - continuous, 321
-    - force load, 322
-    - one-shot, 321
-    - PB on/off, 321
-    - start/stop, 321
-    - Toggle/pulse, 321
-  - I/O ports, 320
-  - read bit names, 322
-  - register map, 319
-  - signal assignments, 313
-  - time-of-day clock, 323
-  - write bit names, 322
-- 86 Pin Edge Connector, 300
-- A0, 10
-- A1, 10
-- A1000, 1, 4, 6, 56, 59, 232, 255
-  - expansion port, 299
-- A2000, 1-2, 4, 6, 56, 153, 232, 255
-- A500, 1-2, 4, 6, 56, 153, 232, 255
-
-- A6, 10
-- Address Registers, 8
-- Addresses, 10
-- ADKCON, 236, 244, 252
-  - disk control bits, 242
-  - in audio, 145, 147
-- Agnus, 3-4, 160-161, 163
-  - fat agnus, 4, 181
-- Alarm, 323
-- Aliasing
-  - audio, 150
-- AllocMem(), 46
-- Amiga OS, 7
-- Amplitude Modulation, 4
-- Animated Objects, 5
-- Animation, 170
-- Apple II, 235
-- Area Fill, 4, 178
-- ATTACH, 117
-- Attachment
-  - audio, 146
-  - sprites, 117
-- Audio, 4, 7, 14
-  - aliasing distortion, 150
-  - amplitude modulation, 4
-  - channels
-    - attaching, 145, 160
-    - choosing, 134
-  - data, 134
-  - data length registers, 136
-  - data location registers, 135-136
-  - data output rate, 137
-  - decibel values, 137, 159
-  - DMA, 135, 140, 143, 160
-  - equal-tempered scale, 154
-  - frequency modulation, 4
-
-Index 373

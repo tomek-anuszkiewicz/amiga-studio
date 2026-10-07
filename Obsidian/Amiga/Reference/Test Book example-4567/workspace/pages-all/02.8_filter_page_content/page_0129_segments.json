@@ -1,0 +1,137 @@
+{
+  "page": 129,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "3. To use a function that is the inverse, or “not”, of one of the sources, such as $\\overline{A}$, take all of the minterms not enclosed by the circle represented by A on the above Figure. In this case, we have minterms 0, 1, 2, and 3.",
+      "bbox": [
+        357,
+        228,
+        2161,
+        395
+      ],
+      "segment_id": "page_0129_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        818,
+        430,
+        1789,
+        594
+      ],
+      "segment_id": "page_0129_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "4. To combine minterms, or “or” them, “or” the values together. For example, the equation AB+BC becomes",
+      "bbox": [
+        357,
+        679,
+        2157,
+        777
+      ],
+      "segment_id": "page_0129_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        795,
+        810,
+        1787,
+        1080
+      ],
+      "segment_id": "page_0129_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Shifts and Masks",
+      "bbox": [
+        357,
+        1239,
+        844,
+        1304
+      ],
+      "segment_id": "page_0129_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Up to now we have dealt with the blitter only in moving words of memory around and combining them with logic operations. This is sufficient for moving graphic images around, so long as the images stay in the same position relative to the beginning of a word. If our car image has its leftmost pixel on the second pixel from the left, we can easily draw it on the screen in any position where the leftmost pixel also starts two pixels from the beginning of some word. But often we want to draw that car shifted left or right by a few pixels. To this end, both the A and B DMA channels have a barrel shifter that can shift an image between 0 and 15 bits.",
+      "bbox": [
+        357,
+        1417,
+        2155,
+        1786
+      ],
+      "segment_id": "page_0129_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This shifting operation is completely free; it requires no more time to execute a blit with shifts than a blit without shifts, as opposed to shifting with the 68000. The shift is normally towards the right. This shifter allows movement of images on pixel boundaries, even though the pixels are addressed 16 at a time by each word address of the bit-plane image.",
+      "bbox": [
+        357,
+        1849,
+        2154,
+        2052
+      ],
+      "segment_id": "page_0129_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "So if the incoming data is shifted to the right, what is shifted in from the left? For the first word of the blit, zeros are shifted in; for each subsequent word of the same blit, the data shifted out from the previous word is shifted in.",
+      "bbox": [
+        357,
+        2114,
+        2154,
+        2266
+      ],
+      "segment_id": "page_0129_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The shift value for the A channel is set with bits 15 through 12 of BLTCON0; the B shift value is set with bits 15 through 12 of BLTCON1. For most operations, the same value will be used for both shifts. For shifts of greater than fifteen bits, load the address register pointer of the destination with a higher address; a shift of 100 bits would require the destination pointer to be advanced 100/16 or 6 words (12 bytes), and a right shift of the remaining 4 bits to be used.",
+      "bbox": [
+        356,
+        2330,
+        2155,
+        2586
+      ],
+      "segment_id": "page_0129_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "As an example, let us say we are doing a blit that is three words wide, two words high, and we are using a shift of 4 bits. For simplicity, let us assume we are doing a straight copy from A to D. The first word that will be written to D is the first word fetched from A, shifted right four bits",
+      "bbox": [
+        358,
+        2649,
+        2155,
+        2801
+      ],
+      "segment_id": "page_0129_seg_010"
+    }
+  ]
+}

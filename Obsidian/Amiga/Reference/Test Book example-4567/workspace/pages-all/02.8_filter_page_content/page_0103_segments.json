@@ -1,0 +1,111 @@
+{
+  "page": 103,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        1189,
+        287,
+        1315,
+        332
+      ],
+      "segment_id": "page_0103_seg_001"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The offset values of the registers are the addresses that the Copper must use to talk to the registers.",
+      "bbox": [
+        461,
+        367,
+        2054,
+        464
+      ],
+      "segment_id": "page_0103_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "For example, in assembler:",
+      "bbox": [
+        358,
+        526,
+        849,
+        571
+      ],
+      "segment_id": "page_0103_seg_003"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\n        INCLUDE \"exec/types.i\"\n        INCLUDE \"hardware/custom.i\"\n\n        XREF    _custom                 ; External reference...\n\nStart:  lea     _custom,a0              ; Use a0 as base register\n        move.w  #$7FFF,intena(a0)        ; Disable all interupts\n```",
+      "bbox": [
+        358,
+        625,
+        1811,
+        911
+      ],
+      "segment_id": "page_0103_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "In C, you would use the structure definitions in hardware/custom.h For example:",
+      "bbox": [
+        358,
+        975,
+        1827,
+        1020
+      ],
+      "segment_id": "page_0103_seg_005"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\n#include        \"exec/types.h\"\n#include        \"hardware/custom.h\"\n\nextern  struct  Custom  custom;\n\n/* You may need to define the above external as\n**  extern struct Custom far custom;\n**  Check you compiler manual.\n*/\n\nmain()\n{\ncustom.intena = 0x7FFF;         /* Disable all interupts */\n}\n```",
+      "bbox": [
+        357,
+        1076,
+        1677,
+        1656
+      ],
+      "segment_id": "page_0103_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The Amiga hardware include files are generally supplied with your compiler or assembler. Listings of the hardware include files may also be found in the Addison-Wesley Amiga ROM Kernel Manual “Includes and Autodocs”. Generally, the include file label names are very similar to the equivalent hardware register list names with the following typical differences.",
+      "bbox": [
+        355,
+        1714,
+        2158,
+        1920
+      ],
+      "segment_id": "page_0103_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "- Address registers which have low word and high word components are generally listed as two word sized registers in the hardware register list, with each register name containing either a suffix or embedded “L” or “H” for low and high. The include file label for the same register will generally treat the whole register as a longword (32 bit) register, and therefore will not contain the “L” or “H” distinction.\n- Related sequential registers which are given individual names with number suffixes in the hardware register list, are generally referenced from a single base register definition in the include files. For example, the color registers in the hardware list (COLOR00, COLOR01, etc.) would be referenced from the “color” label defined in “hardware/custom.i” (color+0, color+2, etc.).\n- Examples of how to define the correct register offset can be found in the hw_examples.i file listed in Appendix J.",
+      "bbox": [
+        358,
+        1983,
+        2157,
+        2726
+      ],
+      "segment_id": "page_0103_seg_008"
+    }
+  ]
+}

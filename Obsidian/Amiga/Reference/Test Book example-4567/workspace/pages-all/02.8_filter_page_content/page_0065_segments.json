@@ -1,0 +1,137 @@
+{
+  "page": 65,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "As you will notice, the A500 and 2000 deletes clocks and interrupt lines from the A1000. The +/−5Vdc and reset lines are also deleted. The +/−12Vdc lines are identical to a PC10/20.",
+      "bbox": [
+        795,
+        309,
+        2026,
+        454
+      ],
+      "segment_id": "page_0065_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following signals (formerly on the RS232 connector) can be found on other connectors:",
+      "bbox": [
+        795,
+        510,
+        2036,
+        604
+      ],
+      "segment_id": "page_0065_seg_002"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nResB = parallel connector\n  C2 = video connector\n```",
+      "bbox": [
+        1032,
+        639,
+        1521,
+        727
+      ],
+      "segment_id": "page_0065_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Centronics Port",
+      "bbox": [
+        145,
+        890,
+        535,
+        941
+      ],
+      "segment_id": "page_0065_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The Centronics port also has some non-standard signals. Below is a table comparing the A1000 Centronics port with the A500/A2000 Centronics port. Again, this is the opposite sex from the A1000 and the same sex connector as an IBM®-PC (i.e., a female DB25 connector).",
+      "bbox": [
+        795,
+        887,
+        2030,
+        1136
+      ],
+      "segment_id": "page_0065_seg_005"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        782,
+        1257,
+        2080,
+        2386
+      ],
+      "segment_id": "page_0065_seg_006"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        140,
+        1509,
+        737,
+        1665
+      ],
+      "segment_id": "page_0065_seg_007"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Video Output",
+      "bbox": [
+        131,
+        2597,
+        465,
+        2655
+      ],
+      "segment_id": "page_0065_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The A500 and A2000, like the A1000, use a DB23 video connector.",
+      "bbox": [
+        781,
+        2590,
+        2031,
+        2639
+      ],
+      "segment_id": "page_0065_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This 23 pin connector contains all the signals necessary to work with a Genlock, but the current Genlock will need to be redesigned in order to meet the physical requirements of the A500 and A2000, in-",
+      "bbox": [
+        781,
+        2690,
+        2033,
+        2842
+      ],
+      "segment_id": "page_0065_seg_010"
+    }
+  ]
+}

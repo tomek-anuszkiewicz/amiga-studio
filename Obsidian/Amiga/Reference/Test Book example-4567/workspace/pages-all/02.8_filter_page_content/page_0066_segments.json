@@ -1,0 +1,33 @@
+{
+  "page": 66,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 1-1 RAW KEY CODES",
+      "bbox": [
+        1110,
+        316,
+        1689,
+        357
+      ],
+      "segment_id": "page_0066_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        775,
+        417,
+        1974,
+        2845
+      ],
+      "segment_id": "page_0066_seg_002"
+    }
+  ]
+}

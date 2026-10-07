@@ -1,0 +1,163 @@
+{
+  "page": 82,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "INITIALIZE COMM PORT (AH = 00H)",
+      "bbox": [
+        782,
+        299,
+        1500,
+        345
+      ],
+      "segment_id": "page_0082_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "EIA DSR ENTRY POINT\nVIA S/W INT 14H",
+      "bbox": [
+        134,
+        299,
+        700,
+        405
+      ],
+      "segment_id": "page_0082_seg_002"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nINPUT:  DX = Modem Control Register port\n        AL = Baud Rate and UART control parameters\n        BH = 0, upper bits of baud rate index\n```",
+      "bbox": [
+        884,
+        402,
+        1947,
+        545
+      ],
+      "segment_id": "page_0082_seg_003"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nOUTPUT: AH = Line Status\n        AL = Modem Status\n```",
+      "bbox": [
+        880,
+        601,
+        1459,
+        689
+      ],
+      "segment_id": "page_0082_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Serial Port Control bits in AL Register",
+      "bbox": [
+        1068,
+        701,
+        1762,
+        748
+      ],
+      "segment_id": "page_0082_seg_005"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        505,
+        850,
+        1648,
+        1522
+      ],
+      "segment_id": "page_0082_seg_006"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "TRANSMIT A CHAR (AH = 01H)",
+      "bbox": [
+        776,
+        1719,
+        1385,
+        1766
+      ],
+      "segment_id": "page_0082_seg_007"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nINPUT:  DX = Index into device table\n        AL = Character to transmit\n        CX = Timeout value\n        BX = 0, used as timeout counter\n```",
+      "bbox": [
+        876,
+        1822,
+        1679,
+        2008
+      ],
+      "segment_id": "page_0082_seg_008"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nOUTPUT: AH = Line Status\n```",
+      "bbox": [
+        873,
+        2067,
+        1390,
+        2109
+      ],
+      "segment_id": "page_0082_seg_009"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "RECEIVE A CHAR (AH = 02H)",
+      "bbox": [
+        774,
+        2169,
+        1346,
+        2214
+      ],
+      "segment_id": "page_0082_seg_010"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nINPUT:  DX = Index into device table\n        CX = Timeout value\n        BX = 0, used as timeout counter\n```",
+      "bbox": [
+        874,
+        2268,
+        1676,
+        2406
+      ],
+      "segment_id": "page_0082_seg_011"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nOUTPUT: AH = Line Status (error bits only, = 0 if OK)\n        AL = Received Character\n```",
+      "bbox": [
+        871,
+        2465,
+        1906,
+        2558
+      ],
+      "segment_id": "page_0082_seg_012"
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "page": 110,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "## The Color Table",
+      "bbox": [
+        359,
+        335,
+        680,
+        380
+      ],
+      "segment_id": "page_0110_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The color table contains 32 registers, and you may load a different color into each of the registers. Here is a condensed view of the contents of the color table:",
+      "bbox": [
+        357,
+        473,
+        2156,
+        571
+      ],
+      "segment_id": "page_0110_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 3-2: Portion of the Color Table",
+      "bbox": [
+        910,
+        631,
+        1593,
+        676
+      ],
+      "segment_id": "page_0110_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        630,
+        763,
+        1871,
+        1616
+      ],
+      "segment_id": "page_0110_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "COLOR00 is always reserved for the background color. The background color shows in any area on the display where there is no other object present and is also displayed outside the defined display window, in the border area.",
+      "bbox": [
+        357,
+        1702,
+        2161,
+        1855
+      ],
+      "segment_id": "page_0110_seg_005"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**NOTE**",
+      "bbox": [
+        1187,
+        1916,
+        1315,
+        1961
+      ],
+      "segment_id": "page_0110_seg_006"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "If you are using the optional genlock board for video input from a camera, VCR, or laser disk, the background color will be replaced by the incoming video display.",
+      "bbox": [
+        459,
+        1996,
+        2058,
+        2093
+      ],
+      "segment_id": "page_0110_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Twelve bits of color selection allow you to define, for each of the 32 registers, one of 4,096 possible colors, as shown in Table 3-3.",
+      "bbox": [
+        354,
+        2158,
+        2150,
+        2256
+      ],
+      "segment_id": "page_0110_seg_008"
+    }
+  ]
+}

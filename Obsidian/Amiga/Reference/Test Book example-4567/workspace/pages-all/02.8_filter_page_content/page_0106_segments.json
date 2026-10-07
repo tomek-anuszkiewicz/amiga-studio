@@ -1,0 +1,124 @@
+{
+  "page": 106,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        539,
+        261,
+        1972,
+        1019
+      ],
+      "segment_id": "page_0106_seg_001"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        1183,
+        1111,
+        1311,
+        1156
+      ],
+      "segment_id": "page_0106_seg_002"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The vertical is like the horizontal—as there are alternating long and short lines, there are also long and short fields (interlace only). In NTSC, the fields are 262, then 263 lines and in PAL, 312,313.",
+      "bbox": [
+        455,
+        1191,
+        2052,
+        1342
+      ],
+      "segment_id": "page_0106_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This alternation of lines & fields produces the standard NTSC 4 field repeating pattern:",
+      "bbox": [
+        354,
+        1407,
+        1939,
+        1451
+      ],
+      "segment_id": "page_0106_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "short field ending on short line  \nlong field ending on long line  \nshort field ending on long line  \nlong field ending on short line  \n& back to the beginning...",
+      "bbox": [
+        502,
+        1514,
+        1076,
+        1771
+      ],
+      "segment_id": "page_0106_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "1 horiz count takes 1 cycle of the system clock. (Processor is twice this)",
+      "bbox": [
+        361,
+        1834,
+        1664,
+        1878
+      ],
+      "segment_id": "page_0106_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NTSC- 3,579,545 Hz  \nPAL- 3,546,895 Hz  \ngenlocked- basic clock frequency plus or minus about 2%.",
+      "bbox": [
+        504,
+        1941,
+        1569,
+        2093
+      ],
+      "segment_id": "page_0106_seg_007"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "THE COMPARISON ENABLE BITS",
+      "bbox": [
+        358,
+        2213,
+        1094,
+        2257
+      ],
+      "segment_id": "page_0106_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Bits 14-1 are normally set to all 1s. The use of the comparison enable bits is described later in the “Advanced Topics” section.",
+      "bbox": [
+        358,
+        2351,
+        2157,
+        2450
+      ],
+      "segment_id": "page_0106_seg_009"
+    }
+  ]
+}
