@@ -3184,3 +3184,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick preflight passed
   - Architecture suite passed 19/19
   - No model inference or source conversion rerun
+---
+
+### [2026-10-07 22:24 CEST] — PDF-CALLOUT-2.83: close the previous Stage 02.4 execution plan
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.4-callout-reclassification.md`
+  - `tools/bootstrap/pdf-to-markdown/stages/02.4_reclassify_callouts`
+- **What Was Changed (The Concrete Reality)**:
+  - Close and remove the previous Stage 02.4 plan at the user request
+  - Retain the implemented converter and source attempt artifacts
+  - Record the discussed simpler direction: original full-page image, candidate block IDs and pixel boxes, a short callout question and explicit replacement JSON without a framed companion or separate decision protocol
+- **Architectural Rationale & Trade-Offs**:
+  - The user withdrew the previous plan after assessing its prompt and method as too complicated
+  - Closing the old plan waives its outstanding review scope rather than certifying callout recovery accuracy
+  - The simpler method is a discussed direction and is not implemented by this documentation-only closure
+- **Verification & Test Results**:
+  - Current quick preflight passed
+  - Current architecture suite passed 19/19
+  - Prior implementation commit 33c5140 records 29 passing PDF tests and 21 passing transport/cache tests, not rerun for this closure
+  - Previously inspected user-run pages-all artifacts showed successful execution on 160 input pages with 18 candidate objects on 14 requested pages and zero changed pages
+  - No inference or conversion run in this closure
+  - No milestone or classification-quality certification
