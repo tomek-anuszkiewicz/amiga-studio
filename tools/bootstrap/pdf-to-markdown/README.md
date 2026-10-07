@@ -45,7 +45,7 @@ errors stop execution normally. No older-stage inputs or alternative models are 
 
 ## Stage data and execution
 
-Execution order is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.42 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
+Execution order is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
 Each worker reads the predecessor's own directory and writes its own results:
 
 | Stage | Input and result |
@@ -56,8 +56,9 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [02.4](stages/02.4_reclassify_callouts/README.md) | Stage 01/02 -> vision-assisted advisory range replacements on changed pages only |
 | [02.41](stages/02.41_split_tables/README.md) | Stage 01 and resolved 02/02.4 -> vision-assisted splits of grouped tables, changed pages only |
 | [02.42](stages/02.42_reclassify_tables/README.md) | Stage 01 and resolved 02/02.4/02.41 -> table representation decisions and textual replacements, changed pages only |
-| [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42 -> review frames and ordered labels |
-| [02.8](stages/02.8_filter_page_content/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42 -> retained objects after source-content and fixed NXP-logo exclusions |
+| [02.43](stages/02.43_reclassify_code_blocks/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42 -> code blocks retained, transcribed as prose or marked as tables, changed pages only |
+| [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42/02.43 -> review frames and ordered labels |
+| [02.8](stages/02.8_filter_page_content/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42/02.43 -> retained objects after source-content and fixed NXP-logo exclusions |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.8 -> table markup, saved crops and inferred HTML group text |
 | [02.82](stages/02.82_table_conversion_review/README.md) | Stage 01/02.81 -> side-by-side table review PNGs, no inference |
 | [02.9](stages/02.9_emit_page_markdown/README.md) | Stage 01/02.81 -> `document.md`, converted tables and required raster assets |
@@ -97,7 +98,8 @@ Omission means all available pages, regardless of a previous run or legacy confi
 | 02.4 | Select Stage 02 files before collecting keywords and requesting advisory recovery |
 | 02.41 | Select resolved Stage 02/02.4 pages before requesting per-table vision splits |
 | 02.42 | Select resolved Stage 02/02.4/02.41 pages before requesting per-table representation decisions |
-| 02.5 | Select resolved Stage 02/02.4/02.41/02.42 pages before review rendering |
+| 02.43 | Select resolved Stage 02/02.4/02.41/02.42 pages before requesting per-code-block representation decisions |
+| 02.5 | Select resolved Stage 02/02.4/02.41/02.42/02.43 pages before review rendering |
 | 02.8 | Select resolved pages before TOC-boundary detection and content exclusions |
 | 02.81 | Select pages from the completed 02.8 predecessor before table inference |
 | 02.82 | Select Stage 02.81 pages before rendering table comparisons |
@@ -141,7 +143,7 @@ objects directly, using Stage 01 geometry and original PNGs. HTML tables publish
 collapsed literal-text and original-image companions after their source groups.
 Markdown tables need no published crop. Tables retain their separate converted
 fragments through stream reduction, continuation detection and Stage 07.
-Existing attempt settings are retained; missing 02.4/02.41/02.42/02.81 model settings are added
+Existing attempt settings are retained; missing 02.4/02.41/02.42/02.43/02.81 model settings are added
 only when their stage is selected. Review backend setup is in the Stage 02.82 README.
 Stage 02.5 uses resolved complete page input for type-colored review annotations,
 consolidates unobstructed consecutive prose, and hides header/footer/thumb-index
@@ -181,7 +183,7 @@ table to continue another, including a table beside it; independent tables recei
 false. Singleton responses retain the predecessor object unchanged.
 Transcription remains deferred to 02.81. Only changed complete-page overrides
 are saved. The shared resolver applies completed sparse layers in order
-`02 -> 02.4 -> 02.41 -> 02.42` for review 02.5 and filtering 02.8; absent optional status
+`02 -> 02.4 -> 02.41 -> 02.42 -> 02.43` for review 02.5 and filtering 02.8; absent optional status
 means skipped, while running/failed status blocks direct consumers. Stage 02.41
 reads only predecessor layers. Restarting it preserves 01/02/02.4 and clears
 every later stage. See the [02.41 contract](stages/02.41_split_tables/README.md).
@@ -193,6 +195,13 @@ ordered independent children. Retained tables stay unchanged. Graphic outcomes
 retain exact raster pixels through downstream stream processing. Only changed
 pages receive overrides; selection, optional status and restart semantics follow
 the shared resolver. See the [02.42 contract](stages/02.42_reclassify_tables/README.md).
+
+Stage 02.43 sends each existing code block with its JSON/bbox and the complete
+original page to vision. It preserves genuine code, transcribes ordinary prose,
+and marks faithful table representations for later 02.81 transcription. Pages
+without code blocks make no requests. Sparse overrides layer after 02.42 for
+review/filtering; restart and selection follow the shared optional-stage rules.
+See the [02.43 contract](stages/02.43_reclassify_code_blocks/README.md).
 
 ## Restart, status and publication
 

@@ -11,6 +11,7 @@ llm:
     02.4_reclassify_callouts: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     02.41_split_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     02.42_reclassify_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    02.43_reclassify_code_blocks: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     02.81_transform_page_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     04_stream_reduction: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     06_detect_continuations: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

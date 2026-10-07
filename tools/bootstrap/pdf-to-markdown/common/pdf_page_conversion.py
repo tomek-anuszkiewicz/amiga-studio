@@ -11,8 +11,9 @@ DEFERRED_TEXT_TYPES = {"graphic", "table", "cover"}
 CALLOUT_STAGE = "02.4_reclassify_callouts"
 TABLE_SPLIT_STAGE = "02.41_split_tables"
 TABLE_RECLASSIFY_STAGE = "02.42_reclassify_tables"
+CODE_RECLASSIFY_STAGE = "02.43_reclassify_code_blocks"
 PAGE_OVERRIDE_LAYERS = (("02.4", CALLOUT_STAGE), ("02.41", TABLE_SPLIT_STAGE),
-                        ("02.42", TABLE_RECLASSIFY_STAGE))
+                        ("02.42", TABLE_RECLASSIFY_STAGE), ("02.43", CODE_RECLASSIFY_STAGE))
 
 
 def page_override_layers(before_stage=None):

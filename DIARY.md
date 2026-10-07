@@ -3635,3 +3635,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - 39 and both targets on 62/63 became images, 40 became graphic plus two tables, 94/144 remained tables
   - Retained workspace Obsidian/Amiga/Reference/Test Book example-4567/workspace/stage-02.42-reclassification includes six reviews and copied successful predecessors
   - Prose/code recovery not demonstrated, quality remains for user assessment, downstream live export and milestone gate not run
+---
+
+### [2026-10-08 01:20 CET] — PDF-CODE-2.43: Reclassify code blocks for user review
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion/config.py`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add optional Stage 02.43 using original-page vision and target JSON/bbox
+  - retain code, transcribe prose or defer table transcription to 02.81
+  - integrate sparse resolution, registry, configuration, selection, restart and documentation
+  - adapt existing restart assertions to the new stage
+- **Architectural Rationale & Trade-Offs**:
+  - Review existing code classifications without processing pages that contain no code blocks
+  - preserve source identity and geometry and leave content assessment to the user
+- **Verification & Test Results**:
+  - Selected physical pages 76,78,81,82,89,91,95,145,146,151,158,159 completed 02.43 and 02.5 in workspace/stage-02.43-code-block-review: 29 live calls, 9 prose, 19 table, 1 retained code, 11 sparse overrides and 12 reviews. Compatible selected 01/02/02.4/02.41 copied from pages-all
+  - optional 02.42 absent. Artifact comparison confirmed source IDs/order/bbox/continuation and unchanged non-code objects. Existing PDF execution tests 30/30 and selection tests 6/6 passed
+  - quick pre-flight passed
+  - architecture 19/19 passed
+  - graphify update completed. User assessment pending
+  - task plan retained. No 02.81 transcription, publication or full-book run.
