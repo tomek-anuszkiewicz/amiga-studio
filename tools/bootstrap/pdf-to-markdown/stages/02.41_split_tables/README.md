@@ -6,7 +6,12 @@ vision request with the complete unmodified original Stage 01 PNG, dimensions,
 the target's complete JSON and frozen page objects as read-only context.
 Apply `--page-ranges` before opening pages or issuing requests.
 
-The [prompt](prompt.md) asks whether the target combines independent tables,
+The [prompt](prompt.md) first asks whether the target visually represents a
+genuine table, rather than accepting its input type as proof. Aligned register
+descriptions, character-built layouts and embedded lookup snippets do not by
+themselves justify splitting the composition. A non-table or uncertain target
+is returned unchanged without reclassification. It then asks whether the target
+combines independent tables,
 including side-by-side layouts. Columns, internal sections and nested subtables
 do not automatically require splitting. The response is `{"tables": [...]}`:
 one item retains the original object unchanged; multiple items replace only

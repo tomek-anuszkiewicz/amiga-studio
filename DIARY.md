@@ -3527,3 +3527,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Python compilation and focused assertions passed: boolean schema accepts both values and split outputs preserve independent false/true model decisions without mutating the source
   - Graphify update and diff checks passed. Singleton responses retain predecessor objects. Existing attempt artifacts were not regenerated
   - no fragment conversion was requested.
+---
+
+### [2026-10-07 23:57 CET] — PDF-TABLE-2.41: Check visual table identity before splitting
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.41_split_tables/prompt.md`
+  - `tools/bootstrap/pdf-to-markdown/stages/02.41_split_tables/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Ask vision to first decide whether an input table actually looks like a genuine table
+  - retain non-table or uncertain targets unchanged
+  - discourage splitting aligned register descriptions, character-built layouts and embedded lookup snippets without independent table structure
+- **Architectural Rationale & Trade-Offs**:
+  - Use the physical page 144 register-description composition as a negative example without hardcoding a page-number exclusion or reclassifying source objects
+- **Verification & Test Results**:
+  - Inspected the original Stage 01 image and Stage 02 JSON for physical page 144. Quick pre-flight and architecture 19/19 passed
+  - diff check passed. Prompt-only change: no converter code changes, fragment conversion or quality claim. Existing workspace changes were left untouched.
