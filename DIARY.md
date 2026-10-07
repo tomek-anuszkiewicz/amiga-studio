@@ -3692,3 +3692,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture tests 19/19 passed
   - prompt-only change, no fragment conversion requested or run
   - revised content quality remains unassessed
+---
+
+### [2026-10-08 01:45 CET] — PDF-CODE-2.43: Record revised-prompt fragment rerun
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `selected test-book review attempt`
+- **What Was Changed (The Concrete Reality)**:
+  - Rerun stages 02.43 and 02.5 in workspace/stage-02.43-code-block-review for physical pages 76,78,81,82,89,91,95,145,146,151,158,159
+  - Refresh attempt REVIEW.md and active execution plan
+- **Architectural Rationale & Trade-Offs**:
+  - Assess the requested parameter-description prompt revision on the same selected fragment
+- **Verification & Test Results**:
+  - Both stages completed successfully
+  - 29 live calls and zero cache hits
+  - 22 prose decisions, 6 table decisions and 1 retained code block
+  - 11 override pages and 12 annotated reviews
+  - prior run recorded 9 prose, 19 tables and 1 code block
+  - quick pre-flight passed
+  - architecture tests 19/19 passed
+  - no table transcription or publication
+  - user content assessment pending
