@@ -7,6 +7,13 @@ Serializes chapter streams into standalone Markdown files formatted as `<output_
 3. Skips child continuation nodes whose content was synthesized into the head node.
 4. Synchronizes visual assets and RAG sidecars into `<output_dir>/assets/`.
 
+Stage 02.81 converted table fragments remain independently visible even when their
+source continuation flag is true. Shared group assembly appends one collapsed
+`Table text for RAG` section using saved literal `table_rag_text`, then one collapsed
+`Original table image` section after the last associated source block. Captions,
+footnotes and legends retain their visible source order. Copy the referenced original
+crop from the carried assets bundle; do not reinfer or duplicate companion text.
+
 > [!NOTE]
 > Publication-grade YAML frontmatter (Obsidian properties: `title`, `book`, `chapter`, `tags`) is generated downstream in Stage 12 (`12_generate_properties`).
 

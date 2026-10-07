@@ -44,7 +44,7 @@ errors stop execution normally. No older-stage inputs or alternative models are 
 
 ## Stage data and execution
 
-Execution order is `00 -> 01 -> 02 -> 02.5 -> 02.8 -> 02.9 -> 03`, then 04-14.
+Execution order is `00 -> 01 -> 02 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
 Each worker reads the predecessor's own directory and writes its own results:
 
 | Stage | Input and result |
@@ -54,8 +54,10 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [02](stages/02_page_conversion/README.md) | Stage 01 -> ordered logical objects, Markdown and pixel boxes |
 | [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01/02 -> review frames and ordered labels |
 | [02.8](stages/02.8_filter_page_content/README.md) | Stage 01/02 -> retained objects after source-content and fixed NXP-logo exclusions |
-| [02.9](stages/02.9_emit_page_markdown/README.md) | Stage 01/02.8 -> one unchanged-text `document.md` and original-PNG crops |
-| [03](stages/03_build_raw_stream/README.md) | Stage 02.8 objects and Stage 01 geometry -> raw stream and initial assets |
+| [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.8 -> table markup, saved crops and inferred HTML group text |
+| [02.82](stages/02.82_table_conversion_review/README.md) | Stage 01/02.81 -> side-by-side table review PNGs, no inference |
+| [02.9](stages/02.9_emit_page_markdown/README.md) | Stage 01/02.81 -> `document.md`, converted tables and required raster assets |
+| [03](stages/03_build_raw_stream/README.md) | Stage 02.81 objects and Stage 01 geometry -> raw stream and initial assets |
 | [04](stages/04_stream_reduction/README.md) | Raw stream -> reduced stream |
 | [05](stages/05_chapter_partition/README.md) | Reduced stream -> self-contained chapters |
 | [06](stages/06_detect_continuations/README.md) | Stage 05 -> continuation metadata |
@@ -93,8 +95,17 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --c
 
 Stages 06-09 run automatically, including their inference calls. All real conversions
 use `pipeline.py` so they receive status, metrics, cleanup and publication handling.
-Stage 02.9 is a separate intermediate export; it and Stage 03 read only Stage 02.8
-objects, using Stage 01 geometry and original PNGs. Stage 02.5 still reviews complete
+Stage 02.81 transcribes exact table crops and separately infers complete HTML group
+text. Stage 02.82 reviews saved results with a local browser and no model calls.
+Stage 02.9 is a separate intermediate export; it and Stage 03 read Stage 02.81
+objects directly, using Stage 01 geometry and original PNGs. HTML tables publish
+collapsed literal-text and original-image companions after their source groups.
+Markdown tables need no published crop. Tables retain their separate converted
+fragments through stream reduction, continuation detection and Stage 07.
+The explicit whole-input alternative `--table-predecessor 02` requires restart at
+02.81 when filtering was deliberately skipped; default remains completed 02.8.
+Existing attempt settings are retained; missing 02.81 model settings are added
+only when that stage is selected. Review backend setup is in the Stage 02.82 README. Stage 02.5 still reviews complete
 Stage 02 objects. Stage 02.8 owns all source-content removal; Stage 04 retains
 graphics union and prose seam processing.
 
@@ -120,8 +131,8 @@ external predecessors are rejected before cleanup using `STAGE_REGISTRY.inputs` 
 `stage_status.json`. No completed stage is automatically skipped. Advancing the start
 stage retains earlier results; changing code or input files does not recertify them.
 Restart 02.8 clears its filtered objects and every later result even when ending at
-02.8. Existing 02.9/03 successes require explicit regeneration through 02.8 before
-they represent filtering; implementation does not mutate saved attempt artifacts.
+02.8. Existing 02.9/03 exports require explicit regeneration through 02.81 to
+represent table conversion; restart 02.82 preserves 02.81 and clears later stages; implementation does not mutate saved attempt artifacts.
 Preserve edited Stage 02.9 bundles outside cleanup before restarting. Regeneration
 rebuilds image links/assets and removes obsolete assets; the bundled NXP resource
 survives attempt cleanup.

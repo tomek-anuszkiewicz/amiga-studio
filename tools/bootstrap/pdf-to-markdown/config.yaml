@@ -10,6 +10,12 @@ render:
   dpi: 300
   image_format: "png"
 
+table_conversion:
+  predecessor: "02.8"  # Explicit whole-input alternative: "02" when filtering was deliberately skipped.
+
+table_review:
+  browser_channel: "msedge"  # Or "chrome" / installed Playwright "chromium".
+
 ocr:
   language: "eng"
   tessdata: null  # Auto-detect or use TESSDATA_PREFIX; override locally if needed.
@@ -19,6 +25,7 @@ llm:
   concurrency: 1
   stages:
     02_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    02.81_transform_page_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     04_stream_reduction: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     06_detect_continuations: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     07_transform_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

@@ -1,36 +1,29 @@
 # Stage 03: Build Raw Stream
 
-Consume retained `02.8_filter_page_content/page_NNNN_segments.json` objects and
-Stage 01 PNG/text pairs. Preserve physical page order and each segment array's
-reading order. Stage 02.5 review images are not inputs. Stage 02.8 removes
-headers/footers, pre-TOC objects when a boundary exists, and entire list/index
-pages before nodes or assets are assembled. There is no fallback to Stage 02;
-an empty filtered input produces an empty node stream and assets directory.
+Consume completed Stage 02.81 page objects and Stage 01 page geometry. Preserve
+physical-page/segment order, identities, types, heading levels, continuation flags,
+`md_text` and integer `bbox_pixels`. There is no fallback to earlier JSON or review
+PNG input. Empty input produces an empty stream and assets directory.
 
-Each node keeps `segment_id`, `type`, `heading_level`, `continuation`, `md_text`
-and the original integer `bbox_pixels`. Copy `md_text` into `raw_text` for the
-existing downstream consumers; that field contains Markdown, not raw OCR.
-Leave `rendered_markdown` unset so later workers retain their existing behavior.
-Compute `bbox_norm` against the original PNG dimensions, then scale by displayed
-page width/height to produce the point-based `bbox` used by the existing cropper.
-This conversion matches that cropper's actual-image scaling, rather than
-assuming that configured DPI exactly predicts rounded raster dimensions.
+Copy Markdown into `raw_text`; normalized and point-based boxes support existing
+stream consumers. Converted tables initialize `rendered_markdown` with their markup.
+Source captions, footnotes and legends also retain their Markdown for final assembly.
+Carry `table_format`, `table_rag_text`, `table_group_segment_ids` and
+`table_source_asset` unchanged. Stage 04 keeps converted table fragments separate,
+Stage 06 does not join them and Stage 07 does not reconvert or hide them.
 
-Read existing page artifacts in numeric physical-page order, without coverage,
-pair-presence, schema or geometry checks. Emit
-`03_build_raw_stream/raw_stream.json` and crop visual assets for table, graphic
-and code-block nodes into `03_build_raw_stream/assets/`. The shared cropper keeps
-its existing padding and neighbor limits. All new object types remain intact;
-this stage does not change classifications or reformat source Markdown.
-
-Run through the [orchestrator](../../README.md):
+Copy saved Stage 02.81 crops for HTML companions and unconverted tables into
+`assets/asset_<node_id>.png`; Markdown tables publish no crop. Graphics, covers and
+code blocks still use the existing Stage 01 cropper with padding and neighbor limits.
+Asset paths move forward with stage bundles. Final Stage 11 uses the same group
+assembly as page export and review, appending both collapsed HTML companions after
+the last associated block exactly once, without reinference or appended group text.
 
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 03
 ```
 
-Stage 03 requires successful Stage 01 and 02.8 execution statuses, even when
-02.5 or 02.9 has not run. Restart 02, 02.5, 02.8 or 02.9 clears Stage 03 and all
-later stages, because cleanup follows execution order rather than artifact
-dependencies. Existing 02.9/03 successes require regeneration starting at 02.8
-to reflect filtering.
+Completed Stage 01/02.81 statuses are required even when reviews or 02.9 have not
+run. Restart cleanup follows execution order. Existing streams require explicit
+regeneration through 02.81 to adopt table conversion. Success establishes execution,
+not transcription fidelity or RAG ingestion behavior.

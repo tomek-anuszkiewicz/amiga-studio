@@ -95,7 +95,7 @@ Full runs, intervals and individual deterministic/inference stages use
 process automatically with their inference calls and no manual task files.
 The normal pipeline has no legacy reader.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.5 -> 02.8 -> 02.9 -> 03`, then 04-14.
+The execution sequence is `00 -> 01 -> 02 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.
@@ -210,55 +210,60 @@ The tolerances derive from the supplied page-49/50 pair; page 63 established the
 landscape reference correction. Book-wide adequacy is
 unverified. Merged or nonmatching objects remain.
 
-Stage 02.9 consumes only Stage 02.8 objects and exact Stage 01 original PNGs,
-independently of review images. It writes one
-`02.9_emit_page_markdown/document.md` and an always-present `assets/` directory
-for retained pages, including disjoint ranges, in physical-page/array order.
-Decoded textual `md_text` is unchanged, separated by blank lines; source-visible
-TOC text, captions and footnotes are retained after Stage 02.8 exclusions. Each `table`,
-`graphic` or `cover` becomes an exact PNG crop using its integer pixel rectangle,
-with no padding, rescaling or geometry correction. Its upstream segment ID names
-the asset and a neutral relative image link marks its original object position.
-Multi-page objects remain separate crops. No model requests, text rewriting,
-generated descriptions, stitching or TOC repair occur. Minimal valid YAML and a
-document heading use the known source filename stem; publication metadata is not
-invented. TOC link repair and reconstruction remain downstream work.
+Stage 02.81 consumes completed 02.8 full page JSONs and original Stage 01 PNGs.
+An explicit whole-input `table_conversion.predecessor: "02"` is allowed only when
+filtering was deliberately skipped; its completed status replaces the 02.8 dependency.
+The CLI persists this selection with `--table-predecessor` on restart at 02.81.
+Never mix predecessor directories page by page or recover removed filtered pages.
 
-Use `--from-stage 02.9 --to-stage 02.9` with completed Stage 01/02.8
-records. A temporary bundle replaces prior output after Markdown/crop writes finish;
-there is no content comparison, inventory or PNG/dimension verification. Replacement
-removes stale assets; actual write failures stop the stage. The source name comes
-from config. The user evaluates fidelity and crop boundaries on the requested fragment.
+Transcribe each table from its exact unpadded pixel crop using the minimal table
+prompt, existing Codex transport/cache, original detail and explicit model/effort.
+Save all crops in 02.81 assets and `table_source_asset`, including Markdown and
+unconverted results. Preserve full pages and all source fields/order. Converted
+markup occupies `md_text`, with `table_format` recording markdown/html/unconverted.
+Unconverted retains original content; technical errors fail normally.
 
-Stage 03 consumes only Stage 02.8 objects with Stage 01 page data, independently of the
-02.5 review. It preserves page/array order, object types, heading levels,
-segment IDs, continuation flags, `md_text` and original `bbox_pixels`.
-The downstream `raw_text` field contains the same Markdown, not re-extracted OCR;
-`bbox_norm` divides by original PNG dimensions, and `bbox` scales those fractions
-by displayed-page dimensions for the existing point-based consumers/cropper.
-Later formatting and merging workers retain their current behavior; this adapter
-does not redesign the remaining pipeline or certify conversion quality.
+Collect adjacent captions above and mixed caption/footnote/table_legend runs below,
+stopping at unrelated content or another table. Preserve ordered group IDs and
+warn about repeated types, captions on both sides and ambiguous shared ownership.
+HTML tables require a separate crop/HTML/source-ordered-group inference saving
+complete nonempty `table_rag_text`. Preserve all values and relationships without
+summarization. A conservative local simple-HTML warning changes no result.
 
-Starting at a stage clears that stage and every later stage in execution order,
-regardless of artifact dependencies or the requested end stage. Restart 02.5 clears
-02.8, 02.9 and all stream stages; restart 02.8 clears its filtered output and every
-later stage, including for a single-stage interval. Restart 02.9 clears its bundle
-and all stream stages.
-The operator selects each subsequent start with `--from-stage`; there is no
-automatic continuation or completed-stage skipping. Before cleanup, only retained
-completion statuses are checked. Stage 02.5 requires completed Stage 01/02;
-02.8 requires Stage 01/02; 02.9 and 03 require Stage 01/02.8. Their workers read
-the input files directly, without fallback to unfiltered Stage 02. Empty filtered
-input yields normal empty object outputs. Stage 04 retains graphics union and
-prose seams; it no longer removes headers/footers. No completion
-digests bind their results. Drawing primitives
-live in 02.5. Changes to shared procedures do not automatically invalidate saved
-completion statuses. Existing 02.9/03 successes require explicit regeneration
-starting at 02.8 before representing filtered behavior; implementation does not
-mutate old attempt artifacts. Preserve edited Stage 02.9 bundles outside cleanup
-before restarting; regeneration rebuilds links/assets and removes obsolete assets.
-The bundled NXP resource survives attempt cleanup. Renamed stage directories and configuration keys require
-regeneration; old 02d/02m artifacts are never relabeled or migrated.
+Stage 02.82 produces a labeled Source/Converted PNG per table from completed
+01/02.81 artifacts without inference or export dependency. Shared group assembly
+renders GFM/HTML with a local Playwright browser, complete source context, expanded
+literal RAG text and a collapsed original-image companion. Full-width/full-height
+capture preserves long content; temporary HTML is separate from final PNGs.
+Rendering success does not certify source fidelity. The user selects and assesses
+real fragments; ingestion of details/code-block content remains deferred.
+
+Stage 02.9 and Stage 03 consume completed 02.81 directly, independently of review.
+02.9 emits one `document.md` with minimal filename-derived YAML/title and assets.
+Converted tables retain source positions; HTML tables append a collapsed literal
+`Table text for RAG` companion after the last group block, then a collapsed
+`Original table image` section. Associated blocks remain visible once in source order.
+The renderer wraps saved text without additions or reinference. Markdown tables
+need no exported crop; HTML/unconverted tables copy saved 02.81 crops, never recrop.
+Graphics/covers continue to crop exact Stage 01 pixels for page export. A temporary
+bundle replaces old output and removes obsolete assets after successful writes.
+
+Stage 03 preserves source fields and geometry, maps `md_text` to `raw_text`, initializes
+converted `rendered_markdown`, and carries all table fields through the stream.
+Its existing padded cropper still handles graphics/covers/code; table assets are
+copied from 02.81. Converted fragments are neither unified by 04 nor joined by 06,
+nor reconverted/erased by 07. Unconverted tables retain the legacy path. Final 11
+uses shared group placement and copies referenced original-image assets without
+companion duplication. Later processing does not automatically rewrite saved RAG text.
+
+Restart clears the selected stage and every later stage in execution order, even
+when stopping at that stage. Restart 02.81 preserves predecessors and rebuilds
+persistent crops; restart 02.82 preserves conversion and rebuilds reviews. Required
+completed dependencies are 01 plus the selected predecessor for 02.81, and 01/02.81
+for 02.82, 02.9 and 03. No automatic continuation or completed-stage skipping occurs.
+Existing exports/streams require explicit regeneration through 02.81; implementation
+does not mutate old attempts. Preserve edited exports outside cleanup before restart.
+The bundled NXP resource and request cache survive attempt cleanup.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
 in the source book's `workspace/html_to_markdown/`; final PDF output stays in `workspace/14_link_toc/`.

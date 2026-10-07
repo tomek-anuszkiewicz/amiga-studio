@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 import sys
 import tempfile
+import shutil
 
 from PIL import Image
 
@@ -14,11 +15,12 @@ from conversion.config import load_config, PDF_STAGES
 from common.pdf_artifacts import source_pdf
 from common.pdf_page_conversion import read_conversion
 from common.pdf_page_markdown import crop_objects, document_markdown
+from common.pdf_tables import STAGE
 
 
 def emit_page_markdown(workspace, config_path=None):
     source = {"name": source_pdf(config_path or workspace / "config.yaml").name}
-    pages = list(read_conversion(workspace, "02.8_filter_page_content"))
+    pages = list(read_conversion(workspace, STAGE))
     crops = list(crop_objects(pages))
     crops_by_page = {}
     for entry, segment in crops:
@@ -31,7 +33,13 @@ def emit_page_markdown(workspace, config_path=None):
         assets.mkdir(parents=True)
         # Open each original PNG once; no point conversion, padding or resizing.
         for entry, value in pages:
-            page_crops = crops_by_page.get(entry["page_id"], [])
+            page_crops = []
+            for segment in crops_by_page.get(entry["page_id"], []):
+                if segment["type"] == "table":
+                    shutil.copy2(workspace / STAGE / segment["table_source_asset"],
+                                 assets / f"{segment['segment_id']}.png")
+                else:
+                    page_crops.append(segment)
             if not page_crops:
                 continue
             context = entry["page_id"]

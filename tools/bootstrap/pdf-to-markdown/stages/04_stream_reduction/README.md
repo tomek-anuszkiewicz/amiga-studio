@@ -10,6 +10,10 @@ Performs sequential normalization across the global node stream:
 before stream assembly, including header/footer removal. Stage 04 performs no
 additional source-content exclusion.
 
+Converted Stage 02.81 Markdown/HTML tables remain separate and ordered, with
+their saved group text and source-image fields intact. Contiguous table unification
+applies only to unconverted legacy fragments.
+
 ## Inputs
 - `workspace/03_build_raw_stream/raw_stream.json`: Master sequential node stream from Stage 03.
 - `workspace/01_preprocess/page_XXXX.png`: 300 DPI raster page images for vision verification.
