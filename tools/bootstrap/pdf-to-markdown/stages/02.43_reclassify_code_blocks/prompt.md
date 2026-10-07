@@ -11,10 +11,17 @@ Choose the most faithful representation for the complete target:
   as native Markdown, preserving paragraphs, meaningful lists, technical values
   and notation. Remove code fences and incidental column/line wrapping; do not
   summarize, rewrite the meaning, invent or omit content.
+  Use prose for parameter descriptions that pair each parameter name with its
+  values or meanings, including INPUT/OUTPUT register descriptions. Preserve
+  the labels and every name, value, description and qualification as paragraphs
+  or a meaningful list. Aligned columns and wrapped descriptions alone do not
+  make these descriptions tables; this rule takes precedence over the table
+  choice below.
 - Return action "table" when the target has meaningful rows and columns whose
   relationships can faithfully be represented as a Markdown or HTML table,
-  including merged cells. Monospaced register/parameter maps and keyboard
-  matrices may be tables. Return empty md_text: table transcription is deferred
+  including merged cells. Register/parameter matrices with relationships beyond
+  name-to-value descriptions and keyboard matrices may be tables. Return empty
+  md_text: table transcription is deferred
   to Stage 02.81. Do not emit table markup here.
 - Otherwise return action "retain" and empty md_text to preserve the existing
   code block exactly. Keep actual source code, assembly listings, pseudocode,

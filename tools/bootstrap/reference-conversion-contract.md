@@ -92,7 +92,10 @@ later stage. See [Stage 02.42](pdf-to-markdown/stages/02.42_reclassify_tables/RE
 Stage 02.43 reviews only existing code blocks with their JSON/bbox, frozen page
 context and the complete original Stage 01 PNG. It retains genuine code,
 transcribes ordinary prose, or marks a faithful table representation with empty
-text for 02.81. Replacements preserve identity, bbox, continuation and order,
+text for 02.81. Parameter name/value or name/meaning descriptions, including
+aligned INPUT/OUTPUT register descriptions, use prose with all labels and
+qualifications preserved; alignment alone does not make them tables.
+Replacements preserve identity, bbox, continuation and order,
 with lineage; only changed pages receive overrides. The shared resolver layers
 02.43 after 02.42 for 02.5/02.8, while this worker reads only predecessors.
 Pages without code blocks make no model requests. Shared optional-status, page

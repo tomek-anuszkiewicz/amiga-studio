@@ -3674,3 +3674,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick pre-flight passed
   - Architecture suite passed 19 tests
   - Plan language scan and git diff --check passed
+---
+
+### [2026-10-08 01:40 CET] — PDF-CODE-2.43: Prefer prose for parameter descriptions
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.43_reclassify_code_blocks`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Prioritize prose for parameter name/value or name/meaning descriptions, including aligned INPUT/OUTPUT registers
+  - Preserve labels and qualifications
+  - Synchronize stage documentation and mark existing reviews as predating the prompt revision
+- **Architectural Rationale & Trade-Offs**:
+  - Column alignment does not make descriptive parameter lists tables
+  - reserve tables for additional matrix relationships
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture tests 19/19 passed
+  - prompt-only change, no fragment conversion requested or run
+  - revised content quality remains unassessed
