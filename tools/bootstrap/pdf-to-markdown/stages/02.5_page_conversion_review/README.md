@@ -11,10 +11,12 @@ an ordinal range, such as `3-5. prose`; other labels retain their source ordinal
 Labels contain neither text nor coordinates. JSON source order is preserved.
 
 Only consecutive `prose` objects can form one review annotation. Require a
-downward run with no vertical overlap, a gap no taller than either adjacent
-block, and a common horizontal span covering at least 80% of the widest member.
-This conservative column/adjacency rule can leave narrower or distant prose
-separate. Extend a run only when its enclosing union overlaps no other source
+downward run with no vertical overlap and stable left alignment: the left edges
+vary by at most 5% of the narrowest member's width, and the common horizontal
+span covers at least 80% of that width. A gap can be at most 10% of the widest
+member's width. Right edges and paragraph heights may differ, so short sentences
+and ordinary paragraph spacing do not split a common column. Distant or shifted
+prose remains separate. Extend a run only when its enclosing union overlaps no other source
 object on the complete page, including hidden annotations and later objects.
 Column transitions, intervening roles and overlapping content block joining.
 Other roles always remain separate; source text is never assembled or changed.
@@ -26,8 +28,9 @@ The source page remains at original scale with an equal-width right label panel.
 All bounds derive from Stage 02 boxes; no OCR geometry is synthesized.
 
 Each `page_NNNN_review.json` sidecar maps annotations to one-based
-`source_ordinals` and corresponding `source_ids` (null where Stage 02 supplies
-no `id`), recording union bounds, type, heading level and combined continuation.
+`source_ordinals` and corresponding `source_ids` from `segment_id` (falling back
+to `id`, or null if neither exists), recording union bounds, type, heading level
+and combined continuation.
 It also records `hidden_source_ordinals`. These are review-only records; Stage 02
 JSONs and downstream conversion content remain untouched. The low-level
 `draw_review_image` draws exactly the objects supplied by its caller, without

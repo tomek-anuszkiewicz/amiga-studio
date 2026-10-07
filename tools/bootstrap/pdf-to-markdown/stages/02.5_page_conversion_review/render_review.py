@@ -38,12 +38,15 @@ def prose_run_can_extend(segments, start, end):
     boxes = [segment["bbox"] for segment in segments[start:end+1]]
     previous, candidate = boxes[-2:]
     gap = candidate[1] - previous[3]
-    # Conservative adjacency: no vertical overlap or gaps taller than either
-    # neighbor, and a common column span covering 80% of the widest run member.
-    if gap < 0 or gap > min(previous[3]-previous[1], candidate[3]-candidate[1]):
+    widths = [box[2]-box[0] for box in boxes]
+    # Text length changes the right edge and paragraph height, not the column.
+    # Use a stable left margin and a gap scaled to the column's widest member.
+    if gap < 0 or gap > 0.1 * max(widths):
+        return False
+    if max(box[0] for box in boxes) - min(box[0] for box in boxes) > 0.05 * min(widths):
         return False
     shared_width = min(box[2] for box in boxes) - max(box[0] for box in boxes)
-    if shared_width < 0.8 * max(box[2]-box[0] for box in boxes):
+    if shared_width < 0.8 * min(widths):
         return False
     left, top, right, bottom = union_box(boxes)
     for index, segment in enumerate(segments):
@@ -76,7 +79,7 @@ def review_annotations(segments):
             "bbox": union_box([member["bbox"] for member in members]),
             "continuation": any(member.get("continuation") for member in members),
             "source_ordinals": list(range(index+1, end+2)),
-            "source_ids": [member.get("id") for member in members],
+            "source_ids": [member.get("segment_id", member.get("id")) for member in members],
         })
         index = end+1
     return annotations
