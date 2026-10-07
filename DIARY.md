@@ -3657,3 +3657,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture 19/19 passed
   - graphify update completed. User assessment pending
   - task plan retained. No 02.81 transcription, publication or full-book run.
+---
+
+### [2026-10-08 01:30 CEST] — Plan Stage 02.44 image rotation metadata (PDF-ROTATION-2.44)
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-stage-02.44-image-rotation.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Plan a per-graphic orientation decision after Stage 02.43
+  - Define numeric rotation in clockwise correction degrees with explicit zero
+  - Specify metadata propagation and a physical-page-134 review
+- **Architectural Rationale & Trade-Offs**:
+  - Persist the model answer while preserving original source geometry
+  - Keep raster rotation deferred and conversion limited to the selected fragment
+- **Verification & Test Results**:
+  - Planning only: no implementation or PDF conversion
+  - Quick pre-flight passed
+  - Architecture suite passed 19 tests
+  - Plan language scan and git diff --check passed
