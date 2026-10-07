@@ -35,11 +35,15 @@ llm:
     13_refine_first_chapter_name:
       model: gpt-6.1-sol
       reasoning_effort: medium
+    02.4_reclassify_callouts:
+      model: gpt-6.1-sol
+      reasoning_effort: medium
 markers:
   toc_start: <!-- TOC34534 -->
   toc_end: <!-- /TOC34534 -->
 input:
   source_pdf: ../../Amiga TestBook example-4567.pdf
-  pages: null
+  pages:
+  - 64
 table_conversion:
   predecessor: '02.8'

@@ -166,6 +166,19 @@
         2801
       ],
       "segment_id": "page_0064_seg_011"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2",
+      "bbox": [
+        1073,
+        2917,
+        1103,
+        2954
+      ],
+      "segment_id": "page_0064_seg_012"
     }
   ]
 }

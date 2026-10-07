@@ -122,6 +122,19 @@
         "page_0154_seg_006"
       ],
       "replacement_stage": "02.4_reclassify_callouts"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "318 Appendix F",
+      "bbox": [
+        363,
+        2971,
+        675,
+        3017
+      ],
+      "segment_id": "page_0154_seg_007"
     }
   ]
 }

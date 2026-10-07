@@ -88,6 +88,19 @@
         2553
       ],
       "segment_id": "page_0156_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "338 Appendix G",
+      "bbox": [
+        358,
+        2970,
+        674,
+        3018
+      ],
+      "segment_id": "page_0156_seg_006"
     }
   ]
 }

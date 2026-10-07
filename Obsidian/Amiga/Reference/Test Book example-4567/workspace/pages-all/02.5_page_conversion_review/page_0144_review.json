@@ -19,7 +19,7 @@
       ]
     },
     {
-      "type": "prose",
+      "type": "callout",
       "heading_level": null,
       "bbox": [
         824,
@@ -36,6 +36,23 @@
       ]
     },
     {
+      "type": "callout_text",
+      "heading_level": null,
+      "bbox": [
+        824,
+        1961,
+        2075,
+        2084
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        3
+      ],
+      "source_ids": [
+        "page_0144_seg_002_callout_2"
+      ]
+    },
+    {
       "type": "table",
       "heading_level": null,
       "bbox": [
@@ -46,7 +63,7 @@
       ],
       "continuation": false,
       "source_ordinals": [
-        3
+        4
       ],
       "source_ids": [
         "page_0144_seg_003"
@@ -63,7 +80,7 @@
       ],
       "continuation": false,
       "source_ordinals": [
-        4
+        5
       ],
       "source_ids": [
         "page_0144_seg_004"
@@ -71,6 +88,6 @@
     }
   ],
   "hidden_source_ordinals": [
-    5
+    6
   ]
 }

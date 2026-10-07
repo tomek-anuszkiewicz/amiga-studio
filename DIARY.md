@@ -3283,3 +3283,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Page 130 Notes for the above Table remains prose
   - Quick preflight and 19 architecture tests passed
   - No other source pages or later stages ran and user content assessment remains pending
+---
+
+### [2026-10-07 22:56 CEST] — PDF-CALLOUT-SIMPLE-2.4: Record user-generated callout and downstream artifacts
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Reference/Test Book example-4567/workspace/pages-all`
+- **What Was Changed (The Concrete Reality)**:
+  - Commit six sparse Stage 02.4 overrides for pages 64/73/130/144/154/156 from the user run
+  - Record updated Stage 02.5 review JSONs and PNGs plus Stage 02.8 filtered objects
+  - Preserve the actual attempt configuration and stage status
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested committing the remaining artifacts after Stage 02.4
+  - Source Stage 01/02 artifacts and converter implementation are unchanged
+- **Verification & Test Results**:
+  - Saved stage status reports success for 02.4/02.5/02.8 and 11 fresh plus 3 cached requests in the user run
+  - Quick preflight passed
+  - Architecture suite passed 19/19
+  - Git diff whitespace check passed
+  - No new source conversion or additional page quality assessment ran for this artifact commit

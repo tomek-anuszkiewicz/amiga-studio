@@ -75,6 +75,19 @@
         2663
       ],
       "segment_id": "page_0144_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Appendix A 259",
+      "bbox": [
+        1834,
+        2971,
+        2150,
+        3019
+      ],
+      "segment_id": "page_0144_seg_005"
     }
   ]
 }

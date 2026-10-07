@@ -75,6 +75,19 @@
         "page_0130_seg_004"
       ],
       "replacement_stage": "02.4_reclassify_callouts"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Blitter Hardware 183",
+      "bbox": [
+        1750,
+        2980,
+        2146,
+        3025
+      ],
+      "segment_id": "page_0130_seg_005"
     }
   ]
 }

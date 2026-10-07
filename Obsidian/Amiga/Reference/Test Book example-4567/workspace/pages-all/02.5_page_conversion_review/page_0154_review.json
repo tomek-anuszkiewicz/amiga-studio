@@ -36,7 +36,7 @@
       ]
     },
     {
-      "type": "prose",
+      "type": "callout",
       "heading_level": null,
       "bbox": [
         360,
@@ -53,6 +53,23 @@
       ]
     },
     {
+      "type": "callout_text",
+      "heading_level": null,
+      "bbox": [
+        360,
+        1119,
+        1256,
+        1158
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        4
+      ],
+      "source_ids": [
+        "page_0154_seg_003_callout_2"
+      ]
+    },
+    {
       "type": "caption",
       "heading_level": null,
       "bbox": [
@@ -63,7 +80,7 @@
       ],
       "continuation": false,
       "source_ordinals": [
-        4
+        5
       ],
       "source_ids": [
         "page_0154_seg_004"
@@ -80,14 +97,14 @@
       ],
       "continuation": false,
       "source_ordinals": [
-        5
+        6
       ],
       "source_ids": [
         "page_0154_seg_005"
       ]
     },
     {
-      "type": "prose",
+      "type": "callout",
       "heading_level": null,
       "bbox": [
         360,
@@ -97,14 +114,31 @@
       ],
       "continuation": false,
       "source_ordinals": [
-        6
+        7
       ],
       "source_ids": [
         "page_0154_seg_006"
       ]
+    },
+    {
+      "type": "callout_text",
+      "heading_level": null,
+      "bbox": [
+        360,
+        2152,
+        1032,
+        2192
+      ],
+      "continuation": false,
+      "source_ordinals": [
+        8
+      ],
+      "source_ids": [
+        "page_0154_seg_006_callout_2"
+      ]
     }
   ],
   "hidden_source_ordinals": [
-    7
+    9
   ]
 }
