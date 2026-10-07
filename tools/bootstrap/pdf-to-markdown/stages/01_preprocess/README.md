@@ -40,7 +40,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<W
 ```
 
 For a workspace with a completed Stage 00, restart with `--from-stage 01
---to-stage 01`, or run `--run-deterministic` when 01 is the next ready stage.
+--to-stage 01`, or run `--from-stage 01 --run-deterministic` to select 01 explicitly.
 Stage 00 and the original source are retained. A different attempt selection
 requires restart at 00 or a new workspace; Stage 00 reuses the existing sibling
 PDF without repeating OCR. Legacy workspaces require restart at 00 with the

@@ -23,7 +23,7 @@ The workspace holds intermediate page images, JSON streams, task files, a config
 
 [Stage 01](stages/01_preprocess/README.md) reads only that prepared PDF and deterministically emits PNGs and positioned text JSON. Text comes from the reopened PDF, including its OCR spans. `--page-ranges` applies here. Page IDs retain physical source numbers; manifests record relative paths, `prepared`/`none` text provenance, displayed-page coordinates and actual raster transforms. Missing predecessors stop conversion before cleanup. Workers validate schemas, coverage and geometry when consuming inputs and producing results.
 
-Use `--page-ranges "19"` for a single physical PDF page. Keep the same source filename/page selection and workspace when continuing a stage interval. `--resume` skips completed stages whose recorded files exist. Changes to code, prompts, model settings or existing file contents do not invalidate completion; use Git to review changes and explicitly restart affected stages. Prepared manual tasks record their stage and source/page selection. Runtime/schema failures stop the pipeline without model or provider substitution.
+Use `--page-ranges "19"` for a single physical PDF page. Keep the same source filename/page selection and workspace when continuing a stage interval. Select the next starting stage yourself with `--from-stage` (default: `00`). Every start clears that stage and all later stages in execution order, even beyond `--to-stage`; only the requested interval executes. After stopping at `02.5`, start at `02.9` to keep the completed review. Changes to code, prompts, model settings or existing file contents do not automatically invalidate earlier completion records; use Git to review changes and explicitly restart affected stages. Prepared manual tasks record their stage and source/page selection. Runtime/schema failures stop the pipeline without model or provider substitution.
 
 ## Independent test workspaces and restarts
 
@@ -43,7 +43,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --c
 
 Use only user-selected source fragments. Restart `02` invalidates its review,
 page Markdown bundle and later stream stages; restart `01` also invalidates page conversion.
-Restart `02.5` invalidates only the review and retains the page Markdown bundle and stream.
+Restart `02.5` clears the review, page Markdown bundle and all later stream stages.
 `02.5` can run alone with validated Stage 01/02 artifacts. Missing external
 interval inputs fail before cleanup. The renderer lives entirely within 02.5. Stage 03 keeps `md_text`, object types,
 IDs, continuation flags and pixel boxes. It copies Markdown into the legacy
@@ -72,8 +72,8 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --c
 The stage validates inputs and writes a temporary bundle, verifies its Markdown
 and crop links, then replaces the output without accumulating stale assets.
 Execution requires completed Stage 01 and 02 with their recorded files present.
-Restart `02.9` invalidates only its own bundle; Stage 03 keeps its direct Stage 02
-dependency. Review PNGs are neither crop sources nor required inputs. Publication
+Restart `02.9` clears its bundle and all later stages; Stage 03 keeps its direct Stage 02
+input dependency. Review PNGs are neither crop sources nor required inputs. Publication
 through `--publish` remains restricted to Stage 14 and does not export this bundle.
 Technical completion does not certify text, reading order or crop-boundary quality.
 
@@ -83,8 +83,9 @@ Add `--publish` to copy completed Markdown and assets into the sibling book dire
 without `-tmp`. The workspace must be inside `<book>-tmp/`. The target must be absent
 or empty; occupied directories and links are rejected before execution and checked
 again before copying. Publication requires completion through Stage 14. An already
-completed conversion can use `--resume --publish`; completion statuses and required
-file existence are checked before copying. Intermediate state and metrics stay in the workspace.
+completed conversion can rerun Stage 14 with `--from-stage 14 --to-stage 14 --publish`;
+the previous Stage 14 output is cleared and regenerated from validated predecessors
+before copying. Intermediate state and metrics stay in the workspace.
 
 For example, first prepare stages 00–04 for physical pages 5–10 in `<WORKSPACE_A>`. Then restart from stage 05:
 
@@ -97,9 +98,9 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py `
 
 Before running stage 05, the orchestrator checks retained stages 00–04, persists invalidation of stages 05–14, restores shared working manifests from retained snapshots, and clears invalidated artifacts, statistics and manual tasks. Invalidation is saved before deletion, so interrupted cleanup cannot leave a deleted result marked completed. Each stage is marked completed only after successful output validation. Cleanup covers the entire downstream conversion, even when `--to-stage` requests only one stage. It never selectively clears individual pages. A different page range requires a separate workspace or explicit regeneration from stage 00; retained stages from another range cannot supply stage 05.
 
-Missing downstream files do not prevent explicit restart. Missing shared working manifests are restored from retained snapshots. `--resume` returns to the earliest unfinished stage or stage with missing artifacts, clears that stage and all dependents, and regenerates them. A missing retained predecessor in an explicit interval requires restarting at its owning stage. Running stage 00 requires `--pdf`; an existing sibling OCR PDF is retained even on an explicit restart. Resumed page selection is retained even when `--page-ranges` is omitted. Restart at 01 retains completed Stage 00 and needs no source path. Restart at 00 retains per-page OCR request recovery records, whose request identities are separate from stage completion. Modified retained files are not checked against historical contents. Workspaces without Stage 00 completion require `--pdf "<PDF>" --from-stage 00` to register or prepare the shared full-document PDF; their compact workspace PDFs are not reused as full documents.
+Missing downstream files do not prevent explicit restart. Missing shared working manifests are restored from retained snapshots. The operator chooses the restart stage; the pipeline does not select the earliest unfinished stage or skip completed stages in the requested interval. A missing retained predecessor requires restarting at its owning stage. Running stage 00 requires `--pdf`; an existing sibling OCR PDF is retained even on an explicit restart. Starting after 00 retains the saved page selection when `--page-ranges` is omitted. Restart at 01 retains completed Stage 00 and needs no source path. Restart at 00 retains per-page OCR request recovery records, whose request identities are separate from stage completion. Modified retained files are not checked against historical contents. Workspaces without Stage 00 completion require `--pdf "<PDF>" --from-stage 00` to register or prepare the shared full-document PDF; their compact workspace PDFs are not reused as full documents.
 
-Manual `--prepare-stage` also resets that stage and all dependents. `--apply-stage` preserves the current stage's prepared edits while clearing old stage outputs and later tasks. Earlier source assets remain intact.
+Manual `--prepare-stage` also resets that stage and all later stages. `--apply-stage` preserves the current stage's prepared edits while clearing old stage outputs and later tasks. Earlier source assets remain intact.
 
 ## Processing Model
 
@@ -222,8 +223,8 @@ tools/bootstrap/pdf-to-markdown/
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02`
 > - **Prepare and preprocess specific pages in a new workspace**:
 >   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 00 --to-stage 01`
-> - **Next ready deterministic stage (00, 01, 02.5, 03, 05, 11, 14)**: `--run-deterministic` runs one ready stage and rejects an inference stage.
->   `python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --run-deterministic`
+> - **Selected deterministic stage (00, 01, 02.5, 02.9, 03, 05, 11, 14)**: `--run-deterministic` requires `--from-stage`, runs that stage alone and rejects an inference stage. It clears the selected stage and all later results.
+>   `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.5 --run-deterministic`
 > - **Optional manual review stages (06, 07, 08, 09)**:
 >   - Prepare task items: `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --prepare-stage 07`
 >   - Apply edited task items: `python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --apply-stage 07`
@@ -326,4 +327,4 @@ repository milestone gate is implied by that closure.
 
 ### Historical migration pilot
 
-Physical page 19 of the 160-page test book passed all 14 stages using the shared Codex client. The page exercised native extraction, segmentation, table transcription, prose formatting, properties and naming; stages with no matching work still executed. Eight live requests were needed across the pilot, and completed-run resume validated all records without inference. This verifies pipeline integration for one page. Transcription quality, scanned OCR, graphics, real TOC linking, multi-page continuations and manual recovery remain separate validation work; no full-book conversion or indexing ran.
+Physical page 19 of the 160-page test book passed all 14 stages using the shared Codex client. The page exercised native extraction, segmentation, table transcription, prose formatting, properties and naming; stages with no matching work still executed. Eight live requests were needed across the pilot. This verifies pipeline integration for one page under the pilot's implementation. Transcription quality, scanned OCR, graphics, real TOC linking, multi-page continuations and manual recovery remain separate validation work; no full-book conversion or indexing ran.

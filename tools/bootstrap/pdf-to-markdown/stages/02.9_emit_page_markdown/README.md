@@ -34,8 +34,9 @@ stale assets; failures stop with page/object context. Completion is recorded onl
 after runtime validation. Execution requires completed Stage 01/02 and their files.
 There are no per-page Markdown files or metadata sidecars.
 
-Restart 01 or 02 invalidates this bundle. Restart 02.5 preserves it; restart 02.9
-invalidates only this bundle. Stage 03 still depends directly on Stage 02.
+Restart 01, 02 or 02.5 clears this bundle and all later stages. Restart 02.9
+clears this bundle and all later stages, even for a single-stage interval.
+Stage 03 still consumes Stage 02 directly; cleanup follows execution order.
 Stage 14 publication remains separate; `--publish` does not export this bundle.
 Technical validation does not establish source fidelity; the user assesses the
 selected fragment and its reading order, text and crop boundaries.
