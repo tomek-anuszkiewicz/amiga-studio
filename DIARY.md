@@ -2358,3 +2358,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture rules 19/19 passed
   - Graphify incremental update passed
   - No real-book conversion or live model call was run
+---
+
+### [2026-10-07 17:26 CEST] — Plan Stage 02.9 Markdown and crop asset export (PDF-MARKDOWN-02.9)
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-stage-02.9-markdown-assets.md`
+  - `tools/bootstrap/pdf-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Add an active English execution plan for deterministic Stage 02.9 assembly of one document.md and assets directory from validated Stage 02 objects and original Stage 01 PNGs
+  - specify exact pixel cropping, ordered text/image emission, predecessor validation and independent restart behavior
+  - retain implementation as pending
+- **Architectural Rationale & Trade-Offs**:
+  - Provide a readable intermediate Markdown bundle from the existing page conversion without new model requests or redesigning the downstream stream pipeline
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture rules passed 19/19
+  - plan language scan passed
+  - plan relative links passed
+  - no implementation, live inference or fragment conversion ran
