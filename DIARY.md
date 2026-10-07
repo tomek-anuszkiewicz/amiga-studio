@@ -2952,3 +2952,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19 of 19
   - checked the plan for superseded text-only requirements
   - planning only with no implementation inference or artifact regeneration
+---
+
+### [2026-10-07 20:59 CEST] — PDF-CALLOUT-2.83: Plan framed vision and explicit block replacements
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.83-callout-reclassification.md`
+  - `tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace classification-only edits with explicit source-frame ranges and faithful replacement text
+  - plan numbered colored outlines mapped to stable segment IDs using the existing review renderer
+  - provide original and annotated full-page images in one joint request per candidate-bearing page
+  - handle label and body merging splitting and retained ordinary text
+  - splice disjoint ranges once against frozen input and preserve unselected objects
+  - propagate replacement lineage and affected table-group IDs and regenerate only affected HTML companions when ownership changes
+- **Architectural Rationale & Trade-Offs**:
+  - Give the model visible stable block references and responsibility for advisory boundaries while the program owns exact range replacement
+  - joint page proposals avoid overlapping decisions from independent candidate calls
+  - preserve source content and ordering rather than treating reduction as summarization
+  - frame-assisted accuracy remains to be assessed on user-selected examples
+- **Verification & Test Results**:
+  - Inspected existing Stage 02.5 frame renderer and table-group consumers
+  - quick preflight passed all six gates
+  - architecture suite passed 19 of 19
+  - planning only with no implementation inference or artifact regeneration
