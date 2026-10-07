@@ -2409,3 +2409,34 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - ROADMAP.md English language scan and git diff --check passed
   - Step 1 numbering remains contiguous
   - cleanup is planned and was not executed
+---
+
+### [2026-10-07 17:39 CEST] — PDF-MARKDOWN-02.9: emit selected-page Markdown and exact crop assets
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tests/test_conversion_publish.py`
+  - `docs/developers.md`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add deterministic Stage 02.9 after review and before raw-stream assembly, with explicit Stage 01/02 dependencies and standalone CLI execution
+  - Preserve decoded md_text and physical-page/object order in one document.md with minimal YAML and a source-stem heading
+  - Emit exact original-PNG table/graphic/cover crops with upstream segment filenames and relative image links, retaining captions and continuation text without merging
+  - Validate every bundle before replacement and completion, remove stale assets and retain stream independence
+  - Add page/object context to existing Stage 02 validation errors without changing its schema or prompt
+  - Update converter documentation and retain user fragment assessment in roadmap 1.2
+  - Adapt the existing restart expectation and repair a publication fixture that declared complete resume while supplying only Stage 00
+- **Architectural Rationale & Trade-Offs**:
+  - Reuse the existing page-object and geometry contracts with Pillow PNG tooling instead of requesting another conversion or introducing another schema
+  - Bind completion to both predecessor records and existing procedure/configuration identity, with 02.5 and 02.9 restarts independent of the stream
+  - Shared validation changes intentionally invalidate older procedure fingerprints: regenerate incompatible completion records rather than relabeling artifacts
+  - Tables and illustrations remain raster crops and Stage 14 publication remains separate
+  - Close execution plan PDF-MARKDOWN-02.9 after verified implementation, retaining source-quality assessment as pending user-selected fragment work rather than claiming acceptance
+- **Verification & Test Results**:
+  - Existing PDF suite passed 32/32, shared conversion suite 19/19 and publication suite 10/10
+  - Publication fixture first failed 1 != 17 and was reproduced on original HEAD as 1 != 16 before repair, then passed with complete stage fixture records
+  - Disposable synthetic orchestration check passed standalone 02.9 without review artifacts, disjoint page selection, validated output, byte-identical rerun, stale-asset removal and two-input lineage with zero model calls
+  - python tools/harness/pre_flight.py --quick passed and architecture rules passed 19/19
+  - graphify update . completed AST refresh, with optional PDF extraction skipped on the first refresh because pypdf was unavailable
+  - No real-source fragment conversion, quality assessment, full-book run, milestone gate or publication was performed

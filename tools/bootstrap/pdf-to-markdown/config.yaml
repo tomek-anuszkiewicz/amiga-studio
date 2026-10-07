@@ -1,4 +1,6 @@
 # Global configuration for the modular PDF-to-Markdown pipeline
+# Stage 02.9 is deterministic: fixed document.md/assets output and exact pixel
+# crops. It has no model/effort selection or configurable geometry adjustment.
 
 render:
   dpi: 300

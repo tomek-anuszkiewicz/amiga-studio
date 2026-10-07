@@ -30,7 +30,10 @@ Use `--page-ranges "19"` for a single physical PDF page. Keep the same source/pa
 [Stage 02](stages/02_page_conversion/README.md) groups complete source objects
 and converts their text to Markdown using full Stage 01 PNG/JSON input.
 [Stage 02.5](stages/02.5_page_conversion_review/README.md) renders ordered labels
-and model-selected frames for every object. Execution order is `00 -> 01 -> 02 -> 02.5 -> 03`, then Stages 04-14.
+and model-selected frames for every object.
+[Stage 02.9](stages/02.9_emit_page_markdown/README.md) assembles unchanged page
+Markdown and exact original-PNG crops. Execution order is
+`00 -> 01 -> 02 -> 02.5 -> 02.9 -> 03`, then Stages 04-14.
 Stage 03 reads validated Stage 02 objects directly; the 02.5 review is not an
 artifact input to the stream. Use an explicit end stage for a review-only run:
 
@@ -38,9 +41,9 @@ artifact input to the stream. Use an explicit end stage for a review-only run:
 python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "tools/bootstrap/pdf-to-markdown/config.yaml" --from-stage 02 --to-stage 02.5
 ```
 
-Use only user-selected source fragments. Restart `02` invalidates its review
-and later stream stages; restart `01` also invalidates page conversion.
-Restart `02.5` invalidates only the review and retains the stream.
+Use only user-selected source fragments. Restart `02` invalidates its review,
+page Markdown bundle and later stream stages; restart `01` also invalidates page conversion.
+Restart `02.5` invalidates only the review and retains the page Markdown bundle and stream.
 `02.5` can run alone with validated Stage 01/02 artifacts. Missing external
 interval inputs fail before cleanup. The renderer lives entirely within 02.5. Stage 03 keeps `md_text`, object types,
 IDs, continuation flags and pixel boxes. It copies Markdown into the legacy
@@ -49,6 +52,30 @@ consumers; those later workers retain their current formatting and merging behav
 Renamed configuration keys and workspace directories require regeneration;
 old 02d/02m artifacts are not automatically moved. Changed shared procedure fingerprints require explicit regeneration from the
 reported stage; existing saved artifacts are not migrated or relabeled.
+
+Stage 02.9 writes exactly one `<WORKSPACE>/02.9_emit_page_markdown/document.md`
+and a sibling `assets/` directory, including when there are no crops. All selected
+pages, including disjoint ranges, and their object arrays remain in source order.
+Textual `md_text` is appended unchanged with blank lines between objects. Tables,
+graphics and covers become exact pixel crops named by upstream `segment_id`, with
+relative image links in their original positions. There is no padding, rescaling,
+text correction, caption generation, TOC repair or multi-page stitching. YAML
+frontmatter and a document heading use the known source filename stem. This stage
+uses no model and has no inference configuration entry.
+
+With validated Stage 01/02 predecessors, run it alone:
+
+```powershell
+python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.9 --to-stage 02.9
+```
+
+The stage validates inputs and writes a temporary bundle, verifies its Markdown
+and crop links, then replaces the output without accumulating stale assets.
+Completion binds both Stage 01 and 02 records and the procedure/configuration.
+Restart `02.9` invalidates only its own bundle; Stage 03 keeps its direct Stage 02
+dependency. Review PNGs are neither crop sources nor required inputs. Publication
+through `--publish` remains restricted to Stage 14 and does not export this bundle.
+Technical completion does not certify text, reading order or crop-boundary quality.
 
 For agent-run conversions, use the source PDF directory's `workspace/` only as a container for named attempt directories. Create a child from the first attempt, even when `workspace/` is empty, such as `<PDF_DIRECTORY>/workspace/page-64-attempt-01/` or `<PDF_DIRECTORY>/workspace/all-pages-00-01/`. Always pass the child explicitly with `--workspace`: the CLI currently defaults to `<PDF_DIRECTORY>/workspace/` when this option is omitted with `--pdf`. Each independent attempt gets a new child; continuation or explicit restart of the same attempt reuses its existing child. The original PDF stays outside the attempt workspace. Final Markdown stays in `<WORKSPACE>/14_link_toc`; `--output-dir` has been removed. Restarting one workspace leaves other workspaces intact. Cached model responses remain reusable after intermediate artifacts are cleared.
 
@@ -104,6 +131,10 @@ tools/bootstrap/pdf-to-markdown/
     │
     ├── 02.5_page_conversion_review/
     │   ├── render_review.py                 # Page frames, ordered labels and continuation flags
+    │   └── README.md
+    │
+    ├── 02.9_emit_page_markdown/
+    │   ├── emit_page_markdown.py             # One document and exact table/graphic/cover crops
     │   └── README.md
     │
     ├── 03_build_raw_stream/

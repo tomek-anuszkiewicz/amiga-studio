@@ -121,7 +121,8 @@ class PublicationTests(unittest.TestCase):
 
     def test_validated_pdf_resume_publishes_workspace_output(self):
         root, pipeline = self.load_pipeline("pdf")
-        state = {"source": {"name": "source.pdf", "sha256": "fixture", "pages": None}, "stages": {"00": {}}}
+        state = {"source": {"name": "source.pdf", "sha256": "fixture", "pages": None},
+                 "stages": {stage["id"]: {} for stage in pipeline.STAGE_REGISTRY}}
         argv = ["pipeline.py", "--workspace", str(self.output.parent), "--resume", "--publish",
                 "--config", str(root / "tools/bootstrap/pdf-to-markdown/config.yaml")]
         with patch.object(sys, "argv", argv), patch.object(pipeline, "read_state", return_value=state), \
