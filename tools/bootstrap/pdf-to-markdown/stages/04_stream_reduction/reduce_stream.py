@@ -248,11 +248,13 @@ def reduce_contiguous_tables(
     while i < len(nodes):
         node = nodes[i]
 
-        if node.get("type") == "table":
+        if node.get("type") == "table" and node.get("table_format") not in ("markdown", "html"):
             # Detect contiguous run of table nodes on the same page
             run = [node]
             j = i + 1
-            while j < len(nodes) and nodes[j].get("type") == "table" and nodes[j].get("page") == node.get("page"):
+            while (j < len(nodes) and nodes[j].get("type") == "table"
+                   and nodes[j].get("table_format") not in ("markdown", "html")
+                   and nodes[j].get("page") == node.get("page")):
                 run.append(nodes[j])
                 j += 1
 

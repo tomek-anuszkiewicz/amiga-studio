@@ -1,5 +1,9 @@
 # Stage 06: Continuation Detection
 
+Stage 02.81 Markdown/HTML table fragments bypass continuation joining. Preserve
+their markup, group text, source-image references and source blocks independently;
+multi-page joining of converted tables is outside this iteration.
+
 ## Objective
 Identifies adjacent content blocks across page boundaries (primarily tables, optionally split schematics) that belong together.
 Links head nodes and continuation nodes via explicit JSON metadata (`continuation_status`, `continuation_group_id`, `continued_from`, `merged_assets`), allowing Stage 07 to synthesize unified tables without fragmentation.

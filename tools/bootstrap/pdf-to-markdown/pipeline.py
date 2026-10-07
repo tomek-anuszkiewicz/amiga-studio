@@ -57,6 +57,18 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("page_*_segments.json", "filtered page conversion JSON files"),
     },
     {
+        "id": "02.81", "dir": "02.81_transform_page_tables", "script": "transform_page_tables.py",
+        "desc": "Transcribe page table crops and save HTML group companions",
+        "targets": ["02.81_transform_page_tables"],
+        "inspect": ("page_*_segments.json", "transcribed table page JSON files"),
+    },
+    {
+        "id": "02.82", "dir": "02.82_table_conversion_review", "script": "render_table_review.py",
+        "desc": "Render side-by-side source and converted table groups",
+        "targets": ["02.82_table_conversion_review"],
+        "inspect": ("*_review.png", "table review PNGs"),
+    },
+    {
         "id": "02.9", "dir": "02.9_emit_page_markdown", "script": "emit_page_markdown.py",
         "desc": "Assemble unchanged page Markdown and exact original-PNG crops",
         "targets": ["02.9_emit_page_markdown"],
@@ -164,7 +176,8 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
 for index, stage in enumerate(STAGE_REGISTRY):
     stage["inputs"] = {
         "02": ["01"], "02.5": ["01", "02"], "02.8": ["01", "02"],
-        "02.9": ["01", "02.8"], "03": ["01", "02.8"],
+        "02.81": ["01", "02.8"], "02.82": ["01", "02.81"],
+        "02.9": ["01", "02.81"], "03": ["01", "02.81"],
     }.get(stage["id"], [STAGE_REGISTRY[index-1]["id"]] if index else [])
 
 
@@ -459,6 +472,8 @@ def main():
     parser.add_argument("--from-stage", help="Start stage (default: 00); clears this stage and all later results")
     parser.add_argument("--to-stage", help="Last stage to execute; does not limit cleanup")
     parser.add_argument("--page-ranges", help="Physical 1-based source PDF pages; omitted retains configured selection")
+    parser.add_argument("--table-predecessor", choices=["02.8", "02"],
+                        help="Whole-input table source; 02 only when filtering was deliberately skipped")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--status", action="store_true")
     args = parser.parse_args()
@@ -487,6 +502,16 @@ def main():
     config_path = workspace / "config.yaml"
     config_source = config_path if config_path.exists() else args.config.resolve()
     config = parse_config(config_source, known_stages=PDF_STAGES, required_stages=())
+    table_config = config.setdefault("table_conversion", {})
+    if args.table_predecessor is not None:
+        if STAGE_REGISTRY[start]["id"] != "02.81":
+            raise ValueError("Changing table predecessor requires restart at Stage 02.81")
+        table_config["predecessor"] = args.table_predecessor
+    table_predecessor = table_config.setdefault("predecessor", "02.8")
+    next(s for s in STAGE_REGISTRY if s["id"] == "02.81")["inputs"] = ["01", table_predecessor]
+    if start <= resolve_stage_idx("02.81") <= end:
+        config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
+            "02.81_transform_page_tables", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
     inputs = config.setdefault("input", {})
     if pdf is not None:
         inputs["source_pdf"] = Path(os.path.relpath(pdf, workspace)).as_posix()

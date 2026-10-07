@@ -102,6 +102,9 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
             i = 0
             while i < len(nodes) - 1:
                 curr_node = nodes[i]
+                if curr_node.get("table_format") in ("markdown", "html"):
+                    i += 1
+                    continue
                 if curr_node.get("type") not in ("table", "graphic"):
                     i += 1
                     continue
@@ -129,6 +132,8 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
                     else:
                         break
 
+                    if candidate.get("table_format") in ("markdown", "html"):
+                        break
                     caption_hint = cap_node.get("raw_text", "").strip() if cap_node else None
                     if check_continuation_with_codex(prev_in_chain, candidate, codex, prompt_template, caption_hint=caption_hint):
                         if not head_node.get("continuation_status"):

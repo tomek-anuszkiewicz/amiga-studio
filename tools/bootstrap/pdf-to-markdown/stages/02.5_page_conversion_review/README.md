@@ -16,4 +16,4 @@ and image-library errors propagate normally.
 
 Use the [orchestrator](../../README.md) with `--from-stage 02.5 --to-stage 02.5`
 after Stage 01/02. Restart 02 invalidates this review and downstream stream artifacts.
-Restart 02.5 clears this review and every later stage, including 02.9 and 03, even for a review-only interval. Start the next run at 02.9 to retain the review. Stage 03 consumes 02 directly; cleanup follows execution order. Review PNGs are deterministic; user assessment remains separate.
+Restart 02.5 clears this review and every later stage, including 02.8, 02.81, 02.82, 02.9 and 03, even for a review-only interval. Start the next run at 02.8 to retain this review while building the required filtered/table outputs. Stages 02.9 and 03 consume 02.81 directly; cleanup follows execution order. Review PNGs are deterministic; user assessment remains separate.

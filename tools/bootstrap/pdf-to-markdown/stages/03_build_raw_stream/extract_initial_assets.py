@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """
 stages/03_build_raw_stream/extract_initial_assets.py:
-For every table and graphic node:
-1. Crops PNG assets from Stage 01 page renders with typographic padding.
+For visual nodes:
+1. Copies required persistent table crops from Stage 02.81; Markdown tables need none.
+   Crops other visual assets from Stage 01 with existing typographic padding.
 2. Annotates the node with visual file paths in raw_stream.json.
 Raw text remains in each node's raw_text field; no separate text dumps are written.
 """
 
 import json
 import math
+import shutil
 from pathlib import Path
 from PIL import Image
+from common.pdf_tables import STAGE
 
 
 def extract_assets_for_nodes(
@@ -30,6 +33,11 @@ def extract_assets_for_nodes(
 
     pages_dir = workspace_dir / "01_preprocess"
     assets_dir.mkdir(parents=True, exist_ok=True)
+    for node in nodes:
+        if node.get("table_source_asset") and node.get("table_format") != "markdown":
+            filename = f"asset_{node['node_id']}.png"
+            shutil.copy2(workspace_dir / STAGE / node["table_source_asset"], assets_dir / filename)
+            node["png_path"] = f"{rel_prefix}/{filename}"
 
     # Typographic padding derivation:
     # Standard book body text font size is 10 pt in standard 72 pt/inch PostScript space.
@@ -44,7 +52,7 @@ def extract_assets_for_nodes(
     # Group nodes by page so each source PNG is opened once.
     nodes_by_page = {}
     for node in nodes:
-        if node["type"] in ("table", "graphic", "code_block"):
+        if node["type"] in ("table", "graphic", "code_block", "cover") and not node.get("table_source_asset"):
             p = node["page"]
             nodes_by_page.setdefault(p, []).append(node)
 

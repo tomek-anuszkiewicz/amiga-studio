@@ -1,6 +1,10 @@
 # Stage 07: Transform Tables
 
 ## Objective
+Pass through Stage 02.81 Markdown/HTML tables, saved group text and source assets
+unchanged. Converted continuation fragments remain separate and visible. The
+legacy transformation below applies only to unconverted table blocks:
+
 Specialized worker for table blocks across all chapter streams:
 1. Skips child continuation nodes (which are synthesized into their respective head nodes).
 2. For standalone or head tables, combines multi-page crops and `raw_text` from the chapter JSON nodes.

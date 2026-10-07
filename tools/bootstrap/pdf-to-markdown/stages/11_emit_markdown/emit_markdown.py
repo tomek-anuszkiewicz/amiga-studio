@@ -17,6 +17,8 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_tables import ordered_markdown, converted
 
 
 def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
@@ -40,6 +42,8 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
             rendered = node.get("rendered_markdown") or ""
             for match in re.finditer(r"asset_node_\d+\.[a-zA-Z0-9]+", rendered):
                 referenced_assets.add(match.group(0))
+            if node.get("table_format") == "html":
+                referenced_assets.add(Path(node["png_path"]).name)
 
     # 1. Synchronize assets from latest stage (only active, referenced assets)
     src_assets_dir = chapters_dir / "assets"
@@ -74,28 +78,29 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
 
         nodes = entry["nodes"]
 
-        content_parts = []
-
-        for node in nodes:
+        def render(node):
             n_type = node.get("type")
 
             # Ignore and skip toc_heading segments per design specification
             if n_type == "toc_heading":
-                continue
+                return ""
 
             # Skip child continuation nodes
-            if node.get("continuation_status") == "continuation":
-                continue
+            if node.get("continuation_status") == "continuation" and not converted(node):
+                return ""
 
             if "rendered_markdown" in node:
                 rendered = node.get("rendered_markdown")
                 if rendered and rendered.strip():
-                    content_parts.append(rendered.rstrip() + "\n\n")
+                    return rendered.rstrip()
             elif node.get("raw_text"):
-                content_parts.append(node["raw_text"].rstrip() + "\n\n")
+                return node["raw_text"].rstrip()
+            return ""
+
+        content = ordered_markdown(nodes, render, lambda n: f"assets/{Path(n['png_path']).name}")
 
         with open(target_path, "w", encoding="utf-8") as f:
-            f.write("".join(content_parts).rstrip() + "\n")
+            f.write(content.rstrip() + "\n")
 
         print(f"    Emitted: {target_md_name}")
 

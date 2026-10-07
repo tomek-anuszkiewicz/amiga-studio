@@ -58,7 +58,7 @@ Execution requires successful Stage 01/02 statuses. Missing template or candidat
 PNG files fail through normal IO without fallback. Restarting 02.8 clears its output
 and every later stage, even for this single-stage interval; earlier restarts also
 clear it. Stage 01, Stage 02 and Stage 02.5 artifacts remain unchanged. Review
-continues to show original objects. Stages 02.9 and 03 consume only filtered JSON
+continues to show original objects. Stage 02.81 consumes only filtered JSON by default; 02.9 and 03 consume its full page outputs
 and use original Stage 01 PNGs for retained crops. Existing downstream successes
 need explicit regeneration starting at 02.8 to represent this filtering.
 Preserve edited Stage 02.9 bundles outside cleanup before restarting; regeneration

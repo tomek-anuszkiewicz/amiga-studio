@@ -2883,3 +2883,31 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite passed 19 of 19 tests
   - Reviewed crop lifecycle, companion prompt and downstream field propagation in the plan
   - Planning only: no implementation, inference or review image generation performed
+---
+
+### [2026-10-07 20:16 CET] — PDF-TABLE-2.81: transcribe page tables and render source comparisons
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion`
+  - `docs/developers.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add Stage 02.81 table transcription and required separate HTML group inference
+  - save persistent original crops and ordered group metadata
+  - add Stage 02.82 Playwright/Edge comparisons
+  - share companion assembly across page export and final stream
+  - preserve converted fragments through reduction and continuation workers
+  - update routing, settings and documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Replace table rasters with faithful markup while retaining source context and reusable crops
+  - review is deterministic and independent of export
+  - preserve existing attempt settings and explicit restart boundaries
+- **Verification & Test Results**:
+  - Quick preflight PASS
+  - architecture 19/19
+  - existing PDF 26/26, Codex transport/cache 21/21 and publication 10/10
+  - Python compilation and CLI help PASS
+  - synthetic offline group/export/stream/restart acceptance PASS
+  - Edge rendered three formats and HTML fixture visually inspected
+  - Graphify incremental update PASS. No live inference or existing attempt regeneration. First user-selected fragment and fidelity review pending
+  - RAG details ingestion deferred. Active plan retained.

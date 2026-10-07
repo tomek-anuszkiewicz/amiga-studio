@@ -74,6 +74,8 @@ def process_tables(workspace_dir: Path, config: dict):
             for idx, node in enumerate(nodes):
                 if node.get("type") != "table":
                     continue
+                if node.get("table_format") in ("markdown", "html"):
+                    continue
                 if node.get("continuation_status") == "continuation":
                     node["rendered_markdown"] = ""
                     continue
