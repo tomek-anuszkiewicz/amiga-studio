@@ -3015,3 +3015,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19 of 19
   - reviewed the added requirements against the existing Stage 02.5 README
   - planning only with implementation inference and artifact regeneration pending
+---
+
+### [2026-10-07 21:04 CEST] — PDF-REVIEW-2.5: Separate the first-priority review plan
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.5-review-presentation.md`
+  - `.agent/tasks/pdf-2.4-callout-reclassification.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Extract type colors prose annotation consolidation and hidden header footer thumb-index annotations into the independent PDF-REVIEW-2.5 plan
+  - schedule this implementation first before callout recovery
+  - remove duplicated requirements from the callout plan and link the standalone task
+  - base review work on existing Stage 01 and Stage 02 inputs without requiring Stage 02.4 or its resolver
+- **Architectural Rationale & Trade-Offs**:
+  - Allow the requested review changes to be implemented and verified separately first
+  - keep both unfinished plans under their existing Git exclusion and preserve original-object mappings for future inference
+- **Verification & Test Results**:
+  - Quick preflight passed all six gates
+  - architecture suite passed 19 of 19
+  - both plans passed the explicit language scan
+  - checked requirement placement priority and reciprocal plan references
+  - planning only with no implementation inference or regeneration
