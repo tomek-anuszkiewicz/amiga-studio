@@ -15,8 +15,10 @@ Empty responses fail rather than removing the target. Table transcription
 remains deferred to Stage 02.81.
 
 Each split carries its own model-provided original-PNG pixel `bbox`,
-`continuation: false` and empty `md_text`. The prompt and response schema prohibit
-the model from returning true, and the worker forces false for split objects.
+model-provided `continuation` and empty `md_text`. For each table split out,
+the prompt asks the model to set true when it judges the table to continue
+another, including a neighboring table on the same page. Independent tables
+receive false. The worker preserves the model's per-table decision.
 Singleton responses still preserve the predecessor object unchanged, including
 its existing continuation flag. IDs retain the original for the first child, then receive
 deterministic collision-free `_table_N` suffixes. Source-segment lineage and
@@ -43,6 +45,6 @@ request cache. Restarting 02.4 also clears 02.41. Existing attempt model/effort
 settings stay intact; missing settings initialize to `gpt-6.1-sol` / `medium`
 only when this stage is selected. The user selects fragments and assesses splits.
 
-The prompt/schema change retires cached responses that inferred continuation.
+The prompt/schema change retires responses cached under the former false-only rule.
 Existing attempt artifacts require an explicit restart at 02.41 to regenerate;
 that restart also clears 02.5 and all later outputs.
