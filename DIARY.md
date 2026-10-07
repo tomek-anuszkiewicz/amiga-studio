@@ -2779,3 +2779,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick preflight passed all six gates
   - Architecture suite passed 19 of 19 tests
   - Planning only: no converter implementation or inference run
+---
+
+### [2026-10-07 19:54 CEST] — PDF-TABLE-2.82: Plan side-by-side visual table reviews
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.81-table-transcription.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add planned review-only Stage 02.82 between conversion 02.81 and export 02.9
+  - Specify one comparison PNG per table with original Stage 01 raster at left and rendered Markdown or HTML at right
+  - Include associated captions, footnotes and table legends with source order and visible page, segment and format labels
+  - Expand the existing HTML details companion beneath the converted group with literal monospaced Markdown text
+  - Require full-content capture, unchanged predecessor artifacts and explicit handling of unconverted tables
+  - Reuse shared export group assembly and keep 02.9 and 03 dependent on 02.81 data rather than review images
+- **Architectural Rationale & Trade-Offs**:
+  - Support quick user visual assessment without new inference or automatic content changes
+  - Reconstruct original crops from saved bounds rather than retaining inference temporary files
+  - Select and verify a local rendering backend during implementation
+  - Keep the active execution plan local under its existing Git exclusion
+- **Verification & Test Results**:
+  - Quick preflight passed all six gates
+  - Architecture suite passed 19 of 19 tests
+  - Planning only: no implementation, inference, browser backend checks or comparison PNG generation performed
