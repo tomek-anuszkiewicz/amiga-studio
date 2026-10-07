@@ -35,6 +35,32 @@ class PdfNxpGeometryTests(unittest.TestCase):
 
 
 class PdfReviewContinuationTests(unittest.TestCase):
+    def test_callout_assembly_does_not_repeat_batched_body_nodes(self):
+        spec = importlib.util.spec_from_file_location(
+            "format_prose", ROOT / "tools/bootstrap/pdf-to-markdown/stages/09_transform_prose/format_prose.py")
+        prose = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(prose)
+        nodes = [
+            {"type": "callout", "raw_text": "**WARNING**"},
+            {"type": "callout_text", "raw_text": "First paragraph.",
+             "rendered_markdown": "First paragraph.\n\nSecond paragraph."},
+            {"type": "callout_text", "raw_text": "Second paragraph.",
+             "rendered_markdown": "", "continuation_status": "continuation"},
+        ]
+        self.assertEqual(prose.assemble_callouts(nodes), 1)
+        self.assertEqual(nodes[0]["rendered_markdown"].count("Second paragraph."), 1)
+        self.assertTrue(nodes[0]["rendered_markdown"].startswith("> [!WARNING]"))
+        self.assertEqual([node["rendered_markdown"] for node in nodes[1:]], ["", ""])
+        standalone = [
+            {"type": "callout_text", "raw_text": "**WARNING:** First paragraph.",
+             "rendered_markdown": "**WARNING:** First paragraph.\n\nSecond paragraph."},
+            {"type": "callout_text", "raw_text": "Second paragraph.",
+             "rendered_markdown": "", "continuation_status": "continuation"},
+        ]
+        self.assertEqual(prose.assemble_callouts(standalone), 1)
+        self.assertTrue(standalone[0]["rendered_markdown"].startswith("> [!WARNING]"))
+        self.assertEqual(standalone[1]["rendered_markdown"], "")
+
     def test_02_5_groups_prose_by_union_obstacles_only(self):
         spec = importlib.util.spec_from_file_location(
             "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review/render_review.py")
@@ -285,7 +311,7 @@ class PdfRestartTests(unittest.TestCase):
         def worker(stage, *args):
             self.assertEqual(stage["id"], "02.5")
             retained = read_json(self.workspace / "stage_status.json")
-            self.assertEqual(set(retained), {"00", "01", "02"})
+            self.assertEqual(set(retained), {"00", "01", "02", "02.4"})
             for later in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.5"):]:
                 self.assertFalse((self.workspace / later["dir"]).exists())
             self.write_artifacts(stage)
@@ -312,7 +338,7 @@ class PdfRestartTests(unittest.TestCase):
             return True
 
         self.run_pipeline(["--from-stage", "02", "--to-stage", "02.5"], worker)
-        self.assertEqual(executed, ["02", "02.5"])
+        self.assertEqual(executed, ["02", "02.4", "02.5"])
         self.assertFalse(self.output.exists())
 
     def test_missing_input_of_later_selected_branch_rejects_before_cleanup(self):
@@ -343,7 +369,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual((self.workspace / "04_stream_reduction/artifact.json").read_bytes(), before)
         self.assertEqual(other_output.read_text(), "Independent conversion")
         state = read_json(self.workspace / "stage_status.json")
-        self.assertEqual(list(state), ["00", "01", "02", "02.5", "02.8", "02.81", "02.82", "02.9", "03", "04", "05"])
+        self.assertEqual(list(state), ["00", "01", "02", "02.4", "02.5", "02.8", "02.81", "02.82", "02.9", "03", "04", "05"])
 
 
     def test_explicit_restart_rebuilds_missing_output_and_later_stages(self):
@@ -423,7 +449,7 @@ class PdfRestartTests(unittest.TestCase):
     def test_individual_stage_uses_matching_interval(self):
         self.run_pipeline(["--from-stage", "02.5", "--to-stage", "02.5"],
                           lambda stage, *args: self.write_artifacts(stage) or True)
-        self.assertEqual(set(read_json(self.workspace / "stage_status.json")), {"00", "01", "02", "02.5"})
+        self.assertEqual(set(read_json(self.workspace / "stage_status.json")), {"00", "01", "02", "02.4", "02.5"})
         self.assertFalse(self.output.exists())
 
 

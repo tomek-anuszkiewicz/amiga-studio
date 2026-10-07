@@ -1,6 +1,8 @@
 # Stage 02.5: Independent Page Conversion Review
 
-Consume Stage 02 JSON and the exact Stage 01 PNG. Save `02.5_page_conversion_review/page_NNNN_review.png` at original
+Consume resolved Stage 02/02.4 JSON and the exact Stage 01 PNG. Completed sparse
+02.4 overrides replace same-name pages; absent status uses 02, while failed/running
+02.4 blocks execution. Save `02.5_page_conversion_review/page_NNNN_review.png` at original
 page height and twice its width, with a blank equal-width right panel.
 
 Each displayed type has a fixed distinct color for its containing 2-pixel frame,
@@ -26,7 +28,7 @@ Other roles always remain separate; source text is never assembled or changed.
 Their original pixels remain visible, including where another leader would
 cross their boxes. They still participate in reading-order and overlap decisions.
 The source page remains at original scale with an equal-width right label panel.
-All bounds derive from Stage 02 boxes; no OCR geometry is synthesized.
+All bounds derive from resolved page boxes; no OCR geometry is synthesized.
 
 Each `page_NNNN_review.json` sidecar maps annotations to one-based
 `source_ordinals` and corresponding `source_ids` from `segment_id` (falling back
@@ -35,7 +37,8 @@ and combined continuation.
 It also records `hidden_source_ordinals`. These are review-only records; Stage 02
 JSONs and downstream conversion content remain untouched. The low-level
 `draw_review_image` draws exactly the objects supplied by its caller, without
-grouping or suppression, so future inference can retain original-object mapping.
+grouping or suppression, and is shared with 02.4 inference, which supplies every original request object.
+The shared renderer supports explicit frame-ID legends and colors independent of roles.
 
 No inference, segmentation correction, sorting or line rerouting occurs. The
 worker performs no completeness, dimension, frame or label validation; drawing

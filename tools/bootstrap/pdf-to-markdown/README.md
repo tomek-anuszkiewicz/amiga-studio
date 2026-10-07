@@ -44,7 +44,7 @@ errors stop execution normally. No older-stage inputs or alternative models are 
 
 ## Stage data and execution
 
-Execution order is `00 -> 01 -> 02 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
+Execution order is `00 -> 01 -> 02 -> 02.4 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
 Each worker reads the predecessor's own directory and writes its own results:
 
 | Stage | Input and result |
@@ -52,6 +52,7 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [00](stages/00_text_layer/README.md) | Source PDF -> full-source sibling OCR PDF; compatible OCR recovery stays in the attempt |
 | [01](stages/01_preprocess/README.md) | Prepared PDF -> physical-page PNGs and positioned text JSON |
 | [02](stages/02_page_conversion/README.md) | Stage 01 -> ordered logical objects, Markdown and pixel boxes |
+| [02.4](stages/02.4_reclassify_callouts/README.md) | Stage 01/02 -> vision-assisted advisory range replacements on changed pages only |
 | [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01/02 -> review frames and ordered labels |
 | [02.8](stages/02.8_filter_page_content/README.md) | Stage 01/02 -> retained objects after source-content and fixed NXP-logo exclusions |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.8 -> table markup, saved crops and inferred HTML group text |
@@ -78,7 +79,9 @@ The identity is index plus slug: both preface and TOC can use index zero.
 Prior-stage files remain unchanged. Filename collision handling and Stage 12
 frontmatter processing remain in place.
 
-Stage 02 request schemas guide model output. The PDF path does not locally enforce
+Stage 02 request schemas guide model output. Stage 02.4 interprets explicit edit
+ranges and retains ambiguous proposals; this does not certify text fidelity.
+The PDF path does not locally enforce
 schemas, geometry, identifiers, response types or text content. Review images and
 Markdown/crop bundles receive no completeness, dimension, asset-inventory or content
 comparison pass. Successful execution does not certify page coverage, classification,
@@ -104,9 +107,9 @@ Markdown tables need no published crop. Tables retain their separate converted
 fragments through stream reduction, continuation detection and Stage 07.
 The explicit whole-input alternative `--table-predecessor 02` requires restart at
 02.81 when filtering was deliberately skipped; default remains completed 02.8.
-Existing attempt settings are retained; missing 02.81 model settings are added
-only when that stage is selected. Review backend setup is in the Stage 02.82 README.
-Stage 02.5 uses complete Stage 02 input for type-colored review annotations,
+Existing attempt settings are retained; missing 02.4/02.81 model settings are added
+only when their stage is selected. Review backend setup is in the Stage 02.82 README.
+Stage 02.5 uses resolved complete page input for type-colored review annotations,
 consolidates unobstructed consecutive prose, and hides header/footer/thumb-index
 annotations without removing source content. Stage 02.8 owns all source-content removal; Stage 04 retains
 graphics union and prose seam processing.
@@ -119,11 +122,21 @@ NXP raster are excluded using original Stage 01 PNGs. Fixed geometry, foreground
 aspect and RGB gates must all pass, without configuration. See
 [Stage 02.8](stages/02.8_filter_page_content/README.md) for thresholds and evidence
 limits. Stage 01/02 completion is required.
-The boundary and page triggers come from original Stage 02 objects and exact types.
+The boundary and page triggers come from resolved page objects and exact types.
 A TOC heading on an excluded page still defines the boundary. Without a TOC heading,
 skip pre-TOC removal. Retain the actual TOC subject to whole-page exclusions.
 Surviving fields, IDs, text and geometry remain unchanged; empty pages are omitted
 and an empty filtered result is valid. Generated YAML metadata remains unchanged.
+
+Stage 02.4 sends complete original Stage 01 PNGs and numbered-frame companions
+with frozen source texts to recover independent advisory ranges. It writes sparse
+complete-page overrides without modifying Stage 02. Review 02.5, filtering 02.8
+and explicit table predecessor `02` enumerate Stage 02 pages and select completed
+same-name overrides. Absent 02.4 status uses Stage 02; running/failed status blocks
+direct consumers. Filtering output remains authoritative for default 02.81 input:
+omitted pages are never restored. See the [02.4 contract](stages/02.4_reclassify_callouts/README.md)
+for decision reports and replacement provenance. To deliberately skip 02.4,
+finish at 02 and restart at 02.5 with no current 02.4 status.
 
 ## Restart, status and publication
 

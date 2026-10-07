@@ -27,3 +27,7 @@ Completed Stage 01/02.81 statuses are required even when reviews or 02.9 have no
 run. Restart cleanup follows execution order. Existing streams require explicit
 regeneration through 02.81 to adopt table conversion. Success establishes execution,
 not transcription fidelity or RAG ingestion behavior.
+
+Stage 02.4 replacement `source_segment_ids` and `replacement_stage` are carried
+in node metadata alongside unchanged callout roles and text. The stream contains
+replacement objects once; consumed predecessor objects are not reintroduced.

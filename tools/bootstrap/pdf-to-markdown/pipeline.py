@@ -45,6 +45,12 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("page_*_segments.json", "page conversion JSON files"),
     },
     {
+        "id": "02.4", "dir": "02.4_reclassify_callouts", "script": "reclassify_callouts.py",
+        "desc": "Recover advisory ranges from source text and original-page vision",
+        "targets": ["02.4_reclassify_callouts"],
+        "inspect": ("page_*_segments.json", "sparse callout replacement pages"),
+    },
+    {
         "id": "02.5", "dir": "02.5_page_conversion_review", "script": "render_review.py",
         "desc": "Review independent page objects without textual geometry",
         "targets": ["02.5_page_conversion_review"],
@@ -175,7 +181,7 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
 # Execution order and artifact dependencies are deliberately separate.
 for index, stage in enumerate(STAGE_REGISTRY):
     stage["inputs"] = {
-        "02": ["01"], "02.5": ["01", "02"], "02.8": ["01", "02"],
+        "02": ["01"], "02.4": ["01", "02"], "02.5": ["01", "02"], "02.8": ["01", "02"],
         "02.81": ["01", "02.8"], "02.82": ["01", "02.81"],
         "02.9": ["01", "02.81"], "03": ["01", "02.81"],
     }.get(stage["id"], [STAGE_REGISTRY[index-1]["id"]] if index else [])
@@ -183,6 +189,17 @@ for index, stage in enumerate(STAGE_REGISTRY):
 
 def invalidated_stages(start_idx):
     return {stage["id"] for stage in STAGE_REGISTRY[start_idx:]}
+
+
+def require_optional_callout_input(stage, statuses, selected_ids, invalid):
+    """Check retained optional input only on branches reading Stage 02 directly."""
+    if "02" not in stage["inputs"] or stage["id"] == "02.4":
+        return
+    if "02.4" in selected_ids or "02.4" in invalid:
+        return
+    entry = statuses.get("02.4")
+    if entry is not None and entry.get("status") != "success":
+        raise ValueError(f"Incomplete Stage 02.4 blocks Stage {stage['id']}")
 
 
 def update_status(
@@ -512,6 +529,9 @@ def main():
     if start <= resolve_stage_idx("02.81") <= end:
         config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
             "02.81_transform_page_tables", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
+    if start <= resolve_stage_idx("02.4") <= end:
+        config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
+            "02.4_reclassify_callouts", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
     inputs = config.setdefault("input", {})
     if pdf is not None:
         inputs["source_pdf"] = Path(os.path.relpath(pdf, workspace)).as_posix()
@@ -532,6 +552,7 @@ def main():
     invalid = invalidated_stages(start)
     retained_ids = {key for key, entry in statuses.items() if key not in invalid and entry.get("status") == "success"}
     for stage in selected:
+        require_optional_callout_input(stage, statuses, selected_ids, invalid)
         for input_id in stage["inputs"]:
             if input_id not in selected_ids and input_id not in retained_ids:
                 raise ValueError(f"Missing successful predecessor Stage {input_id} for Stage {stage['id']}")

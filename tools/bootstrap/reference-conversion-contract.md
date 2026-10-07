@@ -25,8 +25,24 @@ It also removes standalone upper-left NXP `graphic` objects matching a bundled
 raster after fixed geometry/aspect/RGB gates on original Stage 01 PNGs. No logo
 configuration is added. These exceptions affect source content only; generated
 YAML metadata remains.
-Review Stage 02.5 uses complete Stage 02 objects for presentation decisions;
+Review Stage 02.5 uses complete resolved page objects for presentation decisions;
 its annotation suppression and prose grouping do not remove source content.
+
+Stage 02.4 recovers independent advisories using frozen Stage 02 text and complete
+original Stage 01 images plus numbered-frame companions. Keyword hits trigger
+one joint vision request per page; model proposals explicitly consume contiguous
+text ranges and return complete label/body and residual objects. Ambiguous IDs,
+overlaps, conflicting decisions and read-only anchors retain source ranges with
+diagnostics. Local geometry/IDs and source lineage derive from contributing frames.
+Only changed pages receive complete-page overrides; predecessors remain intact.
+Review 02.5, filtering 02.8 and explicit table predecessor `02` share the sparse
+resolver. Completed overrides are eligible, absent optional status means skipped,
+and running/failed 02.4 blocks direct consumers. Filtering omissions remain final.
+Restart clears the stage and all later artifacts, preserving 01/02 and cache.
+Table groups/companions are created at 02.81 from corrected objects; Stage 03
+carries lineage in node metadata, and Stage 09 assembles native callouts, including
+decorated leading labels. The model supplies faithful text; successful execution
+does not certify recovery quality. See [Stage 02.4](pdf-to-markdown/stages/02.4_reclassify_callouts/README.md).
 
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.
 
@@ -96,7 +112,7 @@ Full runs, intervals and individual deterministic/inference stages use
 process automatically with their inference calls and no manual task files.
 The normal pipeline has no legacy reader.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
+The execution sequence is `00 -> 01 -> 02 -> 02.4 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.
