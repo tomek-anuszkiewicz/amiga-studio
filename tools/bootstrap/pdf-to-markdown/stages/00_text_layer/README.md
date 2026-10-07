@@ -2,7 +2,7 @@
 
 Stage 00 uses local Tesseract through PyMuPDF to publish
 `00_text_layer/<source stem>-ocr.pdf` and `text_layer_manifest.json`.
-Stage 01 consumes this validated PDF exclusively. The source stays outside the
+Stage 01 consumes this prepared PDF exclusively. The source stays outside the
 workspace and is never overwritten. Stage 00 does not call Codex; later inference
 stages keep their configured models.
 
@@ -23,9 +23,8 @@ installed Tesseract data directory. Keep host-specific overrides in local
 configuration, outside committed files. Missing language data or an OCR execution
 error stops preparation; there is no model fallback.
 
-Existing native spans are retained even below 20 characters. Invalid native
-text or geometry stops preparation rather than overwriting a partial layer.
-For selected textless pages, the worker renders RGB at `render.dpi`, runs
+Existing native spans are retained even below 20 characters. For selected
+textless pages, the worker renders RGB at `render.dpi`, runs
 Tesseract on that displayed-page image and retains its original OCR PDF. Its text
 operators and font resources are overlaid onto the source page at their original
 scale. No fixed margin filter or size-based schematic exclusion is applied.
@@ -50,30 +49,28 @@ its actual text. Native text remains unchanged.
 
 The separate PDF contains only selected source pages, in source order, retaining
 their existing text and graphics and adding OCR only where text is missing.
-A candidate is saved and reopened. Validation checks the selected page count and
-geometry, retained original streams in order, unchanged native content, identical
-selected-page renders and the original source hash. Publication happens only
-after those checks; failure leaves no consumable manifest.
+Stage 00 saves the PDF and its manifest without reopening or validating the
+output. It does not compare renders, geometry, source streams or extracted text,
+and does not reread the source to check it after saving.
 
-Fragment preparation excludes unselected pages from the output and its page
-validation. `page` and zero-based `source_index` identify the original source;
+Fragment preparation excludes unselected pages from the output and processing.
+`page` and zero-based `source_index` identify the original source;
 zero-based `prepared_index` locates the page in the compact prepared PDF.
 Expanding selection requires restart
 at 00 with the original source or another workspace.
 
 ## Recovery and downstream handoff
 
-Stage 00 publishes the prepared PDF and its validation manifest. Stage 01
+Stage 00 publishes the prepared PDF and its preparation manifest. Stage 01
 extracts per-page positioned text JSON from that PDF; Stage 00 does not write
 separate native/OCR inspection JSON. Recovery holds the unmodified per-page OCR
-PDF plus JSON identity/hash metadata. Unreadable or multi-page OCR artifacts are
-not accepted. Recovery reuse validates source, selection, image bytes, geometry,
-format, procedure, language-data hashes and PyMuPDF version. Legacy normalized
+PDF plus JSON identity/hash metadata. Recovery reuse matches source, selection, image bytes, geometry, format,
+procedure, language-data hashes and PyMuPDF version; it performs no additional
+artifact integrity validation. OCR PDFs are opened to insert their text. Legacy normalized
 JSON and Codex recovery records are incompatible and are regenerated.
 
 The manifest records the prepared PDF path/hash, coverage, page geometry,
-provenance, inferred classification evidence, extracted
-text digests and publication checks.
+provenance, inferred classification evidence and source-to-prepared page mapping.
 
 Run through the pipeline, for example:
 
@@ -82,6 +79,6 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<source.pdf>" --worksp
 ```
 
 `--run-deterministic` can execute Stage 00 when it is the next ready stage.
-Restart at 01 retains validated preparation. Existing workspaces using the old
+Restart at 01 retains completed preparation. Existing workspaces using the old
 backend, output name or full-document page layout require explicit restart at 00
 with the original PDF.

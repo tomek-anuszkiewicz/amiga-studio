@@ -91,25 +91,6 @@ def validate_text_layer(workspace, source=None, *, require_completion=False):
         require(record["files"].get("workspace:" + relative) == manifest["pdf_sha256"]
                 and record["files"].get("workspace:00_text_layer/text_layer_manifest.json") == file_hash(manifest_path),
                 "Stage 00 completion omits required artifacts")
-    with pymupdf.open(pdf) as document:
-        require(document.is_pdf and not document.needs_pass and len(document) == len(entries),
-                "Prepared PDF must contain only selected pages; restart at 00")
-        for prepared_index, entry in enumerate(entries):
-            page = document[prepared_index]
-            require(type(entry.get("prepared_index")) is int and entry["prepared_index"] == prepared_index
-                    and entry.get("source_index") == entry["page"] - 1 and entry.get("geometry") == page_geometry(page),
-                    "Stage 00 page index/geometry mismatch")
-            provenance = entry.get("provenance")
-            kind = entry.get("page_type")
-            require(provenance in ("native", "ocr", "none") and kind in ("text_page", "schematic", "diagram", "blank", "pure_graphic"),
-                    "Unresolved Stage 00 page classification/provenance")
-            require(entry.get("classification_basis") in ("inferred_from_native_spans", "inferred_from_tesseract_lines"),
-                    "Missing Stage 00 classification evidence")
-            blocks = text_blocks(page)
-            require((provenance == "ocr" or bool(blocks) == (provenance != "none"))
-                    and (kind in ("blank", "pure_graphic")) == (provenance == "none"),
-                    "Inconsistent Stage 00 text/classification")
-            require(entry.get("text_digest") == digest(blocks), "Stage 00 extracted text differs from its manifest")
     return manifest, pdf
 
 
@@ -165,9 +146,7 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
 
 def validate_stage_artifacts(stage, workspace, source, *, snapshot=False):
     contract = stage.get("artifact_contract")
-    if contract == "pdf_text_layer":
-        validate_text_layer(workspace, source)
-    elif contract == "pdf_preprocess":
+    if contract == "pdf_preprocess":
         path = workspace / stage["dir"] / ".manifests/pages_manifest.json" if snapshot else None
         validate_preprocess(workspace, source, manifest_path=path)
 

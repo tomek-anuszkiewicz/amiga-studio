@@ -138,7 +138,8 @@ class PdfOcrValidationTests(unittest.TestCase):
                     page.insert_text((20, 40), f"Source page {number}")
                 document.save(source)
             original_hash = file_hash(source)
-            with patch.object(stage, "tesseract_ocr", side_effect=AssertionError("Native pages must not use OCR")):
+            with patch.object(stage, "tesseract_ocr", side_effect=AssertionError("Native pages must not use OCR")), \
+                    patch.object(pymupdf.Page, "get_pixmap", side_effect=AssertionError("Stage 00 must not render native pages for validation")):
                 manifest = stage.prepare_text_layer(source, workspace, config, "2,5")
             prepared = workspace / manifest["pdf_file"]
             with pymupdf.open(prepared) as document:
@@ -445,29 +446,6 @@ class PdfConfigurationTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Invalid Stage 02"):
                     worker.build_raw_stream(workspace, {})
             self.assertEqual(list(workspace.iterdir()), [])
-
-    def test_invisible_text_preserves_wrapped_source_streams(self):
-        script = ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py"
-        spec = importlib.util.spec_from_file_location("text_layer_worker", script)
-        worker = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(worker)
-        with tempfile.TemporaryDirectory() as directory:
-            source, candidate = Path(directory) / "source.pdf", Path(directory) / "candidate.pdf"
-            with pymupdf.open() as document:
-                page = document.new_page(width=200, height=200)
-                page.draw_rect(pymupdf.Rect(20, 20, 80, 80))
-                # A valid unwrapped source stream makes PyMuPDF insert q/Q
-                # wrappers around it when an overlay is added.
-                document.update_stream(page.get_contents()[0], b"20 20 80 80 re S\n")
-                document.save(source)
-            with pymupdf.open(source) as document:
-                with pymupdf.open() as ocr:
-                    layer = ocr.new_page(width=200, height=200)
-                    layer.insert_text((20, 40), "A", render_mode=3)
-                    worker.insert_ocr_pdf(document[0], ocr)
-                document.save(candidate)
-            entry = {"page": 1, "source_index": 0, "prepared_index": 0, "provenance": "ocr"}
-            worker.verify_candidate(source, candidate, [entry], 72)
 
     def test_preprocess_rejects_missing_text_layer_before_worker(self):
         spec = importlib.util.spec_from_file_location("handoff_pipeline", ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py")

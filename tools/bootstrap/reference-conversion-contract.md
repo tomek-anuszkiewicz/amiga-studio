@@ -162,7 +162,7 @@ working state and metrics are retained. HTML no longer creates an automatic pare
 
 HTML and PDF use the shared Codex transport and strict stage configuration. PDF completion records validate predecessor artifacts and source/configuration/procedure identities; prepared manual tasks carry matching identity records. Existing migration evidence is the basis for proceeding with the separate roadmap work under the development workflow above. Do not treat arbitrary existing artifacts as validated predecessors.
 
-PDF Stage 00 publishes a separate validated `<source stem>-ocr.pdf` containing
+PDF Stage 00 publishes a separate prepared `<source stem>-ocr.pdf` containing
 only selected source pages in source order, and a text-layer manifest.
 `page` and zero-based `source_index` retain original source identity;
 zero-based `prepared_index` locates each page in the compact output PDF.
@@ -180,24 +180,24 @@ text to boxes. The OCR raster becomes transparent so the original page graphics
 remain visible. Page rotation maps the displayed frame without resizing the text.
 Stage 00 trusts PyMuPDF to store the OCR text: it does not compare
 reopened OCR line counts, text or positions with the recognition result.
-Publication checks source hashes, selected-page count and geometry,
-retained source streams/native text and identical selected-page renders. A page
+Stage 00 saves the output without reopening or validating it, comparing renders,
+checking geometry or retained streams, or rereading the source after saving. A page
 with no recognized lines uses the legacy `pure_graphic` classification with
 `inferred_from_tesseract_lines` evidence; it is not a visual confirmation that the
 page contains no text. Tesseract can miss text. No margin filter or size-based
 schematic omission is applied. Fragment coverage never certifies unselected pages.
 
-Stage 00 retains its validation manifest and compatible recovery records.
+Stage 00 retains its preparation manifest and compatible recovery records.
 Stage 01 owns per-page positioned text JSON extraction from the prepared PDF;
 Stage 00 does not duplicate those reads in separate inspection JSON. Recovery
 retains each unmodified OCR PDF and JSON identity/hash metadata. Its identity
 includes rendered image bytes, procedure, geometry, source selection,
 language-data hashes, raw PDF format and the PyMuPDF version. Legacy normalized
-JSON and Codex recovery are incompatible and regenerated. Unreadable or multi-page
-OCR artifacts fail. The user assesses the prepared PDF; Stage 01 consumes its
+JSON and Codex recovery are incompatible and regenerated. OCR artifacts are opened to insert their text; there is no separate OCR-artifact
+validation pass. Recovery matches request identity without checking saved hashes. The user assesses the prepared PDF; Stage 01 consumes its
 actual extractable text. Native text is unchanged.
-Recovery records do not replace the validated manifest.
-Restart at 01 retains validated Stage 00; legacy workspaces require explicit
+Recovery records do not replace the preparation manifest.
+Restart at 01 retains completed Stage 00; legacy workspaces require explicit
 regeneration from 00 with the original PDF after backend, name or prepared-page
 layout changes. Full-document fragment artifacts are not reused as compact PDFs.
 

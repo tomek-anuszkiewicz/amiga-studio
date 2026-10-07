@@ -34,7 +34,6 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "desc": "Prepare and validate a separate PDF with native/OCR text provenance",
         "targets": ["00_text_layer"],
         "inspect": ("text_layer_manifest.json", "text-layer manifest"),
-        "artifact_contract": "pdf_text_layer",
     },
     {
         "id": "01",

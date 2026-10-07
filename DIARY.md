@@ -2286,3 +2286,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite 19/19 passed
   - graphify update completed
   - no real-source fragment conversion or performance benchmark run
+---
+
+### [2026-10-07 16:03 CET] — PDF-FRAGMENT-00: remove preparation output validation
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove candidate render, geometry, stream, native-text and source-immutability comparisons
+  - remove output reopening and text digests
+  - remove Stage 00 completion content-validation contract
+  - remove separate OCR recovery integrity checks
+  - retain source/prepared page mapping
+- **Architectural Rationale & Trade-Offs**:
+  - User explicitly requires Stage 00 to select pages
+  - OCR textless pages and save without validation
+- **Verification & Test Results**:
+  - Focused native-page test failed before removal because validation rendered the page
+  - 31 PDF technical tests passed after removal
+  - obsolete candidate-validation test removed
+  - quick preflight passed
+  - architecture tests 19/19 passed
+  - Graphify refreshed
+  - no live fragment conversion or timing measurement

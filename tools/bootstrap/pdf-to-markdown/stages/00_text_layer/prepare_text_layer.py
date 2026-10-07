@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare a separate validated PDF; publish no manifest on incomplete OCR."""
+"""Prepare selected PDF pages, adding OCR only where text is missing."""
 
 import argparse
 from pathlib import Path
@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.cache import digest
 from conversion.config import load_config, PDF_STAGES
 from common.lineage import file_hash, read_state, stage_identity
-from common.pdf_artifacts import write_json, read_json, require, validate_text_layer
+from common.pdf_artifacts import write_json, read_json, require
 from common.pdf_geometry import (SCHEMA_VERSION, page_geometry,
                                      text_blocks)
 from common.pdf_selection import selected_pages
@@ -49,33 +49,6 @@ def insert_ocr_pdf(page, ocr):
         layer.delete_image(image[0])
     target = layer.rect * page.derotation_matrix
     page.show_pdf_page(target, ocr, 0, rotate=page.rotation)
-
-
-def verify_candidate(source_path, candidate, entries, dpi):
-    with pymupdf.open(source_path) as original, pymupdf.open(candidate) as prepared:
-        require(len(prepared) == len(entries), "Prepared PDF must contain only selected pages")
-        for entry in entries:
-            before = original[entry["source_index"]]
-            after = prepared[entry["prepared_index"]]
-            require(page_geometry(before) == page_geometry(after), "Preparation changed page geometry")
-            old_streams = [original.xref_stream(xref) for xref in before.get_contents()]
-            new_streams = [prepared.xref_stream(xref) for xref in after.get_contents()]
-            # PyMuPDF adds q/Q wrappers around unwrapped source content. Require
-            # byte-identical source streams in their original order, allowing
-            # those wrappers and the appended invisible text streams.
-            cursor = 0
-            for stream in old_streams:
-                match = next((i for i in range(cursor, len(new_streams)) if new_streams[i] == stream), None)
-                require(match is not None, "Preparation changed source content streams")
-                cursor = match + 1
-            if entry["provenance"] != "ocr":
-                require(before.get_text("rawdict") == after.get_text("rawdict"), "Preparation changed retained native content")
-                require(old_streams == new_streams, "Preparation changed a page outside OCR coverage")
-            left, right = before.get_pixmap(dpi=dpi), after.get_pixmap(dpi=dpi)
-            require((left.x, left.y, left.width, left.height, left.n, left.samples)
-                    == (right.x, right.y, right.width, right.height, right.n, right.samples),
-                    f"Preparation changed visible content on source page {entry['page']}")
-            entry["text_digest"] = digest(text_blocks(after))
 
 
 def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
@@ -128,22 +101,12 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                     payload = None
                     if recovery_file.is_file():
                         retained = read_json(recovery_file)
-                        require(retained.get("digest") == digest({k: v for k, v in retained.items() if k != "digest"}),
-                                "Modified per-page OCR recovery record")
                         if retained.get("identity") == identity and recovery_pdf.is_file():
-                            require(file_hash(recovery_pdf) == retained.get("pdf_sha256"),
-                                    "Modified per-page OCR PDF recovery artifact")
                             payload = recovery_pdf.read_bytes()
                             print(f"[recovery] {entry['page_id']}: compatible original OCR PDF")
+                    fresh_ocr = payload is None
                     if payload is None:
                         payload = tesseract_ocr(pixmap, language, tessdata)
-                        # Check only that the returned artifact can be opened.
-                        with pymupdf.open("pdf", payload) as recovered:
-                            require(len(recovered) == 1, "Tesseract must return one OCR PDF page")
-                        recovery_pdf.write_bytes(payload)
-                        record = {"identity": identity, "pdf_sha256": file_hash(recovery_pdf)}
-                        record["digest"] = digest(record)
-                        write_json(recovery_file, record)
                     image.unlink()
                     with pymupdf.open("pdf", payload) as ocr:
                         has_text = bool(ocr[0].get_text().strip())
@@ -152,33 +115,31 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                                      provenance="ocr" if has_text else "none")
                         if has_text:
                             insert_ocr_pdf(page, ocr)
+                    if fresh_ocr:
+                        recovery_pdf.write_bytes(payload)
+                        record = {"identity": identity, "pdf_sha256": file_hash(recovery_pdf)}
+                        record["digest"] = digest(record)
+                        write_json(recovery_file, record)
                     print(f"[{entry['provenance']}] {entry['page_id']}: {entry['page_type']}")
                 entries.append(entry)
             document.save(candidate, deflate=True, garbage=4)
-            verify_candidate(pdf_path, candidate, entries, dpi)
-            require(file_hash(pdf_path) == source_hash, "Source PDF changed during preparation")
             manifest = {"schema_version": SCHEMA_VERSION, "source": source, "source_page_count": source_page_count,
                         "selected_pages": pages, "pdf_file": output.relative_to(workspace).as_posix(),
-                        "pdf_sha256": file_hash(candidate), "pages": entries, "ocr_procedure": procedure,
-                        "publication_validation": {"dpi": dpi, "selected_page_renders": "identical",
-                                                   "selected_page_geometry": "identical", "source_streams": "retained",
-                                                   "ocr_text_insertion": "trusted_pdf_writer",
-                                                   "unselected_pages": "excluded from prepared PDF"}}
+                        "pdf_sha256": file_hash(candidate), "pages": entries, "ocr_procedure": procedure}
             candidate.replace(output)
             write_json(manifest_path, manifest)
-            validate_text_layer(workspace, source)
         except BaseException:
             manifest_path.unlink(missing_ok=True)
             candidate.unlink(missing_ok=True)
             raise
         finally:
             (stage_dir / ".request.png").unlink(missing_ok=True)
-    print(f"[+] Stage 00 published {output.name}; validated physical pages: {pages}")
+    print(f"[+] Stage 00 published {output.name}; source pages: {pages}")
     return manifest
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 00: prepare a validated, separate OCR PDF")
+    parser = argparse.ArgumentParser(description="Stage 00: prepare a selected-pages OCR PDF")
     parser.add_argument("--pdf", type=Path, required=True)
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)

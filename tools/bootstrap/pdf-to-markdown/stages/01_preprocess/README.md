@@ -1,6 +1,6 @@
 # Stage 01: Positioned Text and PNGs
 
-Stage 01 deterministically renders and extracts text from the separate, validated
+Stage 01 deterministically renders and extracts text from the separate, prepared
 [Stage 00 PDF](../00_text_layer/README.md). It performs no OCR and needs no model
 selection. Missing, incomplete, modified or incompatible Stage 00 artifacts stop
 execution; preprocessing never falls back to the original PDF.
@@ -36,7 +36,7 @@ Run preparation and preprocessing together for a new workspace:
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config tools/bootstrap/pdf-to-markdown/config.yaml --page-ranges "1-5,7" --from-stage 00 --to-stage 01
 ```
 
-For a workspace with a validated Stage 00, restart with `--from-stage 01
+For a workspace with a completed Stage 00, restart with `--from-stage 01
 --to-stage 01`, or run `--run-deterministic` when 01 is the next ready stage.
 Stage 00 and the original source are retained. Selection cannot change without
 restarting preparation. Legacy workspaces require explicit restart at 00 with
