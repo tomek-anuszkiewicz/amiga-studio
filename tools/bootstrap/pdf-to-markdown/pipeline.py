@@ -163,7 +163,7 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
 # Execution order and artifact dependencies are deliberately separate.
 for index, stage in enumerate(STAGE_REGISTRY):
     stage["inputs"] = {
-        "02": ["01"], "02.5": ["01", "02"], "02.8": ["02"],
+        "02": ["01"], "02.5": ["01", "02"], "02.8": ["01", "02"],
         "02.9": ["01", "02.8"], "03": ["01", "02.8"],
     }.get(stage["id"], [STAGE_REGISTRY[index-1]["id"]] if index else [])
 
