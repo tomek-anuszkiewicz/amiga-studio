@@ -44,7 +44,7 @@ configuration or DOM result substitutes for Codex.
 
 The shared client caches only completed, validated responses under `Reference/.cache/codex` and writes `.conversion-metrics.json` beside the output. Cached usage belongs to the original request. See the [conversion contract](../reference-conversion-contract.md) for source fidelity and transport boundaries; development runs use the fragment requested by the user.
 
-Optional rendering and comparison tools require Chrome, Chromium, or Edge; page rasterization also requires PyMuPDF, and comparison images require Pillow. See the operational workflow below for these tools and link validation.
+Optional page rendering requires Chrome, Chromium, or Edge and PyMuPDF. Image crop extraction requires Pillow. See the operational workflow below for these tools and link validation.
 
 > [!IMPORTANT]
 > **Conversion Model:**
@@ -70,7 +70,6 @@ tools/bootstrap/html-to-markdown/
 │   ├── download_assets.py                 # Scans HTML, copies/downloads images to assets/, creates .txt sidecars
 │   ├── html_to_pages.py                   # Headless Chrome HTML-to-PDF & PyMuPDF page PNG rasterizer
 │   ├── replace_placeholders.py            # Resolves <image placeholder> & <crop> tags, formats Markdown links
-│   ├── render_comparison.py               # Headless browser side-by-side visual comparison renderer
 │   └── validate_links.py                  # Anchor, image asset, and link integrity validator
 └── references/
     └── llm-transcription-prompt.md        # Unified LLM prompt (Obsidian frontmatter, Multi-page crawl, Non-text hierarchy, TOC rules)
@@ -237,17 +236,7 @@ python tools/bootstrap/html-to-markdown/scripts/replace_placeholders.py `
   --pages-dir "Obsidian/Amiga/Reference/html-sandbox/pages"
 ```
 
-### Phase 4: Headless Visual Comparison
-Generate a side-by-side visual comparison between the original HTML rendering and the converted Markdown:
-```powershell
-python tools/bootstrap/html-to-markdown/scripts/render_comparison.py `
-  --html "Obsidian/Amiga/Reference/DocFolder/doc.html" `
-  --markdown "Obsidian/Amiga/Reference/html-sandbox/doc.md" `
-  --output-dir "Obsidian/Amiga/Reference/html-sandbox"
-```
-Open `visual_comparison.png` to visually audit typography, alignment, and diagram placement.
-
-### Phase 5: Link Integrity & Asset Audit
+### Phase 4: Link Integrity & Asset Audit
 Run `validate_links.py` to verify 100% link, anchor, and image resolution:
 ```powershell
 python tools/bootstrap/html-to-markdown/scripts/validate_links.py `
