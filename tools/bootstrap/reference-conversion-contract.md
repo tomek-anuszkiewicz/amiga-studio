@@ -42,10 +42,11 @@ The prompt excludes numbered/symbol-marked footnotes, table/figure legends and
 explanatory lists. Distinct NOTE labels introducing their own advisory paragraphs
 remain eligible even when they discuss a nearby table, image or figure.
 Only changed pages receive complete-page overrides; predecessors remain intact.
-All page workers from 01 through 02.82 filter their input by configured physical
-`input.pages`, including selections changed through `--page-ranges` on a later-stage
-restart. Stage 00 deliberately prepares or reuses the full-source shared OCR PDF.
-Absent or null selection means all available predecessor pages.
+All page workers from 01 through 02.82 filter their input by the current invocation's
+`--page-ranges`, forwarded by the pipeline even on a later-stage restart. Selection
+is not persisted in config; omission means all available predecessor pages.
+Legacy `input.pages` is ignored and removed on the next pipeline config write.
+Stage 00 deliberately prepares or reuses the full-source shared OCR PDF.
 Apply selection before context collection, TOC-boundary detection,
 inference or review rendering. Stage 02.81 respects it for either configured
 predecessor, without recovering pages removed by filtering. Stage 03 creates the
@@ -93,10 +94,11 @@ remain separate from execution status. Existing cached prompts are not rewritten
 
 For agent-run PDF conversions, treat the source PDF directory's `workspace/` as a container for named attempt directories, never as an attempt workspace itself, even when it is empty. Create a named child from the first attempt, such as `<PDF_DIRECTORY>/workspace/page-64-attempt-01/`, and always pass that child explicitly with `--workspace`. Use a new child for each independent attempt; continue or explicitly restart the same attempt in its existing child. The CLI currently defaults to `<PDF_DIRECTORY>/workspace/` when `--pdf` is supplied without `--workspace`, so agents must override that default. The original PDF stays outside the attempt workspace. Bootstrap downloads PDFs into `<book>-tmp/`; agent-run attempts belong under `<book>-tmp/workspace/<attempt>/`. A locally supplied PDF in `<book>/` uses `<book>/workspace/<attempt>/`.
 
-Each attempt persists requested `input.source_pdf` relative to its `config.yaml`
-and `input.pages` as a physical-page list or null for all pages. Existing workspace
+Each attempt persists requested `input.source_pdf` relative to its `config.yaml`.
+Page selection belongs solely to the current CLI invocation. Existing workspace
 config takes precedence; `--config` initializes only a missing config. Explicit
-source/page arguments update these inputs; omitted arguments retain them. No
+source arguments update the stored path; omission retains it. Page ranges apply
+only to the current run, and omission selects all available pages. No
 historical source-selection comparison runs.
 
 `stage_status.json` is the only completion/metrics record, written atomically with

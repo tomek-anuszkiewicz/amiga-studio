@@ -3371,3 +3371,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick pre-flight passed
   - architecture rules passed (19 tests)
   - graphify update completed. No live fragment conversion, quality assessment or user workspace regeneration performed.
+---
+
+### [2026-10-07 23:14 CET] — PDF-PAGE-CLI: make physical selection invocation-scoped
+- **Affected Subsystems**:
+  - `PDF pipeline`
+  - `page workers 01 through 02.82`
+  - `selection helper`
+  - `configuration template`
+  - `converter documentation`
+  - `PDF regression suites`
+- **What Was Changed (The Concrete Reality)**:
+  - Use --page-ranges as the sole selection source
+  - omission selects all available predecessor pages
+  - forward the parameter directly to page-worker CLIs
+  - remove input.pages from the template and retire legacy selection on the next pipeline config write
+  - retain source-path persistence, full-source OCR and the stream boundary
+- **Architectural Rationale & Trade-Offs**:
+  - User explicitly rejected controlling pages through configuration. Page ranges now apply only to the current invocation
+  - for both orchestration and direct worker execution. Existing workspace data was not regenerated or modified during implementation. Earlier diary records describe the superseded persisted-selection behavior.
+- **Verification & Test Results**:
+  - Two restart tests reproduced persisted-selection and omitted-range defects before repair
+  - updated PDF suite passed (30 tests), including worker command forwarding and real temporary-PDF restart now extracting all pages. Six page selection tests passed with conflicting legacy config and explicit page arguments, including direct review CLI omission
+  - geometry regression passed (1 test). Quick pre-flight passed
+  - architecture suite passed (19 tests)
+  - graphify update completed. No live book fragment conversion performed.

@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
 from common.pdf_page_conversion import resolved_page_files
+from common.pdf_selection import selected_pages
 from common.pdf_artifacts import read_json, write_json
 
 EXCLUDED_PAGE_TYPES = {
@@ -123,9 +124,10 @@ def main():
     parser = argparse.ArgumentParser(description="Stage 02.8: filter page content")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--page-ranges")
     args = parser.parse_args()
-    config = load_config(args.config, known_stages=PDF_STAGES, required_stages=())
-    filter_page_content(args.workspace.resolve(), pages=config.get("input", {}).get("pages"))
+    load_config(args.config, known_stages=PDF_STAGES, required_stages=())
+    filter_page_content(args.workspace.resolve(), pages=selected_pages(args.page_ranges))
 
 
 if __name__ == "__main__":

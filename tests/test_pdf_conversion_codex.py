@@ -153,7 +153,7 @@ class PdfOcrValidationTests(unittest.TestCase):
             self.assertEqual(prepared.read_bytes(), before)
             self.assertEqual(prepared.stat().st_mtime_ns, mtime)
             self.assertEqual(sorted(p.name for p in (second / "01_preprocess").glob("*.png")),
-                             ["page_0002.png", "page_0003.png"])
+                             ["page_0001.png", "page_0002.png", "page_0003.png"])
             for suffix in ("json", "png"):
                 self.assertEqual((first / f"01_preprocess/page_0002.{suffix}").read_bytes(),
                                  (second / f"01_preprocess/page_0002.{suffix}").read_bytes())
@@ -382,11 +382,15 @@ class PdfRestartTests(unittest.TestCase):
         self.run_pipeline(["--from-stage", "05"], worker)
         self.assertEqual(executed, [stage["id"] for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("05"):]])
 
-    def test_explicit_page_range_updates_configured_inputs(self):
+    def test_explicit_page_range_is_run_scoped(self):
+        def worker(stage, *args):
+            self.assertEqual(args[-1], "6,7,8,9,10")
+            self.write_artifacts(stage)
+            return True
         self.run_pipeline(["--from-stage", "5", "--to-stage", "5", "--page-ranges", "6-10"],
-                          lambda stage, *args: self.write_artifacts(stage) or True)
+                          worker)
         config = yaml.safe_load((self.workspace / "config.yaml").read_text())
-        self.assertEqual(config["input"]["pages"], list(range(6, 11)))
+        self.assertNotIn("pages", config["input"])
 
     def test_interrupted_cleanup_has_already_invalidated_completion(self):
         with patch.object(self.pipeline, "clean_downstream_stages", side_effect=OSError("Interrupted cleanup")):
@@ -425,20 +429,20 @@ class PdfRestartTests(unittest.TestCase):
         self.run_pipeline(["--from-stage", "5", "--to-stage", "5"], worker)
         self.assertEqual(executed, ["05"])
 
-    def test_explicit_restart_missing_preprocess_retains_selected_pages(self):
+    def test_omitted_page_range_ignores_previous_config_selection(self):
         (self.workspace / "01_preprocess/artifact.json").unlink()
         pdf = Path(self.tmp.name) / "sample.pdf"
         executed = []
         def worker(stage, *args):
             executed.append(stage["id"])
             if stage["id"] == "01":
-                self.assertEqual(args[-1], "5,6,7,8,9,10")
+                self.assertIsNone(args[-1])
             self.write_artifacts(stage)
             return True
         self.run_pipeline(["--from-stage", "01", "--pdf", str(pdf)], worker, page_ranges=None)
         self.assertEqual(executed[0], "01")
         state = read_json(self.workspace / "stage_status.json")
-        self.assertEqual(yaml.safe_load((self.workspace / "config.yaml").read_text())["input"]["pages"], list(range(5, 11)))
+        self.assertNotIn("pages", yaml.safe_load((self.workspace / "config.yaml").read_text())["input"])
 
     def test_resume_option_is_rejected_without_cleanup(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
@@ -521,6 +525,20 @@ class StageCompletionTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
+
+    def test_page_worker_receives_only_current_cli_range(self):
+        pipeline = self.load("selection_pipeline", "pipeline.py")
+        stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "02.4")
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            args = (stage, ROOT / "tools/bootstrap/pdf-to-markdown", workspace,
+                    None, None, workspace / "config.yaml")
+            with patch.object(pipeline.subprocess, "run") as run:
+                self.assertTrue(pipeline.run_stage(*args, page_ranges="64"))
+                command = run.call_args.args[0]
+                self.assertEqual(command[command.index("--page-ranges") + 1], "64")
+                self.assertTrue(pipeline.run_stage(*args))
+                self.assertNotIn("--page-ranges", run.call_args.args[0])
 
     def test_worker_and_asset_copy_failures_record_failed_execution(self):
         pipeline = self.load("execution_pipeline", "pipeline.py")

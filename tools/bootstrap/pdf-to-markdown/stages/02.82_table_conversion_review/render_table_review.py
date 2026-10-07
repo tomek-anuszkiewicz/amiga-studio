@@ -20,6 +20,7 @@ from conversion.config import load_config, PDF_STAGES
 from common.pdf_page_conversion import read_conversion
 from common.pdf_page_markdown import segment_markdown
 from common.pdf_tables import STAGE, ordered_markdown
+from common.pdf_selection import selected_pages
 
 CSS = """
 body { margin: 24px; color: #17202a; background: white; font: 18px Arial; }
@@ -74,7 +75,7 @@ def comparison_html(workspace, entry, page, table):
             "</div></body></html>")
 
 
-def render_reviews(workspace, config):
+def render_reviews(workspace, config, pages=None):
     output = workspace / "02.82_table_conversion_review"
     output.mkdir(parents=True, exist_ok=True)
     counts = dict.fromkeys(("markdown", "html", "unconverted"), 0)
@@ -88,7 +89,7 @@ def render_reviews(workspace, config):
             browser_page.route("http://**/*", lambda route: route.abort())
             browser_page.route("https://**/*", lambda route: route.abort())
             for entry, page in read_conversion(workspace, STAGE,
-                                               pages=config.get("input", {}).get("pages")):
+                                               pages=pages):
                 for table in page["segments"]:
                     if table["type"] != "table":
                         continue
@@ -112,8 +113,10 @@ def main():
     parser = argparse.ArgumentParser(description="Stage 02.82: table source/conversion review")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--page-ranges")
     args = parser.parse_args()
-    render_reviews(args.workspace.resolve(), load_config(args.config, known_stages=PDF_STAGES))
+    render_reviews(args.workspace.resolve(), load_config(args.config, known_stages=PDF_STAGES),
+                   pages=selected_pages(args.page_ranges))
 
 
 if __name__ == "__main__":

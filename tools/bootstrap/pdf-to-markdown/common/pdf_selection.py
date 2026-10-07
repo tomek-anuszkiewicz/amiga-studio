@@ -3,6 +3,11 @@
 import re
 
 
+def selected_pages(page_ranges):
+    """CLI selection for this run only; omission selects all available pages."""
+    return parse_page_ranges(page_ranges) if page_ranges is not None else None
+
+
 def parse_page_ranges(value):
     if not isinstance(value, str) or not value.strip():
         raise ValueError("Empty physical PDF page selection")

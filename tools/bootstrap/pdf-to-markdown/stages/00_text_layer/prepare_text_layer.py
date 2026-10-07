@@ -49,7 +49,7 @@ def insert_ocr_pdf(page, ocr):
 def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
     pdf_path, workspace = Path(pdf_path).resolve(), Path(workspace).resolve()
     stage_dir = workspace / "00_text_layer"
-    source = {"name": pdf_path.name, "pages": config.get("input", {}).get("pages")}
+    source = {"name": pdf_path.name}
     dpi = config.get("render", {}).get("dpi", 300)
     with pymupdf.open(pdf_path) as document:
         pages = list(range(1, len(document) + 1))

@@ -12,15 +12,16 @@ from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json, page_files
 from common.pdf_page_conversion import RESPONSE
+from common.pdf_selection import selected_pages
 
 
-def convert_pages(workspace, config):
+def convert_pages(workspace, config, pages=None):
     prompt = Path(__file__).with_name("prompt.md").read_text(encoding="utf-8")
     output = workspace / "02_page_conversion"
     output.mkdir(parents=True, exist_ok=True)
     with CodexClient(config, stage="02_page_conversion", images=True) as codex:
         for path in page_files(workspace / "01_preprocess", "page_*.json",
-                               config.get("input", {}).get("pages")):
+                               pages):
             data = read_json(path)
             entry = data
             page_id = path.stem
@@ -41,9 +42,10 @@ def main():
     parser = argparse.ArgumentParser(description="Stage 02: independent page conversion")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--page-ranges")
     args = parser.parse_args()
     config = load_config(args.config, known_stages=PDF_STAGES, required_stages={"02_page_conversion"})
-    convert_pages(args.workspace.resolve(), config)
+    convert_pages(args.workspace.resolve(), config, pages=selected_pages(args.page_ranges))
 
 
 if __name__ == "__main__":

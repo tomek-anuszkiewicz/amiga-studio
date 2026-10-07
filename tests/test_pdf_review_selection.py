@@ -1,4 +1,4 @@
-"""Configured physical-page selection on retained all-page predecessors."""
+"""Run-scoped physical-page selection on retained all-page predecessors."""
 
 import importlib.util
 import json
@@ -38,7 +38,7 @@ class ReviewSelectionTests(unittest.TestCase):
             (self.workspace / "01_preprocess" / f"{identity}.json").write_text(json.dumps({"page": page, "page_id": identity}))
             Image.new("RGB", (10, 10), "white").save(self.workspace / "01_preprocess" / f"{identity}.png")
 
-    def test_page_conversion_requests_only_configured_page(self):
+    def test_page_conversion_requests_only_selected_page(self):
         stage = stage_module("02_page_conversion", "convert_page")
         for path in (self.workspace / "01_preprocess").glob("*.json"):
             value = json.loads(path.read_text())
@@ -47,7 +47,7 @@ class ReviewSelectionTests(unittest.TestCase):
         with patch.object(stage, "CodexClient") as client:
             transport = client.return_value.__enter__.return_value
             transport.generate_json.return_value = {"page": 64, "segments": []}
-            stage.convert_pages(self.workspace, {"input": {"pages": [64]}})
+            stage.convert_pages(self.workspace, {"input": {"pages": [63]}}, pages=[64])
         self.assertEqual(transport.generate_json.call_count, 1)
         self.assertEqual(transport.generate_json.call_args.kwargs["image_path"].name, "page_0064.png")
         self.assertEqual([p.name for p in (self.workspace / "02_page_conversion").glob("*_segments.json")
@@ -59,9 +59,9 @@ class ReviewSelectionTests(unittest.TestCase):
         path = self.workspace / "02_page_conversion/page_0065_segments.json"
         path.write_text(json.dumps({"page": 65, "segments": [{"type": "toc_heading"}]}))
         config_path = self.workspace / "config.yaml"
-        config_path.write_text("input:\n  pages: [64]\n")
+        config_path.write_text("input:\n  pages: [63]\n")
         with patch.object(sys, "argv", ["filter_page_content.py", "--workspace", str(self.workspace),
-                                        "--config", str(config_path)]):
+                                        "--config", str(config_path), "--page-ranges", "64"]):
             stage.main()
         output = self.workspace / "02.8_filter_page_content"
         self.assertEqual([p.name for p in output.iterdir()], ["page_0064_segments.json"])
@@ -75,56 +75,63 @@ class ReviewSelectionTests(unittest.TestCase):
                      "bbox": [0, 0, 10, 10], "table_format": "unconverted"}
             (target / f"page_{page:04d}_segments.json").write_text(json.dumps({"page": page, "segments": [table]}))
 
-    def test_table_conversion_requests_only_configured_page(self):
+    def test_table_conversion_requests_only_selected_page(self):
         stage = stage_module("02.81_transform_page_tables", "transform_page_tables")
         self.table_pages("02.8_filter_page_content")
         with patch.object(stage, "CodexClient") as client:
             transport = client.return_value.__enter__.return_value
             transport.generate_json.return_value = {"format": "unconverted", "md_text": "source"}
-            stage.transform_tables(self.workspace, {"input": {"pages": [64]}})
+            stage.transform_tables(self.workspace, {"input": {"pages": [63]}}, pages=[64])
         self.assertEqual(transport.generate_json.call_count, 1)
         output = self.workspace / stage.STAGE
         self.assertEqual([p.name for p in output.glob("*_segments.json")], ["page_0064_segments.json"])
 
-    def test_table_review_renders_only_configured_page(self):
+    def test_table_review_renders_only_selected_page(self):
         stage = stage_module("02.82_table_conversion_review", "render_table_review")
         self.table_pages(stage.STAGE)
         with patch.object(stage, "sync_playwright") as backend, patch.object(stage, "comparison_html", return_value="local") as comparison:
             browser = backend.return_value.__enter__.return_value.chromium.launch.return_value
             page = browser.new_page.return_value
             page.evaluate.return_value = 100
-            stage.render_reviews(self.workspace, {"input": {"pages": [64]}})
+            stage.render_reviews(self.workspace, {"input": {"pages": [63]}}, pages=[64])
         self.assertEqual(comparison.call_count, 1)
         self.assertEqual(comparison.call_args.args[2]["page"], 64)
         self.assertEqual(page.screenshot.call_count, 1)
         self.assertEqual(Path(page.screenshot.call_args.kwargs["path"]).name, "page_0064_table_review.png")
 
-    def test_callout_requests_only_configured_page(self):
+    def test_callout_requests_only_selected_page(self):
         stage = stage_module("02.4_reclassify_callouts", "reclassify_callouts")
         with patch.object(stage, "CodexClient") as client:
             client.return_value.generate_json.return_value = {"replacements": []}
-            stage.reclassify_callouts(self.workspace, {"input": {"pages": [64]}})
+            stage.reclassify_callouts(self.workspace, {"input": {"pages": [63]}}, pages=[64])
         calls = client.return_value.generate_json.call_args_list
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0].kwargs["image_path"].name, "page_0064.png")
 
-    def test_review_selects_configured_page_and_resolves_override(self):
+    def test_review_selects_cli_page_and_resolves_override(self):
         stage = stage_module("02.5_page_conversion_review", "render_review")
         override = self.workspace / "02.4_reclassify_callouts"
         override.mkdir()
         (self.workspace / "stage_status.json").write_text(json.dumps({"02.4": {"status": "success"}}))
         (override / "page_0064_segments.json").write_text(json.dumps({"page": 64, "segments": []}))
         config_path = self.workspace / "config.yaml"
-        config_path.write_text("input:\n  pages: [64]\n")
+        config_path.write_text("input:\n  pages: [63]\n")
         with patch.object(stage, "review_image", return_value=Image.new("RGB", (10, 10))) as render:
             with patch.object(sys, "argv", ["render_review.py", "--workspace", str(self.workspace),
-                                            "--config", str(config_path)]):
+                                            "--config", str(config_path), "--page-ranges", "64"]):
                 stage.main()
         self.assertEqual(render.call_count, 1)
         self.assertEqual(render.call_args.args[1]["segments"], [])
         output = self.workspace / "02.5_page_conversion_review"
         self.assertEqual(sorted(path.name for path in output.iterdir()),
                          ["page_0064_review.json", "page_0064_review.png"])
+
+        # Omitting the CLI range must ignore the legacy config's page 63 selection.
+        with patch.object(stage, "review_image", return_value=Image.new("RGB", (10, 10))) as render:
+            with patch.object(sys, "argv", ["render_review.py", "--workspace", str(self.workspace),
+                                            "--config", str(config_path)]):
+                stage.main()
+        self.assertEqual(render.call_count, 2)
 
 
 if __name__ == "__main__":

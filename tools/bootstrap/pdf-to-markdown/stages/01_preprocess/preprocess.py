@@ -48,9 +48,7 @@ def main():
     parser.add_argument("--page-ranges")
     args = parser.parse_args()
     config = load_config(args.config, known_stages=PDF_STAGES, required_stages=())
-    pages = config.get("input", {}).get("pages")
-    ranges = args.page_ranges if args.page_ranges is not None else (",".join(map(str, pages)) if pages is not None else None)
-    preprocess_pdf(args.pdf, args.workspace, config.get("render", {}).get("dpi", 300), ranges)
+    preprocess_pdf(args.pdf, args.workspace, config.get("render", {}).get("dpi", 300), args.page_ranges)
 
 
 if __name__ == "__main__":
