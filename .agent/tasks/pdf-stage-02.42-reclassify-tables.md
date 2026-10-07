@@ -27,13 +27,12 @@ or confirmed classification results.
 | --- | --- | --- | --- |
 | `table => image` | 39, 62 | If the selected region is not really a table and cannot faithfully be represented as one, suggest an illustration or image representation. | Map the image outcome to the existing `graphic` object type. |
 | `table => compound` | 40 | If the selected region is not really a table but contains several independent elements, split it into those elements. | Determine each child's type, tight bbox and source reading order; decide the response representation together. |
-| `table => code_block` | 144 | Prompt not supplied yet. | Draft and agree the prompt during collaborative work. |
+| `table => code_block` | 144 | If the selected region is not a table but a code block set in a monospaced font, change its type to `code_block`. | Prompt supplied; decide when faithful code transcription occurs. |
 | `table => prose` | 94 | If the selected region is prose rather than a table, change its type to prose. | Decide when faithful prose transcription occurs. |
 
-For the code-block prompt discussion, consult the existing Stage 02 distinction
+When integrating the code-block prompt, consult the existing Stage 02 distinction
 between aligned register/parameter descriptions, character-built layouts and
-genuine register-map tables. These are existing classification rules, not a
-completed prompt for this stage. Preserve visible characters, whitespace and
+genuine register-map tables. Preserve visible characters, whitespace and
 alignment if code transcription is assigned to 02.42.
 
 `compound` describes a decomposition operation here. Whether it needs a persisted
@@ -59,7 +58,7 @@ compound region into several tables merely because its predecessor was `table`.
 ## Implementation sequence
 
 1. Read the current Stage 02, 02.41 and downstream object contracts. Finalize the
-   decisions above and the missing code-block prompt with the user.
+   decisions above with the user and integrate the supplied prompt directions.
 2. Implement candidate selection and full-page vision requests through existing
    transport, authentication, cache and attempt-local configuration mechanisms.
    Apply the invocation's `--page-ranges` before context collection or inference.
