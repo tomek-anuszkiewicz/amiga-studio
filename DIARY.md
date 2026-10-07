@@ -2464,3 +2464,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture tests 19/19
   - Graphify incremental code refresh completed
   - no user-book conversion run
+---
+
+### [2026-10-07 18:01 CEST] — Require explicit PDF restart stages and clear later results
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tests/test_conversion_publish.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the resume option and automatic stage selection
+  - Clear the selected stage and every later stage in execution order regardless of artifact dependencies or the execution end stage
+  - Require an explicit starting stage for deterministic execution and adapt restart/publication tests and documentation
+- **Architectural Rationale & Trade-Offs**:
+  - The operator chooses each subsequent start and advances it to retain completed results
+  - Preserve predecessor artifacts and reusable response cache while recording invalidation before cleanup
+- **Verification & Test Results**:
+  - PDF converter tests: 35 passed
+  - Publication tests: 10 passed
+  - Quick pre-flight: all six gates passed
+  - Architecture rules: 19 passed
+  - CLI help and git diff whitespace checks passed
+  - Graphify code update completed
+  - No user-source conversion or quality evaluation was run

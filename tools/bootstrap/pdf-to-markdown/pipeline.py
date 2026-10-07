@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conversion.config import load_config as parse_config, validate_config, PDF_STAGES, selection
 from conversion.transport import CodexTransport
 from common.lineage import (read_state, write_state, source_selection, validate_completed_stages,
-                            restore_shared, complete_stage, first_incomplete_stage)
+                            restore_shared, complete_stage)
 from common.pdf_artifacts import validate_text_layer
 from common.pdf_selection import parse_page_ranges, selected_pages
 from conversion.publication import book_directory, check_destination, publish_output
@@ -173,11 +173,7 @@ for index, stage in enumerate(STAGE_REGISTRY):
 
 
 def invalidated_stages(start_idx):
-    invalid = {STAGE_REGISTRY[start_idx]["id"]}
-    for stage in STAGE_REGISTRY:
-        if invalid.intersection(stage["inputs"]):
-            invalid.add(stage["id"])
-    return invalid
+    return {stage["id"] for stage in STAGE_REGISTRY[start_idx:]}
 
 
 STAGE_DEFINITIONS = [(s["id"], s["dir"], s["script"], s["desc"]) for s in STAGE_REGISTRY]
@@ -444,7 +440,7 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], sta
         from common.pdf_artifacts import read_json, write_json
         data = read_json(status_file)
         write_json(status_file, {k: v for k, v in data.items() if k not in stages_to_clean})
-    print(f"[*] Invalidation: Wiping Stage {STAGE_REGISTRY[start_idx]['id']} and its descendants...")
+    print(f"[*] Invalidation: Wiping Stage {STAGE_REGISTRY[start_idx]['id']} and all later stages...")
     for s in STAGE_REGISTRY:
         if s["id"] not in stages_to_clean:
             continue
@@ -497,15 +493,14 @@ def main():
     parser.add_argument("--publish", action="store_true", help="Copy finished Markdown/assets into the empty sibling book directory without -tmp")
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--cache-dir", type=Path, help="Codex cache directory for worker subprocesses")
-    parser.add_argument("--from-stage")
-    parser.add_argument("--to-stage")
+    parser.add_argument("--from-stage", help="Start stage (default: 00); clears this stage and all later results")
+    parser.add_argument("--to-stage", help="Last stage to execute; does not limit cleanup")
     parser.add_argument("--page-ranges", help="Physical 1-based source PDF pages")
-    parser.add_argument("--resume", action="store_true")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--prepare-stage")
     parser.add_argument("--apply-stage")
-    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (00, 01, 02.5, 02.9, 03, 05, 11, 14)")
+    parser.add_argument("--run-deterministic", action="store_true", help="Run only the deterministic stage selected by --from-stage (00, 01, 02.5, 02.9, 03, 05, 11, 14)")
     args = parser.parse_args()
     skill_dir = Path(__file__).resolve().parent
     config_source = args.config.resolve()
@@ -529,29 +524,26 @@ def main():
     if args.status:
         print_pipeline_status(workspace, output)
         return
-    if sum(bool(value) for value in (args.prepare_stage, args.apply_stage, args.resume, args.run_deterministic)) > 1:
+    if sum(bool(value) for value in (args.prepare_stage, args.apply_stage, args.run_deterministic)) > 1:
         raise ValueError("Choose one execution mode")
-    if args.resume and (args.from_stage or args.to_stage):
-        raise ValueError("Resume cannot be combined with a stage interval")
     state = read_state(workspace)
-    completed = first_incomplete_stage(state, STAGE_REGISTRY, workspace, output)
     manual = args.prepare_stage or args.apply_stage
     if manual:
+        if args.from_stage or args.to_stage:
+            raise ValueError("Manual handoff selects its own stage; omit the stage interval")
         start = resolve_stage_idx(manual)
         end = start
     elif args.run_deterministic:
-        start = completed
+        if not args.from_stage or args.to_stage:
+            raise ValueError("--run-deterministic requires --from-stage and no --to-stage")
+        start = resolve_stage_idx(args.from_stage)
         end = start
-        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("00", "01", "02.5", "02.9", "03", "05", "11", "14"):
-            raise ValueError("Next stage requires inference; use an explicit stage interval")
-    elif args.resume:
-        start, end = completed, len(STAGE_REGISTRY)-1
-        if not state.get("source") or state.get("stages") and "00" not in state["stages"]:
-            raise ValueError("Legacy/unverified workspace cannot resume; use --pdf <source.pdf> --from-stage 00")
+        if start is not None and STAGE_REGISTRY[start]["id"] not in ("00", "01", "02.5", "02.9", "03", "05", "11", "14"):
+            raise ValueError("Selected stage requires inference; use an explicit stage interval")
     else:
         start = resolve_stage_idx(args.from_stage) if args.from_stage else 0
         end = resolve_stage_idx(args.to_stage) if args.to_stage else len(STAGE_REGISTRY)-1
-    if start is None or end is None or start > end and start != len(STAGE_REGISTRY):
+    if start is None or end is None or start > end:
         raise ValueError("Invalid stage interval")
     if args.publish and end != len(STAGE_REGISTRY)-1:
         raise ValueError("Publishing requires completion through Stage 14")
@@ -563,7 +555,7 @@ def main():
         source["pages"] = parse_page_ranges(args.page_ranges)
         if not source["pages"] or min(source["pages"]) < 1:
             raise ValueError("Invalid physical PDF page selection")
-    elif start == 0 and not args.resume:
+    elif start == 0:
         source["pages"] = None
     else:
         source["pages"] = state.get("source", {}).get("pages")
@@ -572,19 +564,11 @@ def main():
             selected_pages(",".join(map(str, source["pages"])) if source["pages"] is not None else None, len(document))
     if pdf and pdf.is_relative_to(workspace):
         raise ValueError("Keep the original source PDF outside the conversion workspace")
-    invalid = invalidated_stages(start) if start < len(STAGE_REGISTRY) else set()
+    invalid = invalidated_stages(start)
     retained_registry = [item for item in STAGE_REGISTRY if item["id"] not in invalid and item["id"] in state.get("stages", {})]
     if retained_registry and source_selection(state["source"]) != source_selection(source):
         raise ValueError("Stage 00 source/page selection differs; restart at 00 or use another workspace")
     validate_completed_stages(state, retained_registry, workspace, output)
-    if start == len(STAGE_REGISTRY):
-        restore_shared(state, retained_registry, workspace)
-        write_state(workspace, state)
-        print("[+] All PDF stages are completed and their recorded files exist.")
-        if destination is not None:
-            publish_output(output, destination)
-            print(f"[+] Published reference book: {destination}")
-        return
     if start == 0 and pdf is None:
         raise ValueError("--pdf is required to regenerate Stage 00")
     selected = STAGE_REGISTRY[start:end+1]
@@ -639,9 +623,6 @@ def main():
         return
     print(f"[*] PDF source: {source['name']}; selected pages: {source['pages']}; stages: {[stage['id'] for stage in selected]}")
     for stage in selected:
-        if stage["id"] in retained_ids:
-            print(f"[*] Retaining validated Stage {stage['id']}")
-            continue
         inputs = set(stage["inputs"])
         ancestors = set(inputs)
         for item in reversed(STAGE_REGISTRY):

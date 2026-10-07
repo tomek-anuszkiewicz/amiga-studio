@@ -2,6 +2,8 @@
 
 from pathlib import Path
 import importlib.util
+import contextlib
+import io
 import json
 import subprocess
 import sys
@@ -16,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap/pd
 from conversion import load_config
 from conversion.config import PDF_STAGES
 from common.lineage import (complete_stage, validate_completed_stages, restore_shared,
-                            file_hash, read_state, first_incomplete_stage)
+                            file_hash, read_state)
 from common.pdf_geometry import text_blocks
 from common.pdf_page_conversion import validate_page
 
@@ -317,15 +319,17 @@ class PdfRestartTests(unittest.TestCase):
         def worker(stage, *args):
             self.assertEqual(stage["id"], "02.5")
             retained = json.loads((self.workspace / ".conversion-state.json").read_text())["stages"]
-            self.assertEqual(set(retained), {s["id"] for s in self.pipeline.STAGE_REGISTRY} - {"02.5"})
-            self.assertTrue((self.workspace / "03_build_raw_stream").exists())
+            self.assertEqual(set(retained), {"00", "01", "02"})
+            for later in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.5"):]:
+                self.assertFalse((self.workspace / later["dir"]).exists())
+            self.assertFalse((self.workspace / "tasks/tables/old.md").exists())
             self.write_artifacts(stage)
             return True
         self.run_pipeline(["--from-stage", "02.5", "--to-stage", "02.5"], worker)
         after = json.loads((self.workspace / ".conversion-state.json").read_text())["stages"]
         self.assertEqual(after["02"], before)
         self.assertEqual(after["02.5"]["status"], "completed")
-        self.assertIn("03", after)
+        self.assertNotIn("03", after)
 
     def test_partial_page_conversion_does_not_create_final_output(self):
         (self.output / "artifact.json").unlink()
@@ -388,14 +392,14 @@ class PdfRestartTests(unittest.TestCase):
             return True
         self.run_pipeline(["--from-stage", "5", "--to-stage", "5"], worker)
 
-    def test_resume_restarts_first_stage_with_missing_output(self):
+    def test_explicit_restart_rebuilds_missing_output_and_later_stages(self):
         (self.workspace / "05_chapter_partition/artifact.json").unlink()
         executed = []
         def worker(stage, *args):
             executed.append(stage["id"])
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--resume"], worker)
+        self.run_pipeline(["--from-stage", "05"], worker)
         self.assertEqual(executed, [stage["id"] for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("05"):]])
 
     def test_changed_page_range_rejects_before_cleanup(self):
@@ -436,7 +440,7 @@ class PdfRestartTests(unittest.TestCase):
             self.run_pipeline(["--from-stage", "5", "--to-stage", "5"], lambda *args: self.fail("Worker must not run"))
         self.assertTrue((self.workspace / "14_link_toc/artifact.json").exists())
 
-    def test_resume_missing_preprocess_retains_selected_pages(self):
+    def test_explicit_restart_missing_preprocess_retains_selected_pages(self):
         (self.workspace / "01_preprocess/artifact.json").unlink()
         pdf = Path(self.tmp.name) / "sample.pdf"
         executed = []
@@ -446,15 +450,26 @@ class PdfRestartTests(unittest.TestCase):
                 self.assertEqual(args[-1], "5,6,7,8,9,10")
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--resume", "--pdf", str(pdf)], worker, page_ranges=None)
+        self.run_pipeline(["--from-stage", "01", "--pdf", str(pdf)], worker, page_ranges=None)
         self.assertEqual(executed[0], "01")
         state = json.loads((self.workspace / ".conversion-state.json").read_text())
         self.assertEqual(state["source"]["pages"], list(range(5, 11)))
 
-    def test_completed_resume_reconstructs_missing_working_manifest(self):
-        (self.workspace / "chapters_manifest.json").unlink()
-        self.run_pipeline(["--resume"], lambda *args: self.fail("Completed stages must not run"))
-        self.assertEqual(json.loads((self.workspace / "chapters_manifest.json").read_text()), {"writer": "10"})
+    def test_resume_option_is_rejected_without_cleanup(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+            self.run_pipeline(["--resume"], lambda *args: self.fail("Worker must not run"))
+        self.assertEqual(error.exception.code, 2)
+        self.assertTrue((self.output / "artifact.json").exists())
+
+    def test_deterministic_stage_requires_explicit_start(self):
+        with self.assertRaisesRegex(ValueError, "requires --from-stage"):
+            self.run_pipeline(["--run-deterministic"], lambda *args: self.fail("Worker must not run"))
+        self.assertTrue((self.output / "artifact.json").exists())
+        self.run_pipeline(["--run-deterministic", "--from-stage", "02.5"],
+                          lambda stage, *args: (self.write_artifacts(stage) or True))
+        state = read_state(self.workspace)
+        self.assertEqual(set(state["stages"]), {"00", "01", "02", "02.5"})
+        self.assertFalse(self.output.exists())
 
     def test_manual_prepare_discards_dependents_and_apply_keeps_current_edits(self):
         def prepare(command, **kwargs):
@@ -593,23 +608,19 @@ class StageCompletionTests(unittest.TestCase):
 
     def test_unchanged_predecessors_validate(self):
         self.validate()
-        self.assertEqual(first_incomplete_stage(self.state, self.registry, self.workspace, None), len(self.registry))
         self.assertEqual(set(self.state["stages"]["02"]), {"status", "files", "shared_outputs"})
 
     def test_changed_effort_and_prompt_do_not_invalidate_completed_stages(self):
         self.config["llm"]["stages"]["02_page_conversion"]["reasoning_effort"] = "high"
         (self.skill / "stages/02_page_conversion/prompt.md").write_text("Updated prompt")
         self.validate()
-        self.assertEqual(first_incomplete_stage(self.state, self.registry, self.workspace, None), len(self.registry))
 
     def test_modified_artifact_is_retained_but_missing_artifact_requires_restart(self):
         (self.workspace / "01_preprocess/page_0019.json").write_text('{"page":20}')
         self.validate()
-        self.assertEqual(first_incomplete_stage(self.state, self.registry, self.workspace, None), len(self.registry))
         (self.workspace / "01_preprocess/page_0019.json").unlink()
         with self.assertRaisesRegex(ValueError, "Stage 01"):
             self.validate()
-        self.assertEqual(first_incomplete_stage(self.state, self.registry, self.workspace, None), 1)
 
     def test_shared_manifest_snapshot_restores_original(self):
         restore_shared(self.state, self.registry[:2], self.workspace)
@@ -627,7 +638,7 @@ class StageCompletionTests(unittest.TestCase):
         (self.workspace / ".conversion-state.json").write_text(json.dumps(legacy))
         migrated = read_state(self.workspace)
         self.assertEqual(migrated, self.state)
-        self.assertEqual(first_incomplete_stage(migrated, self.registry, self.workspace, None), len(self.registry))
+        validate_completed_stages(migrated, self.registry, self.workspace, None)
 
 
 if __name__ == "__main__":

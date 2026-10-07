@@ -26,5 +26,5 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --c
 ```
 
 Stage 03 can run with validated 00/01/02 completion records, even when 02.5
-has not run. Restart 02 invalidates both the review and stream branches;
-restart 02.5 invalidates only the review.
+has not run. Restart 02, 02.5 or 02.9 clears Stage 03 and all later stages,
+because cleanup follows execution order rather than artifact dependencies.

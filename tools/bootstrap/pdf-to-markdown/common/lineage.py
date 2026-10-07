@@ -27,22 +27,6 @@ def record_path(workspace, output, relative):
     return artifact_path(base, name)
 
 
-def first_incomplete_stage(state, registry, workspace, output):
-    """Resume at the first unfinished stage or missing recorded file."""
-    for index, stage in enumerate(registry):
-        record = state.get("stages", {}).get(stage["id"])
-        if not record or record.get("status") != "completed" or not record.get("files"):
-            return index
-        for relative in record["files"]:
-            try:
-                path = record_path(workspace, output, relative)
-            except FileNotFoundError:
-                return index
-            if not path.is_file():
-                return index
-    return len(registry)
-
-
 def file_hash(path):
     """Identify OCR recovery requests; never used to validate stage completion."""
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()

@@ -15,4 +15,4 @@ No inference, segmentation correction, sorting or line rerouting occurs.
 
 Use the [orchestrator](../../README.md) with `--from-stage 02.5 --to-stage 02.5`
 after validated Stage 01/02. Restart 02 invalidates this review and downstream stream artifacts.
-Restart 02.5 retains Stage 03 and its dependents; Stage 03 consumes 02 directly. Review PNGs are deterministic; user assessment remains separate.
+Restart 02.5 clears this review and every later stage, including 02.9 and 03, even for a review-only interval. Start the next run at 02.9 to retain the review. Stage 03 consumes 02 directly; cleanup follows execution order. Review PNGs are deterministic; user assessment remains separate.
