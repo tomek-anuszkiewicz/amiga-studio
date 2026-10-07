@@ -95,9 +95,6 @@ def validate_text_layer(workspace, source=None, *, require_completion=False):
     if require_completion:
         record = read_state(workspace).get("stages", {}).get("00", {})
         require(record.get("status") == "completed", "Stage 00 has no validated completion record; restart at 00")
-        require("prepared:" + pdf.name in record["files"]
-                and "workspace:00_text_layer/text_layer_manifest.json" in record["files"],
-                "Stage 00 completion omits required artifacts")
     return manifest, pdf
 
 

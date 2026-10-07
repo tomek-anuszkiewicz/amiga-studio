@@ -2487,3 +2487,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - CLI help and git diff whitespace checks passed
   - Graphify code update completed
   - No user-source conversion or quality evaluation was run
+---
+
+### [2026-10-07 18:05 CEST] — PDF-STATE-1: Remove conversion completion file inventories
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `Test Book example-4567 conversion state`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove completion file inventories, recursive file collection and predecessor file-existence checks
+  - Remove Stage 00 completion inventory membership checks and unused path/output arguments
+  - Discard legacy file lists on state reads and remove 643 inventory entries from the selected saved workspace
+  - Adapt existing completion/restart tests and converter documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Use completed status for predecessor bookkeeping while preserving manifest snapshots for restart and runtime artifact validation in executing workers
+  - Missing artifacts no longer invalidate saved completion status and may fail when consumed
+- **Verification & Test Results**:
+  - PDF converter tests: 35 passed
+  - Publication tests: 10 passed
+  - Quick pre-flight: passed
+  - Architecture rules: 19 passed
+  - Graphify incremental code refresh: passed
+  - No user-source conversion or milestone verification run

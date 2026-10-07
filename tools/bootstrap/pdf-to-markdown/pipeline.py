@@ -476,14 +476,14 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], sta
                 elif p.is_file():
                     p.unlink(missing_ok=True)
 
-def complete_pipeline_stage(state, stage, source, workspace, output):
+def complete_pipeline_stage(state, stage, source, workspace):
     if stage["id"] in ("05", "06"):
         position = next(index for index, item in enumerate(STAGE_REGISTRY) if item["id"] == stage["id"])
         previous_dir = STAGE_REGISTRY[position - 1]["dir"]
         assets = workspace / previous_dir / "assets"
         if assets.is_dir():
             shutil.copytree(assets, workspace / stage["dir"] / "assets", dirs_exist_ok=True)
-    complete_stage(state, stage, source, workspace, output)
+    complete_stage(state, stage, source, workspace)
 
 
 def main():
@@ -568,7 +568,7 @@ def main():
     retained_registry = [item for item in STAGE_REGISTRY if item["id"] not in invalid and item["id"] in state.get("stages", {})]
     if retained_registry and source_selection(state["source"]) != source_selection(source):
         raise ValueError("Stage 00 source/page selection differs; restart at 00 or use another workspace")
-    validate_completed_stages(state, retained_registry, workspace, output)
+    validate_completed_stages(state, retained_registry)
     if start == 0 and pdf is None:
         raise ValueError("--pdf is required to regenerate Stage 00")
     selected = STAGE_REGISTRY[start:end+1]
@@ -618,7 +618,7 @@ def main():
             marker.parent.mkdir(parents=True, exist_ok=True)
             marker.write_text(json.dumps({"stage": stage["dir"], "source": source}, indent=2), encoding="utf-8")
         else:
-            complete_pipeline_stage(state, stage, source, workspace, output)
+            complete_pipeline_stage(state, stage, source, workspace)
             update_status(workspace / "stage_status.json", stage["id"], "success", "Validated manual handoff")
         return
     print(f"[*] PDF source: {source['name']}; selected pages: {source['pages']}; stages: {[stage['id'] for stage in selected]}")
@@ -629,12 +629,12 @@ def main():
             if item["id"] in ancestors:
                 ancestors.update(item["inputs"])
         input_registry = [item for item in STAGE_REGISTRY if item["id"] in ancestors]
-        validate_completed_stages(state, input_registry, workspace, output)
+        validate_completed_stages(state, input_registry)
         page_ranges = ",".join(map(str, source["pages"])) if source["pages"] else None
         if not run_stage(stage, skill_dir, workspace, pdf, output, config_path, args.verbose, page_ranges):
             raise RuntimeError(f"Pipeline halted at Stage {stage['id']}")
         try:
-            complete_pipeline_stage(state, stage, source, workspace, output)
+            complete_pipeline_stage(state, stage, source, workspace)
         except Exception:
             update_status(workspace / "stage_status.json", stage["id"], "failed", "Artifact completion validation failed")
             raise

@@ -30,8 +30,8 @@ inverted or materially out-of-page boxes fail validation.
 selection, shared prepared PDF path and relative PNG/JSON paths without hashes.
 It is published only when every required pair passes coverage, content, geometry
 and image-dimension validation. Completion retains a manifest snapshot;
-downstream workers validate pairs before requests. Resume checks completion
-status and file existence without rereading page contents.
+downstream workers validate pairs before requests. Predecessor checks use completion
+status only; no file inventory is stored or checked.
 
 Run preparation and preprocessing together for a new workspace:
 
