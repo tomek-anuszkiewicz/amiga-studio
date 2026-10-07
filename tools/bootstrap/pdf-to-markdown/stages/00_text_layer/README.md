@@ -8,7 +8,7 @@ through PyMuPDF and does not call a model.
 
 If the sibling `*-ocr.pdf` already exists, Stage 00 skips page processing,
 Tesseract setup and PDF writing. It only registers the shared file in the
-attempt's `00_text_layer/text_layer_manifest.json` and completion record.
+attempt's `00_text_layer/text_layer_manifest.json` and records completed status.
 File existence controls reuse; changes to the source, OCR configuration or
 procedure do not automatically regenerate an existing PDF. To regenerate it,
 remove the sibling prepared PDF explicitly and restart at 00 with the source.
@@ -57,8 +57,9 @@ artifact integrity checks.
 The local manifest records the source-relative shared PDF path, full source
 coverage and page mapping. Both `source_index` and `prepared_index` equal the
 physical page number minus one, so the same page keeps the same index in every
-attempt. Completion records list the external shared PDF and local artifacts;
-retained-predecessor validation checks their existence without hashing their contents. Paths remain relative.
+attempt. Completion records store status without file inventories;
+retained-predecessor validation checks only that status. Executing workers
+validate the prepared PDF and manifest when needed. Manifest paths remain relative.
 
 Page JSON records extractable text provenance as `prepared` (or `none` when no
 text is extracted). An existing PDF alone cannot establish whether its text was

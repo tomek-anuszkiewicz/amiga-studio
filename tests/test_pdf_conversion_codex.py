@@ -188,7 +188,7 @@ class PdfOcrValidationTests(unittest.TestCase):
             self.assertEqual([entry["prepared_index"] for entry in manifest["pages"]], list(range(5)))
             registry = {"id": "00", "dir": "00_text_layer", "artifact_contract": "pdf_text_layer"}
             state = {"source": manifest["source"], "stages": {}}
-            complete_stage(state, registry, manifest["source"], workspace, workspace / "14_link_toc")
+            complete_stage(state, registry, manifest["source"], workspace)
             preprocess.preprocess_pdf(prepared, workspace, dpi=72, page_ranges="2,5")
             page_data = json.loads((workspace / "01_preprocess/page_0005.json").read_text())
             self.assertNotIn("pdf_sha256", manifest)
@@ -203,7 +203,7 @@ class PdfOcrValidationTests(unittest.TestCase):
             self.assertEqual(prepared.read_bytes(), original_bytes)
             self.assertEqual(prepared.stat().st_mtime_ns, original_mtime)
             other_state = {"source": reused["source"], "stages": {}}
-            complete_stage(other_state, registry, reused["source"], other, other / "14_link_toc")
+            complete_stage(other_state, registry, reused["source"], other)
             preprocess.preprocess_pdf(prepared, other, dpi=72, page_ranges="1-2")
             for suffix in ("json", "png"):
                 self.assertEqual((workspace / f"01_preprocess/page_0002.{suffix}").read_bytes(),
@@ -273,7 +273,7 @@ class PdfRestartTests(unittest.TestCase):
         self.state = {"source": self.source, "stages": {}}
         for stage in self.pipeline.STAGE_REGISTRY:
             self.write_artifacts(stage)
-            complete_stage(self.state, stage, self.source, self.workspace, self.output)
+            complete_stage(self.state, stage, self.source, self.workspace)
         for number, name in (("06", "continuations"), ("07", "tables"), ("08", "graphics"), ("09", "prose")):
             task = self.workspace / "tasks" / name / "old.md"
             task.parent.mkdir(parents=True, exist_ok=True)
@@ -434,11 +434,15 @@ class PdfRestartTests(unittest.TestCase):
         self.run_pipeline(["--pdf", str(self.pdf), "--from-stage", "5", "--to-stage", "5"], worker)
         self.assertEqual(source_note.read_text(), "Source directory must remain intact")
 
-    def test_missing_predecessor_requires_restart_at_its_stage(self):
+    def test_missing_retained_artifact_does_not_block_restart(self):
         (self.workspace / "03_build_raw_stream/artifact.json").unlink()
-        with self.assertRaisesRegex(ValueError, "Stage 03"):
-            self.run_pipeline(["--from-stage", "5", "--to-stage", "5"], lambda *args: self.fail("Worker must not run"))
-        self.assertTrue((self.workspace / "14_link_toc/artifact.json").exists())
+        executed = []
+        def worker(stage, *args):
+            executed.append(stage["id"])
+            self.write_artifacts(stage)
+            return True
+        self.run_pipeline(["--from-stage", "5", "--to-stage", "5"], worker)
+        self.assertEqual(executed, ["05"])
 
     def test_explicit_restart_missing_preprocess_retains_selected_pages(self):
         (self.workspace / "01_preprocess/artifact.json").unlink()
@@ -490,7 +494,7 @@ class PdfRestartTests(unittest.TestCase):
         with patch.object(self.pipeline.subprocess, "run", side_effect=apply):
             self.run_pipeline(["--apply-stage", "7"], lambda *args: self.fail("Automatic worker must not run"))
         state = json.loads((self.workspace / ".conversion-state.json").read_text())
-        validate_completed_stages(state, self.pipeline.STAGE_REGISTRY[:self.stage_idx("07") + 1], self.workspace, self.output)
+        validate_completed_stages(state, self.pipeline.STAGE_REGISTRY[:self.stage_idx("07") + 1])
 
 
 class PdfConfigurationTests(unittest.TestCase):
@@ -601,36 +605,36 @@ class StageCompletionTests(unittest.TestCase):
             output = self.workspace / stage["dir"]
             output.mkdir()
             (output / "page_0019.json").write_text('{"page":19}')
-            complete_stage(self.state, stage, self.source, self.workspace, None)
+            complete_stage(self.state, stage, self.source, self.workspace)
 
     def validate(self):
-        validate_completed_stages(self.state, self.registry, self.workspace, None)
+        validate_completed_stages(self.state, self.registry)
 
     def test_unchanged_predecessors_validate(self):
         self.validate()
-        self.assertEqual(set(self.state["stages"]["02"]), {"status", "files", "shared_outputs"})
+        self.assertEqual(set(self.state["stages"]["02"]), {"status", "shared_outputs"})
 
     def test_changed_effort_and_prompt_do_not_invalidate_completed_stages(self):
         self.config["llm"]["stages"]["02_page_conversion"]["reasoning_effort"] = "high"
         (self.skill / "stages/02_page_conversion/prompt.md").write_text("Updated prompt")
         self.validate()
 
-    def test_modified_artifact_is_retained_but_missing_artifact_requires_restart(self):
+    def test_modified_and_missing_artifacts_do_not_invalidate_completion(self):
         (self.workspace / "01_preprocess/page_0019.json").write_text('{"page":20}')
         self.validate()
         (self.workspace / "01_preprocess/page_0019.json").unlink()
-        with self.assertRaisesRegex(ValueError, "Stage 01"):
-            self.validate()
+        self.validate()
 
     def test_shared_manifest_snapshot_restores_original(self):
         restore_shared(self.state, self.registry[:2], self.workspace)
         self.assertEqual(json.loads((self.workspace / "pages_manifest.json").read_text()), {"pages": [19]})
 
-    def test_old_checksum_records_retain_status_and_file_paths(self):
+    def test_old_records_discard_file_lists_and_checksums(self):
         legacy = json.loads((self.workspace / ".conversion-state.json").read_text())
         legacy["source"]["sha256"] = "old-source-hash"
         for record in legacy["stages"].values():
-            record["files"] = {name: "old-artifact-hash" for name in record["files"]}
+            record["files"] = ({"workspace:missing.json": "old-artifact-hash"}
+                               if record["shared_outputs"] else ["workspace:missing.json"])
             record["identity"] = {"procedure": "old-procedure-hash"}
             record["completion"] = "old-completion-hash"
             for entry in record["shared_outputs"].values():
@@ -638,7 +642,7 @@ class StageCompletionTests(unittest.TestCase):
         (self.workspace / ".conversion-state.json").write_text(json.dumps(legacy))
         migrated = read_state(self.workspace)
         self.assertEqual(migrated, self.state)
-        validate_completed_stages(migrated, self.registry, self.workspace, None)
+        validate_completed_stages(migrated, self.registry)
 
 
 if __name__ == "__main__":
