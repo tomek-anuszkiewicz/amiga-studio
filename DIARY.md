@@ -2657,3 +2657,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - python tools/harness/pre_flight.py --quick passed
   - cargo test -p test_runner --test test_architecture_rules -- --quiet passed all 19 tests
   - No source-fragment conversion or conversion-quality assessment ran, and no milestone completion is claimed
+---
+
+### [2026-10-07 19:13 CEST] — PDF-FILTER-02.8 / PDF-MARKDOWN-02.9: record filtered Test Book export
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Reference/Test Book example-4567/workspace/pages-all`
+- **What Was Changed (The Concrete Reality)**:
+  - Track 147 retained Stage 02.8 page JSON files
+  - Update Stage 02.9 document.md and remove eight obsolete crop assets leaving 195 PNG assets
+  - Record successful Stage 02.8 and refreshed Stage 02.9 execution status with zero model calls
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the user-requested generated results after source-content filtering without rewriting the conversion output
+  - Keep conversion-quality assessment pending
+- **Verification & Test Results**:
+  - python tools/harness/pre_flight.py --quick: all six gates passed
+  - cargo test -p test_runner --test test_architecture_rules -- --quiet: 19 passed
+  - Parsed all 147 Stage 02.8 JSON files and checked all 195 Markdown asset links resolve
+  - Existing status records report 0.26 seconds for Stage 02.8 and 8.3 seconds for Stage 02.9
+  - No conversion rerun or visual fidelity assessment performed in this commit task
