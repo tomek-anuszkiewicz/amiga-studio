@@ -71,7 +71,6 @@ tools/bootstrap/html-to-markdown/
 │   ├── html_to_pages.py                   # Headless Chrome HTML-to-PDF & PyMuPDF page PNG rasterizer
 │   ├── replace_placeholders.py            # Resolves <image placeholder> & <crop> tags, formats Markdown links
 │   ├── render_comparison.py               # Headless browser side-by-side visual comparison renderer
-│   ├── audit_conversion.py                # Automated semantic sanity auditor (catches prose-in-code leaks)
 │   ├── diff_reference.py                  # Structural AST comparator against reference ground truth
 │   └── validate_links.py                  # Anchor, image asset, and link integrity validator
 └── references/

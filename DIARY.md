@@ -2510,3 +2510,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture rules: 19 passed
   - Graphify incremental code refresh: passed
   - No user-source conversion or milestone verification run
+---
+
+### [2026-10-07 18:35 CEST] — HTML-AUDIT-REMOVE: remove unused conversion sanity auditor
+- **Affected Subsystems**:
+  - `tools/bootstrap/html-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Delete scripts/audit_conversion.py
+  - Remove its entry from the converter README
+- **Architectural Rationale & Trade-Offs**:
+  - Remove the standalone heuristic quality checker at the user's request
+  - Repository search found no callers or imports
+- **Verification & Test Results**:
+  - Quick pre-flight: all six gates passed
+  - Architecture rules: 19 passed
+  - Repository search: no remaining active references
+  - Graphify incremental code refresh: passed
+  - No source conversion or quality evaluation run
