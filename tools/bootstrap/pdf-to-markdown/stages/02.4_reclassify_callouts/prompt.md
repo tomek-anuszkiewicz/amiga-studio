@@ -17,11 +17,17 @@ objects. If no or uncertain, return no replacement. Return only JSON replacement
 no changes is {"replacements": []}.
 
 Each replacement names source_segment_ids for its complete contiguous source
-range and replacement_segments containing type, md_text and contributing
+range and replacement_segments containing type, md_text, bbox and contributing
 source_segment_ids. Use callout for a standalone label and callout_text for its
 body, without heading levels. Split mixed objects as needed, returning retained
 ordinary remainder in its source role. Preserve all consumed content once,
 including paragraphs, code whitespace and source order; do not summarize.
 Interpret ranges against the frozen page, consume each range once and never
 cross read-only anchors such as tables, graphics or covers. Keep unselected
-objects unchanged. Do not invent coordinates or restructure across pages.
+objects unchanged. For every replacement segment, use the original page image to
+return its own tight bbox in integer original-image pixels, enclosing all text
+represented by that segment. A standalone label's box encloses only the label;
+the body and retained remainder each receive their own boxes. Do not reuse the
+containing source object's box for every split. Source boxes are location context;
+source_segment_ids record provenance, not replacement geometry. Do not restructure
+across pages.

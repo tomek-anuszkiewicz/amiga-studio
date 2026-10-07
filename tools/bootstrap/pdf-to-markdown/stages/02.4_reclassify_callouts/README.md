@@ -26,8 +26,13 @@ remain unchanged with a concise console message. Replacement text comes from
 the model; there is no local transcription-quality certification or generic schema gate.
 Labels become `callout`, complete bodies become `callout_text`, and any ordinary
 remainder keeps its source role. Replacement IDs retain the first contributor
-where available, with deterministic suffixes for splits. Geometry is original or
-the contributors' enclosing union, including coarse shared geometry for splits.
+where available, with deterministic suffixes for splits. Each replacement carries
+its own model-provided `bbox` in original-image pixels: the standalone label,
+complete body and ordinary remainder receive separate tight boxes from the image.
+The program saves these coordinates directly; contributor boxes provide request
+context and do not determine replacement geometry. The prompt and schema change
+invalidates previous cached responses; existing overrides require an explicit
+restart at 02.4 to regenerate their boxes.
 Continuation and source segment lineage are retained; cross-page restructuring
 is outside scope.
 
