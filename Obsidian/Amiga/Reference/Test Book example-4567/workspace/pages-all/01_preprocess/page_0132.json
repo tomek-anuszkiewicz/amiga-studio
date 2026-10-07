@@ -1,0 +1,316 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0132",
+  "page": 132,
+  "source_index": 131,
+  "prepared_index": 131,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "The C and D pointer registers should be initialized to the word containing the first pixel of the \nline; the C and D modulo registers should be set to the width of the bitplane in bytes.\n",
+      "bbox": [
+        86.05000305175781,
+        55.72502899169922,
+        517.2850341796875,
+        79.22502899169922
+      ],
+      "bbox_norm": [
+        0.1432185486812829,
+        0.07219390143440682,
+        0.8609507172847133,
+        0.10263904815584286
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "The SRCA, SRCC, and DEST bits of BLTCONO should be set to one, and the SRCB flag should \nbe set to zero. The OVFLAG should be cleared. If only a single bit per horizontal row is desired, \nthe ONEDOT bit of BLTCON1 should be set; otherwise it should be cleared.\n",
+      "bbox": [
+        86.05000305175781,
+        94.52404022216797,
+        517.0728759765625,
+        130.571044921875
+      ],
+      "bbox_norm": [
+        0.1432185486812829,
+        0.12245950099007771,
+        0.86059760875636,
+        0.16915977107309368
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "The logic function remains. The C DMA channel represents the original source, the A channel \nthe bit to set in the line, and the B channel the pattern to draw. Thus, to draw a line, the function \nAB+AC is the most common. To draw the line using exclusive-or mode, so it can be easily \nerased by drawing it again, the function ABC+AC can be used.\n",
+      "bbox": [
+        85.80000305175781,
+        145.52001953125,
+        517.5474853515625,
+        195.46600341796875
+      ],
+      "bbox_norm": [
+        0.1428024576191038,
+        0.18852673810787854,
+        0.8613875316322157,
+        0.2532336660899055
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "We set the blit height to the length of the line, which is dx + 1. The width must be set to two for \nall line drawing. (Of course, the BLTSIZE register should not be written until the very end, when \nall other registers have been filled.)\n",
+      "bbox": [
+        86.27999877929688,
+        210.9122314453125,
+        517.8150024414062,
+        247.06097412109375
+      ],
+      "bbox_norm": [
+        0.14360134534755642,
+        0.2732448439020433,
+        0.8618327775124723,
+        0.3200769194152176
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "REGISTER SUMMARY FOR LINE MODE\n",
+      "bbox": [
+        86.27999114990234,
+        276.407958984375,
+        294.9570007324219,
+        286.907958984375
+      ],
+      "bbox_norm": [
+        0.14360133264946492,
+        0.3580970581383819,
+        0.4909158869276602,
+        0.3717002088011512
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Preliminary setup:\n",
+      "bbox": [
+        86.02999114990234,
+        309.407958984375,
+        165.70401000976562,
+        319.907958984375
+      ],
+      "bbox_norm": [
+        0.14318524158728582,
+        0.40084981736422826,
+        0.2757918301291985,
+        0.41445296802699755
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "The line goes from (xl,yl) to (x2,y2).\n",
+      "bbox": [
+        121.27999114990234,
+        335.4542236328125,
+        284.5315246582031,
+        345.95697021484375
+      ],
+      "bbox_norm": [
+        0.20185408135453894,
+        0.4345937470989956,
+        0.47356409727388227,
+        0.44820045606359143
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "dx = max(abs(x2 - xl) , abs (y2 - yl) ) ; \ndy = min(abs(x2 - x l ) , abs(y2 - y l ) ) ;\n",
+      "bbox": [
+        121.77899169921875,
+        360.271240234375,
+        328.3590087890625,
+        377.57244873046875
+      ],
+      "bbox_norm": [
+        0.202684600028911,
+        0.4667451390829481,
+        0.5465089949724701,
+        0.4891595148753622
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Register setup:\n",
+      "bbox": [
+        85.77900695800781,
+        393.6548767089844,
+        150.35401916503906,
+        404.1548767089844
+      ],
+      "bbox_norm": [
+        0.1427675124713036,
+        0.5099949140005893,
+        0.25024385414911154,
+        0.5235980646633586
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "BLTADAT = $8000\nBLTBDAT = line texture pattern ($FFFF for a solid line)\n",
+      "bbox": [
+        121.77900695800781,
+        419.5538635253906,
+        372.46649169921875,
+        443.0008544921875
+      ],
+      "bbox_norm": [
+        0.20268462542509402,
+        0.5435480396840797,
+        0.6199199126290037,
+        0.5739245111802634
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "BLTAFWM = $FFFF \nBLTALWM = $FFFF\n",
+      "bbox": [
+        121.52900695800781,
+        457.70086669921875,
+        220.6699676513672,
+        481.5488586425781
+      ],
+      "bbox_norm": [
+        0.20226853436291492,
+        0.5929689379228152,
+        0.3672752049243402,
+        0.6238649214856749
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "BLTAMOD = 4 * (dy - dx)\nBLTBMOD = 4 * dy\nBLTCMOD = width of the bitplane in bytes \nBLTDMOD = width of the bitplane in bytes\n",
+      "bbox": [
+        121.52900695800781,
+        496.6950988769531,
+        317.365478515625,
+        546.19384765625
+      ],
+      "bbox_norm": [
+        0.20226853436291492,
+        0.6434874536649797,
+        0.5282117562181792,
+        0.7076149714995839
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "BLTAPT = (4 * dy) -{ 2 * dx)\nBLTBPT = unused\nBLTCPT = word containing the first pixel of the line \nBLTDPT = word containing the first pixel of the line\n",
+      "bbox": [
+        121.78199768066406,
+        561.64013671875,
+        358.9034423828125,
+        610.7908325195312
+      ],
+      "bbox_norm": [
+        0.2026896030769609,
+        0.7276262283850956,
+        0.5973460582431998,
+        0.7913028303049022
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "186 Blitter Hardware\n",
+      "bbox": [
+        87.94999694824219,
+        715.6150512695312,
+        181.88299560546875,
+        726.1150512695312
+      ],
+      "bbox_norm": [
+        0.14638083059537085,
+        0.9271066056156961,
+        0.3027195553351844,
+        0.9407097562784654
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,111 @@
+{
+  "page": 61,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        287,
+        131
+      ],
+      "segment_id": "page_0061_seg_001"
+    },
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Processor Instruction Summary",
+      "bbox": [
+        1655,
+        94,
+        2288,
+        151
+      ],
+      "segment_id": "page_0061_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": true,
+      "heading_level": null,
+      "md_text": "Table A-1. M68000 Family Instruction Set And Processor Cross-Reference (Concluded)",
+      "bbox": [
+        747,
+        250,
+        1843,
+        378
+      ],
+      "segment_id": "page_0061_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        326,
+        403,
+        2249,
+        1173
+      ],
+      "segment_id": "page_0061_seg_004"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTES:\n1. Privileged (Supervisor) Instruction.\n2. Not applicable to MC68EC040 and MC68LC040\n3. These instructions are software supported on the MC68040.\n4. This instruction is not privileged for the MC68000 and MC68008.\n5. Not applicable to MC68EC030.",
+      "bbox": [
+        337,
+        1172,
+        1495,
+        1453
+      ],
+      "segment_id": "page_0061_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        287,
+        3109,
+        526,
+        3167
+      ],
+      "segment_id": "page_0061_seg_006"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MC68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        703,
+        3109,
+        1873,
+        3167
+      ],
+      "segment_id": "page_0061_seg_007"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "A-7",
+      "bbox": [
+        2222,
+        3109,
+        2288,
+        3167
+      ],
+      "segment_id": "page_0061_seg_008"
+    }
+  ]
+}

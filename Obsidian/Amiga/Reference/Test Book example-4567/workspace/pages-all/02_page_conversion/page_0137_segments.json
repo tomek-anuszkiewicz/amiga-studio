@@ -1,0 +1,124 @@
+{
+  "page": 137,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Bit 1, DSKBLK, indicates “disk block finished.” It is used to indicate that the specified disk DMA task that you have requested has been completed. This bit generates a level 1 interrupt.",
+      "bbox": [
+        358,
+        229,
+        2151,
+        327
+      ],
+      "segment_id": "page_0137_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "More information about disk data transfer and interrupts may be found in Chapter 8, “Interface Hardware.”",
+      "bbox": [
+        358,
+        389,
+        2154,
+        490
+      ],
+      "segment_id": "page_0137_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Serial Port Interrupts",
+      "bbox": [
+        359,
+        610,
+        783,
+        655
+      ],
+      "segment_id": "page_0137_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following serial interrupts are associated with the specified bits of the interrupt registers.",
+      "bbox": [
+        358,
+        744,
+        2045,
+        789
+      ],
+      "segment_id": "page_0137_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Bit 11, RBF (for receive buffer full), specifies that the input buffer of the UART has data that is ready to read. This bit generates a level 5 interrupt.",
+      "bbox": [
+        360,
+        852,
+        2153,
+        951
+      ],
+      "segment_id": "page_0137_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Bit 0, TBE (for “transmit buffer empty”), specifies that the output buffer of the UART needs more data and data can now be written into this buffer. This bit generates a level 1 interrupt.",
+      "bbox": [
+        361,
+        1013,
+        2155,
+        1111
+      ],
+      "segment_id": "page_0137_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        469,
+        1184,
+        2049,
+        2530
+      ],
+      "segment_id": "page_0137_seg_007"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 7-4: Interrupt Priorities",
+      "bbox": [
+        984,
+        2582,
+        1538,
+        2627
+      ],
+      "segment_id": "page_0137_seg_008"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "216 System Control Hardware",
+      "bbox": [
+        370,
+        2972,
+        938,
+        3017
+      ],
+      "segment_id": "page_0137_seg_009"
+    }
+  ]
+}

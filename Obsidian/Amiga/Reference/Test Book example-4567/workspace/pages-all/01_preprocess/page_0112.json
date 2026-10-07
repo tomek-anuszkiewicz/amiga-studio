@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0112",
+  "page": 112,
+  "source_index": 111,
+  "prepared_index": 111,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Combination 000 selects transparent mode, to show the color of whatever object (the other \nplay field, a sprite, or the background color) may be “ behind” the playfield.\n",
+      "bbox": [
+        86.30001068115234,
+        52.72502899169922,
+        517.9955444335938,
+        75.97502899169922
+      ],
+      "bbox_norm": [
+        0.1436346524415535,
+        0.06830728695932987,
+        0.8621332651496613,
+        0.09842854914117617
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Table 3-12 shows the color registers for high-resolution, dual-playfield mode.\n",
+      "bbox": [
+        86.05001068115234,
+        91.37401580810547,
+        424.8115539550781,
+        101.87401580810547
+      ],
+      "bbox_norm": [
+        0.1432185613793744,
+        0.11837852416189736,
+        0.7070411628444904,
+        0.13198167482466666
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Table 3-12: Playfields 1 and 2 Color Registers — High-resolution Mode\n",
+      "bbox": [
+        141.94601440429688,
+        116.92302703857422,
+        458.7626953125,
+        127.42302703857422
+      ],
+      "bbox_norm": [
+        0.23624987162229497,
+        0.15147824311931177,
+        0.7635482287229001,
+        0.16508139378208106
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "PLAYFIELD 1\n",
+      "bbox": [
+        264.84600830078125,
+        148.7220458984375,
+        336.5295104980469,
+        159.2220458984375
+      ],
+      "bbox_norm": [
+        0.4408002276310674,
+        0.19267508545064152,
+        0.5601076859109799,
+        0.20627823611341084
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Bit \nColor\nCombination \nSelected\n",
+      "bbox": [
+        222.09800720214844,
+        167.01673889160156,
+        358.3669738769531,
+        190.11476135253906
+      ],
+      "bbox_norm": [
+        0.36965198289841356,
+        0.21637655831874825,
+        0.5964531792414851,
+        0.2463009277995256
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "00 \nTransparent mode\n01 \nCOLOR1\n10 \nCOLOR2\n11 \nCOLOR3\n",
+      "bbox": [
+        247.09701538085938,
+        200.820068359375,
+        378.7254943847656,
+        250.06373596191406
+      ],
+      "bbox_norm": [
+        0.4112594383644289,
+        0.2601700615238293,
+        0.6303371729314479,
+        0.32396711196046457
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "PLAYFIELD 2\n",
+      "bbox": [
+        264.5959167480469,
+        272.11602783203125,
+        336.0799255371094,
+        282.61602783203125
+      ],
+      "bbox_norm": [
+        0.44038398419179037,
+        0.3525366975574709,
+        0.5593594127752349,
+        0.3661398482202402
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "Bit \nColor\nCombination \nSelected\n",
+      "bbox": [
+        222.09791564941406,
+        290.3597412109375,
+        358.32489013671875,
+        313.8597412109375
+      ],
+      "bbox_norm": [
+        0.36965183052131556,
+        0.37617212439000824,
+        0.5963831365687867,
+        0.4066172711114443
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "00 \nTransparent mode\n01 \nCOLOR9\n10 \nCOLOR 10\n11 \nCOLOR 11\n",
+      "bbox": [
+        247.09791564941406,
+        323.9150390625,
+        378.7678527832031,
+        373.1057434082031
+      ],
+      "bbox_norm": [
+        0.4112609367392256,
+        0.41964429317180857,
+        0.6304076727354402,
+        0.4833727276882219
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "DUAL-PLAYFIELD PRIORITY AND CONTROL\n",
+      "bbox": [
+        85.79782104492188,
+        408.40802001953125,
+        324.58880615234375,
+        418.90802001953125
+      ],
+      "bbox_norm": [
+        0.1427988259649356,
+        0.5291081741151412,
+        0.540234004493499,
+        0.5427113247779106
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Either playfield 1 or 2 may have priority; that is, either one may be displayed in front of the other. \nPlayfield 1 normally has priority. The bit known as PF2PRI (bit 6) in register BPLCON2 is used \nto control priority. When PF2PRI = 1, playfield 2 has priority over playfield 1. When PF2PRI = \n0, playfield 1 has priority.\n",
+      "bbox": [
+        85.54782104492188,
+        441.65802001953125,
+        517.3709106445312,
+        490.7490539550781
+      ],
+      "bbox_norm": [
+        0.1423827349027565,
+        0.5721848178805774,
+        0.8610936470026054,
+        0.635784125577374
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "You can also control the relative priority of playfields and sprites. Chapter 7, “ System Control \nHardware,” shows you how to control the priority of these objects.\n",
+      "bbox": [
+        85.54782104492188,
+        505.94903564453125,
+        517.326904296875,
+        529.3950805664062
+      ],
+      "bbox_norm": [
+        0.1423827349027565,
+        0.6554762818624184,
+        0.8610204044108497,
+        0.6858515277213062
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "You can control the two playfields separately as follows:\n",
+      "bbox": [
+        85.54782104492188,
+        545.0940551757812,
+        333.00140380859375,
+        555.5940551757812
+      ],
+      "bbox_norm": [
+        0.1423827349027565,
+        0.7061901483748603,
+        0.554235631271397,
+        0.7197932990376296
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "• \nThey can have different-sized representations in memory, and different portions of each \none can be selected for display. •\n",
+      "bbox": [
+        105.69682312011719,
+        570.7431030273438,
+        517.8217163085938,
+        593.8430786132812
+      ],
+      "bbox_norm": [
+        0.17591801360402415,
+        0.7394194685921349,
+        0.8618439518329898,
+        0.7693463684208779
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "• \nThey can be scrolled separately.\n",
+      "bbox": [
+        105.69682312011719,
+        608.6920776367188,
+        264.5198974609375,
+        619.1920776367188
+      ],
+      "bbox_norm": [
+        0.17591801360402415,
+        0.7885838132691764,
+        0.4402574604081126,
+        0.8021869639319457
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "66 Playfield Hardware\n",
+      "bbox": [
+        86.30000305175781,
+        713.1150512695312,
+        186.73251342773438,
+        723.6150512695312
+      ],
+      "bbox_norm": [
+        0.143634639743462,
+        0.9238677602197987,
+        0.3107909194220763,
+        0.937470910882568
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

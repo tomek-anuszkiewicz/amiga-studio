@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0091",
+  "page": 91,
+  "source_index": 90,
+  "prepared_index": 90,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "This four bit field can be used to specify options as indicated below:\n",
+      "bbox": [
+        191.0399932861328,
+        75.1199951171875,
+        487.223876953125,
+        85.9307861328125
+      ],
+      "bbox_norm": [
+        0.3528368654416273,
+        0.10422910169105126,
+        0.8998667899604473,
+        0.11922908983495982
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Bit7 = O\n5.\nbit correction span (default value)\n=\n=\n1.\n11 bit correction span\n",
+      "bbox": [
+        204.0,
+        99.3599853515625,
+        534.7079467773438,
+        122.41028594970703
+      ],
+      "bbox_norm": [
+        0.3767730479464833,
+        0.13786212314143065,
+        0.9875663866103225,
+        0.16984444850374433
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Bit6 = O\nRetries & ECC enabled (default value)\n_\n=\n1\nRetries & ECC disabled\n—\nBit5 = O\nNotUsed\n",
+      "bbox": [
+        56.87994384765625,
+        135.5999755859375,
+        534.2015991210938,
+        182.8902587890625
+      ],
+      "bbox_norm": [
+        0.10505308730640327,
+        0.18814516191864078,
+        0.9866311996016662,
+        0.2537604981455379
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Bit4 =\nO\nNot Used\n",
+      "bbox": [
+        203.99993896484375,
+        197.03997802734375,
+        304.2478332519531,
+        205.44833374023438
+      ],
+      "bbox_norm": [
+        0.3767729352190233,
+        0.27339325401946907,
+        0.5619234483600578,
+        0.2850598597119512
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": ";\n",
+      "bbox": [
+        528.2399291992188,
+        207.8399658203125,
+        529.9198608398438,
+        208.32041931152344
+      ],
+      "bbox_norm": [
+        0.9756204322128638,
+        0.28837825267634326,
+        0.9787231428235501,
+        0.2890448825891265
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Step Rate\n-\n",
+      "bbox": [
+        191.75994873046875,
+        221.27996826171875,
+        534.7055053710938,
+        231.85052490234375
+      ],
+      "bbox_norm": [
+        0.35416657037862787,
+        0.30702627546984845,
+        0.98756187751192,
+        0.32169293807156946
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Step Rate 14 =\n11.1 usec\n-\nStep Rate 15 = 30 usec\nAllOthers\n=\n3msec\n=\n",
+      "bbox": [
+        203.7599334716797,
+        244.55996704101562,
+        534.7079467773438,
+        277.9310302734375
+      ],
+      "bbox_norm": [
+        0.37632966266420304,
+        0.3393273073901728,
+        0.9875663866103225,
+        0.38562970580972195
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "Possible Error Codes\n",
+      "bbox": [
+        192.47991943359375,
+        293.51995849609375,
+        302.2200927734375,
+        301.9283752441406
+      ],
+      "bbox_norm": [
+        0.35549630349749345,
+        0.40725936622755093,
+        0.5581783603182207,
+        0.4189260566064005
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "7\n",
+      "bbox": [
+        527.0399169921875,
+        289.6799621582031,
+        534.2340087890625,
+        290.88116455078125
+      ],
+      "bbox_norm": [
+        0.9734040976206276,
+        0.4019313657641471,
+        0.986691057882958,
+        0.4035980358182685
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": ".\n",
+      "bbox": [
+        68.87994384765625,
+        315.5999755859375,
+        69.35992431640625,
+        316.0804443359375
+      ],
+      "bbox_norm": [
+        0.12721620777384346,
+        0.4378954218211024,
+        0.12810269651975384,
+        0.4385620729054775
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "No error, invalid command, DMA error.\n",
+      "bbox": [
+        192.47994995117188,
+        317.03997802734375,
+        363.43682861328125,
+        326.8898010253906
+      ],
+      "bbox_norm": [
+        0.35549635986122347,
+        0.4398934272877768,
+        0.671241184571714,
+        0.45356007091975153
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Initialize Unit 1\nAction\nOpcode\nCC\n(\ncc)\nThis command with initialize or set drive parameters of unit 1 only.\n~\nThis allows for the HDC to support two different drive types at the\n.\nsame time. The action of this command is identical to the action of\n_\nthe ‘Set Drive Parameter’ command noted above except that it will\n-\n_ effect only unit 1. For command details see section 6.2.9.\n-\n",
+      "bbox": [
+        35.51992416381836,
+        359.51995849609375,
+        535.3919677734375,
+        444.2543640136719
+      ],
+      "bbox_norm": [
+        0.06560269651975385,
+        0.4988344615251202,
+        0.9888297232552128,
+        0.6164035715289853
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "Change Command\nAction\nBlock\nThe Change Command Block is used to move the location of the\n|\n-\n(Class 0, Opcode F)\ncommand block from the default on power up to a new location.\n~\nBytes 6 and 7 of the command block are used as indirect address\n_.\npointers for the beginning of a 7 byte block of memory organized as\nfollows:\n_\n",
+      "bbox": [
+        35.99993896484375,
+        478.79998779296875,
+        534.6239624023438,
+        562.0922241210938
+      ],
+      "bbox_norm": [
+        0.06648924867486053,
+        0.6643356744032745,
+        0.9874112736252801,
+        0.7799037725744216
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "Table 5-10. Change Command Block Address\n~\n",
+      "bbox": [
+        242.15988159179688,
+        573.3599853515625,
+        533.9950561523438,
+        583.9305419921875
+      ],
+      "bbox_norm": [
+        0.44725155234167063,
+        0.7955378075512463,
+        0.9862497298768238,
+        0.8102044701529673
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "D7\nD6\nODS\nD4\nD3\nD2\nD1\nDO\n",
+      "bbox": [
+        204.71987915039062,
+        596.8800048828125,
+        477.7918701171875,
+        606.4895629882812
+      ],
+      "bbox_norm": [
+        0.3781026119741588,
+        0.8281718686114722,
+        0.8824465646475638,
+        0.8415051443580757
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "7\n",
+      "bbox": [
+        526.0798950195312,
+        592.5599975585938,
+        533.99267578125,
+        594.24169921875
+      ],
+      "bbox_norm": [
+        0.9716310074013469,
+        0.822177852211449,
+        0.9862453335058815,
+        0.8245112156931291
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "0\n0\nA23\nHigh Order DMA Byte\nA16\nAi5\nMid\nOrder DMA Byte\nAO8\n~\nAQ7\nLow\nOrder DMA Byte\n0\n",
+      "bbox": [
+        201.83987426757812,
+        609.1199951171875,
+        534.683837890625,
+        655.9312744140625
+      ],
+      "bbox_norm": [
+        0.37278345404377633,
+        0.8451548727350208,
+        0.9875218592635988,
+        0.9101055903503611
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": ",\n184\n",
+      "bbox": [
+        146.8798828125,
+        701.9999389648438,
+        270.4090881347656,
+        709.4473876953125
+      ],
+      "bbox_norm": [
+        0.2712763780847447,
+        0.9740259289332329,
+        0.4994257663184553,
+        0.9843592748001486
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

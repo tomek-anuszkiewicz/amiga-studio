@@ -1,0 +1,163 @@
+{
+  "page": 81,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "WRITE TELETYPE (AH = 0EH)",
+      "bbox": [
+        775,
+        300,
+        1363,
+        343
+      ],
+      "segment_id": "page_0081_seg_001"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nINPUT   AL = CHARACTER TO BE WRITTEN\n        BL = FOREGROUND COLOR OF CHAR (USED ONLY\n             IN GRAPHICS MODE)\n        BH = REQUESTED DISPLAY PAGE (REALLY IS\n             IGNORED)\n```",
+      "bbox": [
+        875,
+        400,
+        2028,
+        643
+      ],
+      "segment_id": "page_0081_seg_002"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nOUTPUT: None\n```",
+      "bbox": [
+        875,
+        701,
+        1146,
+        741
+      ],
+      "segment_id": "page_0081_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "READ CURRENT VIDEO STATE (AH = 0FH)",
+      "bbox": [
+        775,
+        803,
+        1612,
+        846
+      ],
+      "segment_id": "page_0081_seg_004"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nINPUT:  DS = ROM data segment\n```",
+      "bbox": [
+        875,
+        903,
+        1541,
+        946
+      ],
+      "segment_id": "page_0081_seg_005"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nOUTPUT: AH = NUMBER OF SCREEN COLUMNS\n        AL = CURRENT VIDEO MODE\n        BH = ACTIVE DISPLAY PAGE\n```",
+      "bbox": [
+        873,
+        1000,
+        1795,
+        1143
+      ],
+      "segment_id": "page_0081_seg_006"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nOUTPUT: AX = Equipment Flags\n```",
+      "bbox": [
+        875,
+        1209,
+        1490,
+        1255
+      ],
+      "segment_id": "page_0081_seg_007"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "EQUIPMENT CHECK\nVIA S/W INT 11H",
+      "bbox": [
+        127,
+        1208,
+        631,
+        1316
+      ],
+      "segment_id": "page_0081_seg_008"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        613,
+        1330,
+        2026,
+        2624
+      ],
+      "segment_id": "page_0081_seg_009"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "MEMORY SIZE CHECK VIA S/W INT 12H",
+      "bbox": [
+        763,
+        2678,
+        1578,
+        2718
+      ],
+      "segment_id": "page_0081_seg_010"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nOUTPUT: AX = Total Memory size in Kilobytes\n```",
+      "bbox": [
+        861,
+        2780,
+        1735,
+        2826
+      ],
+      "segment_id": "page_0081_seg_011"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "124",
+      "bbox": [
+        1029,
+        2910,
+        1095,
+        2946
+      ],
+      "segment_id": "page_0081_seg_012"
+    }
+  ]
+}

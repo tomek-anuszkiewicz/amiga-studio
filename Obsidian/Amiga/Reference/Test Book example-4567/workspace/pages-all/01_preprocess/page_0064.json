@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0064",
+  "page": 64,
+  "source_index": 63,
+  "prepared_index": 63,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "EXTRA KEYS ON THE\nBoth the Amiga 2000 and 500 feature 94-key keyboards, as com-\npared to the A1000's 89-key keyboard. (The European versions of\nKEYBOARD\n",
+      "bbox": [
+        34.31999969482422,
+        74.15997314453125,
+        484.9295959472656,
+        100.81486511230469
+      ],
+      "bbox_norm": [
+        0.06338652397324165,
+        0.10289706981781252,
+        0.8956294211005289,
+        0.13988077091016504
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "the keyboards have 96 keys.) The new keys are all located on the nu-\n—\nmeric keypad, and include:\n.\n",
+      "bbox": [
+        189.60000610351562,
+        98.15997314453125,
+        534.9600219726562,
+        122.41100311279297
+      ],
+      "bbox_norm": [
+        0.3501773146583011,
+        0.13619710447147407,
+        0.9880319510203696,
+        0.16984544356856157
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "KEY\nSCAN CODE\nLeft parentheses\n(\nS5A\n-\nRight parentheses\n)\nS5B\nSlash\n/\nSSC\nAsterisk\n*\nS5D\n=\nPlus\n+\nS5E\n",
+      "bbox": [
+        236.8800048828125,
+        134.15997314453125,
+        535.4064331054688,
+        204.0098419189453
+      ],
+      "bbox_norm": [
+        0.43750000704546627,
+        0.1861471564519664,
+        0.988856439663247,
+        0.28306395023287056
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "In PC mode on the Amiga 2000 (using a Bridgeboard), these keys\n_\n",
+      "bbox": [
+        191.0399932861328,
+        218.63998413085938,
+        535.4088134765625,
+        229.69100952148438
+      ],
+      "bbox_norm": [
+        0.3528368654416273,
+        0.3033632936764012,
+        0.9888608360341893,
+        0.3186966073624973
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "a\nassume typical PC functions, including Number lock (left parenthe-\n",
+      "bbox": [
+        57.600006103515625,
+        230.63998413085938,
+        481.9103088378906,
+        244.08116149902344
+      ],
+      "bbox_norm": [
+        0.10638298951645894,
+        0.320013311003232,
+        0.89005301910629,
+        0.33866296400931006
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "-\nsis), Print screen (asterisk) and Scroll lock (right parenthesis).\n",
+      "bbox": [
+        176.8800048828125,
+        242.39996337890625,
+        461.2201232910156,
+        254.41195678710938
+      ],
+      "bbox_norm": [
+        0.32668440470826526,
+        0.3363302991901612,
+        0.8518397628755332,
+        0.35299695738819115
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "On some keyboards, the left Amiga key has been replaced by the\n~\nCommodore key. This key performs identically in either case.\n:\n",
+      "bbox": [
+        190.79998779296875,
+        266.8799743652344,
+        535.42919921875,
+        291.1317138671875
+      ],
+      "bbox_norm": [
+        0.3523935928868071,
+        0.3702963497804421,
+        0.9888984870058494,
+        0.40394567335655096
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "RAW KEY CODES ON\nKeyboard Layout Showing Raw Key Codes\n-\nTHE KEYBOARD\n~\n",
+      "bbox": [
+        34.55999755859375,
+        325.6799621582031,
+        535.6655883789062,
+        354.2505187988281
+      ],
+      "bbox_norm": [
+        0.06382978243712936,
+        0.4518814177446394,
+        0.989335080458661,
+        0.4915231063366066
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Pe [edelotfetetelefefete\nfetole\nDOO oogoocnKE\n-\nSPEDE ELL-L>EL\nI EEEIEEET)\n>\n",
+      "bbox": [
+        35.519989013671875,
+        405.1199645996094,
+        535.3716430664062,
+        494.19525146484375
+      ],
+      "bbox_norm": [
+        0.06560281629268017,
+        0.5621045358357138,
+        0.988792185011013,
+        0.6856966249772617
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Figure 1.1 Key Codes\n",
+      "bbox": [
+        213.3599853515625,
+        528.719970703125,
+        306.4618835449219,
+        540.0112915039062
+      ],
+      "bbox_norm": [
+        0.39406025485649626,
+        0.7335997227707076,
+        0.5660126369737276,
+        0.7492664466853587
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Note: On the U.S. keyboard, the keys with codes 44 and 60 are\n",
+      "bbox": [
+        190.31997680664062,
+        564.47998046875,
+        473.4912109375,
+        576.0115356445312
+      ],
+      "bbox_norm": [
+        0.3515070477771667,
+        0.7832167879544821,
+        0.8745035623568291,
+        0.7992168374113207
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "extended to include the European keys with codes 2B and 30,\n",
+      "bbox": [
+        221.99996948242188,
+        576.239990234375,
+        487.0836181640625,
+        587.53125
+      ],
+      "bbox_norm": [
+        0.41001767228391356,
+        0.799533818484595,
+        0.8996077422572298,
+        0.8152004577128786
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "respectively. Also note that England uses the U.S. rather than\n=\nthe European keyboard, but not the U.S. keymap.\n|\n",
+      "bbox": [
+        221.99993896484375,
+        588.47998046875,
+        540.9227294921875,
+        612.9736328125
+      ],
+      "bbox_norm": [
+        0.41001761592018354,
+        0.8165168226081436,
+        0.999044634775993,
+        0.8505018006015442
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "See Table 1-1 at the end of this section for a table of the raw key\ncodes.\n_\n",
+      "bbox": [
+        191.75991821289062,
+        650.1599731445312,
+        533.72998046875,
+        675.1322631835938
+      ],
+      "bbox_norm": [
+        0.35416651401489785,
+        0.9020979015056897,
+        0.9857601545177841,
+        0.9367469899924425
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "2\n",
+      "bbox": [
+        257.99993896484375,
+        700.5599975585938,
+        263.9891357421875,
+        708.0074462890625
+      ],
+      "bbox_norm": [
+        0.47650697732250413,
+        0.972028008152926,
+        0.4875685847957936,
+        0.9823613540198417
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "7\n—\n",
+      "bbox": [
+        0,
+        713.7599487304688,
+        541.4159545898438,
+        720.719970703125
+      ],
+      "bbox_norm": [
+        0.0,
+        0.9903429594633458,
+        0.9999555853807365,
+        1.0
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0069",
+  "page": 69,
+  "source_index": 68,
+  "prepared_index": 68,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "_\nSection 3.1\nee\n_\nDesigning Hardware for the Amiga Expansion\nArchitecture\n|\n",
+      "bbox": [
+        11.039993286132812,
+        48.719970703125,
+        540.3936157226562,
+        128.41964721679688
+      ],
+      "bbox_norm": [
+        0.020390058430024373,
+        0.06759902969747658,
+        0.9980674004247345,
+        0.17818244593876362
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "INTRODUCTION\nThis section gives guidelines for designing hardware to reside on the\n~\n",
+      "bbox": [
+        10.79998779296875,
+        170.87994384765625,
+        502.968017578125,
+        189.60140991210938
+      ],
+      "bbox_norm": [
+        0.019946785875204164,
+        0.2370961688226122,
+        0.9289450637377968,
+        0.2630722300190138
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "_\nAmiga expansion bus. The Amiga expansion bus is a relatively\nstraightforward extension of the 68000 bus.\n",
+      "bbox": [
+        192.95999145507812,
+        183.5999755859375,
+        474.3117980957031,
+        208.33193969726562
+      ],
+      "bbox_norm": [
+        0.3563829613345939,
+        0.2547452312259639,
+        0.8760191266936033,
+        0.28906086714097806
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "_\nHardware for the bus can be viewed as two categories: backplanes\nand PICs. Backplanes interface to the 86 pin connector of either\n",
+      "bbox": [
+        10.32000732421875,
+        219.3599853515625,
+        498.5278015136719,
+        244.09268188476562
+      ],
+      "bbox_norm": [
+        0.019060297129293774,
+        0.3043622964097384,
+        0.9207443101096353,
+        0.3386789485611617
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "oo\nanother backplane or the Amiga itself. Backplanes buffer the bus and\n",
+      "bbox": [
+        70.32000732421875,
+        243.11996459960938,
+        503.166015625,
+        258.7211608886719
+      ],
+      "bbox_norm": [
+        0.12987589946649475,
+        0.3373293019234984,
+        0.9293107516182308,
+        0.35897598430117994
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "~\nprovide 100 pin connectors for PICs to plug into.\nI\nls\nPIC is an acronym for plug-in card. A PIC is usually a card that plugs\ninto the standard 100 pin Amiga connectors.\n",
+      "bbox": [
+        10.079977035522461,
+        256.0799560546875,
+        503.9039611816406,
+        303.37005615234375
+      ],
+      "bbox_norm": [
+        0.018616978778942916,
+        0.3553113087803842,
+        0.930673682974084,
+        0.4209263909481791
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": ".\nA sub-type of PIC is a combination of backplane and PIC integrated\ninto one package. These combination products should follow all of\n—\nthe applicable backplane and PIC rules, especially auto-configuration.\n",
+      "bbox": [
+        10.079986572265625,
+        315.3599853515625,
+        504.407958984375,
+        353.7743835449219
+      ],
+      "bbox_norm": [
+        0.01861699639260855,
+        0.4375624350243846,
+        0.931604529975528,
+        0.4908624679843188
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "Software never sees backplanes; all expansion hardware appears to\n",
+      "bbox": [
+        208.32000732421875,
+        364.7999572753906,
+        502.2647705078125,
+        376.57171630859375
+      ],
+      "bbox_norm": [
+        0.38475178484205697,
+        0.5061604674551984,
+        0.9276462179429876,
+        0.5224938001110407
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "_\nthe software as PICs.\n",
+      "bbox": [
+        10.079986572265625,
+        378.2399597167969,
+        300.1200256347656,
+        394.5628356933594
+      ],
+      "bbox_norm": [
+        0.01861699639260855,
+        0.5248084902487036,
+        0.5542996902362125,
+        0.5474565042348265
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "_\n",
+      "bbox": [
+        10.79998779296875,
+        432.9599609375,
+        19.195201873779297,
+        434.4013977050781
+      ],
+      "bbox_norm": [
+        0.019946785875204164,
+        0.6007325709527792,
+        0.035452130960450357,
+        0.6027325665490881
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "WARNING\n",
+      "bbox": [
+        333.1199951171875,
+        417.1199645996094,
+        380.4539489746094,
+        425.5283508300781
+      ],
+      "bbox_norm": [
+        0.615248215157943,
+        0.5787545531625446,
+        0.7026705586198011,
+        0.5904212011982105
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "These specifications represent “worst case” design targets.\n",
+      "bbox": [
+        217.67999267578125,
+        440.6399841308594,
+        474.8832092285156,
+        452.8922119140625
+      ],
+      "bbox_norm": [
+        0.4020389917520699,
+        0.6113886142227706,
+        0.8770744811746832,
+        0.628388597962988
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": ",\nProducts that do not comply with these specifications can be ex-\n~\npected to fail on worst case production units.\n",
+      "bbox": [
+        10.79998779296875,
+        452.15997314453125,
+        496.74005126953125,
+        476.6519470214844
+      ],
+      "bbox_norm": [
+        0.019946785875204164,
+        0.627372615612982,
+        0.9174424664407533,
+        0.6613552647312783
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "Following conservative design practices and allowing the widest\n",
+      "bbox": [
+        218.39999389648438,
+        487.4399719238281,
+        484.1760559082031,
+        500.4129333496094
+      ],
+      "bbox_norm": [
+        0.4033687812346655,
+        0.6763236648601371,
+        0.8942376878786304,
+        0.6943236675701009
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "_\nsafety margins is your best assurance against problems in the\nfield.\n",
+      "bbox": [
+        11.040008544921875,
+        499.6799621582031,
+        487.1280212402344,
+        522.7279052734375
+      ],
+      "bbox_norm": [
+        0.020390086611889388,
+        0.6933066689836856,
+        0.8996897514844234,
+        0.7252857233350576
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "17\n",
+      "bbox": [
+        276.0,
+        704.8799438476562,
+        285.7919921875,
+        712.087158203125
+      ],
+      "bbox_norm": [
+        0.5097517707511244,
+        0.9780219398665817,
+        0.5278368626234408,
+        0.98802196019131
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

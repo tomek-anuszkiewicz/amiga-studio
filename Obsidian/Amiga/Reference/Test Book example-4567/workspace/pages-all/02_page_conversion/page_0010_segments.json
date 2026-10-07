@@ -1,0 +1,72 @@
+{
+  "page": 10,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "list_of_figures_heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "LIST OF ILLUSTRATIONS",
+      "bbox": [
+        727,
+        469,
+        1455,
+        519
+      ],
+      "segment_id": "page_0010_seg_001"
+    },
+    {
+      "type": "list_of_figures",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure Number — Title — Page Number\n\n2-1 User Programmer's Model ... 2-2\n2-2 Supervisor Programmer's Model Supplement ... 2-2\n2-3 Supervisor Programmer's Model Supplement (MC68010) ... 2-3\n2-4 Status Register ... 2-3\n2-5 Word Organization In Memory ... 2-6\n2-6 Data Organization In Memory ... 2-7\n2-7 Memory Data Organization (MC68008) ... 2-3\n\n3-1 Input and Output Signals (MC68000, MC68HC000, MC68010) ... 3-1\n3-2 Input and Output Signals (MC68HC001) ... 3-2\n3-3 Input and Output Signals (MC68EC000) ... 3-2\n3-4 Input and Output Signals (MC68008 48-Pin Version) ... 3-3\n3-5 Input and Output Signals (MC68008 52-Pin Version) ... 3-3\n\n4-1 Byte Read-Cycle Flowchart ... 4-2\n4-2 Read and Write-Cycle Timing Diagram ... 4-2\n4-3 Byte Write-Cycle Flowchart ... 4-4\n4-4 Write-Cycle Timing Diagram ... 4-4\n4-5 Read-Modify-Write Cycle Flowchart ... 4-6\n4-6 Read-Modify-Write Cycle Timing Diagram ... 4-7\n\n5-1 Word Read-Cycle Flowchart ... 5-2\n5-2 Byte Read-Cycle Flowchart ... 5-2\n5-3 Read and Write-Cycle Timing Diagram ... 5-3\n5-4 Word and Byte Read-Cycle Timing Diagram ... 5-3\n5-5 Word Write-Cycle Flowchart ... 5-5\n5-6 Byte Write-Cycle Flowchart ... 5-5\n5-7 Word and Byte Write-Cycle Timing Diagram ... 5-6\n5-8 Read-Modify-Write Cycle Flowchart ... 5-7\n5-9 Read-Modify-Write Cycle Timing Diagram ... 5-8\n5-10 CPU Space Address Encoding ... 5-9\n5-11 Interrupt Acknowledge Cycle Timing Diagram ... 5-10\n5-12 Breakpoint Acknowledge Cycle Timing Diagram ... 5-11\n5-13 3-Wire Bus Arbitration Flowchart\n(NA to 48-Pin MC68008 and MC68EC000 ... 5-12\n5-14 2-Wire Bus Arbitration Cycle Flowchart ... 5-13",
+      "bbox": [
+        250,
+        572,
+        1947,
+        2370
+      ],
+      "segment_id": "page_0010_seg_002"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "xii",
+      "bbox": [
+        291,
+        2508,
+        326,
+        2536
+      ],
+      "segment_id": "page_0010_seg_003"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 USER'S MANUAL",
+      "bbox": [
+        891,
+        2507,
+        1300,
+        2536
+      ],
+      "segment_id": "page_0010_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        1706,
+        2507,
+        1899,
+        2536
+      ],
+      "segment_id": "page_0010_seg_005"
+    }
+  ]
+}

@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0041",
+  "page": 41,
+  "source_index": 40,
+  "prepared_index": 40,
+  "geometry": {
+    "width": 612.0,
+    "height": 792.0,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      792.0
+    ]
+  },
+  "width": 612.0,
+  "height": 792.0,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2550,
+    "pixel_height": 3300,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Introduction\n",
+      "bbox": [
+        63.0,
+        22.469982147216797,
+        121.33000183105469,
+        36.23998260498047
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.028371189579819187,
+        0.19825163697884754,
+        0.04575755379416726
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "1-12\n",
+      "bbox": [
+        63.0,
+        746.25,
+        83.00999450683594,
+        759.989990234375
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.9422348484848485,
+        0.13563724592620252,
+        0.9595833210029987
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL\n",
+      "bbox": [
+        166.35000610351562,
+        746.2999877929688,
+        439.70001220703125,
+        760.0700073242188
+      ],
+      "bbox_norm": [
+        0.2718137354632608,
+        0.9422979643850615,
+        0.7184640722337112,
+        0.9596843526820944
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "MOTOROLA\n",
+      "bbox": [
+        485.7799987792969,
+        746.25,
+        543.0099487304688,
+        759.989990234375
+      ],
+      "bbox_norm": [
+        0.7937581679400276,
+        0.9422348484848485,
+        0.8872711580563215,
+        0.9595833210029987
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "1.3.6 Transparent Translation/access Control Registers \n",
+      "bbox": [
+        63.0,
+        47.35801315307617,
+        434.1258850097656,
+        66.63601684570312
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.05979547115287395,
+        0.709356021257787,
+        0.08413638490619081
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Transparent translation is actually a misnomer since the whole address space transparently\ntranslates in an embedded control environment with no on-chip MMU present as well as in\nprocessors that have built-in MMUs. For processors that have built-in MMUs, such as the\nMC68030, MC68040, and MC68LC040, the transparent translation (TT) registers deﬁne\nblocks of logical addresses that are transparently translated to corresponding physical\naddresses. These registers are independent of the on-chip MMU. For embedded\ncontrollers, such as the MC68EC030 and MC68EC040, the access control registers (AC)\nare similar in function to the TT registers but just named differently. The AC registers, main\nfunction are to deﬁne blocks of address space that control address space properties such\nas cachability. The following paragraphs describe these registers. \n",
+      "bbox": [
+        63.0,
+        76.1040267944336,
+        543.3358154296875,
+        218.62828063964844
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.09609094292226464,
+        0.8878036199831495,
+        0.276045808888445
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "NOTE \n",
+      "bbox": [
+        286.572998046875,
+        228.16403198242188,
+        322.7770080566406,
+        244.6880340576172
+      ],
+      "bbox_norm": [
+        0.4682565327563317,
+        0.28808589896770437,
+        0.5274134118572559,
+        0.30894953795153685
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "For the paged MMU related supervisor registers, please refer to\nthe appropriate user’s manual for speciﬁc programming detail. \n",
+      "bbox": [
+        135.0,
+        248.10403442382812,
+        471.28790283203125,
+        278.5960693359375
+      ],
+      "bbox_norm": [
+        0.22058823529411764,
+        0.3132626697270557,
+        0.7700782726013583,
+        0.3517627138080019
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "1.3.6.1 TRANSPARENT TRANSLATION/ACCESS CONTROL REGISTER FIELDS FOR \nTHE M68030.  Figure 1-9 illustrates the MC68030 transparent translation/MC68EC030\naccess control register format. \n",
+      "bbox": [
+        63.0,
+        291.16400146484375,
+        543.0889892578125,
+        335.59600830078125
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.3676313149808633,
+        0.8874003092447916,
+        0.42373233371310765
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "Address Base \n",
+      "bbox": [
+        66.02899932861328,
+        469.1080017089844,
+        144.0649871826172,
+        485.59600830078125
+      ],
+      "bbox_norm": [
+        0.10789052177877988,
+        0.5923080829658893,
+        0.23540030585394967,
+        0.613126273107047
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "This 8-bit ﬁeld is compared with address bits A31 – A24. Addresses that match in this\ncomparison (and are otherwise eligible) are transparently translated/access controlled. \n",
+      "bbox": [
+        80.28499603271484,
+        483.11199951171875,
+        543.0648193359375,
+        513.60400390625
+      ],
+      "bbox_norm": [
+        0.13118463404038372,
+        0.6099898983733822,
+        0.8873608159083947,
+        0.6484899039220329
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "Address Mask \n",
+      "bbox": [
+        66.02899169921875,
+        523.1199951171875,
+        145.38497924804688,
+        539.6080322265625
+      ],
+      "bbox_norm": [
+        0.10789050931244894,
+        0.6605050443398832,
+        0.23755715563406352,
+        0.6813232730133365
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "This 8-bit ﬁeld contains a mask for the address base ﬁeld. Setting a bit in this ﬁeld causes\nthe corresponding bit of the address base ﬁeld to be ignored. Blocks of memory larger\nthan 16 Mbytes can be transparently translated/accessed controlled by setting some log-\nical address mask bits to ones. The low-order bits of this ﬁeld normally are set to deﬁne\ncontiguous blocks larger than 16 Mbytes, although this is not required. \n",
+      "bbox": [
+        80.28498840332031,
+        537.1239624023438,
+        543.4848022460938,
+        609.6279907226562
+      ],
+      "bbox_norm": [
+        0.1311846215740528,
+        0.6781868212150804,
+        0.8880470624936172,
+        0.7697323115185054
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "31\n24\n23\n16\nADDRESS BASE\nADDRESS MASK\nE\n0\n0\n0\n0\nCI\nR/W\nRWM\n0\nFC BASE\n0\nFC MASK\n15\n14\n13\n12\n11\n10\n9\n8\n7\n6\n4\n3\n2\n0\nFigure 1-9. MC68030 Transparent Translation/MC68EC030 Access Control Register \n",
+      "bbox": [
+        67.32599639892578,
+        373.7359924316406,
+        542.1298828125,
+        439.68798828125
+      ],
+      "bbox_norm": [
+        0.11000979803746043,
+        0.4718888793328796,
+        0.8858331418504902,
+        0.5551616013652146
+      ]
+    },
+    {
+      "block_id": 19,
+      "type": 0,
+      "text": "Format\n",
+      "bbox": [
+        282.6659851074219,
+        437.1679992675781,
+        323.333984375,
+        453.6919860839844
+      ],
+      "bbox_norm": [
+        0.46187252468532985,
+        0.5519797970550229,
+        0.5283235038807189,
+        0.5728434167727076
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

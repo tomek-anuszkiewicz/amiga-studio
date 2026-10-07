@@ -1,0 +1,401 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0134",
+  "page": 134,
+  "source_index": 133,
+  "prepared_index": 133,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "DMA Time Slot Allocation/Horizontal line\n",
+      "bbox": [
+        545.211181640625,
+        260.5,
+        555.211181640625,
+        459.7098693847656
+      ],
+      "bbox_norm": [
+        0.90742999872308,
+        0.3374876902525145,
+        0.9240736412102439,
+        0.5955716775621869
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Decimal numbers above the illustrations represent low-resolution \ncycles. Decimal numbers below the illustrations represent high- \nresolution cycies. Negative numbers indicate the start of data \nfetch for displays that are larger than normal.\n",
+      "bbox": [
+        503.95587158203125,
+        145.77999877929688,
+        524.2554931640625,
+        277.0820007324219
+      ],
+      "bbox_norm": [
+        0.8387661355918463,
+        0.18886355114410475,
+        0.872552100015451,
+        0.3589703049433036
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Decimal numbers inside the illustrations represent the bit-plane \nfor which the data is being fetched.\n",
+      "bbox": [
+        491.1060485839844,
+        146.13999938964844,
+        500.505859375,
+        273.8320007324219
+      ],
+      "bbox_norm": [
+        0.8173793495915633,
+        0.18932994567184772,
+        0.8330240586168284,
+        0.35475980592863693
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Hardware stop installed here. Data fetches which occur at \ncyde $18 or sooner will wipe out al the sprites (by defining \nan extra wide display), but leave the audio and disk DMA \nuntouched. However, if only SPRITEO is desired to function, \nthen tie data fetches cannot begin any sooner than cyde $1C\n",
+      "bbox": [
+        494.24407958984375,
+        338.0,
+        522.5941162109375,
+        474.792724609375
+      ],
+      "bbox_norm": [
+        0.8226021762090793,
+        0.4378918975253355,
+        0.8697869636110284,
+        0.6151120920426725
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Some sprites are unusable if the display starts early due to \nan extra word(s) associated with a wide display and or \nhorizontal scrolling. In this case, the hit plane DMA steals \nthe cycles normally allocated to the sprites, as illustrated \nabove.\n",
+      "bbox": [
+        381.4066467285156,
+        543.02001953125,
+        407.50604248046875,
+        660.31201171875
+      ],
+      "bbox_norm": [
+        0.6347995870377475,
+        0.7035031560555735,
+        0.678238488240399,
+        0.8554594076044231
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "as cycle 7\n",
+      "bbox": [
+        230.82662963867188,
+        414.1800842285156,
+        234.82662963867188,
+        433.45611572265625
+      ],
+      "bbox_norm": [
+        0.384179590022307,
+        0.5365861035503787,
+        0.3908370470171726,
+        0.5615589378927673
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "$ These operations only take slots if the associated operation is being performed.\n",
+      "bbox": [
+        217.62762451171875,
+        53.580078125,
+        221.62762451171875,
+        218.40406799316406
+      ],
+      "bbox_norm": [
+        0.36221163777038173,
+        0.06941503573879282,
+        0.3688690947652473,
+        0.2829508040259734
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "Note: Copper Data Move instructions require 4 slots.\nCopper Wait instructions require 6 slots.\n",
+      "bbox": [
+        205.5280303955078,
+        59.830078125,
+        214.92782592773438,
+        165.53807067871094
+      ],
+      "bbox_norm": [
+        0.34207350589938096,
+        0.07751214922853644,
+        0.35771818952846296,
+        0.21446088722539597
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "# This cycle 0 appears to exclude one of the memory refresh cycles. This is not the case.\n",
+      "bbox": [
+        198.6780242919922,
+        53.080078125,
+        202.6780242919922,
+        233.0120086669922
+      ],
+      "bbox_norm": [
+        0.3306726006372004,
+        0.06876726665961332,
+        0.33733005763206597,
+        0.30187594858396194
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Actual system hardware demands certain specific values for data fetch start and display start. \nTherefore this timing chart has been \"adjusted” to match those requirements.\n",
+      "bbox": [
+        186.32843017578125,
+        59.67987060546875,
+        195.7282257080078,
+        247.39187622070312
+      ],
+      "bbox_norm": [
+        0.3101183777040205,
+        0.07731754965531125,
+        0.3257630613331025,
+        0.32050561571194264
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "S \nIndicates a hex number.\nB\n",
+      "bbox": [
+        179.22862243652344,
+        52.980072021484375,
+        219.23385620117188,
+        424.06207275390625
+      ],
+      "bbox_norm": [
+        0.29830171153003976,
+        0.06863770493644003,
+        0.36488499236946287,
+        0.5493885967654878
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": " 320 mode Bit-Plane DMA. by plane \n",
+      "bbox": [
+        218.72763061523438,
+        413.6800842285156,
+        222.72763061523438,
+        488.94110107421875
+      ],
+      "bbox_norm": [
+        0.36404244860244295,
+        0.5359383344711992,
+        0.3706999055973086,
+        0.6334418536317057
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "640 mode Bit Plane DMA. by plane\nAudio DMA l (2 bytes channel)\n",
+      "bbox": [
+        203.47763061523438,
+        416.68011474609375,
+        207.72763061523438,
+        612.0397338867188
+      ],
+      "bbox_norm": [
+        0.33866089380951786,
+        0.5398249884829631,
+        0.34573444186656255,
+        0.7929208296821203
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "□\n Slots available for Blitter, Copper and 68000\n",
+      "bbox": [
+        182.12863159179688,
+        401.82012939453125,
+        186.12863159179688,
+        506.3040771484375
+      ],
+      "bbox_norm": [
+        0.3031283830890271,
+        0.5205733104273583,
+        0.30978584008389276,
+        0.6559362516785301
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "□\n Sprite DMA I (2 words/channel)\n",
+      "bbox": [
+        156.92962646484375,
+        401.82012939453125,
+        160.92962646484375,
+        482.3240661621094
+      ],
+      "bbox_norm": [
+        0.26118805985250504,
+        0.5205733104273583,
+        0.2678455168473707,
+        0.6248692324078744
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "Disk DMA t\n",
+      "bbox": [
+        178.42962646484375,
+        547.3701171875,
+        182.42962646484375,
+        571.7500610351562
+      ],
+      "bbox_norm": [
+        0.2969718911999077,
+        0.7091388735618332,
+        0.3036293481947733,
+        0.7407240211151211
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "Memory Refresh\n",
+      "bbox": [
+        153.42962646484375,
+        547.3701171875,
+        157.42962646484375,
+        580.4861450195312
+      ],
+      "bbox_norm": [
+        0.25536278498199766,
+        0.7091388735618332,
+        0.26202024197686324,
+        0.7520419512715077
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "Figure 6-9: DMA Time Slot Allocation\no\\\n",
+      "bbox": [
+        89.68509674072266,
+        278.0101318359375,
+        110.98310089111328,
+        724.4191284179688
+      ],
+      "bbox_norm": [
+        0.1492686686579306,
+        0.3601727342038679,
+        0.18471630533485425,
+        0.9385126235106332
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "Blitter Hardware\n",
+      "bbox": [
+        108.58000183105469,
+        716.2850341796875,
+        181.89100646972656,
+        726.7850341796875
+      ],
+      "bbox_norm": [
+        0.18071667317316875,
+        0.9279745940412519,
+        0.30273288833125644,
+        0.9415777447040212
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

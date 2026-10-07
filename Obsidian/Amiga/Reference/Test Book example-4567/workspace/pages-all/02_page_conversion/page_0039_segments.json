@@ -1,0 +1,189 @@
+{
+  "page": 39,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        288,
+        131
+      ],
+      "segment_id": "page_0039_seg_001"
+    },
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Introduction",
+      "bbox": [
+        2044,
+        93,
+        2288,
+        151
+      ],
+      "segment_id": "page_0039_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "1.2.2 Floating-Point Control Register (FPCR)",
+      "bbox": [
+        287,
+        197,
+        1529,
+        278
+      ],
+      "segment_id": "page_0039_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The FPCR (see Figure 1-3) contains an exception enable (ENABLE) byte and a mode control (MODE) byte. The user can read or write to the FPCR. Motorola reserves bits 31 – 16 for future definition; these bits are always read as zero and are ignored during write operations. The reset function or a restore operation of the null state clears the FPCR. When cleared, this register provides the IEEE 754 Standard for Binary Floating-Point Arithmetic defaults.",
+      "bbox": [
+        287,
+        317,
+        2290,
+        678
+      ],
+      "segment_id": "page_0039_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**1.2.2.1 EXCEPTION ENABLE BYTE.** Each bit of the ENABLE byte (see Figure 1-3) corresponds to a floating-point exception class. The user can separately enable traps for each class of floating-point exceptions.",
+      "bbox": [
+        287,
+        729,
+        2288,
+        916
+      ],
+      "segment_id": "page_0039_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**1.2.2.2 MODE CONTROL BYTE.** MODE (see Figure 1-3) controls the user- selectable rounding modes and precisions. Zeros in this byte select the IEEE 754 standard defaults. The rounding mode (RND) field specifies how inexact results are rounded, and the rounding precision (PREC) field selects the boundary for rounding the mantissa. Refer to Table 3-21 for encoding information. .",
+      "bbox": [
+        287,
+        967,
+        2290,
+        1270
+      ],
+      "segment_id": "page_0039_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        368,
+        1392,
+        2205,
+        2143
+      ],
+      "segment_id": "page_0039_seg_007"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 1-3. Floating-Point Control Register",
+      "bbox": [
+        783,
+        2175,
+        1792,
+        2245
+      ],
+      "segment_id": "page_0039_seg_008"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "1.2.3 Floating-Point Status Register (FPSR)",
+      "bbox": [
+        287,
+        2297,
+        1497,
+        2378
+      ],
+      "segment_id": "page_0039_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The FPSR (see Figure 1-2) contains a floating-point condition code (FPCC) byte, a floating-point exception status (EXC) byte, a quotient byte, and a floating-point accrued exception (AEXC) byte. The user can read or write to all the bits in the FPSR. Execution of most floating-point instructions modifies this register. The reset function or a restore operation of the null state clears the FPSR.",
+      "bbox": [
+        287,
+        2417,
+        2290,
+        2720
+      ],
+      "segment_id": "page_0039_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**1.2.3.1 FLOATING-POINT CONDITION CODE BYTE.** The FPCC byte, illustrated in Figure 1-4, contains four condition code bits that set after completion of all arithmetic instructions involving the floating-point data registers. The move floating-point data register",
+      "bbox": [
+        287,
+        2771,
+        2289,
+        2957
+      ],
+      "segment_id": "page_0039_seg_011"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        287,
+        3109,
+        526,
+        3167
+      ],
+      "segment_id": "page_0039_seg_012"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        718,
+        3109,
+        1858,
+        3167
+      ],
+      "segment_id": "page_0039_seg_013"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "1-5",
+      "bbox": [
+        2227,
+        3109,
+        2288,
+        3167
+      ],
+      "segment_id": "page_0039_seg_014"
+    }
+  ]
+}

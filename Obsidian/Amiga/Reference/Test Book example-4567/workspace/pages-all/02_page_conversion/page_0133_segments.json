@@ -1,0 +1,150 @@
+{
+  "page": 133,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "## Blitter Speed",
+      "bbox": [
+        358,
+        358,
+        728,
+        422
+      ],
+      "segment_id": "page_0133_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The speed of the blitter depends entirely on which DMA channels are enabled. You might be using a DMA channel as a constant, but unless it is enabled, it does not count against you. The minimum blitter cycle is four ticks; the maximum is eight ticks. Use of the A register is always free. Use of the B register always adds two ticks to the blitter cycle. Use of either C or D is free, but use of both adds another two ticks. Thus, a copy cycle, using A and D, takes four clock ticks per cycle; a copy cycle using B and D takes six ticks per cycle, and a generalized bit copy using B, C, and D takes eight ticks per cycle. When in line mode, each pixel takes eight ticks.",
+      "bbox": [
+        356,
+        535,
+        2159,
+        902
+      ],
+      "segment_id": "page_0133_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The system clock speed for NTSC Amigas is 7.16 megahertz (PAL Amigas 7.09 megahertz). The clock for the blitter is the system clock. To calculate the total time for the blit in microseconds, excluding setup and DMA contention, you use the equation (for NTSC):",
+      "bbox": [
+        355,
+        962,
+        2158,
+        1115
+      ],
+      "segment_id": "page_0133_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "$$t = \\frac{n * H * W}{7.16}$$",
+      "bbox": [
+        1112,
+        1138,
+        1389,
+        1236
+      ],
+      "segment_id": "page_0133_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "For PAL:",
+      "bbox": [
+        355,
+        1322,
+        533,
+        1369
+      ],
+      "segment_id": "page_0133_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "$$t = \\frac{n * H * W}{7.09}$$",
+      "bbox": [
+        1112,
+        1391,
+        1389,
+        1490
+      ],
+      "segment_id": "page_0133_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "where t is the time in microseconds, n is the number of clocks per cycle, and H and W are the height and width (in words) of the blit, respectively.",
+      "bbox": [
+        355,
+        1575,
+        2158,
+        1676
+      ],
+      "segment_id": "page_0133_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "For instance, to copy one bitplane of a 320 by 200 screen to another bitplane, we might choose to use the A and D channels. This would require four ticks per blitter cycle, for a total of",
+      "bbox": [
+        355,
+        1734,
+        2157,
+        1835
+      ],
+      "segment_id": "page_0133_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "$$\\frac{4 * 200 * 20}{7.16} = 2235\\text{ microseconds.}$$",
+      "bbox": [
+        923,
+        1857,
+        1587,
+        1957
+      ],
+      "segment_id": "page_0133_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "These timings do not take into account blitter setup time, which is the time required to calculate and load the blitter registers and start the blit. They also ignore DMA contention.",
+      "bbox": [
+        354,
+        2040,
+        2160,
+        2141
+      ],
+      "segment_id": "page_0133_seg_010"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "188 Blitter Hardware",
+      "bbox": [
+        363,
+        2979,
+        762,
+        3027
+      ],
+      "segment_id": "page_0133_seg_011"
+    }
+  ]
+}

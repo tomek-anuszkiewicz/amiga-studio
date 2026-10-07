@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0042",
+  "page": 42,
+  "source_index": 41,
+  "prepared_index": 41,
+  "geometry": {
+    "width": 612.0,
+    "height": 792.0,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      792.0
+    ]
+  },
+  "width": 612.0,
+  "height": 792.0,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2550,
+    "pixel_height": 3300,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Introduction\n",
+      "bbox": [
+        63.0,
+        22.469982147216797,
+        121.33000183105469,
+        36.23998260498047
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.028371189579819187,
+        0.19825163697884754,
+        0.04575755379416726
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "1-18\n",
+      "bbox": [
+        63.0,
+        746.25,
+        83.00999450683594,
+        759.989990234375
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.9422348484848485,
+        0.13563724592620252,
+        0.9595833210029987
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL\n",
+      "bbox": [
+        166.35000610351562,
+        746.2999877929688,
+        439.70001220703125,
+        760.0700073242188
+      ],
+      "bbox_norm": [
+        0.2718137354632608,
+        0.9422979643850615,
+        0.7184640722337112,
+        0.9596843526820944
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "MOTOROLA\n",
+      "bbox": [
+        485.7799987792969,
+        746.25,
+        543.0099487304688,
+        759.989990234375
+      ],
+      "bbox_norm": [
+        0.7937581679400276,
+        0.9422348484848485,
+        0.8872711580563215,
+        0.9595833210029987
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "1.6.1 Normalized Numbers \n",
+      "bbox": [
+        63.0,
+        47.35801315307617,
+        241.947998046875,
+        66.63601684570312
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.05979547115287395,
+        0.39533986608966504,
+        0.08413638490619081
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Normalized numbers encompass all numbers with exponents laying between the maximum\nand minimum values. Normalized numbers can be positive or negative. For normalized\nnumbers in single and double precision the implied integer bit is one. In extended precision,\nthe mantissa’s MSB, the explicit integer bit, can only be a one (see Figure 1-13); and the\nexponent can be zero. \n",
+      "bbox": [
+        63.0,
+        76.1040267944336,
+        543.5277709960938,
+        148.60813903808594
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.09609094292226464,
+        0.8881172728694342,
+        0.18763653918950243
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": ".\n",
+      "bbox": [
+        301.3320007324219,
+        146.12417602539062,
+        304.6679992675781,
+        162.61216735839844
+      ],
+      "bbox_norm": [
+        0.4923725502163756,
+        0.1845002222542811,
+        0.4978235282149969,
+        0.20531839312929095
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "1.6.2 Denormalized Numbers \n",
+      "bbox": [
+        63.0,
+        249.85301208496094,
+        258.2860107421875,
+        269.1310119628906
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.3154709748547487,
+        0.42203596526501225,
+        0.33981188379152855
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "Denormalized numbers represent real values near the underﬂow threshold. The detection\nof the underﬂow for a given data format and operation occurs when the result’s exponent is\nless than or equal to the minimum exponent value. Denormalized numbers can be positive\nor negative. For denormalized numbers in single and double precision the implied integer\nbit is a zero. In extended precision, the mantissa’s MSB, the explicit integer bit, can only be\na zero (see Figure 1-14). \n",
+      "bbox": [
+        63.0,
+        278.6000061035156,
+        543.4798583984375,
+        365.1080017089844
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.35176768447413587,
+        0.8880389843111723,
+        0.46099495165275806
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": ".\n",
+      "bbox": [
+        301.3320007324219,
+        362.6239929199219,
+        304.6679992675781,
+        379.11199951171875
+      ],
+      "bbox_norm": [
+        0.4923725502163756,
+        0.45785857691909326,
+        0.4978235282149969,
+        0.478676767060251
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "Traditionally, the detection of underﬂow causes ﬂoating-point number systems to perform a\n\"ﬂush-to-zero\". This leaves a large gap in the number line between the smallest magnitude\nnormalized number and zero. The IEEE 754 standard implements gradual underﬂows: the\nresult mantissa is shifted right (denormalized) while the result exponent is incremented until\nreaching the minimum value. If all the mantissa bits of the result are shifted off to the right\nduring this denormalization, the result becomes zero. Usually a gradual underﬂow limits the\npotential underﬂow damage to no more than a round-off error. This underﬂow and\ndenormalization description ignores the effects of rounding and the user-selectable\nrounding modes. Thus, the large gap in the number line created by \"ﬂush-to-zero\" number\nsystems is ﬁlled with representable (denormalized) numbers in the IEEE \"gradual\nunderﬂow\" ﬂoating-point number system. \n",
+      "bbox": [
+        63.0,
+        463.3760070800781,
+        543.4318237304688,
+        619.9039916992188
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.5850707160101997,
+        0.8879604962916156,
+        0.7827070602262863
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "Since the extended-precision data format has an explicit integer bit, a number can be\nformatted with a nonzero exponent, less than the maximum value, and a zero integer bit.\nThe IEEE 754 standard does not deﬁne a zero integer bit. Such a number is an\nunnormalized number. Hardware does not directly support denormalized and unnormalized\nnumbers, but implicitly supports them by trapping them as unimplemented data types,\nallowing efﬁcient conversion in software. \n",
+      "bbox": [
+        63.0,
+        629.419921875,
+        543.371826171875,
+        715.927978515625
+      ],
+      "bbox_norm": [
+        0.10294117647058823,
+        0.7947221235795454,
+        0.8878624610651552,
+        0.9039494678227589
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "Figure 1-13. Normalized Number Format\n",
+      "bbox": [
+        189.0,
+        222.75198364257812,
+        417.0479736328125,
+        239.27598571777344
+      ],
+      "bbox_norm": [
+        0.3088235294117647,
+        0.2812525045992148,
+        0.6814509373085171,
+        0.3021161435830473
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "Figure 1-14. Denormalized Number Format\n",
+      "bbox": [
+        182.00399780273438,
+        435.4999694824219,
+        424.05596923828125,
+        452.0239562988281
+      ],
+      "bbox_norm": [
+        0.2973921532724418,
+        0.5498736988414418,
+        0.6929019105200674,
+        0.5707373185591265
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "MIN < EXPONENT < MAX\nMANTISSA = ANY BIT PATTERN\n",
+      "bbox": [
+        177.0,
+        180.90200805664062,
+        405.72064208984375,
+        192.14401245117188
+      ],
+      "bbox_norm": [
+        0.28921568627450983,
+        0.2284116263341422,
+        0.6629422256369996,
+        0.2426060763272372
+      ]
+    },
+    {
+      "block_id": 19,
+      "type": 0,
+      "text": "SIGN OF MANTISSA, 0 OR 1\n",
+      "bbox": [
+        179.0,
+        201.65200805664062,
+        265.7626037597656,
+        212.64401245117188
+      ],
+      "bbox_norm": [
+        0.29248366013071897,
+        0.25461112128363717,
+        0.43425262052249286,
+        0.2684899147110756
+      ]
+    },
+    {
+      "block_id": 20,
+      "type": 0,
+      "text": "EXPONENT = 0\nMANTISSA = ANY NONZERO BIT PATTERN\n",
+      "bbox": [
+        193.5,
+        395.2729797363281,
+        425.59429931640625,
+        406.5149841308594
+      ],
+      "bbox_norm": [
+        0.3161764705882353,
+        0.4990820451216264,
+        0.6954155217588337,
+        0.5132764951147214
+      ]
+    },
+    {
+      "block_id": 21,
+      "type": 0,
+      "text": "SIGN OF MANTISSA, 0 OR 1\n",
+      "bbox": [
+        174.5,
+        416.2729797363281,
+        261.2626037597656,
+        427.2649841308594
+      ],
+      "bbox_norm": [
+        0.28513071895424835,
+        0.525597196636778,
+        0.42689967934602224,
+        0.5394759900642164
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

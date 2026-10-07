@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0104",
+  "page": 104,
+  "source_index": 103,
+  "prepared_index": 103,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Do not read, write, or use any currently undefined address ranges. The current and future usage \nof such areas is reserved by Commodore and is definitely subject to change.\n",
+      "bbox": [
+        85.55000305175781,
+        58.52501678466797,
+        517.404296875,
+        81.72399139404297
+      ],
+      "bbox_norm": [
+        0.1423863665569247,
+        0.07582139246313718,
+        0.861149213850997,
+        0.10587654930438362
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "If you are using the system libraries, devices, and resources, you must follow the defined inter­\nface. Assembler programmers (and compiler writers) must enter functions through the library \nbase jump tables, with arguments passed as longs and library base address in A6. Results \nreturned in DO must be tested, and die contents of DO-D1/AO-A1 must be assumed gone after a \nsystem call.\n",
+      "bbox": [
+        85.55000305175781,
+        96.92296600341797,
+        517.3521118164062,
+        158.0179443359375
+      ],
+      "bbox_norm": [
+        0.1423863665569247,
+        0.12556740087875823,
+        0.8610623589051564,
+        0.2047182765926524
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "NOTE\n",
+      "bbox": [
+        284.489990234375,
+        173.4669189453125,
+        314.59344482421875,
+        183.9669189453125
+      ],
+      "bbox_norm": [
+        0.47349496886377174,
+        0.22473301270661675,
+        0.5235980824459653,
+        0.23833616336938604
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "The assembler TAS instruction should not be used in any Amiga program. The TAS \ninstruction assumes an indivisible read-modify-write but this can be defeated by sys­\ntem DMA. Instead use BSET and BCLR. These instructions perform a test and set \noperation which cannot be interrupted.\n",
+      "bbox": [
+        110.07998657226562,
+        192.4158935546875,
+        492.8659973144531,
+        241.3128662109375
+      ],
+      "bbox_norm": [
+        0.18321319415006035,
+        0.2492821323748375,
+        0.8203085453381294,
+        0.3126300262792451
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "TAS is only needed for a multiple CPU system. On a single CPU system, the BSET \nand BCLR instructions are identical to TAS, as the 68000 does not interrupt instruc­\ntions in the middle. BSET and BCLR first test, then set bits.\n",
+      "bbox": [
+        110.07998657226562,
+        249.912841796875,
+        492.3429870605469,
+        285.7098388671875
+      ],
+      "bbox_norm": [
+        0.18321319415006035,
+        0.32377162281178273,
+        0.8194380657698157,
+        0.37014799847103724
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Do not use assembler instructions which are privileged on any 68000 family processor, most not­\nably MOVE SR,<ea> which is privileged on the 68010/20/30. Use the Exec function GetCCO \ninstead of MOVE SR, or use the appropriate non-privileged instruction as shown below:\n",
+      "bbox": [
+        85.57998657226562,
+        301.00885009765625,
+        517.0018920898438,
+        337.55487060546875
+      ],
+      "bbox_norm": [
+        0.14243627005650855,
+        0.3899684513052721,
+        0.8604794657130704,
+        0.43731521540931306
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "CPU\nUser Mode\nSuper Mode\n68000\nMOVE SR,<ea>\nMOVE SR,<ea>\n68010/20/30\nMOVE CCR,<ea>\nMOVE SR,<ea>\n",
+      "bbox": [
+        167.92999267578125,
+        371.5508728027344,
+        432.4430236816406,
+        409.65087890625
+      ],
+      "bbox_norm": [
+        0.27949667609677736,
+        0.48135833348752644,
+        0.7197427082225425,
+        0.5307183452283409
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "All addresses must be 32 bits. Do not use the upper 8 bits for other data, and do not use signed \nvariables or signed math for addresses. Do not execute code on your stack or use self-modifying \ncode since such code can be defeated by the caching capabilities of some 68xxx processors. And \nnever use processor or clock speed dependent software loops for timing delays. See Appendix F \nfor information on using an 8520 timer for delays.\n",
+      "bbox": [
+        85.59597778320312,
+        430.85089111328125,
+        517.6395263671875,
+        492.4448547363281
+      ],
+      "bbox_norm": [
+        0.1424628852562866,
+        0.5581837700002261,
+        0.8615407214080375,
+        0.6379811001984583
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "NOTE\n",
+      "bbox": [
+        284.7859802246094,
+        507.74383544921875,
+        314.8894348144531,
+        518.2438354492188
+      ],
+      "bbox_norm": [
+        0.47398760402149576,
+        0.6578015134960062,
+        0.5240907176036893,
+        0.6714046641587755
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "When strobing any register which responds to either a read or a write, (for example \ncopjmp2) be sure to use a MOVE.W #$00, not CLR.W. The CLR instruction causes a \nread and a clear (two accesses) on a 68000, but only a single access on 68020 and \nabove. This will give different results on different processors.\n",
+      "bbox": [
+        110.33599090576172,
+        526.4938354492188,
+        493.1451110839844,
+        575.8388671875
+      ],
+      "bbox_norm": [
+        0.18363927861024773,
+        0.6820928539652371,
+        0.8207730923174616,
+        0.7460212255076155
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "If you are programming at the hardware level, you must follow hardware interfacing \nspecifications. All hardware is NOT the same. Do not assume that low level hacks for speed or \ncopy protection will work on all drives, or all keyboards, or all systems, or future systems. Test \nyour software on many different systems, with different processors, OS, hardware, and RAM \nconfigurations.\n",
+      "bbox": [
+        86.08698272705078,
+        591.0379028320312,
+        518.3824462890625,
+        652.9359130859375
+      ],
+      "bbox_norm": [
+        0.14328009633076963,
+        0.765712156155364,
+        0.8627772107656655,
+        0.845903390365795
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "10 Introduction\n",
+      "bbox": [
+        87.6969985961914,
+        715.3650512695312,
+        156.6505126953125,
+        725.8650512695312
+      ],
+      "bbox_norm": [
+        0.14595974918323334,
+        0.9267827210761064,
+        0.2607235128731728,
+        0.9403858717388757
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

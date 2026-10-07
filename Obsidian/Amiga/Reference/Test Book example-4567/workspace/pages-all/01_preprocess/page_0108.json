@@ -1,0 +1,435 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0108",
+  "page": 108,
+  "source_index": 107,
+  "prepared_index": 107,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "COPPERLIST:\n",
+      "bbox": [
+        85.6969985961914,
+        52.67986297607422,
+        141.7969970703125,
+        61.17986297607422
+      ],
+      "bbox_norm": [
+        0.14263102068580055,
+        0.06824877266262665,
+        0.23600185249917233,
+        0.07926084700867798
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Set up pointers to two bit planes\n",
+      "bbox": [
+        101.75,
+        72.13982391357422,
+        277.5726623535156,
+        80.63982391357422
+      ],
+      "bbox_norm": [
+        0.16934906230689378,
+        0.0934598946173331,
+        0.4619820156422202,
+        0.10447196896338444
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "DC. W\nBPL1PTH,$0002\n/ Move\n$0002 into register $0E0\n(BPL1PTH)\nDC. W\nBPL1PTL,$1000\n/ Move\n$1000 into register $0E2\n(BPL1PTL)\nDC. W\nBPL2PTH,$0002\n/ Move\n$0002 into register $0E4\n(BPL2PTH)\nDC. W\nBPL2PTL,$5000\n/ Move\n$5000 into register $0E6\n(BPL2PTL)\n",
+      "bbox": [
+        128.1490020751953,
+        91.78881072998047,
+        470.4195556640625,
+        130.28863525390625
+      ],
+      "bbox_norm": [
+        0.21328661756263892,
+        0.11891590681107995,
+        0.7829494903443205,
+        0.16879389857195068
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": ". color registers\n",
+      "bbox": [
+        121.79304504394531,
+        141.73760986328125,
+        207.60911560058594,
+        150.23760986328125
+      ],
+      "bbox_norm": [
+        0.2027079899134488,
+        0.1836264820524791,
+        0.3455371897132456,
+        0.19463855639853045
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "DC. W\nCOLOROO,$0FFF\n/ Move white into register $180\n(COLOROO)\nDC. W\nCOLOROl,$0F00\n/ Move red into register\n$182\n(COLOROl)\nDC. W\nCOLOR02,$00F0\n/ Move green into register $184\n(COLOR02)\nDC. W\nCOLOR03,$000F\n/ Move blue\ninto register\n$186\n(COLOR03)\n",
+      "bbox": [
+        128.2430419921875,
+        161.13665771484375,
+        473.2301330566406,
+        199.435302734375
+      ],
+      "bbox_norm": [
+        0.21344313423843297,
+        0.20875868878001014,
+        0.787627314874778,
+        0.258376044816258
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "cify 2 lo-res bitplanes\n",
+      "bbox": [
+        123.23504638671875,
+        210.58428955078125,
+        245.6181640625,
+        219.08428955078125
+      ],
+      "bbox_norm": [
+        0.20510800539496193,
+        0.2728199826639535,
+        0.4087980911009845,
+        0.28383205701000486
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "DC. W\nBPLCONO,$2200\n/2 lores planes,\ncoloron\n",
+      "bbox": [
+        128.28504943847656,
+        230.7332763671875,
+        385.7928771972656,
+        239.2332763671875
+      ],
+      "bbox_norm": [
+        0.21351304993021636,
+        0.29892376393687986,
+        0.6420998722165656,
+        0.3099358382829312
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "Wait for line 150\n",
+      "bbox": [
+        101.28504943847656,
+        250.43328857421875,
+        192.0395965576172,
+        258.93328857421875
+      ],
+      "bbox_norm": [
+        0.16857521521487354,
+        0.32444588147122655,
+        0.3196238388484192,
+        0.3354579558172779
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "DC.W \n$ 9601,$FF00\n;Wait for line 150, ignore horiz. position\n",
+      "bbox": [
+        128.28504943847656,
+        269.9822998046875,
+        482.49896240234375,
+        278.6322937011719
+      ],
+      "bbox_norm": [
+        0.21351304993021636,
+        0.34977237147848705,
+        0.8030540230652198,
+        0.36097876864095485
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Change color registers mid-display\n",
+      "bbox": [
+        101.50506591796875,
+        290.0312805175781,
+        283.4222106933594,
+        298.5312805175781
+      ],
+      "bbox_norm": [
+        0.1689414027774688,
+        0.3757465910282401,
+        0.4717177947701945,
+        0.38675866537429143
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "DC.W \nCOLOROO,$0000 \nDC.W \nCOLOROl,$0FF0 \nDC.W \nCOLOR02,$00FF \nDC.W \nCOLOR03,$0F0F\n",
+      "bbox": [
+        128.25506591796875,
+        309.0827941894531,
+        245.7350616455078,
+        347.951416015625
+      ],
+      "bbox_norm": [
+        0.21346314643063252,
+        0.400428553964652,
+        0.40899265125890405,
+        0.4507843367032824
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "/Move black into register $0180 (COLOROO) \n/Move yellow into register $0182 (COLOROl) \n/Move cyan into register $0184 (COLOR02) \n/Move magenta into register $0186 (COLOR03)\n",
+      "bbox": [
+        257.97509765625,
+        309.6134338378906,
+        486.29412841796875,
+        347.9778137207031
+      ],
+      "bbox_norm": [
+        0.42936452959818466,
+        0.401116017877541,
+        0.8093705616995694,
+        0.4508185359375042
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "/ End Copper list by waiting for the impossible\n",
+      "bbox": [
+        86.39509582519531,
+        359.1268005371094,
+        337.2303771972656,
+        367.6268005371094
+      ],
+      "bbox_norm": [
+        0.14379290875588263,
+        0.4652624737851997,
+        0.5612741833882754,
+        0.47627454813125103
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "DC.W \n$FFFF,$FFFE \n/Wait for line 255, H = 254 (never happens)\n",
+      "bbox": [
+        128.3950958251953,
+        379.1758117675781,
+        485.9479675292969,
+        387.6758117675781
+      ],
+      "bbox_norm": [
+        0.21369620720197147,
+        0.4912367328716397,
+        0.80879442389216,
+        0.502248807217691
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "For more information about color registers, see Chapter 3, “ Playfield Hardware.”\n",
+      "bbox": [
+        85.39509582519531,
+        403.510009765625,
+        443.3924865722656,
+        414.010009765625
+      ],
+      "bbox_norm": [
+        0.14212854450716625,
+        0.5227626149311722,
+        0.7379666028003457,
+        0.5363657655939414
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "LOOPS AND BRANCHES\n",
+      "bbox": [
+        85.64509582519531,
+        443.8080139160156,
+        211.43502807617188,
+        454.3080139160156
+      ],
+      "bbox_norm": [
+        0.14254463556934535,
+        0.5749702170137118,
+        0.3519049016563289,
+        0.588573367676481
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "Loops and branches in Copper lists are covered in the “ Advanced Topics” section below.\n",
+      "bbox": [
+        85.39509582519531,
+        476.7080078125,
+        479.1765441894531,
+        487.2080078125
+      ],
+      "bbox_norm": [
+        0.14212854450716625,
+        0.6175934145163848,
+        0.7975243089724003,
+        0.6311965651791541
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "Starting and Stopping the Copper\n",
+      "bbox": [
+        86.14509582519531,
+        519.7371826171875,
+        316.5300598144531,
+        534.7371826171875
+      ],
+      "bbox_norm": [
+        0.14337681769370356,
+        0.6733393523985564,
+        0.5268213151992397,
+        0.6927724247739411
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "STARTING THE COPPER AFTER RESET\n",
+      "bbox": [
+        85.89509582519531,
+        576.7510375976562,
+        294.4880065917969,
+        587.2510375976562
+      ],
+      "bbox_norm": [
+        0.14296072663152445,
+        0.7472029770808989,
+        0.4901353098471465,
+        0.7608061277436682
+      ]
+    },
+    {
+      "block_id": 19,
+      "type": 0,
+      "text": "At power-on or reset time, you must initialize one of the Copper location registers (COP1LC or \nCOP2LC) and write to its strobe address before Copper DMA is turned on. This ensures a known \nstart address and known state. Usually, COP1LC is used because this particular register is reused \nduring each vertical blanking time. The following sequence of instructions shows how to\n",
+      "bbox": [
+        86.14509582519531,
+        609.6470336914062,
+        518.6087036132812,
+        658.7900390625
+      ],
+      "bbox_norm": [
+        0.14337681769370356,
+        0.78982099527758,
+        0.8631537853671054,
+        0.8534876339522722
+      ]
+    },
+    {
+      "block_id": 20,
+      "type": 0,
+      "text": "Coprocessor Hardware 25\n",
+      "bbox": [
+        399.94000244140625,
+        713.218017578125,
+        515.702392578125,
+        723.718017578125
+      ],
+      "bbox_norm": [
+        0.6656458416950266,
+        0.9240011570016072,
+        0.8583166251845413,
+        0.9376043076643765
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

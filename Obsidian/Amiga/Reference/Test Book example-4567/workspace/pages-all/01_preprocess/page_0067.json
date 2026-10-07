@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0067",
+  "page": 67,
+  "source_index": 66,
+  "prepared_index": 66,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Raw\nUnshifted\nShifted\nKey\nKeycap\nDefault\nDefault\n",
+      "bbox": [
+        212.63999938964844,
+        68.63995361328125,
+        461.6280212402344,
+        93.85316467285156
+      ],
+      "bbox_norm": [
+        0.39273049355576567,
+        0.0952380347478328,
+        0.8525931204911129,
+        0.13022140149840672
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "~\nve\nNumber Legend\nValue\nValue\n2B\n(RESERVED)\n(RESERVED)\n2c\n(undefined)\n",
+      "bbox": [
+        11.279998779296875,
+        93.3599853515625,
+        483.5518798828125,
+        134.6505126953125
+      ],
+      "bbox_norm": [
+        0.02083333098484458,
+        0.12953711447801525,
+        0.8930848805083287,
+        0.1868277807869667
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "~\n2D\n4\n4\n4 (Numeric pad)\n2E\n5\n5\n5 (Numeric pad)\n_\n2F\n6\n6\n6 (Numeric pad)\n",
+      "bbox": [
+        11.280059814453125,
+        134.87994384765625,
+        498.66253662109375,
+        170.17149353027344
+      ],
+      "bbox_norm": [
+        0.020833443712304642,
+        0.18714611684211988,
+        0.9209931559777174,
+        0.23611319298431033
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "~\n30\n(RESERVED)\n(RESERVED)\n31\nZ\nz\nZ\n32\nX\nX\nX\n.\nro\n33\nCc\nCc\nC\nty\n34\nV\nVv\nV\n35\nB\nb\nB\n",
+      "bbox": [
+        9.840087890625,
+        181.91998291015625,
+        540.4608764648438,
+        254.89102172851562
+      ],
+      "bbox_norm": [
+        0.018173921110843445,
+        0.2524142389625717,
+        0.9981916260857204,
+        0.3536616606861154
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "_\n36\nN\nn\nN\n37\nM\nm\nM\nus\n38\n,<\n. (comma)\n<\na\n39\nLO\n. (period)\n>\n-\n3A\n/?\n/\n?\n3B\n(undefined)\n3C\n.\n.\n. (Numeric pad)\n_\n3D\n7\n7\n7 (Numeric pad)\n3E\n8\n8\n8 (Numeric pad)\n3F\n9\n9\n9 (Numeric pad)\n",
+      "bbox": [
+        10.800140380859375,
+        256.0799560546875,
+        499.4880676269531,
+        375.85125732421875
+      ],
+      "bbox_norm": [
+        0.019947067693854313,
+        0.3553113087803842,
+        0.9225178512387564,
+        0.5214941622299478
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "~\n40\n(Space bar)\n20\n20\nAl\nBACK SPACE\n08\n08\n42.\nTAB\n09\n09\n_\n43\nENTER\nOD\nOD (Numeric pad)\n44\nRETURN\nOD\nOD\n45\nESC\n1B\n1B\n|\n",
+      "bbox": [
+        10.800079345703125,
+        388.5599670410156,
+        540.947998046875,
+        459.3731994628906
+      ],
+      "bbox_norm": [
+        0.019946954966394252,
+        0.5391275153121421,
+        0.9990913039444578,
+        0.6373809775449015
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "_\n46\nDEL\n7F\n7F\n47\n(undefined)\n48\n(undefined)\n49\n(undefined)\n-\n4A\n-\n-\n- (Numeric Pad)\n4B\n(undefined)\n4C\nUp Arrow\n<CSI>A\n<CSI>T\n=\n4D\nDown Arrow\n<CSI>B\n<CSI>S\n",
+      "bbox": [
+        11.03997802734375,
+        460.3199768066406,
+        498.9023132324219,
+        555.3715209960938
+      ],
+      "bbox_norm": [
+        0.020390030248159358,
+        0.6386946324764089,
+        0.9214360058045624,
+        0.7705787872844435
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": ".\n46\nForward Arrow\n§=<CSI>C\n<CSI> A’\n4F\nBackward Arrow\n<CSI>D\n<CSI> @\n",
+      "bbox": [
+        193.91993713378906,
+        556.0800170898438,
+        478.029541015625,
+        579.1310424804688
+      ],
+      "bbox_norm": [
+        0.3581559106445497,
+        0.771561826637521,
+        0.8828855253770367,
+        0.8035451576504479
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "‘In shifted Forward Arrow and Backward Arrow, note blank space after <CSI>.\n",
+      "bbox": [
+        216.71994018554688,
+        615.5999755859375,
+        474.48468017578125,
+        623.7681274414062
+      ],
+      "bbox_norm": [
+        0.40026584516905905,
+        0.8541458549918718,
+        0.8763384272242227,
+        0.8654791774853501
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "‘\n",
+      "bbox": [
+        539.7599487304688,
+        613.43994140625,
+        540.717529296875,
+        614.1607055664062
+      ],
+      "bbox_norm": [
+        0.9968970639343935,
+        0.8511488044486765,
+        0.998665645055272,
+        0.8521488657616065
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "~\n<CSI> stands for Command Sequence Initiator.\n",
+      "bbox": [
+        11.0399169921875,
+        625.2000122070312,
+        374.1598205566406,
+        637.4428100585938
+      ],
+      "bbox_norm": [
+        0.020389917520699297,
+        0.8674659196651568,
+        0.6910457647560527,
+        0.884452819361607
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "11\n",
+      "bbox": [
+        282.9599304199219,
+        696.47998046875,
+        291.0959167480469,
+        703.6871948242188
+      ],
+      "bbox_norm": [
+        0.5226062521129353,
+        0.9663669785496206,
+        0.5376328225389088,
+        0.9763669988743489
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

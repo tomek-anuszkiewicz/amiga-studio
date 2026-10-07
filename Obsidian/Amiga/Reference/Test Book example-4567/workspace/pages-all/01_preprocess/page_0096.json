@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0096",
+  "page": 96,
+  "source_index": 95,
+  "prepared_index": 95,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Illocation?Biot\ntal\nHardware stop installed here. Data fetch cannot begin any\n.\n10n/\norizon\nsooner than cycle 18. This allows the user to wipe out most of\n~\nLine (Cont'd)\nthe sprites if desired (by defining an extra-wide display) but\nleaves the audio and disk DMA untouched.\n",
+      "bbox": [
+        11.519989013671875,
+        73.67999267578125,
+        495.0623779296875,
+        127.44882202148438
+      ],
+      "bbox_norm": [
+        0.021276575357799775,
+        0.10223109622437687,
+        0.9143439267460892,
+        0.17683542457849055
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "~\n",
+      "bbox": [
+        11.519989013671875,
+        147.3599853515625,
+        20.15985679626465,
+        149.76234436035156
+      ],
+      "bbox_norm": [
+        0.021276575357799775,
+        0.20446219244875374,
+        0.03723377789849636,
+        0.2077954690422209
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "'g\n20\n",
+      "bbox": [
+        270.9599914550781,
+        153.1199951171875,
+        398.5895080566406,
+        158.64547729492188
+      ],
+      "bbox_norm": [
+        0.5004432443729552,
+        0.2124542143154513,
+        0.7361656070097542,
+        0.22012082881531564
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "~\nNX\nNX\nN\nN\nN\nN\nN\nN\nN]\nN\nSNNNSSSNSNASA\n.\n",
+      "bbox": [
+        11.040008544921875,
+        185.75994873046875,
+        540.4296264648438,
+        222.0196533203125
+      ],
+      "bbox_norm": [
+        0.020390086611889388,
+        0.2577421970827918,
+        0.9981339096261698,
+        0.3080525895566804
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Sprite DMAT\ntThese operations only take slots if the\n~\n(2 words/channel)\nassociated operation is being performed\n",
+      "bbox": [
+        11.040008544921875,
+        255.8399658203125,
+        465.4200744628906,
+        280.33197021484375
+      ],
+      "bbox_norm": [
+        0.020390086611889388,
+        0.35497832198366636,
+        0.8595967648571692,
+        0.38896101344514644
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "28\n30\n3a\n-2\n-t\n",
+      "bbox": [
+        234.72003173828125,
+        292.5599670410156,
+        469.9079895019531,
+        303.125244140625
+      ],
+      "bbox_norm": [
+        0.4335106949614094,
+        0.4059273766974959,
+        0.8678856149953674,
+        0.4205867139284346
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "N\n&eN\nNX)\nNN\nNJ\ntconatinves\n_\n.\nLN\nonnext\n",
+      "bbox": [
+        11.760040283203125,
+        335.03997802734375,
+        505.5599365234375,
+        353.0579833984375
+      ],
+      "bbox_norm": [
+        0.02171993245821503,
+        0.46486845327802295,
+        0.9337321480566969,
+        0.4898684617466597
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "-2\n",
+      "bbox": [
+        436.3200378417969,
+        378.2399597167969,
+        444.6720886230469,
+        383.0447692871094
+      ],
+      "bbox_norm": [
+        0.8058511300871507,
+        0.5248084902487036,
+        0.8212767557217359,
+        0.531475170465189
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Some sprites are unusable if the display starts early due to an\nextra word(s) associated with a wide display and/or horizontal\n~\nscrolling. In this case, the bit-plane DMA steals the cycles nor-\n|\n",
+      "bbox": [
+        11.0400390625,
+        406.0799560546875,
+        540.9227905273438,
+        440.8922119140625
+      ],
+      "bbox_norm": [
+        0.02039014297561942,
+        0.5634365253657689,
+        0.9990447475034532,
+        0.6117385806361573
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": ",\n",
+      "bbox": [
+        81.83999633789062,
+        443.7599792480469,
+        82.31997680664062,
+        444.2404479980469
+      ],
+      "bbox_norm": [
+        0.15115247482429453,
+        0.6157176119528371,
+        0.1520389635702049,
+        0.6163842630372122
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": ".\nmally allocated to the sprites, as illustrated above.\n",
+      "bbox": [
+        196.8000030517578,
+        442.3199768066406,
+        439.535888671875,
+        456.0007019042969
+      ],
+      "bbox_norm": [
+        0.3634751813023922,
+        0.6137196064861627,
+        0.8117905708665123,
+        0.6327016323127949
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "211\n",
+      "bbox": [
+        272.8800048828125,
+        699.8399658203125,
+        287.4599609375,
+        707.0471801757812
+      ],
+      "bbox_norm": [
+        0.5039893684477869,
+        0.9710289630764051,
+        0.5309174786519555,
+        0.9810289834011332
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0121",
+  "page": 121,
+  "source_index": 120,
+  "prepared_index": 120,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "For a typical output at volume 64, with maximum data values of -128 to 127, the voltage output \nis between +.4 volts and -.4 volts. Some volume levels and the corresponding decibel values are \nshown in Table 5-2.\n",
+      "bbox": [
+        85.80000305175781,
+        57.76500701904297,
+        518.0829467773438,
+        93.81298065185547
+      ],
+      "bbox_norm": [
+        0.1428024576191038,
+        0.07483677081104452,
+        0.8622787344858528,
+        0.12153829618387153
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Table 5-2: Volume Values\n",
+      "bbox": [
+        242.0500030517578,
+        109.26195526123047,
+        358.5579528808594,
+        119.76195526123047
+      ],
+      "bbox_norm": [
+        0.4028593714810414,
+        0.14155303229783586,
+        0.5967710378678421,
+        0.15515618296060518
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Volume\nDecibel Value\n",
+      "bbox": [
+        173.1510009765625,
+        140.81097412109375,
+        289.86895751953125,
+        151.31097412109375
+      ],
+      "bbox_norm": [
+        0.2881863356548492,
+        0.1824259900895759,
+        0.48244752970820093,
+        0.1960291407523452
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "64\n0\n(maximum volume)\n48\n-2.5\n32\n-6.0\n16\n-12.0\n(12 db down from the \n",
+      "bbox": [
+        185.1409912109375,
+        166.510986328125,
+        404.7244873046875,
+        215.60894775390625
+      ],
+      "bbox_norm": [
+        0.30814204674340173,
+        0.2157213365740765,
+        0.6736089672499966,
+        0.27932961909881343
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "volume at maximum level)\n",
+      "bbox": [
+        309.1969909667969,
+        218.20892333984375,
+        427.4060363769531,
+        228.70892333984375
+      ],
+      "bbox_norm": [
+        0.5146164175758247,
+        0.28269798668119717,
+        0.7113593266313822,
+        0.2963011373439665
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "For any volume setting from 64 to 0, you write the value into bits 5-0 of AUDOVOL. For exam­\nple:\n",
+      "bbox": [
+        86.00698852539062,
+        250.25689697265625,
+        515.3098754882812,
+        273.4559020996094
+      ],
+      "bbox_norm": [
+        0.14314695684142187,
+        0.32421735942058827,
+        0.8576633337731953,
+        0.3542725557985217
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "S E T A O D O V O L U M E :\n",
+      "bbox": [
+        86.45697784423828,
+        288.873291015625,
+        160.94044494628906,
+        295.373291015625
+      ],
+      "bbox_norm": [
+        0.14389590297601615,
+        0.3742463714414807,
+        0.26786352274111364,
+        0.3826673694708141
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "L E A \nC U S T O M , a O\n",
+      "bbox": [
+        128.70697021484375,
+        298.4732971191406,
+        217.39944458007812,
+        304.9732971191406
+      ],
+      "bbox_norm": [
+        0.2142152797861926,
+        0.3866835456690643,
+        0.36183186324988453,
+        0.3951045436983977
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "M O V E .W \n# 4 8 , A U D O V O L ( a O )\n",
+      "bbox": [
+        128.45697021484375,
+        308.5712890625,
+        248.19334411621094,
+        315.0712890625
+      ],
+      "bbox_norm": [
+        0.2137991887240135,
+        0.39976587955448795,
+        0.41308412871638855,
+        0.40818687758382133
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "The decibels are shown as negative values from a maximum of 0 because this is the way a record­\ning device, such as a tape recorder, shows the recording level. Usually, the recorder has a dial \nshowing 0 as the optimum recording level. Anything less than the optimum value is shown as a \nminus quantity.\n",
+      "bbox": [
+        85.76097106933594,
+        331.2519226074219,
+        517.3405151367188,
+        380.49993896484375
+      ],
+      "bbox_norm": [
+        0.1427374941830043,
+        0.42914950576769095,
+        0.8610430578060806,
+        0.49295219018221825
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "SELECTING THE DATA OUTPUT RATE\n",
+      "bbox": [
+        86.26097106933594,
+        409.6959228515625,
+        290.0764465332031,
+        420.1959228515625
+      ],
+      "bbox_norm": [
+        0.14356967630736248,
+        0.5307767013782964,
+        0.4827928670045578,
+        0.5443798520410656
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "The pitch of the sound produced by the waveform depends upon its frequency. To tell the system \nwhat frequency to use, you need to specify the sampling period. The sampling period specifies \nthe number of system clock ticks, or timing intervals, that should elapse between each sample \n(byte of audio data) fed to the digital-to-analog converter in the audio channel. There is a period \nregister for each audio channel. The value of the period register is used for count-down purposes; \neach time the register counts down to 0, another sample is retrieved from the waveform data set \nfor output. In units, the period value represents clock ticks per sample. The minimum period \nvalue you should use is 124 ticks per sample NTSC (123 PAL) and the maximum is 65535. \nThese limits apply to both PAL and NTSC machines. For high-quality sound, there are other \nconstraints on the sampling period (see the section called “ Producing High-quality Sound” ).\n",
+      "bbox": [
+        85.51097106933594,
+        442.6959228515625,
+        517.248046875,
+        569.3289794921875
+      ],
+      "bbox_norm": [
+        0.1423214031208252,
+        0.5735294606041427,
+        0.860889156937135,
+        0.7375874175917065
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "NOTE\n",
+      "bbox": [
+        284.45098876953125,
+        584.2779541015625,
+        314.554443359375,
+        594.7779541015625
+      ],
+      "bbox_norm": [
+        0.4734300562200382,
+        0.7569543846264913,
+        0.5235331698022317,
+        0.7705575352892606
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "A low period value corresponds to a higher frequency sound and a high period value \ncorresponds to a lower frequency sound.\n",
+      "bbox": [
+        110.45098876953125,
+        603.126953125,
+        492.2939147949219,
+        626.573974609375
+      ],
+      "bbox_norm": [
+        0.18383067694338448,
+        0.7813739821082258,
+        0.8193563916453059,
+        0.8117504931410965
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "Audio Hardware 137\n",
+      "bbox": [
+        420.32000732421875,
+        715.3650512695312,
+        514.5260009765625,
+        725.8650512695312
+      ],
+      "bbox_norm": [
+        0.6995655932106454,
+        0.9267827210761064,
+        0.8563586810604105,
+        0.9403858717388757
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,98 @@
+{
+  "page": 49,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        287,
+        131
+      ],
+      "segment_id": "page_0049_seg_001"
+    },
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Instruction Set Summary",
+      "bbox": [
+        1794,
+        94,
+        2289,
+        151
+      ],
+      "segment_id": "page_0049_seg_002"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        332,
+        319,
+        2280,
+        2468
+      ],
+      "segment_id": "page_0049_seg_003"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 3-3. Instruction Description Format",
+      "bbox": [
+        788,
+        2517,
+        1787,
+        2587
+      ],
+      "segment_id": "page_0049_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        287,
+        3109,
+        526,
+        3168
+      ],
+      "segment_id": "page_0049_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        716,
+        3109,
+        1857,
+        3168
+      ],
+      "segment_id": "page_0049_seg_006"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "3-33",
+      "bbox": [
+        2203,
+        3109,
+        2288,
+        3168
+      ],
+      "segment_id": "page_0049_seg_007"
+    }
+  ]
+}

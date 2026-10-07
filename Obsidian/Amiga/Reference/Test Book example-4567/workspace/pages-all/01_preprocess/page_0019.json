@@ -1,0 +1,435 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0019",
+  "page": 19,
+  "source_index": 18,
+  "prepared_index": 18,
+  "geometry": {
+    "width": 504.0,
+    "height": 648.9600219726562,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      509.0400085449219,
+      652.9199829101562
+    ],
+    "cropbox": [
+      2.5199999809265137,
+      1.91998291015625,
+      506.5199890136719,
+      650.8800048828125
+    ],
+    "cropbox_position": [
+      2.5199999809265137,
+      1.91998291015625
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      -2.5199999809265137,
+      651.0
+    ]
+  },
+  "width": 504.0,
+  "height": 648.9600219726562,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2100,
+    "pixel_height": 2704,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Table 2-1. Data Addressing Modes \n",
+      "bbox": [
+        159.89999389648438,
+        55.067527770996094,
+        319.2400207519531,
+        68.12052917480469
+      ],
+      "bbox_norm": [
+        0.3172618926517547,
+        0.08485503868729274,
+        0.6334127395872086,
+        0.1049687605836449
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Mode \nGeneration \nSyntax \n",
+      "bbox": [
+        163.4099884033203,
+        73.71747589111328,
+        387.7843322753906,
+        83.7228775024414
+      ],
+      "bbox_norm": [
+        0.32422616746690536,
+        0.11359324672578883,
+        0.7694133576892671,
+        0.1290108399095947
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Register Direct Addressing \n",
+      "bbox": [
+        103.8800048828125,
+        86.68750762939453,
+        198.80384826660156,
+        96.44290924072266
+      ],
+      "bbox_norm": [
+        0.20611112079923116,
+        0.13357911842687759,
+        0.39445207989405073,
+        0.14861147986830267
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Data Register Direct \nEA=Dn \nDn \nAddress Register Direct \nEA=An \nAn \n",
+      "bbox": [
+        107.89000701904297,
+        95.56751251220703,
+        354.00799560546875,
+        114.20291900634766
+      ],
+      "bbox_norm": [
+        0.2140674742441329,
+        0.1472625574403006,
+        0.7023968166775174,
+        0.17597835789514868
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Absolute Data Addressing \n",
+      "bbox": [
+        103.81000518798828,
+        117.40747833251953,
+        195.92384338378906,
+        127.16287994384766
+      ],
+      "bbox_norm": [
+        0.20597223251584976,
+        0.18091634978628385,
+        0.388737784491645,
+        0.19594871122770893
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Absolute Short \nEA = (Next Word) \n(xxx).W \nAbsolute Long \nEA = (Next Two Words) \n(xxx).L \n",
+      "bbox": [
+        107.89000701904297,
+        126.03748321533203,
+        369.8641357421875,
+        144.92288208007812
+      ],
+      "bbox_norm": [
+        0.2140674742441329,
+        0.19421455705732607,
+        0.7338574121868799,
+        0.22331557749821515
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Program Counter Relative Addressing \n",
+      "bbox": [
+        104.12000274658203,
+        147.88748168945312,
+        236.24383544921875,
+        157.64288330078125
+      ],
+      "bbox_norm": [
+        0.20658730703686912,
+        0.22788380899013888,
+        0.4687377687484499,
+        0.24291617043156394
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "Relative with Offset \nEA = (PC)+d15 \n(d15,PC) \nRelative with Index and Offset \nEA= (PC)+da \n(d5,PC,Xn) \n",
+      "bbox": [
+        108.20000457763672,
+        156.51748657226562,
+        380.6256103515625,
+        175.39288330078125
+      ],
+      "bbox_norm": [
+        0.21468254876515222,
+        0.2411820162611811,
+        0.7552095443483383,
+        0.2702676241405998
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Register Indirect Addressing \n",
+      "bbox": [
+        104.12000274658203,
+        178.36749267578125,
+        204.3088836669922,
+        188.12289428710938
+      ],
+      "bbox_norm": [
+        0.20658730703686912,
+        0.2748512799503337,
+        0.40537476918054005,
+        0.28988364139175876
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Register Indirect \nEA= (An) \n(An) \nPostincrement Register Indirect \nEA = (An), An -\nAn+N \n(An)+ \nPredecrement Register Indirect \nAn • An-N, EA=(An) \n-(An) \nRegister Indirect with Offset \nEA= (An)+d15 \n(d15.An) \nIndexed Register Indirect with Offset \nEA= (An)+(Xn)+da \n(d5,An,Xn) \n",
+      "bbox": [
+        108.17000579833984,
+        187.00750732421875,
+        379.1558837890625,
+        231.80288696289062
+      ],
+      "bbox_norm": [
+        0.21462302737765843,
+        0.2881649115391861,
+        0.7522934202163939,
+        0.3571913201344436
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Immediate Data Addressing \n",
+      "bbox": [
+        104.09000396728516,
+        235.00750732421875,
+        200.94888305664062,
+        244.76290893554688
+      ],
+      "bbox_norm": [
+        0.20652778564937532,
+        0.3621294060762971,
+        0.3987081013028584,
+        0.37716176751772224
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Immediate \nDATA= Next Word(s) \n#<data> \nQuick Immediate \nInherent Data \n",
+      "bbox": [
+        108.27000427246094,
+        243.63748168945312,
+        371.97625732421875,
+        262.5129089355469
+      ],
+      "bbox_norm": [
+        0.2148214370485336,
+        0.3754275663219802,
+        0.7380481296115451,
+        0.4045132212267581
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "Implied Addressing 1 \n",
+      "bbox": [
+        104.33000183105469,
+        265.24749755859375,
+        177.17140197753906,
+        275.0028991699219
+      ],
+      "bbox_norm": [
+        0.20700397188701328,
+        0.4087270225865622,
+        0.35153055947924416,
+        0.42375938402798724
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "Implied Register \nEA= SR, USP, SSP, PC, \nSR,USP,SSP,PC, \nVBR,SFC,DFC \nVBR, SFC,DFC \n",
+      "bbox": [
+        108.41000366210938,
+        274.12750244140625,
+        402.8757019042969,
+        292.7629089355469
+      ],
+      "bbox_norm": [
+        0.21509921361529638,
+        0.4224104615999852,
+        0.7993565513974145,
+        0.45112626205483325
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "NOTES: \n1. The VBR. SFC, and DFC apply to the MC68010 only \nEA \nEffective Address \nDn \nData Register \nAn \nAddress Register \n( ) \nContents of \nPC \nProgram Counter \nda \n8-Bit Offset (Displacement) \nd15 \n16-Bit Offset (Displacement) \nN \n1 for by1e, 2 for word, and 4 for long word. If An is the stack pointer and \nthe operand size is byte. N = 2 to keep the stack pointer on a word boundary. \n• \nReplaces \nXn \nAddress or Data Register used as Index Register \nSR \nStatus Register \nUSP \nUser Stack Pointer \nSSP \nSupervisor Stack Pointer \nCP \nProgram Counter \nVBR \nVector Base Register \n",
+      "bbox": [
+        94.76000213623047,
+        295.72747802734375,
+        408.4977111816406,
+        445.6329040527344
+      ],
+      "bbox_norm": [
+        0.18801587725442553,
+        0.4556944465213978,
+        0.8105113317096044,
+        0.6866877603617793
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "2.3 \nDATA ORGANIZATION IN REGISTERS \n",
+      "bbox": [
+        46.59000015258789,
+        461.3375244140625,
+        286.032958984375,
+        476.58892822265625
+      ],
+      "bbox_norm": [
+        0.09244047649322994,
+        0.7108874334226721,
+        0.5675257122705853,
+        0.7343887328744223
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "The eight data registers support data operands of 1 , 8, 16, or 32 bits. The seven address \n",
+      "bbox": [
+        46.380001068115234,
+        480.1075134277344,
+        431.81170654296875,
+        493.1605224609375
+      ],
+      "bbox_norm": [
+        0.09202381164308578,
+        0.7398106157114923,
+        0.8567692590138268,
+        0.7599243493641842
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "registers and the active stack pointer support address operands of 32 bits. \n",
+      "bbox": [
+        46.97999954223633,
+        491.13751220703125,
+        362.9455261230469,
+        504.19049072265625
+      ],
+      "bbox_norm": [
+        0.09321428480602446,
+        0.7568070383043182,
+        0.7201300121489025,
+        0.776920724931651
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "2.3.1 Data Registers \n",
+      "bbox": [
+        46.59000015258789,
+        515.1074829101562,
+        162.6267547607422,
+        530.35888671875
+      ],
+      "bbox_norm": [
+        0.09244047649322994,
+        0.7937430126194432,
+        0.32267213246179005,
+        0.8172443120711934
+      ]
+    },
+    {
+      "block_id": 19,
+      "type": 0,
+      "text": "Each data register is 32 bits wide. Byte operands occupy the low-order 8 bits, word \noperands the low-order 16 bits, and long-word operands, the entire 32 bits. The least \nsignificant bit is addressed as bit zero; the most significant bit is addressed as bit 31. \n",
+      "bbox": [
+        46.82999801635742,
+        533.62744140625,
+        432.8162841796875,
+        568.760498046875
+      ],
+      "bbox_norm": [
+        0.0929166627308679,
+        0.8222809161405235,
+        0.8587624686104911,
+        0.8764183906398468
+      ]
+    },
+    {
+      "block_id": 20,
+      "type": 0,
+      "text": "MOTOROLA \nM68000 8-/16-/32-BIT MICROPROCESSOR USER'S MANUAL \n2-5 \n",
+      "bbox": [
+        46.98999786376953,
+        601.9254150390625,
+        433.80828857421875,
+        613.1221923828125
+      ],
+      "bbox_norm": [
+        0.09323412274557447,
+        0.927523105675105,
+        0.8607307312980531,
+        0.9447765218558352
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

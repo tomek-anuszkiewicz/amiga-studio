@@ -1,0 +1,215 @@
+{
+  "page": 55,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        288,
+        132
+      ],
+      "segment_id": "page_0055_seg_001"
+    },
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Integer Instructions",
+      "bbox": [
+        262,
+        93,
+        653,
+        152
+      ],
+      "segment_id": "page_0055_seg_002"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        262,
+        180,
+        2291,
+        358
+      ],
+      "segment_id": "page_0055_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "b. If the location specified is a destination operand, only memory alterable addressing modes can be used as listed in the following tables:",
+      "bbox": [
+        436,
+        396,
+        2080,
+        524
+      ],
+      "segment_id": "page_0055_seg_004"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        503,
+        632,
+        1361,
+        1198
+      ],
+      "segment_id": "page_0055_seg_005"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        1406,
+        632,
+        2264,
+        1198
+      ],
+      "segment_id": "page_0055_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**MC68020, MC68030, and MC68040 only**",
+      "bbox": [
+        512,
+        1262,
+        1281,
+        1321
+      ],
+      "segment_id": "page_0055_seg_007"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        503,
+        1332,
+        1361,
+        1548
+      ],
+      "segment_id": "page_0055_seg_008"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        1406,
+        1332,
+        2264,
+        1548
+      ],
+      "segment_id": "page_0055_seg_009"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "*Can be used with CPU32",
+      "bbox": [
+        514,
+        1563,
+        950,
+        1616
+      ],
+      "segment_id": "page_0055_seg_010"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        1194,
+        1654,
+        1345,
+        1724
+      ],
+      "segment_id": "page_0055_seg_011"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The Dn mode is used when the destination is a data register; the destination < ea > mode is invalid for a data register.",
+      "bbox": [
+        562,
+        1737,
+        1964,
+        1865
+      ],
+      "segment_id": "page_0055_seg_012"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "ADDA is used when the destination is an address register. ADDI and ADDQ are used when the source is immediate data. Most assemblers automatically make this distinction.",
+      "bbox": [
+        562,
+        1904,
+        1965,
+        2091
+      ],
+      "segment_id": "page_0055_seg_013"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "4-6",
+      "bbox": [
+        262,
+        3109,
+        323,
+        3167
+      ],
+      "segment_id": "page_0055_seg_014"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        693,
+        3109,
+        1833,
+        3167
+      ],
+      "segment_id": "page_0055_seg_015"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        2024,
+        3109,
+        2263,
+        3167
+      ],
+      "segment_id": "page_0055_seg_016"
+    }
+  ]
+}

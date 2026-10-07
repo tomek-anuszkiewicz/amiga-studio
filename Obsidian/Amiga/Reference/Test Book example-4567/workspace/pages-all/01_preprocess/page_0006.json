@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0006",
+  "page": 6,
+  "source_index": 5,
+  "prepared_index": 5,
+  "geometry": {
+    "width": 504.0,
+    "height": 648.9599609375,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      506.5199890136719,
+      650.8800048828125
+    ],
+    "cropbox": [
+      1.2000000476837158,
+      0.96002197265625,
+      505.20001220703125,
+      649.9199829101562
+    ],
+    "cropbox_position": [
+      1.2000000476837158,
+      0.96002197265625
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      -1.2000000476837158,
+      649.9199829101562
+    ]
+  },
+  "width": 504.0,
+  "height": 648.9599609375,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2100,
+    "pixel_height": 2704,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "-\nSales Offices -\n",
+      "bbox": [
+        197.15000915527344,
+        52.605003356933594,
+        312.1453857421875,
+        71.67660522460938
+      ],
+      "bbox_norm": [
+        0.39117065308586,
+        0.08106047602835065,
+        0.6193360828218006,
+        0.11044842446221795
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "UNITED STATES \nRNLAND, Helsinki \n358-0-35161191 \nCar Phone \n358(49)211501 \nALABAMA, Huntsville \n(205) 464-6800 \nFRANCE, ParisNanves \n33( 1 )40 955 900 \nARIZONA, Tempe \n(602) 897-5056 \nGERMANY, Langenhagen/ Hanover \n49(511)789911 \nCALIFORNIA, Agoura Hills \n(818) 706-1929 \nGERMANY, Munich \n49 89 921 03-0 \nCALIFORNIA, Los Angeles \n(310) 417-8848 \nGERMANY, Nuremberg \n49 911 64-3044 \nCALIFORNIA, Irvine \n(714) 753-7360 \nGERMANY, Sindelfingen \n49703169910 \nCALIFORNIA, Roseville \n(916) 922-7152 \nGERMANY, Wiesbaden \n49 611 761921 \nCALIFORNIA, San Diego \n(619) 541-2163 \nHONG KONG, Kwai Fong \n852-4808333 \nCALIFORNIA, Sunnyvale \n(408) 749-0510 \nTai Po \n852-6668333 \nCOLORADO, Colorado Springs \n(719) 599-7497 \nINDIA, Bangalore \n(91-812)627094 \nCOLORADO, Denver \n(303) 337-3434 \nISRAEL, Tel Aviv \n972(3)753-8222 \nCONNECTICUT, Wallingford \n(203) 949-4100 \nITALY, Milan \n39(2)82201 \nFLORIDA, Maitland \n(407) 628-2636 \nJAPAN, Aizu \n81 (241 )272231 \nFLORIDA, Pompano Beach/ \nJAPAN, Atsugi \n81(0462)23-0761 \nFort Lauderdale \n(305) 486-9776 \nJAPAN, Kumagaya \n81 (0485)26-2600 \nFLORIDA, Clearwater \n(813) 538-7750 \nJAPAN, Kyushu \n81(092)771-4212 \nGEORGIA, Atlanta \n(404) 729-7100 \nJAPAN. Milo \n81 (0292)26-2340 \nIDAHO, Boise \n(208) 323-9413 \nJAPAN, Nagoya \n81(052)232-1621 \nILLINOIS, Chicago/Hoffman Estates \n(708) 490-9500 \nJAPAN, Osaka \n81(06)305-1801 \nINDIANA, Fort Wayne \n(219) 436-5818 \nJAPAN, Sendai \n81 {22)268-4333 \nINDIANA, Indianapolis \n(317) 571-0400 \nJAPAN, Tachikawa \n81 (0425)23-6700 \nINDIANA, Kokomo \n(317) 457-6634 \nJAPAN, Tokyo \n81 (03)3440-3311 \nIOWA, Cedar Rapids \n(319) 373-1328 \nJAPAN, Yokohama \n81 (045)472-2751 \nKANSAS, Kansas City/Mission \n(913) 451-8555 \nKOREA, Pusan \n82(51 )4635-035 \nMARYLAND, Columbia \n(410) 381-1570 \nKOREA, Seoul \n82(2)554-5188 \nMASSACHUSETTS, Marborough \n(508) 481-8100 \nMALAYSIA, Penang \n60(4)374514 \nMASSACHUSETTS, Woburn \n(617) 932-9700 \nMEXICO, Mexico City \n52(5)282-2864 \nMICHIGAN, Detroit \n(313) 347-6800 \nMEXICO, Guadalajara \n52(36)21-8977 \nMINNESOTA, Minnetonka \n(612) 932-1500 \nMarketing \n52(36)21-9023 \nMISSOURI, St. Louis \n(314) 275-7380 \nCustomer Service \n52(36)669-9160 \nNEW JERSEY, Fairfield \n(201) 808-2400 \nNETHERLANDS, Best \n(31 )49988 612 11 \nNEW YORK, Fairport \n(716) 425-4000 \nPUERTO RICO, San Juan \n(809)793-2170 \nNEW YORK, Hauppauge \n(516) 361-7000 \nSINGAPORE \n(65)2945438 \nNEW YORK, Poughkeepsie/Fishkill \n(914) 473-8102 \nSPAIN, Madrid \n34( 1 )457 -8204 \nNORTH CAROLINA, Raleigh \n(919) 870-4355 \nor \n34( 1 )457 -8254 \nOHIO, Cleveland \n{216) 349-3100 \nSWEDEN, Solna \n46(8)734-8800 \nOHIO, Columbus Worthington \n(614) 431-8492 \nSWITZERLAND, Geneva \n41(22)7991111 \nOHIO, Dayton \n(513) 495-6800 \nSWITZERLAND, Zurich \n41(1)730 4074 \nOKLAHOMA, Tulsa \n{800) 544-9496 \nTAIWAN, Taipei \n886(2)717-7089 \nOREGON, Portland \n(503) 641-3681 \nTHAILAND, Bangkok \n(66-2)254-4910 \nPENNSYLVANIA, Colmar \n(215) 997-1020 \nUNITED KINGDOM, Aylesbury \n44(296)395-252 \nPhiladelphia/Horsham \n(215) 957-4100 \nTENNESSEE, Knoxville \n(615) 690-5593 \nFULL LINE REPRESENTATIVES \nTEXAS, Austin \n(512) 873-2000 \nTEXAS, Houston \n(800) 343-2692 \nCOLORADO, Grand Junction \nTEXAS, Plano \n{214) 516-5100 \nCheryl Lee Whitely \n(303) 243-9658 \nVIRGINIA, Richmond \n(804) 285-2100 \nWASHINGTON, Bellevue \n(206) 454-4160 \nKANSAS, Wichita \n",
+      "bbox": [
+        67.8800048828125,
+        78.9648666381836,
+        450.84161376953125,
+        433.30322265625
+      ],
+      "bbox_norm": [
+        0.1346825493706597,
+        0.12167910409158283,
+        0.8945270114474826,
+        0.6676886845689091
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Seattle Access \n(206) 622-9960 \nMelinda Shores/Kelly Greiving \n(316) 838 0190 \n",
+      "bbox": [
+        71.67000579833984,
+        427.80987548828125,
+        450.571044921875,
+        440.2732238769531
+      ],
+      "bbox_norm": [
+        0.1422023924570235,
+        0.6592238369687075,
+        0.8939901684957837,
+        0.6784289484376294
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "WISCONSIN, Milwaukee/Brookfield \n(414) 792-0122 \nNEV ADA, Reno \n",
+      "bbox": [
+        67.9000015258789,
+        434.7598571777344,
+        313.5771179199219,
+        447.7132263183594
+      ],
+      "bbox_norm": [
+        0.13472222524975974,
+        0.669933252198906,
+        0.6221768212696862,
+        0.6898934499311549
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Galena Technology Group \n(702) 7 46 0642 \nNEW MEXICO, Albuquerque \n",
+      "bbox": [
+        266.97998046875,
+        442.2098693847656,
+        450.571044921875,
+        458.5032043457031
+      ],
+      "bbox_norm": [
+        0.5297221834697421,
+        0.6814131780116924,
+        0.8939901684957837,
+        0.7065200196377919
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "S&S Technologies, Inc. \n(505) 298-7177 \nField Applications Engineering Available \nUTAH, Salt Lake City \nThrough All Sales Offices \nUtah Component Sales, Inc. \n(801) 561-5099 \nWASHINGTON, Spokane \nCANADA \nDoug Kenley \n(509) 924-2322 \nARGENTINA, Buenos Aires \n",
+      "bbox": [
+        68.29000091552734,
+        456.60986328125,
+        450.31353759765625,
+        501.4632263183594
+      ],
+      "bbox_norm": [
+        0.13549603356255424,
+        0.7036025190546773,
+        0.893479241265191,
+        0.772718282332759
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "BRITISH COLUMBIA, Vancouver \n(604) 293-7605 \nArgonics, S.A. \n(541) 343-1787 \n",
+      "bbox": [
+        68.26000213623047,
+        499.56988525390625,
+        450.39337158203125,
+        512.7431640625
+      ],
+      "bbox_norm": [
+        0.13543651217506045,
+        0.7698007817496445,
+        0.8936376420278398,
+        0.7900998442519958
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "ONTARIO, Toronto \n(416) 497-8181 \n",
+      "bbox": [
+        68.31000518798828,
+        510.849853515625,
+        236.78680419921875,
+        520.1931762695312
+      ],
+      "bbox_norm": [
+        0.13553572457934182,
+        0.7871823906942449,
+        0.4698150876968626,
+        0.8015797700647821
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "HYBRID COMPONENTS RESELLERS \nONTARIO, Ottawa \n(613) 226-3491 \nQUEBEC, Montreal \n(514) 731-6881 \n",
+      "bbox": [
+        68.06999969482422,
+        516.494873046875,
+        408.97515869140625,
+        534.3532104492188
+      ],
+      "bbox_norm": [
+        0.13505952320401632,
+        0.795880954351539,
+        0.8114586481972347,
+        0.8233993506737795
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Elmo Semiconductor \n(818) 768-7400 \nINTERNATIONAL \nMinco Technology Labs Inc. \n(512) 834-2022 \nSemi Dice Inc. \n(310) 594-4631 \n",
+      "bbox": [
+        68.67000579833984,
+        531.9698486328125,
+        450.5928649902344,
+        555.7131958007812
+      ],
+      "bbox_norm": [
+        0.13625001150464255,
+        0.8197267638273379,
+        0.894033462282211,
+        0.8563135312662238
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "AUSTRALIA, Melbourne \n(61-3)887-0711 \nAUSTRALIA, Sydney \n(61 (2)906-3855 \nBRAZIL, Sao Paulo \n55(11)815-4200 \nCHINA, Beijing \n86 505-2180 \n",
+      "bbox": [
+        68.41000366210938,
+        557.6498413085938,
+        238.2406463623047,
+        588.3532104492188
+      ],
+      "bbox_norm": [
+        0.13573413425021702,
+        0.8592977608402869,
+        0.47269969516330296,
+        0.9066094148539956
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

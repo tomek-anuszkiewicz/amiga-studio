@@ -1,0 +1,72 @@
+{
+  "page": 79,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "PC MEMORY AND\nI/O MAP:",
+      "bbox": [
+        154,
+        315,
+        598,
+        425
+      ],
+      "segment_id": "page_0079_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        153,
+        465,
+        1955,
+        1693
+      ],
+      "segment_id": "page_0079_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "AMIGA MEMORY MAP:",
+      "bbox": [
+        153,
+        1802,
+        748,
+        1854
+      ],
+      "segment_id": "page_0079_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        152,
+        1956,
+        1955,
+        2834
+      ],
+      "segment_id": "page_0079_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "110",
+      "bbox": [
+        1068,
+        2915,
+        1138,
+        2955
+      ],
+      "segment_id": "page_0079_seg_005"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "page": 157,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "# Keyboard Communications",
+      "bbox": [
+        360,
+        357,
+        1143,
+        421
+      ],
+      "segment_id": "page_0157_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The keyboard transmits 8-bit data words serially to the main unit. Before the transmission starts, both KCLK and KDAT are high. The keyboard starts the transmission by putting out the first data bit (on KDAT), followed by a pulse on KCLK (low then high); then it puts out the second data bit and pulses KCLK until all eight data bits have been sent. After the end of the last KCLK pulse, the keyboard pulls KDAT high again.",
+      "bbox": [
+        360,
+        532,
+        2159,
+        791
+      ],
+      "segment_id": "page_0157_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "When the computer has received the eighth bit, it must pulse KDAT low for at least 1 (one) microsecond, as a handshake signal to the keyboard. The handshake detection on the keyboard end will typically use a hardware latch. *The keyboard must be able to detect pulses greater than or equal to 1 microsecond. Software MUST pulse the line low for 85 microseconds to ensure compatibility with all keyboard models.*",
+      "bbox": [
+        360,
+        855,
+        2159,
+        1112
+      ],
+      "segment_id": "page_0157_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "All codes transmitted to the computer are rotated one bit before transmission. The transmitted order is therefore 6-5-4-3-2-1-0-7. The reason for this is to transmit the up/down flag last, in order to cause a key-up code to be transmitted in case the keyboard is forced to restore lost sync (explained in more detail below).",
+      "bbox": [
+        359,
+        1176,
+        2158,
+        1383
+      ],
+      "segment_id": "page_0157_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The KDAT line is active low; that is, a high level (+5V) is interpreted as 0, and a low level (0V) is interpreted as 1.",
+      "bbox": [
+        358,
+        1445,
+        2156,
+        1544
+      ],
+      "segment_id": "page_0157_seg_005"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nKCLK  ______\\_/_____\\_/_____\\_/_____\\_/_____\\_/_____\\_/_____\\_/_____\\_/____________\n\n      ______________________________________________________________________________\nKDAT      \\_______X_______X_______X_______X_______X_______X_______X_______/\n             (6)     (5)     (4)     (3)     (2)     (1)     (0)     (7)\n\n           First                                                   Last\n           sent                                                    sent\n```",
+      "bbox": [
+        535,
+        1628,
+        1973,
+        1925
+      ],
+      "segment_id": "page_0157_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The keyboard processor sets the KDAT line about 20 microseconds before it pulls KCLK low. KCLK stays low for about 20 microseconds, then goes high again. The processor waits another 20 microseconds before changing KDAT.",
+      "bbox": [
+        357,
+        1988,
+        2160,
+        2140
+      ],
+      "segment_id": "page_0157_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Therefore, the bit rate during transmission is about 60 microseconds per bit, or 17 kbits/sec.",
+      "bbox": [
+        356,
+        2203,
+        2027,
+        2247
+      ],
+      "segment_id": "page_0157_seg_008"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "344 Appendix H",
+      "bbox": [
+        360,
+        2972,
+        675,
+        3016
+      ],
+      "segment_id": "page_0157_seg_009"
+    }
+  ]
+}

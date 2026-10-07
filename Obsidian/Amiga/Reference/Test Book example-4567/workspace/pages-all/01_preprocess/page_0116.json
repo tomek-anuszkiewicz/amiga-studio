@@ -1,0 +1,418 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0116",
+  "page": 116,
+  "source_index": 115,
+  "prepared_index": 115,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "hardware in the same manner as the original words that were first loaded into the control registers. \nIf the VST ART value contained in these words is lower than the current beam position, this sprite \nwill not be reused in this display field. For consistency, the value 0 should be used for both \nwords when ending the usage of a sprite. Sprite reuse is discussed later.\n",
+      "bbox": [
+        85.55000305175781,
+        52.52501678466797,
+        517.5285034179688,
+        101.86998748779297
+      ],
+      "bbox_norm": [
+        0.1423863665569247,
+        0.06804816351298329,
+        0.8613559387805708,
+        0.1319764559819877
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "The following data structure is for the spaceship sprite. It will be located at V = 65 and \nH = 128 on the normally visible part of the screen.\n",
+      "bbox": [
+        85.30000305175781,
+        116.81896209716797,
+        517.3119506835938,
+        140.0179443359375
+      ],
+      "bbox_norm": [
+        0.14197027549474558,
+        0.15134342301677256,
+        0.8609955161515153,
+        0.18139858974219075
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "S P R I T E :\n",
+      "bbox": [
+        85.80000305175781,
+        155.43531799316406,
+        120.15900421142578,
+        161.93531799316406
+      ],
+      "bbox_norm": [
+        0.1428024576191038,
+        0.20137238561680632,
+        0.1999883507708605,
+        0.2097933836461397
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "DC. W\n$ 6 D 6 0 , $ 7 2 0 0\n;V S T A R T , H S T A R T , V S T O P\n",
+      "bbox": [
+        128.49600219726562,
+        165.03529357910156,
+        373.620361328125,
+        171.68531799316406
+      ],
+      "bbox_norm": [
+        0.21386415216011298,
+        0.21380952030770298,
+        0.6218403719870349,
+        0.22242488069013974
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "DC. W\n$ 0 9 9 0 , $ 0 7 E 0\n/ F i r s t p a i r o f d e s c r i p t o r w o r d s\n",
+      "bbox": [
+        128.49600219726562,
+        174.7852325439453,
+        421.8825988769531,
+        181.38526916503906
+      ],
+      "bbox_norm": [
+        0.21386415216011298,
+        0.2264409382783291,
+        0.7021663147263627,
+        0.23499153756752272
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "DC. W\n$ 1 3 C 8 , $ 0 F F 0\n",
+      "bbox": [
+        128.49600219726562,
+        184.83424377441406,
+        228.45599365234375,
+        191.4842071533203
+      ],
+      "bbox_norm": [
+        0.21386415216011298,
+        0.2394598157811793,
+        0.3802339882399419,
+        0.24807509709024217
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "DC. W\n$ 2 3 C 4 ,$ 1 F F 8\n",
+      "bbox": [
+        128.49600219726562,
+        194.93226623535156,
+        228.52743530273438,
+        201.68226623535156
+      ],
+      "bbox_norm": [
+        0.21386415216011298,
+        0.2525421892032899,
+        0.3803528931687214,
+        0.261287071772213
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "DC. W\n$ 1 3 C 8 , $ 0 F F 0\n",
+      "bbox": [
+        128.49600219726562,
+        204.7819366455078,
+        228.45599365234375,
+        211.38197326660156
+      ],
+      "bbox_norm": [
+        0.21386415216011298,
+        0.2653028130669067,
+        0.3802339882399419,
+        0.2738534123561003
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "DC. W\n$ 0 9 9 0 , $ 0 7 E 0\n",
+      "bbox": [
+        128.64700317382812,
+        214.8819122314453,
+        228.61190795898438,
+        221.58192443847656
+      ],
+      "bbox_norm": [
+        0.21411547278702486,
+        0.2783877168369828,
+        0.380493486437778,
+        0.28706783831266275
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "DC. W\n$ 0 0 0 0 , $ 0 0 0 0\n; E n d o f s p r i t e d a t a\n",
+      "bbox": [
+        128.49600219726562,
+        225.03089904785156,
+        357.8092041015625,
+        231.53089904785156
+      ],
+      "bbox_norm": [
+        0.21386415216011298,
+        0.29153611652631933,
+        0.5955248471683103,
+        0.2999571145556527
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Displaying a Sprite\n",
+      "bbox": [
+        85.80000305175781,
+        265.1427001953125,
+        215.37001037597656,
+        280.24267578125
+      ],
+      "bbox_norm": [
+        0.1428024576191038,
+        0.34350248551336254,
+        0.3584541455154557,
+        0.3630650800752336
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "After building the data structure, you need to tell the system to display it. This section describes \nthe display of sprites in “ automatic” mode. In this mode, once the sprite DMA channel begins to \nretrieve and display the data, the display continues until the VSTOP position is reached. Manual \nmode is described later on in this chapter.\n",
+      "bbox": [
+        85.55000305175781,
+        307.8595275878906,
+        517.7195434570312,
+        357.19757080078125
+      ],
+      "bbox_norm": [
+        0.1423863665569247,
+        0.39884376540448163,
+        0.8616738989916598,
+        0.4627630830455458
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "The following steps are used in displaying the sprite:\n",
+      "bbox": [
+        85.30000305175781,
+        372.1465759277344,
+        316.78314208984375,
+        382.6465759277344
+      ],
+      "bbox_norm": [
+        0.14197027549474558,
+        0.4821300896170176,
+        0.5272425362903836,
+        0.4957332402797869
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "1. \nDecide which of the eight sprite DMA channels to use (making certain that the chosen \nchannel is available).\n",
+      "bbox": [
+        106.44900512695312,
+        397.9455871582031,
+        518.0070190429688,
+        421.79559326171875
+      ],
+      "bbox_norm": [
+        0.17716991844472962,
+        0.5155536931140218,
+        0.862152363079273,
+        0.5464522860982208
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "2. \nSet the sprite pointers to tell the system where to find the sprite data.\n",
+      "bbox": [
+        105.2490005493164,
+        437.194580078125,
+        425.05804443359375,
+        447.694580078125
+      ],
+      "bbox_norm": [
+        0.17517267372741505,
+        0.566402261118942,
+        0.7074514127845808,
+        0.5800054117817113
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "3. \nTurn on sprite direct memory access if it is not already on.\n",
+      "bbox": [
+        105.4990005493164,
+        462.89459228515625,
+        380.6935119628906,
+        473.39459228515625
+      ],
+      "bbox_norm": [
+        0.17558876478959415,
+        0.5996976076034426,
+        0.6336126710293246,
+        0.6133007582662119
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "4. \nFor each subsequent display field, during the vertical blanking interval, rewrite the sprite \npointers.\n",
+      "bbox": [
+        104.9990005493164,
+        488.7935791015625,
+        517.7959594726562,
+        512.2405395507812
+      ],
+      "bbox_norm": [
+        0.17475658266523594,
+        0.633250733286933,
+        0.8618010830760954,
+        0.6636271652464298
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "CAUTION\n",
+      "bbox": [
+        284.7480163574219,
+        527.4395751953125,
+        335.6309814453125,
+        537.9395751953125
+      ],
+      "bbox_norm": [
+        0.47392441831820586,
+        0.6833180958941784,
+        0.5586122062791757,
+        0.6969212465569476
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "If sprite DMA is turned off while a sprite is being displayed (that is, after VSTART \nbut before VSTOP), the system will continue to display the line of sprite data that was \nmost recently fetched. This causes a vertical bar to appear on the screen. It is recom­\nmended that sprite DMA be turned off only during vertical blanking or during some \nportion of the display where you are sure that no sprite is being displayed.\n",
+      "bbox": [
+        110.0880126953125,
+        546.4885864257812,
+        493.35699462890625,
+        608.3886108398438
+      ],
+      "bbox_norm": [
+        0.18322655254231537,
+        0.7079968168222593,
+        0.8211257437145209,
+        0.7881906604540299
+      ]
+    },
+    {
+      "block_id": 19,
+      "type": 0,
+      "text": "106 Sprite Hardware\n",
+      "bbox": [
+        87.25,
+        713.467041015625,
+        179.98599243164062,
+        723.967041015625
+      ],
+      "bbox_norm": [
+        0.14521578070050598,
+        0.9243237763672142,
+        0.29956225107296336,
+        0.9379269270299835
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

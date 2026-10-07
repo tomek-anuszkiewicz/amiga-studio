@@ -1,0 +1,85 @@
+{
+  "page": 47,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        287,
+        131
+      ],
+      "segment_id": "page_0047_seg_001"
+    },
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Instruction Set Summary",
+      "bbox": [
+        1349,
+        100,
+        2297,
+        154
+      ],
+      "segment_id": "page_0047_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 3-5. Shift and Rotate Operation Format",
+      "bbox": [
+        757,
+        251,
+        1820,
+        320
+      ],
+      "segment_id": "page_0047_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        279,
+        344,
+        2297,
+        2323
+      ],
+      "segment_id": "page_0047_seg_004"
+    },
+    {
+      "type": "table_legend",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE: X indicates the extend bit and C the carry bit in the CCR.",
+      "bbox": [
+        356,
+        2355,
+        1422,
+        2408
+      ],
+      "segment_id": "page_0047_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA     M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL     3-9",
+      "bbox": [
+        287,
+        3109,
+        2288,
+        3167
+      ],
+      "segment_id": "page_0047_seg_006"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "page": 3,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        198,
+        215,
+        697,
+        319
+      ],
+      "segment_id": "page_0003_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "M68000\n\n8-/16-/32-Bit\nMicroprocessors User’s Manual",
+      "bbox": [
+        382,
+        521,
+        1591,
+        851
+      ],
+      "segment_id": "page_0003_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Ninth Edition",
+      "bbox": [
+        850,
+        917,
+        1140,
+        958
+      ],
+      "segment_id": "page_0003_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Motorola reserves the right to make changes without further notice to any products herein. Motorola makes no warranty, representation or guarantee regarding the suitability of its products for any particular purpose, nor does Motorola assume any liability arising out of the application or use of any product or circuit, and specifically disclaims any and all liability, including without limitation consequential or incidental damages. \"Typical\" parameters can and do vary in different applications. All operating parameters, including \"Typicals\" must be validated for each customer application by customer's technical experts. Motorola does not convey any license under its patent rights nor the rights of others. Motorola products are not designed, intended, or authorized for use as components in systems intended for surgical implant into the body, or other applications intended to support or sustain life, or for any other application in which the failure of the Motorola product could create a situation where personal injury or death may occur. Should Buyer purchase or use Motorola products for any such unintended or unauthorized application, Buyer shall indemnify and hold Motorola and its officers, employees, subsidiaries, affiliates, and distributors harmless against all claims, costs, damages, and expenses, and reasonable attorney fees arising out of, directly or indirectly, any claim of personal injury or death associated with such unintended or unauthorized use, even if such claim alleges that Motorola was negligent regarding the design or manufacture of the part. Motorola and Ⓜ are registered trademarks of Motorola, Inc. Motorola, Inc. is an Equal Opportunity/Affirmative Action Employer.",
+      "bbox": [
+        141,
+        2019,
+        1858,
+        2363
+      ],
+      "segment_id": "page_0003_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "©MOTOROLA INC., 1993",
+      "bbox": [
+        193,
+        2395,
+        544,
+        2426
+      ],
+      "segment_id": "page_0003_seg_005"
+    }
+  ]
+}

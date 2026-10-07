@@ -1,0 +1,189 @@
+{
+  "page": 37,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "index_heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "INDEX",
+      "bbox": [
+        936,
+        213,
+        1080,
+        252
+      ],
+      "segment_id": "page_0037_seg_001"
+    },
+    {
+      "type": "index_heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "–A–",
+      "bbox": [
+        540,
+        297,
+        618,
+        330
+      ],
+      "segment_id": "page_0037_seg_002"
+    },
+    {
+      "type": "index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "A23–A0 3-3, 3-4\nAcknowledgment Of Mastership 5-15\nAddress Bus 3-3\nAddress Error 6-8, 6-19\nAddress Register 2-5, 2-6\nAddress Space 6-2\nAddress Strobe ($\\overline{\\mathrm{AS}}$) 3-4, 3-8, 4-3, 4-5, 4-7, 4-8, 5-4, 5-6, 5-7, 5-8, 5-9, 5-15, 5-16, 5-32, 5-34, 5-36, 5-37\nAddressing Modes 2-4\nAlternate Function Code Registers 2-2\nANDI to SR 6-3\n$\\overline{\\mathrm{AS}}$ 3-4, 3-8, 4-3, 4-5, 4-7, 4-8, 5-4, 5-6, 5-7, 5-8, 5-9, 5-15, 5-16, 5-32, 5-34, 5-36, 5-37\nAsynchronous Bus Arbitration 5-15\nAsynchronous Operation 5-32, 5-33\nAuto Vector (AVEC) 5-10, 5-32, 6-13\nAVEC 5-10, 5-32, 6-13",
+      "bbox": [
+        210,
+        379,
+        926,
+        1204
+      ],
+      "segment_id": "page_0037_seg_003"
+    },
+    {
+      "type": "index_heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "–B–",
+      "bbox": [
+        541,
+        1254,
+        620,
+        1287
+      ],
+      "segment_id": "page_0037_seg_004"
+    },
+    {
+      "type": "index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "$\\overline{\\mathrm{BERR}}$ 3-7, 4-3, 4-5, 4-7, 4-8, 5-4, 5-6, 5-7, 5-8, 5-9, 5-11, 5-24, 5-26, 5-27, 5-30, 5-31, 5-32, 5-37, 5-35, 5-38, 5-39, 6-13\n$\\overline{\\mathrm{BG}}$ 3-5, 3-6, 5-14, 5-15, 5-16\n$\\overline{\\mathrm{BGACK}}$ 1-2, 3-5, 3-6, 5-15, 5-16\nBit Manipulation Instruction Execution Times 7-7, 8-7, 9-9\n$\\overline{\\mathrm{BR}}$ 3-5, 3-6, 5-14, 5-16\nBreakpoint Acknowledge Cycle 5-11\nBreakpoint Acknowledge Cycle Timing Diagram 5-11\nBus Arbitration, 2-Wire 5-11\nBus Arbitration 2-Wire Cycle Flowchart 5-13\nBus Arbitration 2-Wire Timing Diagram 5-14, 5-23\nBus Arbitration, 3-5, 5-11\nBus Arbitration, 3-wire 5-11\nBus Arbitration 3-Wire Cycle Flowchart 5-12\nBus Arbitration 3-Wire Timing Diagram 15-3, 5-18\nBus Arbitration Control 5-15, 5-16\nBus Arbitration Unit State Diagrams 5-17\nBus Cycle 5-27, 6-11, 6-18, 6-19\nBus Cycle Retry 5-26",
+      "bbox": [
+        211,
+        1333,
+        947,
+        2348
+      ],
+      "segment_id": "page_0037_seg_005"
+    },
+    {
+      "type": "index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Bus Error ($\\overline{\\mathrm{BERR}}$) 3-7, 4-3, 4-5, 4-7, 4-8, 5-4, 5-6, 5-7, 5-8, 5-9, 5-11, 5-24, 5-26, 5-27, 5-30, 5-31, 5-32, 5-37, 5-35, 5-38, 5-39, 6-13\nBus Error Operation 5-23, 5-26, 5-24, 6-8, 6-13, 6-16, 6-17\nBus Grant ($\\overline{\\mathrm{BG}}$) 3-5, 3-6, 5-14, 5-15, 5-16\nBus Grant Acknowledge ($\\overline{\\mathrm{BGACK}}$) 1-2, 3-5, 3-6, 5-15, 5-16\n**Bus Operations**\n  16-Bit Mode 3-4, 3-7\n  2-wire Bus Arbitration 5-11\n  3-wire Bus Arbitration 5-11\n  8-bit Data Bus 1-2\n  8-bit Mode 3-4, 3-7\n  Bus Arbitration 3-5, 5-11\n  Bus Arbitration Control 5-15, 5-16\n  Bus Cycle Retry 5-26\n  Delayed Bus Error 5-25\n  Double Bus Fault 5-28\n  Halted Processing State 6-1\n  Interrupt Acknowledge Bus Cycle 6-4\n  Interrupt Request 6-12\n  STOP Instruction 6-2\nBus Request ($\\overline{\\mathrm{BR}}$) 3-5, 3-6, 5-14, 5-16\nByte Read-Cycle Flowchart 5-2\nByte Write-Cycle Flowchart 5-5",
+      "bbox": [
+        1070,
+        299,
+        1797,
+        1501
+      ],
+      "segment_id": "page_0037_seg_006"
+    },
+    {
+      "type": "index_heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "–C–",
+      "bbox": [
+        1400,
+        1551,
+        1478,
+        1585
+      ],
+      "segment_id": "page_0037_seg_007"
+    },
+    {
+      "type": "index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "CHK 6-6\nClear Instruction Execution Times 9-7\nCLOCK (CLK) 3-9\nCondition Codes 2-3\nConditional Instruction Execution Times 7-7, 8-7, 9-10\nCPU Space 4-1, 6-3\nCPU Space Address Encoding 5-9\nCPU Space Cycle 5-9",
+      "bbox": [
+        1072,
+        1632,
+        1793,
+        2035
+      ],
+      "segment_id": "page_0037_seg_008"
+    },
+    {
+      "type": "index_heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "–D–",
+      "bbox": [
+        1401,
+        2088,
+        1479,
+        2120
+      ],
+      "segment_id": "page_0037_seg_009"
+    },
+    {
+      "type": "index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Data Bus 3-4, 4-1, 3-4, 6-4\nData Bus 8-bit 1-2\nData Organization in Memory 2-6\nData Registers 2-5\nData Strobe ($\\overline{\\mathrm{DS}}$) 3-5, 4-3, 4-5, 4-7, 4-8, 5-4, 5-32, 5-36, 5-37",
+      "bbox": [
+        1074,
+        2168,
+        1730,
+        2431
+      ],
+      "segment_id": "page_0037_seg_010"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "I",
+      "bbox": [
+        1921,
+        2298,
+        2096,
+        2403
+      ],
+      "segment_id": "page_0037_seg_011"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        214,
+        2523,
+        408,
+        2552
+      ],
+      "segment_id": "page_0037_seg_012"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68040 USER’S MANUAL",
+      "bbox": [
+        811,
+        2520,
+        1220,
+        2551
+      ],
+      "segment_id": "page_0037_seg_013"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "INDEX-1",
+      "bbox": [
+        1684,
+        2522,
+        1815,
+        2551
+      ],
+      "segment_id": "page_0037_seg_014"
+    }
+  ]
+}

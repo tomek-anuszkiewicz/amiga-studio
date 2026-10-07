@@ -1,0 +1,59 @@
+{
+  "page": 160,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "index_heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "INDEX",
+      "bbox": [
+        1124,
+        352,
+        1380,
+        419
+      ],
+      "segment_id": "page_0160_seg_001"
+    },
+    {
+      "type": "index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "- 60 Pin Edge Connector, 299\n- 68000, 2, 4, 10, 13-14, 20, 31, 181, 189, 217\n  - instead of Copper, 31\n  - interrupting, 31, 211\n  - normal cycle, 191\n  - Share Memory, 4\n  - synchronizing with the video beam, 210\n  - test-and-set instruction, 191\n- 68010, 2\n- 68010/20/30, 10\n- 68020, 2, 181\n- 68030, 2\n- 8520, 10, 153, 219, 236, 238, 245, 317\n  - alarm, 323\n  - handshaking, 320\n  - input modes, 322\n  - interval timers, 320\n    - continuous, 321\n    - force load, 322\n    - one-shot, 321\n    - PB on/off, 321\n    - start/stop, 321\n    - Toggle/pulse, 321\n  - I/O ports, 320\n  - read bit names, 322\n  - register map, 319\n  - signal assignments, 313\n  - time-of-day clock, 323\n  - write bit names, 322\n- 86 Pin Edge Connector, 300\n- A0, 10\n- A1, 10\n- A1000, 1, 4, 6, 56, 59, 232, 255\n  - expansion port, 299\n- A2000, 1-2, 4, 6, 56, 153, 232, 255\n- A500, 1-2, 4, 6, 56, 153, 232, 255",
+      "bbox": [
+        354,
+        834,
+        1187,
+        2766
+      ],
+      "segment_id": "page_0160_seg_002"
+    },
+    {
+      "type": "index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "- A6, 10\n- Address Registers, 8\n- Addresses, 10\n- ADKCON, 236, 244, 252\n  - disk control bits, 242\n  - in audio, 145, 147\n- Agnus, 3-4, 160-161, 163\n  - fat agnus, 4, 181\n- Alarm, 323\n- Aliasing\n  - audio, 150\n- AllocMem(), 46\n- Amiga OS, 7\n- Amplitude Modulation, 4\n- Animated Objects, 5\n- Animation, 170\n- Apple II, 235\n- Area Fill, 4, 178\n- ATTACH, 117\n- Attachment\n  - audio, 146\n  - sprites, 117\n- Audio, 4, 7, 14\n  - aliasing distortion, 150\n  - amplitude modulation, 4\n  - channels\n    - attaching, 145, 160\n    - choosing, 134\n  - data, 134\n  - data length registers, 136\n  - data location registers, 135-136\n  - data output rate, 137\n  - decibel values, 137, 159\n  - DMA, 135, 140, 143, 160\n  - equal-tempered scale, 154\n  - frequency modulation, 4",
+      "bbox": [
+        1310,
+        834,
+        1975,
+        2766
+      ],
+      "segment_id": "page_0160_seg_003"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Index 373",
+      "bbox": [
+        1950,
+        2980,
+        2150,
+        3028
+      ],
+      "segment_id": "page_0160_seg_004"
+    }
+  ]
+}

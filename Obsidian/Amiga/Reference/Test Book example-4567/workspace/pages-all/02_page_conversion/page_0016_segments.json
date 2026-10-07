@@ -1,0 +1,176 @@
+{
+  "page": 16,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "1.1 MC68000",
+      "bbox": [
+        285,
+        208,
+        615,
+        252
+      ],
+      "segment_id": "page_0016_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The MC68000 is the first implementation of the M68000 16/-32 bit microprocessor architecture. The MC68000 has a 16-bit data bus and 24-bit address bus while the full architecture provides for 32-bit address and data buses. It is completely code-compatible with the MC68008 8-bit data bus implementation of the M68000 and is upward code compatible with the MC68010 virtual extensions and the MC68020 32-bit implementation of the architecture. Any user-mode programs using the MC68000 instruction set will run unchanged on the MC68008, MC68010, MC68020, MC68030, and MC68040. This is possible because the user programming model is identical for all processors and the instruction sets are proper subsets of the complete architecture.",
+      "bbox": [
+        284,
+        283,
+        1888,
+        692
+      ],
+      "segment_id": "page_0016_seg_002"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "1",
+      "bbox": [
+        9,
+        321,
+        179,
+        426
+      ],
+      "segment_id": "page_0016_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "1.2 MC68008",
+      "bbox": [
+        284,
+        747,
+        612,
+        790
+      ],
+      "segment_id": "page_0016_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The MC68008 is a member of the M68000 family of advanced microprocessors. This device allows the design of cost-effective systems using 8-bit data buses while providing the benefits of a 32-bit microprocessor architecture. The performance of the MC68008 is greater than any 8-bit microprocessor and superior to several 16-bit microprocessors.",
+      "bbox": [
+        282,
+        821,
+        1886,
+        1001
+      ],
+      "segment_id": "page_0016_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The MC68008 is available as a 48-pin dual-in-line package (plastic or ceramic) and 52-pin plastic leaded chip carrier. The additional four pins of the 52-pin package allow for additional signals: A20, A21, $\\overline{\\mathrm{BGACK}}$, and $\\overline{\\mathrm{IPL2}}$. The 48-pin version supports a 20-bit address that provides a 1-Mbyte address space; the 52-pin version supports a 22-bit address that extends the address space to 4 Mbytes. The 48-pin MC68008 contains a simple two-wire arbitration circuit; the 52-pin MC68008 contains a full three-wire MC68000 bus arbitration control. Both versions are designed to work with daisy-chained networks, priority encoded networks, or a combination of these techniques.",
+      "bbox": [
+        282,
+        1046,
+        1887,
+        1411
+      ],
+      "segment_id": "page_0016_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "A system implementation based on an 8-bit data bus reduces system cost in comparison to 16-bit systems due to a more effective use of components and byte-wide memories and peripherals. In addition, the nonmultiplexed address and data buses eliminate the need for external demultiplexers, further simplifying the system.",
+      "bbox": [
+        282,
+        1454,
+        1887,
+        1638
+      ],
+      "segment_id": "page_0016_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The large nonsegmented linear address space of the MC68008 allows large modular programs to be developed and executed efficiently. A large linear address space allows program segment sizes to be determined by the application rather than forcing the designer to adopt an arbitrary segment size without regard to the application's individual requirements.",
+      "bbox": [
+        282,
+        1681,
+        1888,
+        1910
+      ],
+      "segment_id": "page_0016_seg_008"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "1.3 MC68010",
+      "bbox": [
+        283,
+        1986,
+        612,
+        2029
+      ],
+      "segment_id": "page_0016_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The MC68010 utilizies VLSI technology and is a fully implemented 16-bit microprocessor with 32-bit registers, a rich basic instruction set, and versatile addressing modes. The vector base register (VBR) allows the vector table to be dynamically relocated",
+      "bbox": [
+        281,
+        2060,
+        1888,
+        2197
+      ],
+      "segment_id": "page_0016_seg_010"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "1-2",
+      "bbox": [
+        285,
+        2500,
+        337,
+        2531
+      ],
+      "segment_id": "page_0016_seg_011"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 8-/16-/32-BIT MICROPROCESSORS USER’S MANUAL",
+      "bbox": [
+        598,
+        2499,
+        1575,
+        2532
+      ],
+      "segment_id": "page_0016_seg_012"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        1697,
+        2499,
+        1893,
+        2532
+      ],
+      "segment_id": "page_0016_seg_013"
+    }
+  ]
+}

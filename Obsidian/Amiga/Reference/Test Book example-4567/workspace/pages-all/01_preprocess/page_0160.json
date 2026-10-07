@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0160",
+  "page": 160,
+  "source_index": 159,
+  "prepared_index": 159,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "INDEX\n",
+      "bbox": [
+        271.1000061035156,
+        86.48204040527344,
+        330.25994873046875,
+        103.48204040527344
+      ],
+      "bbox_norm": [
+        0.45120915798548944,
+        0.11204078335777491,
+        0.5496728514499036,
+        0.1340649320498776
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "60 Pin Edge Connector, 299 \n68000,2,4,10,13-14,20,31,181,189,217 \ninstead of Copper, 31 \ninterrupting, 31,211 \nnormal cycle, 191 \nShare Memory, 4\nsynchronizing with the video beam, 210 \ntest-and-set instruction, 191 \n68010,2 \n68010/20/30,10 \n68020,2,181 \n68030,2\n8520,10,153,219,236,238,245,317 \nalarm, 323 \nhandshaking, 320 \ninput modes, 322 \ninterval timers, 320 \n",
+      "bbox": [
+        86.5,
+        201.1251220703125,
+        284.67498779296875,
+        417.5522155761719
+      ],
+      "bbox_norm": [
+        0.14396750751396867,
+        0.26056527024669784,
+        0.473802872186395,
+        0.5409548283862659
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "continuous, 321 \nforce load, 322 \none-shot, 321 \nPB on/off, 321 \nstart/stop, 321 \nToggle/pulse, 321 \nI/O ports, 320 \nread bit names, 322 \nregister map, 319 \nsignal assignments, 313 \ntime-of-day clock, 323 \nwrite bit names, 322 \n86 Pin Edge Connector, 300 \nA 0,10 \nA1.10\nA1000,1,4,6,56,59,232,255 \n",
+      "bbox": [
+        86.30001068115234,
+        420.1002197265625,
+        227.9345245361328,
+        624.9832153320312
+      ],
+      "bbox_norm": [
+        0.1436346524415535,
+        0.544255864990754,
+        0.3793660736861107,
+        0.8096896037965341
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "expansion port, 299 \nA2000,1-2,4, 6, 56,153,232,255 \nA500,1-2,4,6,56,153,232,255\n",
+      "bbox": [
+        86.50100708007812,
+        627.3312377929688,
+        242.4889678955078,
+        663.7312622070312
+      ],
+      "bbox_norm": [
+        0.14396918366204628,
+        0.8127315564913625,
+        0.4035899688734223,
+        0.859889177084979
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "A 6,10\nAddress Registers, 8 \nAddresses, 10 \nADKCON, 236, 244,252 \n",
+      "bbox": [
+        315.4909973144531,
+        201.23126220703125,
+        430.4029846191406,
+        250.47918701171875
+      ],
+      "bbox_norm": [
+        0.5250919367220578,
+        0.26070277884395043,
+        0.7163473401409326,
+        0.32450534464841685
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "disk control bits, 242 \nin audio, 145,147 \nAgnus, 3-4,160-161,163 \n",
+      "bbox": [
+        315.4909973144531,
+        252.82717895507812,
+        430.39251708984375,
+        288.9731750488281
+      ],
+      "bbox_norm": [
+        0.5250919367220578,
+        0.32754725780655836,
+        0.7163299183593984,
+        0.37437577501790614
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "fatagnus, 4,181 \nAlarm, 323 \nAliasing \n",
+      "bbox": [
+        315.4909973144531,
+        291.2231750488281,
+        407.8624572753906,
+        327.3231506347656
+      ],
+      "bbox_norm": [
+        0.5250919367220578,
+        0.37729073587421386,
+        0.6788316922827806,
+        0.42405963176162353
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "audio, 150 \nAllocMemO, 46 \nAmiga OS, 7 \nAmplitude Modulation, 4 \nAnimated Objects, 5 \nAnimation, 170 \nApple II, 235 \nArea Fill, 4,178 \nATTACH, 117 \nAttachment \n",
+      "bbox": [
+        315.2409973144531,
+        330.0711364746094,
+        429.16607666015625,
+        456.962158203125
+      ],
+      "bbox_norm": [
+        0.5246758456598787,
+        0.42761975227577126,
+        0.7142886747550462,
+        0.5920119128782217
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "audio, 146 \nsprites, 117 \nAudio, 4,7,14\n",
+      "bbox": [
+        315.2409973144531,
+        459.212158203125,
+        386.0140075683594,
+        495.358154296875
+      ],
+      "bbox_norm": [
+        0.5246758456598787,
+        0.5949268737345295,
+        0.6424679137005195,
+        0.6417553909458773
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "aliasing distortion, 150 \namplitude modulation, 4 \nchannels\n",
+      "bbox": [
+        332.7409973144531,
+        497.8041687011719,
+        442.9029846191406,
+        534.2501831054688
+      ],
+      "bbox_norm": [
+        0.5538022200124156,
+        0.6449242959425396,
+        0.7371518932498876,
+        0.6921414983234072
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "attaching, 145,160 \nchoosing, 134 \ndata, 134\ndata length registers, 136 \ndata location registers, 135-136 \ndata output rate, 137 \ndecibel values, 137,159 \nDMA, 135,140,143,160 \nequal-tempered scale, 154 \nfrequency modulation, 4\n",
+      "bbox": [
+        332.7409973144531,
+        536.5982055664062,
+        472.8509521484375,
+        663.2421875
+      ],
+      "bbox_norm": [
+        0.5538022200124156,
+        0.6951834510182358,
+        0.7869962197273689,
+        0.8592555621397319
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Index 373\n",
+      "bbox": [
+        468.82000732421875,
+        715.9681396484375,
+        514.8204345703125,
+        726.4681396484375
+      ],
+      "bbox_norm": [
+        0.7802872592733908,
+        0.9275640450838423,
+        0.8568487258074691,
+        0.9411671957466116
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0130",
+  "page": 130,
+  "source_index": 129,
+  "prepared_index": 129,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Table 6-2: Typical Blitter Cycle Sequence\n",
+      "bbox": [
+        206.75,
+        68.32500457763672,
+        392.28497314453125,
+        78.82500457763672
+      ],
+      "bbox_norm": [
+        0.34410730842211584,
+        0.0885176506003804,
+        0.6529050846104312,
+        0.10212080126314971
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "USE Code\n",
+      "bbox": [
+        86.5,
+        99.5697250366211,
+        130.30599975585938,
+        110.0697250366211
+      ],
+      "bbox_norm": [
+        0.14396750751396867,
+        0.12899637820225418,
+        0.21687664738690038,
+        0.1425995288650235
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "in \nActive\nBLTCONO \nChannels\n",
+      "bbox": [
+        85.29899597167969,
+        111.21871185302734,
+        202.9829864501953,
+        133.8687286376953
+      ],
+      "bbox_norm": [
+        0.14196859934666795,
+        0.14408808512912918,
+        0.33783762574539067,
+        0.17343204616113794
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "F\nA\nB c\nD\nAO\nBO CO\nE\nA\nB c\nAO\nBO CO\nD\nA\nB\nD\nAO\nBO\n-\nC\nA\nB\nAO\nBO\n-\nB\nA\nc\nD\nAO\nCO\n-\nA\nA\nC\nAO\nCO A1\n9\nA\nD\nAO\n-\nA1\n8\nA\nAO\n-\nA1\n7\nB c\nD\nBO\nCO\n-\n6\nB c\nBO\nCO\n-\n5\nB\nD\nBO\n-\n-\n4\nB\nBO\n-\n-\n3\nc\nD\nCO\n-\n-\n2\nc\nCO\n-\nCl\n1\nD\nDO\n-\nD1\n0\nnone\n-\n-\n-\n",
+      "bbox": [
+        104.74198913574219,
+        141.86859130859375,
+        295.7839660644531,
+        336.1101379394531
+      ],
+      "bbox_norm": [
+        0.17432882205697095,
+        0.18379617351291846,
+        0.4922922584612209,
+        0.4354435091118621
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Notes for the above Table:\n",
+      "bbox": [
+        85.10696411132812,
+        357.3104248046875,
+        200.42849731445312,
+        367.8104248046875
+      ],
+      "bbox_norm": [
+        0.1416489883836843,
+        0.4629092897139299,
+        0.3335860253541269,
+        0.4765124403766992
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "• \nNo fill.\n",
+      "bbox": [
+        85.80692291259766,
+        382.95941162109375,
+        135.1779327392578,
+        393.45941162109375
+      ],
+      "bbox_norm": [
+        0.1428139747880917,
+        0.49613853085783066,
+        0.224985318466611,
+        0.5097416815206
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "• \nNo competing bus activity.\n",
+      "bbox": [
+        85.80692291259766,
+        408.9084167480469,
+        222.5589599609375,
+        419.4084167480469
+      ],
+      "bbox_norm": [
+        0.1428139747880917,
+        0.5297564571712513,
+        0.37041917619048925,
+        0.5433596078340206
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "• \nThree-word blit.\n",
+      "bbox": [
+        85.80692291259766,
+        434.857421875,
+        175.2984619140625,
+        445.357421875
+      ],
+      "bbox_norm": [
+        0.1428139747880917,
+        0.5633743834846718,
+        0.2917604928647392,
+        0.5769775341474411
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Cycle Sequence\n",
+      "bbox": [
+        345.0069274902344,
+        123.20211029052734,
+        410.76837158203125,
+        133.7021026611328
+      ],
+      "bbox_norm": [
+        0.5742171956742377,
+        0.15961303507172983,
+        0.6836681921645867,
+        0.1732161758503274
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "-\nA1\nB1\nCl\nDO A2\nB2\nC2 D1 D2\nA1\nB1\nCl\nA2\nB2\nC2\nA1\nB1\nDO\nA2\nB2\nD1\n-\nD2\nA1\nB1\n-\nA2\nB2\nA1\nCl\nDO A2\nC2\nD1\n-\nD2\nCl\nA2\nC2\nDO\nA2\nD1\n-\nD2\n",
+      "bbox": [
+        304.8939208984375,
+        146.107421875,
+        516.1573486328125,
+        229.050048828125
+      ],
+      "bbox_norm": [
+        0.5074545415943257,
+        0.18928774025851616,
+        0.8590738377767003,
+        0.2967430784308237
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "-\nA2\n",
+      "bbox": [
+        305.1419372558594,
+        230.2974853515625,
+        339.33892822265625,
+        240.7974853515625
+      ],
+      "bbox_norm": [
+        0.5078673311527154,
+        0.29835918004706763,
+        0.5647835803315299,
+        0.3119623307098369
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "-\nB1\nCl\nDO\n-\nB2\nC2\nD1 - \nD2\nB1\nCl\n-\nB2\nC2\nB1\nDO\n-\nB2\nD1\n-\nD2\nB1\n-\n-\nB2\nCl\nDO\n-\nC2\nD1\n-\nD2\n",
+      "bbox": [
+        304.8729553222656,
+        241.59735107421875,
+        516.1329345703125,
+        300.34698486328125
+      ],
+      "bbox_norm": [
+        0.5074196472388914,
+        0.3129985872751015,
+        0.8590332038839094,
+        0.3891109796384481
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "-\nC2\n",
+      "bbox": [
+        305.11798095703125,
+        301.0943908691406,
+        338.76898193359375,
+        311.5943908691406
+      ],
+      "bbox_norm": [
+        0.5078274591454144,
+        0.3900792726388256,
+        0.5638349821043257,
+        0.4036824233015949
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "-\nD2\n",
+      "bbox": [
+        304.8669738769531,
+        313.0920715332031,
+        339.3149719238281,
+        323.5920715332031
+      ],
+      "bbox_norm": [
+        0.5074096919351576,
+        0.40562272575092423,
+        0.5647437083242288,
+        0.4192258764136935
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "• \nTypical operation involves fetching all sources twice before the first destination becomes \navailable. This is due to internal pipelining. Care must be taken with overlapping source and \ndestination regions.\n",
+      "bbox": [
+        85.7769775390625,
+        460.3420715332031,
+        517.0750122070312,
+        496.7900695800781
+      ],
+      "bbox_norm": [
+        0.14276413477896532,
+        0.5963907195692841,
+        0.8606011642219793,
+        0.6436104918348043
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "NOTE\n",
+      "bbox": [
+        293.8559875488281,
+        511.58905029296875,
+        324.32696533203125,
+        522.0890502929688
+      ],
+      "bbox_norm": [
+        0.4890833999475213,
+        0.6627831360531727,
+        0.5397982059933163,
+        0.676386286715942
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "This Table is only meant to be an illustration of the typical order of blitter cycles on \nthe bus. Bus cycles are dynamically allocated based on blitter operating mode; com­\npeting bus activity from processor, bit-planes, and other DMA channels; and other fac­\ntors. Commodore Amiga does not guarantee the accuracy of or future adherence to \nthis chart. We reserve the right to make product improvements or design changes in \nthis area without notice.\n",
+      "bbox": [
+        109.52598571777344,
+        530.4380493164062,
+        492.35406494140625,
+        605.4850463867188
+      ],
+      "bbox_norm": [
+        0.18229113493408522,
+        0.6872027335349071,
+        0.8194565033986696,
+        0.7844289819097516
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "Blitter Hardware 183\n",
+      "bbox": [
+        420.1000061035156,
+        715.3650512695312,
+        514.9674682617188,
+        725.8650512695312
+      ],
+      "bbox_norm": [
+        0.6991994310442331,
+        0.9267827210761064,
+        0.8570934434268025,
+        0.9403858717388757
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

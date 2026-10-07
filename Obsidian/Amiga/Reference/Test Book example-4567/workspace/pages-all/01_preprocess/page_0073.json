@@ -1,0 +1,299 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0073",
+  "page": 73,
+  "source_index": 72,
+  "prepared_index": 72,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "(40/42)\n7654\n3210\nOptional control status register\n",
+      "bbox": [
+        61.439998626708984,
+        75.3599853515625,
+        418.0896301269531,
+        85.9305419921875
+      ],
+      "bbox_norm": [
+        0.11347517425692595,
+        0.10456208848776909,
+        0.7721809032242646,
+        0.11922875108949012
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Write\nRead\neo\n",
+      "bbox": [
+        281.2799987792969,
+        98.87994384765625,
+        534.6504516601562,
+        111.6126937866211
+      ],
+      "bbox_norm": [
+        0.519503541502249,
+        0.13719606486162755,
+        0.9874601973429461,
+        0.15486277378679156
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Interrupt enable\nInterrupt enable\n_\n/\nUser definable\ndon't care\nLocal reset\nmust be 0\nUser definable\ndon't care\nUser definable\nINT2 pending\n-\nUser definable\nINT6 pending\nUser definable\nINT7 pending\n.\nUser definable\n1 am pulling INT\n_\n",
+      "bbox": [
+        22.55999755859375,
+        136.3199462890625,
+        540.4752197265625,
+        230.65054321289062
+      ],
+      "bbox_norm": [
+        0.04166666196968916,
+        0.18914412230879427,
+        0.9982181170388345,
+        0.32002796174479664
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "(44/46)\n765\n4\n321\n0\nReserved\n",
+      "bbox": [
+        60.720001220703125,
+        242.87997436523438,
+        320.8798828125,
+        255.85292053222656
+      ],
+      "bbox_norm": [
+        0.11214539181979659,
+        0.3369963151267806,
+        0.5926416248626275,
+        0.3549962966651525
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": ".\n",
+      "bbox": [
+        246.9600067138672,
+        268.0799560546875,
+        247.4376220703125,
+        268.5604553222656
+      ],
+      "bbox_norm": [
+        0.45611703161993983,
+        0.371961326107215,
+        0.4569991521767729,
+        0.37262801953477376
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Write\nRead\n~\n",
+      "bbox": [
+        281.5199890136719,
+        266.8799743652344,
+        534.6840209960938,
+        276.72979736328125
+      ],
+      "bbox_norm": [
+        0.5199467858752042,
+        0.3702963497804421,
+        0.987522197445979,
+        0.38396299341241685
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": ".\n",
+      "bbox": [
+        84.239990234375,
+        301.1999816894531,
+        84.9599609375,
+        301.6804504394531
+      ],
+      "bbox_norm": [
+        0.15558508764503656,
+        0.41791540949754225,
+        0.15691482076390215,
+        0.41858206058191727
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "Not defined\nmust be 00\n_\n",
+      "bbox": [
+        281.760009765625,
+        304.3199768066406,
+        534.9299926757812,
+        312.7283630371094
+      ],
+      "bbox_norm": [
+        0.5203900866118893,
+        0.42224440722760886,
+        0.9879764891100201,
+        0.43391105526327467
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "(48/4A)\n7654\n321\n0\nBase address register, write only\na\nbits are compared with A23 through A16\n~\n(or fewer) to determine the base address of this\nboard.\n",
+      "bbox": [
+        60.0,
+        327.5999755859375,
+        535.4052124023438,
+        385.4476623535156
+      ],
+      "bbox_norm": [
+        0.11081560233720097,
+        0.4545454391479332,
+        0.9888541851140458,
+        0.5348091880643712
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "(4C/4E)\nX\nX\nX\nX\nX\nX\nX\nX\nOptional “shut up” address, a write to this ad-\ndress will cause the board to pass its config out\nand then never again respond to any address.\na\nRESET will re-enable the board. The actual ad-\ndress that has this effect is 4C. A write to 4E is\nignored. This is write only.\n_\n",
+      "bbox": [
+        60.0,
+        399.8399658203125,
+        535.401611328125,
+        472.57196044921875
+      ],
+      "bbox_norm": [
+        0.11081560233720097,
+        0.5547785299056357,
+        0.9888475341939023,
+        0.6556942774711567
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "(50/52)\n7654\n321\n90\nReserved, must be 00\n-\n(54/56)\n7654\n321\n0\nReserved, must be 00\n(58/5A)\n7654\n321\n0\nReserved, must be 00\n_\n(5C/SE)\n7654\n321\n0\nReserved, must be 00\n(60/62)\n765\n4\n32\n1\n0\nReserved, must be 00\n(64/66)\n765\n4\n3\n2\n1\nOQ -\nReserved, must be 00\nms\n_\n(68/6A)\n765\n4\n32i1\n0\nReserved, must be 00\n(6C/6E)\n765\n4\n3821\n0\nReserved, must be 00\n(70/72)\n7654\n321\n0\nReserved, must be 00\n(74/76)\n7654\n32i1\n0\nReserved, must be 00\n~\n(78/7A)\n765\n4\n321\n0\nReserved, must be 00\n(7C/7E)\n765\n4\n321\n0\nReserved, must be 00\n",
+      "bbox": [
+        59.040008544921875,
+        482.8799743652344,
+        534.666015625,
+        626.6502685546875
+      ],
+      "bbox_norm": [
+        0.10904256848165017,
+        0.6699966616633961,
+        0.9874889428452613,
+        0.8694781524415588
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Note: The actual reserved values will be FF rather than 00, because the system will invert them. See\nthe section on reading I/O locations for more information.\n",
+      "bbox": [
+        57.8399658203125,
+        639.5999755859375,
+        488.4911804199219,
+        662.6502685546875
+      ],
+      "bbox_norm": [
+        0.1068261775256841,
+        0.8874458896455334,
+        0.9022074065773993,
+        0.9194282044220511
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "28\n",
+      "bbox": [
+        254.39993286132812,
+        701.2799682617188,
+        265.4111633300781,
+        708.7274169921875
+      ],
+      "bbox_norm": [
+        0.4698580299095261,
+        0.9730269685430795,
+        0.4901949655239973,
+        0.9833603144099952
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

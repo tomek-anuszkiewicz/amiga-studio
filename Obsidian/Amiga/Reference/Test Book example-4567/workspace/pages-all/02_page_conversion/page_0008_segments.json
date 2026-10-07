@@ -1,0 +1,72 @@
+{
+  "page": 8,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "toc_heading",
+      "continuation": true,
+      "heading_level": 1,
+      "md_text": "TABLE OF CONTENTS (Continued)",
+      "bbox": [
+        578,
+        225,
+        1582,
+        286
+      ],
+      "segment_id": "page_0008_seg_001"
+    },
+    {
+      "type": "toc",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Paragraph Number — Title — Page Number\n\n**Section 4**\n**8-Bit Bus Operations**\n\n4.1 Data Transfer Operations ................................ 4-1\n4.1.1 Read Operations ................................ 4-1\n4.1.2 Write Cycle ................................ 4-3\n4.1.3 Read-Modify-Write Cycle ................................ 4-5\n4.2 Other Bus Operations ................................ 4-8\n\n**Section 5**\n**16-Bit Bus Operations**\n\n5.1 Data Transfer Operations ................................ 5-1\n5.1.1 Read Operations ................................ 5-1\n5.1.2 Write Cycle ................................ 5-4\n5.1.3 Read-Modify-Write Cycle ................................ 5-7\n5.1.4 CPU Space Cycle ................................ 5-9\n5.2 Bus Arbitration ................................ 5-11\n5.2.1 Requesting The Bus ................................ 5-14\n5.2.2 Receiving The Bus Grant ................................ 5-15\n5.2.3 Acknowledgment of Mastership (3-Wire Arbitration Only) ................................ 5-15\n5.3 Bus Arbitration Control ................................ 5-15\n5.4 Bus Error and Halt Operation ................................ 5-23\n5.4.1 Bus Error Operation ................................ 5-24\n5.4.2 Retrying The Bus Cycle ................................ 5-26\n5.4.3 Halt Operation ................................ 5-27\n5.4.4 Double Bus Fault ................................ 5-28\n5.5 Reset Operation ................................ 5-29\n5.6 The Relationship of $\\overline{\\mathrm{DTACK}}$, $\\overline{\\mathrm{BERR}}$, and $\\overline{\\mathrm{HALT}}$ ................................ 5-30\n5.7 Asynchronous Operation ................................ 5-32\n5.8 Synchronous Operation ................................ 5-35\n\n**Section 6**\n**Exception Processing**\n\n6.1 Privilege Modes ................................ 6-1\n6.1.1 Supervisor Mode ................................ 6-2\n6.1.2 User Mode ................................ 6-2\n6.1.3 Privilege Mode Changes ................................ 6-2\n6.1.4 Reference Classification ................................ 6-3\n6.2 Exception Processing ................................ 6-4\n6.2.1 Exception Vectors ................................ 6-4\n6.2.2 Kinds Of Exceptions ................................ 6-5\n6.2.3 Multiple Exceptions ................................ 6-8",
+      "bbox": [
+        236,
+        327,
+        1935,
+        2395
+      ],
+      "segment_id": "page_0008_seg_002"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "viii",
+      "bbox": [
+        279,
+        2503,
+        325,
+        2533
+      ],
+      "segment_id": "page_0008_seg_003"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 USER’S MANUAL",
+      "bbox": [
+        879,
+        2502,
+        1290,
+        2534
+      ],
+      "segment_id": "page_0008_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        1693,
+        2504,
+        1887,
+        2534
+      ],
+      "segment_id": "page_0008_seg_005"
+    }
+  ]
+}

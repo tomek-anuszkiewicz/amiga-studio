@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0107",
+  "page": 107,
+  "source_index": 106,
+  "prepared_index": 106,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "COMPLETE SAMPLE COPPER LIST\n",
+      "bbox": [
+        86.75,
+        84.32500457763672,
+        271.4029846191406,
+        94.82500457763672
+      ],
+      "bbox_norm": [
+        0.14438359857614777,
+        0.1092462611341241,
+        0.45171342459502484,
+        0.12284941179689339
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "The following example shows a complete Copper list. This list is for two bit-planes— one at \n$21000 and one at $25000. At the top of the screen, the color registers are loaded with the fol­\nlowing values:\n",
+      "bbox": [
+        86.30001068115234,
+        117.42198944091797,
+        517.5980834960938,
+        153.3699951171875
+      ],
+      "bbox_norm": [
+        0.1436346524415535,
+        0.15212466795113455,
+        0.8614717453750249,
+        0.19869668102164698
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Register\nColor\n",
+      "bbox": [
+        254.99002075195312,
+        174.41900634765625,
+        345.8150329589844,
+        184.91900634765625
+      ],
+      "bbox_norm": [
+        0.4243962743190039,
+        0.22596647826644595,
+        0.5755621775256173,
+        0.23956962892921527
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "COLOROO\nwhite\nCOLOROl\nred\nCOLOR02\ngreen\nCOLOR03\nblue\n",
+      "bbox": [
+        255.24002075195312,
+        200.5679931640625,
+        343.8074645996094,
+        249.7120361328125
+      ],
+      "bbox_norm": [
+        0.424812365381183,
+        0.25984348848952615,
+        0.5722208525214194,
+        0.32351147141157516
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "At line 150 on the screen, the color registers are reloaded:\n",
+      "bbox": [
+        86.49003601074219,
+        270.76104736328125,
+        337.95452880859375,
+        281.26104736328125
+      ],
+      "bbox_norm": [
+        0.14395092380647337,
+        0.35078126865637416,
+        0.5624794354408204,
+        0.36438441931914345
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Register\nColor\n",
+      "bbox": [
+        250.18003845214844,
+        302.56005859375,
+        340.60601806640625,
+        313.06005859375
+      ],
+      "bbox_norm": [
+        0.4163907117422503,
+        0.3919781011035322,
+        0.5668924793673791,
+        0.4055812517663015
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "COLOROO\nblack\nCOLOROl\nyellow\nCOLOR02\ncyan\nCOLOR03\nmagenta\n",
+      "bbox": [
+        250.43003845214844,
+        328.5090637207031,
+        351.49249267578125,
+        378.1040344238281
+      ],
+      "bbox_norm": [
+        0.4168068028044294,
+        0.4255960274169528,
+        0.5850115385017817,
+        0.48984820442554694
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "The complete Copper list follows.\n",
+      "bbox": [
+        86.30003356933594,
+        399.1530456542969,
+        234.5286102294922,
+        409.6530456542969
+      ],
+      "bbox_norm": [
+        0.14363469053582797,
+        0.5171180016703459,
+        0.39034103416711036,
+        0.5307211523331152
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "; Notes:\n; \n1. Copper lists must be in CHIP ram.\n; \n2. Bitplane addresses used in the example are arbitrary.\n; \n3. Destination register addresses in copper move instructions\n; \nare offsets from the base address of the custom chips.\n; \n4. As always, hardware manual examples assume that your\n; \napplication has taken full control of the hardware,\n; \nand is not conflicting with operating system use of\n; \nthe same hardware.\n; \n5. Many of the examples just pick memory addresses to\n; \nbe used. \nNormally you would need to allocate the\n; \nrequired type of memory from the system with AllocMem()\n; \n6. As stated earlier, the code examples are mainly to help\n; \nclarify the way the hardware works.\n; \n7. The following INCLUDES are required by all example code\n; \nin this chapter.\n",
+      "bbox": [
+        87.49993133544922,
+        433.31585693359375,
+        455.7950439453125,
+        590.1142578125
+      ],
+      "bbox_norm": [
+        0.1456317574798616,
+        0.5613772272794917,
+        0.7586089758846989,
+        0.764515538787783
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "INCLUDE \"exec/types.i\"\nINCLUDE \"hardware/custom.i\" \nINCLUDE \"hardware/dmabits.i\" \nINCLUDE \"hardware/hw_examples.i\"\n",
+      "bbox": [
+        130.29689025878906,
+        611.2633056640625,
+        300.85797119140625,
+        649.6129150390625
+      ],
+      "bbox_norm": [
+        0.21686148586565276,
+        0.7919149372924422,
+        0.5007372511923254,
+        0.8415983195959161
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "24 Coprocessor Hardware\n",
+      "bbox": [
+        87.6969985961914,
+        713.467041015625,
+        203.75350952148438,
+        723.967041015625
+      ],
+      "bbox_norm": [
+        0.14595974918323334,
+        0.9243237763672142,
+        0.33912005679805535,
+        0.9379269270299835
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

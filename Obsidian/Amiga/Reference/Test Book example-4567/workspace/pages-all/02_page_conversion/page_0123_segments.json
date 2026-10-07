@@ -1,0 +1,124 @@
+{
+  "page": 123,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 5-3: DMA and Audio Channel Enable Bits",
+      "bbox": [
+        798,
+        284,
+        1695,
+        330
+      ],
+      "segment_id": "page_0123_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        710,
+        419,
+        1800,
+        1269
+      ],
+      "segment_id": "page_0123_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "For example, if you are using channel 0, then you write a 1 into bit 9 to enable DMA and a 1 into bit 0 to enable the audio channel, as shown below.",
+      "bbox": [
+        359,
+        1357,
+        2156,
+        1455
+      ],
+      "segment_id": "page_0123_seg_003"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nBEGINCHAN0:\n        LEA     CUSTOM,a0\n        MOVE.W  #(DMAF_SETCLR!DMAF_AUD0!DMAF_MASTER),DMACON(a0)\n```",
+      "bbox": [
+        360,
+        1516,
+        1754,
+        1631
+      ],
+      "segment_id": "page_0123_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "STOPPING THE AUDIO DMA",
+      "bbox": [
+        361,
+        1753,
+        981,
+        1799
+      ],
+      "segment_id": "page_0123_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "You can stop the channel by writing a 0 into the AUDxEN bit at any time. However, you cannot resume the output at the same point in the waveform by just writing a 1 in the bit again. Enabling an audio channel almost always starts the data output again from the top of the list of data pointed to by the location registers for that channel. If the channel is disabled for a very short time (less than two sampling periods) it may stay on and thus continue from where it left off.",
+      "bbox": [
+        361,
+        1892,
+        2158,
+        2151
+      ],
+      "segment_id": "page_0123_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following example shows how to stop audio DMA for one channel.",
+      "bbox": [
+        361,
+        2215,
+        1668,
+        2260
+      ],
+      "segment_id": "page_0123_seg_007"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nSTOPAUDCHAN0:\n        LEA     CUSTOM,a0\n        MOVE.W  #(DMAF_AUD0),DMACON(a0)\n```",
+      "bbox": [
+        363,
+        2319,
+        1220,
+        2434
+      ],
+      "segment_id": "page_0123_seg_008"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Audio Hardware 141",
+      "bbox": [
+        1755,
+        2981,
+        2149,
+        3027
+      ],
+      "segment_id": "page_0123_seg_009"
+    }
+  ]
+}

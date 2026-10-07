@@ -1,0 +1,299 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0157",
+  "page": 157,
+  "source_index": 156,
+  "prepared_index": 156,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Keyboard Communications\n",
+      "bbox": [
+        87.25,
+        85.85820007324219,
+        273.9100036621094,
+        100.85820007324219
+      ],
+      "bbox_norm": [
+        0.14521578070050598,
+        0.1112325744029051,
+        0.4558860174609932,
+        0.13066564677828982
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "The keyboard transmits 8-bit data words serially to the main unit. Before the transmission starts, \nboth KCLK and KDAT are high. The keyboard starts the transmission by putting out the first \ndata bit (on KDAT), followed by a pulse on KCLK (low then high); then it puts out the second \ndata bit and pulses KCLK until all eight data bits have been sent. After the end of the last KCLK \npulse, the keyboard pulls KDAT high again.\n",
+      "bbox": [
+        86.5,
+        127.87102508544922,
+        518.0689697265625,
+        189.61297607421875
+      ],
+      "bbox_norm": [
+        0.14396750751396867,
+        0.1656617923466779,
+        0.8622554715822299,
+        0.24565084582415886
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "When the computer has received the eighth bit, it must pulse KDAT low for at least 1 (one) \nmicrosecond, as a handshake signal to the keyboard. The handshake detection on the keyboard \nend will typically use a hardware latch. The keyboard must be able to detect pulses greater than \nor equal to 1 microsecond. Software MUST pulse the line low for 85 microseconds to ensure \ncompatibility with all keyboard models.\n",
+      "bbox": [
+        86.489990234375,
+        205.36297607421875,
+        518.0393676757812,
+        266.8581848144531
+      ],
+      "bbox_norm": [
+        0.14395084761792437,
+        0.2660555718183128,
+        0.862206202987221,
+        0.34572496129753716
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "All codes transmitted to the computer are rotated one bit before transmission. The transmitted \norder is therefore 6-5-4-3-2-1-0-7. The reason for this is to transmit the up/down flag last, in \norder to cause a key-up code to be transmitted in case the keyboard is forced to restore lost sync \n(explained in more detail below).\n",
+      "bbox": [
+        86.31002044677734,
+        282.4099426269531,
+        517.7870483398438,
+        331.9029541015625
+      ],
+      "bbox_norm": [
+        0.14365131233759776,
+        0.3658728569731883,
+        0.8617862517052267,
+        0.42999294191064363
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "The KDAT line is active low; that is, a high level (+5V) is interpreted as 0, and a low level (0V) \nis interpreted as 1.\n",
+      "bbox": [
+        86.06002044677734,
+        346.8519592285156,
+        517.358154296875,
+        370.39996337890625
+      ],
+      "bbox_norm": [
+        0.14323522127541866,
+        0.4493599484821154,
+        0.861072415793622,
+        0.4798672864121421
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "K C L K \n\\ _ / \n\\ _ / \n\\ _ / \n\\ _ / \n\\ _ / \n\\ _ / \n\\ _ / \n\\ _/\n",
+      "bbox": [
+        129.00601196289062,
+        394.8673400878906,
+        422.5848693847656,
+        401.3673400878906
+      ],
+      "bbox_norm": [
+        0.21471299418051545,
+        0.5115657065735751,
+        0.7033351486524938,
+        0.5199867046029085
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "K D A T \n\\ \nX\nX\nX\nX\nX\nX\nX\n/ \n",
+      "bbox": [
+        129.00601196289062,
+        414.4284973144531,
+        438.3830261230469,
+        421.0163269042969
+      ],
+      "bbox_norm": [
+        0.21471299418051545,
+        0.5369079321822464,
+        0.7296290359233072,
+        0.5454427167966553
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "(6) \n(5) \n(4) \n(3) \n(2) \n(1) \n(0) \n(7)\n",
+      "bbox": [
+        184.9030303955078,
+        424.71533203125,
+        422.0552978515625,
+        431.21533203125
+      ],
+      "bbox_norm": [
+        0.30774599326960517,
+        0.5502349190865886,
+        0.7024537487254926,
+        0.558655917115922
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "F i r s t \nLast\n",
+      "bbox": [
+        177.25303649902344,
+        443.1107482910156,
+        422.18109130859375,
+        451.6107482910156
+      ],
+      "bbox_norm": [
+        0.2950136169253979,
+        0.5740668827900123,
+        0.7026631148580978,
+        0.5850789571360636
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "s e n t \nsent\n",
+      "bbox": [
+        177.97305297851562,
+        453.21075439453125,
+        421.7940368652344,
+        461.71075439453125
+      ],
+      "bbox_norm": [
+        0.2962119866123513,
+        0.5871518260967754,
+        0.7020189152802636,
+        0.5981639004428267
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "The keyboard processor sets the KDAT line about 20 microseconds before it pulls KCLK low. \nKCLK stays low for about 20 microseconds, then goes high again. The processor waits another \n20 microseconds before changing KDAT.\n",
+      "bbox": [
+        85.81304931640625,
+        477.2949523925781,
+        518.316650390625,
+        513.3948974609375
+      ],
+      "bbox_norm": [
+        0.14282417135556394,
+        0.6183538236167181,
+        0.8626677024245939,
+        0.6651226799674408
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Therefore, the bit rate during transmission is about 60 microseconds per bit, or 17 kbits/sec.\n",
+      "bbox": [
+        85.56302642822266,
+        528.7439575195312,
+        486.25360107421875,
+        539.2439575195312
+      ],
+      "bbox_norm": [
+        0.14240804219911035,
+        0.6850079729682926,
+        0.8093031094375365,
+        0.698611123631062
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "344 Appendix H\n",
+      "bbox": [
+        86.75,
+        713.3150634765625,
+        161.77247619628906,
+        723.8150634765625
+      ],
+      "bbox_norm": [
+        0.14438359857614777,
+        0.9241268836661453,
+        0.26924832580742847,
+        0.9377300343289146
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

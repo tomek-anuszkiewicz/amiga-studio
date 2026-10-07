@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0078",
+  "page": 78,
+  "source_index": 77,
+  "prepared_index": 77,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "~\nSection 4.1\n—————\na\na.\n_\nDescription of PC/XT Emulator for AMIGA 2000\n",
+      "bbox": [
+        11.279998779296875,
+        53.51995849609375,
+        511.6318054199219,
+        110.18133544921875
+      ],
+      "bbox_norm": [
+        0.02083333098484458,
+        0.0742590196909354,
+        0.9449464448746375,
+        0.15287676202690384
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "AMIGA ACCESS:\nAmiga Interface Offset Address = Base Addr.\n=oo\nBase Addr. + (00000— 1FFFF)\n: Byte Access\nBase Addr. + (20000 — 3FFFF)\n: Word Access\n—\nBase Addr. + (40000 — 5FFFF)\n: Graphic Access\nBase Addr. + (60000 — 7FFFF)\n:\nV/O Register Access\n",
+      "bbox": [
+        11.279998779296875,
+        131.03997802734375,
+        509.6736145019531,
+        203.051025390625
+      ],
+      "bbox_norm": [
+        0.02083333098484458,
+        0.1818181587218998,
+        0.9413298097735384,
+        0.2817335909153885
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "INTERFACE MEMORY\nInterface\nMAP:\nOffset Address\nSize\nUsage\n-\nOQ0000 ... OFFFF\n64K\nDISK BUFFER RAM\n10000 ... 17FFF\n32K\nCOLOR VIDEO RAM\n18000... 1BFFF\n.\n16K\nPARAMETER RAM\n~\n1C000 ... 1DFFF\n8K\nMONO VIDEO RAM\n1EOOO ... 1FFFF\n8K\nIO-PAGE\n",
+      "bbox": [
+        10.79998779296875,
+        240.9599609375,
+        508.2708435058594,
+        329.76959228515625
+      ],
+      "bbox_norm": [
+        0.019946785875204164,
+        0.33433229372348683,
+        0.9387389945589837,
+        0.4575557854508143
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "-\nKinds of memory access on the following pages:\n",
+      "bbox": [
+        11.760009765625,
+        345.1199645996094,
+        466.2480773925781,
+        355.9307861328125
+      ],
+      "bbox_norm": [
+        0.021719876094485002,
+        0.47885444920156,
+        0.8611260255803407,
+        0.49385447968865226
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "B= Byte\naccess\nG = Graphic access\nW = Word\naccess\no\n",
+      "bbox": [
+        10.800018310546875,
+        358.0799560546875,
+        357.5375671386719,
+        400.568603515625
+      ],
+      "bbox_norm": [
+        0.019946842238934195,
+        0.4968364560584458,
+        0.6603456810108226,
+        0.5557895157599636
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "(*)\nselectable by BIT 5S and 6 of the MODE REGISTER\n",
+      "bbox": [
+        211.92001342773438,
+        404.15997314453125,
+        492.4801025390625,
+        416.1719665527344
+      ],
+      "bbox_norm": [
+        0.3914007322550351,
+        0.5607725463056589,
+        0.9095746533658785,
+        0.5774392045036888
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "-\nBIT 5 = SEL1\n",
+      "bbox": [
+        11.52001953125,
+        429.8399658203125,
+        331.6704406738281,
+        438.00811767578125
+      ],
+      "bbox_norm": [
+        0.021276631721529805,
+        0.5964035732227126,
+        0.6125709943452524,
+        0.6077368957161909
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": ";\nBIT 6 = SEL2\n—\n",
+      "bbox": [
+        11.0400390625,
+        440.8799743652344,
+        425.2488098144531,
+        450.960693359375
+      ],
+      "bbox_norm": [
+        0.02039014297561942,
+        0.6117216010194884,
+        0.7854033833794407,
+        0.6257086131794345
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": ".\n",
+      "bbox": [
+        493.6800231933594,
+        439.4399719238281,
+        493.9176330566406,
+        440.16070556640625
+      ],
+      "bbox_norm": [
+        0.9117908188669245,
+        0.609723595552814,
+        0.9122296668689374,
+        0.6107236145225603
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": ",\n109\n",
+      "bbox": [
+        208.80001831054688,
+        704.8799438476562,
+        289.35601806640625,
+        712.087158203125
+      ],
+      "bbox_norm": [
+        0.3856383299516974,
+        0.9780219398665817,
+        0.5344193571987136,
+        0.98802196019131
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,299 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0110",
+  "page": 110,
+  "source_index": 109,
+  "prepared_index": 109,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "The Color Table\n",
+      "bbox": [
+        86.30000305175781,
+        80.46501922607422,
+        162.23602294921875,
+        90.96501922607422
+      ],
+      "bbox_norm": [
+        0.143634639743462,
+        0.10424550282046817,
+        0.2700198364506132,
+        0.11784865348323748
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "The color table contains 32 registers, and you may load a different color into each of the registers. \nHere is a condensed view of the contents of the color table:\n",
+      "bbox": [
+        85.80000305175781,
+        113.71501922607422,
+        517.349853515625,
+        136.81304931640625
+      ],
+      "bbox_norm": [
+        0.1428024576191038,
+        0.14732214658590428,
+        0.8610586002700732,
+        0.17724652595085336
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Table 3-2: Portion of the Color Table\n",
+      "bbox": [
+        218.4600067138672,
+        151.5130615234375,
+        382.1864929199219,
+        162.0130615234375
+      ],
+      "bbox_norm": [
+        0.36359702494890545,
+        0.19629095269340516,
+        0.6360975351582218,
+        0.20989410335617448
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Register Name\nContents\nMeaning\n",
+      "bbox": [
+        151.51101684570312,
+        183.31207275390625,
+        392.1385192871094,
+        194.0120849609375
+      ],
+      "bbox_norm": [
+        0.2521695197246566,
+        0.2374877851405632,
+        0.6526613320460516,
+        0.25135005924967907
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "COLOROO\n12 bits\nUser-defined color for the \nbackground area and borders.\n",
+      "bbox": [
+        161.8400115966797,
+        209.4610595703125,
+        423.13800048828125,
+        232.90704345703125
+      ],
+      "bbox_norm": [
+        0.26936072931336136,
+        0.27136479536364344,
+        0.7042557602860382,
+        0.3017399621491574
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "COLOROl\n12 bits\nUser-defined color number 1 \n(For example, the alternate color \nselection for a two-color playfield).\n",
+      "bbox": [
+        161.843994140625,
+        247.95709228515625,
+        448.7364807128906,
+        284.1531066894531
+      ],
+      "bbox_norm": [
+        0.2693673577171229,
+        0.32123787469115916,
+        0.7468609555933519,
+        0.3681311925324371
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "COLOR02\n12 bits\nUser-defined color number 2.\n",
+      "bbox": [
+        161.843994140625,
+        298.9521179199219,
+        422.7494201660156,
+        309.6021423339844
+      ],
+      "bbox_norm": [
+        0.2693673577171229,
+        0.38730387628749247,
+        0.7036090210899046,
+        0.40110138930336514
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "COLOR31\n12 bits\nUser-defined color number 31.\n",
+      "bbox": [
+        161.843994140625,
+        376.94915771484375,
+        428.429443359375,
+        387.69915771484375
+      ],
+      "bbox_norm": [
+        0.2693673577171229,
+        0.48835201758085767,
+        0.713062648624812,
+        0.5022790527832167
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "COLOROO is always reserved for the background color. The background color shows in any area \non the display where there is no other object present and is also displayed outside the defined \ndisplay window, in the border area.\n",
+      "bbox": [
+        85.70399475097656,
+        408.649169921875,
+        518.4700317382812,
+        445.04315185546875
+      ],
+      "bbox_norm": [
+        0.14264266483570345,
+        0.5294205930155121,
+        0.8629229848560529,
+        0.5765703853451102
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "NOTE\n",
+      "bbox": [
+        285.114013671875,
+        459.9921569824219,
+        315.2174987792969,
+        470.4921569824219
+      ],
+      "bbox_norm": [
+        0.47453357116350786,
+        0.595937391916582,
+        0.5246367355380674,
+        0.6095405425793513
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "If you are using the optional genlock board for video input from a camera, VCR, or \nlaser disk, the background color will be replaced by the incoming video display.\n",
+      "bbox": [
+        110.16402435302734,
+        479.0921630859375,
+        493.91851806640625,
+        502.2911682128906
+      ],
+      "bbox_norm": [
+        0.18335306362790163,
+        0.6206821786485759,
+        0.8220603232487123,
+        0.6507373750265093
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Twelve bits of color selection allow you to define, for each of the 32 registers, one of 4,096 possi­\nble colors, as shown in Table 3-3.\n",
+      "bbox": [
+        85.16402435302734,
+        517.940185546875,
+        515.64306640625,
+        541.2901611328125
+      ],
+      "bbox_norm": [
+        0.1417439574099916,
+        0.6710112741235073,
+        0.8582178848250595,
+        0.7012620584918399
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "40 Playfield Hardware\n",
+      "bbox": [
+        86.5,
+        713.718017578125,
+        187.42601013183594,
+        724.218017578125
+      ],
+      "bbox_norm": [
+        0.14396750751396867,
+        0.9246489260807867,
+        0.3119451505429856,
+        0.938252076743556
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

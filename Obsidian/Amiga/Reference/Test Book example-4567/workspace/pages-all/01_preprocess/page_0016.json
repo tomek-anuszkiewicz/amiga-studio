@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0016",
+  "page": 16,
+  "source_index": 15,
+  "prepared_index": 15,
+  "geometry": {
+    "width": 504.0,
+    "height": 648.9600219726562,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      504.0,
+      648.9600219726562
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      504.0,
+      648.9600219726562
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      648.9600219726562
+    ]
+  },
+  "width": 504.0,
+  "height": 648.9600219726562,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2100,
+    "pixel_height": 2704,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "• \n",
+      "bbox": [
+        1.2599999904632568,
+        41.400047302246094,
+        46.47600555419922,
+        140.3280487060547
+      ],
+      "bbox_norm": [
+        0.0024999999810778905,
+        0.063794449427565,
+        0.09221429673452226,
+        0.2162352748317174
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "1.1 \nMC68000 \n",
+      "bbox": [
+        69.19000244140625,
+        46.45281219482422,
+        149.6342010498047,
+        62.994407653808594
+      ],
+      "bbox_norm": [
+        0.13728175087580605,
+        0.07158039112119836,
+        0.29689325605119976,
+        0.097069781682889
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "The MC68000 Is the first implementation of the M68000 16/-32 bit microprocessor \narchitecture. The MC68000 has a 16-bit data bus and 24-bit address bus while the full \narchitecture provides for 32-bit address and data buses. It is completely code-compatible \nwith the MC68008 8-bit data bus implementation of the M68000 and is upward code \ncompatible with the MC6801 O virtual extensions and the MC68020 32-bit implementation \nof the architecture. Any user-mode programs using the MC68000 instruction set will run \nunchanged on the MC68008, MC68010, MC68020, MC68030, and MC68040. This is \npossible because the user programming model is identical for all processors and the \ninstruction sets are proper subsets of the complete architecture. \n",
+      "bbox": [
+        68.7699966430664,
+        66.09749603271484,
+        455.5462341308594,
+        167.7205352783203
+      ],
+      "bbox_norm": [
+        0.13644840603783018,
+        0.1018514142547595,
+        0.903861575656467,
+        0.25844509615322214
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "1.2 \nMC68008 \n",
+      "bbox": [
+        68.93000030517578,
+        175.8228302001953,
+        149.39419555664062,
+        192.36444091796875
+      ],
+      "bbox_norm": [
+        0.1367658736213805,
+        0.2709301409133698,
+        0.29641705467587426,
+        0.29641955498774003
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "The MC68008 is a member of the M68000 family of advanced ·microprocessors. This \ndevice allows the design of cost-effective systems using 8-bit data buses while providing \nthe benefits of a 32-bit microprocessor architecture. The performance of the MC68008 is \ngreater than any 8-bit microprocessor and superior to several 16-bit microprocessors. \n",
+      "bbox": [
+        68.58000183105469,
+        195.2275390625,
+        454.5263977050781,
+        241.16050720214844
+      ],
+      "bbox_norm": [
+        0.1360714322044736,
+        0.3008313801350399,
+        0.9018380906846788,
+        0.3716107295316716
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "The MC68008 is available as a 48-pin dual-in-line package (plastic or ceramic) and 52-pin \nplastic leaded chip carrier. The additional four pins of the 52-pin package allow for \nadditional signals: A20, A21, BGACK, and IPL2. The 48-pin version supports a 20-bit \naddress that provides a 1-Mbyte address space; the 52-pin version supports a 22-bit \naddress that extends the address space to 4 Mbytes. The 48-pin MC68008 contains a \nsimple two-wire arbitration circuit; the 52-pin MC68008 contains a full three-wire MC68000 \nbus arbitration control. Both versions are designed to work with daisy-chained networks, \npriority encoded networks, or a combination of these techniques. \n",
+      "bbox": [
+        68.54000091552734,
+        248.74752807617188,
+        454.6776123046875,
+        339.560546875
+      ],
+      "bbox_norm": [
+        0.135992065308586,
+        0.3833017746147894,
+        0.9021381196521577,
+        0.5232380044657162
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "A system implementation based on an 8-bit data bus reduces system cost in comparison \nto 16-bit systems due to a more effective use of components and byte-wide memories and \nperipherals. In addition, the nonmultiplexed address and data buses eliminate the need for \nexternal demultiplexers, furthersimplifying the system. \n",
+      "bbox": [
+        68.3499984741211,
+        347.1375427246094,
+        454.42327880859375,
+        393.800537109375
+      ],
+      "bbox_norm": [
+        0.13561507633754186,
+        0.5349136017183442,
+        0.9016334896995908,
+        0.6068178682445368
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "The large nonsegmented linear address space of the MC68008 allows large modular \nprograms to be developed and executed efficiently. A large linear address space allows \nprogram segment sizes to be determined by the application rather than forcing the \ndesigner to adopt an arbitrary segment size without regard to the application's individual \nrequirements. \n",
+      "bbox": [
+        68.55000305175781,
+        401.6275329589844,
+        454.7311096191406,
+        459.310546875
+      ],
+      "bbox_norm": [
+        0.13601191081697978,
+        0.6188786972395456,
+        0.9022442651173425,
+        0.707764009066113
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "1.3 \nMC68010 \n",
+      "bbox": [
+        68.69000244140625,
+        472.8374938964844,
+        149.15419006347656,
+        489.51251220703125
+      ],
+      "bbox_norm": [
+        0.13628968738374256,
+        0.7286080465468291,
+        0.29594085330054876,
+        0.7543030319788431
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "The MC6801 O utilizies VLSI technology and is a fully implemented 16-bit microprocessor \nwith 32-bit registers, a rich basic instruction set, and versatile addressing modes. The \nvector base register (VBR) allows the vector table to be dynamically relocated \n",
+      "bbox": [
+        68.37000274658203,
+        492.3475341796875,
+        454.8601379394531,
+        527.7205200195312
+      ],
+      "bbox_norm": [
+        0.13565476735432944,
+        0.7586715937956998,
+        0.9025002736893911,
+        0.8131787816688755
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "1-2 \nM68000 8-116-132-BIT MICROPROCESSORS USER'S MANUAL \nMOTOROLA \n",
+      "bbox": [
+        69.05999755859375,
+        597.20361328125,
+        455.6415710449219,
+        609.0115356445312
+      ],
+      "bbox_norm": [
+        0.1370238046797495,
+        0.92024715400175,
+        0.9040507362002418,
+        0.9384423000253654
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0139",
+  "page": 139,
+  "source_index": 138,
+  "prepared_index": 138,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "CIAAPRA/CIABPRB - Disk selection, control and sensing\n",
+      "bbox": [
+        87.0,
+        82.02501678466797,
+        357.8265686035156,
+        92.52501678466797
+      ],
+      "bbox_norm": [
+        0.14479968963832687,
+        0.10626653918457322,
+        0.595553748024558,
+        0.11986968984734253
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "The following table lists how 8520 chip bits used by the disk subsystem. Bits labeled \"PA\" are \ninput bits in CIAAPRA ($BFE001). Bits labeled \"PB\" are output bits located in CIAAPRB \n($BFD100). More information on how the 8520 chips operate can be found in Appendix F.\n",
+      "bbox": [
+        86.30004119873047,
+        115.02501678466797,
+        517.5036010742188,
+        150.822021484375
+      ],
+      "bbox_norm": [
+        0.14363470323391947,
+        0.14901929841041958,
+        0.8613144922099241,
+        0.19539568395384582
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Table 8-5: Disk Subsystem\n",
+      "bbox": [
+        241.30003356933594,
+        178.968994140625,
+        359.8660583496094,
+        189.468994140625
+      ],
+      "bbox_norm": [
+        0.40161114908687007,
+        0.23186116107230453,
+        0.59894820184358,
+        0.24546431173507383
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Bit \nName\nFunction\n",
+      "bbox": [
+        88.70002746582031,
+        211.114990234375,
+        263.3200378417969,
+        221.864990234375
+      ],
+      "bbox_norm": [
+        0.14762915457427414,
+        0.2735075256502164,
+        0.43826045695453647,
+        0.28743456085257546
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "PA5 \nDSKRDY*\nDisk ready (active low). The drive will pull this line low when \nthe motor is known to be rotating at full speed. This signal \nis only valid when the motor is ON, at other times configuration \ninformation may obscure the meaning of this input\n",
+      "bbox": [
+        88.45002746582031,
+        236.91400146484375,
+        505.03204345703125,
+        286.510009765625
+      ],
+      "bbox_norm": [
+        0.14721306351209504,
+        0.30693112914722054,
+        0.8405572775860705,
+        0.3711846504031714
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "PA4 \nDSKTRACKO*\nTrack zero detect. The drive will pull this line low \nwhen the disk heads are positioned over track zero.\nSoftware must not attempt to step outwards when this signal \nis active. Some drives will refuse to step, others will \nattempt the step, possibly causing alignment damage.\nAll new drives must refuse to step outward in this condition.\n",
+      "bbox": [
+        88.20002746582031,
+        301.71002197265625,
+        488.7045593261719,
+        376.5040283203125
+      ],
+      "bbox_norm": [
+        0.14679697244991594,
+        0.3908768462249027,
+        0.8133823967271837,
+        0.4877753354648352
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "PA3 \nDSKPROT*\nDisk is write protected (active low).\n",
+      "bbox": [
+        88.20002746582031,
+        391.6040344238281,
+        378.73492431640625,
+        402.1040344238281
+      ],
+      "bbox_norm": [
+        0.14679697244991594,
+        0.5073379695633932,
+        0.6303528677725384,
+        0.5209411202261625
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "PA2 \nDSKCHANGE*\nDisk has been removed from the drive. The signal goes \nlow whenever a disk is removed. It remains low until \na disk is inserted AND a step pulse is received.\n",
+      "bbox": [
+        88.20002746582031,
+        417.4030456542969,
+        468.5654296875,
+        454.0510559082031
+      ],
+      "bbox_norm": [
+        0.14679697244991594,
+        0.5407615730603974,
+        0.7798635493563134,
+        0.5882404687722641
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "PB7 \nDSKMOTOR*\nDisk motor control (active low). This signal is nonstandard \non the Amiga system. Each drive will latch the motor signal at \nthe time its select signal turns on. The disk drive motor \nwill stay in this state until the next time select turns on. \nDSKMOTOR* also controls the activity light on the front \nof the disk drive.\n",
+      "bbox": [
+        87.70002746582031,
+        494.8010559082031,
+        500.9810485839844,
+        570.1920776367188
+      ],
+      "bbox_norm": [
+        0.14596479032555773,
+        0.6410336487253926,
+        0.8338149465476378,
+        0.7387055941723556
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "All software that selects drives must set up the motor signal \nbefore selecting any drives. The drive will “ remember” \nthe state of its motor when it is not selected. All drive \nmotors turn off after system reset.\n",
+      "bbox": [
+        222.0800323486328,
+        585.7410278320312,
+        485.57745361328125,
+        634.5370483398438
+      ],
+      "bbox_norm": [
+        0.3696220661948462,
+        0.7588498524728062,
+        0.8081777537766918,
+        0.8220669590167448
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "238 Interface Hardware\n",
+      "bbox": [
+        86.5,
+        715.2650146484375,
+        192.4765167236328,
+        725.7650146484375
+      ],
+      "bbox_norm": [
+        0.14396750751396867,
+        0.9266531198162461,
+        0.32035103315227886,
+        0.9402562704790154
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

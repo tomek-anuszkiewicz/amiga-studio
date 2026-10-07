@@ -1,0 +1,85 @@
+{
+  "page": 152,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "************** PART 2 - MORE OUTSIDE WORLD ********************",
+      "bbox": [
+        350,
+        223,
+        1757,
+        257
+      ],
+      "segment_id": "page_0152_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "PARALLEL INTERFACE CONNECTOR SPECIFICATION",
+      "bbox": [
+        349,
+        354,
+        1290,
+        410
+      ],
+      "segment_id": "page_0152_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The 25-pin D-type connector with pins (DB25P=male for the A1000, female for A500/A2000 and IBM compatibles) at the rear of the Amiga is nominally used to interface to parallel printers. In this capacity, data flows from the Amiga to the printer. This interface may also be used for input or bidirectional data transfers. The implementation is similar to Centronics, but the pin assignment and drive characteristics vary significantly from that specification (see Pin Assignment). Signal names correspond to those used in the other places in this appendix, when possible.",
+      "bbox": [
+        348,
+        478,
+        1864,
+        836
+      ],
+      "segment_id": "page_0152_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "PARALLEL CONNECTOR PIN ASSIGNMENT (J8)",
+      "bbox": [
+        349,
+        887,
+        1195,
+        920
+      ],
+      "segment_id": "page_0152_seg_004"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        347,
+        972,
+        1864,
+        2451
+      ],
+      "segment_id": "page_0152_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "302 Appendix E",
+      "bbox": [
+        352,
+        2970,
+        663,
+        3016
+      ],
+      "segment_id": "page_0152_seg_006"
+    }
+  ]
+}

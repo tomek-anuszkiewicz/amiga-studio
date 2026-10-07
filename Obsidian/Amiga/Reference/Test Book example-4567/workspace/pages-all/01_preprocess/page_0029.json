@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0029",
+  "page": 29,
+  "source_index": 28,
+  "prepared_index": 28,
+  "geometry": {
+    "width": 504.0,
+    "height": 648.9600219726562,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      509.0400085449219,
+      652.9199829101562
+    ],
+    "cropbox": [
+      2.5199999809265137,
+      1.91998291015625,
+      506.5199890136719,
+      650.8800048828125
+    ],
+    "cropbox_position": [
+      2.5199999809265137,
+      1.91998291015625
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      -2.5199999809265137,
+      651.0
+    ]
+  },
+  "width": 504.0,
+  "height": 648.9600219726562,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2100,
+    "pixel_height": 2704,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Table 3-3. Function Code Outputs \n",
+      "bbox": [
+        163.01998901367188,
+        49.5724983215332,
+        319.4871520996094,
+        62.900299072265625
+      ],
+      "bbox_norm": [
+        0.32345235915411086,
+        0.07638759961029144,
+        0.633903079562717,
+        0.09692476723152588
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Function Code Output \n",
+      "bbox": [
+        154.50999450683594,
+        69.37236785888672,
+        232.2403106689453,
+        78.85311126708984
+      ],
+      "bbox_norm": [
+        0.30656744941832526,
+        0.10689775257343927,
+        0.4607942672002883,
+        0.12150688578226826
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "FC2 \nFC1 \nFCO \nAddress Space Type \n",
+      "bbox": [
+        153.8000030517578,
+        82.81237030029297,
+        325.78704833984375,
+        92.5431137084961
+      ],
+      "bbox_norm": [
+        0.3051587362138052,
+        0.1276078148058591,
+        0.6464028736901661,
+        0.14260217975706888
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Low \nLow \nLow \n(Undefined, Reserved) \n",
+      "bbox": [
+        153.80999755859375,
+        96.25237274169922,
+        325.4177551269531,
+        105.97310638427734
+      ],
+      "bbox_norm": [
+        0.3051785665845114,
+        0.14831787703827892,
+        0.645670149061415,
+        0.16329681767167853
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Low \nLow \nHigh \nUser Data \n",
+      "bbox": [
+        153.80999755859375,
+        110.18236541748047,
+        306.119384765625,
+        119.6631088256836
+      ],
+      "bbox_norm": [
+        0.3051785665845114,
+        0.16978297843765017,
+        0.6073797316778273,
+        0.18439211164647915
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Low \nHigh \nLow \nUser Program \n",
+      "bbox": [
+        153.80999755859375,
+        123.86241912841797,
+        312.5352478027344,
+        133.34315490722656
+      ],
+      "bbox_norm": [
+        0.3051785665845114,
+        0.19086294214535895,
+        0.620109618656219,
+        0.20547206359784817
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Low \nHigh \nHigh \n(Undefined, Reserved) \n",
+      "bbox": [
+        154.0500030517578,
+        137.29238891601562,
+        325.6577453613281,
+        147.0231170654297
+      ],
+      "bbox_norm": [
+        0.3056547679598369,
+        0.21155754479094924,
+        0.6461463201613653,
+        0.22655188622947942
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "High \nLow \nLow \n(Undefined, Reserved) \n",
+      "bbox": [
+        153.0800018310547,
+        150.98239135742188,
+        325.6577453613281,
+        160.46311950683594
+      ],
+      "bbox_norm": [
+        0.30373016236320377,
+        0.23265283876574985,
+        0.6461463201613653,
+        0.24726194846189925
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "High \nLow \nHigh \nSupervisor Data \n",
+      "bbox": [
+        153.0800018310547,
+        164.66238403320312,
+        315.9593811035156,
+        174.3831329345703
+      ],
+      "bbox_norm": [
+        0.30373016236320377,
+        0.2537327084227403,
+        0.6269035339355469,
+        0.2687116725688195
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "High \nHigh \nLow \nSupervisor Program \n",
+      "bbox": [
+        153.0800018310547,
+        178.3424072265625,
+        322.09503173828125,
+        188.06312561035156
+      ],
+      "bbox_norm": [
+        0.30373016236320377,
+        0.2748126251050899,
+        0.6390774439251612,
+        0.28979154222580994
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "High \nHigh \nHigh \nCPU Space \n",
+      "bbox": [
+        153.0800018310547,
+        192.01239013671875,
+        309.020751953125,
+        201.7431182861328
+      ],
+      "bbox_norm": [
+        0.30373016236320377,
+        0.2958770704442702,
+        0.6131364126054067,
+        0.3108714118828004
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "3.9 CLOCK (CLK) \n",
+      "bbox": [
+        47.98999786376953,
+        227.2150115966797,
+        143.33950805664062,
+        242.32901000976562
+      ],
+      "bbox_norm": [
+        0.09521824972970146,
+        0.3501217392498383,
+        0.2844037858266679,
+        0.37341130702189246
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "The clock input is a TTL-compatible signal that is internally buffered for development of \nthe internal clocks needed by the processor. This clock signal is a constant frequency \nsquare wave that requires no stretching or shaping. The clock input should not be gated \noff at any time, and the clock signal must conform to minimum and maximum pulse-width \ntimes listed in Section 10 Electrical Characteristics. \n",
+      "bbox": [
+        47.81999969482422,
+        245.49501037597656,
+        433.6980895996094,
+        303.38031005859375
+      ],
+      "bbox_norm": [
+        0.09488095177544488,
+        0.3782898823717071,
+        0.8605120825389075,
+        0.46748690179158153
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "a:10 POWER SUPPLY (Vee and GND) \n",
+      "bbox": [
+        48.25,
+        314.3249816894531,
+        249.44459533691406,
+        329.4389953613281
+      ],
+      "bbox_norm": [
+        0.09573412698412699,
+        0.48435184148014765,
+        0.49492975265260725,
+        0.5076414327648814
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "Power is supplied to the processor using these connections. The positive output of the \npower supply is connected to the Vee pins and ground is connected to the GND pins. \n",
+      "bbox": [
+        48.41999816894531,
+        332.60498046875,
+        433.558837890625,
+        356.81060791015625
+      ],
+      "bbox_norm": [
+        0.09607142493838355,
+        0.5125199846020164,
+        0.8602357894655258,
+        0.5498190887407088
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "MOTOROLA \nM68000 8·/16-/32-BIT MICROPROCESSORS USER'S MANUAL \n3-9 \n",
+      "bbox": [
+        48.90999984741211,
+        602.8600463867188,
+        436.150634765625,
+        613.8123168945312
+      ],
+      "bbox_norm": [
+        0.09704365049089704,
+        0.9289633043252703,
+        0.8653782435825893,
+        0.9458399533282715
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

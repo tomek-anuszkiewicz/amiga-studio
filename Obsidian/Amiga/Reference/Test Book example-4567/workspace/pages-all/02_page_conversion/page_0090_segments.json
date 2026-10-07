@@ -1,0 +1,176 @@
+{
+  "page": 90,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "COMMAND DESCRIPTION",
+      "bbox": [
+        145,
+        315,
+        490,
+        425
+      ],
+      "segment_id": "page_0090_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "All commands executed by the HDC are summarized in the table below. Fields of the command block not specified are don't cares. Following this summary is a generalized description of the commands.",
+      "bbox": [
+        792,
+        305,
+        2030,
+        455
+      ],
+      "segment_id": "page_0090_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 5-6. Command Summary",
+      "bbox": [
+        1127,
+        506,
+        1703,
+        550
+      ],
+      "segment_id": "page_0090_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        793,
+        603,
+        2037,
+        1408
+      ],
+      "segment_id": "page_0090_seg_004"
+    },
+    {
+      "type": "table_legend",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "R = 0 Retries/ECC enable\n  = 1 Retries/ECC disabled\n\nS = 0 Set correction span to 5 bits\n  = 1 Set correction span to 11 bits\n\nL = Logical Sector Address\n\nB = Block or sector count required\n\nRead Drive Status (RDS) = 02, 03, 04, 20, 32\nIllegal Disk Access (IDA) = 20, 21, 22, 32\nRead Sector Error (RDE) = 11, 12, 13, 14, 15",
+      "bbox": [
+        797,
+        1457,
+        2027,
+        1858
+      ],
+      "segment_id": "page_0090_seg_005"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Action",
+      "bbox": [
+        798,
+        2024,
+        918,
+        2066
+      ],
+      "segment_id": "page_0090_seg_006"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Read Drive Status (Class 0, Opcode 0)",
+      "bbox": [
+        148,
+        2024,
+        752,
+        2145
+      ],
+      "segment_id": "page_0090_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Read the drive's status and determine if drive is ready. For Hard disk drives supporting buffered seeks this command is useful for determining the first drive to reach its target track. The command will be aborted, if the drive status read is incorrect.",
+      "bbox": [
+        797,
+        2118,
+        2038,
+        2318
+      ],
+      "segment_id": "page_0090_seg_008"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Possible Error Codes",
+      "bbox": [
+        799,
+        2372,
+        1185,
+        2414
+      ],
+      "segment_id": "page_0090_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "No error, invalid command, seek in progress, drive not ready, write fault, DMA error.",
+      "bbox": [
+        799,
+        2469,
+        2035,
+        2565
+      ],
+      "segment_id": "page_0090_seg_010"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "Action",
+      "bbox": [
+        800,
+        2724,
+        918,
+        2767
+      ],
+      "segment_id": "page_0090_seg_011"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Restore (Class 0, Opcode 1)",
+      "bbox": [
+        148,
+        2724,
+        566,
+        2843
+      ],
+      "segment_id": "page_0090_seg_012"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "178",
+      "bbox": [
+        1063,
+        2913,
+        1132,
+        2953
+      ],
+      "segment_id": "page_0090_seg_013"
+    }
+  ]
+}

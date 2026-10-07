@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0135",
+  "page": 135,
+  "source_index": 134,
+  "prepared_index": 134,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "T\n",
+      "bbox": [
+        122.5,
+        97.92306518554688,
+        127.69349670410156,
+        106.42306518554688
+      ],
+      "bbox_norm": [
+        0.2038846204677591,
+        0.12686306753134982,
+        0.21252849070789218,
+        0.13787514187740116
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "+\n*\n",
+      "bbox": [
+        123.5,
+        111.97305297851562,
+        226.85650634765625,
+        121.07296752929688
+      ],
+      "bbox_norm": [
+        0.20554898471647548,
+        0.14506536284161872,
+        0.37757185875374427,
+        0.15685464937996196
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "— timing cycle —\n",
+      "bbox": [
+        267.6969909667969,
+        97.57296752929688,
+        337.0655517578125,
+        106.07296752929688
+      ],
+      "bbox_norm": [
+        0.445545301254094,
+        0.1264095026585259,
+        0.5609998538195707,
+        0.13742157700457724
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "+\n*\n",
+      "bbox": [
+        324.2449951171875,
+        111.51998901367188,
+        427.8514709472656,
+        120.97000122070312
+      ],
+      "bbox_norm": [
+        0.5396617776982708,
+        0.14447840118698624,
+        0.7121006920053528,
+        0.1567212525981534
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "T + 7\n",
+      "bbox": [
+        466.29498291015625,
+        98.67001342773438,
+        486.8735046386719,
+        107.17001342773438
+      ],
+      "bbox_norm": [
+        0.7760846989114891,
+        0.12783076748142289,
+        0.8103348547678642,
+        0.13884284182747422
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "4\n6\n2\n3\n5\n1\n",
+      "bbox": [
+        173.04498291015625,
+        136.21707153320312,
+        479.032958984375,
+        145.31698608398438
+      ],
+      "bbox_norm": [
+        0.2880098829754046,
+        0.17647441399117952,
+        0.7972853308904237,
+        0.18826370052952277
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Figure 6-11: Time Slots Used by a Six Bit Plane Display\n",
+      "bbox": [
+        174.30694580078125,
+        210.05914306640625,
+        423.314453125,
+        220.55914306640625
+      ],
+      "bbox_norm": [
+        0.2901102488937677,
+        0.27213963535471763,
+        0.7045494417461846,
+        0.2857427860174869
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "If you specify four high-resolution bit-planes (640 pixels wide), bit-plane DMA needs all of the \navailable memory time slots during the display time just to fetch the 40 data words for each line \nof the four bit-planes (40 * 4 = 160 time slots). This effectively locks out the 68000 (as well as \nthe blitter or Copper) from any memory access during the display, except during horizontal and \nvertical blanking.\n",
+      "bbox": [
+        84.30694580078125,
+        248.9061279296875,
+        515.8740844726562,
+        311.1541442871094
+      ],
+      "bbox_norm": [
+        0.1403174665092916,
+        0.32246738658229224,
+        0.8586023830355936,
+        0.40311206705548625
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Figure 6-12: Time Slots Used by a High Resolution Display\n",
+      "bbox": [
+        167.10694885253906,
+        469.07415771484375,
+        430.4784851074219,
+        479.57415771484375
+      ],
+      "bbox_norm": [
+        0.2781268313822462,
+        0.6077034704196788,
+        0.7164730004543886,
+        0.621306621082448
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Each horizontal line in a normal, full-sized display contains 320 pixels in low-resolution mode or \n640 pixels in high-resolution mode. Thus, either 20 or 40 words will be fetched during the hor­\nizontal line display time. If you want to scroll a playfield, one extra data word per line must be \nfetched from the memory.\n",
+      "bbox": [
+        84.30694580078125,
+        507.62213134765625,
+        516.5816040039062,
+        557.2191772460938
+      ],
+      "bbox_norm": [
+        0.1403174665092916,
+        0.6576438411884032,
+        0.8597799532486746,
+        0.7218987066917107
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Display size is adjustable (see Chapter 3, “ Playfield Hardware”), and bit-plane DMA takes pre­\ncedence over sprite DMA. As shown in Figure 6-9, larger displays may block out one or more of \nthe highest-numbered sprites, especially with scrolling.\n",
+      "bbox": [
+        84.55694580078125,
+        572.1681518554688,
+        517.0518798828125,
+        608.566162109375
+      ],
+      "bbox_norm": [
+        0.1407335575714707,
+        0.7412656737264957,
+        0.8605626636085599,
+        0.7884206848987726
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "192 Blitter Hardware\n",
+      "bbox": [
+        86.75,
+        715.51513671875,
+        180.89297485351562,
+        726.01513671875
+      ],
+      "bbox_norm": [
+        0.14438359857614777,
+        0.9269771625025838,
+        0.3010718001901463,
+        0.9405803131653531
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

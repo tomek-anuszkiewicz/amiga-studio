@@ -1,0 +1,401 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0109",
+  "page": 109,
+  "source_index": 108,
+  "prepared_index": 108,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Vertical resolution, or interlacing.\n",
+      "bbox": [
+        125.4000015258789,
+        53.46501922607422,
+        272.84112548828125,
+        63.96501922607422
+      ],
+      "bbox_norm": [
+        0.20871127932865496,
+        0.06926597254477569,
+        0.4541070148422404,
+        0.082869123207545
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "• \nData fetch and modulo, which tell the system how much data to put on a horizontal line \nand how to fetch data from memory to the screen.\n",
+      "bbox": [
+        105.70100402832031,
+        79.61400604248047,
+        517.5216064453125,
+        102.71398162841797
+      ],
+      "bbox_norm": [
+        0.17592497215816458,
+        0.10314298276785591,
+        0.8613444597058574,
+        0.1330698825965988
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "In addition, you need to allocate memory to store the playfield, set pointers to tell the system \nwhere to find the data in memory, and (optionally) write a Copper routine to handle redisplay of \nthe playfield.\n",
+      "bbox": [
+        85.5530014038086,
+        118.11296844482422,
+        518.53955078125,
+        153.96295166015625
+      ],
+      "bbox_norm": [
+        0.14239135690688307,
+        0.15301985761731998,
+        0.863038689865775,
+        0.1994648788493116
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "HEIGHT AND WIDTH OF THE PLAYFIELD\n",
+      "bbox": [
+        85.8030014038086,
+        183.0599365234375,
+        306.8279113769531,
+        193.5599365234375
+      ],
+      "bbox_norm": [
+        0.14280744796906217,
+        0.23716113303288613,
+        0.5106734062041249,
+        0.25076428369565545
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "To create a playfield that is the same size as the screen, you can use a width of either 320 pixels \nor 640 pixels, depending upon the resolution you choose. The height is either 200 or 400 lines \nfor NTSC, 256 or 512 lines for PAL, depending upon whether or not you choose interlaced mode.\n",
+      "bbox": [
+        85.3030014038086,
+        216.3099365234375,
+        517.1030883789062,
+        252.4058837890625
+      ],
+      "bbox_norm": [
+        0.14197526584470396,
+        0.28023777679832224,
+        0.8606478931986888,
+        0.32700145384305296
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "BIT-PLANES AND COLOR \n",
+      "bbox": [
+        85.5530014038086,
+        281.8058776855469,
+        222.5674591064453,
+        292.3058776855469
+      ],
+      "bbox_norm": [
+        0.14239135690688307,
+        0.3650902677914696,
+        0.3704333218644171,
+        0.3786934184542389
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "You define playfield color by:\n",
+      "bbox": [
+        85.5530014038086,
+        314.5558776855469,
+        215.46954345703125,
+        325.0558776855469
+      ],
+      "bbox_norm": [
+        0.14239135690688307,
+        0.4075191424777262,
+        0.3586198048171277,
+        0.42112229314049554
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "1. \nDeciding how many colors you need and how you want to color each pixel.\n",
+      "bbox": [
+        105.9520034790039,
+        340.5048828125,
+        454.5833740234375,
+        351.0048828125
+      ],
+      "bbox_norm": [
+        0.17634272667032982,
+        0.44113706879114684,
+        0.7565923157854851,
+        0.45474021945391613
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "2. \nLoading the colors into the color registers.\n",
+      "bbox": [
+        105.00200653076172,
+        366.40386962890625,
+        309.8150329589844,
+        376.90386962890625
+      ],
+      "bbox_norm": [
+        0.17476158571328584,
+        0.4746901944746373,
+        0.5156450645718269,
+        0.4882933451374066
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "3. \nAllocating memory for the number of bit-planes you need and setting a pointer to each \nbit-plane. 4\n",
+      "bbox": [
+        105.25200653076172,
+        391.952880859375,
+        517.35595703125,
+        415.5528869628906
+      ],
+      "bbox_norm": [
+        0.17517767677546492,
+        0.5077899134320517,
+        0.8610687587432709,
+        0.538364621876661
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "4. \nWriting instructions to place a value in each bit in the bit-planes to give you the correct \ncolor.\n",
+      "bbox": [
+        104.75200653076172,
+        431.1018981933594,
+        517.8323974609375,
+        454.39990234375
+      ],
+      "bbox_norm": [
+        0.17434549465110674,
+        0.5585089592504856,
+        0.8618617291610858,
+        0.5886924126409225
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Table 3-1 shows how many bit-planes to use for the color selection you need.\n",
+      "bbox": [
+        85.10301208496094,
+        469.69891357421875,
+        423.4444274902344,
+        480.19891357421875
+      ],
+      "bbox_norm": [
+        0.14164241077228878,
+        0.6085128654751575,
+        0.7047657664329303,
+        0.6221160161379268
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "Table 3-1: Colors in a Single Playfield\n",
+      "bbox": [
+        215.15301513671875,
+        495.29791259765625,
+        383.7725830078125,
+        505.79791259765625
+      ],
+      "bbox_norm": [
+        0.3580929863970933,
+        0.641677345525815,
+        0.6387373667957504,
+        0.6552804961885843
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "Number of \n",
+      "bbox": [
+        240.85202026367188,
+        540.1448974609375,
+        295.07403564453125,
+        550.6895751953125
+      ],
+      "bbox_norm": [
+        0.4008654917579736,
+        0.6997783257035435,
+        0.4911106756512267,
+        0.7134393580760247
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "Colors\n",
+      "bbox": [
+        251.15103149414062,
+        553.1365966796875,
+        281.7375183105469,
+        563.6365966796875
+      ],
+      "bbox_norm": [
+        0.41800679784709444,
+        0.7166095677833567,
+        0.4689138529981565,
+        0.730212718446126
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "Number of \n",
+      "bbox": [
+        308.051025390625,
+        540.1448974609375,
+        362.27301025390625,
+        550.6895751953125
+      ],
+      "bbox_norm": [
+        0.5127091134405845,
+        0.6997783257035435,
+        0.6029542465414716,
+        0.7134393580760247
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "Bit-Planes\n",
+      "bbox": [
+        309.50201416015625,
+        553.3886108398438,
+        357.34002685546875,
+        563.8886108398438
+      ],
+      "bbox_norm": [
+        0.5151240872738813,
+        0.7169360617442859,
+        0.5947439653336007,
+        0.7305392124070552
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "1-2 \n1\n3 -4 \n2\n5 -8 \n3\n9-16 \n4\n17-32 \n5\n",
+      "bbox": [
+        253.30221557617188,
+        577.6493530273438,
+        337.6400146484375,
+        640.8809204101562
+      ],
+      "bbox_norm": [
+        0.4215871517256351,
+        0.7483667789983016,
+        0.5619559693169413,
+        0.8302856873555824
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "Playfield Hardware 39\n",
+      "bbox": [
+        414.32000732421875,
+        713.718017578125,
+        515.0674438476562,
+        724.218017578125
+      ],
+      "bbox_norm": [
+        0.689579407718347,
+        0.9246489260807867,
+        0.8572598392177813,
+        0.938252076743556
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

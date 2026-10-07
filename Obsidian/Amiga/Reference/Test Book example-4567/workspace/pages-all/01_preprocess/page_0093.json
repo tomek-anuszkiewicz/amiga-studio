@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0093",
+  "page": 93,
+  "source_index": 92,
+  "prepared_index": 92,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "LINE MODE (line draw)\n",
+      "bbox": [
+        309.1199951171875,
+        73.199951171875,
+        410.8200988769531,
+        84.49125671386719
+      ],
+      "bbox_norm": [
+        0.5709219742230626,
+        0.10156503794457379,
+        0.7587546118213003,
+        0.11723174068763298
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "BIT#\nBLTCONO\nBLTCON1\n",
+      "bbox": [
+        250.0800018310547,
+        90.9599609375,
+        433.087158203125,
+        100.32930755615234
+      ],
+      "bbox_norm": [
+        0.46187943392327746,
+        0.12620707713810211,
+        0.7998802383464324,
+        0.13920705909990586
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "15\nSTART3\n0\n14\n-\nSTART2Z\n0\n7\n13\nSTARTI\n0\n~\n12\nSTARTO\n0\n14\n1\n0\n--\n10\n0\n0\n09\n1\n0\n~\n08\n1\n)\n-\n07\nLF7\n0\n06\nLF6\nSIGN\ncot\n05\nLFS\nOVF\n04\nLF4\nSUD\n-\n03\nLF3\nSUL\n_\n02\nLF2\nAUL\n01\nLFi\nSING\n_\n00\nLFO\nLINE(= 1)\nSTART3-0\nStarting point of line (O thru 15 hex)\n~\nLF7-0\nLogic function minterm select lines\nshould be preloaded with 4A in order\n_\nto select the equation D= (AC + ABC).\n=\n",
+      "bbox": [
+        249.35992431640625,
+        114.719970703125,
+        535.4219360351562,
+        354.2505187988281
+      ],
+      "bbox_norm": [
+        0.46054950353135676,
+        0.15917412499504585,
+        0.9888850724381022,
+        0.4915231063366066
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": ".\nSince A contains a single bit true\n",
+      "bbox": [
+        30.23992919921875,
+        356.15997314453125,
+        450.60955810546875,
+        366.49029541015625
+      ],
+      "bbox_norm": [
+        0.05585093281409562,
+        0.4941724769983357,
+        0.8322428266726247,
+        0.5085058140578692
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "(8000), most bits will pass the C field\n~-\nunchanged (not A and C), but one bit\nwill invert the C Field and combine it\n",
+      "bbox": [
+        308.1599426269531,
+        368.15997314453125,
+        534.19189453125,
+        399.6081237792969
+      ],
+      "bbox_norm": [
+        0.5691488276400517,
+        0.5108224943251665,
+        0.9866132759355167,
+        0.5544568487389692
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "~\n",
+      "bbox": [
+        526.3199462890625,
+        389.7599792480469,
+        534.7151489257812,
+        391.201416015625
+      ],
+      "bbox_norm": [
+        0.9720743645017621,
+        0.5407925339820987,
+        0.9875796884506095,
+        0.5427925295784075
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "with texture (A and B and not C). The\n.\nA bit is automatically moved across\nthe word by the hardware.\n~\n",
+      "bbox": [
+        308.1599426269531,
+        402.9599609375,
+        534.9503173828125,
+        438.0100402832031
+      ],
+      "bbox_norm": [
+        0.5691488276400517,
+        0.5591075276357023,
+        0.98801402735422,
+        0.6077395633367648
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "LINE\nLine mode control bit (set to 1}\nSIGN\nSign flag\nOVF\nWord overflow flag\n-\nSING\nSingle bit per horiz. line\nfor use with subsequent Area Fill\n",
+      "bbox": [
+        248.63995361328125,
+        446.8799743652344,
+        534.9503784179688,
+        504.97076416015625
+      ],
+      "bbox_norm": [
+        0.4592197704124912,
+        0.6200466096829037,
+        0.9880141400816801,
+        0.7006476644007982
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": ";\nSUD\nSometimes Up or Down (=AUD*)\n—\nSUL\nSometimes Up or Left\nAUL\nAlways Up or Left\n7\n",
+      "bbox": [
+        114.47998046875,
+        506.39996337890625,
+        534.2339477539062,
+        540.9700317382812
+      ],
+      "bbox_norm": [
+        0.21143613318659224,
+        0.7026306803804383,
+        0.9866909451554979,
+        0.7505967001448814
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "The 3 bits above select the Octant for line draw:\n~\nOCT\nSUD\nSUL\nAUL\n0\n1\n1\n0\n~\n1\n0\n0\n1\n2\n)\n1\n1\n3\n1\n1\n1\n4\n1\n0\n1\n~\n;\n5\n0\n1\n0\n6\n0\n0\n0\n7\n0\n0\n0\n-\n",
+      "bbox": [
+        108.23992919921875,
+        550.0799560546875,
+        541.4400024414062,
+        678.2484130859375
+      ],
+      "bbox_norm": [
+        0.19991121585245689,
+        0.7632367332877382,
+        1.0,
+        0.9410706524813613
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Blitter start and size (Window, width height)\n",
+      "bbox": [
+        248.39993286132812,
+        681.8399658203125,
+        443.9818420410156,
+        692.1702880859375
+      ],
+      "bbox_norm": [
+        0.458776469675806,
+        0.9460539370861589,
+        0.8200019208759194,
+        0.9603872741456924
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": ";\n202\n",
+      "bbox": [
+        149.75991821289062,
+        698.6399536132812,
+        270.40313720703125,
+        706.32763671875
+      ],
+      "bbox_norm": [
+        0.27659559237885717,
+        0.9693639444064485,
+        0.49941477539109946,
+        0.9800306158155517
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

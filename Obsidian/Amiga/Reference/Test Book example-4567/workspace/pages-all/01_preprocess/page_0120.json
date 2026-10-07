@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0120",
+  "page": 120,
+  "source_index": 119,
+  "prepared_index": 119,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Sound data is organized as a set of eight-bit data items; each item is a sample from the waveform. \nEach data word retrieved for the audio channel consists of two samples. Sample values can range \nfrom -128 to +127.\n",
+      "bbox": [
+        86.05000305175781,
+        58.12505340576172,
+        517.3270263671875,
+        94.32207489013672
+      ],
+      "bbox_norm": [
+        0.1432185486812829,
+        0.07530322464381795,
+        0.8610206075803136,
+        0.12219784719576558
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "As an example, the data set shown below produces a close approximation to a sine wave.\n",
+      "bbox": [
+        86.30000305175781,
+        109.52208709716797,
+        473.8235778808594,
+        120.02208709716797
+      ],
+      "bbox_norm": [
+        0.143634639743462,
+        0.1418900430174969,
+        0.7886150232237935,
+        0.15549319368026618
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "NOTE\n",
+      "bbox": [
+        284.489990234375,
+        135.07110595703125,
+        314.59344482421875,
+        145.57110595703125
+      ],
+      "bbox_norm": [
+        0.47349496886377174,
+        0.17498977185908302,
+        0.5235980824459653,
+        0.18859292252185234
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "The data is stored in byte address order with the first digitized amplitude value at the \nlowest byte address, the second at the next byte address, and so on. Also, note that the \nfirst byte of data must start at a word-address boundary. This is because the audio \nDMA retrieves one word (16 bits) at a time and uses the sample it reads as two bytes \nof data.\n",
+      "bbox": [
+        110.29998779296875,
+        153.7711181640625,
+        492.33209228515625,
+        215.51611328125
+      ],
+      "bbox_norm": [
+        0.1835793563164726,
+        0.19921635123507075,
+        0.8194199328951578,
+        0.2792093484970761
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "To use audio channel 0, write the address of “ audiodata” into AUDOLC, where the audio data is \norganized as shown below. For simplicity, “ AUDxLC” in the table below stands for the combi­\nnation of the two actual location registers (AUDxLCH and AUDxLCL). For the audio DMA \nchannels to be able to retrieve the data, the data address to which AUDOLC points must be some­\nwhere in chip RAM.\n",
+      "bbox": [
+        86.05097961425781,
+        230.81512451171875,
+        517.325927734375,
+        292.80816650390625
+      ],
+      "bbox_norm": [
+        0.14322017403699452,
+        0.29902980133131096,
+        0.861018779055138,
+        0.3793441527849405
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Table 5-1: Sample Audio Data Set for Channel 0\n",
+      "bbox": [
+        193.08096313476562,
+        308.107177734375,
+        406.8714294433594,
+        318.607177734375
+      ],
+      "bbox_norm": [
+        0.32135705214923327,
+        0.3991646056191754,
+        0.6771822609896648,
+        0.4127677562819447
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "audiodata —>\nAUDOLC *\n100\n98\nAUDOLC+ 2**\n92\n83\nAUDOLC+ 4\n71\n56\nAUDOLC+ 6\n38\n20\nAUDOLC+ 8\n0\n-20\nAUDOLC + 10\n-38\n-56\nAUDOLC + 12\n-71\n-83\nAUDOLC + 14\n-92\n-83\nAUDOLC + 16\n-100\n-98\nAUDOLC + 18\n-92\n-83\nAUDOLC + 20\n-71\n-56\nAUDOLC+ 22\n-38\n-20\nAUDOLC+ 24\n0\n20\nAUDOLC+ 26\n38\n56\nAUDOLC+ 28\n71\n83\nAUDOLC+ 30\n92\n98\n",
+      "bbox": [
+        190.88136291503906,
+        352.95416259765625,
+        410.3328552246094,
+        556.1871948242188
+      ],
+      "bbox_norm": [
+        0.3176961161820516,
+        0.45726558579690385,
+        0.6829433343095626,
+        0.720561734085416
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "Notes\n",
+      "bbox": [
+        157.78939819335938,
+        577.3362426757812,
+        182.87391662597656,
+        587.8362426757812
+      ],
+      "bbox_norm": [
+        0.2626190331795036,
+        0.7479611325900752,
+        0.30436880885501916,
+        0.7615642832528445
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "* \nAudio data is located on a word-address boundary. \n",
+      "bbox": [
+        178.6884002685547,
+        603.1351928710938,
+        421.7842712402344,
+        613.6351928710938
+      ],
+      "bbox_norm": [
+        0.29740258506730854,
+        0.7813846570137055,
+        0.7020026617231473,
+        0.7949878076764748
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "** AUDOLC stands for AUDOLCL and AUDOLCH.\n",
+      "bbox": [
+        178.88841247558594,
+        628.584228515625,
+        413.21685791015625,
+        639.084228515625
+      ],
+      "bbox_norm": [
+        0.2977354782339982,
+        0.8143548537846336,
+        0.687743365272589,
+        0.8279580044474029
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Audio Hardware 135\n",
+      "bbox": [
+        421.5400085449219,
+        715.6150512695312,
+        515.4939575195312,
+        726.1150512695312
+      ],
+      "bbox_norm": [
+        0.7015961196257741,
+        0.9271066056156961,
+        0.8579697133248388,
+        0.9407097562784654
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

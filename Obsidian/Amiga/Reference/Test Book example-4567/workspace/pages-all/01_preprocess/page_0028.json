@@ -1,0 +1,367 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0028",
+  "page": 28,
+  "source_index": 27,
+  "prepared_index": 27,
+  "geometry": {
+    "width": 504.0,
+    "height": 648.9600219726562,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      507.7200012207031,
+      651.8400268554688
+    ],
+    "cropbox": [
+      1.7999999523162842,
+      1.44000244140625,
+      505.79998779296875,
+      650.4000244140625
+    ],
+    "cropbox_position": [
+      1.7999999523162842,
+      1.44000244140625
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      -1.7999999523162842,
+      650.4000244140625
+    ]
+  },
+  "width": 504.0,
+  "height": 648.9600219726562,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2100,
+    "pixel_height": 2704,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Bus Request (BR). \n",
+      "bbox": [
+        71.18999481201172,
+        48.587547302246094,
+        157.74050903320312,
+        61.64054870605469
+      ],
+      "bbox_norm": [
+        0.14124998970637245,
+        0.07486986202101262,
+        0.3129772004627046,
+        0.09498358391736478
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "This input can be wire-ORed with bus request signals from all other devices that could \nbe bus masters. This signal indicates to the processor that some other device needs to \nbecome the bus master. Bus requests can be issued at any time during a cycle or \nbetween cycles. \n",
+      "bbox": [
+        80.2199935913086,
+        62.027549743652344,
+        456.1462097167969,
+        108.91050720214844
+      ],
+      "bbox_norm": [
+        0.15916665395100912,
+        0.09557992425343245,
+        0.905052003406343,
+        0.16782313781223546
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Bus Grant (BG). \n",
+      "bbox": [
+        71.18999481201172,
+        116.73751068115234,
+        145.43624877929688,
+        129.79051208496094
+      ],
+      "bbox_norm": [
+        0.14124998970637245,
+        0.17988397856358407,
+        0.28856398567320807,
+        0.19999770045993623
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "This output signal indicates to all other potential bus master devices that the processor \nwill relinquish bus control at the end of the current bus cycle. \nI\" \n",
+      "bbox": [
+        80.45999908447266,
+        130.18753051757812,
+        497.4177551269531,
+        154.76051330566406
+      ],
+      "bbox_norm": [
+        0.15964285532633463,
+        0.20060947687015385,
+        0.9869399903312562,
+        0.23847464876994356
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Bus Grant Acknowledge (BGACK). \n",
+      "bbox": [
+        71.18999481201172,
+        162.3375244140625,
+        230.27969360351562,
+        175.39051818847656
+      ],
+      "bbox_norm": [
+        0.14124998970637245,
+        0.2501502695352512,
+        0.45690415397522943,
+        0.27026397967526355
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "This input indicates that some other device has become the bus master. This signal \nshould not be asserted until the following conditions are met: \n",
+      "bbox": [
+        80.43999481201172,
+        175.78753662109375,
+        455.7803955078125,
+        200.1205291748047
+      ],
+      "bbox_norm": [
+        0.15960316430954707,
+        0.2708757560854812,
+        0.9043261815631201,
+        0.30837112056070026
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "1. A bus grant has been received. \n",
+      "bbox": [
+        90.54999542236328,
+        206.26751708984375,
+        239.04734802246094,
+        219.3205108642578
+      ],
+      "bbox_norm": [
+        0.17966268933008586,
+        0.31784318002031686,
+        0.474300293695359,
+        0.3379568901603292
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "2. Address strobe is inactive, which indicates that the microprocessor is not using the \nbus. \n3. Data transfer acknowledge is inactive, which indicates that neither memory nor \nperipherals are using the bus. \n",
+      "bbox": [
+        90.00999450683594,
+        220.66754150390625,
+        456.30804443359375,
+        268.760498046875
+      ],
+      "bbox_norm": [
+        0.1785912589421348,
+        0.3400325660017375,
+        0.9053731040349082,
+        0.41414029978290273
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "4. Bus grant acknowledge is inactive, which indicates that no other device is still \nclaiming bus mastership. \n",
+      "bbox": [
+        90.32999420166016,
+        269.8675231933594,
+        434.5102844238281,
+        293.48052978515625
+      ],
+      "bbox_norm": [
+        0.17922617897154794,
+        0.4158461446870608,
+        0.8621235802060082,
+        0.45223206337588845
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "The 48-pin version of the MC68008 has no pin available for the bus grant acknowledge \nsignal and uses a two-wire bus arbitration scheme instead. If another device in a system \nsupplies a bus grant acknowledge signal, the bus request input signal to the processor \nshould be asserted when either the bus request or the bus grant acknowledge from that \ndevice is asserted. \n",
+      "bbox": [
+        80.45999908447266,
+        301.78753662109375,
+        456.51019287109375,
+        359.72052001953125
+      ],
+      "bbox_norm": [
+        0.15964285532633463,
+        0.4650325542453977,
+        0.9057741922045511,
+        0.5543030507889868
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "3.5 INTERRUPT CONTROL (IPLO, IPL 1, IPL2) \n",
+      "bbox": [
+        71.2699966430664,
+        370.925048828125,
+        307.3990478515625,
+        385.48944091796875
+      ],
+      "bbox_norm": [
+        0.14140872349814762,
+        0.5715684114109479,
+        0.6099187457372272,
+        0.5940110759768977
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "These input signals indicate the encoded priority level of the device requesting an \n",
+      "bbox": [
+        71.0999984741211,
+        388.8975524902344,
+        455.6286926269531,
+        401.9505615234375
+      ],
+      "bbox_norm": [
+        0.14107142554389107,
+        0.5992627270137458,
+        0.9040251837836372,
+        0.6193764606664377
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "interrupt. Level seven, which cannot be masked, has the highest priority; level zero \nindicates that no interrupts are requested. IPLO is the least significant bit of the encoded \nlevel, and IPL2 is the most significant bit. For each interrupt request, these signals must \nremain asserted until the processor signals interrupt acknowledge (FC2-FCO and A 19-\nA 16 high) for that request to ensure that the interrupt is recognized. \n",
+      "bbox": [
+        71.40999603271484,
+        400.1875305175781,
+        457.34210205078125,
+        457.87054443359375
+      ],
+      "bbox_norm": [
+        0.1416865000649104,
+        0.6166597586414035,
+        0.907424805656312,
+        0.705545070467971
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "3-6 \n",
+      "bbox": [
+        72.2699966430664,
+        601.1800537109375,
+        86.11035919189453,
+        611.6224365234375
+      ],
+      "bbox_norm": [
+        0.14339285048227463,
+        0.9263745583025575,
+        0.17085388728550502,
+        0.9424655076044238
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "NOTE \n",
+      "bbox": [
+        250.47000122070312,
+        465.4575500488281,
+        279.8326416015625,
+        478.51055908203125
+      ],
+      "bbox_norm": [
+        0.4969642881363157,
+        0.7172360920384092,
+        0.5552234952411954,
+        0.7373498256911012
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "The 48-pin version of the MC68008 has only two interrupt \ncontrol signals: IPLO/TPL2 and I PL 1. IPLO/IPL2 is internally \nconnected to both IPLO and IPL2, which provides four interrupt \npriority levels: levels 0, 2, 5, and 7. In all other respects, the \ninterrupt priority levels in this version of the MC68008 are \nidentical to those levels in the other microprocessors described \nin this manual. \n",
+      "bbox": [
+        129.4199981689453,
+        481.53753662109375,
+        400.97393798828125,
+        561.560546875
+      ],
+      "bbox_norm": [
+        0.25678571065266925,
+        0.7420141770171833,
+        0.7955832102942089,
+        0.8653237916998548
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL \nMOTOROLA \n",
+      "bbox": [
+        148.27999877929688,
+        600.9500122070312,
+        459.4933776855469,
+        611.3923950195312
+      ],
+      "bbox_norm": [
+        0.2942063467843192,
+        0.9260200811450788,
+        0.9116932096935454,
+        0.942111030446945
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

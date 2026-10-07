@@ -1,0 +1,241 @@
+{
+  "page": 89,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "PC JANUS SERVICE",
+      "bbox": [
+        241,
+        302,
+        726,
+        350
+      ],
+      "segment_id": "page_0089_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This service is called via INT JANUS.\nAH contains a function code",
+      "bbox": [
+        889,
+        296,
+        1544,
+        387
+      ],
+      "segment_id": "page_0089_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "J_GET_SERVICE",
+      "bbox": [
+        892,
+        451,
+        1203,
+        490
+      ],
+      "segment_id": "page_0089_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Gets a new Service Number",
+      "bbox": [
+        890,
+        500,
+        1396,
+        540
+      ],
+      "segment_id": "page_0089_seg_004"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nExpects:\n    nothing\nReturns:\n    AL : New Service Number to use\n         − 1 if no service available (J_NO_SERVICE)\n```",
+      "bbox": [
+        890,
+        552,
+        1960,
+        791
+      ],
+      "segment_id": "page_0089_seg_005"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "J_GET_BASE",
+      "bbox": [
+        893,
+        854,
+        1139,
+        891
+      ],
+      "segment_id": "page_0089_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Gets Segments & offset of Janus Memory",
+      "bbox": [
+        892,
+        900,
+        1656,
+        947
+      ],
+      "segment_id": "page_0089_seg_007"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nExpects:\n    AL : Janus Service Number\nReturns:\n    ES : Janus Parameter Segment\n    DI : Janus Parameter Offset (if defined),\n         else − 1\n    DX : Janus Buffer Segment\n    AL : Status (J_OK, J_NO_SERVICE)\n```",
+      "bbox": [
+        892,
+        954,
+        1832,
+        1347
+      ],
+      "segment_id": "page_0089_seg_008"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "J_ALLOC_MEM",
+      "bbox": [
+        895,
+        1408,
+        1184,
+        1448
+      ],
+      "segment_id": "page_0089_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Allocates Janus Memory",
+      "bbox": [
+        895,
+        1458,
+        1336,
+        1501
+      ],
+      "segment_id": "page_0089_seg_010"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nExpects:\n    AL : Type of memory to allocate\n    BX : Number of Bytes to allocate\nReturns:\n    BX : Offset of registered memory if success,\n    AL : Status (J_OK, J_NO_MEMORY)\n```",
+      "bbox": [
+        896,
+        1511,
+        1902,
+        1799
+      ],
+      "segment_id": "page_0089_seg_011"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "J_FREE_MEM",
+      "bbox": [
+        897,
+        1857,
+        1167,
+        1895
+      ],
+      "segment_id": "page_0089_seg_012"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Releases Janus Memory",
+      "bbox": [
+        897,
+        1906,
+        1332,
+        1949
+      ],
+      "segment_id": "page_0089_seg_013"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nExpects:\n    AL : Type of memory to free\n    BX : Offset of Memory to free\nReturns:\n    Crash if offset/type was wrong (J_GOODBYE, later)\n```",
+      "bbox": [
+        898,
+        1957,
+        1973,
+        2198
+      ],
+      "segment_id": "page_0089_seg_014"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "J_SET_PARAM",
+      "bbox": [
+        899,
+        2254,
+        1180,
+        2292
+      ],
+      "segment_id": "page_0089_seg_015"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Set the default parameter memory pointer",
+      "bbox": [
+        899,
+        2302,
+        1679,
+        2346
+      ],
+      "segment_id": "page_0089_seg_016"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nExpects:\n    AL : Janus Service Number to support\n    BX : Default Offset of Param Memory to install\nReturns:\n    AL : Status (J_OK, J_NO_SERVICE)\n```",
+      "bbox": [
+        899,
+        2355,
+        1961,
+        2595
+      ],
+      "segment_id": "page_0089_seg_017"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "155",
+      "bbox": [
+        1157,
+        2906,
+        1224,
+        2940
+      ],
+      "segment_id": "page_0089_seg_018"
+    }
+  ]
+}

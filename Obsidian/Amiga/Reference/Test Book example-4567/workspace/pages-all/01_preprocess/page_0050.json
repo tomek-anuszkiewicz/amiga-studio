@@ -1,0 +1,316 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0050",
+  "page": 50,
+  "source_index": 49,
+  "prepared_index": 49,
+  "geometry": {
+    "width": 612.0,
+    "height": 792.0,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      792.0
+    ]
+  },
+  "width": 612.0,
+  "height": 792.0,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2550,
+    "pixel_height": 3300,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "MOTOROLA\n",
+      "bbox": [
+        69.0,
+        746.25,
+        126.22999572753906,
+        759.989990234375
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.9422348484848485,
+        0.2062581629534952,
+        0.9595833210029987
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL\n",
+      "bbox": [
+        172.35000610351562,
+        746.2999877929688,
+        445.70001220703125,
+        760.0700073242188
+      ],
+      "bbox_norm": [
+        0.2816176570318883,
+        0.9422979643850615,
+        0.7282679938023386,
+        0.9596843526820944
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "4-1\n",
+      "bbox": [
+        534.5499877929688,
+        746.25,
+        549.0,
+        759.989990234375
+      ],
+      "bbox_norm": [
+        0.8734476924721711,
+        0.9422348484848485,
+        0.8970588235294118,
+        0.9595833210029987
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "SECTION 4\nINTEGER INSTRUCTIONS\n",
+      "bbox": [
+        69.0,
+        119.73999786376953,
+        289.0140075683594,
+        164.52398681640625
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.15118686598960798,
+        0.47224511040581596,
+        0.20773230658637154
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "This section contains detailed information about the integer instructions for the M68000\nfamily. A detailed discussion of each instruction description is arranged in alphabetical order\nby instruction mnemonic. \n",
+      "bbox": [
+        69.0,
+        182.10000610351562,
+        549.4439086914062,
+        226.59605407714844
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.22992425013070156,
+        0.8977841645284416,
+        0.2861061288852884
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Each instruction description identiﬁes the differences among the M68000 family for that\ninstruction. Noted under the title of the instruction are all speciﬁc processors that apply to\nthat instruction—for example: \n",
+      "bbox": [
+        69.0,
+        236.11209106445312,
+        549.1199340820312,
+        280.608154296875
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.29812132710158223,
+        0.8972547942516851,
+        0.35430322512231693
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Test Bit Field and Change \n",
+      "bbox": [
+        235.3419952392578,
+        290.1600036621094,
+        386.0379943847656,
+        306.6839904785156
+      ],
+      "bbox_norm": [
+        0.3845457438549964,
+        0.36636364098751184,
+        0.6307810365764144,
+        0.3872272607051965
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "(MC68030, MC68040) \n",
+      "bbox": [
+        249.65798950195312,
+        304.16400146484375,
+        371.6979675292969,
+        320.68798828125
+      ],
+      "bbox_norm": [
+        0.4079378913430607,
+        0.38404545639500476,
+        0.6073496201459099,
+        0.4049090761126894
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "The MC68HC000 is identical to the MC68000 except for power dissipation; therefore, all\ninstructions that apply to the MC68000 also apply to the MC68HC000. All references to the\nMC68000, MC68020, and MC68030 include references to the corresponding embedded\ncontrollers, MC68EC000, MC68EC020, and MC68EC030. All references to the MC68040\ninclude the MC68LC040 and MC68EC040. This referencing applies throughout this section\nunless otherwise speciﬁed. \n",
+      "bbox": [
+        69.0,
+        330.1000061035156,
+        549.3837890625,
+        416.6080017089844
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.4167929369993884,
+        0.8976859298406863,
+        0.5260202041780105
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "Identiﬁed within the paragraphs are the speciﬁc processors that use different instruction\nﬁelds, instruction formats, etc.—for example: \n",
+      "bbox": [
+        69.0,
+        426.1239929199219,
+        549.1077880859375,
+        456.6159973144531
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.538035344595861,
+        0.8972349478528391,
+        0.5765353501445115
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "**Can be used with CPU32 processor\n",
+      "bbox": [
+        96.74700164794922,
+        515.3209838867188,
+        246.80397033691406,
+        527.6869506835938
+      ],
+      "bbox_norm": [
+        0.1580833360260608,
+        0.6506578079377762,
+        0.4032744613348269,
+        0.666271402378275
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "Appendix A Processor Instruction Summary provides a listing of all processors and the\ninstructions that apply to them for quick reference. \n",
+      "bbox": [
+        69.0,
+        537.0999755859375,
+        549.0739135742188,
+        567.592041015625
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.6781565348307291,
+        0.8971795973434947,
+        0.7166566174439709
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "MC68020, MC68030, and MC68040 only\n",
+      "bbox": [
+        94.80000305175781,
+        478.969970703125,
+        278.9499206542969,
+        492.739990234375
+      ],
+      "bbox_norm": [
+        0.1549019657708461,
+        0.6047600640190972,
+        0.45580052394492954,
+        0.6221464523161301
+      ]
+    },
+    {
+      "block_id": 19,
+      "type": 0,
+      "text": "(bd,An,Xn)\n110\nreg. number:An\n(bd,PC,Xn)**\n111\n011 \n",
+      "bbox": [
+        130.1439971923828,
+        498.7359924316406,
+        517.0319213867188,
+        509.7279968261719
+      ],
+      "bbox_norm": [
+        0.21265359018363206,
+        0.6297171621611624,
+        0.8448234009586908,
+        0.6435959555886008
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

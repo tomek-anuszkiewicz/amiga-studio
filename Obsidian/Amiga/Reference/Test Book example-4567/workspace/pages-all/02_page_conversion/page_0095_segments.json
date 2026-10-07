@@ -1,0 +1,176 @@
+{
+  "page": 95,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "These registers control the horizontal timing of the beginning and end of the Bit Plane DMA display data fetch. The vertical Bit Plane DMA timing is identical to the Display windows described above. The Bit Plane Modulos are dependent on the Bit Plane horizontal size, and on this data fetch window size.",
+      "bbox": [
+        865,
+        289,
+        2110,
+        536
+      ],
+      "segment_id": "page_0095_seg_001"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Register bit assignment",
+      "bbox": [
+        958,
+        570,
+        1393,
+        624
+      ],
+      "segment_id": "page_0095_seg_002"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        864,
+        632,
+        1983,
+        724
+      ],
+      "segment_id": "page_0095_seg_003"
+    },
+    {
+      "type": "table_legend",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "(X bits should always be driven with 0 to maintain upward compatibility)",
+      "bbox": [
+        866,
+        733,
+        2112,
+        836
+      ],
+      "segment_id": "page_0095_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The tables below show the start and stop timing for different register contents.",
+      "bbox": [
+        865,
+        883,
+        2107,
+        976
+      ],
+      "segment_id": "page_0095_seg_005"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "DDFSTRT (Left edge of display data fetch)",
+      "bbox": [
+        867,
+        1010,
+        1671,
+        1063
+      ],
+      "segment_id": "page_0095_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        868,
+        1078,
+        1938,
+        1333
+      ],
+      "segment_id": "page_0095_seg_007"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "DDFSTOP (Right edge of display data fetch)",
+      "bbox": [
+        867,
+        1370,
+        1693,
+        1426
+      ],
+      "segment_id": "page_0095_seg_008"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        870,
+        1441,
+        1940,
+        1651
+      ],
+      "segment_id": "page_0095_seg_009"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nDMACON     DMA control write (clear or set)\nDMACONR    DMA control (and Blitter status) read\n```",
+      "bbox": [
+        868,
+        1753,
+        1957,
+        1849
+      ],
+      "segment_id": "page_0095_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This register controls all of the DMA channels, and contains Blitter DMA status bits.",
+      "bbox": [
+        866,
+        1900,
+        2088,
+        1994
+      ],
+      "segment_id": "page_0095_seg_011"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        985,
+        2024,
+        2122,
+        2633
+      ],
+      "segment_id": "page_0095_seg_012"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "207",
+      "bbox": [
+        1125,
+        2897,
+        1200,
+        2933
+      ],
+      "segment_id": "page_0095_seg_013"
+    }
+  ]
+}

@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0080",
+  "page": 80,
+  "source_index": 79,
+  "prepared_index": 79,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "PC/AT I/O\nOffset Address\nAddress Usage\nINTERFACE / Amiga\n-\n379\n\"\nRESET [RQ7\n(R)\n1E1BF\n7E1BF\n379\n*\nINTERRUPT CONTROL\n(W)\n1E19F\n7E19F\nBIT6 = 0: ON\noar\n_\nBIT6 = 0: OFF\n37A\n\"\nCONTROL\n(W)\n1E1DF\n7E1DF\n37A\n\"CONTROL\n(R)\n1E19F\n7E19F\n",
+      "bbox": [
+        10.32000732421875,
+        71.51995849609375,
+        483.7918701171875,
+        173.52980041503906
+      ],
+      "bbox_norm": [
+        0.019060297129293774,
+        0.09923404568118158,
+        0.8935281248812839,
+        0.24077284863599055
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "~\n3B0\nMONO\nCRT ADDRESS INDEX REGISTER\n(W)\n1E1FF =7EWFF\n3B0\n\"\nRESET !RQ3-a\n(R)\n1EQ1F\n7EOIF\n,\n3B2\n_\n8\nCRT ADDRESS INDEX REGISTER\n(W)\n1E1FF\n=/7E1FF\n.\n-_\n3B2\nDUMMY\n(R)\n1EO1F\n 7EOIF\n3B4\n\"\nCRT ADDRESS INDEX REGISTER\n(W)\n1EiFF\n=7E1FF\n,\n",
+      "bbox": [
+        10.0799560546875,
+        187.43994140625,
+        540.4607543945312,
+        247.9331817626953
+      ],
+      "bbox_norm": [
+        0.01861694002887852,
+        0.260073189346184,
+        0.9981914006308004,
+        0.34400764768709674
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "3B4\nDUMMY\n(R)\n1EOQ1F\n7EOIF\n~\n386\n\"\nCRT ADDRESS INDEX REGISTER\n(W)\n1E1FF\n= 7E1FF\n3B6\nDUMMY\n(R)\n1EO1F\n7EQIF\n3B1\n\"\nCRT DATA\nREGISTER\n(R/W)\ns.b.\n3B3\n\"\nCRT DATA\nREGISTER\n(RAW)\ns.b.\n-—\n3B5\n\"\nCRT DATA\nREGISTER\n(R/W)\ns.b.\n3B7\n\"\nCRT DATA\nREGISTER\n(RW)\ns.b\nLAST WRITE ON INDEX = 00\n1E2A1\n7E2Ai\n-\nLAST WRITE ON INDEX = 01\n1E2A3.\n-7E2A3\nLAST WRITE ON INDEX = 02\n1E2A5\n7E2A5\nLAST WRITE ON INDEX = 03\n1E2A7\n=7E2A7\nLAST WRITE ON INDEX = 04\n1E2A9_\n=7E2A9\n“\n",
+      "bbox": [
+        9.599945068359375,
+        246.47998046875,
+        482.7059631347656,
+        395.29486083984375
+      ],
+      "bbox_norm": [
+        0.017730394919238102,
+        0.34199132879346655,
+        0.8915225342756297,
+        0.5484721901825466
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "LAST WRITE ON INDEX = 05\n1E2AB-\n= 7E2ZAB\nLAST WRITE ON INDEX = 06\n1E2AD\n7E2AD\nLAST WRITE ON INDEX = 07\n1E2AF\n 7E2AF\n_\nLAST WRITE ON INDEX = 08\n1E2B1\n7E2B1\nLAST WRITE ON INDEX = 09\n1E2B3.7EZB3\nLAST WRITE ON INDEX = OA\n1E2B5 = 7E2ZB5\n~\nLAST WRITE ON INDEX = OB\n;\n1E2B7\n 7E2B7\nLAST WRITE ON INDEX = OC\n1E2B9_—s-\nVE2B9\nLAST WRITE ON INDEX = OD\n1E2BB\n7E2BB\nLAST WRITE ON INDEX = OE\n1E2BD\n7E2BD\n—-\nLAST WRITE ON INDEX = OF\nPo\n1E2BF\n7E2BF\n3B8\nMONO\nCONTROL REGISTER\n(W)\n1E2FF\n#7E2FF\n3BA\nMONO\nSTATUS\nREGISTER\n(R)\n—\n—\n~\nBITO\n:\n H-SYNC(\n18KHz\n)\nBIT3:\nV-SYNC(\nSO Hz\n)\n3BA\nDUMMY\n(W)\n1EQiF\n7EOIF\n3BB\nDUMMY\n(RW)\n1EO1F\n7EOIF\n~\n3BC\nDUMMY\n(RW)\n1EO1F\n7EOIF\n3BD\nDUMMY\n(RW)\n1EOIF\n7EOIF\n3BE\nDUMMY\n(RW)\n1E0O1F\n7EOIF\n~~\n3BF\nDUMMY\n(RW)\n1EO1F\n7EOIF\n",
+      "bbox": [
+        10.799896240234375,
+        392.39996337890625,
+        482.3424377441406,
+        642.732666015625
+      ],
+      "bbox_norm": [
+        0.019946616784014073,
+        0.5444555157755459,
+        0.8908511295235134,
+        0.8917925021400245
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "113\n",
+      "bbox": [
+        273.119873046875,
+        696.47998046875,
+        288.6718444824219,
+        705.128662109375
+      ],
+      "bbox_norm": [
+        0.504432387365822,
+        0.9663669785496206,
+        0.5331557387351731,
+        0.9783670368138414
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

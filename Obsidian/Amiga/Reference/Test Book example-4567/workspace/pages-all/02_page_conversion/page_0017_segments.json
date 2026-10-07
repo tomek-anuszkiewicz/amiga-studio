@@ -1,0 +1,150 @@
+{
+  "page": 17,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        605,
+        230,
+        1578,
+        1326
+      ],
+      "segment_id": "page_0017_seg_001"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2",
+      "bbox": [
+        13,
+        482,
+        183,
+        587
+      ],
+      "segment_id": "page_0017_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 2-1. User Programmer's Model\n(MC68000/MC68HC000/MC68008/MC68010)",
+      "bbox": [
+        684,
+        1385,
+        1505,
+        1475
+      ],
+      "segment_id": "page_0017_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "2.1.2 Supervisor Programmer's Model",
+      "bbox": [
+        292,
+        1547,
+        1157,
+        1595
+      ],
+      "segment_id": "page_0017_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The supervisor programmer's model consists of supplementary registers used in the supervisor mode. The M68000 MPUs contain identical supervisor mode register resources, which are shown in Figure 2-2, including the status register (high-order byte) and the supervisor stack pointer (SSP/A7').",
+      "bbox": [
+        291,
+        1623,
+        1897,
+        1800
+      ],
+      "segment_id": "page_0017_seg_005"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        568,
+        1891,
+        1610,
+        2064
+      ],
+      "segment_id": "page_0017_seg_006"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 2-2. Supervisor Programmer's Model Supplement",
+      "bbox": [
+        552,
+        2127,
+        1639,
+        2169
+      ],
+      "segment_id": "page_0017_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The supervisor programmer's model supplement of the MC68010 is shown in Figure 2-3. In addition to the supervisor stack pointer and status register, it includes the vector base register (VRB) and the alternate function code registers (AFC).The VBR is used to determine the location of the exception vector table in memory to support multiple vector",
+      "bbox": [
+        293,
+        2228,
+        1903,
+        2404
+      ],
+      "segment_id": "page_0017_seg_008"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2-2",
+      "bbox": [
+        295,
+        2506,
+        346,
+        2536
+      ],
+      "segment_id": "page_0017_seg_009"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 8-/16-/32-BIT MICROPROCESSOR USER'S MANUAL",
+      "bbox": [
+        623,
+        2505,
+        1578,
+        2537
+      ],
+      "segment_id": "page_0017_seg_010"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        1708,
+        2505,
+        1903,
+        2537
+      ],
+      "segment_id": "page_0017_seg_011"
+    }
+  ]
+}

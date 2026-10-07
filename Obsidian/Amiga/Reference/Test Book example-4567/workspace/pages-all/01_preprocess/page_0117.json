@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0117",
+  "page": 117,
+  "source_index": 116,
+  "prepared_index": 116,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Sprites can be attached in the following combinations:\n",
+      "bbox": [
+        86.75,
+        54.32500457763672,
+        323.3360900878906,
+        64.82500457763672
+      ],
+      "bbox_norm": [
+        0.14438359857614777,
+        0.07038011638335467,
+        0.5381490286620305,
+        0.08398326704612398
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Sprite 1 to sprite 0 \nSprite 3 to sprite 2 \nSprite 5 to sprite 4 \nSprite 7 to sprite 6\n",
+      "bbox": [
+        122.30001068115234,
+        73.12401580810547,
+        205.5235595703125,
+        122.21996307373047
+      ],
+      "bbox_norm": [
+        0.2035517653953439,
+        0.09473495277184596,
+        0.3420660648177636,
+        0.15834062587524342
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Any or all of these attachments can be active during the same display field. As an example, \nassume that you wish to have more colors in the spaceship sprite and you are using sprite DMA \nchannels 0 and 1. There are five colors plus transparent in this sprite.\n",
+      "bbox": [
+        86.3020248413086,
+        137.219970703125,
+        517.36962890625,
+        173.5189208984375
+      ],
+      "bbox_norm": [
+        0.14363800473770874,
+        0.17777370813479987,
+        0.8610915137232338,
+        0.22480038322119938
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "0000154444510000\n0001564444651000\n0015676446765100\n0001564444651000\n0000154444510000\n",
+      "bbox": [
+        121.8020248413086,
+        188.117919921875,
+        208.95193481445312,
+        249.9609375
+      ],
+      "bbox_norm": [
+        0.20272293556714097,
+        0.24371394352990816,
+        0.3477721300052956,
+        0.3238339326304343
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "The first line in this sprite requires the four data words shown in Table 4-4 to form the correct \nbinary color selector numbers.\n",
+      "bbox": [
+        85.8020248413086,
+        265.35992431640625,
+        517.9505004882812,
+        288.4579162597656
+      ],
+      "bbox_norm": [
+        0.14280582261335054,
+        0.34378390765115546,
+        0.862058295617462,
+        0.37370823759524585
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Table 4-4: Data Words for First Line of Spaceship Sprite\n",
+      "bbox": [
+        175.80203247070312,
+        316.7079162597656,
+        424.7149963378906,
+        327.2079162597656
+      ],
+      "bbox_norm": [
+        0.2925986176959181,
+        0.41030719056888704,
+        0.7068804557985022,
+        0.4239103412316564
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "15 \n14\nLine 1\n0\n \n0\nLine 2 \n0 \n0\nLine 3\n0\n0\n \nLine 4 \n0 \n0\n",
+      "bbox": [
+        94.70602416992188,
+        374.554931640625,
+        181.0895233154297,
+        438.7959289550781
+      ],
+      "bbox_norm": [
+        0.1576253207664893,
+        0.48525020634196925,
+        0.30139892842329624,
+        0.5684768696938801
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "13 \n12 \n11\n0 \n0 \n0\n0 \n0 \n0\n0 \n0 \n0\n0 \n0 \n1\n",
+      "bbox": [
+        196.18603515625,
+        374.69891357421875,
+        262.43463134765625,
+        438.7909240722656
+      ],
+      "bbox_norm": [
+        0.3265250230114814,
+        0.4854367404310543,
+        0.4367868180401075,
+        0.5684703856772184
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Pixel Number\n",
+      "bbox": [
+        268.4332275390625,
+        349.0396423339844,
+        332.8402099609375,
+        359.5396423339844
+      ],
+      "bbox_norm": [
+        0.4467706670835704,
+        0.4521941754236475,
+        0.5539673459942448,
+        0.4657973260864168
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "10 \n9 \n8\n0 \n0 \n0\n1 \n1 \n1\n0 \n0 \n0\n1 \n0 \n0\n",
+      "bbox": [
+        278.2832336425781,
+        374.7939453125,
+        332.48382568359375,
+        438.7899475097656
+      ],
+      "bbox_norm": [
+        0.46316466509190013,
+        0.4855598576742528,
+        0.5533741927442293,
+        0.5684691205032356
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "7 \n6 \n5 \n4 \n0 \n0 \n0 \n0 \n1\n1\n1\n0\n \n0 \n0 \n0 \n0 \n0 \n0 \n1 1\n",
+      "bbox": [
+        348.0796813964844,
+        374.5399475097656,
+        421.88287353515625,
+        438.9047546386719
+      ],
+      "bbox_norm": [
+        0.5793313774209038,
+        0.48523079382867107,
+        0.7021667718576566,
+        0.5686178575195853
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "3 \n2 \n1 0 \n0 \n0 \n0 \n0 \n0 \n0 \n0 \n0 \n0 \n0 \n0 \n0 \n0 \n0 \n0 \n0\n",
+      "bbox": [
+        435.4632568359375,
+        374.78594970703125,
+        509.015869140625,
+        439.1966247558594
+      ],
+      "bbox_norm": [
+        0.7247694763073421,
+        0.48554949906226885,
+        0.847187814626962,
+        0.5689959863936864
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "The highest numbered sprite (number 1, in this example) contributes the highest order bits (left­\nmost) in the binary number. The high-order data word in each sprite contributes the leftmost \ndigit. Therefore, the lines above are written to the sprite data structures as follows:\n",
+      "bbox": [
+        85.51788330078125,
+        460.2309875488281,
+        517.2442016601562,
+        496.0299987792969
+      ],
+      "bbox_norm": [
+        0.14233290759172162,
+        0.5962468060287438,
+        0.8608827570990204,
+        0.6426257911093377
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "Line 1 \nSprite 1 high-order word for sprite line 1 \nLine 2 \nSprite 1 low-order word for sprite line 1 \nLine 3 \nSprite 0 high-order word for sprite line 1 \nLine 4 \nSprite 0 low-order word for sprite line 1\n",
+      "bbox": [
+        121.26789093017578,
+        510.6300048828125,
+        355.9724426269531,
+        559.7760009765625
+      ],
+      "bbox_norm": [
+        0.20183394218142445,
+        0.6615406561287163,
+        0.5924678070365509,
+        0.7252111693987308
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "See Figure 4-7 for the order these words are stored in memory. Remember that this data is con­\ntained in two sprite structures.\n",
+      "bbox": [
+        85.76789093017578,
+        574.9249877929688,
+        514.8253784179688,
+        598.1749877929688
+      ],
+      "bbox_norm": [
+        0.14274901135199222,
+        0.7448372598798623,
+        0.8568569541707592,
+        0.7749585220617086
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "118 Sprite Hardware\n",
+      "bbox": [
+        87.6969985961914,
+        713.3150634765625,
+        179.99203491210938,
+        723.8150634765625
+      ],
+      "bbox_norm": [
+        0.14595974918323334,
+        0.9241268836661453,
+        0.2995723079614291,
+        0.9377300343289146
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,46 @@
+{
+  "page": 151,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "A true software memory map, showing system utilization of the various sections of RAM and free space is not provided, or possible with the Amiga. All memory is dynamically allocated by the memory manager, and the actual locations may change from release-to-release, machine-to-machine or boot-to-boot (see the exec/AllocMem function for details). To find the locations of system structures software must use the defined access procedures, starting by fetching the address of the exec.library from location 4; the only absolute memory location in the system. All software is written so that it can be loaded and relocated anywhere in memory by the loader. What follows is the general layout of memory areas withing the current generation of Amiga computers.",
+      "bbox": [
+        360,
+        219,
+        2158,
+        624
+      ],
+      "segment_id": "page_0151_seg_001"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nADDRESS RANGE           NOTES\n-------------           -------------------------------------------\n000000-03FFFF           256K Bytes of chip RAM\n\n040000-07FFFF           256K bytes of chip RAM (option card)\n\n080000-0FFFFF           512K Extended chip RAM (to 1 MB).\n\n100000-1FFFFF           Reserved. Do not use.\n\n200000-9FFFFF           Primary 8 MB Auto-config space.\n\nA00000-BEFFFF           Reserved. Do not use.\n\nBFD000-BFDF00           8520-B (access at even-byte addresses only)\n   -      -\nBFE001-BFEF01           8520-A (access at odd-byte addresses only)\n   -      -\n                        The underlined digit chooses which of the\n                        16 internal registers of the 8520 is to be\n                        accessed.  See Appendix F.\n\nC00000-DFEFFF           Reserved. Do not use.\n   |\n   | C00000-D7FFFF      Internal expansion memory.\n   |\n   | D80000-DBFFFF      Reserved. Do not use.\n   |\n   | DC0000-DCFFFF      Real time clock.\n   |\n   | DFF000-DFFFFF      Chip registers. See Appendix A and Appendix B.\n   +--\n\nE00000-E7FFFF           Reserved. Do not use.\n\nE80000-E8FFFF           Auto-config space. Boards appear here before\n                        the system relocates them to their final address.\n\nE90000-EFFFFF           Secondary auto-config space (usually 64K I/O\n                        boards).\n\nF00000-FBFFFF           Reserved. Do not use.\n\nFC0000-FFFFFF           256K System ROM.\n```",
+      "bbox": [
+        358,
+        714,
+        1981,
+        2521
+      ],
+      "segment_id": "page_0151_seg_002"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "294 Appendix D",
+      "bbox": [
+        360,
+        2970,
+        679,
+        3018
+      ],
+      "segment_id": "page_0151_seg_003"
+    }
+  ]
+}

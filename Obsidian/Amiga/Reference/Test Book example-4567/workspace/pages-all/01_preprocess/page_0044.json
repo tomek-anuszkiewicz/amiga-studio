@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0044",
+  "page": 44,
+  "source_index": 43,
+  "prepared_index": 43,
+  "geometry": {
+    "width": 612.0,
+    "height": 792.0,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      792.0
+    ]
+  },
+  "width": 612.0,
+  "height": 792.0,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2550,
+    "pixel_height": 3300,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "MOTOROLA\n",
+      "bbox": [
+        69.0,
+        746.25,
+        126.22999572753906,
+        759.989990234375
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.9422348484848485,
+        0.2062581629534952,
+        0.9595833210029987
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL\n",
+      "bbox": [
+        172.35000610351562,
+        746.2999877929688,
+        445.70001220703125,
+        760.0700073242188
+      ],
+      "bbox_norm": [
+        0.2816176570318883,
+        0.9422979643850615,
+        0.7282679938023386,
+        0.9596843526820944
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "2-1\n",
+      "bbox": [
+        534.5499877929688,
+        746.25,
+        549.0,
+        759.989990234375
+      ],
+      "bbox_norm": [
+        0.8734476924721711,
+        0.9422348484848485,
+        0.8970588235294118,
+        0.9595833210029987
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "SECTION 2\nADDRESSING CAPABILITIES \n",
+      "bbox": [
+        69.0,
+        119.73999786376953,
+        324.02398681640625,
+        164.52398681640625
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.15118686598960798,
+        0.529450958850337,
+        0.20773230658637154
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "Most operations take asource operand and destination operand, compute them, and store\nthe result in the destination location. Single-operand operations take a destination operand,\ncompute it, and store the result in the destination location. External microprocessor\nreferences to memory are either program references that refer to program space or data\nreferences that refer to data space. They access either instruction words or operands (data\nitems) for an instruction. Program space is the section of memory that contains the program\ninstructions and any immediate data operands residing in the instruction stream. Data space\nis the section of memory that contains the program data. Data items in the instruction stream\ncan be accessed with the program counter relative addressing modes; these accesses\nclassify as program references. \n",
+      "bbox": [
+        69.0,
+        182.10000610351562,
+        549.47998046875,
+        324.6241760253906
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.22992425013070156,
+        0.8978431053410948,
+        0.409879010133069
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "2.1 INSTRUCTION FORMAT \n",
+      "bbox": [
+        69.0,
+        341.3529968261719,
+        255.67601013183594,
+        360.6310119628906
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.43100125861890387,
+        0.41777125838535284,
+        0.4553421868218316
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "M68000 family instructions consist of at least one word; some have as many as 11 words.\nFigure 2-1 illustrates the general composition of an instruction. The ﬁrst word of the\ninstruction, called the simple effective address operation word, speciﬁes the length of the\ninstruction, the effective addressing mode, and the operation to be performed. The\nremaining words, called brief and full extension words, further specify the instruction and\noperands. These words can be ﬂoating-point command words, conditional predicates,\nimmediate operands, extensions to the effective addressing mode speciﬁed in the simple\neffective address operation word, branch displacements, bit number or bit ﬁeld\nspeciﬁcations, special register speciﬁcations, trap operands, pack/unpack constants, or\nargument counts. \n",
+      "bbox": [
+        69.0,
+        370.1000061035156,
+        549.1799926757812,
+        512.6239624023438
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.4672979875044389,
+        0.8973529292087928,
+        0.647252477780737
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Figure 2-1. Instruction Word General Format\n",
+      "bbox": [
+        183.01300048828125,
+        664.1599731445312,
+        435.06097412109375,
+        680.6840209960938
+      ],
+      "bbox_norm": [
+        0.2990408504710478,
+        0.8385858246774385,
+        0.7108839446423101,
+        0.8594495214597143
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "SINGLE EFFECTIVE ADDRESS OPERATION WORD\r\n(ONE WORD, SPECIFIES OPERATION AND MODES)\n",
+      "bbox": [
+        231.46536254882812,
+        556.9000244140625,
+        393.1233215332031,
+        576.8920288085938
+      ],
+      "bbox_norm": [
+        0.3782113767137714,
+        0.7031565964824021,
+        0.6423583685183057,
+        0.728399026273477
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "SPECIAL OPERAND SPECIFIERS\r\n",
+      "bbox": [
+        261.1100158691406,
+        580.39599609375,
+        365.73541259765625,
+        591.3880004882812
+      ],
+      "bbox_norm": [
+        0.42665035272735397,
+        0.7328232273910985,
+        0.5976068833295036,
+        0.746702020818537
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "(IF ANY, ONE OR TWO WORDS)\n",
+      "bbox": [
+        262.9468078613281,
+        589.39599609375,
+        362.0813903808594,
+        600.3880004882812
+      ],
+      "bbox_norm": [
+        0.4296516468322355,
+        0.7441868637547349,
+        0.5916362587922539,
+        0.7580656571821733
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "IMMEDIATE OPERAND OR SOURCE EFFECTIVE ADDRESS EXTENSION\r\n",
+      "bbox": [
+        200.31192016601562,
+        605.39599609375,
+        425.57568359375,
+        616.3880004882812
+      ],
+      "bbox_norm": [
+        0.3273070590947968,
+        0.7643888839567551,
+        0.6953851039113562,
+        0.7782676773841934
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "(IF ANY, ONE TO SIX WORDS)\n",
+      "bbox": [
+        265.17718505859375,
+        614.39599609375,
+        358.8538513183594,
+        625.3880004882812
+      ],
+      "bbox_norm": [
+        0.43329605401731003,
+        0.7757525203203914,
+        0.586362502154182,
+        0.7896313137478299
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "DESTINATION EFFECTIVE ADDRESS EXTENSION\r\n",
+      "bbox": [
+        234.37799072265625,
+        629.39599609375,
+        391.48333740234375,
+        640.3880004882812
+      ],
+      "bbox_norm": [
+        0.3829705730762357,
+        0.7946919142597854,
+        0.6396786558861826,
+        0.8085707076872238
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "(IF ANY, ONE TO SIX WORDS)\n",
+      "bbox": [
+        265.17718505859375,
+        638.39599609375,
+        358.8538513183594,
+        649.3880004882812
+      ],
+      "bbox_norm": [
+        0.43329605401731003,
+        0.8060555506234217,
+        0.586362502154182,
+        0.8199343440508602
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "15 \n0\n",
+      "bbox": [
+        144.3730010986328,
+        541.8250122070312,
+        474.0523681640625,
+        554.1909790039062
+      ],
+      "bbox_norm": [
+        0.23590359656639348,
+        0.684122490160393,
+        0.7745953728170956,
+        0.6997360846008918
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

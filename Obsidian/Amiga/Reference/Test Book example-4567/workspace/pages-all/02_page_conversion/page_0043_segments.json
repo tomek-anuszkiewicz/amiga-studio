@@ -1,0 +1,98 @@
+{
+  "page": 43,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        287,
+        131
+      ],
+      "segment_id": "page_0043_seg_001"
+    },
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Introduction",
+      "bbox": [
+        2043,
+        106,
+        2289,
+        140
+      ],
+      "segment_id": "page_0043_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 1-4. Single-Precision Real Format Summary Data Format",
+      "bbox": [
+        544,
+        265,
+        2034,
+        307
+      ],
+      "segment_id": "page_0043_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        386,
+        345,
+        2189,
+        3010
+      ],
+      "segment_id": "page_0043_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        287,
+        3122,
+        528,
+        3156
+      ],
+      "segment_id": "page_0043_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        717,
+        3122,
+        1858,
+        3156
+      ],
+      "segment_id": "page_0043_seg_006"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "1-21",
+      "bbox": [
+        2204,
+        3122,
+        2288,
+        3156
+      ],
+      "segment_id": "page_0043_seg_007"
+    }
+  ]
+}

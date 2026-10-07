@@ -1,0 +1,367 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0143",
+  "page": 143,
+  "source_index": 142,
+  "prepared_index": 142,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "7-0\n",
+      "bbox": [
+        106.68000030517578,
+        122.56505584716797,
+        121.03350067138672,
+        133.0650634765625
+      ],
+      "bbox_norm": [
+        0.1775543785609893,
+        0.15878770673140563,
+        0.20144383141444855,
+        0.17239086727834665
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "ADKCON\n",
+      "bbox": [
+        90.08000183105469,
+        160.51507568359375,
+        137.3614959716797,
+        171.01507568359375
+      ],
+      "bbox_norm": [
+        0.14992593457191533,
+        0.20795340553997546,
+        0.22861956304546557,
+        0.22155655620274475
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "15\n",
+      "bbox": [
+        109.52899932861328,
+        186.1640625,
+        119.43049621582031,
+        196.6640625
+      ],
+      "bbox_norm": [
+        0.18229615068022662,
+        0.2411826466838762,
+        0.19877584810807072,
+        0.25478579734664547
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "STP \nStop bit if 8 data bits are specified for receive.\n",
+      "bbox": [
+        154.4250030517578,
+        70.72405242919922,
+        424.4848937988281,
+        81.22405242919922
+      ],
+      "bbox_norm": [
+        0.2570194541872668,
+        0.09162570863580875,
+        0.7064974813589477,
+        0.10522885929857806
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "OR\nDB8 \n9th data bit if 9 bits are specified for receive.\n",
+      "bbox": [
+        154.42501831054688,
+        83.92302703857422,
+        416.0639343261719,
+        107.42302703857422
+      ],
+      "bbox_norm": [
+        0.2570194795834498,
+        0.1087254838934654,
+        0.692481937472769,
+        0.13917063061490145
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "DB7-DB0 \nLow 8 data bits of received data. Data is TRUE (data you\n",
+      "bbox": [
+        154.42501831054688,
+        122.57201385498047,
+        474.5907897949219,
+        133.072021484375
+      ],
+      "bbox_norm": [
+        0.2570194795834498,
+        0.15879672109603288,
+        0.7898919433047484,
+        0.1723998816429739
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "read is the same polarity as the data expected).\n",
+      "bbox": [
+        223.07501220703125,
+        135.1700439453125,
+        426.01898193359375,
+        145.6700439453125
+      ],
+      "bbox_norm": [
+        0.3712780750993575,
+        0.17511794979821266,
+        0.7090507628048317,
+        0.18872110046098195
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "SET/CLR \nAllows setting or clearing individual bits.\n",
+      "bbox": [
+        154.42501831054688,
+        185.8170166015625,
+        404.3985595703125,
+        196.3170166015625
+      ],
+      "bbox_norm": [
+        0.2570194795834498,
+        0.24073303547974845,
+        0.6730665047812378,
+        0.25433618614251774
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "If bit 15 is a 1 specified bits are set.\nIf bit 15 is a 0 specified bits are cleared.\n",
+      "bbox": [
+        223.07501220703125,
+        202.71600341796875,
+        397.19696044921875,
+        226.41497802734375
+      ],
+      "bbox_norm": [
+        0.3712780750993575,
+        0.2626263177380081,
+        0.6610804206705019,
+        0.29332924365843405
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "11\nUARTBRK \nForce the transmit pin to zero.\n",
+      "bbox": [
+        109.77500915527344,
+        241.48275756835938,
+        354.7379455566406,
+        252.48275756835938
+      ],
+      "bbox_norm": [
+        0.1827056006405527,
+        0.31285012701556053,
+        0.5904131542475777,
+        0.32710104675750934
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "HOW OUTPUT DATA IS TRANSMITTED\n",
+      "bbox": [
+        85.77200317382812,
+        287.2109375,
+        291.6874694824219,
+        297.7109375
+      ],
+      "bbox_norm": [
+        0.1427558556233092,
+        0.37209272902930635,
+        0.48547419600509917,
+        0.38569587969207564
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "You send data out on the transmit lines by writing into the serial data output register (SERDAT). \nThis register is write-only.\n",
+      "bbox": [
+        85.52200317382812,
+        320.1109313964844,
+        516.4820556640625,
+        343.908935546875
+      ],
+      "bbox_norm": [
+        0.1423397645611301,
+        0.4147159265319794,
+        0.8596142685508197,
+        0.44554714900159587
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "Data will be sent out at the same rate as you have established for the read. Immediately after you \nwrite the data into this register, the system will begin the transmission at the baud rate you \nselected.\n",
+      "bbox": [
+        86.02200317382812,
+        359.45794677734375,
+        516.8160400390625,
+        395.407958984375
+      ],
+      "bbox_norm": [
+        0.1431719466854883,
+        0.46569148637542046,
+        0.8601701402041996,
+        0.5122660989831006
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "At the start of the operation, this data is transferred from SERDAT into an internal serial shift \nregister. When the transfer to the serial shift register has been completed, SERDAT can accept \nnew data; the TBE interrupt signals this fact.\n",
+      "bbox": [
+        86.02200317382812,
+        410.45697021484375,
+        517.27587890625,
+        446.5059814453125
+      ],
+      "bbox_norm": [
+        0.1431719466854883,
+        0.5317626672777457,
+        0.8609354795749167,
+        0.5784655368979295
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "Data will be moved out of the shift register, one bit during each time interval, starting with the \nleast significant bit. The shifting continues until all 1 bits have been shifted out Any number or \ncombination of data and stop bits may be specified this way.\n",
+      "bbox": [
+        86.02200317382812,
+        461.70599365234375,
+        517.530029296875,
+        498.302001953125
+      ],
+      "bbox_norm": [
+        0.1431719466854883,
+        0.5981577327196607,
+        0.8613584783988703,
+        0.6455692579169449
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "SERDAT is a 16-bit register that allows you to control the format (appearance) of the transmitted \ndata. To form a typical data sequence, such as one start bit, eight data bits, and one stop bit, you \nwrite into SERDAT the contents shown in Figures 8-11 and 8-12.\n",
+      "bbox": [
+        86.27200317382812,
+        513.5020141601562,
+        517.0660400390625,
+        549.5020141601562
+      ],
+      "bbox_norm": [
+        0.14358803774766737,
+        0.6652614537386761,
+        0.8605862312663787,
+        0.7119008274395994
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "Interface Hardware 253\n",
+      "bbox": [
+        410.2900085449219,
+        715.3650512695312,
+        515.4368896484375,
+        725.8650512695312
+      ],
+      "bbox_norm": [
+        0.6828720218277146,
+        0.9267827210761064,
+        0.85787473160044,
+        0.9403858717388757
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

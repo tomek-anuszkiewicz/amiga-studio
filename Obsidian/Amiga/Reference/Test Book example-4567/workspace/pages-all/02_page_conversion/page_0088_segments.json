@@ -1,0 +1,59 @@
+{
+  "page": 88,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\n      */UBYTE jl_pad0;\n];\n\n/* JanusNode — an RPTR/Exec style node.\n */\nstruct JanusReqList\n      [RPTR   jn_Succ;\n      RPTR    jn_Pred;\n      RPTR    jn_Name;\n      UWORD   jn_ReqIndex;    /* this’ index into jb_\n                               CommRegs */\n];\n\n#endif undef\n\n/* JanusBase — the master data table for the janus project. It is\n  located\n * at the bottom of parameter memory.*/\n\nstruct JanusBase [\n      UBYTE jb_Lock;          /* lock byte between\n                                processors */\n      UBYTE jb_8088Go;\n      struct JanusMemHead     /* free mem pool for param\n             jb_ParamMem;       memory\n      struct JanusMemHead     /* free mem pool for buffer\n                                memory */\n             jb_BufferMem;\n      RPTR   jb_Interrupts;   /* (UBYTE *) of request\n                                byte-pairs */\n      RPTR   jb_Parameters;   /* array of ptrs to parameter\n                                areas */\n      UWORD jb_NumInterrupts; /* number of interrupts &\n                                parameters */];\n\n/* constant to set to indicate a pending software interrupt\n*/#define JSETINT    0x7f\n```",
+      "bbox": [
+        794,
+        308,
+        2013,
+        2156
+      ],
+      "segment_id": "page_0088_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "memrw.i—parameter area definition for access to other processors mem\n\nCopyright © 1986, Commodore-Amiga Inc., All rights reserved",
+      "bbox": [
+        795,
+        2208,
+        2044,
+        2414
+      ],
+      "segment_id": "page_0088_seg_002"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\n#ifndef JANUS_MEMRW_H\n#define JANUS_MEMRW_H\n\n/*\n** this is the parameter block for the JSERV_READPC and JSERV_\n** READAMIGA services — read and/or write the other processors\n   memory.\n*/\n```",
+      "bbox": [
+        794,
+        2479,
+        2021,
+        2870
+      ],
+      "segment_id": "page_0088_seg_003"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "152",
+      "bbox": [
+        1057,
+        2920,
+        1127,
+        2954
+      ],
+      "segment_id": "page_0088_seg_004"
+    }
+  ]
+}

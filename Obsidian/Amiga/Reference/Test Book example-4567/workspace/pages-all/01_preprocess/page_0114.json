@@ -1,0 +1,316 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0114",
+  "page": 114,
+  "source_index": 113,
+  "prepared_index": 113,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "FULLSCREEN AREA\n",
+      "bbox": [
+        159.25,
+        76.13296508789062,
+        250.4208984375,
+        84.63296508789062
+      ],
+      "bbox_norm": [
+        0.2650500066080868,
+        0.0986331613803744,
+        0.41679159049081577,
+        0.10964523572642573
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "0 \n255 \n361\n",
+      "bbox": [
+        157.80039978027344,
+        92.78195190429688,
+        454.42498779296875,
+        101.28195190429688
+      ],
+      "bbox_norm": [
+        0.26263734382744247,
+        0.1202025590990443,
+        0.756328703406004,
+        0.13121463344509565
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "HSTART of DISPLAY \nWINDOW occurs in \nthis region.\n",
+      "bbox": [
+        183.2494354248047,
+        118.83096313476562,
+        276.66741943359375,
+        149.27896118164062
+      ],
+      "bbox_norm": [
+        0.30499380891850963,
+        0.1539500471356382,
+        0.4604753616898986,
+        0.19339659045100446
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Figure 3-19: Display Window Horizontal Starting Position\n",
+      "bbox": [
+        171.2494354248047,
+        261.9210205078125,
+        429.00360107421875,
+        272.4210205078125
+      ],
+      "bbox_norm": [
+        0.2850214379339128,
+        0.33932867654419624,
+        0.7140182561985225,
+        0.35293182720696553
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "The eight bits allocated to VST ART are assigned to the first 256 positions counting down from \nthe top of the display.\n",
+      "bbox": [
+        84.84943389892578,
+        300.6710205078125,
+        518.1460571289062,
+        324.76373291015625
+      ],
+      "bbox_norm": [
+        0.14122036430519752,
+        0.3895307801806068,
+        0.8623837730987173,
+        0.42074380843621173
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "FULLSCREEN AREA\n",
+      "bbox": [
+        159.24842834472656,
+        345.93890380859375,
+        251.48941040039062,
+        354.93890380859375
+      ],
+      "bbox_norm": [
+        0.2650473908012384,
+        0.4481770503449102,
+        0.4185699836011767,
+        0.459836893770141
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "A\n0\n",
+      "bbox": [
+        424.44842529296875,
+        366.6690368652344,
+        462.09442138671875,
+        382.407958984375
+      ],
+      "bbox_norm": [
+        0.7064367844815913,
+        0.475033728747647,
+        0.769093434487346,
+        0.49542410292443384
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "VSTART of DISPLAY WINDOW \n",
+      "bbox": [
+        302.07440185546875,
+        398.6769714355469,
+        437.36041259765625,
+        407.1769714355469
+      ],
+      "bbox_norm": [
+        0.5027618349006334,
+        0.5165012293537444,
+        0.7279270345313932,
+        0.5275133036997958
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "occurs in this region.\n",
+      "bbox": [
+        353.7703857421875,
+        409.5759582519531,
+        435.4469909667969,
+        418.0759582519531
+      ],
+      "bbox_norm": [
+        0.5888027822839071,
+        0.5306212826618502,
+        0.7247424039762702,
+        0.5416333570079015
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "___ 1[_\n(NTSC)-------------\n255\n262\n",
+      "bbox": [
+        359.8699951171875,
+        440.17547607421875,
+        479.0980529785156,
+        466.0689697265625
+      ],
+      "bbox_norm": [
+        0.5989547540587926,
+        0.570264125627981,
+        0.7973936710070775,
+        0.6038101347078183
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Figure 3-20: Display Window Vertical Starting Position\n",
+      "bbox": [
+        177.25,
+        517.258056640625,
+        423.63250732421875,
+        527.758056640625
+      ],
+      "bbox_norm": [
+        0.295008563084982,
+        0.6701275500965407,
+        0.7050787997845185,
+        0.68373070075931
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Recall that you select the values for the starting position as if the display were in low-resolution, \nnon-interlaced mode. Keep in mind, though, that for interlaced mode the display window should \nbe an even number of lines in height to allow for equal-sized odd and even fields.\n",
+      "bbox": [
+        85.0999984741211,
+        556.258056640625,
+        518.0779418945312,
+        592.4030151367188
+      ],
+      "bbox_norm": [
+        0.1416373950261474,
+        0.720653538272541,
+        0.8622704045378307,
+        0.767480711236532
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "To set the display window starting position, write the value for HSTART into bits 0 through 7 \nand the value for VSTART into bits 8 through 15 of DIWSTRT.\n",
+      "bbox": [
+        85.29999542236328,
+        607.5030517578125,
+        518.2047119140625,
+        631.0530395507812
+      ],
+      "bbox_norm": [
+        0.1419702627966541,
+        0.7870433848717769,
+        0.8624813960261475,
+        0.8175532926864562
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "72 Playfield Hardware\n",
+      "bbox": [
+        86.30000305175781,
+        713.3150634765625,
+        187.425537109375,
+        723.8150634765625
+      ],
+      "bbox_norm": [
+        0.143634639743462,
+        0.9241268836661453,
+        0.3119443632613128,
+        0.9377300343289146
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0106",
+  "page": 106,
+  "source_index": 105,
+  "prepared_index": 105,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Instruction\nExplanation\n",
+      "bbox": [
+        193.10000610351562,
+        62.86970901489258,
+        425.4441223144531,
+        73.36971282958984
+      ],
+      "bbox_norm": [
+        0.3213887465856102,
+        0.08145010703371894,
+        0.7080939870067032,
+        0.09505326263857411
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "[... other instructions ... ]\n",
+      "bbox": [
+        130.4530029296875,
+        88.97399139404297,
+        241.42755126953125,
+        99.47399139404297
+      ],
+      "bbox_norm": [
+        0.21712131421386777,
+        0.11526920095248623,
+        0.4018233849881537,
+        0.12887235161525554
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "WAIT for position (0,255)\nAt \nthis point, \nthe \nvertical \ncounter appears to wrap to 0 \nbecause the comparison works \non the least significant bits of \nthe vertical count.\n",
+      "bbox": [
+        129.9530029296875,
+        115.97399139404297,
+        473.0779724121094,
+        177.7171630859375
+      ],
+      "bbox_norm": [
+        0.21628913208950956,
+        0.15024873122817872,
+        0.7873740641379585,
+        0.23023936617313812
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "WAIT for any horizontal position with \nvertical position 0 through 5, covering \nthe last 6 lines of the scan before vertical \nblanking occurs.\n",
+      "bbox": [
+        129.9129638671875,
+        194.91888427734375,
+        312.1090393066406,
+        244.01885986328125
+      ],
+      "bbox_norm": [
+        0.21622249250533243,
+        0.2525248523660572,
+        0.5194631267231945,
+        0.3161357443121336
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Thus the total of 256 + 6 = 262 \nlines of video beam travel \nduring \nwhich \nCopper \ninstructions can be executed.\n",
+      "bbox": [
+        325.762939453125,
+        195.06610107421875,
+        472.137939453125,
+        244.21112060546875
+      ],
+      "bbox_norm": [
+        0.5421881899825467,
+        0.25271557734396016,
+        0.7858095068884099,
+        0.3163848254399919
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "NOTE\n",
+      "bbox": [
+        284.262939453125,
+        266.81085205078125,
+        314.3664245605469,
+        277.31085205078125
+      ],
+      "bbox_norm": [
+        0.4731170736608161,
+        0.34566363989605964,
+        0.5232202380353757,
+        0.35926679055882893
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "The vertical is like the horizontal—as there are alternating long and short lines, there \nare also long and short fields (interlace only). In NTSC, the fields are 262, then 263 \nlines and in PAL, 312,313.\n",
+      "bbox": [
+        109.512939453125,
+        285.9108581542969,
+        492.27996826171875,
+        322.0588684082031
+      ],
+      "bbox_norm": [
+        0.18226942119762507,
+        0.37040842662805357,
+        0.8193331795340492,
+        0.4172395532607408
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "This alternation of lines & fields produces the standard NTSC 4 field repeating pattern:\n",
+      "bbox": [
+        85.06294250488281,
+        337.7078552246094,
+        465.1418762207031,
+        348.2078552246094
+      ],
+      "bbox_norm": [
+        0.14157572039574567,
+        0.4375134128210517,
+        0.7741655093626076,
+        0.451116563483821
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "short field ending on short line \nlong field ending on long line \nshort field ending on long line \nlong field ending on short line \n& back to the beginning...\n",
+      "bbox": [
+        120.81294250488281,
+        363.4078674316406,
+        258.1004943847656,
+        424.8058776855469
+      ],
+      "bbox_norm": [
+        0.201076742287357,
+        0.4708087593055523,
+        0.42957323543003206,
+        0.5503522244368039
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "1 horiz count takes 1 cycle of the system clock. (Processor is twice this)\n",
+      "bbox": [
+        86.71493530273438,
+        440.2048645019531,
+        399.34197998046875,
+        450.7048645019531
+      ],
+      "bbox_norm": [
+        0.1443252381476268,
+        0.570302199457525,
+        0.6646505144911128,
+        0.5839053501202943
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "NTSC- 3,579,545 Hz \nPAL- 3,546,895 Hz\ngenlocked- basic clock frequency plus or minus about 2%.\n",
+      "bbox": [
+        121.06193542480469,
+        465.9048767089844,
+        376.40142822265625,
+        502.2038879394531
+      ],
+      "bbox_norm": [
+        0.20149115720145847,
+        0.6035975459420256,
+        0.6264690802995815,
+        0.6506243001017991
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "THE COMPARISON ENABLE BITS\n",
+      "bbox": [
+        86.01193237304688,
+        531.1528930664062,
+        262.2333984375,
+        541.6528930664062
+      ],
+      "bbox_norm": [
+        0.14315518520471202,
+        0.6881288408902966,
+        0.43645189317877825,
+        0.7017319915530659
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "Bits 14-1 are normally set to all Is. The use of the comparison enable bits is described later in the \n",
+      "bbox": [
+        86.01193237304688,
+        564.2998657226562,
+        517.4779663085938,
+        574.7998657226562
+      ],
+      "bbox_norm": [
+        0.14315518520471202,
+        0.7310720088005502,
+        0.8612718266224936,
+        0.7446751594633195
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "‘ ‘ Advanced Topics” section.\n",
+      "bbox": [
+        86.7118911743164,
+        577.3499145507812,
+        212.08193969726562,
+        587.8499145507812
+      ],
+      "bbox_norm": [
+        0.14432017160911942,
+        0.7479788450258341,
+        0.3529815982305565,
+        0.7615819956886034
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "Coprocessor Hardware 19\n",
+      "bbox": [
+        399.70001220703125,
+        713.467041015625,
+        516.2289428710938,
+        723.967041015625
+      ],
+      "bbox_norm": [
+        0.6652464105288918,
+        0.9243237763672142,
+        0.8591929966673097,
+        0.9379269270299835
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

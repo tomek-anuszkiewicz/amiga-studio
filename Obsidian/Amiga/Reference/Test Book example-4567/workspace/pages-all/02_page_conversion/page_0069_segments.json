@@ -1,0 +1,150 @@
+{
+  "page": 69,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "Section 3.1\n\nDesigning Hardware for the Amiga Expansion Architecture",
+      "bbox": [
+        207,
+        202,
+        2103,
+        516
+      ],
+      "segment_id": "page_0069_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "INTRODUCTION",
+      "bbox": [
+        211,
+        726,
+        599,
+        775
+      ],
+      "segment_id": "page_0069_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This section gives guidelines for designing hardware to reside on the Amiga expansion bus. The Amiga expansion bus is a relatively straightforward extension of the 68000 bus.",
+      "bbox": [
+        859,
+        711,
+        2098,
+        868
+      ],
+      "segment_id": "page_0069_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Hardware for the bus can be viewed as two categories: backplanes and PICs. Backplanes interface to the 86 pin connector of either another backplane or the Amiga itself. Backplanes buffer the bus and provide 100 pin connectors for PICs to plug into.",
+      "bbox": [
+        861,
+        912,
+        2100,
+        1120
+      ],
+      "segment_id": "page_0069_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "PIC is an acronym for plug-in card. A PIC is usually a card that plugs into the standard 100 pin Amiga connectors.",
+      "bbox": [
+        864,
+        1165,
+        2102,
+        1265
+      ],
+      "segment_id": "page_0069_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "A sub-type of PIC is a combination of backplane and PIC integrated into one package. These combination products should follow all of the applicable backplane and PIC rules, especially auto-configuration.",
+      "bbox": [
+        864,
+        1310,
+        2105,
+        1473
+      ],
+      "segment_id": "page_0069_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Software never sees backplanes; all expansion hardware appears to the software as PICs.",
+      "bbox": [
+        865,
+        1518,
+        2095,
+        1614
+      ],
+      "segment_id": "page_0069_seg_007"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**WARNING**",
+      "bbox": [
+        1387,
+        1736,
+        1588,
+        1774
+      ],
+      "segment_id": "page_0069_seg_008"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "These specifications represent “worst case” design targets. Products that do not comply with these specifications can be expected to fail on worst case production units.",
+      "bbox": [
+        905,
+        1834,
+        2074,
+        1985
+      ],
+      "segment_id": "page_0069_seg_009"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Following conservative design practices and allowing the widest safety margins is your best assurance against problems in the field.",
+      "bbox": [
+        906,
+        2029,
+        2033,
+        2179
+      ],
+      "segment_id": "page_0069_seg_010"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "17",
+      "bbox": [
+        1148,
+        2934,
+        1194,
+        2968
+      ],
+      "segment_id": "page_0069_seg_011"
+    }
+  ]
+}

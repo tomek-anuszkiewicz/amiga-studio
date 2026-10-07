@@ -1,0 +1,111 @@
+{
+  "page": 70,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "EXPANSION ARCHITECTURE OVERVIEW",
+      "bbox": [
+        150,
+        306,
+        550,
+        473
+      ],
+      "segment_id": "page_0070_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "As shown in Figure 3.1, “Expansion Architecture Overview,” the expansion bus is implemented as backplane (an expansion box) which accept PICs (boards). The recommended number of PICs to a backplane is five.",
+      "bbox": [
+        800,
+        304,
+        2045,
+        500
+      ],
+      "segment_id": "page_0070_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Due to timing considerations, it is not possible to daisy-chain more than two buffered backplanes without inserting wait states.",
+      "bbox": [
+        800,
+        556,
+        2025,
+        650
+      ],
+      "segment_id": "page_0070_seg_003"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        1365,
+        785,
+        1482,
+        823
+      ],
+      "segment_id": "page_0070_seg_004"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "You should also take extreme care in controlling signal radiation from your product, in order to pass FCC class B regulations.",
+      "bbox": [
+        850,
+        884,
+        1906,
+        1031
+      ],
+      "segment_id": "page_0070_seg_005"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        106,
+        1262,
+        2054,
+        2440
+      ],
+      "segment_id": "page_0070_seg_006"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 3.1. Expansion Architecture Overview",
+      "bbox": [
+        692,
+        2543,
+        1505,
+        2585
+      ],
+      "segment_id": "page_0070_seg_007"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "18",
+      "bbox": [
+        1067,
+        2924,
+        1113,
+        2960
+      ],
+      "segment_id": "page_0070_seg_008"
+    }
+  ]
+}

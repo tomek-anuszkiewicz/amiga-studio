@@ -1,0 +1,150 @@
+{
+  "page": 35,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "shown in Figure 6-9. If the bus cycle is a read, the data at the fault address should be written to the images of the data input buffer, instruction input buffer, or both according to the data fetch (DF) and instruction fetch (IF) bits.* In addition, for read-modify-write cycles, the status register image must be properly set to reflect the read data if the fault occurred during the read portion of the cycle and the write operation (i.e., setting the most significant bit of the memory location) must also be performed. These operations are required because the entire read-modify-write cycle is assumed to have been completed by software. Once the cycle has been completed by software, the rerun (RR) bit in the special status word is set to indicate to the processor that it should not rerun the cycle when the RTE instruction is executed. If the RR bit is set when an RTE instruction executes, the MC68010 reads all the information from the stack, as usual.",
+      "bbox": [
+        210,
+        237,
+        1817,
+        743
+      ],
+      "segment_id": "page_0035_seg_001"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        211,
+        797,
+        1817,
+        1199
+      ],
+      "segment_id": "page_0035_seg_002"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "6",
+      "bbox": [
+        1923,
+        1086,
+        2091,
+        1191
+      ],
+      "segment_id": "page_0035_seg_003"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 6-9. Special Status Word Format",
+      "bbox": [
+        638,
+        1244,
+        1387,
+        1286
+      ],
+      "segment_id": "page_0035_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "6.3.10 Address Error",
+      "bbox": [
+        213,
+        1361,
+        675,
+        1402
+      ],
+      "segment_id": "page_0035_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "An address error exception occurs when the processor attempts to access a word or long-word operand or an instruction at an odd address. An address error is similar to an internally generated bus error. The bus cycle is aborted, and the processor ceases current processing and begins exception processing. The exception processing sequence is the same as that for a bus error, including the information to be stacked, except that the vector number refers to the address error vector. Likewise, if an address error occurs during the exception processing for a bus error, address error, or reset, the processor is halted.",
+      "bbox": [
+        212,
+        1435,
+        1816,
+        1796
+      ],
+      "segment_id": "page_0035_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "On the MC68010, the address error exception stacks the same information stacked by a bus error exception. Therefore, the RTE instruction can be used to continue execution of the suspended instruction. However, if the RR flag is not set, the fault address is used when the cycle is retried, and another address error exception occurs. Therefore, the user must be certain that the proper corrections have been made to the stack image and user registers before attempting to continue the instruction. With proper software handling, the address error exception handler could emulate word or long-word accesses to odd addresses if desired.",
+      "bbox": [
+        214,
+        1845,
+        1818,
+        2211
+      ],
+      "segment_id": "page_0035_seg_007"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "*If the faulted access was a byte operation, the data should be moved from or to the least significant byte of the data output or input buffer images, unless the high-byte transfer (HB) bit is set. This condition occurs if a MOVEP instruction caused the fault during transfer of bits 8–15 of a word or long word or bits 24–31 of a long word.",
+      "bbox": [
+        214,
+        2278,
+        1807,
+        2455
+      ],
+      "segment_id": "page_0035_seg_008"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        217,
+        2514,
+        410,
+        2544
+      ],
+      "segment_id": "page_0035_seg_009"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 8-/16-/32-BIT MICROPROCESSORS USER’S MANUAL",
+      "bbox": [
+        529,
+        2512,
+        1503,
+        2542
+      ],
+      "segment_id": "page_0035_seg_010"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "6-19",
+      "bbox": [
+        1750,
+        2513,
+        1820,
+        2541
+      ],
+      "segment_id": "page_0035_seg_011"
+    }
+  ]
+}

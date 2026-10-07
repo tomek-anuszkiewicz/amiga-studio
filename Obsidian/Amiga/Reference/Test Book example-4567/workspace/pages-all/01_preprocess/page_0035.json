@@ -1,0 +1,299 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0035",
+  "page": 35,
+  "source_index": 34,
+  "prepared_index": 34,
+  "geometry": {
+    "width": 504.0,
+    "height": 648.9600219726562,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      504.0,
+      648.9600219726562
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      504.0,
+      648.9600219726562
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      648.9600219726562
+    ]
+  },
+  "width": 504.0,
+  "height": 648.9600219726562,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2100,
+    "pixel_height": 2704,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "shown in Figure 6-9. If the bus cycle is a read, the data at the fault address should be \nwritten to the images of the data input buffer, instruction input buffer, or both according to \nthe data fetch (OF) and instruction fetch (IF) bits.* In addition, for read-modify-write cycles, \nthe status register image must be properly set to reflect the read data if the fault occurred \nduring the read portion of the cycle and the write operation (i.e., setting the most \nsignificant bit of the memory location) must also be performed. These operations are \nrequired because the entire read-modify-write cycle is assumed to have been completed \nby software. Once the cycle has been completed by software, the rerun (RR) bit in the \nspecial status word is set to indicate to the processor that it should not rerun the cycle \nwhen the RTE instruction is executed. If the RR bit is set when an RTE instruction \nexecutes, the MC6801 O reads all the information from the stack, as usual. \n",
+      "bbox": [
+        50.59000015258789,
+        54.23999786376953,
+        435.90380859375,
+        179.7504425048828
+      ],
+      "bbox_norm": [
+        0.10037698442973787,
+        0.08357987553516034,
+        0.8648885091145834,
+        0.27698230463949375
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "15 \n14 \n13 \n12 \n11 \n10 \n9 \n8 \nI AA I . I IF I OF I AM I HB I BY I AW I \n",
+      "bbox": [
+        50.43000030517578,
+        190.26739501953125,
+        251.2528076171875,
+        213.91371154785156
+      ],
+      "bbox_norm": [
+        0.10005952441503131,
+        0.2931881604065098,
+        0.49851747543092756,
+        0.3296254072748795
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "RR -\nRerun flag; O=processor rerun (default), 1 =software rerun \nIF \n-\nInstruction fetch to the instruction input buffer \nOF -\nData fetch to the data input buffer \nRM -\nRead-modify-write cycle \nHB -\nHigh-byte transfer from the data output buffer or to the data input buffer \n",
+      "bbox": [
+        53.810001373291016,
+        213.98501586914062,
+        308.8423767089844,
+        255.7630157470703
+      ],
+      "bbox_norm": [
+        0.10676587574065678,
+        0.32973528202659735,
+        0.6127824934702071,
+        0.39411212877123397
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "0 \n",
+      "bbox": [
+        421.6099853515625,
+        189.56370544433594,
+        426.9349670410156,
+        199.0351104736328
+      ],
+      "bbox_norm": [
+        0.8365277487134176,
+        0.29210382616191904,
+        0.8470931885734437,
+        0.30669856961083974
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "FC2-FCO \n",
+      "bbox": [
+        387.95001220703125,
+        200.75990295410156,
+        412.08172607421875,
+        210.10324096679688
+      ],
+      "bbox_norm": [
+        0.7697420877123636,
+        0.3093563488608248,
+        0.8176224723694816,
+        0.3237537503899578
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "BY -\nByte-transfer flag; HB selects the high or low byte of the transfer register. If BY is clear, the transfer is word. \nRW \nRead/write flag; O=write, 1 =read \nFC -\nThe function code used during the faulted access \n* \n-\nThese bits are reserved for future use by Motorola and will be zero when written by the MC68010. \n",
+      "bbox": [
+        53.68000030517578,
+        254.07504272460938,
+        422.9825134277344,
+        288.3209228515625
+      ],
+      "bbox_norm": [
+        0.10650793711344402,
+        0.3915110856170964,
+        0.8392510187058222,
+        0.44428148589977523
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Figure 6-9. Special Status Word Format \n",
+      "bbox": [
+        153.61000061035156,
+        296.1600036621094,
+        335.12872314453125,
+        309.35040283203125
+      ],
+      "bbox_norm": [
+        0.304781747242761,
+        0.4563609369370183,
+        0.6649379427470858,
+        0.47668637875672665
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "6.3.1 O Address Error \n",
+      "bbox": [
+        51.720001220703125,
+        323.5625305175781,
+        165.18450927734375,
+        338.53912353515625
+      ],
+      "bbox_norm": [
+        0.10261905004107763,
+        0.4985862296016924,
+        0.3277470422169519,
+        0.5216640656940505
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "An address error exception occurs when the processor attempts to access a word or long-\nword operand or an instruction at an odd address. An address error is similar to an \ninternally generated bus error. The bus cycle is aborted, and the processor ceases current \nprocessing and begins exception processing. The exception processing sequence is the \nsame as that for a bus error, including the information to be stacked, except that the \nvector number refers to the address error vector. Likewise, if an address error occurs \nduring the exception processing for a bus error, address error, or reset, the processor is \nhalted. \n",
+      "bbox": [
+        51.56999969482422,
+        341.52001953125,
+        436.5877685546875,
+        433.180419921875
+      ],
+      "bbox_norm": [
+        0.10232142796592107,
+        0.526257408727775,
+        0.8662455725291419,
+        0.667499391726979
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "On the MC6801 O, the address error exception stacks the same information stacked by a \nbus error exception. Therefore, the RTE instruction can be used to continue execution of \nthe suspended instruction. However, if the RR flag is not set, the fault address is used \nwhen the cycle is retried, and another address error exception occurs. Therefore, the user \nmust be certain that the proper corrections have been made to the stack image and user \nregisters before attempting to continue the instruction. With proper software handling, the \naddress error exception handler could emulate word or long-word accesses to odd \naddresses if desired. \n",
+      "bbox": [
+        51.790000915527344,
+        439.9400329589844,
+        437.1057434082031,
+        532.0704345703125
+      ],
+      "bbox_norm": [
+        0.10275793832445902,
+        0.6779154617594011,
+        0.8672733004131015,
+        0.8198816823152955
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "*If the faulted access was a byte operation, the data should be moved from or to the least significant byte of \nthe data output or input buffer images, unless the high-byte transfer (HB) bit is set. This condition occurs if a \n",
+      "bbox": [
+        51.77000045776367,
+        545.7654418945312,
+        434.7417907714844,
+        567.7423095703125
+      ],
+      "bbox_norm": [
+        0.10271825487651522,
+        0.8409846884490011,
+        0.8625829181973896,
+        0.8748494365562539
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "MOVEP instruction caused the fault during transfer of bits 8-15 of a word or long word or bits 24-31 of a \nlong word. \n",
+      "bbox": [
+        52.18000030517578,
+        568.6824951171875,
+        422.50177001953125,
+        590.7723388671875
+      ],
+      "bbox_norm": [
+        0.10353174663725354,
+        0.8762981938217895,
+        0.8382971627371651,
+        0.9103370298087168
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "MOTOROLA \nM68000 8-/16-132-BIT MICROPROCESSORS USER'S MANUAL \n6-19 \n",
+      "bbox": [
+        52.38999938964844,
+        600.5807495117188,
+        438.88525390625,
+        612.142333984375
+      ],
+      "bbox_norm": [
+        0.1039484114873977,
+        0.925451074299033,
+        0.8708040752108135,
+        0.943266631623369
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

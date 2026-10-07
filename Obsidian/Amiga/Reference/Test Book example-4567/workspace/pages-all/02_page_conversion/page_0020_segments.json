@@ -1,0 +1,163 @@
+{
+  "page": 20,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "When a data register is used as either a source or a destination operand, only the appropriate low-order portion is changed; the remaining high-order portion is neither used nor changed.",
+      "bbox": [
+        299,
+        226,
+        1898,
+        360
+      ],
+      "segment_id": "page_0020_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "2.3.2 Address Registers",
+      "bbox": [
+        300,
+        422,
+        857,
+        470
+      ],
+      "segment_id": "page_0020_seg_002"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2",
+      "bbox": [
+        14,
+        482,
+        197,
+        588
+      ],
+      "segment_id": "page_0020_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Each address register (and the stack pointer) is 32 bits wide and holds a full, 32-bit address. Address registers do not support byte-sized operands. Therefore, when an address register is used as a source operand, either the low-order word or the entire long-word operand is used, depending upon the operation size. When an address register is used as the destination operand, the entire register is affected, regardless of the operation size. If the operation size is word, operands are sign-extended to 32 bits before the operation is performed.",
+      "bbox": [
+        300,
+        497,
+        1900,
+        820
+      ],
+      "segment_id": "page_0020_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "2.4 DATA ORGANIZATION IN MEMORY",
+      "bbox": [
+        301,
+        896,
+        1228,
+        937
+      ],
+      "segment_id": "page_0020_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Bytes are individually addressable. As shown in Figure 2-5, the high-order byte of a word has the same address as the word. The low-order byte has an odd address, one count higher. Instructions and multibyte data are accessed only on word (even byte) boundaries. If a long-word operand is located at address n (n even), then the second word of that operand is located at address n+2.",
+      "bbox": [
+        301,
+        972,
+        1900,
+        1200
+      ],
+      "segment_id": "page_0020_seg_006"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        483,
+        1287,
+        1724,
+        1674
+      ],
+      "segment_id": "page_0020_seg_007"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 2-5. Word Organization in Memory",
+      "bbox": [
+        711,
+        1736,
+        1496,
+        1779
+      ],
+      "segment_id": "page_0020_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The data types supported by the M68000 MPUs are bit data, integer data of 8, 16, and 32 bits, 32-bit addresses, and binary-coded-decimal data. Each data type is stored in memory as shown in Figure 2-6. The numbers indicate the order of accessing the data from the processor. For the MC68008 with its 8-bit bus, the appearance of data in memory is identical to the all the M68000 MPUs. The organization of data in the memory of the MC68008 is shown in Figure 2-7.",
+      "bbox": [
+        304,
+        1837,
+        1903,
+        2110
+      ],
+      "segment_id": "page_0020_seg_009"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2-6",
+      "bbox": [
+        308,
+        2505,
+        358,
+        2534
+      ],
+      "segment_id": "page_0020_seg_010"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 8-/16-/32-BIT MICROPROCESSOR USER’S MANUAL",
+      "bbox": [
+        635,
+        2503,
+        1587,
+        2533
+      ],
+      "segment_id": "page_0020_seg_011"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        1718,
+        2504,
+        1913,
+        2534
+      ],
+      "segment_id": "page_0020_seg_012"
+    }
+  ]
+}

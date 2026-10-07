@@ -1,0 +1,435 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0034",
+  "page": 34,
+  "source_index": 33,
+  "prepared_index": 33,
+  "geometry": {
+    "width": 504.0,
+    "height": 648.9600219726562,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      509.0400085449219,
+      652.9199829101562
+    ],
+    "cropbox": [
+      2.5199999809265137,
+      1.91998291015625,
+      506.5199890136719,
+      650.8800048828125
+    ],
+    "cropbox_position": [
+      2.5199999809265137,
+      1.91998291015625
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      -2.5199999809265137,
+      651.0
+    ]
+  },
+  "width": 504.0,
+  "height": 648.9600219726562,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2100,
+    "pixel_height": 2704,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "supervisor mode. Therefore, when instruction execution resumes at the address specified \nto process the exception, the processor is in the supervisor privilege mode. \n",
+      "bbox": [
+        48.279998779296875,
+        53.00498580932617,
+        432.2831726074219,
+        77.21062469482422
+      ],
+      "bbox_norm": [
+        0.09579364837162078,
+        0.08167681215278239,
+        0.8577047075544085,
+        0.11897593392598453
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "NOTE \n",
+      "bbox": [
+        226.70999145507812,
+        85.04248046875,
+        255.22752380371094,
+        97.8206787109375
+      ],
+      "bbox_norm": [
+        0.4498214116172185,
+        0.13104425170944234,
+        0.506403817070855,
+        0.15073452200274234
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "The transition from supervisor to user mode can be \naccomplished by any of four instructions: return from exception \n",
+      "bbox": [
+        105.66000366210938,
+        101.0049819946289,
+        374.77935791015625,
+        124.97057342529297
+      ],
+      "bbox_norm": [
+        0.20964286440894717,
+        0.15564130081172353,
+        0.7436098371233258,
+        0.1925705269878066
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "(RTE) (MC68010 only), move to status register (MOVE to SR), \nAND immediate to status register (ANDI to SR), and exclusive \nOR immediate to status register (EORI to SR). The RTE \ninstruction in the MC68010 fetches the new status register and \nprogram counter from the supervisor stack and loads each into \nits respective register. Next, it begins the instruction fetch at \nthe new program counter address in the privilege mode \ndetermined by the S bit of the new contents of the status \nregister. \n",
+      "bbox": [
+        105.68000030517578,
+        123.32498931884766,
+        375.122314453125,
+        225.5205841064453
+      ],
+      "bbox_norm": [
+        0.2096825402880472,
+        0.19003480205756637,
+        0.7442903064546131,
+        0.3475107502322347
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "The MOVE to SR, ANDI to SR, and EORI to SR instructions fetch all operands in the \nsupervisor mode, perform the appropriate update to the status register, and then fetch the \nnext instruction at the next sequential program counter address in the privilege mode \ndetermined by the new S bit. \n",
+      "bbox": [
+        48.52000045776367,
+        233.49501037597656,
+        433.440673828125,
+        280.0106201171875
+      ],
+      "bbox_norm": [
+        0.09626984217810253,
+        0.3597987587374293,
+        0.8600013369605655,
+        0.43147591629147486
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "6.1.4 Reference Classification \n",
+      "bbox": [
+        48.720001220703125,
+        290.70751953125,
+        209.8108367919922,
+        305.95892333984375
+      ],
+      "bbox_norm": [
+        0.09666666908869667,
+        0.4479590570888801,
+        0.41629134284125435,
+        0.47146035654063023
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "When the processor makes a reference, it classifies the reference according to the \nencoding of the three function code output lines. This classification allows external \ntranslation of addresses, control of access, and differentiation of special processor states, \nsuch as CPU space (used by interrupt acknowledge cycles). Table 6-1 lists the \nclassification of references. \n",
+      "bbox": [
+        48.560001373291016,
+        309.3249816894531,
+        433.558837890625,
+        366.8905944824219
+      ],
+      "bbox_norm": [
+        0.09634920907399011,
+        0.4766472066325319,
+        0.8602357894655258,
+        0.5653516119023442
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "MOTOROLA \n",
+      "bbox": [
+        49.38999938964844,
+        599.3924560546875,
+        97.24243927001953,
+        609.9722900390625
+      ],
+      "bbox_norm": [
+        0.09799603053501674,
+        0.9236200008633856,
+        0.19294134775797525,
+        0.9399227523829866
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Table 6-1. Reference Classification \n",
+      "bbox": [
+        160.6199951171875,
+        380.52252197265625,
+        321.2946472167969,
+        393.8503112792969
+      ],
+      "bbox_norm": [
+        0.31869046650235616,
+        0.5863574166186303,
+        0.6374893793984066,
+        0.606894566605355
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Function Code Output \n",
+      "bbox": [
+        153.0699920654297,
+        400.3424072265625,
+        230.82701110839844,
+        409.8231506347656
+      ],
+      "bbox_norm": [
+        0.3037103017171224,
+        0.6168984123392285,
+        0.45799010140555246,
+        0.6315075455480575
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "FC2 \nFC1 \nFCO \nAddress Space \n",
+      "bbox": [
+        150.67999267578125,
+        414.01239013671875,
+        317.1608581542969,
+        423.7431335449219
+      ],
+      "bbox_norm": [
+        0.2989682394360739,
+        0.6379628576784088,
+        0.6292874169728112,
+        0.6529572226296186
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "0 \n0 \n0 \n(Undefined, Reserved)* \n",
+      "bbox": [
+        155.0800018310547,
+        427.702392578125,
+        328.8152160644531,
+        437.4429931640625
+      ],
+      "bbox_norm": [
+        0.3076984163314577,
+        0.6590581516532095,
+        0.652411142985026,
+        0.6740677057954335
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "0 \n0 \n1 \nUser Data \n",
+      "bbox": [
+        155.0800018310547,
+        440.9683837890625,
+        306.75927734375,
+        450.8829650878906
+      ],
+      "bbox_norm": [
+        0.3076984163314577,
+        0.6795000752876,
+        0.6086493598090278,
+        0.6947777210024941
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "0 \n1 \n0 \nUser Program \n",
+      "bbox": [
+        155.0800018310547,
+        454.5823974609375,
+        313.2552490234375,
+        464.5729675292969
+      ],
+      "bbox_norm": [
+        0.3076984163314577,
+        0.700478276118049,
+        0.6215381925068204,
+        0.7158730149772947
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "0 \n1 \n1 \n(Undefined, Reserved)* \n",
+      "bbox": [
+        155.3199920654297,
+        468.098388671875,
+        328.8152160644531,
+        478.213134765625
+      ],
+      "bbox_norm": [
+        0.30817458743140813,
+        0.7213054314948205,
+        0.652411142985026,
+        0.7368915165405587
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "1 \n0 \n0 \n(Undefined, Reserved)* \n",
+      "bbox": [
+        155.62998962402344,
+        481.7684020996094,
+        329.084228515625,
+        491.66314697265625
+      ],
+      "bbox_norm": [
+        0.30878966195242746,
+        0.74236992385936,
+        0.6529448978484623,
+        0.7576170030907887
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "1 \n0 \n1 \nSupervisor Data \n",
+      "bbox": [
+        155.62998962402344,
+        495.2083740234375,
+        316.3592834472656,
+        505.1031188964844
+      ],
+      "bbox_norm": [
+        0.30878966195242746,
+        0.7630799390664206,
+        0.6276969909667969,
+        0.7783270182978494
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "1 \n1 \n0 \nSupervisor Program \n",
+      "bbox": [
+        155.62998962402344,
+        508.8223876953125,
+        322.8150329589844,
+        518.7731323242188
+      ],
+      "bbox_norm": [
+        0.30878966195242746,
+        0.7840581398968697,
+        0.6405060177757627,
+        0.7993915106623889
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "1 \n1 \n1 \nCPU Space \n",
+      "bbox": [
+        155.62998962402344,
+        522.33837890625,
+        309.7407531738281,
+        532.22314453125
+      ],
+      "bbox_norm": [
+        0.30878966195242746,
+        0.804885295273641,
+        0.6145649864560082,
+        0.8201169972126189
+      ]
+    },
+    {
+      "block_id": 19,
+      "type": 0,
+      "text": "*Address space 3 is reserved for user definition, while O and \n4 are reserved for future use by Motorola. \n",
+      "bbox": [
+        140.22000122070312,
+        536.182373046875,
+        332.6963195800781,
+        553.5831298828125
+      ],
+      "bbox_norm": [
+        0.2782142881363157,
+        0.8262178792108505,
+        0.6601117451985677,
+        0.8530311747094609
+      ]
+    },
+    {
+      "block_id": 20,
+      "type": 0,
+      "text": "M68000 8·116·/32-BIT MICROPROCESSORS USER'S MANUAL \n6-3 \n",
+      "bbox": [
+        124.51000213623047,
+        599.02001953125,
+        435.54669189453125,
+        609.7423095703125
+      ],
+      "bbox_norm": [
+        0.24704365503220332,
+        0.9230461033799853,
+        0.8641799442351811,
+        0.9395683692762261
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

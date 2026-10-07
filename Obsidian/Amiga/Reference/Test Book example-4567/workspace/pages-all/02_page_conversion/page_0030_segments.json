@@ -1,0 +1,85 @@
+{
+  "page": 30,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        433,
+        201,
+        1749,
+        1029
+      ],
+      "segment_id": "page_0030_seg_001"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "4",
+      "bbox": [
+        12,
+        790,
+        183,
+        894
+      ],
+      "segment_id": "page_0030_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 4-1. Byte Read-Cycle Flowchart",
+      "bbox": [
+        728,
+        1096,
+        1460,
+        1138
+      ],
+      "segment_id": "page_0030_seg_003"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        364,
+        1235,
+        1831,
+        1959
+      ],
+      "segment_id": "page_0030_seg_004"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 4-2. Read and Write-Cycle Timing Diagram",
+      "bbox": [
+        628,
+        2008,
+        1570,
+        2053
+      ],
+      "segment_id": "page_0030_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "4-2    M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL    MOTOROLA",
+      "bbox": [
+        299,
+        2507,
+        1908,
+        2541
+      ],
+      "segment_id": "page_0030_seg_006"
+    }
+  ]
+}

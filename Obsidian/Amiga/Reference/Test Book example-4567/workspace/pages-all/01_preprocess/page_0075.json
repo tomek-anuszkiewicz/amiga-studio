@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0075",
+  "page": 75,
+  "source_index": 74,
+  "prepared_index": 74,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Named\nExpansion\nCoprocessor\nVideo\n.\nSignals\nDIR\n_—_ Slots (each)\nSlot\nSlot\n",
+      "bbox": [
+        35.279998779296875,
+        77.03997802734375,
+        528.45361328125,
+        102.01319885253906
+      ],
+      "bbox_norm": [
+        0.06515957191972498,
+        0.1068930807511613,
+        0.9760150910505331,
+        0.1415434607050174
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "/EINT7\n6)\noc\n/SLAVEn\n0\n2f\n/CFGOUTn\n6)\n2f\n/COPCFG\n0\nef\n~\nE Clock\nl\n1F\n1F\n7MHz Clock\ni\n1F\n1F\n:\n/BERR\n|\n1F\n1F\n—\n0\noc\noc\nVPA\nI\n1F\n1F\n",
+      "bbox": [
+        36.23994445800781,
+        106.55999755859375,
+        534.7103271484375,
+        212.6483917236328
+      ],
+      "bbox_norm": [
+        0.06693252122968073,
+        0.14785215047480257,
+        0.9875707829812648,
+        0.2950499505600987
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "6)\noc\noc\n_\nVMA\n|\n1F\n1F\n0\n10f\n10f\n.\n_.\n/RST\nI\nFo\n1F\n0\noc\noc\n—\n/HLT\nl\n1F\n1F\nO\noc\noc\n~\n/OWN\n0\noc\n_\n/BRn\n0\nof\n/CBR\nl\noF\n0\nef\n/CBG\nI\n2F\n-\n0\n2f\n.\n_.\n/BGACK\ni\n1F\n1F\n6\nOc\noc\n~\n/BOSS\nfe)\n2f\nXCLK\n2)\nef\n-\n/XCLKEN\n0\n2f\n~\n",
+      "bbox": [
+        34.0799560546875,
+        215.51995849609375,
+        535.6739501953125,
+        432.9626159667969
+      ],
+      "bbox_norm": [
+        0.06294318096375891,
+        0.2990342536031509,
+        0.9893505241206891,
+        0.6007362548097622
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "40\n",
+      "bbox": [
+        254.39993286132812,
+        706.3199462890625,
+        265.4159240722656,
+        713.5271606445312
+      ],
+      "bbox_norm": [
+        0.4698580299095261,
+        0.9800199453332561,
+        0.4902037582658819,
+        0.9900199656579843
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

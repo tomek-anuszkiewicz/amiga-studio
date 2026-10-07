@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0149",
+  "page": 149,
+  "source_index": 148,
+  "prepared_index": 148,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "ODC\nODE\nB P L 1 P T H\n+\n0E0\nW\nA\nB i t\np l a n e\n1\np o i n t e r (high 3 bit s )\nB P L 1 P T L\n+\n0E2\nW\nA\nB i t\np l a n e\n1\np o i n t e r (low 15 b i t s )\nB P L 2 P T H\n+\n0E4\nw\nA\nB i t\np l a n e\n2\np o i n t e r ( h igh 3 b i t s )\nB P L 2 P T L\n+\n0E6\nw\nA\nB i t\np l a n e\n2\np o i n t e r (low 15 b i t s )\nB P L 3 P T H\n+\n0E8\nw\nA\nB i t\np l a n e\n3\np o i n t e r (high 3 b i t s )\nB P L 3 P T L\n+\nOEA\nw\nA\nB i t\np l a n e\n3\np o i n t e r (low 15 bit s )\nB P L 4 P T H\n+\nOEC\nw\nA\nB i t\np l a n e\n4\np o i n t e r ( h igh 3 b i t s )\nB P L 4 P T L\n+\nOEE\nw\nA\nB i t\np l a n e\n4\np o i n t e r (low 15 bit s )\nB P L 5 P T H\n+\nOFO\nw\nA\nB i t\np l a n e\n5\np o i n t e r ( h igh 3 b i t s )\nB P L 5 P T L\n+\n0F2\nw\nA\nB i t\np l a n e\n5\np o i n t e r (low 15 bit s )\nB P L 6 P T H\n+\nOF 4\nw\nA\nB i t\np l a n e\n6\np o i n t e r (high 3 b i t s )\nB P L 6 P T L\n+\nOF 6\nw\nA\nB i t p l a n e\n6\np o i n t e r (low 15 bit s )\nOF 8\nOFA\nOFC\nOFE\nBPLC O N O\n100\nw\nA D\nB i t p l a n e\nc o n t r o l r e g i s t e r (misc. c o n t r o l bits)\nBPLCON1\n102\nw\nD\nB i t p l a n e\nc o n t r o l reg. \n( s c r o l l v a l u e\nP F 1 , PF2)\nBPLC O N 2\n104\nw\nD\nB i t\np l a n e\nc o n t r o l r eg. \n( p r i o r i t y c o n t r o l )\n106\nB P L 1 M O D\n108\nw\nA\nB i t\np l a n e\nm o d u l o (odd p l a n e s )\nB P L 2 M O D\n10A\nw\nA\nB i t\nP l a n e\nm o d u l o (even p l a n e s )\nIOC\n10E\nB P L 1 D A T\n6\n110\nw\nD\nB i t\np l a n e\n1\nd a t a ( p a r a l l e l - t o - s e r i a l\nc o n v e r t )\nB P L 2 D A T\n6\n112\nw\nD\nB i t\np l a n e\n2\nd a t a ( p a r a l l e l - t o - s e r i a l\nc o n v e r t )\nB P L 3 D A T\n6\n114\nw\nD\nB i t\np l a n e\n3\nd a t a ( p a r a l l e l - t o - s e r i a l\nc o n v e r t )\nB P L 4 D A T\n&\n116\nw\nD\nB i t\np l a n e\n4\nd a t a ( p a r a l l e l - t o - s e r i a l\nc o n v e r t )\nB P L 5 D A T\n6\n118\nw\nD\nB i t\np l a n e\n5\nd a t a ( p a r a l l e l - t o - s e r i a l\nc o n v e r t )\nB P L 6 D A T\n&\n11A\nw\nD\nB i t\np l a n e\n6\nd a t a ( p a r a l l e l - t o - s e r i a l\nc o n v e r t )\n11C\nH E\n",
+      "bbox": [
+        104.14199829101562,
+        56.80753707885742,
+        513.5269165039062,
+        390.4375305175781
+      ],
+      "bbox_norm": [
+        0.1733302187454509,
+        0.07359633196805246,
+        0.8546958405826738,
+        0.5058267192409716
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Appendix B 285\n",
+      "bbox": [
+        439.2900085449219,
+        713.467041015625,
+        513.14697265625,
+        723.967041015625
+      ],
+      "bbox_norm": [
+        0.7311385850404901,
+        0.9243237763672142,
+        0.854063475626115,
+        0.9379269270299835
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

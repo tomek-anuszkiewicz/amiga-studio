@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0098",
+  "page": 98,
+  "source_index": 97,
+  "prepared_index": 97,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "_\nSection 7.4\n",
+      "bbox": [
+        10.319999694824219,
+        44.39996337890625,
+        502.20477294921875,
+        67.6823959350586
+      ],
+      "bbox_norm": [
+        0.019060283038361266,
+        0.061605013297453416,
+        0.9275354068497489,
+        0.09390942208667886
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "List of B2000 Motherboard Jumpers\n",
+      "bbox": [
+        49.67999267578125,
+        81.1199951171875,
+        359.13232421875,
+        100.09891510009766
+      ],
+      "bbox_norm": [
+        0.0917553052079072,
+        0.11255411035446665,
+        0.6632910804509955,
+        0.13888738923446572
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "J101\nThis jumper determines the high-order address bit for Fat\n32\n1\nAgnus. In its normal position shown the high-order bit is\n~~\nA23; in its other position, this bit is A19. The current Fat\n|\nAgnus chip requires the A23 signal for proper manage-\nment of the memory at $COO000. Future Fat Agnus chips\n=\nmay map things differently.\n",
+      "bbox": [
+        1.440032958984375,
+        119.51995849609375,
+        500.8212585449219,
+        193.69126892089844
+      ],
+      "bbox_norm": [
+        0.0026596353289212557,
+        0.16583411498850467,
+        0.924980157148843,
+        0.2687469152990665
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "J200\nThis jumper\nis used to set the light-pen port number. In\n.\n~\n1\nthe normal position shown, the light pen input will be the\n2\nFIRE input of mouse/joystick port 1, as with the A500.\nWith thejumper in the other position, the light pen input\n3\nwill be the FIRE input of mouse/joystick port O, which is\n~\nthe scheme used on the Ai000 machine.\n",
+      "bbox": [
+        10.32000732421875,
+        204.0,
+        540.4776000976562,
+        276.0097961425781
+      ],
+      "bbox_norm": [
+        0.019060297129293774,
+        0.2830502945561232,
+        0.9982225134097769,
+        0.38296399067907966
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "J300\nThis jumper determines the time base used for the 50/\n~\n{1\n2 3\n 60OHzClAtimer chip. In the normal position, the 50/60Hz\nTICK clock, based on AC line frequency, is used as a time\nbase. In the alternate position, the vertical sync pulse\n",
+      "bbox": [
+        10.32000732421875,
+        288.2399597167969,
+        499.1040954589844,
+        337.69195556640625
+      ],
+      "bbox_norm": [
+        0.019060297129293774,
+        0.39993336029747273,
+        0.9218086827875202,
+        0.46854807594266934
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "_\nfrom the video section is used. The system will not oper-\n",
+      "bbox": [
+        10.79998779296875,
+        338.6399841308594,
+        499.3440246582031,
+        353.5221252441406
+      ],
+      "bbox_norm": [
+        0.019946785875204164,
+        0.46986346694470893,
+        0.9222518144330153,
+        0.4905124592277484
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": ";\nate properly without one of these clocks.\n",
+      "bbox": [
+        10.32000732421875,
+        350.8799743652344,
+        430.0607604980469,
+        362.88116455078125
+      ],
+      "bbox_norm": [
+        0.019060297129293774,
+        0.48684647106825757,
+        0.7942907036030965,
+        0.5034981397792532
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "J301\nThisjumper is closed to add a second internal floppy\n-\ndrive, open to leave the second floppy out of the main unit\n",
+      "bbox": [
+        10.32000732421875,
+        373.91998291015625,
+        501.3599548339844,
+        397.45196533203125
+      ],
+      "bbox_norm": [
+        0.019060297129293774,
+        0.518814516191864,
+        0.9259750897113309,
+        0.5514651757801055
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": ";\nXX\nbox.\n",
+      "bbox": [
+        10.32000732421875,
+        399.5999755859375,
+        269.0400390625,
+        411.8414001464844
+      ],
+      "bbox_norm": [
+        0.019060297129293774,
+        0.5544455431089178,
+        0.4968972330255836,
+        0.5714305373621009
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "~\nJ500\n‘Thisjumper is used to enable the 512K of RAM at\n",
+      "bbox": [
+        11.040008544921875,
+        422.15997314453125,
+        473.0400390625,
+        434.88189697265625
+      ],
+      "bbox_norm": [
+        0.020390086611889388,
+        0.585747572295905,
+        0.8736702809720669,
+        0.6033992599766469
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "$CO0000. It is normally closed; opening it will disable this\nX-X\nextra RAM.\n",
+      "bbox": [
+        212.6400146484375,
+        433.6799621582031,
+        500.1600341796875,
+        455.76837158203125
+      ],
+      "bbox_norm": [
+        0.3927305217376307,
+        0.6017315736861164,
+        0.9237589242102849,
+        0.632379273655189
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "235\n",
+      "bbox": [
+        270.9599914550781,
+        695.0399780273438,
+        287.6639709472656,
+        702.7276611328125
+      ],
+      "bbox_norm": [
+        0.5004432443729552,
+        0.9643689730829462,
+        0.5312942701872053,
+        0.9750356444920495
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

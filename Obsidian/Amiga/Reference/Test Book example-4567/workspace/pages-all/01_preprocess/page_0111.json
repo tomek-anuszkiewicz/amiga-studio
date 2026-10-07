@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0111",
+  "page": 111,
+  "source_index": 110,
+  "prepared_index": 110,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "The following example sets DIWSTOP for a basic playfield to $F4 for the vertical position and \n$C1 for the horizontal position.\n",
+      "bbox": [
+        85.09700012207031,
+        54.52501678466797,
+        518.452880859375,
+        77.77501678466797
+      ],
+      "bbox_norm": [
+        0.141632404676189,
+        0.07063923982970126,
+        0.8628944395463672,
+        0.10076050201154756
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "L E A \nC U S T O M , a O \n; G e t b a s e a d d r e s s o f c u s t o m h a r d w a r e . . .\n",
+      "bbox": [
+        128.2969970703125,
+        92.69239807128906,
+        508.84552001953125,
+        99.19239807128906
+      ],
+      "bbox_norm": [
+        0.21353293514150093,
+        0.12008653869115538,
+        0.8469042916400134,
+        0.12850753672048876
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "M O V E .W \n# $ F 4 C 1 , D I W S T O P ( a O ) \n; D i s p l a y w i n d o w s t o p r e g i s t e r . . .\n",
+      "bbox": [
+        128.0469970703125,
+        102.54231262207031,
+        471.044921875,
+        109.04231262207031
+      ],
+      "bbox_norm": [
+        0.21311684407932183,
+        0.13284747884826784,
+        0.78399032750816,
+        0.14126847687760122
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Table 3-9: DIWSTRT AND DIWSTOP Summary.\n",
+      "bbox": [
+        188.49600219726562,
+        125.32292938232422,
+        411.5474548339844,
+        135.82293701171875
+      ],
+      "bbox_norm": [
+        0.313726007083097,
+        0.16236063713212892,
+        0.6849648704759113,
+        0.17596379767906994
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "—Nominal Values— \n—Possible Values—\nNTSC \nPAL \nMIN \nMAX\nDIWSTRT:\n",
+      "bbox": [
+        140.0489959716797,
+        157.37091064453125,
+        439.6075134277344,
+        195.01885986328125
+      ],
+      "bbox_norm": [
+        0.2330925419638909,
+        0.20388001975569175,
+        0.7316670288162361,
+        0.2526543745525435
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "VSTART\n$2C\n$2C\n$00\n$FF\nHSTART\nDIWSTOP:\n",
+      "bbox": [
+        140.29701232910156,
+        197.21588134765625,
+        421.425537109375,
+        234.11383056640625
+      ],
+      "bbox_norm": [
+        0.23350533152228073,
+        0.25550069972028583,
+        0.7014055974609505,
+        0.30330340089836844
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "$81\n$81\n$00\n$FF\n",
+      "bbox": [
+        213.24600219726562,
+        210.16485595703125,
+        421.41851806640625,
+        221.41485595703125
+      ],
+      "bbox_norm": [
+        0.35491902223882793,
+        0.27227659043835273,
+        0.7013939152167732,
+        0.2868513947198913
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "VSTOP\n$F4\n$2C (=$12C)\n$80\n$7F (=$17F)\nHSTOP\n$C1\n$C1\n$00 (=$100)\n$FF (=$1FF)\n",
+      "bbox": [
+        153.91299438476562,
+        236.3138427734375,
+        460.7464904785156,
+        259.8138427734375
+      ],
+      "bbox_norm": [
+        0.25616728526689203,
+        0.30615360066143293,
+        0.7668499864739929,
+        0.336598747382869
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "TELLING THE SYSTEM HOW TO FETCH AND DISPLAY DATA\n",
+      "bbox": [
+        85.51300048828125,
+        295.26385498046875,
+        410.7714538574219,
+        305.76385498046875
+      ],
+      "bbox_norm": [
+        0.14232478081316344,
+        0.3825255909113697,
+        0.6836733221935516,
+        0.39612874157413897
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "After defining the size and position of the display window, you need to give the system the on­\nscreen location for data fetched from memory. To do this, you describe the horizontal positions \nwhere each line starts and stops and write these positions to the data-fetch registers. The data- \nfetch registers have a four-pixel resolution (unlike the display window registers, which have a \none-pixel resolution). Each position specified is four pixels from the last one. Pixel 0 is position \n0; pixel 4 is position 1, and so on.\n",
+      "bbox": [
+        85.26300048828125,
+        328.51385498046875,
+        518.51220703125,
+        403.2078552246094
+      ],
+      "bbox_norm": [
+        0.14190868975098433,
+        0.42560223467680575,
+        0.8629931799058492,
+        0.5223711621935649
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "The data-fetch start and display window starting positions interact with each other. It is recom­\nmended that data-fetch start values be restricted to a programming resolution of 16 pixels (8 \nclocks in low-resolution mode, 4 clocks in high-resolution mode). The hardware requires some \ntime after the first data fetch before it can actually display the data. As a result, there is a \ndifference between the value of window start and data-fetch start of 4.5 color clocks.\n",
+      "bbox": [
+        85.06300354003906,
+        418.3568420410156,
+        518.4719848632812,
+        480.6408996582031
+      ],
+      "bbox_norm": [
+        0.14157582198047766,
+        0.5419972526746965,
+        0.8629262355674762,
+        0.6226886259751921
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "The normal low-resolution DDFSTRT is ($0038).\nThe normal high-resolution DDFSTRT is (S003C).\n",
+      "bbox": [
+        120.56100463867188,
+        495.6408996582031,
+        344.90411376953125,
+        518.9909057617188
+      ],
+      "bbox_norm": [
+        0.20065742590993763,
+        0.6421216983505769,
+        0.5740460761932219,
+        0.6723725222555964
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "Recall that the hardware resolution of display window start and stop is twice the hardware resolu­\ntion of data fetch:\n",
+      "bbox": [
+        85.26300048828125,
+        534.4909057617188,
+        515.5425415039062,
+        558.1898803710938
+      ],
+      "bbox_norm": [
+        0.14190868975098433,
+        0.6924533637101606,
+        0.8580505747714927,
+        0.7231562896305866
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "$81 _ \n",
+      "bbox": [
+        142.15899658203125,
+        577.836181640625,
+        173.0830078125,
+        588.3389282226562
+      ],
+      "bbox_norm": [
+        0.23660435154452983,
+        0.7486088225958808,
+        0.2880731702634265,
+        0.7622155315604766
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "2\n$81\n",
+      "bbox": [
+        142.40829467773438,
+        591.403564453125,
+        158.0532989501953,
+        616.6341552734375
+      ],
+      "bbox_norm": [
+        0.23701927438229117,
+        0.7661858847385383,
+        0.2630582601643905,
+        0.798873077904195
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "$38\n",
+      "bbox": [
+        198.30828857421875,
+        584.085205078125,
+        214.6147918701172,
+        594.585205078125
+      ],
+      "bbox_norm": [
+        0.3300572257270648,
+        0.7567046709116416,
+        0.3571971868343343,
+        0.770307821574411
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "$3C\n",
+      "bbox": [
+        198.30828857421875,
+        612.6341552734375,
+        216.42079162597656,
+        623.1341552734375
+      ],
+      "bbox_norm": [
+        0.3300572257270648,
+        0.7936909252707591,
+        0.36020302826117717,
+        0.8072940759335284
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "Playfield Hardware 53\n",
+      "bbox": [
+        414.82000732421875,
+        713.218017578125,
+        515.7354736328125,
+        723.718017578125
+      ],
+      "bbox_norm": [
+        0.6904115898427052,
+        0.9240011570016072,
+        0.8583716841092731,
+        0.9376043076643765
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

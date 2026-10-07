@@ -1,0 +1,401 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0105",
+  "page": 105,
+  "source_index": 104,
+  "prepared_index": 104,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "The WAIT Instruction\n",
+      "bbox": [
+        85.55000305175781,
+        85.15818786621094,
+        239.19505310058594,
+        100.15818786621094
+      ],
+      "bbox_norm": [
+        0.1423863665569247,
+        0.11032568187737903,
+        0.3981076948504363,
+        0.12975875425276373
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "The WAIT instruction causes the Copper to wait until the video beam counters are equal to (or \ngreater than) the coordinates specified in the instruction. While waiting, the Copper is off the bus \nand not using memory cycles.\n",
+      "bbox": [
+        85.30000305175781,
+        127.97502899169922,
+        517.9735107421875,
+        163.82305908203125
+      ],
+      "bbox_norm": [
+        0.14197027549474558,
+        0.16579653337584319,
+        0.8620965930614174,
+        0.21223902425986926
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "The first instruction word contains the vertical and horizontal coordinates of the beam position. \nThe second word contains enable bits that are used to form a “ mask\" that tells the system which \nbits of the beam position to use in making the comparison.\n",
+      "bbox": [
+        85.55000305175781,
+        178.9720458984375,
+        517.761474609375,
+        215.364013671875
+      ],
+      "bbox_norm": [
+        0.1423863665569247,
+        0.2318651147410007,
+        0.8617436877025282,
+        0.2790122976492593
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "FIRST INSTRUCTION WORD (IR1)\n",
+      "bbox": [
+        216.10000610351562,
+        236.9119873046875,
+        384.24700927734375,
+        247.4119873046875
+      ],
+      "bbox_norm": [
+        0.3596691243060874,
+        0.3069285197258811,
+        0.6395269849174101,
+        0.3205316703886504
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Bit 0 \nAlways set to 1.\n",
+      "bbox": [
+        153.5030059814453,
+        262.5119934082031,
+        286.5275573730469,
+        273.0119934082031
+      ],
+      "bbox_norm": [
+        0.2554849152260174,
+        0.3400943044872084,
+        0.47688622276373654,
+        0.3536974551499777
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Bits 15 - 8 \nVertical beam position (called VP).\n",
+      "bbox": [
+        153.5030059814453,
+        280.5119934082031,
+        370.8320617675781,
+        291.0119934082031
+      ],
+      "bbox_norm": [
+        0.2554849152260174,
+        0.36341399133767005,
+        0.6171996258837491,
+        0.37701714200043934
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Bits 7 -1 \nHorizontal beam position (called HP).\n",
+      "bbox": [
+        153.5030059814453,
+        298.71099853515625,
+        382.2034912109375,
+        309.21099853515625
+      ],
+      "bbox_norm": [
+        0.2554849152260174,
+        0.3869914969238085,
+        0.6361258265060774,
+        0.4005946475865778
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "SECOND INSTRUCTION WORD (IR2)\n",
+      "bbox": [
+        209.40301513671875,
+        337.3580017089844,
+        390.97943115234375,
+        347.8580017089844
+      ],
+      "bbox_norm": [
+        0.348522891966974,
+        0.4370601642417235,
+        0.6507321871934363,
+        0.4506633149044928
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Bit 0 \nAlways set to 0.\n",
+      "bbox": [
+        153.50302124023438,
+        363.5069885253906,
+        282.41156005859375,
+        374.0069885253906
+      ],
+      "bbox_norm": [
+        0.2554849406222004,
+        0.4709371744648037,
+        0.47003570398574807,
+        0.484540325127573
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Bit 15 \nThe blitter-finished-disable bit.\n",
+      "bbox": [
+        153.50302124023438,
+        381.5069885253906,
+        347.7320251464844,
+        392.0069885253906
+      ],
+      "bbox_norm": [
+        0.2554849406222004,
+        0.49425686131526536,
+        0.578752750787561,
+        0.5078600119780347
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Normally, this bit is a 1.\n(See the “ Advanced Topics” section below.)\n",
+      "bbox": [
+        215.90301513671875,
+        394.2569885253906,
+        414.4669189453125,
+        417.7030029296875
+      ],
+      "bbox_norm": [
+        0.3593412595836306,
+        0.5107749728343424,
+        0.6898239221682164,
+        0.5411501791565433
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Bits 14-8 \nVertical position compare enable bits (called VE).\n",
+      "bbox": [
+        153.25601196289062,
+        425.552001953125,
+        434.615966796875,
+        436.052001953125
+      ],
+      "bbox_norm": [
+        0.2550738272118882,
+        0.551318856896329,
+        0.723359277058033,
+        0.5649220075590983
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "Bits 7 -1 \nHorizontal position compare enable bits (called HE).\n",
+      "bbox": [
+        153.5050048828125,
+        443.70098876953125,
+        446.2344055175781,
+        454.20098876953125
+      ],
+      "bbox_norm": [
+        0.25548824212598964,
+        0.5748315618525374,
+        0.7426965910906737,
+        0.5884347125153067
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "The following example WAIT instruction waits for scan line 150 ($96) with the horizontal posi­\ntion masked off.\n",
+      "bbox": [
+        85.5560073852539,
+        475.0999755859375,
+        514.8171997070312,
+        498.1999816894531
+      ],
+      "bbox_norm": [
+        0.14239635995493294,
+        0.6155101474070022,
+        0.8568433418166743,
+        0.6454370867724321
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "DC.W \n$9601,$FF00 \n;Wait for line 150,\n; \nignore horizontal counters.\n",
+      "bbox": [
+        128.5050048828125,
+        511.913818359375,
+        421.62933349609375,
+        530.4617919921875
+      ],
+      "bbox_norm": [
+        0.21387913590807964,
+        0.6632038854758185,
+        0.7017447888810229,
+        0.6872334930773634
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "The following example WAIT instruction waits for scan line 255 and horizontal position 254. \nThis event will never occur, so the Copper stops until the next vertical blanking interval begins.\n",
+      "bbox": [
+        85.55500793457031,
+        546.2959594726562,
+        516.4016723632812,
+        569.8460083007812
+      ],
+      "bbox_norm": [
+        0.14239469650494682,
+        0.7077472612541574,
+        0.8594804814588055,
+        0.7382572481422106
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "DC.W \n$FFFF,$FFFE \n;Wait for line 255,\n; \nH = 254 (ends Copper list).\n",
+      "bbox": [
+        128.50401306152344,
+        583.509765625,
+        424.9930419921875,
+        601.8598022460938
+      ],
+      "bbox_norm": [
+        0.21387748515618502,
+        0.755959167142293,
+        0.7073432250450249,
+        0.7797323397922047
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "To understand why position VP=$FF HP=$FE will never occur, you must look at the comparison \noperation of the Copper and the size restrictions of the position information. Line number 255 is \na valid line to wait for, in fact it is the maximum value that will fit into this field. Since 255 is the \nmaximum number, the next line will wrap to zero (line 256 will appear as a zero in the\n",
+      "bbox": [
+        85.80400085449219,
+        617.2940063476562,
+        517.5325317382812,
+        666.1919555664062
+      ],
+      "bbox_norm": [
+        0.14280911141904828,
+        0.7997279401496795,
+        0.8613626433728813,
+        0.8630770992280699
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "Coprocessor Hardware 17\n",
+      "bbox": [
+        399.5,
+        713.218017578125,
+        515.724365234375,
+        723.718017578125
+      ],
+      "bbox_norm": [
+        0.6649135173622021,
+        0.9240011570016072,
+        0.8583531956880532,
+        0.9376043076643765
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

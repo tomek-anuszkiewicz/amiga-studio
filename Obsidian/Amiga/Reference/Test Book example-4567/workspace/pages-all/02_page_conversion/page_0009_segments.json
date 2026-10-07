@@ -1,0 +1,72 @@
+{
+  "page": 9,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "toc_heading",
+      "continuation": true,
+      "heading_level": 1,
+      "md_text": "# TABLE OF CONTENTS (Continued)",
+      "bbox": [
+        510,
+        239,
+        1516,
+        301
+      ],
+      "segment_id": "page_0009_seg_001"
+    },
+    {
+      "type": "toc",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Paragraph Number | Title | Page Number\n\n**Section 10**\n**Electrical and Thermal Characteristics**\n\n10.9 MC68008 AC Electrical Specifications—Clock Timing ........ 10-9\n10.10 AC Electrical Specifications—Read and Write Cycles ........ 10-10\n10.11 AC Electrical Specifications—MC68000 To M6800 Peripheral ........ 10-15\n10.12 AC Electrical Specifications—Bus Arbitration ........ 10-17\n10.13 MC68EC000 DC Electrical Specifications ........ 10-23\n10.14 MC68EC000 AC Electrical Specifications—Read and Write ........ 10-24\n10.15 MC68EC000 AC Electrical Specifications—Bus Arbitration ........ 10-28\n\n**Section 11**\n**Ordering Information and Mechanical Data**\n\n11.1 Pin Assignments ........ 11-1\n11.2 Package Dimensions ........ 11-7\n\n**Appendix A**\n**MC68010 Loop Mode Operation**\n\n**Appendix B**\n**M6800 Peripheral Interface**\n\nB.1 Data Transfer Operation ........ B-1\nB.2 Interrupt Interface Operation ........ B-4",
+      "bbox": [
+        168,
+        342,
+        1870,
+        1668
+      ],
+      "segment_id": "page_0009_seg_002"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        207,
+        2516,
+        405,
+        2548
+      ],
+      "segment_id": "page_0009_seg_003"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 USER’S MANUAL",
+      "bbox": [
+        807,
+        2516,
+        1218,
+        2548
+      ],
+      "segment_id": "page_0009_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "xi",
+      "bbox": [
+        1790,
+        2518,
+        1818,
+        2548
+      ],
+      "segment_id": "page_0009_seg_005"
+    }
+  ]
+}

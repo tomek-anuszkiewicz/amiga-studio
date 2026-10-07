@@ -1,0 +1,316 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0095",
+  "page": 95,
+  "source_index": 94,
+  "prepared_index": 94,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "These registers control the horizontal timing of the beginning and\nend of the Bit Plane DMA display data fetch. The vertical Bit Plane\n",
+      "bbox": [
+        208.0800018310547,
+        69.5999755859375,
+        498.59405517578125,
+        93.13151550292969
+      ],
+      "bbox_norm": [
+        0.3843085122872368,
+        0.09657006662107152,
+        0.9208666757675302,
+        0.12922011223314903
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "_\n",
+      "bbox": [
+        11.040008544921875,
+        106.3199462890625,
+        19.42809295654297,
+        108.72237396240234
+      ],
+      "bbox_norm": [
+        0.020390086611889388,
+        0.14751907899171735,
+        0.035882263720707346,
+        0.15085245085734786
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "_\nDMA timing is identical to the Display windows described above. The\nBit Plane Modulos are dependent on the Bit Plane horizontal size,\nand on this data fetch window size.\n~\nRegister bit assignment\nBIT#\n15,14,13,12,11,10,09,08,07,06,05,04,03,02,01,00\nUSE\nXXXXXXXX\nHB H7H6 H5 H4 H3 X X\n_\n(X bits should always be driven with O to maintain upward com-\npatibility)\n",
+      "bbox": [
+        10.800018310546875,
+        93.8399658203125,
+        505.92950439453125,
+        200.8907470703125
+      ],
+      "bbox_norm": [
+        0.019946842238934195,
+        0.1302030880714509,
+        0.9344147128273591,
+        0.27873620162672347
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "The tables below show the start and stop timing for different regis-\n°\nan\nter contents.\n",
+      "bbox": [
+        10.32000732421875,
+        212.15997314453125,
+        540.4368286132812,
+        238.33197021484375
+      ],
+      "bbox_norm": [
+        0.019060297129293774,
+        0.29437226907636643,
+        0.9981472114664569,
+        0.33068595280123875
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "DDFSTRT (Left edge of display data fetch)\n~\n___ PURPOSE\nH8,_-H7,\nH6, HS, 4\nExtra wide (max) *\n0\nOo\n1\n0\n1\nwide\noO.\n60\n[61\n1\n0\n_\nnormal\no\noO\n1\n1\n1\nnarrow\nOo\n1\n0\n0\n0\n",
+      "bbox": [
+        10.32000732421875,
+        242.87997436523438,
+        464.802001953125,
+        319.6897888183594
+      ],
+      "bbox_norm": [
+        0.019060297129293774,
+        0.3369963151267806,
+        0.8584552302328735,
+        0.4435700435863796
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "DDFSTOP (Right edge of display data fetch)\n",
+      "bbox": [
+        209.0399932861328,
+        328.7999572753906,
+        400.6440124511719,
+        341.5326843261719
+      ],
+      "bbox_norm": [
+        0.3860815461427876,
+        0.45621041547470603,
+        0.7399601260428277,
+        0.4738770926424823
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "2\n",
+      "bbox": [
+        10.79998779296875,
+        350.8799743652344,
+        19.429203033447266,
+        353.0421447753906
+      ],
+      "bbox_norm": [
+        0.019946785875204164,
+        0.48684647106825757,
+        0.035884313951387185,
+        0.48984648563431277
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "|\n___ PURPOSE\nCH, H7, H6, HS, 14,\n:\nnarrow\n1\n1\n0\n0\n41\nnormal\n1\n+\nO\n1\nOQ\n-\nwide (max)\n1\n4\nOO\n1\n1\n",
+      "bbox": [
+        10.32000732421875,
+        345.1199645996094,
+        541.14599609375,
+        396.0110168457031
+      ],
+      "bbox_norm": [
+        0.019060297129293774,
+        0.47885444920156,
+        0.9994569918248919,
+        0.5494658576747359
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "_\nDMACON\nDMA contro! write (clear or set)\nDMACONR\nDMA contro! (and Blitter status) read\n",
+      "bbox": [
+        10.800018310546875,
+        420.719970703125,
+        469.16162109375,
+        443.530517578125
+      ],
+      "bbox_norm": [
+        0.019946842238934195,
+        0.5837495668292306,
+        0.866507127250026,
+        0.6153992335545002
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "This register controls ali of the DMA channels, and contains Biitter\n-\nDMA status bits.\n7\nBIT#\nFUNCTION DESCRIPTION\n",
+      "bbox": [
+        10.800018310546875,
+        456.47998046875,
+        508.15185546875,
+        498.4922180175781
+      ],
+      "bbox_norm": [
+        0.019946842238934195,
+        0.6333666320130051,
+        0.9385192323755971,
+        0.6916586722735817
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "_\n15\nSET/CLR __ Set/Clear control bit. Determines if bits\n",
+      "bbox": [
+        11.760009765625,
+        500.15997314453125,
+        504.4752197265625,
+        515.0416870117188
+      ],
+      "bbox_norm": [
+        0.021719876094485002,
+        0.6939726849203051,
+        0.9317287556365139,
+        0.7146210843987725
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "written with a 1 get set or cleared.\n14\nBBUSY\nBlitter busy status bit (read only)\n13\nBZERO\nBlitter logic zero status bit (read only)\n_\n12\nX\n11\nX\n10\nBLTPRI\nBlitter DMA priority (over CPU micro)\n",
+      "bbox": [
+        11.519989013671875,
+        513.3599853515625,
+        499.9800720214844,
+        585.1324462890625
+      ],
+      "bbox_norm": [
+        0.021276575357799775,
+        0.7122877209170924,
+        0.9234265472942986,
+        0.811872114100314
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "—\n—also called “Blitter Nasty”\n—disables /BLS pin, preventing micro\nfrom stealing any bus cycles while blitter\nDMA is running.\n",
+      "bbox": [
+        11.760009765625,
+        584.8800048828125,
+        508.1664733886719,
+        631.4500122070312
+      ],
+      "bbox_norm": [
+        0.021719876094485002,
+        0.8115218512846414,
+        0.9385462306022814,
+        0.8761378036895479
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "207\n",
+      "bbox": [
+        270.7200012207031,
+        695.7599487304688,
+        287.02801513671875,
+        702.9671630859375
+      ],
+      "bbox_norm": [
+        0.5,
+        0.9653679334730997,
+        0.5301197064171121,
+        0.9753679537978279
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

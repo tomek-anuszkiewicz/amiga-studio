@@ -1,0 +1,111 @@
+{
+  "page": 108,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nCOPPERLIST:\n;\n;  Set up pointers to two bit planes\n;\n        DC.W    BPL1PTH,$0002   ;Move $0002 into register $0E0 (BPL1PTH)\n        DC.W    BPL1PTL,$1000   ;Move $1000 into register $0E2 (BPL1PTL)\n        DC.W    BPL2PTH,$0002   ;Move $0002 into register $0E4 (BPL2PTH)\n        DC.W    BPL2PTL,$5000   ;Move $5000 into register $0E6 (BPL2PTL)\n;\n;  Load color registers\n;\n        DC.W    COLOR00,$0FFF   ;Move white into register $180 (COLOR00)\n        DC.W    COLOR01,$0F00   ;Move red into register $182 (COLOR01)\n        DC.W    COLOR02,$00F0   ;Move green into register $184 (COLOR02)\n        DC.W    COLOR03,$000F   ;Move blue into register $186 (COLOR03)\n;\n;   Specify 2 lo-res bitplanes\n;\n        DC.W    BPLCON0,$2200   ;2 lores planes, coloron\n;\n;  Wait for line 150\n;\n        DC.W    $9601,$FF00     ;Wait for line 150, ignore horiz. position\n;\n;  Change color registers mid-display\n;\n        DC.W    COLOR00,$0000   ;Move black into register $0180 (COLOR00)\n        DC.W    COLOR01,$0FF0   ;Move yellow into register $0182 (COLOR01)\n        DC.W    COLOR02,$00FF   ;Move cyan into register $0184 (COLOR02)\n        DC.W    COLOR03,$0F0F   ;Move magenta into register $0186 (COLOR03)\n;\n; End Copper list by waiting for the impossible\n;\n        DC.W    $FFFF,$FFFE     ;Wait for line 255, H = 254 (never happens)\n```",
+      "bbox": [
+        354,
+        219,
+        2031,
+        1617
+      ],
+      "segment_id": "page_0108_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "For more information about color registers, see Chapter 3, “Playfield Hardware.”",
+      "bbox": [
+        354,
+        1681,
+        1850,
+        1726
+      ],
+      "segment_id": "page_0108_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "LOOPS AND BRANCHES",
+      "bbox": [
+        355,
+        1849,
+        883,
+        1893
+      ],
+      "segment_id": "page_0108_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Loops and branches in Copper lists are covered in the “Advanced Topics” section below.",
+      "bbox": [
+        354,
+        1986,
+        1998,
+        2031
+      ],
+      "segment_id": "page_0108_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Starting and Stopping the Copper",
+      "bbox": [
+        356,
+        2165,
+        1320,
+        2229
+      ],
+      "segment_id": "page_0108_seg_005"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "STARTING THE COPPER AFTER RESET",
+      "bbox": [
+        356,
+        2403,
+        1230,
+        2448
+      ],
+      "segment_id": "page_0108_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "At power-on or reset time, you must initialize one of the Copper location registers (COP1LC or COP2LC) and write to its strobe address before Copper DMA is turned on. This ensures a known start address and known state. Usually, COP1LC is used because this particular register is reused during each vertical blanking time. The following sequence of instructions shows how to",
+      "bbox": [
+        356,
+        2540,
+        2161,
+        2746
+      ],
+      "segment_id": "page_0108_seg_007"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Coprocessor Hardware 25",
+      "bbox": [
+        1666,
+        2971,
+        2149,
+        3016
+      ],
+      "segment_id": "page_0108_seg_008"
+    }
+  ]
+}

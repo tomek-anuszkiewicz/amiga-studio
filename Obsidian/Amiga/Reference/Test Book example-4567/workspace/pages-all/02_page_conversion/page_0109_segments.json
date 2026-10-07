@@ -1,0 +1,150 @@
+{
+  "page": 109,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "- Vertical resolution, or interlacing.\n- Data fetch and modulo, which tell the system how much data to put on a horizontal line and how to fetch data from memory to the screen.",
+      "bbox": [
+        438,
+        222,
+        2157,
+        428
+      ],
+      "segment_id": "page_0109_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "In addition, you need to allocate memory to store the playfield, set pointers to tell the system where to find the data in memory, and (optionally) write a Copper routine to handle redisplay of the playfield.",
+      "bbox": [
+        356,
+        492,
+        2161,
+        642
+      ],
+      "segment_id": "page_0109_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "HEIGHT AND WIDTH OF THE PLAYFIELD",
+      "bbox": [
+        356,
+        762,
+        1283,
+        807
+      ],
+      "segment_id": "page_0109_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "To create a playfield that is the same size as the screen, you can use a width of either 320 pixels or 640 pixels, depending upon the resolution you choose. The height is either 200 or 400 lines for NTSC, 256 or 512 lines for PAL, depending upon whether or not you choose interlaced mode.",
+      "bbox": [
+        355,
+        901,
+        2155,
+        1052
+      ],
+      "segment_id": "page_0109_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "BIT-PLANES AND COLOR",
+      "bbox": [
+        356,
+        1174,
+        928,
+        1218
+      ],
+      "segment_id": "page_0109_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "You define playfield color by:",
+      "bbox": [
+        356,
+        1310,
+        898,
+        1355
+      ],
+      "segment_id": "page_0109_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "1. Deciding how many colors you need and how you want to color each pixel.\n2. Loading the colors into the color registers.\n3. Allocating memory for the number of bit-planes you need and setting a pointer to each bit-plane.\n4. Writing instructions to place a value in each bit in the bit-planes to give you the correct color.",
+      "bbox": [
+        436,
+        1418,
+        2158,
+        1894
+      ],
+      "segment_id": "page_0109_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 3-1 shows how many bit-planes to use for the color selection you need.",
+      "bbox": [
+        354,
+        1957,
+        1765,
+        2001
+      ],
+      "segment_id": "page_0109_seg_008"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 3-1: Colors in a Single Playfield",
+      "bbox": [
+        896,
+        2063,
+        1600,
+        2108
+      ],
+      "segment_id": "page_0109_seg_009"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        1001,
+        2250,
+        1510,
+        2671
+      ],
+      "segment_id": "page_0109_seg_010"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Playfield Hardware 39",
+      "bbox": [
+        1726,
+        2973,
+        2147,
+        3018
+      ],
+      "segment_id": "page_0109_seg_011"
+    }
+  ]
+}

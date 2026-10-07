@@ -1,0 +1,111 @@
+{
+  "page": 78,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Section 4.1",
+      "bbox": [
+        1726,
+        220,
+        2125,
+        288
+      ],
+      "segment_id": "page_0078_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Description of PC/XT Emulator for AMIGA 2000",
+      "bbox": [
+        228,
+        368,
+        1917,
+        456
+      ],
+      "segment_id": "page_0078_seg_002"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nAMIGA ACCESS:  Amiga Interface Offset Address = Base Addr.\n\n               Base Addr. + (00000 – 1FFFF) : Byte Access\n               Base Addr. + (20000 – 3FFFF) : Word Access\n               Base Addr. + (40000 – 5FFFF) : Graphic Access\n               Base Addr. + (60000 – 7FFFF) : I/O Register Access\n```",
+      "bbox": [
+        878,
+        548,
+        2129,
+        845
+      ],
+      "segment_id": "page_0078_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "INTERFACE MEMORY MAP:",
+      "bbox": [
+        229,
+        1003,
+        770,
+        1113
+      ],
+      "segment_id": "page_0078_seg_004"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        877,
+        1000,
+        2131,
+        1378
+      ],
+      "segment_id": "page_0078_seg_005"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nKinds of memory access on the following pages:\n   B = Byte    access\n   G = Graphic access\n   W = Word    access\n```",
+      "bbox": [
+        1062,
+        1437,
+        1949,
+        1628
+      ],
+      "segment_id": "page_0078_seg_006"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "(*) selectable by BIT 5 and 6 of the MODE REGISTER\n\n```text\nBIT 5 = SEL1\nBIT 6 = SEL2\n```",
+      "bbox": [
+        879,
+        1681,
+        2057,
+        1877
+      ],
+      "segment_id": "page_0078_seg_007"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "109",
+      "bbox": [
+        1141,
+        2933,
+        1210,
+        2970
+      ],
+      "segment_id": "page_0078_seg_008"
+    }
+  ]
+}

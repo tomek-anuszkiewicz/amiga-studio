@@ -1,0 +1,111 @@
+{
+  "page": 59,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        288,
+        131
+      ],
+      "segment_id": "page_0059_seg_001"
+    },
+    {
+      "type": "chapter",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "APPENDIX A\nPROCESSOR INSTRUCTION SUMMARY",
+      "bbox": [
+        287,
+        498,
+        1709,
+        686
+      ],
+      "segment_id": "page_0059_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This appendix provides a quick reference of the M68000 family instructions. The organization of this section is by processors and their addressing modes. All references to the MC68000, MC68020, and MC68030 include references to the corresponding embedded controllers, MC68EC000, MC68EC020, and MC68EC030. All references to the MC68040 include the MC68LC040 and MC68EC040. This referencing applies throughout this section unless otherwise specified. Table A-1 lists the M68000 family instructions by mnemonic and indicates which processors they apply to.",
+      "bbox": [
+        287,
+        758,
+        2290,
+        1178
+      ],
+      "segment_id": "page_0059_seg_003"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table A-1. M68000 Family Instruction Set And\nProcessor Cross-Reference",
+      "bbox": [
+        747,
+        1267,
+        1843,
+        1395
+      ],
+      "segment_id": "page_0059_seg_004"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        326,
+        1419,
+        2250,
+        2570
+      ],
+      "segment_id": "page_0059_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        287,
+        3109,
+        526,
+        3167
+      ],
+      "segment_id": "page_0059_seg_006"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MC68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        703,
+        3109,
+        1873,
+        3167
+      ],
+      "segment_id": "page_0059_seg_007"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "A-1",
+      "bbox": [
+        2222,
+        3109,
+        2288,
+        3167
+      ],
+      "segment_id": "page_0059_seg_008"
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "page": 93,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "LINE DRAW:",
+      "bbox": [
+        741,
+        278,
+        1017,
+        353
+      ],
+      "segment_id": "page_0093_seg_001"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "LINE MODE (line draw)",
+      "bbox": [
+        1283,
+        302,
+        1718,
+        344
+      ],
+      "segment_id": "page_0093_seg_002"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        1034,
+        375,
+        1826,
+        1270
+      ],
+      "segment_id": "page_0093_seg_003"
+    },
+    {
+      "type": "table_legend",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "START3-0 Starting point of line (0 thru 15 hex)\n\nLF7-0 Logic function minterm select lines should be preloaded with 4A in order to select the equation D = (A̅C + ABC̅). Since A contains a single bit true (8000), most bits will pass the C field unchanged (not A and C), but one bit will invert the C Field and combine it with texture (A and B and not C). The A bit is automatically moved across the word by the hardware.\n\nLINE Line mode control bit (set to 1)\n\nSIGN Sign flag\n\nOVF Word overflow flag\n\nSING Single bit per horiz. line for use with subsequent Area Fill\n\nSUD Sometimes Up or Down (= AUD*)\n\nSUL Sometimes Up or Left\n\nAUL Always Up or Left",
+      "bbox": [
+        1033,
+        1275,
+        1986,
+        2252
+      ],
+      "segment_id": "page_0093_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The 3 bits above select the Octant for line draw:",
+      "bbox": [
+        908,
+        2290,
+        1796,
+        2331
+      ],
+      "segment_id": "page_0093_seg_005"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        1064,
+        2338,
+        1921,
+        2829
+      ],
+      "segment_id": "page_0093_seg_006"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Blitter start and size (Window, width height)",
+      "bbox": [
+        1033,
+        2839,
+        1854,
+        2886
+      ],
+      "segment_id": "page_0093_seg_007"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "202",
+      "bbox": [
+        1053,
+        2909,
+        1129,
+        2948
+      ],
+      "segment_id": "page_0093_seg_008"
+    }
+  ]
+}

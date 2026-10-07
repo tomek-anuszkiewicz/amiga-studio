@@ -1,0 +1,231 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0014",
+  "page": 14,
+  "source_index": 13,
+  "prepared_index": 13,
+  "geometry": {
+    "width": 504.0,
+    "height": 648.9600219726562,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      507.7200012207031,
+      651.8400268554688
+    ],
+    "cropbox": [
+      1.7999999523162842,
+      1.44000244140625,
+      505.79998779296875,
+      650.4000244140625
+    ],
+    "cropbox_position": [
+      1.7999999523162842,
+      1.44000244140625
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      -1.7999999523162842,
+      650.4000244140625
+    ]
+  },
+  "width": 504.0,
+  "height": 648.9600219726562,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2100,
+    "pixel_height": 2704,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Table \nNumber \n",
+      "bbox": [
+        61.26000213623047,
+        75.99503326416016,
+        100.60420227050781,
+        100.29510498046875
+      ],
+      "bbox_norm": [
+        0.12154762328617157,
+        0.11710279630655306,
+        0.19961151244148376,
+        0.15454743217555958
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "LIST OF TABLES (Concluded) \n",
+      "bbox": [
+        160.83999633789062,
+        50.30002975463867,
+        368.2287902832031,
+        69.57803344726562
+      ],
+      "bbox_norm": [
+        0.3191269768608941,
+        0.07750867241673949,
+        0.7306126791333395,
+        0.10721466822527517
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Title \n",
+      "bbox": [
+        252.5399932861328,
+        87.0250015258789,
+        275.0882873535156,
+        100.10650634765625
+      ],
+      "bbox_norm": [
+        0.5010714152502636,
+        0.13409917187401982,
+        0.5458100939553882,
+        0.1542568154558436
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Page \nNumber \n",
+      "bbox": [
+        431.9200134277344,
+        76.23502349853516,
+        470.9242248535156,
+        100.53515625
+      ],
+      "bbox_norm": [
+        0.8569841536264571,
+        0.11747260373112367,
+        0.9343734620109437,
+        0.15491733365084856
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "8-5 \nStandard Instruction Execution Times ................................................................. 8-4 \n8-6 \nImmediate Instruction Execution Times ............................................................... 8-5 \n8-7 \nSingle Operand Instruction Execution Times ....................................................... 8-6 \n8-8 \nShift/Rotate Instruction Execution Times ............................................................. 8-6 \n8-9 \nBit Manipulation Instruction Execution Times ...................................................... 8-7 \n8-10 \nConditional Instruction Execution Times .............................................................. 8-7 \n8-11 \nJMP, JSR, LEA, PEA, and MOVEM Instruction Execution Times ....................... 8-8 \n8-12 \nMultiprecision Instruction Execution Times .......................................................... 8-9 \n8-13 \nMiscellaneous Instruction Execution Times ....................................................... 8-1 O \n8-14 \nMove Peripheral Instruction Execution Times .................................................... 8-10 \n8-15 \nException Processing Instruction Execution Times ........................................... 8-11 \n",
+      "bbox": [
+        71.04999542236328,
+        106.2950210571289,
+        459.06561279296875,
+        231.0406036376953
+      ],
+      "bbox_norm": [
+        0.1409722131396097,
+        0.16379286467296073,
+        0.9108444698273189,
+        0.3560166972002324
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "9-1 \nEffective Address Calculation Times ................................................................... 9-2 \n9-2 \nMove Byte and Word Instruction Execution Times .............................................. 9-3 \n9-3 \nMove Byte and Word Instruction Loop Mode Execution Times ........................... 9-3 \n9-4 \nMove Long Instruction Execution Times .............................................................. 9-4 \n9-5 \nMove Long Instruction Loop Mode Execution Times ........................................... 9-4 \n9-6 \nStandard Instruction Execution Times ................................................................. 9-5 \n9-7 \nStandard Instruction Loop Mode Execution Times .............................................. 9-5 \n9-8 \nImmediate Instruction Execution Times ............................................................... 9-6 \n9-9 \nSingle Operand Instruction Execution Times ....................................................... 9-7 \n9-10 \nClear Instruction Execution Times ....................................................................... 9-7 \n9-11 \nSingle Operand Instruction Loop Mode Execution Times .................................... 9-8 \n9-12 \nShift/Rotate Instruction Execution Times ............................................................. 9-8 \n9-13 \nShift/Rotate Instruction Loop Mode Execution Times .......................................... 9-9 \n9-14 \nBit Manipulation Instruction Execution Times ...................................................... 9-9 \n9-15 \nConditional Instruction Execution Times ............................................................ 9-10 \n9-16 \nJMP, JSR, LEA, PEA, and MOVEM Instruction Execution Times ..................... 9-10 \n9-17 \nMulti precision Instruction Execution Times ........................................................ 9-11 \n9-18 \nMiscellaneous Instruction Execution Times ....................................................... 9-12 \n9-19 \nException Processing Instruction Execution Times ........................................... 9-13 \n",
+      "bbox": [
+        71.04999542236328,
+        240.4450225830078,
+        458.0696105957031,
+        454.48065185546875
+      ],
+      "bbox_norm": [
+        0.1409722131396097,
+        0.37050821998575884,
+        0.9088682749914745,
+        0.7003214935705518
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "10-1 \nPower Dissipation and Junction Temperature vs Temperature \n(0JC = 0JA) ........................................................................................................ 10-4 \n10-2 \nPower Dissipation and Junction Temperature vs Temperature \n(0JC = 0JC) ........................................................................................................ 10-4 \n",
+      "bbox": [
+        72.05999755859375,
+        463.89501953125,
+        458.0614318847656,
+        510.9287414550781
+      ],
+      "bbox_norm": [
+        0.14297618563213046,
+        0.7148283466231701,
+        0.908852047390408,
+        0.7873038772126489
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "A-1 \nMC68010 Loop Mode Instructions ...................................................................... A-3 \n",
+      "bbox": [
+        71.64999389648438,
+        519.5750732421875,
+        457.1883850097656,
+        532.4906616210938
+      ],
+      "bbox_norm": [
+        0.14216268630254836,
+        0.8006272430508511,
+        0.9071198115273128,
+        0.8205292215111675
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "xvi \nM68000 USER'S MANUAL \nMOTOROLA \n",
+      "bbox": [
+        72.11000061035156,
+        597.5225219726562,
+        458.4052429199219,
+        609.0123291015625
+      ],
+      "bbox_norm": [
+        0.14307539803641184,
+        0.9207385690051532,
+        0.9095342121427021,
+        0.9384435226847041
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

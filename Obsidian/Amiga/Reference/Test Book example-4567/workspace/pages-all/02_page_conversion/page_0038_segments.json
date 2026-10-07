@@ -1,0 +1,202 @@
+{
+  "page": 38,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        287,
+        131
+      ],
+      "segment_id": "page_0038_seg_001"
+    },
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Introduction",
+      "bbox": [
+        262,
+        94,
+        506,
+        151
+      ],
+      "segment_id": "page_0038_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "1.1 INTEGER UNIT USER PROGRAMMING MODEL",
+      "bbox": [
+        262,
+        197,
+        1666,
+        278
+      ],
+      "segment_id": "page_0038_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 1-1 illustrates the integer portion of the user programming model. It consists of the following registers:",
+      "bbox": [
+        262,
+        317,
+        2263,
+        445
+      ],
+      "segment_id": "page_0038_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "- 16 General-Purpose 32-Bit Registers (D7 – D0, A7 – A0)\n- 32-Bit Program Counter (PC)\n- 8-Bit Condition Code Register (CCR)",
+      "bbox": [
+        312,
+        483,
+        1633,
+        711
+      ],
+      "segment_id": "page_0038_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": ".",
+      "bbox": [
+        1255,
+        721,
+        1270,
+        790
+      ],
+      "segment_id": "page_0038_seg_006"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        551,
+        890,
+        1926,
+        2025
+      ],
+      "segment_id": "page_0038_seg_007"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 1-1. M68000 Family User Programming Model",
+      "bbox": [
+        641,
+        2129,
+        1884,
+        2199
+      ],
+      "segment_id": "page_0038_seg_008"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "1.1.1 Data Registers (D7 – D0)",
+      "bbox": [
+        262,
+        2243,
+        1103,
+        2324
+      ],
+      "segment_id": "page_0038_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "These registers are for bit and bit field (1 – 32 bits), byte (8 bits), word (16 bits), long-word (32 bits), and quad-word (64 bits) operations. They also can be used as index registers.",
+      "bbox": [
+        262,
+        2362,
+        2263,
+        2490
+      ],
+      "segment_id": "page_0038_seg_010"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "1.1.2 Address Registers (A7 – A0)",
+      "bbox": [
+        262,
+        2526,
+        1210,
+        2607
+      ],
+      "segment_id": "page_0038_seg_011"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "These registers can be used as software stack pointers, index registers, or base address registers. The base address registers can be used for word and long-word operations. Register A7 is used as a hardware stack pointer during stacking for subroutine calls and exception handling. In the user programming model, A7 refers to the user stack pointer (USP).",
+      "bbox": [
+        262,
+        2646,
+        2264,
+        2949
+      ],
+      "segment_id": "page_0038_seg_012"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "1-2",
+      "bbox": [
+        262,
+        3109,
+        323,
+        3167
+      ],
+      "segment_id": "page_0038_seg_013"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        693,
+        3109,
+        1833,
+        3167
+      ],
+      "segment_id": "page_0038_seg_014"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        2024,
+        3109,
+        2263,
+        3167
+      ],
+      "segment_id": "page_0038_seg_015"
+    }
+  ]
+}

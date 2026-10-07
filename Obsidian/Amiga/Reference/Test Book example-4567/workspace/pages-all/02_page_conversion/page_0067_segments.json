@@ -1,0 +1,46 @@
+{
+  "page": 67,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        882,
+        285,
+        2115,
+        2415
+      ],
+      "segment_id": "page_0067_seg_001"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "¹ In shifted Forward Arrow and Backward Arrow, note blank space after <CSI>.\n<CSI> stands for Command Sequence Initiator.",
+      "bbox": [
+        899,
+        2570,
+        1982,
+        2640
+      ],
+      "segment_id": "page_0067_seg_002"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "11",
+      "bbox": [
+        1177,
+        2900,
+        1219,
+        2936
+      ],
+      "segment_id": "page_0067_seg_003"
+    }
+  ]
+}

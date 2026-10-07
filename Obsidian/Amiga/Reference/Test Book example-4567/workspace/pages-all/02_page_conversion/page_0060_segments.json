@@ -1,0 +1,98 @@
+{
+  "page": 60,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        288,
+        131
+      ],
+      "segment_id": "page_0060_seg_001"
+    },
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Processor Instruction Summary",
+      "bbox": [
+        262,
+        93,
+        895,
+        152
+      ],
+      "segment_id": "page_0060_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": true,
+      "heading_level": null,
+      "md_text": "Table A-1. M68000 Family Instruction Set And\nProcessor Cross-Reference (Continued)",
+      "bbox": [
+        722,
+        250,
+        1817,
+        378
+      ],
+      "segment_id": "page_0060_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        301,
+        403,
+        2224,
+        2326
+      ],
+      "segment_id": "page_0060_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "A-2",
+      "bbox": [
+        262,
+        3109,
+        328,
+        3167
+      ],
+      "segment_id": "page_0060_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MC68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        678,
+        3109,
+        1848,
+        3167
+      ],
+      "segment_id": "page_0060_seg_006"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        2024,
+        3109,
+        2263,
+        3167
+      ],
+      "segment_id": "page_0060_seg_007"
+    }
+  ]
+}

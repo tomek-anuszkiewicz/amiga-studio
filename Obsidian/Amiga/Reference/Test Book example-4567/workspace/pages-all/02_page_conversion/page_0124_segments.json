@@ -1,0 +1,124 @@
+{
+  "page": 124,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 5-6: Sampling Rate and Frequency Relationship",
+      "bbox": [
+        747,
+        291,
+        1739,
+        336
+      ],
+      "segment_id": "page_0124_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        536,
+        425,
+        1964,
+        952
+      ],
+      "segment_id": "page_0124_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "In A2000s with 2 layer motherboards and later A500 models there is a control bit that allows the audio output to bypass the low pass filter. This control bit is the same output bit of the 8520 CIA that controls the brightness of the red “power” LED. Bypassing the filter allows for improved sound in some applications, but an external filter with an appropriate cutoff frequency may be required.",
+      "bbox": [
+        356,
+        1041,
+        2153,
+        1298
+      ],
+      "segment_id": "page_0124_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Using Direct (Non-DMA) Audio Output",
+      "bbox": [
+        359,
+        1436,
+        1478,
+        1499
+      ],
+      "segment_id": "page_0124_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "It is possible to create sound by writing audio data one word at a time to the audio output addresses, instead of setting up a list of audio data in memory. This method of controlling the output is more processor-intensive and is therefore not recommended.",
+      "bbox": [
+        358,
+        1613,
+        2153,
+        1764
+      ],
+      "segment_id": "page_0124_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "To use direct audio output, do not enable the DMA for the audio channel you wish to use; this changes the timing of the interrupts. The normal interrupt occurs after a data address has been read; in direct audio output, the interrupt occurs after one data word has been output.",
+      "bbox": [
+        358,
+        1825,
+        2155,
+        1978
+      ],
+      "segment_id": "page_0124_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Unlike in the DMA-controlled automatic data output, in direct audio output, if you do not write a new set of data to the output addresses before two sampling intervals have elapsed, the audio output will cease changing. The last value remains as an output of the digital-to-analog converter.",
+      "bbox": [
+        361,
+        2040,
+        2155,
+        2191
+      ],
+      "segment_id": "page_0124_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The volume and period registers are set as usual.",
+      "bbox": [
+        360,
+        2254,
+        1239,
+        2298
+      ],
+      "segment_id": "page_0124_seg_008"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Audio Hardware 153",
+      "bbox": [
+        1756,
+        2981,
+        2149,
+        3026
+      ],
+      "segment_id": "page_0124_seg_009"
+    }
+  ]
+}

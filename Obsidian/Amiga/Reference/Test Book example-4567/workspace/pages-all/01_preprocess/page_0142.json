@@ -1,0 +1,469 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0142",
+  "page": 142,
+  "source_index": 141,
+  "prepared_index": 141,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Table 8-10 shows the definitions of the various bit positions within SERDATR.\n",
+      "bbox": [
+        87.94999694824219,
+        57.32500457763672,
+        435.1746520996094,
+        67.82500457763672
+      ],
+      "bbox_norm": [
+        0.14638083059537085,
+        0.07426673085843162,
+        0.7242891329021874,
+        0.08786988152120091
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Table 8-9: SERDATR / ADKCON Registers\n",
+      "bbox": [
+        203.89999389648438,
+        83.12401580810547,
+        399.99798583984375,
+        93.62401580810547
+      ],
+      "bbox_norm": [
+        0.3393638601548009,
+        0.10769033435543576,
+        0.665742347190405,
+        0.12129348501820507
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Bit\nNumber \nName\n",
+      "bbox": [
+        98.05299377441406,
+        128.16871643066406,
+        196.64801025390625,
+        150.822998046875
+      ],
+      "bbox_norm": [
+        0.16319589731774659,
+        0.16604746284381697,
+        0.32729391784781775,
+        0.1953969491278286
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "SERDATR\n",
+      "bbox": [
+        276.3529968261719,
+        114.92400360107422,
+        327.6140441894531,
+        125.42400360107422
+      ],
+      "bbox_norm": [
+        0.45995204794311745,
+        0.14888843197657656,
+        0.5452691025263209,
+        0.16249158263934588
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Function\n",
+      "bbox": [
+        348.3529968261719,
+        140.36769104003906,
+        389.6914978027344,
+        150.86769104003906
+      ],
+      "bbox_norm": [
+        0.5797862738506983,
+        0.18185169994311462,
+        0.648588596971617,
+        0.1954548506058839
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "15 \nOVRUN \nOVERRUN bit\n",
+      "bbox": [
+        112.93299865722656,
+        166.02301025390625,
+        291.29644775390625,
+        176.52301025390625
+      ],
+      "bbox_norm": [
+        0.18796164546542518,
+        0.21508914494955989,
+        0.48482339341968644,
+        0.22869229561232918
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "(Mirror— also appears in the interrupt request register.)\nIndicates that another byte of data was received before the \nprevious byte was picked up by the processor. To prevent this \ncondition, it is necessary to reset INTF_RBF (bit 11, \nreceive-buffer-full) in INTREQ.\n",
+      "bbox": [
+        226.23300170898438,
+        178.62103271484375,
+        501.007568359375,
+        240.71502685546875
+      ],
+      "bbox_norm": [
+        0.37653411992422997,
+        0.23141036376756793,
+        0.8338590851136819,
+        0.3118555025816666
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "14 \nRBF \nREAD BUFFER FULL\n",
+      "bbox": [
+        113.2229995727539,
+        256.0140380859375,
+        328.1159362792969,
+        266.5140380859375
+      ],
+      "bbox_norm": [
+        0.1884443126213239,
+        0.33167595541590145,
+        0.5461044337773704,
+        0.34527910607867074
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "(Mirror— also appears in the interrupt request register.)\nWhen this bit is 1, there is data ready to be picked \nup by the processor. After reading the contents of this data \nregister, you must reset the INTF_RBF bit in INTREQ to prevent \nan overrun.\n",
+      "bbox": [
+        226.51300048828125,
+        268.8640441894531,
+        515.3350830078125,
+        330.6130676269531
+      ],
+      "bbox_norm": [
+        0.37700013988217596,
+        0.34832362865815175,
+        0.8577052882675018,
+        0.428321844762836
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "13 \nTBE\n",
+      "bbox": [
+        113.4630126953125,
+        346.1130676269531,
+        178.62600708007812,
+        356.6130676269531
+      ],
+      "bbox_norm": [
+        0.18884378188173323,
+        0.4484026862174002,
+        0.2972987400750447,
+        0.4620058368801695
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "12 \nTSRE\n",
+      "bbox": [
+        113.7130126953125,
+        453.9930725097656,
+        184.72450256347656,
+        464.4930725097656
+      ],
+      "bbox_norm": [
+        0.18925987294391233,
+        0.588165349067037,
+        0.3074488579285715,
+        0.6017684997298063
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "11 \nRXD\n",
+      "bbox": [
+        114.91291046142578,
+        574.4931030273438,
+        179.3828887939453,
+        584.9931030273438
+      ],
+      "bbox_norm": [
+        0.19125693988794595,
+        0.7442777366859812,
+        0.29855846694011245,
+        0.7578808873487505
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "10\n",
+      "bbox": [
+        114.91291046142578,
+        600.0109252929688,
+        125.20890808105469,
+        611.0108642578125
+      ],
+      "bbox_norm": [
+        0.19125693988794595,
+        0.7773370491493208,
+        0.20839323023092546,
+        0.7915878898178956
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "9 \nSTP\n",
+      "bbox": [
+        116.36260986328125,
+        626.1911010742188,
+        175.35159301757812,
+        636.6911010742188
+      ],
+      "bbox_norm": [
+        0.19366976774377972,
+        0.8112544658664758,
+        0.29184892237392546,
+        0.824857616529245
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "TRANSMIT BUFFER EMPTY \n",
+      "bbox": [
+        226.4726104736328,
+        345.7510681152344,
+        368.9891662597656,
+        356.2510681152344
+      ],
+      "bbox_norm": [
+        0.37693291618578995,
+        0.4479337020366613,
+        0.6141323764864259,
+        0.46153685269943057
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "(Not a mirror— interrupt occurs when the buffer \nbecomes empty.) When bit 14 is a 1, the data in the output \ndata register (SERDAT) has been transferred to the serial \noutput shift register, so SERDAT is ready to accept another \noutput word. This is also true when the buffer is empty.\n",
+      "bbox": [
+        226.92262268066406,
+        358.85107421875,
+        489.9685363769531,
+        420.944091796875
+      ],
+      "bbox_norm": [
+        0.3776819004146587,
+        0.4649052598185013,
+        0.8154861149417021,
+        0.5453491334586172
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "This bit is normally used for full-duplex operation.\n",
+      "bbox": [
+        226.68264770507812,
+        428.444091796875,
+        448.7891845703125,
+        438.944091796875
+      ],
+      "bbox_norm": [
+        0.37728249464470687,
+        0.5550656696463095,
+        0.7469486740094142,
+        0.5686688203090788
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "TRANSMIT SHIFT REGISTER EMPTY\nWhen this bit is a 1, the output shift register has completed\nits task, all data has been transmitted, and the register is\nnow idle. If you stop writing data into the output register\n(SERDAT), then this bit will become a 1 after both the word\ncurrently in the shift register and the word placed\ninto SERDAT have been transmitted.\n",
+      "bbox": [
+        226.88265991210938,
+        453.74310302734375,
+        492.1611022949219,
+        541.881103515625
+      ],
+      "bbox_norm": [
+        0.3776153878113966,
+        0.5878415040641342,
+        0.8191353432685233,
+        0.702027646898165
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "This bit is normally used for half-duplex operation.\n",
+      "bbox": [
+        227.1316375732422,
+        549.381103515625,
+        450.7922058105469,
+        559.881103515625
+      ],
+      "bbox_norm": [
+        0.37802977732931503,
+        0.7117441830858574,
+        0.7502824309510799,
+        0.7253473337486267
+      ]
+    },
+    {
+      "block_id": 19,
+      "type": 0,
+      "text": "Direct read of RXD pin on Paula chip.\n",
+      "bbox": [
+        227.6316375732422,
+        575.0811157226562,
+        394.8441162109375,
+        585.5811157226562
+      ],
+      "bbox_norm": [
+        0.37886195945367324,
+        0.745039529570358,
+        0.6571644308375082,
+        0.7586426802331273
+      ]
+    },
+    {
+      "block_id": 20,
+      "type": 0,
+      "text": "Not used at this time.\n",
+      "bbox": [
+        227.8816375732422,
+        600.6300659179688,
+        320.4076843261719,
+        611.1300659179688
+      ],
+      "bbox_norm": [
+        0.37927805051585234,
+        0.7781391694543984,
+        0.5332750948064907,
+        0.7917423201171677
+      ]
+    },
+    {
+      "block_id": 21,
+      "type": 0,
+      "text": "Stop bit if 9 data bits are specified for receive.\n",
+      "bbox": [
+        228.33163452148438,
+        626.2791137695312,
+        429.05999755859375,
+        636.7791137695312
+      ],
+      "bbox_norm": [
+        0.3800270093485381,
+        0.8113684896716731,
+        0.7141121204908696,
+        0.8249716403344424
+      ]
+    },
+    {
+      "block_id": 22,
+      "type": 0,
+      "text": "252 Interface Hardware\n",
+      "bbox": [
+        91.09700012207031,
+        715.1150512695312,
+        197.01052856445312,
+        725.6150512695312
+      ],
+      "bbox_norm": [
+        0.15161859016848742,
+        0.9264588365365166,
+        0.32789728036339705,
+        0.9400619871992859
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

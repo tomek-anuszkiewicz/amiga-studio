@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0085",
+  "page": 85,
+  "source_index": 84,
+  "prepared_index": 84,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "UWORD _ adr_BufferAddr\n; offset into MEMF-\n",
+      "bbox": [
+        203.75999450683594,
+        72.239990234375,
+        456.7979431152344,
+        84.49221801757812
+      ],
+      "bbox_norm": [
+        0.3763297753916631,
+        0.10023309075770248,
+        0.8436723202118194,
+        0.11723307449791993
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "-BUFFER memory for\nbees\nbuffer\n—\nUWORD - adr_Err\n; return code, 0 if all OK\nLABEL\nAmigaDskReq_SIZEOF\n",
+      "bbox": [
+        42.480010986328125,
+        85.199951171875,
+        534.2135620117188,
+        133.21267700195312
+      ],
+      "bbox_norm": [
+        0.0784574667456811,
+        0.11821505527140456,
+        0.986653294183838,
+        0.18483278168633593
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "; Function codes for AmigaDskReq adr_Fnctn word:\n~\n",
+      "bbox": [
+        191.760009765625,
+        145.67999267578125,
+        533.9927978515625,
+        155.77003479003906
+      ],
+      "bbox_norm": [
+        0.3541666831060879,
+        0.20213120018536151,
+        0.9862455589608016,
+        0.21613114818793192
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "ADR_FNCTN_INIT\nEQU\nQO\n; given nothings, sets adr_\n",
+      "bbox": [
+        191.03997802734375,
+        168.0,
+        483.6479797363281,
+        180.73269653320312
+      ],
+      "bbox_norm": [
+        0.3528368372597623,
+        0.23310024257563086,
+        0.8932623698941928,
+        0.25076687740022335
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Part to # partitions\n_\nADR_FNCTN_READ\nEQU\n1; given partition, offset,\ncount, buffer\nADR_FNCTN_WRITE\nEQU\n2; given partition, offset,\n_\ncount, buffer\nADR.FNCTN_SEEK\n ~\nEQU\n3.\n; given partition, offset\nADR_FNCTN_INFO\nEQU\n4\n; given part, buff adr, cnt,\n-\ncopys in a DskPartition\n—\nstructure. cnt set to actual\n",
+      "bbox": [
+        113.760009765625,
+        181.199951171875,
+        534.2196044921875,
+        286.56884765625
+      ],
+      "bbox_norm": [
+        0.21010640006772666,
+        0.25141519388605077,
+        0.9866644542023839,
+        0.39761468990054094
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "number of bytes copied.\n,\n",
+      "bbox": [
+        375.8399963378906,
+        289.91998291015625,
+        530.3507690429688,
+        300.2502746582031
+      ],
+      "bbox_norm": [
+        0.6941489262765793,
+        0.40226439490404864,
+        0.9795189986915723,
+        0.41659768962039845
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "; Error codes for adr_Err, returned in low byte:\n",
+      "bbox": [
+        191.03997802734375,
+        311.9999694824219,
+        398.4479064941406,
+        322.09002685546875
+      ],
+      "bbox_norm": [
+        0.3528368372597623,
+        0.43290040815441644,
+        0.7359040793024154,
+        0.4469003773285787
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "ADR_ERR_OK\n.\nEQU\nO\n;noerror\nADR_ERR_OFFSET\nEQU\n1; offset not on sector\n-\nboundary\nADR_ERR_COUNT\nEQU\n2\n;dsk_count not a multiple\n",
+      "bbox": [
+        190.0800018310547,
+        335.7599792480469,
+        534.6972045898438,
+        383.772216796875
+      ],
+      "bbox_norm": [
+        0.3510638315860765,
+        0.46586745601136015,
+        0.987546546577352,
+        0.5324845049353522
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "of sector size\n—\nADR_ERR_PART\nEQU\n3.\n; partition does not exist\nADR_ERR_FNCT\nEQU\n4\n; illegal function code\nADR_ERR_EOF\nEQU\n5\noffset past end of\n|\n",
+      "bbox": [
+        190.08001708984375,
+        384.719970703125,
+        541.390869140625,
+        431.772705078125
+      ],
+      "bbox_norm": [
+        0.3510638597679415,
+        0.5337995148487383,
+        0.9999092543946518,
+        0.5990852517336146
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "partition\n~\nADR_ERR_MULPL\nEQU\n6\n; multiple calls while\n",
+      "bbox": [
+        190.080078125,
+        430.0799560546875,
+        534.939697265625,
+        455.78564453125
+      ],
+      "bbox_norm": [
+        0.35106397249540156,
+        0.5967365600194304,
+        0.9879944127761696,
+        0.6324032398971704
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "’\npending service\n",
+      "bbox": [
+        146.64010620117188,
+        455.99993896484375,
+        442.4353942871094,
+        466.09002685546875
+      ],
+      "bbox_norm": [
+        0.2708335282578997,
+        0.632700573733202,
+        0.8171457452203839,
+        0.646700585250548
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "; Error condition from IBM-PC BIOS, returned in high byte:\n",
+      "bbox": [
+        190.32012939453125,
+        479.27996826171875,
+        450.4801025390625,
+        489.85052490234375
+      ],
+      "bbox_norm": [
+        0.3515073295958168,
+        0.6650016479967101,
+        0.8320037317298378,
+        0.6796683105984311
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "ADR_ERR_SENSE_FAIL\nEQU\nSff\n_\nADR_ERR_UNDEF_ERR\nEQU\nSbb\nADR_ERR_TIME_OUT\nEQU\n$80\nADR_ERR_BAD_SEEK\nEQU\n$40\nADR_ERR_BAD.CNTRLR\nEQU\n$20\n_\nADR_ERR_DATA-CORRECTED\nEQU\n$11 ; data corrected\nADR_ERR_BAD_ECC\nEQU\n$10\nADR_ERR_BAD_TRACK\nEQU\n$Ob\n_\nADR.ERR_.DMA.BOUNDARY\n EQU\n$09\nADR_ERR_INIT_FAIL\nEQU\n$07\nADR_ERR_BAD_RESET\nEQU\n$05\nADR_ERR_RECRD_NOT_FOUND EQU\n$04\n~\noo\nADR.ERR_BAD_-ADDR_MARK\nEQU\n$02\n|\n",
+      "bbox": [
+        67.44012451171875,
+        502.0799865722656,
+        540.926513671875,
+        658.0928955078125
+      ],
+      "bbox_norm": [
+        0.12455696699103241,
+        0.6966367063235988,
+        0.9990516238785168,
+        0.9131048427391094
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": ";\nADR_ERR_BAD.CMD\nEQU\nS01\nENDC\nIJANUS_I86BLOCK_I\n",
+      "bbox": [
+        92.40011596679688,
+        657.5999755859375,
+        378.574951171875,
+        687.6126708984375
+      ],
+      "bbox_norm": [
+        0.1706562417814636,
+        0.9124209156357795,
+        0.6992001873981296,
+        0.954063573717281
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "138\n",
+      "bbox": [
+        251.52012634277344,
+        696.2399291992188,
+        267.0721130371094,
+        707.771484375
+      ],
+      "bbox_norm": [
+        0.46453923834338884,
+        0.9660339070665354,
+        0.493262617894605,
+        0.982033956523374
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0004",
+  "page": 4,
+  "source_index": 3,
+  "prepared_index": 3,
+  "geometry": {
+    "width": 504.0,
+    "height": 648.9599609375,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      510.239990234375,
+      653.8800048828125
+    ],
+    "cropbox": [
+      3.119999885559082,
+      2.4000244140625,
+      507.1199951171875,
+      651.3599853515625
+    ],
+    "cropbox_position": [
+      3.119999885559082,
+      2.4000244140625
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      -3.119999885559082,
+      651.47998046875
+    ]
+  },
+  "width": 504.0,
+  "height": 648.9599609375,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2100,
+    "pixel_height": 2704,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "|\n|\n",
+      "bbox": [
+        342.0,
+        142.80001831054688,
+        494.1083984375,
+        155.05224609375
+      ],
+      "bbox_norm": [
+        0.6785714285714286,
+        0.22004442015845666,
+        0.9803738064236112,
+        0.23892421016199297
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "|\n",
+      "bbox": [
+        1.44000244140625,
+        409.2000427246094,
+        1.6704021692276,
+        416.8877258300781
+      ],
+      "bbox_norm": [
+        0.002857147701202877,
+        0.6305474410678144,
+        0.0033142900183087305,
+        0.6423936004123184
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "/\n",
+      "bbox": [
+        78.4800033569336,
+        548.1600341796875,
+        81.83160400390625,
+        552.724609375
+      ],
+      "bbox_norm": [
+        0.15571429237486825,
+        0.844674659724469,
+        0.16236429365854416,
+        0.8517083374088649
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

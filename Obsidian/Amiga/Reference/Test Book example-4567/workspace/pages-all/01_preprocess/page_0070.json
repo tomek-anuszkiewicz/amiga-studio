@@ -1,0 +1,299 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0070",
+  "page": 70,
+  "source_index": 69,
+  "prepared_index": 69,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "EXPANSION\nAs shown in Figure 3.1, “Expansion Architecture Overview,” the ex-\nARCHITECTURE\npansion bus is implemented as backplane (an expansion box) which\nOVERVIEW\n.\naccept PICs (boards). The recommended number of PICs to a back-\n~\nplane is five.\n",
+      "bbox": [
+        36.0,
+        73.43994140625,
+        532.7651977539062,
+        120.96980285644531
+      ],
+      "bbox_norm": [
+        0.06648936140232059,
+        0.10189802474129162,
+        0.9839782715566185,
+        0.16784577613192644
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Due to timing considerations, it is not possible to daisy-chain more\nthan two buffered backplanes without inserting wait states.\n~\n",
+      "bbox": [
+        192.47998046875,
+        134.15997314453125,
+        533.251220703125,
+        156.4915008544922
+      ],
+      "bbox_norm": [
+        0.3554964162249535,
+        0.1861471564519664,
+        0.9848759203210748,
+        0.21713218339408732
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "NOTE\n",
+      "bbox": [
+        328.32000732421875,
+        188.87994384765625,
+        354.69610595703125,
+        197.2883758544922
+      ],
+      "bbox_norm": [
+        0.606382989516459,
+        0.2620711948128584,
+        0.6550977104714679,
+        0.27373790636329975
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "~\n",
+      "bbox": [
+        524.6400146484375,
+        185.27996826171875,
+        533.5104370117188,
+        188.16285705566406
+      ],
+      "bbox_norm": [
+        0.9689716538910758,
+        0.2570762234893561,
+        0.9853546738439489,
+        0.26107623585356576
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "You should also take extreme care in controlling signal\nradiation from your product, in order to pass FCC class B\n_\nregulations.\n",
+      "bbox": [
+        204.47998046875,
+        212.63998413085938,
+        533.9819946289062,
+        247.69052124023438
+      ],
+      "bbox_norm": [
+        0.3776595366923937,
+        0.2950382850129858,
+        0.986225606200371,
+        0.343670955861804
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "DOWNSTREAM BACKPLANE\nUPSTREAM BACKPLANE\n",
+      "bbox": [
+        74.63999938964844,
+        310.0799560546875,
+        459.00732421875,
+        319.2091064453125
+      ],
+      "bbox_norm": [
+        0.13785460818020343,
+        0.4302363867511227,
+        0.8477528851747946,
+        0.44290309609971856
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "~\n",
+      "bbox": [
+        525.3599853515625,
+        307.1999816894531,
+        534.2303466796875,
+        309.8426208496094
+      ],
+      "bbox_norm": [
+        0.9703013870099413,
+        0.42624041816095765,
+        0.9866842942353544,
+        0.42990708381138787
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "‘\nPIC\nPIC\nPIC\nPIC\nPIC\nPIC\n",
+      "bbox": [
+        1.44000244140625,
+        338.6399841308594,
+        466.2071533203125,
+        346.5679016113281
+      ],
+      "bbox_norm": [
+        0.0026595789651912257,
+        0.46986346694470893,
+        0.8610504418183705,
+        0.4808634638959997
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "S\n=~\nL\nAO\nB\nVW\nU\nEN\nF\nTY\n™\nF.\nE\nre\nome\n-\n",
+      "bbox": [
+        26.16000747680664,
+        385.91998291015625,
+        541.4400024414062,
+        482.4227600097656
+      ],
+      "bbox_norm": [
+        0.048315616428133486,
+        0.5354645335186948,
+        1.0,
+        0.6693622760850102
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "esPU\nGa |\n",
+      "bbox": [
+        26.16000747680664,
+        471.1199951171875,
+        239.61602783203125,
+        528.5195922851562
+      ],
+      "bbox_norm": [
+        0.048315616428133486,
+        0.6536796734764668,
+        0.4425532408975676,
+        0.733321697426449
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "COLLISION\nL -=SLAVE* --\nCOLLISION\nBUS STEERING and ENABLE\na —~_. DMA*_ ou\nBUS STEERING and ENABLE\n_~\nBUS ARBITRATION\nBUS ARBITRATION\n",
+      "bbox": [
+        70.08000946044922,
+        499.20001220703125,
+        534.2400512695312,
+        563.0484008789062
+      ],
+      "bbox_norm": [
+        0.12943264100260704,
+        0.6926407377334337,
+        0.9867022179015039,
+        0.7812304692065124
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Figure 3.1. Expansion Architecture Overview\n",
+      "bbox": [
+        167.04005432128906,
+        610.5599365234375,
+        360.28802490234375,
+        620.1695556640625
+      ],
+      "bbox_norm": [
+        0.30851073723420697,
+        0.8471527935153277,
+        0.6654255749072281,
+        0.8604861539482986
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "18\n",
+      "bbox": [
+        256.800048828125,
+        702.719970703125,
+        266.39764404296875,
+        710.1674194335938
+      ],
+      "bbox_norm": [
+        0.47429086818518823,
+        0.9750249740097539,
+        0.492016923097214,
+        0.9853583198766696
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

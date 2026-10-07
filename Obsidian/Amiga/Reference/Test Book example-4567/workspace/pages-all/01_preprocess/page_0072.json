@@ -1,0 +1,299 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0072",
+  "page": 72,
+  "source_index": 71,
+  "prepared_index": 71,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "(04/06)\n7654\n321\n0\nProduct number, this number is defined by the\nmanufacturer of the board and is used by auto-\n_\nconfig software to initialize drivers for the\nboard.\n",
+      "bbox": [
+        12.239990234375,
+        73.199951171875,
+        506.7599792480469,
+        119.52812194824219
+      ],
+      "bbox_norm": [
+        0.02260636484039539,
+        0.10156503794457379,
+        0.9359485390126631,
+        0.16584544179014785
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "_\n(08/0A)\n765\n4\n321\n0\nReserved, must be as specified\n",
+      "bbox": [
+        12.239990234375,
+        134.15997314453125,
+        430.3439636230469,
+        149.77554321289062
+      ],
+      "bbox_norm": [
+        0.02260636484039539,
+        0.1861471564519664,
+        0.7948137590177741,
+        0.2078137824691767
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Bits are currently zero\n|\n|\nO means this board can be shut up\n",
+      "bbox": [
+        161.27999877929688,
+        146.63995361328125,
+        540.8544311523438,
+        183.15647888183594
+      ],
+      "bbox_norm": [
+        0.29787233682784703,
+        0.20346314737223284,
+        0.9989184927481861,
+        0.25412987890865696
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "-_\n-.\n1 means this board cannot be shut up\nO means any space okay\n",
+      "bbox": [
+        12.239990234375,
+        182.39996337890625,
+        464.0544128417969,
+        205.4500274658203
+      ],
+      "bbox_norm": [
+        0.02260636484039539,
+        0.2530802125560073,
+        0.8570744879383309,
+        0.28506220975864727
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "1 means preference to be put in the 8 Meg\n.\n~\nspace\n",
+      "bbox": [
+        12.239990234375,
+        206.15997314453125,
+        540.4776000976562,
+        230.40908813476562
+      ],
+      "bbox_norm": [
+        0.02260636484039539,
+        0.28604726041295103,
+        0.9982225134097769,
+        0.3196929424752606
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "(OC/OE)\n765\n4\n3\n2\n1\n0\nReserved, must be 0\n",
+      "bbox": [
+        76.55999755859375,
+        242.87997436523438,
+        387.7919921875,
+        256.5736389160156
+      ],
+      "bbox_norm": [
+        0.14140070407317004,
+        0.3369963151267806,
+        0.7162233865966825,
+        0.35599629446330694
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "~\n(10/12)\n7654\n321\n0\nMfg # high byte\n(14/16)\n7654\n3241\n0\nMfg # low byte; These 2 bytes are assigned by\nCBM. They are used by the auto-config software\n_\nto initialize drivers for boards.\n",
+      "bbox": [
+        12.239990234375,
+        267.5999755859375,
+        507.50396728515625,
+        311.76885986328125
+      ],
+      "bbox_norm": [
+        0.02260636484039539,
+        0.3712953525137793,
+        0.9373226303870621,
+        0.43257974322415904
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "(81A)\n7654\n32\n1\n0\nOptional serial number, byte O (msb)\n_\n(1C/1E)\n7654\n321\n0\nOptional serial number, byte 1\n(20/22)\n7654\n3210\nOptional serial number, byte 2\ni\n(24/26)\n7654\n3210\nOptional serial number, byte 3 (Isb)\n",
+      "bbox": [
+        12.0,
+        326.39996337890625,
+        459.6719665527344,
+        377.53436279296875
+      ],
+      "bbox_norm": [
+        0.022163120467440196,
+        0.4528804204779766,
+        0.848980430851116,
+        0.5238294734980788
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "aa\n(28/2A)\n765\n4\n321\n0\nOptional ROM vector high byte\n|\n(2C/2E)\n765\n4\n321\n0\nOptional ROM vector low byte. If the \"ROM addr\n",
+      "bbox": [
+        11.040008544921875,
+        385.1999816894531,
+        540.9024047851562,
+        412.8143615722656
+      ],
+      "bbox_norm": [
+        0.020390086611889388,
+        0.5344655307853576,
+        0.9990070965317931,
+        0.5727805227452339
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": ",\nvalid’ bit (4 of nibble 0) is set, then these 2\n_\nbytes are the offset from the board's base ad-\ndress at which the start of the ROM code infor-\n",
+      "bbox": [
+        12.0,
+        409.91998291015625,
+        506.78887939453125,
+        443.76934814453125
+      ],
+      "bbox_norm": [
+        0.022163120467440196,
+        0.5687645681723564,
+        0.9360019154650013,
+        0.615730611310237
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "las\nee\nmation is located (e.g., the hard disk driver). If\nthe bit it not set, then these 2 bytes have no\n~\nmeaning.\n",
+      "bbox": [
+        12.480010986328125,
+        446.15997314453125,
+        504.4439697265625,
+        481.20977783203125
+      ],
+      "bbox_norm": [
+        0.023049665577080613,
+        0.6190476069495665,
+        0.9316710391769633,
+        0.6676792615619757
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "(30/32)\n7654\n321\n0\nReserved, read must be Q; write resets base\n_\naddress register\n(34/36)\n7654\n321\n0\nReserved, must be 0\n(38/3A)\n7654\n321\n0\nReserved, must be 0\n_\n(3C/3E)\n765\n4\n321\n0\nReserved, must be 0\n",
+      "bbox": [
+        12.480010986328125,
+        492.9599609375,
+        507.42724609375,
+        554.6524047851562
+      ],
+      "bbox_norm": [
+        0.023049665577080613,
+        0.6839826575869331,
+        0.9371809319697669,
+        0.769581012503434
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "27\n",
+      "bbox": [
+        276.7200012207031,
+        700.5599975585938,
+        287.731201171875,
+        708.0074462890625
+      ],
+      "bbox_norm": [
+        0.5110815602337201,
+        0.972028008152926,
+        0.5314184394844612,
+        0.9823613540198417
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

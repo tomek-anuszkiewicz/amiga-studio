@@ -1,0 +1,124 @@
+{
+  "page": 46,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        287,
+        131
+      ],
+      "segment_id": "page_0046_seg_001"
+    },
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Addressing Capabilities",
+      "bbox": [
+        310,
+        105,
+        739,
+        145
+      ],
+      "segment_id": "page_0046_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "2.5.1 No Memory Indirect Action Mode",
+      "bbox": [
+        262,
+        198,
+        1336,
+        278
+      ],
+      "segment_id": "page_0046_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "No memory indirect action mode uses BR, Xn with its modifiers, and bd to calculate the address of the required operand. Data register indirect (Dn) and absolute address with index (bd,Xn.SIZE*SCALE) are examples of the no memory indirect action mode. Figure 2-5 illustrates the no memory indirect action mode.",
+      "bbox": [
+        262,
+        317,
+        2265,
+        561
+      ],
+      "segment_id": "page_0046_seg_004"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        527,
+        669,
+        1998,
+        1489
+      ],
+      "segment_id": "page_0046_seg_005"
+    },
+    {
+      "type": "table_legend",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE: S indicates suppressed and A indicates active.",
+      "bbox": [
+        525,
+        1505,
+        1420,
+        1558
+      ],
+      "segment_id": "page_0046_seg_006"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        997,
+        1716,
+        1532,
+        2214
+      ],
+      "segment_id": "page_0046_seg_007"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 2-5. No Memory Indirect Action",
+      "bbox": [
+        811,
+        2267,
+        1715,
+        2337
+      ],
+      "segment_id": "page_0046_seg_008"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2-24   M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL   MOTOROLA",
+      "bbox": [
+        262,
+        3109,
+        2263,
+        3168
+      ],
+      "segment_id": "page_0046_seg_009"
+    }
+  ]
+}

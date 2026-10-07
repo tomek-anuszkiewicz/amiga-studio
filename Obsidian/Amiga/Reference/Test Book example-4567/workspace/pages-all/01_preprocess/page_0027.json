@@ -1,0 +1,401 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0027",
+  "page": 27,
+  "source_index": 26,
+  "prepared_index": 26,
+  "geometry": {
+    "width": 504.0,
+    "height": 648.9600219726562,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      505.20001220703125,
+      649.9199829101562
+    ],
+    "cropbox": [
+      0.6000059843063354,
+      0.47998046875,
+      504.6000061035156,
+      649.4400024414062
+    ],
+    "cropbox_position": [
+      0.6000059843063354,
+      0.47998046875
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      -0.6000059843063354,
+      649.4400024414062
+    ]
+  },
+  "width": 504.0,
+  "height": 648.9600219726562,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2100,
+    "pixel_height": 2704,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "-\n",
+      "bbox": [
+        2.0799942016601562,
+        112.92000579833984,
+        26.055994033813477,
+        211.84800720214844
+      ],
+      "bbox_norm": [
+        0.00412697262234158,
+        0.17400148233337198,
+        0.051698400860741026,
+        0.32644230773752436
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Address Bus (A23-AO) \n",
+      "bbox": [
+        72.84999084472656,
+        45.83997344970703,
+        178.961181640625,
+        59.030372619628906
+      ],
+      "bbox_norm": [
+        0.1445436326284257,
+        0.07063605137087857,
+        0.3550817096044147,
+        0.09096149319058691
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "This 24-bit, unidirectional, three-state bus is capable of addressing 16 Mbytes of data. \nThis bus provides the address for bus operation during all cycles except interrupt \nacknowledge cycles and breakpoint cycles. During interrupt acknowledge cycles, \naddress lines A 1, A2, and A3 provide the level number of the interrupt being \nacknowledged, and address lines A23-A4 and AO are driven to logic high. In 16-Bit \nmode, AO is always driven high. \n",
+      "bbox": [
+        81.89999389648438,
+        59.52002716064453,
+        457.9988098144531,
+        129.3503875732422
+      ],
+      "bbox_norm": [
+        0.16249998788984996,
+        0.09171601507858737,
+        0.908727797250899,
+        0.1993195007298806
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "MC68008 Address Bus \n",
+      "bbox": [
+        72.8699951171875,
+        137.04000854492188,
+        179.38243103027344,
+        150.2304229736328
+      ],
+      "bbox_norm": [
+        0.14458332364521329,
+        0.2111686450705526,
+        0.35591752188546316,
+        0.23149411040294054
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "The unidirectional, three-state buses in the two versions of the MC68008 differ from \neach other and from the other processor bus only in the number of address lines and \nthe addressing range. The 20-bit address (A 19-AO) of the 48-pin version provides a 1 -\nMbyte address space; the 52-pin version supports a 22-bit address (A21-AO), extending \nthe address space to 4 Mbytes. During an interrupt acknowledge cycle, the interrupt \n",
+      "bbox": [
+        81.89999389648438,
+        150.239990234375,
+        457.8951110839844,
+        208.55039978027344
+      ],
+      "bbox_norm": [
+        0.16249998788984996,
+        0.23150885285304265,
+        0.9085220458015563,
+        0.3213609355262575
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "level number is placed on lines A 1, A2, and A3. Lines AO and A4 through the most \nsignificant address line are driven to logic high. \n",
+      "bbox": [
+        82.35999298095703,
+        206.38998413085938,
+        457.9425354003906,
+        230.6304168701172
+      ],
+      "bbox_norm": [
+        0.16341268448602586,
+        0.3180318927866955,
+        0.9086161416674418,
+        0.35538462934752973
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "3.2 \nDATA BUS (015-DO; MC68008: 07-DO) \n",
+      "bbox": [
+        72.93999481201172,
+        245.1224822998047,
+        311.30859375,
+        260.648681640625
+      ],
+      "bbox_norm": [
+        0.1447222119285947,
+        0.3777158438122292,
+        0.61767578125,
+        0.4016405831106918
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "This bidirectional, three-state bus is the general-purpose data path. It is 16 bits wide in the \nall the processors except the MC68008 which is 8 bits wide. The bus can transfer and \naccept data of either word or byte length. During an interrupt acknowledge cycle, the \nexternal device supplies the vector number on data lines 07-00. The MC68ECOOO and \nMC68HC001 use 07-DO in 8-bit mode, and 015-08 are undefined. \n",
+      "bbox": [
+        72.53999328613281,
+        263.760009765625,
+        457.4677734375,
+        322.0704040527344
+      ],
+      "bbox_norm": [
+        0.14392855810740637,
+        0.40643491252954017,
+        0.9076741536458334,
+        0.4962869716900754
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "3.3 \nASYNCHRONOUS BUS CONTROL \n",
+      "bbox": [
+        73.17999267578125,
+        336.5625,
+        289.7335205078125,
+        352.08868408203125
+      ],
+      "bbox_norm": [
+        0.14519839816623265,
+        0.5186182331801341,
+        0.5748680962456597,
+        0.542542948965917
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Asynchronous data transfers are controlled by the following signals: address strobe, \nread/write, upper and lower data strobes, and data transfer acknowledge. These signals \nare described in the following paragraphs. \n",
+      "bbox": [
+        82.44999694824219,
+        354.9499816894531,
+        457.68255615234375,
+        390.46038818359375
+      ],
+      "bbox_norm": [
+        0.16359126378619482,
+        0.5469519996170255,
+        0.9081003098260789,
+        0.6016709426825767
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Address Strobe (~). \n",
+      "bbox": [
+        73.32999420166016,
+        398.15997314453125,
+        174.41998291015625,
+        411.3503723144531
+      ],
+      "bbox_norm": [
+        0.1454960202413892,
+        0.61353544080302,
+        0.34607139466300846,
+        0.6338608826227284
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "This three-state signal indicates that the information on the address bus is a valid \naddress. \n",
+      "bbox": [
+        82.6199951171875,
+        411.83001708984375,
+        457.7459716796875,
+        436.3103942871094
+      ],
+      "bbox_norm": [
+        0.1639285617404514,
+        0.6345999801929187,
+        0.9082261342850942,
+        0.6723224536402848
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "Read/Write (R/W). \n",
+      "bbox": [
+        73.57999420166016,
+        443.5199890136719,
+        155.89044189453125,
+        456.71038818359375
+      ],
+      "bbox_norm": [
+        0.14599205198742093,
+        0.6834319125937768,
+        0.30930643233041916,
+        0.7037573544134852
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "This three-state signal defines the data bus transfer as a read or write cycle. The R/W \nsignal relates to the data strobe signals described in the following paragraphs. \n",
+      "bbox": [
+        82.6199951171875,
+        456.9599914550781,
+        459.2666931152344,
+        481.4303894042969
+      ],
+      "bbox_norm": [
+        0.1639285617404514,
+        0.7041419748261967,
+        0.9112434387207031,
+        0.7418490709811117
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "Upper And Lower Data Strobes (ODS, [O'S'). \n",
+      "bbox": [
+        73.81999206542969,
+        486.142822265625,
+        273.42828369140625,
+        502.6844177246094
+      ],
+      "bbox_norm": [
+        0.14646823822505892,
+        0.7491105858691993,
+        0.5425164358956474,
+        0.77459997643089
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "These three-state signals and R/W control the flow of data on the data bus. Table 3-1 \nlists the combinations of these signals and the corresponding data on the bus. When \nthe R/W line is high, the processor reads from the data bus. When the R/W line is low, \nthe processor drives the data bus. In 8-bit mode, UDS is always forced high and the \n",
+      "bbox": [
+        82.85999298095703,
+        502.54998779296875,
+        459.38775634765625,
+        549.3504028320312
+      ],
+      "bbox_norm": [
+        0.16440474797808935,
+        0.7743928297237138,
+        0.911483643546937,
+        0.8465088514422818
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "LOS signal is used. \n",
+      "bbox": [
+        83.44999694824219,
+        547.2000122070312,
+        166.98001098632812,
+        560.3904418945312
+      ],
+      "bbox_norm": [
+        0.1655753907703218,
+        0.8431952565332096,
+        0.3313095456077939,
+        0.8635207453782772
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "3-4 \nM68000 8-/16-132-BIT MICROPROCESSORS USER'S MANUAL \nMOTOROLA \n",
+      "bbox": [
+        73.93999481201172,
+        598.3547973632812,
+        460.6334228515625,
+        609.5604248046875
+      ],
+      "bbox_norm": [
+        0.14670633891272167,
+        0.9220210446006376,
+        0.9139552040705605,
+        0.9392880981355292
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "I· \n",
+      "bbox": [
+        491.1999816894531,
+        139.40249633789062,
+        496.73065185546875,
+        158.77589416503906
+      ],
+      "bbox_norm": [
+        0.9746031382727245,
+        0.21480906622590737,
+        0.9855766901894222,
+        0.24466205742906155
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

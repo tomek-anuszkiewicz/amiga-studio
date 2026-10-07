@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0113",
+  "page": 113,
+  "source_index": 112,
+  "prepared_index": 112,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Data for Line 2:\n",
+      "bbox": [
+        89.30000305175781,
+        86.32296752929688,
+        151.90249633789062,
+        94.82296752929688
+      ],
+      "bbox_norm": [
+        0.14862773248961117,
+        0.11183469837698737,
+        0.25282108419555915,
+        0.1228467727230387
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Location:\nSTART+80\nSTART+82\nSTART+84\nSTART+118\n",
+      "bbox": [
+        89.89996337890625,
+        101.32296752929688,
+        511.4264831542969,
+        110.27297973632812
+      ],
+      "bbox_norm": [
+        0.14962628500876524,
+        0.1312677707523721,
+        0.8511999544087723,
+        0.14286285308435975
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Leftmost\nDisplay Word\n",
+      "bbox": [
+        170.38998413085938,
+        115.92300415039062,
+        222.60546875,
+        135.47097778320312
+      ],
+      "bbox_norm": [
+        0.2835909979267572,
+        0.15018267530843757,
+        0.370496583756256,
+        0.17550782106834137
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Next Word\nNext Word\nLast Display\n",
+      "bbox": [
+        271.19000244140625,
+        116.07199096679688,
+        510.75103759765625,
+        125.17202758789062
+      ],
+      "bbox_norm": [
+        0.45135894467279,
+        0.15037569341418427,
+        0.8500757669723453,
+        0.16216513809927535
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Word\n",
+      "bbox": [
+        474.2330017089844,
+        127.57101440429688,
+        494.5395202636719,
+        136.07101440429688
+      ],
+      "bbox_norm": [
+        0.7892964536058974,
+        0.16527311706132977,
+        0.8230938971042154,
+        0.1762851914073811
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Figure 3-16: Data Fetch for the Second Line When Modulo = 40\n",
+      "bbox": [
+        157.53298950195312,
+        172.9610595703125,
+        440.95947265625,
+        183.4610595703125
+      ],
+      "bbox_norm": [
+        0.2621922757204668,
+        0.22407765258354062,
+        0.7339171814218998,
+        0.2376808032463099
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "To display the right half of the big picture, you set up a vertical blanking routine to start the bit- \nplane pointers at location START+40 rather than START with the modulo remaining at 40. The \ndata layout is shown in Figures 3-17 and 3-18.\n",
+      "bbox": [
+        83.88398742675781,
+        212.30804443359375,
+        517.0830078125,
+        248.50408935546875
+      ],
+      "bbox_norm": [
+        0.13961350971287176,
+        0.2750531728902947,
+        0.8606144718218683,
+        0.3219465302682596
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "Data for Line 1:\n",
+      "bbox": [
+        89.98397827148438,
+        306.3620300292969,
+        150.5464630126953,
+        314.8620300292969
+      ],
+      "bbox_norm": [
+        0.149766116392332,
+        0.39690370017527404,
+        0.25056415080903605,
+        0.4079157745213254
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Location:\nSTART+40\nSTART+42\nSTART+44\nSTART+78\n",
+      "bbox": [
+        90.23397827148438,
+        319.2120361328125,
+        505.15252685546875,
+        327.9620361328125
+      ],
+      "bbox_norm": [
+        0.1501822074545111,
+        0.41355137341752435,
+        0.8407578058469937,
+        0.42488733230316544
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Leftmost\nNext Word\nNext Word\nLast Display\nDisplay Word\nWord\n",
+      "bbox": [
+        182.8839874267578,
+        333.7110290527344,
+        506.20654296875,
+        353.1610107421875
+      ],
+      "bbox_norm": [
+        0.30438557033579544,
+        0.4323353720030598,
+        0.84251207258351,
+        0.45753356546112983
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Figure 3-17: Data Layout for First Line— Right Half of Big Picture\n",
+      "bbox": [
+        151.093994140625,
+        388.2530822753906,
+        447.92901611328125,
+        398.7530822753906
+      ],
+      "bbox_norm": [
+        0.2514754420434216,
+        0.5029966831882574,
+        0.7455170403816579,
+        0.5165998338510267
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Now, the bit-plane pointers contain the value START+80. The modulo (40) is added to the \npointers so that when they begin the data fetch for the second line, the correct data is fetched.\n",
+      "bbox": [
+        84.093994140625,
+        427.0030822753906,
+        517.5549926757812,
+        450.4490966796875
+      ],
+      "bbox_norm": [
+        0.13996303737942273,
+        0.5531987868246679,
+        0.861400026554249,
+        0.5835739931468689
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "Data for Line 2:\n",
+      "bbox": [
+        89.64399719238281,
+        483.25701904296875,
+        152.6374969482422,
+        491.75701904296875
+      ],
+      "bbox_norm": [
+        0.14920026403903536,
+        0.6260779084649787,
+        0.254044392934213,
+        0.63708998281103
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "Location:\nSTART+120\nSTART+122\nSTART+124\nSTART+158\n",
+      "bbox": [
+        90.09398651123047,
+        497.4070129394531,
+        511.16259765625,
+        506.4070129394531
+      ],
+      "bbox_norm": [
+        0.14994921017362964,
+        0.6444097654984208,
+        0.8507607528200684,
+        0.6560696089236516
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "Leftmost\nNext Word\nNext Word\nLast Display\nDisplay Word\nWord\n",
+      "bbox": [
+        184.86099243164062,
+        512.0550537109375,
+        511.04205322265625,
+        532.0550537109375
+      ],
+      "bbox_norm": [
+        0.3076760267854558,
+        0.663386861263077,
+        0.8505601229744132,
+        0.6892976244302566
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "Figure 3-18: Data Layout for Second Line— Right Half of Big Picture\n",
+      "bbox": [
+        145.17098999023438,
+        572.8941040039062,
+        454.0389404296875,
+        583.3941040039062
+      ],
+      "bbox_norm": [
+        0.24161740569051257,
+        0.7422061724359391,
+        0.7556861799762474,
+        0.7558093230987084
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "Remember, in high-resolution mode, you need to fetch twice as many bytes as in low-resolution \nmode. For a normal-sized display, you fetch 80 bytes for each horizontal line instead of 40.\n",
+      "bbox": [
+        84.17098999023438,
+        611.0941162109375,
+        518.1360473632812,
+        634.5401000976562
+      ],
+      "bbox_norm": [
+        0.1400911865188121,
+        0.791695745899927,
+        0.862367113202673,
+        0.8220709126854409
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "70 Playfield Hardware\n",
+      "bbox": [
+        85.09700012207031,
+        713.467041015625,
+        186.15953063964844,
+        723.967041015625
+      ],
+      "bbox_norm": [
+        0.141632404676189,
+        0.9243237763672142,
+        0.30983726735445627,
+        0.9379269270299835
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

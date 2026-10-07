@@ -1,0 +1,124 @@
+{
+  "page": 120,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Sound data is organized as a set of eight-bit data items; each item is a sample from the waveform. Each data word retrieved for the audio channel consists of two samples. Sample values can range from -128 to +127.",
+      "bbox": [
+        358,
+        242,
+        2156,
+        394
+      ],
+      "segment_id": "page_0120_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "As an example, the data set shown below produces a close approximation to a sine wave.",
+      "bbox": [
+        359,
+        456,
+        1975,
+        501
+      ],
+      "segment_id": "page_0120_seg_002"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        1185,
+        562,
+        1311,
+        607
+      ],
+      "segment_id": "page_0120_seg_003"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The data is stored in byte address order with the first digitized amplitude value at the lowest byte address, the second at the next byte address, and so on. Also, note that the first byte of data must start at a word-address boundary. This is because the audio DMA retrieves one word (16 bits) at a time and uses the sample it reads as two bytes of data.",
+      "bbox": [
+        459,
+        640,
+        2052,
+        898
+      ],
+      "segment_id": "page_0120_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "To use audio channel 0, write the address of “audiodata” into AUD0LC, where the audio data is organized as shown below. For simplicity, “AUDxLC” in the table below stands for the combination of the two actual location registers (AUDxLCH and AUDxLCL). For the audio DMA channels to be able to retrieve the data, the data address to which AUD0LC points must be somewhere in chip RAM.",
+      "bbox": [
+        358,
+        961,
+        2156,
+        1221
+      ],
+      "segment_id": "page_0120_seg_005"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 5-1: Sample Audio Data Set for Channel 0",
+      "bbox": [
+        804,
+        1283,
+        1696,
+        1328
+      ],
+      "segment_id": "page_0120_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        795,
+        1470,
+        1710,
+        2318
+      ],
+      "segment_id": "page_0120_seg_007"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**Notes**\n\n\\* Audio data is located on a word-address boundary.\n\n\\*\\* AUD0LC stands for AUD0LCL and AUD0LCH.",
+      "bbox": [
+        657,
+        2405,
+        1758,
+        2663
+      ],
+      "segment_id": "page_0120_seg_008"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Audio Hardware 135",
+      "bbox": [
+        1756,
+        2981,
+        2148,
+        3026
+      ],
+      "segment_id": "page_0120_seg_009"
+    }
+  ]
+}

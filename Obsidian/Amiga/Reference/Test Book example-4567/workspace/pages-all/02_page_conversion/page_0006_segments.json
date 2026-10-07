@@ -1,0 +1,176 @@
+{
+  "page": 6,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "— Sales Offices —",
+      "bbox": [
+        819,
+        235,
+        1344,
+        285
+      ],
+      "segment_id": "page_0006_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "UNITED STATES",
+      "bbox": [
+        284,
+        337,
+        553,
+        369
+      ],
+      "segment_id": "page_0006_seg_002"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        281,
+        398,
+        988,
+        1863
+      ],
+      "segment_id": "page_0006_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Field Applications Engineering Available\nThrough All Sales Offices",
+      "bbox": [
+        345,
+        1938,
+        944,
+        2008
+      ],
+      "segment_id": "page_0006_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "CANADA",
+      "bbox": [
+        282,
+        2041,
+        430,
+        2072
+      ],
+      "segment_id": "page_0006_seg_005"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        282,
+        2105,
+        986,
+        2224
+      ],
+      "segment_id": "page_0006_seg_006"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "INTERNATIONAL",
+      "bbox": [
+        283,
+        2267,
+        560,
+        2298
+      ],
+      "segment_id": "page_0006_seg_007"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        283,
+        2331,
+        987,
+        2450
+      ],
+      "segment_id": "page_0006_seg_008"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        1110,
+        337,
+        1874,
+        1594
+      ],
+      "segment_id": "page_0006_seg_009"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "FULL LINE REPRESENTATIVES",
+      "bbox": [
+        1110,
+        1635,
+        1615,
+        1666
+      ],
+      "segment_id": "page_0006_seg_010"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        1110,
+        1698,
+        1874,
+        2119
+      ],
+      "segment_id": "page_0006_seg_011"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "HYBRID COMPONENTS RESELLERS",
+      "bbox": [
+        1110,
+        2159,
+        1698,
+        2191
+      ],
+      "segment_id": "page_0006_seg_012"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        1111,
+        2225,
+        1874,
+        2313
+      ],
+      "segment_id": "page_0006_seg_013"
+    }
+  ]
+}

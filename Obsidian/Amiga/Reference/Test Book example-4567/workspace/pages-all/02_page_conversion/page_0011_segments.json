@@ -1,0 +1,72 @@
+{
+  "page": 11,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "list_of_figures_heading",
+      "continuation": true,
+      "heading_level": 1,
+      "md_text": "LIST OF ILLUSTRATIONS (Continued)",
+      "bbox": [
+        465,
+        240,
+        1548,
+        303
+      ],
+      "segment_id": "page_0011_seg_001"
+    },
+    {
+      "type": "list_of_figures",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure Number — Title — Page Number\n\n5-15 3-Wire Bus Arbitration Timing Diagram (NA to 48-Pin MC68008 and MC68EC000 — 5-13\n\n5-16 2-Wire Bus Arbitration Timing Diagram — 5-14\n\n5-17 External Asynchronous Signal Synchronization — 5-16\n\n5-18 Bus Arbitration Unit State Diagrams — 5-17\n\n5-19 3-Wire Bus Arbitration Timing Diagram—Processor Active — 5-18\n\n5-20 3-Wire Bus Arbitration Timing Diagram—Bus Active — 5-19\n\n5-21 3-Wire Bus Arbitration Timing Diagram—Special Case — 5-20\n\n5-22 2-Wire Bus Arbitration Timing Diagram—Processor Active — 5-21\n\n5-23 2-Wire Bus Arbitration Timing Diagram—Bus Active — 5-22\n\n5-24 2-Wire Bus Arbitration Timing Diagram—Special Case — 5-23\n\n5-25 Bus Error Timing Diagram — 5-24\n\n5-26 Delayed Bus Error Timing Diagram (MC68010) — 5-25\n\n5-27 Retry Bus Cycle Timing Diagram — 5-26\n\n5-28 Delayed Retry Bus Cycle Timing Diagram — 5-27\n\n5-29 Halt Operation Timing Diagram — 5-28\n\n5-30 Reset Operation Timing Diagram — 5-29\n\n5-31 Fully Asynchronous Read Cycle — 5-32\n\n5-32 Fully Asynchronous Write Cycle — 5-33\n\n5-33 Pseudo-Asynchronous Read Cycle — 5-34\n\n5-34 Pseudo-Asynchronous Write Cycle — 5-35\n\n5-35 Synchronous Read Cycle — 5-37\n\n5-36 Synchronous Write Cycle — 5-38\n\n5-37 Input Synchronizers — 5-38\n\n6-1 Exception Vector Format — 6-4\n\n6-2 Peripheral Vector Number Format — 6-5\n\n6-3 Address Translated from 8-Bit Vector Number — 6-5\n\n6-4 Exception Vector Address Calculation (MC68010) — 6-5\n\n6-5 Group 1 and 2 Exception Stack Frame — 6-10\n\n6-6 MC68010 Stack Frame — 6-10\n\n6-7 Supervisor Stack Order for Bus or Address Error Exception — 6-17\n\n6-8 Exception Stack Order (Bus and Address Error) — 6-18\n\n6-9 Special Status Word Format — 6-19\n\n10-1 MC68000 Power Dissipation (PD) vs Ambient Temperature (TA) — 10-3\n\n10-2 Drive Levels and Test Points for AC Specifications — 10-6\n\n10-3 Clock Input Timing Diagram — 10-9\n\n10-4 Read Cycle Timing Diagram — 10-13\n\n10-5 Write Cycle Timing Diagram — 10-14\n\n10-6 MC68000 to M6800 Peripheral Timing Diagram (Best Case) — 10-16",
+      "bbox": [
+        165,
+        344,
+        1863,
+        2374
+      ],
+      "segment_id": "page_0011_seg_002"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        204,
+        2518,
+        400,
+        2548
+      ],
+      "segment_id": "page_0011_seg_003"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 USER’S MANUAL",
+      "bbox": [
+        806,
+        2517,
+        1215,
+        2548
+      ],
+      "segment_id": "page_0011_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "xiii",
+      "bbox": [
+        1769,
+        2517,
+        1812,
+        2548
+      ],
+      "segment_id": "page_0011_seg_005"
+    }
+  ]
+}

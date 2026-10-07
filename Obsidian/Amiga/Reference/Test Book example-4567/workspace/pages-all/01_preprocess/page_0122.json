@@ -1,0 +1,316 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0122",
+  "page": 122,
+  "source_index": 121,
+  "prepared_index": 121,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Limitations on Selection of Sampling Period\n",
+      "bbox": [
+        86.5,
+        74.12505340576172,
+        291.5124816894531,
+        84.62505340576172
+      ],
+      "bbox_norm": [
+        0.14396750751396867,
+        0.09603183517756163,
+        0.4851829525785202,
+        0.10963498584033093
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "The sampling period is limited by the number of DMA cycles allocated to an audio channel. \nEach audio channel is allocated one DMA slot per horizontal scan line of the screen display. An \naudio channel can retrieve two data samples during each horizontal scan line. The following cal­\nculation gives the maximum sampling rate in samples per second.\n",
+      "bbox": [
+        86.05001068115234,
+        107.12505340576172,
+        517.5664672851562,
+        156.02105712890625
+      ],
+      "bbox_norm": [
+        0.1432185613793744,
+        0.138784594403408,
+        0.8614191244838607,
+        0.20213123301800454
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "2 samples!line * 262.5 lineslframe * 59.94frames!second=31,469 samples!second\n",
+      "bbox": [
+        116.99900817871094,
+        177.41729736328125,
+        487.5958557128906,
+        187.9200439453125
+      ],
+      "bbox_norm": [
+        0.19472896634792425,
+        0.22985087868705303,
+        0.8115371100708157,
+        0.2434575876516489
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "The figure of 31,469 is a theoretical maximum. In order to save buffers, the hardware is designed \nto handle 28,867 samples/second. The system timing interval is 279.365 nanoseconds, or \n.279365 microseconds. The maximum sampling rate of 28,867 samples per second is 34.642 \nmicroseconds per sample (1/28,867 = .000034642). The formula for calculating the sampling \nperiod is:\n",
+      "bbox": [
+        85.79299926757812,
+        209.21905517578125,
+        517.7401123046875,
+        271.3140563964844
+      ],
+      "bbox_norm": [
+        0.1427908007711094,
+        0.27105126943603763,
+        0.8617081330463362,
+        0.351497712960806
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "„ . , \n, \nsample interval \nclock constant\nPeriod value = — , \n, ,--------— = ------- ----------------- -\nclock interval \nsamples per second\n",
+      "bbox": [
+        178.44200134277344,
+        277.3603210449219,
+        421.5343322753906,
+        301.91229248046875
+      ],
+      "bbox_norm": [
+        0.29699248750431606,
+        0.35933087952839377,
+        0.7015866722457001,
+        0.39113889538608443
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Thus, the minimum period value is derived by dividing 34.642 microseconds per sample by the \nnumber of microseconds per interval:\n",
+      "bbox": [
+        85.80000305175781,
+        320.81402587890625,
+        517.3394775390625,
+        344.1640319824219
+      ],
+      "bbox_norm": [
+        0.1428024576191038,
+        0.4156268122628886,
+        0.8610413308656371,
+        0.4458776361679082
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Minimum period=\n34.642 microseconds!sample\n0.279365 microseconds!interval = 124 timing intervals!sample\n",
+      "bbox": [
+        116.30000305175781,
+        350.46026611328125,
+        483.50140380859375,
+        375.2130126953125
+      ],
+      "bbox_norm": [
+        0.193565567204954,
+        0.4540346477383987,
+        0.8047224507032152,
+        0.48610277545961006
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "or:\n",
+      "bbox": [
+        86.02890014648438,
+        394.2632141113281,
+        97.4948959350586,
+        404.7632141113281
+      ],
+      "bbox_norm": [
+        0.1431834257602017,
+        0.5107830383184826,
+        0.16226701922663747,
+        0.5243861889812519
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Minumum period = 3,579£45 ticks/second\n",
+      "bbox": [
+        160.1779022216797,
+        411.4106750488281,
+        351.93341064453125,
+        428.5104675292969
+      ],
+      "bbox_norm": [
+        0.266594373892155,
+        0.5329982282819838,
+        0.5857453866055858,
+        0.5551516619404511
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "28,867 samples! second = 124 ticks!sample\n",
+      "bbox": [
+        250.67489624023438,
+        418.0088806152344,
+        439.6614074707031,
+        436.21142578125
+      ],
+      "bbox_norm": [
+        0.4172143353529394,
+        0.5415464553699598,
+        0.7317567281345722,
+        0.5651285472117858
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Therefore, a value of at least 124 must be written into the period register to assure that the audio \nsystem DMA will be able to retrieve the next data sample. If the period value is below 124, by \nthe time the cycle count has reached 0, the audio DMA will not have had enough time to retrieve \nthe next data sample and the previous sample will be reused.\n",
+      "bbox": [
+        85.534912109375,
+        454.7116394042969,
+        517.8180541992188,
+        503.6066589355469
+      ],
+      "bbox_norm": [
+        0.14236124973194328,
+        0.5890962798982358,
+        0.8618378567490712,
+        0.6524416434546777
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "28,867 samples/second is also the maximum sampling rate for PAL systems. Thus, for PAL sys­\ntems, a value of at least 123 ticks/sample must be written into the period register.\n",
+      "bbox": [
+        85.7848892211914,
+        519.3056640625,
+        515.0669555664062,
+        542.7516479492188
+      ],
+      "bbox_norm": [
+        0.1427773026998479,
+        0.6727803036449188,
+        0.8572590265399255,
+        0.7031554704304327
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "Clock Values\nNTSC\nPAL\nunits\nClock Constant\n3579545\n3546895\nticks per second\nClock Interval\n0.279365\n0.281937\nmicroseconds per interval\n",
+      "bbox": [
+        142.41891479492188,
+        566.2996826171875,
+        459.3883361816406,
+        619.044677734375
+      ],
+      "bbox_norm": [
+        0.23703695012565523,
+        0.7336628478971464,
+        0.7645895230180336,
+        0.8019960017339209
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "138 Audio Hardware\n",
+      "bbox": [
+        87.94999694824219,
+        708.0650634765625,
+        181.4105224609375,
+        718.5650634765625
+      ],
+      "bbox_norm": [
+        0.14638083059537085,
+        0.9173253083347606,
+        0.301933187924948,
+        0.9309284589975299
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

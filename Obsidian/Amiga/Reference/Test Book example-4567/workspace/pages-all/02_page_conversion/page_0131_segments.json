@@ -1,0 +1,176 @@
+{
+  "page": 131,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 6-3: BLTCON1 Code Bits for Octant Line Drawing",
+      "bbox": [
+        717,
+        284,
+        1782,
+        329
+      ],
+      "segment_id": "page_0131_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        842,
+        419,
+        1661,
+        1000
+      ],
+      "segment_id": "page_0131_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "We initialize BLTCON1 bits 4 through 2 according to the above Table. Now, we introduce the variables *dx* and *dy*, and set them to the absolute values of the difference between the *x* coordinates and the *y* coordinates of the endpoints of the line, respectively.",
+      "bbox": [
+        356,
+        1086,
+        2158,
+        1238
+      ],
+      "segment_id": "page_0131_seg_003"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\ndx = abs(x2 - x1) ;\ndy = abs(y2 - y1) ;\n```",
+      "bbox": [
+        357,
+        1294,
+        794,
+        1373
+      ],
+      "segment_id": "page_0131_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Now, we rearrange them if necessary so *dx* is greater than *dy*.",
+      "bbox": [
+        356,
+        1438,
+        1471,
+        1483
+      ],
+      "segment_id": "page_0131_seg_005"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nif (dx < dy)\n        {\n        temp = dx ;\n        dx = dy ;\n        dy = temp ;\n        }\n```",
+      "bbox": [
+        357,
+        1540,
+        794,
+        1790
+      ],
+      "segment_id": "page_0131_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Alternately, set *dx* and *dy* as follows:",
+      "bbox": [
+        357,
+        1848,
+        1027,
+        1893
+      ],
+      "segment_id": "page_0131_seg_007"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\ndx = max(abs(x2 - x1), abs(y2 - y1)) ;\ndy = min(abs(x2 - x1), abs(y2 - y1)) ;\n```",
+      "bbox": [
+        358,
+        1948,
+        1219,
+        2027
+      ],
+      "segment_id": "page_0131_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "These calculations have the effect of “normalizing” our line into octant 0; since we have already informed the blitter of the real octant to use, it has no difficulty drawing the line.",
+      "bbox": [
+        356,
+        2091,
+        2158,
+        2189
+      ],
+      "segment_id": "page_0131_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "We initialize the A pointer register to 4 * *dy* − 2 * *dx*. If this value is negative, we set the sign bit (SIGNFLAG in BLTCON1), otherwise we clear it. We set the A modulo register to 4 * (*dy* − *dx*) and the B modulo register to 4 * *dy*.",
+      "bbox": [
+        358,
+        2254,
+        2157,
+        2406
+      ],
+      "segment_id": "page_0131_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The A data register should be preloaded with $8000. Both word masks should be set to $FFFF. The A shift value should be set to the *x* coordinate of the first point (*x1*) modulo 15.",
+      "bbox": [
+        357,
+        2469,
+        2154,
+        2569
+      ],
+      "segment_id": "page_0131_seg_011"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The B data register should be initialized with the line texture pattern, if any, or $FFFF for a solid line. The B shift value should be set to the bit number at which to start the line texture (zero means the last significant bit.)",
+      "bbox": [
+        358,
+        2630,
+        2159,
+        2783
+      ],
+      "segment_id": "page_0131_seg_012"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Blitter Hardware 185",
+      "bbox": [
+        1752,
+        2980,
+        2149,
+        3025
+      ],
+      "segment_id": "page_0131_seg_013"
+    }
+  ]
+}

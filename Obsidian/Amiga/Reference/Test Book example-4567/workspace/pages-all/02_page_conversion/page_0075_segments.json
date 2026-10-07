@@ -1,0 +1,33 @@
+{
+  "page": 75,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        140,
+        320,
+        1385,
+        1795
+      ],
+      "segment_id": "page_0075_seg_001"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "40",
+      "bbox": [
+        1059,
+        2940,
+        1109,
+        2975
+      ],
+      "segment_id": "page_0075_seg_002"
+    }
+  ]
+}

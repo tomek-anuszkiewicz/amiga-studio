@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0131",
+  "page": 131,
+  "source_index": 130,
+  "prepared_index": 130,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Table 6-3: BLTC0N1 Code Bits for Octant Line Drawing\n",
+      "bbox": [
+        172.19000244140625,
+        68.22502899169922,
+        427.62353515625,
+        78.72502899169922
+      ],
+      "bbox_norm": [
+        0.2865868840498663,
+        0.08838812841389408,
+        0.7117213238237834,
+        0.10199127907666337
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "BLTCON1 Code Bits \nOctant #\n4 3 2\n",
+      "bbox": [
+        202.44000244140625,
+        100.76973724365234,
+        395.5559387207031,
+        123.97502899169922
+      ],
+      "bbox_norm": [
+        0.33693390257353745,
+        0.13055103980695976,
+        0.6583491627741938,
+        0.16061438074240725
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "1 1 0 \n0\n0 0 1 \n1\nO i l \n2\n1 1 1 \n3\n1 0 1 \n4\n0 1 0 \n5\n0 0 0 \n6\n1 0 0 \n7\n",
+      "bbox": [
+        238.69000244140625,
+        139.1240234375,
+        381.8365173339844,
+        239.60906982421875
+      ],
+      "bbox_norm": [
+        0.397267106589507,
+        0.18024048110771043,
+        0.6355150483050638,
+        0.3104226930461768
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "We initialize BLTCON1 bits 4 through 2 according to the above Table. Now, we introduce the \nvariables dx and dy, and set them to the absolute values of the difference between the x coordi­\nnates and the y coordinates of the endpoints of the line, respectively.\n",
+      "bbox": [
+        85.53500366210938,
+        260.80908203125,
+        517.7476196289062,
+        297.1060791015625
+      ],
+      "bbox_norm": [
+        0.14236140210904125,
+        0.337888117818062,
+        0.8617206279683693,
+        0.38491226255649597
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "dx = abs(x2 - xl) ; \ndy = abs(y2 - yl) ;\n",
+      "bbox": [
+        85.88579559326172,
+        310.655029296875,
+        190.38580322265625,
+        329.4689025878906
+      ],
+      "bbox_norm": [
+        0.1429452476579894,
+        0.40246544454022865,
+        0.31687132434694476,
+        0.42683953529527024
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Now, we rearrange them if necessary so dx is greater than dy.\n",
+      "bbox": [
+        85.53580474853516,
+        345.30035400390625,
+        352.9172668457031,
+        355.8031005859375
+      ],
+      "bbox_norm": [
+        0.14236273540864847,
+        0.4473497847069248,
+        0.5873828816926941,
+        0.46095649367152064
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "if (dx < dy)\n",
+      "bbox": [
+        86.13478088378906,
+        369.7169189453125,
+        147.90428161621094,
+        378.2169189453125
+      ],
+      "bbox_norm": [
+        0.14335964987399938,
+        0.47898237628456675,
+        0.2461665985541039,
+        0.4899944506306181
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "{\ntemp = dx ; \ndx = dy ; \ndy = temp ;\n",
+      "bbox": [
+        128.28488159179688,
+        378.9001159667969,
+        190.3848876953125,
+        417.5648498535156
+      ],
+      "bbox_norm": [
+        0.21351277057220344,
+        0.4908795584416283,
+        0.3168698005759651,
+        0.540971196574668
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "}\n",
+      "bbox": [
+        129.83657836914062,
+        418.9500427246094,
+        134.87657165527344,
+        429.4500427246094
+      ],
+      "bbox_norm": [
+        0.2160953592132628,
+        0.5427657667958568,
+        0.22448374385247297,
+        0.556368917458626
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Alternately, set dx and dy as follows:\n",
+      "bbox": [
+        85.78857421875,
+        443.6972961425781,
+        246.23760986328125,
+        454.2000427246094
+      ],
+      "bbox_norm": [
+        0.14278343587804102,
+        0.574826777913415,
+        0.4098290745458223,
+        0.5884334868780108
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "dx = max(abs(x2 - xl), abs(y2 - yl)) ; \ndy = min(abs(x2 - xl), abs(y2 - yl)) ;\n",
+      "bbox": [
+        86.03057861328125,
+        467.7489929199219,
+        292.54058837890625,
+        486.3135681152344
+      ],
+      "bbox_norm": [
+        0.1431862193403311,
+        0.6059866688617436,
+        0.4868940965963121,
+        0.6300377844209955
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "These calculations have the effect of “ normalizing” our line into octant 0; since we have already \ninformed the blitter of the real octant to use, it has no difficulty drawing the line.\n",
+      "bbox": [
+        85.53057861328125,
+        501.9977722167969,
+        517.720947265625,
+        525.3457641601562
+      ],
+      "bbox_norm": [
+        0.1423540372159729,
+        0.6503572693180601,
+        0.8616762354404953,
+        0.6806054838017402
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "We initialize the A pointer register to 4 * dy - 2 * dx. If this value is negative, we set the sign bit \n(SIGNFLAG in BLTCON1), otherwise we clear it. We set the A modulo register to 4 * (dy - dx) \nand the B modulo register to 4 * dy.\n",
+      "bbox": [
+        86.03057861328125,
+        541.093017578125,
+        517.4810180664062,
+        577.394775390625
+      ],
+      "bbox_norm": [
+        0.1431862193403311,
+        0.7010066514940677,
+        0.8612769058590924,
+        0.7480369639556677
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "The A data register should be preloaded with $8000. Both word masks should be set to SFFFF. \nThe A shift value should be set to the x coordinate of the first point (xl) modulo 15.\n",
+      "bbox": [
+        85.78753662109375,
+        592.6937866210938,
+        516.8441162109375,
+        616.3927612304688
+      ],
+      "bbox_norm": [
+        0.14278170893759742,
+        0.7678574167899025,
+        0.8602168691809091,
+        0.7985603427103285
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "The B data register should be initialized with the line texture pattern, if any, or $FFFF for a solid \nline. The B shift value should be set to the bit number at which to start the line texture (zero \nmeans the last significant bit.)\n",
+      "bbox": [
+        86.02651977539062,
+        631.341796875,
+        517.9967041015625,
+        667.8858032226562
+      ],
+      "bbox_norm": [
+        0.14317946395565462,
+        0.8179273888184873,
+        0.8621351952595688,
+        0.8652715435011887
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "Blitter Hardware 185\n",
+      "bbox": [
+        420.6000061035156,
+        715.3650512695312,
+        515.6669921875,
+        725.8650512695312
+      ],
+      "bbox_norm": [
+        0.7000316131685913,
+        0.9267827210761064,
+        0.8582577060399945,
+        0.9403858717388757
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

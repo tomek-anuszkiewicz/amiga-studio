@@ -1,0 +1,33 @@
+{
+  "page": 148,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        438,
+        225,
+        1965,
+        2780
+      ],
+      "segment_id": "page_0148_seg_001"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "284 Appendix B",
+      "bbox": [
+        359,
+        2970,
+        675,
+        3016
+      ],
+      "segment_id": "page_0148_seg_002"
+    }
+  ]
+}

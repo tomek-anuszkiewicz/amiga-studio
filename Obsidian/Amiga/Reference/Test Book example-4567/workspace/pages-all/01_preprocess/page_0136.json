@@ -1,0 +1,316 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0136",
+  "page": 136,
+  "source_index": 135,
+  "prepared_index": 135,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Table 7-5: Contents of the Beam Position Counter\n",
+      "bbox": [
+        190.19000244140625,
+        66.41503143310547,
+        411.02606201171875,
+        76.91503143310547
+      ],
+      "bbox_norm": [
+        0.31654544052676153,
+        0.08604320751019928,
+        0.684097082902995,
+        0.09964635817296857
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "VPOSR \nRead-only\nRead the high bit of the vertical \nposition (V8) and the frame-type bit.\n",
+      "bbox": [
+        152.29400634765625,
+        98.81231689453125,
+        437.1454772949219,
+        122.26403045654297
+      ],
+      "bbox_norm": [
+        0.25347269945882767,
+        0.12801512705272503,
+        0.7275693038977351,
+        0.158397716851216
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Bit 15\nLOF (Long-frame bit). Used to \ninitialize interlaced displays.\n",
+      "bbox": [
+        214.69500732421875,
+        137.11297607421875,
+        418.42388916015625,
+        160.21295166015625
+      ],
+      "bbox_norm": [
+        0.3573306945683355,
+        0.17763509251031234,
+        0.696409761927038,
+        0.20756199233905523
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Bits 14-1\nUnused\n",
+      "bbox": [
+        214.6920166015625,
+        175.1119384765625,
+        310.0279846191406,
+        185.8619384765625
+      ],
+      "bbox_norm": [
+        0.3573257169164686,
+        0.22686419828059692,
+        0.5159994937016958,
+        0.24079123348295597
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "BitO\nHigh bit of the vertical position \n(V8). Allows PAL line counts (313) to \nappear in PAL versions of the Amiga.\n",
+      "bbox": [
+        214.69200134277344,
+        201.3109130859375,
+        451.5390319824219,
+        237.7088623046875
+      ],
+      "bbox_norm": [
+        0.3573256915202856,
+        0.2608059695969203,
+        0.7515254217315545,
+        0.3079609016958234
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "VHPOSR \nRead-only\nRead vertical and horizontal \nposition of the counter that is \nproducing the beam on the screen \n(also reads the light pen).\n",
+      "bbox": [
+        152.29200744628906,
+        253.1051025390625,
+        427.1159973144531,
+        301.8038635253906
+      ],
+      "bbox_norm": [
+        0.2534693725588554,
+        0.32790731841471804,
+        0.710876595985026,
+        0.39099842153730974
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Bits 15-8\nLow bits of the vertical \nposition, bits V7-V0\n",
+      "bbox": [
+        214.68801879882812,
+        317.2028503417969,
+        381.7244873046875,
+        340.8028564453125
+      ],
+      "bbox_norm": [
+        0.35731906311652406,
+        0.41094839655803095,
+        0.6353285895295194,
+        0.44152310500264025
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "Bits 7-0\nThe horizontal position, bits H8-H1.\nHorizontal resolution is 1/160th \nof the screen width.\n",
+      "bbox": [
+        214.68801879882812,
+        356.3028564453125,
+        435.6185607910156,
+        392.4028625488281
+      ],
+      "bbox_norm": [
+        0.35731906311652406,
+        0.4616039464572045,
+        0.7250279586578584,
+        0.508372881881301
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "VPOSW \nWrite only\nBits same as VPOSR above.\n",
+      "bbox": [
+        152.28501892089844,
+        407.5491027832031,
+        400.7645263671875,
+        418.20184326171875
+      ],
+      "bbox_norm": [
+        0.253457741107044,
+        0.5279954140606059,
+        0.6670181498393082,
+        0.5417964458416182
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "VHPOSW \nWrite only\nBits same as VHPOSR above.\nUsed for counter synchronization \nwith chip test patterns.\n",
+      "bbox": [
+        152.2830047607422,
+        433.24810791015625,
+        425.3409423828125,
+        469.64886474609375
+      ],
+      "bbox_norm": [
+        0.2534543888108887,
+        0.5612894558344368,
+        0.7079222580172956,
+        0.6084480253085404
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "As usual, the address pairs VPOSR.VHPOSR and VPOSW.VHPOSW can be read from and writ­\nten to as long words, with the most significant addresses being VPOSR and VPOSW.\n",
+      "bbox": [
+        86.27901458740234,
+        491.29486083984375,
+        514.7740478515625,
+        514.6448364257812
+      ],
+      "bbox_norm": [
+        0.1435997072937533,
+        0.6364912392236829,
+        0.8567715214111663,
+        0.6667420235920155
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Interrupts\n",
+      "bbox": [
+        86.27901458740234,
+        547.8260498046875,
+        155.6090545654297,
+        562.8260498046875
+      ],
+      "bbox_norm": [
+        0.1435997072937533,
+        0.7097295516650401,
+        0.2589901471952608,
+        0.7291626240404249
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "This system supports the full range of 68000 processor interrupts. The various kinds of interrupts \ngenerated by the hardware are brought into the peripherals chip and are translated into six of the \nseven available interrupts of the 68000.\n",
+      "bbox": [
+        86.02901458740234,
+        590.69287109375,
+        517.3569946289062,
+        626.9888916015625
+      ],
+      "bbox_norm": [
+        0.1431836162315742,
+        0.7652651543725757,
+        0.8610704856837145,
+        0.8122880339370269
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "System Control Hardware 211\n",
+      "bbox": [
+        379.7900085449219,
+        713.218017578125,
+        513.875,
+        723.718017578125
+      ],
+      "bbox_norm": [
+        0.6321089122418643,
+        0.9240011570016072,
+        0.8552751783091405,
+        0.9376043076643765
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

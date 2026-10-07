@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0005",
+  "page": 5,
+  "source_index": 4,
+  "prepared_index": 4,
+  "geometry": {
+    "width": 504.0,
+    "height": 648.9600219726562,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      504.0,
+      648.9600219726562
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      504.0,
+      648.9600219726562
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      648.9600219726562
+    ]
+  },
+  "width": 504.0,
+  "height": 648.9600219726562,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2100,
+    "pixel_height": 2704,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "68K FAX-IT \n",
+      "bbox": [
+        139.72999572753906,
+        44.804325103759766,
+        358.3489990234375,
+        96.21485900878906
+      ],
+      "bbox_norm": [
+        0.27724205501495847,
+        0.06904019290366639,
+        0.7110099186972966,
+        0.14826007111551018
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Documentation Comments \n",
+      "bbox": [
+        149.47000122070312,
+        101.39403533935547,
+        335.611572265625,
+        120.39663696289062
+      ],
+      "bbox_norm": [
+        0.2965674627394903,
+        0.1562408036031959,
+        0.6658959767175099,
+        0.18552242493600554
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "FAX 512-891-8593-Documentation Comments Only \n",
+      "bbox": [
+        48.959999084472656,
+        126.12303161621094,
+        328.3327331542969,
+        141.40773010253906
+      ],
+      "bbox_norm": [
+        0.09714285532633464,
+        0.19434638089543996,
+        0.6514538356236049,
+        0.21789898501405258
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "The Motorola High-End Technical Publications Department provides a fax number for you \nto submit any questions or comments about this document or how to order other \ndocuments. We welcome your suggestions for improving our documentation. Please do \nnot fax technical questions. \n",
+      "bbox": [
+        48.41999816894531,
+        148.93251037597656,
+        434.32781982421875,
+        196.10031127929688
+      ],
+      "bbox_norm": [
+        0.09607142493838355,
+        0.2294941218771282,
+        0.8617615472702753,
+        0.30217625838215273
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Please provide the part number and revision number (located in upper right-hand corner \nof the cover) and the title of the document. When referring to items in the manual, please \nreference by the page number, paragraph number, figure number, table number, and line \nnumber if needed. \n",
+      "bbox": [
+        48.869998931884766,
+        203.6425018310547,
+        434.0590515136719,
+        250.8203125
+      ],
+      "bbox_norm": [
+        0.09696428359500946,
+        0.313798223212639,
+        0.861228276812841,
+        0.3864957840354737
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "When sending a fax, please provide your name, company, fax number, and phone \nnumber including area code. \n",
+      "bbox": [
+        48.689998626708984,
+        258.3625183105469,
+        434.20977783203125,
+        282.7403259277344
+      ],
+      "bbox_norm": [
+        0.09660714013235909,
+        0.39811777237863955,
+        0.861527336968316,
+        0.43568219359381055
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Applications and Technical Information \n",
+      "bbox": [
+        106.08000183105469,
+        296.9940185546875,
+        378.51934814453125,
+        315.9966125488281
+      ],
+      "bbox_norm": [
+        0.2104761941092355,
+        0.45764609297797587,
+        0.7510304526677207,
+        0.48692770255444573
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "For questions or comments pertaining to technical information, questions, and \napplications, please contact one of the following sales offices nearest you. \n",
+      "bbox": [
+        48.86000061035156,
+        321.7325439453125,
+        433.92822265625,
+        346.34033203125
+      ],
+      "bbox_norm": [
+        0.09694444565545945,
+        0.49576635393862306,
+        0.8609686957465278,
+        0.5336851582605545
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "/ \n",
+      "bbox": [
+        440.6400146484375,
+        579.037841796875,
+        449.82720947265625,
+        602.2494506835938
+      ],
+      "bbox_norm": [
+        0.8742857433500744,
+        0.8922550267992819,
+        0.8925143045092386,
+        0.92802242093885
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "J \n",
+      "bbox": [
+        455.9200134277344,
+        575.677978515625,
+        462.6108093261719,
+        587.3223876953125
+      ],
+      "bbox_norm": [
+        0.9046032012455048,
+        0.8870777228552933,
+        0.9178785899328807,
+        0.9050209070044366
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

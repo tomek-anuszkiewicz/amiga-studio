@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0133",
+  "page": 133,
+  "source_index": 132,
+  "prepared_index": 132,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Blitter Speed\n",
+      "bbox": [
+        86.75,
+        86.45817565917969,
+        173.8100128173828,
+        101.45817565917969
+      ],
+      "bbox_norm": [
+        0.14438359857614777,
+        0.11200986566857091,
+        0.28928317140219134,
+        0.13144293804395563
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "The speed of the blitter depends entirely on which DMA channels are enabled. You might be \nusing a DMA channel as a constant, but unless it is enabled, it does not count against you. The \nminimum blitter cycle is four ticks; the maximum is eight ticks. Use of the A register is always \nfree. Use of the B register always adds two ticks to the blitter cycle. Use of either C or D is free, \nbut use of both adds another two ticks. Thus, a copy cycle, using A and D, takes four clock ticks \nper cycle; a copy cycle using B and D takes six ticks per cycle, and a generalized bit copy using \nB, C, and D takes eight ticks per cycle. When in line mode, each pixel takes eight ticks.\n",
+      "bbox": [
+        86.05004119873047,
+        128.82501220703125,
+        517.5579833984375,
+        216.36895751953125
+      ],
+      "bbox_norm": [
+        0.14321861217174037,
+        0.16689771906527048,
+        0.8614050042061159,
+        0.28031424075090605
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "The system clock speed for NTSC Amigas is 7.16 megahertz (PAL Amigas 7.09 megahertz). \nThe clock for the blitter is the system clock. To calculate the total time for the blit in \nmicroseconds, excluding setup and DMA contention, you use the equation (for NTSC):\n",
+      "bbox": [
+        85.80004119873047,
+        231.41796875,
+        517.5390625,
+        267.366943359375
+      ],
+      "bbox_norm": [
+        0.14280252110956126,
+        0.2998108090455512,
+        0.8613735129392028,
+        0.3463840774058746
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "_ n * H * W \nt _ \n7.16\n",
+      "bbox": [
+        267.6610412597656,
+        273.51593017578125,
+        333.68304443359375,
+        293.26593017578125
+      ],
+      "bbox_norm": [
+        0.44548546784695936,
+        0.3543503244617752,
+        0.5553701295581196,
+        0.37993720308936507
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "For PAL:\n",
+      "bbox": [
+        85.76002502441406,
+        317.7149353027344,
+        127.02501678466797,
+        328.2149353027344
+      ],
+      "bbox_norm": [
+        0.14273591961965865,
+        0.4116118221652472,
+        0.2114158966290021,
+        0.4252149728280165
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "n * H * W\n",
+      "bbox": [
+        285.1700439453125,
+        334.5139465332031,
+        330.844970703125,
+        345.0139465332031
+      ],
+      "bbox_norm": [
+        0.474626825947463,
+        0.43337558223702055,
+        0.5506465411059063,
+        0.44697873289978984
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "7.09\n",
+      "bbox": [
+        298.3690490722656,
+        348.9129333496094,
+        317.1640625,
+        359.4129333496094
+      ],
+      "bbox_norm": [
+        0.4965947781993883,
+        0.45203001909938273,
+        0.527876526602654,
+        0.465633169762152
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "where t is the time in microseconds, n is the number of clocks per cycle, and H and W are the \nheight and width (in words) of the blit, respectively.\n",
+      "bbox": [
+        85.73904418945312,
+        378.4129333496094,
+        517.4444580078125,
+        401.762939453125
+      ],
+      "bbox_norm": [
+        0.14270099986804144,
+        0.49024839477097265,
+        0.861216056604638,
+        0.5204992186759922
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "For instance, to copy one bitplane of a 320 by 200 screen to another bitplane, we might choose to \nuse the A and D channels. This would require four ticks per blitter cycle, for a total of\n",
+      "bbox": [
+        85.73904418945312,
+        416.7119445800781,
+        517.299560546875,
+        440.0119323730469
+      ],
+      "bbox_norm": [
+        0.14270099986804144,
+        0.5398662252474641,
+        0.8609748944509239,
+        0.5700522485225535
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "4 * 200 * 20- = 2235 microseconds.\n",
+      "bbox": [
+        223.48904418945312,
+        445.1119384765625,
+        379.6095886230469,
+        463.4115295410156
+      ],
+      "bbox_norm": [
+        0.3719671751287256,
+        0.5766595010375217,
+        0.6318086277741394,
+        0.6003673195438858
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "These timings do not take into account blitter setup time, which is the time required to calculate \nand load the blitter registers and start the blit. They also ignore DMA contention.\n",
+      "bbox": [
+        85.48904418945312,
+        490.008544921875,
+        517.984130859375,
+        513.3585205078125
+      ],
+      "bbox_norm": [
+        0.14228490880586234,
+        0.6348247678682498,
+        0.8621142688047815,
+        0.6650755522365824
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "188 Blitter Hardware\n",
+      "bbox": [
+        87.6969985961914,
+        715.3650512695312,
+        182.0919952392578,
+        725.8650512695312
+      ],
+      "bbox_norm": [
+        0.14595974918323334,
+        0.9267827210761064,
+        0.30306740685365774,
+        0.9403858717388757
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

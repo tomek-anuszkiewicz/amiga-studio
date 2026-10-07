@@ -1,0 +1,59 @@
+{
+  "page": 86,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "janus.i — software conventions for janus.i",
+      "bbox": [
+        891,
+        339,
+        1676,
+        387
+      ],
+      "segment_id": "page_0086_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Copyright © 1986, Commodore-Amiga Inc., All rights reserved",
+      "bbox": [
+        895,
+        389,
+        2060,
+        438
+      ],
+      "segment_id": "page_0086_seg_002"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nIFND        EXEC_TYPES_I\nINCLUDE     \"exec/types.i\"\nENDC        EXEC_TYPES_I\n\nIFND        EXEC_LIBRARIES_I\n            INCLUDE \"exec/libraries.i\"\nENDC        EXEC_LIBRARIES_I\n\nIFND        EXEC_INTERRUPTS_I\nINCLUDE     \"exec/interrupts.i\"\nENDC        EXEC_INTERRUPTS_I\n\n; JanusResource — an entity which keeps track of the reset state of\n  the 8088. If this resource does not exist, it is assumed the 8088 can\n  be reset.\n\nSTRUCTURE JanusResource,LN_SIZE\n    APTR    jr_BoardAddress          ; address of JANUS board\n    UBYTE   jr_Reset                 ; non_zero indicates 8088\n                                      is held reset\n    LABEL   JanusResource_SIZEOF\n\n; As a coding convenience, we assume a maximum of 32 handlers.\n; People should avoid using this in their code, because we want to\n; be able to relax this constraint in the future. All the standard\n; commands' syntactically support any number of interrupts, but\n; the internals are limited to 32.\n\nMAXHANDLER          EQU     32\n\n; JanusAmiga — amiga specific data structures for janus project:\n\nSTRUCTURE JanusAmiga,LIB_SIZE\nULONG       ja_IntReq                ; software copy of out-\n                                      standing requests\nULONG       ja_IntEna                ; software copy of enabled\n                                      interrupts\nAPTR        ja_ParamMem              ; ptr to (word arranged)\n                                      param mem\nAPTR        ja_IoBase                ; ptr to base of io register\n                                      region\nAPTR        ja_ExpanBase             ; ptr to start of shared\n                                      memory\nAPTR        ja_ExecBase              ; ptr to exec library\nAPTR        ja_DOSBase               ; ptr to DOS library\nAPTR        ja_SegList               ; holds a pointer to our\n                                      code segment\n```",
+      "bbox": [
+        843,
+        518,
+        2101,
+        2861
+      ],
+      "segment_id": "page_0086_seg_003"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "139",
+      "bbox": [
+        1107,
+        2906,
+        1179,
+        2943
+      ],
+      "segment_id": "page_0086_seg_004"
+    }
+  ]
+}

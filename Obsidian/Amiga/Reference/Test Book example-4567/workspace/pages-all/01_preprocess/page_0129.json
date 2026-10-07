@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0129",
+  "page": 129,
+  "source_index": 128,
+  "prepared_index": 128,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "3. \nTo use a function that is the inverse, or “ not” , of one of the sources, such as A, take all of \nthe minterms not enclosed by the circle represented by A on the above Figure. In this case, \nwe have minterms 0,1,2, and 3.\n",
+      "bbox": [
+        86.30000305175781,
+        58.72502899169922,
+        518.5219116210938,
+        94.67107391357422
+      ],
+      "bbox_norm": [
+        0.143634639743462,
+        0.07608051590948375,
+        0.8630093318782336,
+        0.12264998874785889
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Minterm Numbers \n7 6 5 4 3 2 1 0\nSelected Minterms \n0 0 0 0 1 1 1 1\n0 F \nequals $0F\n",
+      "bbox": [
+        196.89599609375,
+        103.72008514404297,
+        423.53448486328125,
+        142.2200927734375
+      ],
+      "bbox_norm": [
+        0.3277066566138416,
+        0.13437332809235011,
+        0.7049156547049629,
+        0.18425155707334262
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "4. \nTo combine minterms, or “ or” them, “ or” the values together. For example, the equation \nAB+BC becomes\n",
+      "bbox": [
+        85.79498291015625,
+        163.11907958984375,
+        517.5654296875,
+        186.36907958984375
+      ],
+      "bbox_norm": [
+        0.14279410227489864,
+        0.21132699196503818,
+        0.8614173975434171,
+        0.24144825414688448
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Minterm Numbers \n7 6 5 4 3 2 1 0\nAB \n1 1 0 0 0 0 0 0\nBC \n1 0 0 0 1 0 0 0\nAB+BC \n1 1 0 0 1 0 0 0\nC \n8 \nequals $C8\n",
+      "bbox": [
+        196.8909912109375,
+        194.9180908203125,
+        424.2370300292969,
+        259.0660400390625
+      ],
+      "bbox_norm": [
+        0.32769832666581944,
+        0.25252382441219623,
+        0.7060849457623878,
+        0.335629940405561
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Shifts and Masks\n",
+      "bbox": [
+        86.48100280761719,
+        297.89923095703125,
+        201.8610382080078,
+        312.89923095703125
+      ],
+      "bbox_norm": [
+        0.14393588926614073,
+        0.38593982105062896,
+        0.3359702952021836,
+        0.4053728934260137
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Up to now we have dealt with the blitter only in moving words of memory around and combining \nthem with logic operations. This is sufficient for moving graphic images around, so long as the \nimages stay in the same position relative to the beginning of a word. If our car image has its left­\nmost pixel on the second pixel from the left, we can easily draw it on the screen in any position \nwhere the leftmost pixel also starts two pixels from the beginning of some word. But often we \nwant to draw that car shifted left or right by a few pixels. To this end, both the A and B DMA \nchannels have a barrel shifter that can shift an image between 0 and 15 bits.\n",
+      "bbox": [
+        85.78101348876953,
+        340.26605224609375,
+        517.0646362304688,
+        428.4070739746094
+      ],
+      "bbox_norm": [
+        0.14277085206936735,
+        0.44082765467898505,
+        0.8605838948175432,
+        0.5550177116450251
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "This shifting operation is completely free; it requires no more time to execute a blit with shifts \nthan a blit without shifts, as opposed to shifting with the 68000. The shift is normally towards \nthe right This shifter allows movement of images on pixel boundaries, even though the pixels \nare addressed 16 at a time by each word address of the bit-plane image.\n",
+      "bbox": [
+        85.78101348876953,
+        443.8060607910156,
+        516.7955932617188,
+        492.455078125
+      ],
+      "bbox_norm": [
+        0.14277085206936735,
+        0.5749676866657463,
+        0.8601361093189871,
+        0.6379943449885905
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "So if the incoming data is shifted to the right, what is shifted in from the left? For the first word \nof the blit, zeros are shifted in; for each subsequent word of the same blit, the data shifted out \nfrom the previous word is shifted in.\n",
+      "bbox": [
+        85.78101348876953,
+        507.40411376953125,
+        516.8480834960938,
+        543.6040649414062
+      ],
+      "bbox_norm": [
+        0.14277085206936735,
+        0.6573613910967493,
+        0.8602234721884876,
+        0.7042598091706452
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "The shift value for the A channel is set with bits 15 through 12 of BLTCONO; the B shift value is \nset with bits 15 through 12 of BLTCON1. For most operations, the same value will be used for \nboth shifts. For shifts of greater than fifteen bits, load the address register pointer of the destina­\ntion with a higher address; a shift of 100 bits would require the destination pointer to be advanced \n",
+      "bbox": [
+        85.53101348876953,
+        559.3540649414062,
+        517.097900390625,
+        607.9010620117188
+      ],
+      "bbox_norm": [
+        0.14235476100718825,
+        0.7246645351647992,
+        0.8606392584964708,
+        0.7875590223431307
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "100/16 or 6 words (12 bytes), and a right shift of the remaining 4 bits to be used.\n",
+      "bbox": [
+        86.98091125488281,
+        610.0010986328125,
+        437.3554382324219,
+        620.5010986328125
+      ],
+      "bbox_norm": [
+        0.14476791901340097,
+        0.7902796999197089,
+        0.727918755375737,
+        0.8038828505824782
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "As an example, let us say we are doing a blit that is three words wide, two words high, and we are \nusing a shift of 4 bits. For simplicity, let us assume we are doing a straight copy from A to D. \nThe first word that will be written to D is the first word fetched from A, shifted right four bits\n",
+      "bbox": [
+        86.03095245361328,
+        635.9000854492188,
+        517.0960693359375,
+        672.0961303710938
+      ],
+      "bbox_norm": [
+        0.14318684154681446,
+        0.8238328256031994,
+        0.8606362109545115,
+        0.8707261829811642
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Blitter Hardware 173\n",
+      "bbox": [
+        419.6400146484375,
+        715.8650512695312,
+        514.4654541015625,
+        726.3650512695312
+      ],
+      "bbox_norm": [
+        0.6984338377116861,
+        0.9274304901552859,
+        0.8562579090062891,
+        0.9410336408180552
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

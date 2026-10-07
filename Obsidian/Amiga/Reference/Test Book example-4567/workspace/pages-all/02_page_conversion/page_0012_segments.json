@@ -1,0 +1,72 @@
+{
+  "page": 12,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "list_of_figures_heading",
+      "continuation": true,
+      "heading_level": 1,
+      "md_text": "LIST OF ILLUSTRATIONS (Concluded)",
+      "bbox": [
+        552,
+        228,
+        1650,
+        289
+      ],
+      "segment_id": "page_0012_seg_001"
+    },
+    {
+      "type": "list_of_figures",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure Number — Title — Page Number\n\n10-7 Bus Arbitration Timing — 10-18\n10-8 Bus Arbitration Timing — 10-19\n10-9 Bus Arbitration Timing—Idle Bus Case — 10-20\n10-10 Bus Arbitration Timing—Active Bus Case — 10-21\n10-11 Bus Arbitration Timing—Multiple Bus Request — 10-22\n10-12 MC68EC000 Read Cycle Timing Diagram — 10-26\n10-13 MC68EC000 Write Cycle Timing Diagram — 10-27\n10-14 MC68EC000 Bus Arbitration Timing Diagram — 10-29\n\n11-1 64-Pin Dual In Line — 11-2\n11-2 68-Lead Pin Grid Array — 11-3\n11-3 68-Lead Quad Pack — 11-4\n11-4 52-Lead Quad Pack — 11-5\n11-5 48-Pin Dual In Line — 11-6\n11-6 64-Lead Quad Flat Pack — 11-7\n11-7 Case 740-03—L Suffix — 11-8\n11-8 Case 767-02—P Suffix — 11-9\n11-9 Case 746-01—LC Suffix — 11-10\n11-10 Case — Suffix — 11-\n11-11 Case 765A-05—RC Suffix — 11-12\n11-12 Case 778-02—FN Suffix — 11-13\n11-13 Case 779-02—FN Suffix — 11-14\n11-14 Case 847-01—FC Suffix — 11-15\n11-15 Case 840B-01—FU Suffix — 11-16\n\nA-1 DBcc Loop Mode Program Example — A-1\n\nB-1 M6800 Data Transfer Flowchart — B-1\nB-2 Example External $\\overline{\\mathrm{VMA}}$ Circuit — B-2\nB-3 External $\\overline{\\mathrm{VMA}}$ Timing — B-2\nB-4 M6800 Peripheral Timing—Best Case — B-3\nB-5 M6800 Peripheral Timing—Worst Case — B-3\nB-6 Autovector Operation Timing Diagram — B-5",
+      "bbox": [
+        260,
+        330,
+        1955,
+        1990
+      ],
+      "segment_id": "page_0012_seg_002"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "xiv",
+      "bbox": [
+        300,
+        2507,
+        343,
+        2536
+      ],
+      "segment_id": "page_0012_seg_003"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 USER’S MANUAL",
+      "bbox": [
+        898,
+        2506,
+        1309,
+        2537
+      ],
+      "segment_id": "page_0012_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        1714,
+        2506,
+        1907,
+        2537
+      ],
+      "segment_id": "page_0012_seg_005"
+    }
+  ]
+}

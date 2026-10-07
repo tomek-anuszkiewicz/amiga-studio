@@ -1,0 +1,452 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0039",
+  "page": 39,
+  "source_index": 38,
+  "prepared_index": 38,
+  "geometry": {
+    "width": 612.0,
+    "height": 792.0,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      792.0
+    ]
+  },
+  "width": 612.0,
+  "height": 792.0,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2550,
+    "pixel_height": 3300,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Introduction\n",
+      "bbox": [
+        490.69000244140625,
+        22.469982147216797,
+        549.0199584960938,
+        36.23998260498047
+      ],
+      "bbox_norm": [
+        0.8017810497408598,
+        0.028371189579819187,
+        0.8970914354511336,
+        0.04575755379416726
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "MOTOROLA\n",
+      "bbox": [
+        69.0,
+        746.25,
+        126.22999572753906,
+        759.989990234375
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.9422348484848485,
+        0.2062581629534952,
+        0.9595833210029987
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL\n",
+      "bbox": [
+        172.35000610351562,
+        746.2999877929688,
+        445.70001220703125,
+        760.0700073242188
+      ],
+      "bbox_norm": [
+        0.2816176570318883,
+        0.9422979643850615,
+        0.7282679938023386,
+        0.9596843526820944
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "1-5\n",
+      "bbox": [
+        534.5499877929688,
+        746.25,
+        549.0,
+        759.989990234375
+      ],
+      "bbox_norm": [
+        0.8734476924721711,
+        0.9422348484848485,
+        0.8970588235294118,
+        0.9595833210029987
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "1.2.2 Floating-Point Control Register (FPCR) \n",
+      "bbox": [
+        69.0,
+        47.35801315307617,
+        366.9199523925781,
+        66.63601684570312
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.05979547115287395,
+        0.5995424058702257,
+        0.08413638490619081
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "The FPCR (see Figure 1-3) contains an exception enable (ENABLE) byte and a mode\ncontrol (MODE) byte. The user can read or write to the FPCR. Motorola reserves bits 31 –\n16 for future deﬁnition; these bits are always read as zero and are ignored during write\noperations. The reset function or a restore operation of the null state clears the FPCR. When\ncleared, this register provides the IEEE 754 Standard for Binary Floating-Point Arithmetic\ndefaults. \n",
+      "bbox": [
+        69.0,
+        76.1040267944336,
+        549.4198608398438,
+        162.61216735839844
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.09609094292226464,
+        0.8977448706533394,
+        0.20531839312929095
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "1.2.2.1 EXCEPTION ENABLE BYTE.  Each bit of the ENABLE byte (see Figure 1-3)\ncorresponds to a ﬂoating-point exception class. The user can separately enable traps for\neach class of ﬂoating-point exceptions. \n",
+      "bbox": [
+        68.99697875976562,
+        175.10403442382812,
+        549.0928955078125,
+        219.60008239746094
+      ],
+      "bbox_norm": [
+        0.11274016137216605,
+        0.22109095255533853,
+        0.897210613574857,
+        0.2772728313099254
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "1.2.2.2 MODE CONTROL BYTE.  MODE (see Figure 1-3) controls the user- selectable\nrounding modes and precisions. Zeros in this byte select the IEEE 754 standard defaults.\nThe rounding mode (RND) ﬁeld speciﬁes how inexact results are rounded, and the rounding\nprecision (PREC) ﬁeld selects the boundary for rounding the mantissa. Refer to Table 3-21\nfor encoding information. .\n",
+      "bbox": [
+        69.0,
+        232.10403442382812,
+        549.48583984375,
+        304.60809326171875
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.2930606495250355,
+        0.8978526794832516,
+        0.384606178360756
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "1.2.3 Floating-Point Status Register (FPSR) \n",
+      "bbox": [
+        69.0,
+        551.3580322265625,
+        359.1639709472656,
+        570.635986328125
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.6961591315991951,
+        0.5868692335739635,
+        0.7204999827375316
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "The FPSR (see Figure 1-2) contains a ﬂoating-point condition code (FPCC) byte, a ﬂoating-\npoint exception status (EXC) byte, a quotient byte, and a ﬂoating-point accrued exception\n(AEXC) byte. The user can read or write to all the bits in the FPSR. Execution of most\nﬂoating-point instructions modiﬁes this register. The reset function or a restore operation of\nthe null state clears the FPSR. \n",
+      "bbox": [
+        69.0,
+        580.10400390625,
+        549.4918823242188,
+        652.6080322265625
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.7324545503866793,
+        0.897862552817351,
+        0.8240000406901041
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "1.2.3.1 FLOATING-POINT CONDITION CODE BYTE.  The FPCC byte, illustrated in\nFigure 1-4, contains four condition code bits that set after completion of all arithmetic\ninstructions involving the ﬂoating-point data registers. The move ﬂoating-point data register\n",
+      "bbox": [
+        69.0,
+        665.10400390625,
+        549.3027954101562,
+        709.5999755859375
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.8397777827099117,
+        0.8975535872714971,
+        0.8959595651337595
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "Figure 1-3. Floating-Point Control Register\n",
+      "bbox": [
+        188.0240020751953,
+        522.1640014648438,
+        430.0519714355469,
+        538.6880493164062
+      ],
+      "bbox_norm": [
+        0.30722876156077666,
+        0.65929798164753,
+        0.7026992997312858,
+        0.6801616784298059
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "15\n14\n",
+      "bbox": [
+        99.5,
+        367.051513671875,
+        134.7928009033203,
+        377.75909423828125
+      ],
+      "bbox_norm": [
+        0.16258169934640523,
+        0.46344888089883207,
+        0.22024967467862797,
+        0.47696855333116317
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "EXCEPTION ENABLE\n",
+      "bbox": [
+        167.0023956298828,
+        334.4222106933594,
+        232.62205505371094,
+        345.1297912597656
+      ],
+      "bbox_norm": [
+        0.27287973142137717,
+        0.4222502660269689,
+        0.3801013971465865,
+        0.4357699384593
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "12\n11\n10\n9\n8\n",
+      "bbox": [
+        180.50286865234375,
+        367.051513671875,
+        295.1519470214844,
+        377.75909423828125
+      ],
+      "bbox_norm": [
+        0.2949393278633068,
+        0.46344888089883207,
+        0.4822744232377196,
+        0.47696855333116317
+      ]
+    },
+    {
+      "block_id": 19,
+      "type": 0,
+      "text": "INEXACT DECIMAL INPUT\nINEXACT OPERATION\nDIVIDE BY ZERO\nUNDERFLOW\nOVERFLOW\nOPERAND ERROR\nSIGNALING NOT-A-NUMBER\r\n",
+      "bbox": [
+        427.0,
+        432.3155212402344,
+        517.849365234375,
+        503.1772155761719
+      ],
+      "bbox_norm": [
+        0.6977124183006536,
+        0.5458529308588818,
+        0.8461590935202206,
+        0.6353247671416311
+      ]
+    },
+    {
+      "block_id": 20,
+      "type": 0,
+      "text": "\r\nBRANCH/SET ON UNORDERED \r\n",
+      "bbox": [
+        427.1705322265625,
+        501.23675537109375,
+        528.8571166992188,
+        514.1341552734375
+      ],
+      "bbox_norm": [
+        0.6979910657296773,
+        0.6328746911251184,
+        0.8641456155215993,
+        0.649159286961411
+      ]
+    },
+    {
+      "block_id": 22,
+      "type": 0,
+      "text": "7\n6\n5\n4\n3\n2\n1\n0\n",
+      "bbox": [
+        317.75,
+        366.8075256347656,
+        513.3954467773438,
+        377.7566833496094
+      ],
+      "bbox_norm": [
+        0.5191993464052288,
+        0.4631408151954111,
+        0.8388814489825879,
+        0.4769655092798098
+      ]
+    },
+    {
+      "block_id": 23,
+      "type": 0,
+      "text": "SNAN\nOPERR\nOVFL\nUNFL\nDZ\nINEX2\nINEX1\nBSUN\nPREC\nRND\n0\n",
+      "bbox": [
+        93.89096069335938,
+        381.6609802246094,
+        470.330078125,
+        392.3701171875
+      ],
+      "bbox_norm": [
+        0.1534166024401297,
+        0.48189517705127444,
+        0.7685131995506536,
+        0.4954168146306818
+      ]
+    },
+    {
+      "block_id": 24,
+      "type": 0,
+      "text": "ROUNDING PRECISION\nROUNDING MODE\n",
+      "bbox": [
+        427.0,
+        411.3725280761719,
+        500.62286376953125,
+        432.30810546875
+      ],
+      "bbox_norm": [
+        0.6977124183006536,
+        0.5194097576719342,
+        0.8180112153096916,
+        0.545843567511048
+      ]
+    },
+    {
+      "block_id": 25,
+      "type": 0,
+      "text": "MODE CONTROL\n",
+      "bbox": [
+        389.5,
+        334.4195251464844,
+        443.07550048828125,
+        345.1271057128906
+      ],
+      "bbox_norm": [
+        0.636437908496732,
+        0.422246875184955,
+        0.7239795759612438,
+        0.4357665476172861
+      ]
+    },
+    {
+      "block_id": 26,
+      "type": 0,
+      "text": "13\n",
+      "bbox": [
+        153.25,
+        367.051513671875,
+        160.54470825195312,
+        377.75909423828125
+      ],
+      "bbox_norm": [
+        0.25040849673202614,
+        0.46344888089883207,
+        0.26232795466005415,
+        0.47696855333116317
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

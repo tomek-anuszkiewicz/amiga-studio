@@ -1,0 +1,176 @@
+{
+  "page": 98,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Section 7.4",
+      "bbox": [
+        1694,
+        182,
+        2096,
+        250
+      ],
+      "segment_id": "page_0098_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "List of B2000 Motherboard Jumpers",
+      "bbox": [
+        203,
+        337,
+        1501,
+        416
+      ],
+      "segment_id": "page_0098_seg_002"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        793,
+        509,
+        976,
+        743
+      ],
+      "segment_id": "page_0098_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This jumper determines the high-order address bit for Fat Agnus. In its normal position shown the high-order bit is A23; in its other position, this bit is A19. The current Fat Agnus chip requires the A23 signal for proper management of the memory at $C00000. Future Fat Agnus chips may map things differently.",
+      "bbox": [
+        1037,
+        500,
+        2090,
+        805
+      ],
+      "segment_id": "page_0098_seg_004"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        813,
+        861,
+        981,
+        1096
+      ],
+      "segment_id": "page_0098_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This jumper is used to set the light-pen port number. In the normal position shown, the light pen input will be the FIRE input of mouse/joystick port 1, as with the A500. With the jumper in the other position, the light pen input will be the FIRE input of mouse/joystick port 0, which is the scheme used on the A1000 machine.",
+      "bbox": [
+        1039,
+        852,
+        2090,
+        1152
+      ],
+      "segment_id": "page_0098_seg_006"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        799,
+        1214,
+        979,
+        1440
+      ],
+      "segment_id": "page_0098_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This jumper determines the time base used for the 50/60Hz CIA timer chip. In the normal position, the 50/60Hz TICK clock, based on AC line frequency, is used as a time base. In the alternate position, the vertical sync pulse from the video section is used. The system will not operate properly without one of these clocks.",
+      "bbox": [
+        1041,
+        1203,
+        2084,
+        1510
+      ],
+      "segment_id": "page_0098_seg_008"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nJ301\n\nX X\n```",
+      "bbox": [
+        855,
+        1568,
+        953,
+        1704
+      ],
+      "segment_id": "page_0098_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This jumper is closed to add a second internal floppy drive, open to leave the second floppy out of the main unit box.",
+      "bbox": [
+        1042,
+        1558,
+        2092,
+        1702
+      ],
+      "segment_id": "page_0098_seg_010"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nJ500\n\n X-X\n```",
+      "bbox": [
+        863,
+        1763,
+        964,
+        1901
+      ],
+      "segment_id": "page_0098_seg_011"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This jumper is used to enable the 512K of RAM at $C00000. It is normally closed; opening it will disable this extra RAM.",
+      "bbox": [
+        1044,
+        1756,
+        2089,
+        1900
+      ],
+      "segment_id": "page_0098_seg_012"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "235",
+      "bbox": [
+        1128,
+        2894,
+        1200,
+        2930
+      ],
+      "segment_id": "page_0098_seg_013"
+    }
+  ]
+}

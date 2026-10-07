@@ -1,0 +1,137 @@
+{
+  "page": 26,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "chapter",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "SECTION 3\nSIGNAL DESCRIPTION",
+      "bbox": [
+        202,
+        449,
+        860,
+        562
+      ],
+      "segment_id": "page_0026_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This section contains descriptions of the input and output signals. The input and output signals can be functionally organized into the groups shown in Figure 3-1 (for the MC68000, the MC68HC000 and the MC68010), Figure 3-2 (for the MC68HC001), Figure 3-3 (for the MC68EC000), Figure 3-4 (for the MC68008, 48-pin version), and Figure 3-5 (for the MC68008, 52-pin version). The following paragraphs provide brief descriptions of the signals and references (where applicable) to other paragraphs that contain more information about the signals.",
+      "bbox": [
+        202,
+        629,
+        1803,
+        946
+      ],
+      "segment_id": "page_0026_seg_002"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "3",
+      "bbox": [
+        1925,
+        633,
+        2088,
+        739
+      ],
+      "segment_id": "page_0026_seg_003"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        949,
+        995,
+        1062,
+        1030
+      ],
+      "segment_id": "page_0026_seg_004"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The terms **assertion** and **negation** are used extensively in this manual to avoid confusion when describing a mixture of \"active-low\" and \"active-high\" signals. The term assert or assertion is used to indicate that a signal is active or true, independently of whether that level is represented by a high or low voltage. The term negate or negation is used to indicate that a signal is inactive or false.",
+      "bbox": [
+        445,
+        1063,
+        1564,
+        1382
+      ],
+      "segment_id": "page_0026_seg_005"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        491,
+        1477,
+        1513,
+        2182
+      ],
+      "segment_id": "page_0026_seg_006"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 3-1. Input and Output Signals\n(MC68000, MC68HC000 and MC68010)",
+      "bbox": [
+        642,
+        2249,
+        1366,
+        2337
+      ],
+      "segment_id": "page_0026_seg_007"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        204,
+        2513,
+        400,
+        2545
+      ],
+      "segment_id": "page_0026_seg_008"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 8-/16-/32-BIT MICROPROCESSORS USER'S MANUAL",
+      "bbox": [
+        520,
+        2513,
+        1492,
+        2545
+      ],
+      "segment_id": "page_0026_seg_009"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "3-1",
+      "bbox": [
+        1760,
+        2515,
+        1810,
+        2546
+      ],
+      "segment_id": "page_0026_seg_010"
+    }
+  ]
+}

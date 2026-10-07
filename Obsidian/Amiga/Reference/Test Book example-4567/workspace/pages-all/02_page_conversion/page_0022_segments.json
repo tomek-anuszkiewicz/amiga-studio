@@ -1,0 +1,111 @@
+{
+  "page": 22,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        681,
+        225,
+        1494,
+        1708
+      ],
+      "segment_id": "page_0022_seg_001"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2",
+      "bbox": [
+        15,
+        471,
+        189,
+        575
+      ],
+      "segment_id": "page_0022_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 2-7. Memory Data Organization of the MC68008",
+      "bbox": [
+        578,
+        1768,
+        1608,
+        1815
+      ],
+      "segment_id": "page_0022_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "2.5 INSTRUCTION SET SUMMARY",
+      "bbox": [
+        292,
+        1901,
+        1113,
+        1946
+      ],
+      "segment_id": "page_0022_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 2-2 provides an alphabetized listing of the M68000 instruction set listed by opcode, operation, and syntax. In the syntax descriptions, the left operand is the source operand, and the right operand is the destination operand. The following list contains the notations used in Table 2-2.",
+      "bbox": [
+        292,
+        1977,
+        1896,
+        2157
+      ],
+      "segment_id": "page_0022_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2-8",
+      "bbox": [
+        295,
+        2498,
+        346,
+        2530
+      ],
+      "segment_id": "page_0022_seg_006"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 8-/16-/32-BIT MICROPROCESSOR USER’S MANUAL",
+      "bbox": [
+        622,
+        2496,
+        1574,
+        2531
+      ],
+      "segment_id": "page_0022_seg_007"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        1707,
+        2497,
+        1903,
+        2531
+      ],
+      "segment_id": "page_0022_seg_008"
+    }
+  ]
+}

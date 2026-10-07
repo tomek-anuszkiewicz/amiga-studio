@@ -1,0 +1,486 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0144",
+  "page": 144,
+  "source_index": 143,
+  "prepared_index": 143,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Register\n",
+      "bbox": [
+        86.1500015258789,
+        75.36402893066406,
+        128.49501037597656,
+        84.36402893066406
+      ],
+      "bbox_norm": [
+        0.14338498256653623,
+        0.09763697524734546,
+        0.21386250140821836,
+        0.10929681867257629
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "ADKCON\nADKCONR\n",
+      "bbox": [
+        86.05004119873047,
+        104.76301574707031,
+        123.40005493164062,
+        123.56300354003906
+      ],
+      "bbox_norm": [
+        0.14321861217174037,
+        0.1357244844850924,
+        0.20538263971786264,
+        0.16008058604756642
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "A U D x D A T\n",
+      "bbox": [
+        86.50003051757812,
+        512.5824584960938,
+        122.09403228759766,
+        519.0824584960938
+      ],
+      "bbox_norm": [
+        0.14396755830633465,
+        0.664070134287148,
+        0.20320894232110345,
+        0.6724911323164814
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Agnus/\nRead/ \nDenise/\nAddress Write \nPaula \nFunction\n",
+      "bbox": [
+        133.8060302734375,
+        55.66304397583008,
+        343.1188659667969,
+        84.21266174316406
+      ],
+      "bbox_norm": [
+        0.22270197304977377,
+        0.07211359748110185,
+        0.5710747735752513,
+        0.10910071670524657
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "09E\n010\nW\nR\n",
+      "bbox": [
+        145.4550323486328,
+        104.51167297363281,
+        193.1050262451172,
+        123.46138000488281
+      ],
+      "bbox_norm": [
+        0.24209015563695202,
+        0.13539886033127632,
+        0.3213971019298153,
+        0.15994892887998416
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "P\nP\n",
+      "bbox": [
+        225.10504150390625,
+        104.61146545410156,
+        230.50503540039062,
+        123.46138000488281
+      ],
+      "bbox_norm": [
+        0.37465678328492313,
+        0.13552814529764087,
+        0.3836443400695185,
+        0.15994892887998416
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Audio, disk, control write \nAudio, disk, control read\n",
+      "bbox": [
+        273.50103759765625,
+        104.39006805419922,
+        418.2010192871094,
+        123.36164855957031
+      ],
+      "bbox_norm": [
+        0.4552053489643792,
+        0.13524131651790594,
+        0.6960388252782228,
+        0.15981972298699354
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "BIT# \nUSE\n",
+      "bbox": [
+        177.00103759765625,
+        133.91065979003906,
+        230.3979949951172,
+        142.91065979003906
+      ],
+      "bbox_norm": [
+        0.29459419896324657,
+        0.17348636956902322,
+        0.38346618584581327,
+        0.18514621299425404
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "15\nSET/CLR \nSet/clear control bit. Determines if bits \nwritten with a 1 get set or cleared. Bits \nwritten with a zero are always unchanged.\n14-13 PRECOMP 1-0\n",
+      "bbox": [
+        177.68801879882812,
+        153.0880126953125,
+        498.4880065917969,
+        191.8592071533203
+      ],
+      "bbox_norm": [
+        0.2957375859140173,
+        0.19833136203412144,
+        0.8296656165852923,
+        0.24856092389962678
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "CODE PRECOMP VALUE\n",
+      "bbox": [
+        236.1380157470703,
+        203.25819396972656,
+        337.89190673828125,
+        212.25819396972656
+      ],
+      "bbox_norm": [
+        0.3930196711722543,
+        0.26332874628691205,
+        0.5623752095058117,
+        0.27498858971214285
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "00\n01\n10\n11\n",
+      "bbox": [
+        242.1380157470703,
+        223.85826110839844,
+        251.9865264892578,
+        261.83099365234375
+      ],
+      "bbox_norm": [
+        0.4030058566645527,
+        0.2900169193298184,
+        0.419397365846949,
+        0.3392120433176594
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "none \n",
+      "bbox": [
+        268.28802490234375,
+        222.93450927734375,
+        294.8370056152344,
+        232.0561065673828
+      ],
+      "bbox_norm": [
+        0.44652899700619636,
+        0.28882016358383306,
+        0.4907161713445928,
+        0.3006375409382625
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "140 ns \n280 ns \n560 ns\n",
+      "bbox": [
+        268.78802490234375,
+        233.03253173828125,
+        305.2870178222656,
+        261.8037414550781
+      ],
+      "bbox_norm": [
+        0.44736117913055456,
+        0.3019025370059436,
+        0.5081087980606256,
+        0.33917673705620266
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "12 \nMFMPREC \n( 1“MFM precomp 0-GCR precontp)\n11 \nUARTBRK \nForces a UART break (clears TXD) if true.\n10 \nWORDSYNC \nEnables disk read synchronizing on a word\nequal to DISK SYNC CODE, located in \naddress (3F)*2.\n09 MSBSYNC \nEnables disk read synchronizing on the MSB\n",
+      "bbox": [
+        177.70504760742188,
+        272.6027526855469,
+        512.6287231445312,
+        331.65106201171875
+      ],
+      "bbox_norm": [
+        0.29576592805423896,
+        0.3531672681778221,
+        0.8532009196668955,
+        0.42966660609646223
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "(most signif bit). Appl type GCR.\n08 FAST\nDisk data clock rate control 1-fast(2us) C)-slow(4us)\n",
+      "bbox": [
+        177.70504760742188,
+        332.3509521484375,
+        508.04388427734375,
+        351.8009338378906
+      ],
+      "bbox_norm": [
+        0.29576592805423896,
+        0.4305733404752405,
+        0.8455700777702233,
+        0.4557715339333105
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "(fast for MFto, slow for MFM or GCR)\n",
+      "bbox": [
+        233.17904663085938,
+        352.15093994140625,
+        417.0849609375,
+        361.3009338378906
+      ],
+      "bbox_norm": [
+        0.38809486876217686,
+        0.4562249801960735,
+        0.6941812976616515,
+        0.4680791464377208
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "07 USE3PN Use audio channel 3 to modulate nothing.\n06 USE2P3 Use audio channel 2 to modulate period of channel 3.\n05 USE1P2 Use audio channel 1 to modulate period of channel 2.\n04 USE0P1 Use audio channel 0 to modulate period of channel 1.\n",
+      "bbox": [
+        177.71807861328125,
+        371.5999450683594,
+        509.1700134277344,
+        411.1761779785156
+      ],
+      "bbox_norm": [
+        0.2957876163945161,
+        0.48142190848016075,
+        0.8474443668675707,
+        0.5326944283793706
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "03 USE3VN Use audio channel 3 to modulate nothing.\n02 USE2V3 Use audio channel 2 to modulate volume of channel 3.\n01 USE1V2 Use audio channel 1 to modulate volume of channel 2.\n00 USE0V1 Use audio channel 0 to modulate volume of channel 1.\n",
+      "bbox": [
+        177.911865234375,
+        421.1484680175781,
+        509.22454833984375,
+        460.5691833496094
+      ],
+      "bbox_norm": [
+        0.29611014791854406,
+        0.5456139106511992,
+        0.8475351328255926,
+        0.5966849515936526
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "NOTE:\nIf both period and volume are modulated on the\nsame channel, the period and volume will be alternated. \nFirst word xxxxxxxx V6-V0 , Second word P15-P0 (etc)\n",
+      "bbox": [
+        198.75665283203125,
+        471.09246826171875,
+        497.4466552734375,
+        499.8903503417969
+      ],
+      "bbox_norm": [
+        0.33080346716817016,
+        0.6103182687485738,
+        0.8279324286806612,
+        0.6476270238632372
+      ]
+    },
+    {
+      "block_id": 19,
+      "type": 0,
+      "text": "0AA W\nAudio channel x data\n",
+      "bbox": [
+        151.15965270996094,
+        510.6893615722656,
+        348.905517578125,
+        519.9393310546875
+      ],
+      "bbox_norm": [
+        0.25158472181884617,
+        0.6616175549848566,
+        0.5807058696369229,
+        0.6736012434129902
+      ]
+    },
+    {
+      "block_id": 20,
+      "type": 0,
+      "text": "This register is the audio channel x (x=0,l,2,3) \nDMA data buffer. \nIt contains 2 bytes of data that \nare each 2' s complement and are outputted \n",
+      "bbox": [
+        177.66165161132812,
+        530.4667358398438,
+        450.431640625,
+        559.637939453125
+      ],
+      "bbox_norm": [
+        0.29569370130980305,
+        0.6872398980206511,
+        0.749682319146924,
+        0.7250323054269163
+      ]
+    },
+    {
+      "block_id": 21,
+      "type": 0,
+      "text": "sequentially (with digital-to-analog conversion) \nto the audio output pins. \n(LSB « 3 MV) \nThe DMA \ncontroller automatically transfers data to this \nregister from RAM. \nThe processor can also write \ndirectly to this register. When the DMA data is \nfinished (words outputted=length) and the data in \nthis register has been used, an audio channel \n",
+      "bbox": [
+        177.78164672851562,
+        560.6143188476562,
+        445.9216613769531,
+        629.2330322265625
+      ],
+      "bbox_norm": [
+        0.29589341689287046,
+        0.726297242189567,
+        0.7421760709240218,
+        0.815195403749438
+      ]
+    },
+    {
+      "block_id": 22,
+      "type": 0,
+      "text": "interrupt request is set.\n",
+      "bbox": [
+        178.68167114257812,
+        629.8330688476562,
+        310.9725341796875,
+        638.8330688476562
+      ],
+      "bbox_norm": [
+        0.297391385350608,
+        0.8159727740884777,
+        0.5175715682214108,
+        0.8276326175137085
+      ]
+    },
+    {
+      "block_id": 23,
+      "type": 0,
+      "text": "Appendix A 259\n",
+      "bbox": [
+        441.0,
+        713.4651489257812,
+        515.6969604492188,
+        723.9651489257812
+      ],
+      "bbox_norm": [
+        0.7339846336839327,
+        0.9243213250926225,
+        0.8583075841433954,
+        0.9379244757553918
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,46 @@
+{
+  "page": 77,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "TABLE 3-3",
+      "bbox": [
+        123,
+        310,
+        387,
+        355
+      ],
+      "segment_id": "page_0077_seg_001"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nPAL16R6\nARBITRATE REV1\n1-6-86\nAMIGA\n\n7M /BRIN /RES /BGIN /BR5 /BR4 /BR3 /BR2 /BR1 GND\nGROUND /BGOUT /BGOLD /BG5 /BG4 /BG3 /BG2 /BG1 /BR VCC\n\nBG1 = BGIN * /BGOLD * BR1 *                       /RES + ;GENERATE BG1\n      BGIN * BG1    *                            /RES   ;HOLD UNTIL /BG\n\nBG2 = BGIN * /BGOLD * BR2 * /BR1 *                /RES +\n      BGIN * BG2    *                            /RES\n\nBG3 = BGIN * /BGOLD * BR3 * /BR1 * /BR2 *         /RES +\n      BGIN * BG3    *                            /RES\n\nBG4 = BGIN * /BGOLD * BR4 * /BR1 * /BR2 * /BR3 *       /RES +\n      BGIN * BG4    *                                 /RES\n\nBG5 = BGIN * /BGOLD * BR5 * /BR1 * /BR2 * /BR3 * /BR4 * /RES +\n      BGIN * BG5    *                                 /RES\n\nBGOLD = BGIN                                          ;STORE OLD STATE OF BG\n\nBR    = BRIN * /RES +                                 ;BR IS RQST TO 68K\n        BR1  * /RES +\n        BR2  * /RES +\n        BR3  * /RES +\n        BR4  * /RES +\n        BR5  * /RES\n\nBGOUT = BGIN * BGOLD * /BG1 * /BG2 * /BG3 * /BG4 * /BG5\n\nDESCRIPTION\n\nBG1 IS HIGHEST PRIORITY\n```",
+      "bbox": [
+        119,
+        428,
+        1788,
+        2244
+      ],
+      "segment_id": "page_0077_seg_002"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "42",
+      "bbox": [
+        1032,
+        2918,
+        1079,
+        2950
+      ],
+      "segment_id": "page_0077_seg_003"
+    }
+  ]
+}

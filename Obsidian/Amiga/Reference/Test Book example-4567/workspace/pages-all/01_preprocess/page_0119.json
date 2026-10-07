@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0119",
+  "page": 119,
+  "source_index": 118,
+  "prepared_index": 118,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Samples taken over time —\n",
+      "bbox": [
+        245.3000030517578,
+        201.03305053710938,
+        354.18511962890625,
+        209.53305053710938
+      ],
+      "bbox_norm": [
+        0.4082685552893697,
+        0.2604459880621346,
+        0.5894930505376931,
+        0.27145806240818593
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "TIME\nSINE\nSQUARE\nTRIANGLE\n",
+      "bbox": [
+        172.8000030517578,
+        232.83102416992188,
+        440.0215148925781,
+        242.03103637695312
+      ],
+      "bbox_norm": [
+        0.28760214725743066,
+        0.30164147626193594,
+        0.7323560780532383,
+        0.31356044313351333
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "0\n0\n100\n0\n1\n39\n100\n20\n2\n75\n100\n40\n3\n103\n100\n60\n4\n121\n100\n80\n5\n127\n100\n100\n6\n121\n100\n80\n7\n103\n100\n60\n8\n75\n100\n40\n9\n39\n100\n20\n10\n0\n-100\n0\n11\n-3 9\n-10 0\n-2 0\n12\n-7 5\n-10 0\n-4 0\n13\n-10 3\n-100\n-6 0\n14\n-121\n-100\n-8 0\n15\n-127\n-10 0\n-100\n16\n-121\n-100\n-8 0\n17\n-10 3\n-100\n-6 0\n18\n-7 5\n-10 0\n-4 0\n19\n-3 9\n-100\n-2 0\n",
+      "bbox": [
+        179.3699951171875,
+        256.5800476074219,
+        423.2515869140625,
+        470.4033508300781
+      ],
+      "bbox_norm": [
+        0.29853700716548226,
+        0.33240924234897895,
+        0.704444809472248,
+        0.609425490820293
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Figure 5-2: Digitized Amplitude Values\n",
+      "bbox": [
+        222.27297973632812,
+        533.4423828125,
+        397.5600891113281,
+        543.9423828125
+      ],
+      "bbox_norm": [
+        0.3699432009288095,
+        0.6910949622195327,
+        0.6616847990334009,
+        0.704698112882302
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "THE AMIGA SOUND HARDWARE\n",
+      "bbox": [
+        84.08297729492188,
+        585.8914184570312,
+        257.07037353515625,
+        596.3914184570312
+      ],
+      "bbox_norm": [
+        0.13994470133530082,
+        0.7590446892661532,
+        0.42785873911608485,
+        0.7726478399289225
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "The Amiga has four hardware sound channels. You can independently program each of the chan­\nnels to produce complex sound effects. You can also attach channels so that one channel modu­\nlates the sound of another or combine two channels for stereo effects.\n",
+      "bbox": [
+        83.5829849243164,
+        618.8914184570312,
+        512.6128540039062,
+        655.2894287109375
+      ],
+      "bbox_norm": [
+        0.1391125319090341,
+        0.8017974484919996,
+        0.8531745076365814,
+        0.8489524596642766
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Audio Hardware 133\n",
+      "bbox": [
+        418.20001220703125,
+        716.5751342773438,
+        512.4059448242188,
+        727.0751342773438
+      ],
+      "bbox_norm": [
+        0.6960371491301451,
+        0.9283504297875093,
+        0.8528301353951783,
+        0.9419535804502785
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0128",
+  "page": 128,
+  "source_index": 127,
+  "prepared_index": 127,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "For another example, an LF control byte of $80 (= 1000 0000 binary) turns on bits only for those \npoints of the D destination rectangle where the corresponding bits of A, B, and C sources were all \non (ABC = 1, bit 7 of LF on). All other points in the rectangle, which correspond to other combi­\nnations for A, B, and C, will be 0. This is because bits 6 through 0 of the LF control byte, which \nspecify the D output for these situations, are set to 0.\n",
+      "bbox": [
+        85.09700012207031,
+        55.96501922607422,
+        517.361083984375,
+        118.05504608154297
+      ],
+      "bbox_norm": [
+        0.141632404676189,
+        0.07250481794067315,
+        0.861077291860757,
+        0.15294481698546677
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "DESIGNING THE LF CONTROL BYTE WITH MINTERMS\n",
+      "bbox": [
+        85.5469970703125,
+        147.40203857421875,
+        378.9063720703125,
+        157.90203857421875
+      ],
+      "bbox_norm": [
+        0.1423813635088748,
+        0.1909649655928028,
+        0.6306382192846627,
+        0.2045681162555721
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "One approach to designing the LF control byte uses logic equations. Each of the rows in the truth \ntable corresponds to a “ mintenn” , which is a particular assignment of values to the A, B, and C \nbits. For instance, the first minterm is usually written ABC, or “ not A and not B and not C” . \nThe last is written as ABC.\n",
+      "bbox": [
+        85.09700012207031,
+        167.2010498046875,
+        517.3613891601562,
+        216.947021484375
+      ],
+      "bbox_norm": [
+        0.141632404676189,
+        0.21661534013965306,
+        0.8610777997844169,
+        0.28106314467533344
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "NOTE\n",
+      "bbox": [
+        284.47698974609375,
+        231.99603271484375,
+        314.5804443359375,
+        242.49603271484375
+      ],
+      "bbox_norm": [
+        0.47347333131586056,
+        0.3005597129699785,
+        0.5235764448980541,
+        0.3141628636327478
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Two terms that are adjacent are and’ed, and two terms that are separated by “ +” are \nor’ed. “ And” has a higher precedence, so AB + BC is equal to (AB) + (BC).\n",
+      "bbox": [
+        109.7869873046875,
+        251.09503173828125,
+        492.553955078125,
+        274.5420227050781
+      ],
+      "bbox_norm": [
+        0.18272553664420324,
+        0.3253031949913027,
+        0.8197891933958953,
+        0.3556796664874864
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Any function can be written as a sum of minterms. If we wanted to calculate the function where \nD Js one when the A bit is set and the C bit is clear, or when the B bit is set, we can write that as \nAC+B, or “ A and notC or B” . Since “ 1 and A” is “ A” :\n",
+      "bbox": [
+        85.7869873046875,
+        289.6910095214844,
+        517.7673950195312,
+        326.38800048828125
+      ],
+      "bbox_norm": [
+        0.14278079467500962,
+        0.37530575696861784,
+        0.86175354142153,
+        0.42284810906305803
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "D=AC+B\n",
+      "bbox": [
+        99.4859848022461,
+        341.82159423828125,
+        151.3059844970703,
+        351.82159423828125
+      ],
+      "bbox_norm": [
+        0.16558091635320157,
+        0.4428429186867937,
+        0.2518282712137618,
+        0.4557983002703835
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "D = A(1)C + (l)B(l)\n",
+      "bbox": [
+        99.4859848022461,
+        368.43701171875,
+        189.74403381347656,
+        378.93701171875
+      ],
+      "bbox_norm": [
+        0.16558091635320157,
+        0.4773242076333956,
+        0.31580318628638626,
+        0.4909273582961649
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Since either A or A is true (1 = A + A), and similarly for B, and C; we can expand the above \nequation further:\n",
+      "bbox": [
+        85.78998565673828,
+        394.83599853515625,
+        517.2645263671875,
+        418.1839904785156
+      ],
+      "bbox_norm": [
+        0.142785785024968,
+        0.5115251023960655,
+        0.8609165848147688,
+        0.5417733168797457
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "D = A(1)C + (l)B(l)\n",
+      "bbox": [
+        99.48898315429688,
+        434.1839904785156,
+        189.988525390625,
+        444.6839904785156
+      ],
+      "bbox_norm": [
+        0.16558590670315998,
+        0.5625019274134894,
+        0.3162101093265044,
+        0.5761050780762587
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "D = A(B + B)C + (A + A)B(C + C)\n",
+      "bbox": [
+        99.48898315429688,
+        460.6839904785156,
+        254.56344604492188,
+        471.1839904785156
+      ],
+      "bbox_norm": [
+        0.16558590670315998,
+        0.5968336886100024,
+        0.4236862986272144,
+        0.6104368392727717
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "D = ABC + ABC + AB(C + C) + AB(C + C)\n",
+      "bbox": [
+        99.48898315429688,
+        486.63299560546875,
+        296.4898986816406,
+        497.13299560546875
+      ],
+      "bbox_norm": [
+        0.16558590670315998,
+        0.6304516149234229,
+        0.49346718747127055,
+        0.6440547655861922
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "D = ABC + ABC + ABC + ABC + ABC + ABC\n",
+      "bbox": [
+        99.68898010253906,
+        512.781982421875,
+        312.6394348144531,
+        523.281982421875
+      ],
+      "bbox_norm": [
+        0.16591877447366665,
+        0.6643286251465031,
+        0.5203458980440774,
+        0.6779317758092724
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "After eliminating duplicates, we end up with the five minterms:\n",
+      "bbox": [
+        85.78997802734375,
+        538.6809692382812,
+        362.38116455078125,
+        549.1809692382812
+      ],
+      "bbox_norm": [
+        0.1427857723268765,
+        0.6978817508299937,
+        0.6031342546865355,
+        0.711484901492763
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "AC+B = ABC + ABC + ABC + ABC + ABC\n",
+      "bbox": [
+        99.48897552490234,
+        565.0800170898438,
+        299.02044677734375,
+        575.5800170898438
+      ],
+      "bbox_norm": [
+        0.16558589400506846,
+        0.7320827246660375,
+        0.4976789412514162,
+        0.7456858753288068
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "These correspond to BLTCONO bit positions of 6, 4, 7, 3, and 2, according to our truth table, \nwhich we would then set, and clear the rest.\n",
+      "bbox": [
+        85.78997802734375,
+        590.8789672851562,
+        517.2665405273438,
+        614.22900390625
+      ],
+      "bbox_norm": [
+        0.1427857723268765,
+        0.7655062490896678,
+        0.8609199371109242,
+        0.7957571125313744
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "The wide range of logic operations allow some sophisticated graphics techniques. For instance, \nyou can move the image of a car across some pre-existing building images with a few blits. Pro­\nducing this effect requires predrawn images of the car, the buildings (or background), and a car\n",
+      "bbox": [
+        86.03997802734375,
+        629.1780395507812,
+        517.3905029296875,
+        665.3770141601562
+      ],
+      "bbox_norm": [
+        0.1432018633890556,
+        0.8151241586395331,
+        0.8611262557015701,
+        0.8620213115394463
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "Blitter Hardware 169\n",
+      "bbox": [
+        420.6000061035156,
+        715.3650512695312,
+        515.8349609375,
+        725.8650512695312
+      ],
+      "bbox_norm": [
+        0.7000316131685913,
+        0.9267827210761064,
+        0.8585372672223961,
+        0.9403858717388757
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

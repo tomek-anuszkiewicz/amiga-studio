@@ -1,0 +1,137 @@
+{
+  "page": 44,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        287,
+        131
+      ],
+      "segment_id": "page_0044_seg_001"
+    },
+    {
+      "type": "chapter",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "SECTION 2\nADDRESSING CAPABILITIES",
+      "bbox": [
+        287,
+        498,
+        1351,
+        686
+      ],
+      "segment_id": "page_0044_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Most operations take asource operand and destination operand, compute them, and store the result in the destination location. Single-operand operations take a destination operand, compute it, and store the result in the destination location. External microprocessor references to memory are either program references that refer to program space or data references that refer to data space. They access either instruction words or operands (data items) for an instruction. Program space is the section of memory that contains the program instructions and any immediate data operands residing in the instruction stream. Data space is the section of memory that contains the program data. Data items in the instruction stream can be accessed with the program counter relative addressing modes; these accesses classify as program references.",
+      "bbox": [
+        287,
+        758,
+        2290,
+        1353
+      ],
+      "segment_id": "page_0044_seg_003"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "2.1 INSTRUCTION FORMAT",
+      "bbox": [
+        287,
+        1422,
+        1066,
+        1503
+      ],
+      "segment_id": "page_0044_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 family instructions consist of at least one word; some have as many as 11 words. Figure 2-1 illustrates the general composition of an instruction. The first word of the instruction, called the simple effective address operation word, specifies the length of the instruction, the effective addressing mode, and the operation to be performed. The remaining words, called brief and full extension words, further specify the instruction and operands. These words can be floating-point command words, conditional predicates, immediate operands, extensions to the effective addressing mode specified in the simple effective address operation word, branch displacements, bit number or bit field specifications, special register specifications, trap operands, pack/unpack constants, or argument counts.",
+      "bbox": [
+        287,
+        1542,
+        2289,
+        2136
+      ],
+      "segment_id": "page_0044_seg_005"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        594,
+        2257,
+        1988,
+        2717
+      ],
+      "segment_id": "page_0044_seg_006"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 2-1. Instruction Word General Format",
+      "bbox": [
+        762,
+        2767,
+        1813,
+        2837
+      ],
+      "segment_id": "page_0044_seg_007"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        287,
+        3109,
+        526,
+        3167
+      ],
+      "segment_id": "page_0044_seg_008"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        718,
+        3109,
+        1858,
+        3167
+      ],
+      "segment_id": "page_0044_seg_009"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2-1",
+      "bbox": [
+        2227,
+        3109,
+        2288,
+        3167
+      ],
+      "segment_id": "page_0044_seg_010"
+    }
+  ]
+}

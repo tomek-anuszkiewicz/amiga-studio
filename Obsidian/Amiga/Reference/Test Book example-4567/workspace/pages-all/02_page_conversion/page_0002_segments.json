@@ -1,0 +1,189 @@
+{
+  "page": 2,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Overview 1",
+      "bbox": [
+        1652,
+        341,
+        2091,
+        445
+      ],
+      "segment_id": "page_0002_seg_001"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Introduction 2",
+      "bbox": [
+        1599,
+        492,
+        2091,
+        596
+      ],
+      "segment_id": "page_0002_seg_002"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Signal Description 3",
+      "bbox": [
+        1437,
+        644,
+        2091,
+        748
+      ],
+      "segment_id": "page_0002_seg_003"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "8-Bit Bus Operation 4",
+      "bbox": [
+        1392,
+        794,
+        2091,
+        897
+      ],
+      "segment_id": "page_0002_seg_004"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "16-Bit Bus Operation 5",
+      "bbox": [
+        1366,
+        945,
+        2091,
+        1049
+      ],
+      "segment_id": "page_0002_seg_005"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Exception Processing 6",
+      "bbox": [
+        1360,
+        1098,
+        2091,
+        1202
+      ],
+      "segment_id": "page_0002_seg_006"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "8-Bit Instruction Execution Times 7",
+      "bbox": [
+        1071,
+        1249,
+        2091,
+        1353
+      ],
+      "segment_id": "page_0002_seg_007"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "16-Bit Instruction Execution Times 8",
+      "bbox": [
+        1041,
+        1399,
+        2091,
+        1503
+      ],
+      "segment_id": "page_0002_seg_008"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MC68010 Instruction Execution Times 9",
+      "bbox": [
+        928,
+        1551,
+        2091,
+        1655
+      ],
+      "segment_id": "page_0002_seg_009"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Electrical and Thermal Characteristics 10",
+      "bbox": [
+        938,
+        1700,
+        2091,
+        1804
+      ],
+      "segment_id": "page_0002_seg_010"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Ordering Information and Mechanical Data 11",
+      "bbox": [
+        773,
+        1849,
+        2091,
+        1953
+      ],
+      "segment_id": "page_0002_seg_011"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MC68010 Loop Mode Operation A",
+      "bbox": [
+        1048,
+        2000,
+        2091,
+        2103
+      ],
+      "segment_id": "page_0002_seg_012"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M6800 Peripheral Interface B",
+      "bbox": [
+        1184,
+        2150,
+        2091,
+        2254
+      ],
+      "segment_id": "page_0002_seg_013"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Index I",
+      "bbox": [
+        1749,
+        2300,
+        2091,
+        2403
+      ],
+      "segment_id": "page_0002_seg_014"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "page": 134,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        618,
+        137,
+        2317,
+        2874
+      ],
+      "segment_id": "page_0134_seg_001"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 6-9: DMA Time Slot Allocation",
+      "bbox": [
+        420,
+        1153,
+        465,
+        1880
+      ],
+      "segment_id": "page_0134_seg_002"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "190 Blitter Hardware",
+      "bbox": [
+        354,
+        2980,
+        758,
+        3025
+      ],
+      "segment_id": "page_0134_seg_003"
+    }
+  ]
+}

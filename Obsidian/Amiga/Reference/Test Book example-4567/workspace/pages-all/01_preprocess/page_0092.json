@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0092",
+  "page": 92,
+  "source_index": 91,
+  "prepared_index": 91,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "LINE DRAW: BLTADAT is used as an index register and must be pre-\n",
+      "bbox": [
+        208.32000732421875,
+        73.67999267578125,
+        505.9008483886719,
+        84.25054931640625
+      ],
+      "bbox_norm": [
+        0.38475178484205697,
+        0.10223109622437687,
+        0.9343617872848611,
+        0.1168977588260979
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "loaded with 8000. BLTBDAT is used for texture. It\n_\nmust be preloaded with FF if no texture (solid line) is\ndesired.\n.\n",
+      "bbox": [
+        11.040008544921875,
+        85.43994140625,
+        526.0368041992188,
+        122.65243530273438
+      ],
+      "bbox_norm": [
+        0.020390086611889388,
+        0.11854804206812239,
+        0.9715514218145446,
+        0.17018043108070982
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "_\nBLTDDAT\nBlitter destination data register\n",
+      "bbox": [
+        11.03997802734375,
+        134.15997314453125,
+        453.23529052734375,
+        149.04237365722656
+      ],
+      "bbox_norm": [
+        0.020390030248159358,
+        0.1861471564519664,
+        0.837092362004398,
+        0.20679650865206742
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "This register holds the data resulting from each word of Blitter oper-\nation until it is sent to\na RAM destination. This is\na dummy address\n",
+      "bbox": [
+        207.60000610351562,
+        157.91998291015625,
+        505.1998596191406,
+        180.25054931640625
+      ],
+      "bbox_norm": [
+        0.38342199535946137,
+        0.21911420430891013,
+        0.9330671124060741,
+        0.2500978974407441
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "_\n",
+      "bbox": [
+        10.799957275390625,
+        187.43994140625,
+        19.19169044494629,
+        189.60214233398438
+      ],
+      "bbox_norm": [
+        0.019946729511474134,
+        0.260073189346184,
+        0.035445645608763794,
+        0.2630732462554229
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": ".\nand cannot be read by the micro. The transfer is automatic during\nBlitter operation.\n",
+      "bbox": [
+        132.71995544433594,
+        182.39996337890625,
+        497.2872619628906,
+        205.9302978515625
+      ],
+      "bbox_norm": [
+        0.2451240300788427,
+        0.2530802125560073,
+        0.9184531244839196,
+        0.28572858561232817
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "-\nBLTCONO\nBlitter control register O\nBLTCON1\nBlitter control register 1\n",
+      "bbox": [
+        9.5999755859375,
+        217.91998291015625,
+        423.0623779296875,
+        240.73052978515625
+      ],
+      "bbox_norm": [
+        0.017730451282968133,
+        0.302364290943064,
+        0.781365203941448,
+        0.33401395766833364
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "These two control registers are used together to control Blitter op-\n~\nerations. There are 2 basic modes, area and line, which are selected\noo\nby bit O of BLTCON1, as shown below.\n_\n______ AREA MODE\n(“normal”)\n",
+      "bbox": [
+        10.319976806640625,
+        254.39996337890625,
+        503.64361572265625,
+        313.9360656738281
+      ],
+      "bbox_norm": [
+        0.019060240765563743,
+        0.35298031651699197,
+        0.9301928439931989,
+        0.43558674441552686
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "BIT#\nBLTCONO\nBLTCON1\n",
+      "bbox": [
+        250.07997131347656,
+        312.9599609375,
+        433.07025146484375,
+        322.8097839355469
+      ],
+      "bbox_norm": [
+        0.46187937755954744,
+        0.43423239768447147,
+        0.7998490128399959,
+        0.4478990413164462
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "15\nASH3\nBSH3\n~\n14\nASH2\nBSH2\n13\nASH1\nBSH1\n.\n12\nASAO\nBSHO\n11\nUSEA\nX\n~\n10\nUSEB\nX\n",
+      "bbox": [
+        10.079925537109375,
+        328.5599670410156,
+        516.9383544921875,
+        398.1690979003906
+      ],
+      "bbox_norm": [
+        0.01861688366514849,
+        0.4558774286779882,
+        0.954747252070888,
+        0.5524601982541736
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": ";\n09\nUSEC\nX\n",
+      "bbox": [
+        73.19992065429688,
+        400.7999572753906,
+        398.1599426269531,
+        412.81195068359375
+      ],
+      "bbox_norm": [
+        0.1351948883056871,
+        0.5561105194356907,
+        0.7353722311458533,
+        0.5727771776337206
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": ".\n08\nUSED\nX\n_\n07\nLF7\nX\n06\nLF6\nx\n05\nLF5\nX\n~\n04\nLF4\nEFE\n",
+      "bbox": [
+        10.3199462890625,
+        413.03997802734375,
+        409.67633056640625,
+        475.455078125
+      ],
+      "bbox_norm": [
+        0.019060184401833716,
+        0.573093565902423,
+        0.7566421555835094,
+        0.6596946074092441
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": ",\n03\nLF3\nIFE\n02\n+\n-\n LF2\nFC]\n01\nLF 1\nDESC\n_—\n00\nLFO\nLINE({= 0)\nASH3-0 _ Shift value of A source\nBSH3-0 — Shift value of B source\n_\nUSEA\nMode control bit to use Surce A\nUSEB\nMode control bit to use Source B\nUSEC\nMode control bit to use Source C\n~\nUSED\nMode control bit to use Destination D\nLF7-O\nLogic function minterm select lines\nEFE\nExclusive fill enable\nIFE\nInclusive fill enable\n~\nFCI\nFill carry input\nDESC\nDescending (decreasing address)\n",
+      "bbox": [
+        10.7999267578125,
+        472.55999755859375,
+        448.3055419921875,
+        655.9312744140625
+      ],
+      "bbox_norm": [
+        0.019946673147744103,
+        0.6556776789431412,
+        0.8279874777828267,
+        0.9101055903503611
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": ",\ncontrol bit\n—\nLINE\nLine mode control bit (set to 0)\n",
+      "bbox": [
+        1.43994140625,
+        657.5999755859375,
+        433.9103698730469,
+        679.6905517578125
+      ],
+      "bbox_norm": [
+        0.002659466237731166,
+        0.9124209156357795,
+        0.8014006499639892,
+        0.9430716219708957
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "201\n",
+      "bbox": [
+        270.9599304199219,
+        699.1199951171875,
+        286.02593994140625,
+        706.5674438476562
+      ],
+      "bbox_norm": [
+        0.5004431316454951,
+        0.9700300026862516,
+        0.5282689469778501,
+        0.9803633485531673
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

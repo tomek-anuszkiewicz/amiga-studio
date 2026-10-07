@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0154",
+  "page": 154,
+  "source_index": 153,
+  "prepared_index": 153,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "CIAA Address Map\n",
+      "bbox": [
+        87.5,
+        50.76393508911133,
+        173.1439666748047,
+        59.76393508911133
+      ],
+      "bbox_norm": [
+        0.14563187176268505,
+        0.06576661497640213,
+        0.28817462801448884,
+        0.07742645840163297
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Byte\nAddress\n",
+      "bbox": [
+        87.0,
+        70.56294250488281,
+        124.40401458740234,
+        89.61091613769531
+      ],
+      "bbox_norm": [
+        0.14479968963832687,
+        0.09141698458116652,
+        0.20705359427606607,
+        0.11609436126189085
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Register\n",
+      "bbox": [
+        135.5,
+        70.41194152832031,
+        178.2499542236328,
+        79.41194152832031
+      ],
+      "bbox_norm": [
+        0.2255213557010723,
+        0.09122135705408034,
+        0.29667285114514946,
+        0.10288120047931117
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Name\n",
+      "bbox": [
+        146.14999389648438,
+        80.36164855957031,
+        167.2909698486328,
+        89.36164855957031
+      ],
+      "bbox_norm": [
+        0.24324682479142876,
+        0.10411158217755737,
+        0.27843310934915777,
+        0.11577142560278819
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Data bits\n7\n6\n5\n4\n3\n2\n1\n0\n",
+      "bbox": [
+        194.9709930419922,
+        70.41194152832031,
+        396.82501220703125,
+        89.26191711425781
+      ],
+      "bbox_norm": [
+        0.32450275035582593,
+        0.09122135705408034,
+        0.6604613633138321,
+        0.11564221970979756
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "BFE001\npra\n/FIRl /FIRO /RDY /TKO /WPRO /CHNG /LED OVL\nBFE101\nprb\nParallel port\nBFE201\nddra\nDirection for port A (BFE001);1-output (set to 0x03)\nBFE301\nddrb\nDirection for port B (BFE101);l*output (can be in or out)\nBFE401\ntalo\nCIAA timer A low byte (.715909 Mhz NTSC; .709379 Mhz PAL)\nBFE501\ntahi\nCIAA timer A high byte\nBFE601\ntblo\nCIAA timer B low byte (.715909 Mhz NTSC; .709379 Mhz PAL)\nBFE701\ntbhi\nCIAA timer B high byte\nBFE801\ntodlo\n50/60 Hz event counter bits 7-0 (VSync or line tick)\nBFE901\ntodmid\n50/60 Hz event counter bits 15-8\nBFEA01\ntodhi\n50/60 Hz event counter bits 23-16\nBFEB01\nnot used\nBFEC01\nsdr\nCIAA serial data register (connected to keyboard)\nBFED01\nicr\nCIAA interrupt control register\nBFEE01\nera\nCIAA control register A\nBFEF01\nerb\nCIAA control register B\n",
+      "bbox": [
+        87.06500244140625,
+        100.16090393066406,
+        487.9714660644531,
+        257.9518127441406
+      ],
+      "bbox_norm": [
+        0.14490787737788272,
+        0.12976227301790333,
+        0.8121622625114041,
+        0.3341864164279046
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Note: CIAA can generate interrupt INT2.\n",
+      "bbox": [
+        86.97402954101562,
+        268.5508117675781,
+        300.53485107421875,
+        277.5508117675781
+      ],
+      "bbox_norm": [
+        0.14475646533487052,
+        0.34791782410317745,
+        0.5001994616212375,
+        0.3595776675284083
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "CIAB Address Map\n",
+      "bbox": [
+        87.07398986816406,
+        298.3998107910156,
+        172.87095642089844,
+        307.3998107910156
+      ],
+      "bbox_norm": [
+        0.14492283572966635,
+        0.3865883413268607,
+        0.2877202395083543,
+        0.3982481847520915
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Byte \nRegister \nData bits\nAddress\nName\n7 \n6 \n5 \n4 \n3 \n2\n1\n0\n",
+      "bbox": [
+        86.62399291992188,
+        318.34881591796875,
+        431.6169128417969,
+        337.2984313964844
+      ],
+      "bbox_norm": [
+        0.14417387689698058,
+        0.41243303869012743,
+        0.7183677588752294,
+        0.4369829886287744
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "BFD000\npra\n/DTR /RTS /CD \n/CTS /DSR \nSEL\nPOUT\nBUSY\nBFD100\nprb\n/MTR /SEL3 /SEL2 /SEL1 /SEL0 /SIDE DIR\n/STEP\nBFD200\nddra\nDirection for Port A (BFD000);1 - output\n(set to OxFF)\nBFD300\nddrb\nDirection for Port B (BFD100);1 - output\n(set to OxFF)\nBFD400\ntalo\nCIAB timer A low byte (.715909 Mhz NTSC;\n.709379 Mhz PAL)\nBFD500\ntahi\nCIAB timer A high byte\nBFD600\ntblo\nCIAB timer B low byte (.715909 Mhz NTSC;\n.709379 Mhz PAL)\nBFD700\ntbhi\nCIAB timer B high byte\nBFD800\ntodlo\nHorizontal sync event counter bits 7-0\nBFD900\ntodmid\nHorizontal sync event counter bits 15-8\nBFDA00\ntodhi\nHorizontal sync event counter bits 23-16\nBFDB00\nnot used\nBFDC00\nsdr\nCIAB serial data register (unused)\nBFDD00\nicr\nCIAB interrupt control register\nBFDE00\nera\nCIAB Control register A\nBFDF00\nerb\nCIAB Control register B\n",
+      "bbox": [
+        86.86197662353516,
+        348.1974182128906,
+        488.1639404296875,
+        505.7365417480469
+      ],
+      "bbox_norm": [
+        0.14456996846505166,
+        0.45110304193688017,
+        0.8124826099636946,
+        0.6552009879111045
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Note: CIAB can generate INT6.\n",
+      "bbox": [
+        86.86197662353516,
+        516.6854858398438,
+        246.8548583984375,
+        525.6854858398438
+      ],
+      "bbox_norm": [
+        0.14456996846505166,
+        0.6693857627757664,
+        0.4108564009403089,
+        0.6810456062009972
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "318 Appendix F\n",
+      "bbox": [
+        87.94999694824219,
+        713.3150634765625,
+        160.9879913330078,
+        723.8150634765625
+      ],
+      "bbox_norm": [
+        0.14638083059537085,
+        0.9241268836661453,
+        0.26794265724732397,
+        0.9377300343289146
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

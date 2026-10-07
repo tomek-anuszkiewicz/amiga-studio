@@ -1,0 +1,163 @@
+{
+  "page": 104,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Do not read, write, or use any currently undefined address ranges. The current and future usage of such areas is reserved by Commodore and is definitely subject to change.",
+      "bbox": [
+        356,
+        243,
+        2156,
+        341
+      ],
+      "segment_id": "page_0104_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "If you are using the system libraries, devices, and resources, you must follow the defined interface. Assembler programmers (and compiler writers) must enter functions through the library base jump tables, with arguments passed as longs and library base address in A6. Results returned in D0 must be tested, and the contents of D0-D1/A0-A1 must be assumed gone after a system call.",
+      "bbox": [
+        356,
+        403,
+        2156,
+        659
+      ],
+      "segment_id": "page_0104_seg_002"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        1185,
+        722,
+        1311,
+        767
+      ],
+      "segment_id": "page_0104_seg_003"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The assembler TAS instruction should not be used in any Amiga program. The TAS instruction assumes an indivisible read-modify-write but this can be defeated by system DMA. Instead use BSET and BCLR. These instructions perform a test and set operation which cannot be interrupted.",
+      "bbox": [
+        458,
+        801,
+        2054,
+        1006
+      ],
+      "segment_id": "page_0104_seg_004"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "TAS is only needed for a multiple CPU system. On a single CPU system, the BSET and BCLR instructions are identical to TAS, as the 68000 does not interrupt instructions in the middle. BSET and BCLR first test, then set bits.",
+      "bbox": [
+        458,
+        1041,
+        2052,
+        1191
+      ],
+      "segment_id": "page_0104_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Do not use assembler instructions which are privileged on any 68000 family processor, most notably MOVE SR,<ea> which is privileged on the 68010/20/30. Use the Exec function GetCC() instead of MOVE SR, or use the appropriate non-privileged instruction as shown below:",
+      "bbox": [
+        356,
+        1254,
+        2155,
+        1407
+      ],
+      "segment_id": "page_0104_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        674,
+        1537,
+        1827,
+        1709
+      ],
+      "segment_id": "page_0104_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "All addresses must be 32 bits. Do not use the upper 8 bits for other data, and do not use signed variables or signed math for addresses. Do not execute code on your stack or use self-modifying code since such code can be defeated by the caching capabilities of some 68xxx processors. And never use processor or clock speed dependent software loops for timing delays. See Appendix F for information on using an 8520 timer for delays.",
+      "bbox": [
+        356,
+        1795,
+        2157,
+        2052
+      ],
+      "segment_id": "page_0104_seg_008"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        1186,
+        2115,
+        1313,
+        2160
+      ],
+      "segment_id": "page_0104_seg_009"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "When strobing any register which responds to either a read or a write, (for example copjmp2) be sure to use a MOVE.W #$00, not CLR.W. The CLR instruction causes a read and a clear (two accesses) on a 68000, but only a single access on 68020 and above. This will give different results on different processors.",
+      "bbox": [
+        459,
+        2193,
+        2055,
+        2400
+      ],
+      "segment_id": "page_0104_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "If you are programming at the hardware level, you must follow hardware interfacing specifications. All hardware is NOT the same. Do not assume that low level hacks for speed or copy protection will work on all drives, or all keyboards, or all systems, or future systems. Test your software on many different systems, with different processors, OS, hardware, and RAM configurations.",
+      "bbox": [
+        358,
+        2462,
+        2160,
+        2721
+      ],
+      "segment_id": "page_0104_seg_011"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "10 Introduction",
+      "bbox": [
+        365,
+        2980,
+        653,
+        3025
+      ],
+      "segment_id": "page_0104_seg_012"
+    }
+  ]
+}

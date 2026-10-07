@@ -1,0 +1,163 @@
+{
+  "page": 64,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "EXTRA KEYS ON THE KEYBOARD",
+      "bbox": [
+        140,
+        309,
+        672,
+        422
+      ],
+      "segment_id": "page_0064_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Both the Amiga 2000 and 500 feature 94-key keyboards, as compared to the A1000's 89-key keyboard. (The European versions of the keyboards have 96 keys.) The new keys are all located on the numeric keypad, and include:",
+      "bbox": [
+        788,
+        307,
+        2031,
+        504
+      ],
+      "segment_id": "page_0064_seg_002"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        986,
+        557,
+        1926,
+        852
+      ],
+      "segment_id": "page_0064_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "In PC mode on the Amiga 2000 (using a Bridgeboard), these keys assume typical PC functions, including Number lock (left parenthesis), Print screen (asterisk) and Scroll lock (right parenthesis).",
+      "bbox": [
+        789,
+        909,
+        2013,
+        1057
+      ],
+      "segment_id": "page_0064_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "On some keyboards, the left Amiga key has been replaced by the Commodore key. This key performs identically in either case.",
+      "bbox": [
+        790,
+        1111,
+        1983,
+        1208
+      ],
+      "segment_id": "page_0064_seg_005"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Keyboard Layout Showing Raw Key Codes",
+      "bbox": [
+        790,
+        1353,
+        1874,
+        1420
+      ],
+      "segment_id": "page_0064_seg_006"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "RAW KEY CODES ON THE KEYBOARD",
+      "bbox": [
+        141,
+        1364,
+        662,
+        1479
+      ],
+      "segment_id": "page_0064_seg_007"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        142,
+        1560,
+        2071,
+        2121
+      ],
+      "segment_id": "page_0064_seg_008"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 1.1 Key Codes",
+      "bbox": [
+        885,
+        2201,
+        1282,
+        2251
+      ],
+      "segment_id": "page_0064_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**Note:** On the U.S. keyboard, the keys with codes 44 and 60 are extended to include the European keys with codes 2B and 30, respectively. Also note that England uses the U.S. rather than the European keyboard, but not the U.S. keymap.",
+      "bbox": [
+        789,
+        2349,
+        2040,
+        2553
+      ],
+      "segment_id": "page_0064_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "See Table 1-1 at the end of this section for a table of the raw key codes.",
+      "bbox": [
+        795,
+        2707,
+        2005,
+        2801
+      ],
+      "segment_id": "page_0064_seg_011"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2",
+      "bbox": [
+        1073,
+        2917,
+        1103,
+        2954
+      ],
+      "segment_id": "page_0064_seg_012"
+    }
+  ]
+}

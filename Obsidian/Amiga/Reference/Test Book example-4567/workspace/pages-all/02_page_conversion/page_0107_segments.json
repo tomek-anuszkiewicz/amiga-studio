@@ -1,0 +1,111 @@
+{
+  "page": 107,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 1,
+      "md_text": "COMPLETE SAMPLE COPPER LIST",
+      "bbox": [
+        360,
+        350,
+        1134,
+        396
+      ],
+      "segment_id": "page_0107_seg_001"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following example shows a complete Copper list. This list is for two bit-planes—one at $21000 and one at $25000. At the top of the screen, the color registers are loaded with the following values:",
+      "bbox": [
+        358,
+        489,
+        2157,
+        640
+      ],
+      "segment_id": "page_0107_seg_002"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        1061,
+        725,
+        1442,
+        1041
+      ],
+      "segment_id": "page_0107_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "At line 150 on the screen, the color registers are reloaded:",
+      "bbox": [
+        360,
+        1128,
+        1410,
+        1173
+      ],
+      "segment_id": "page_0107_seg_004"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        1041,
+        1260,
+        1465,
+        1576
+      ],
+      "segment_id": "page_0107_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The complete Copper list follows.",
+      "bbox": [
+        359,
+        1663,
+        980,
+        1708
+      ],
+      "segment_id": "page_0107_seg_006"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\n;\n; Notes:\n;       1. Copper lists must be in CHIP ram.\n;       2. Bitplane addresses used in the example are arbitrary.\n;       3. Destination register addresses in copper move instructions\n;          are offsets from the base address of the custom chips.\n;       4. As always, hardware manual examples assume that your\n;          application has taken full control of the hardware,\n;          and is not conflicting with operating system use of\n;          the same hardware.\n;       5. Many of the examples just pick memory addresses to\n;          be used.  Normally you would need to allocate the\n;          required type of memory from the system with AllocMem()\n;       6. As stated earlier, the code examples are mainly to help\n;          clarify the way the hardware works.\n;       7. The following INCLUDES are required by all example code\n;          in this chapter.\n;\n\n        INCLUDE \"exec/types.i\"\n        INCLUDE \"hardware/custom.i\"\n        INCLUDE \"hardware/dmabits.i\"\n        INCLUDE \"hardware/hw_examples.i\"\n```",
+      "bbox": [
+        360,
+        1770,
+        1902,
+        2710
+      ],
+      "segment_id": "page_0107_seg_007"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "24 Coprocessor Hardware",
+      "bbox": [
+        365,
+        2972,
+        850,
+        3017
+      ],
+      "segment_id": "page_0107_seg_008"
+    }
+  ]
+}

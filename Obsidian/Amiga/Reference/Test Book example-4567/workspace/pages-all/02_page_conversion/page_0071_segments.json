@@ -1,0 +1,111 @@
+{
+  "page": 71,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "requirement is because the eight megabyte space reserved for expansion in the current machine begins at hex 200000 (See auto-config notes below).",
+      "bbox": [
+        821,
+        296,
+        2065,
+        439
+      ],
+      "segment_id": "page_0071_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Auto-Config Notes",
+      "bbox": [
+        821,
+        499,
+        1194,
+        544
+      ],
+      "segment_id": "page_0071_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "1) There is currently no provision for 6MB PICs. Designers of 8 MB memory boards should consider auto-configs as two PICs to allow partial loading flexibility.\n\n2) PIC size/alignment rules are subject to change. If so, bit(s) will be defined to allow a PIC to specify that it is more flexible than the old rules require.\n\n3) The address map is subject to change. A PIC should assume that it may be placed anywhere in the address space.\n\n4) All expansion devices are strongly encouraged to use the auto-config protocols. Assignment of fixed I/O addresses is subject to negotiation.",
+      "bbox": [
+        816,
+        596,
+        2070,
+        1220
+      ],
+      "segment_id": "page_0071_seg_003"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Address Specification Table",
+      "bbox": [
+        156,
+        1273,
+        717,
+        1318
+      ],
+      "segment_id": "page_0071_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**All nibbles except 00, 02, 40 and 42 should be inverted.**",
+      "bbox": [
+        156,
+        1374,
+        1277,
+        1421
+      ],
+      "segment_id": "page_0071_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Descriptions:",
+      "bbox": [
+        158,
+        1474,
+        396,
+        1519
+      ],
+      "segment_id": "page_0071_seg_006"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        158,
+        1572,
+        1963,
+        2814
+      ],
+      "segment_id": "page_0071_seg_007"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "26",
+      "bbox": [
+        1071,
+        2902,
+        1124,
+        2938
+      ],
+      "segment_id": "page_0071_seg_008"
+    }
+  ]
+}

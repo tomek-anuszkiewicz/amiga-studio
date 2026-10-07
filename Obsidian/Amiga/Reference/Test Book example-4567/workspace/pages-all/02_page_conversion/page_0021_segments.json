@@ -1,0 +1,85 @@
+{
+  "page": 21,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        444,
+        239,
+        1547,
+        2338
+      ],
+      "segment_id": "page_0021_seg_001"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2",
+      "bbox": [
+        1920,
+        482,
+        2082,
+        586
+      ],
+      "segment_id": "page_0021_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 2-6. Data Organization in Memory",
+      "bbox": [
+        612,
+        2393,
+        1384,
+        2437
+      ],
+      "segment_id": "page_0021_seg_003"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        198,
+        2513,
+        393,
+        2543
+      ],
+      "segment_id": "page_0021_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 8-/16-/32-BIT MICROPROCESSOR USER’S MANUAL",
+      "bbox": [
+        525,
+        2512,
+        1477,
+        2543
+      ],
+      "segment_id": "page_0021_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2-7",
+      "bbox": [
+        1753,
+        2514,
+        1805,
+        2543
+      ],
+      "segment_id": "page_0021_seg_006"
+    }
+  ]
+}

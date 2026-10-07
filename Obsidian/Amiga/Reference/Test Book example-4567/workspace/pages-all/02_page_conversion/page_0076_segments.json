@@ -1,0 +1,46 @@
+{
+  "page": 76,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "TABLE 3-2",
+      "bbox": [
+        246,
+        328,
+        513,
+        375
+      ],
+      "segment_id": "page_0076_seg_001"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nPAL16L8\nSTEERING15OR17 REV3\n11-17-85\nAMIGA\n\n/SLVOUT RD /ASQ /ASQ90 COLLIS /BG /AS /BGACK /DMAIN GND\n/OWN /AOE /UDS /BERR /DMAOUT /LDS /DBOE /RES /D2P VCC\n\nDBOE    = AS * /RD      * /BERR +        ;DATA DRIVERS DURING WRITE CYCLE\n          UDS * RD * ASQ * /BERR +      ;TURN ON DRIVERS LATE FOR RD\n          LDS * RD * ASQ * /BERR        ;UDS AND LDS PROTECT RD MOD WR\n                                       ;TO AVOID TRI__STATE FIGHT\nD2P     = /DMAOUT * SLVOUT * RD +       ;DOWNSTREAM READS UPSTREAM SLAVE\n          DMAOUT * /SLVOUT * /RD +      ;UPSTREAM WRITES DOWNSTREAM SLAVE\n          DMAOUT * SLVOUT               ;MASTER AND SLAVE ARE UPSTREAM\n\nAOE     = BGACK          +\n          /BG * /DMAOUT +\n          AS             +             ;AS KEEPS ADDR WHEN /BG DROPS\n          ASQ90                        ;ASQ90 MAINTAINS VALID ADDR ON\n                                       ; LAST PROC CYCLE\n\nDMAOUT  = DMAIN + OWN\n\nIF (/RES * COLLIS) BERR = VCC\n\nDESCRIPTION\n\nSLVOUT = SLAVEOUT,ASQ = AS DELAYED,ASQ90 = AS CLKD ON LOW EDGE OF 7M,\nBG = BUS GRANT,OWN = LOCAL OWN\nCOLLIS = BUS COLLISION,AOE = ADDR OUTPUT EN,DOE = DATA OE\nRES = RESET,D2P = DATA TO PROCESSOR\nUDS LDS PROTECT AGAINST RDMODIFYWRITE 3STFIGHT & BERR = /DOE\n```",
+      "bbox": [
+        246,
+        440,
+        2015,
+        2028
+      ],
+      "segment_id": "page_0076_seg_002"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "41",
+      "bbox": [
+        1167,
+        2927,
+        1212,
+        2961
+      ],
+      "segment_id": "page_0076_seg_003"
+    }
+  ]
+}

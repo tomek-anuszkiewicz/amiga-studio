@@ -1,0 +1,150 @@
+{
+  "page": 121,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "For a typical output at volume 64, with maximum data values of -128 to 127, the voltage output is between +.4 volts and -.4 volts. Some volume levels and the corresponding decibel values are shown in Table 5-2.",
+      "bbox": [
+        357,
+        240,
+        2159,
+        391
+      ],
+      "segment_id": "page_0121_seg_001"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 5-2: Volume Values",
+      "bbox": [
+        1008,
+        455,
+        1494,
+        500
+      ],
+      "segment_id": "page_0121_seg_002"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        720,
+        586,
+        1782,
+        954
+      ],
+      "segment_id": "page_0121_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "For any volume setting from 64 to 0, you write the value into bits 5-0 of AUD0VOL. For example:",
+      "bbox": [
+        358,
+        1042,
+        2148,
+        1140
+      ],
+      "segment_id": "page_0121_seg_004"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nSETAUD0VOLUME:\n       LEA     CUSTOM,a0\n       MOVE.W  #48,AUD0VOL(a0)\n```",
+      "bbox": [
+        360,
+        1200,
+        1043,
+        1313
+      ],
+      "segment_id": "page_0121_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The decibels are shown as negative values from a maximum of 0 because this is the way a recording device, such as a tape recorder, shows the recording level. Usually, the recorder has a dial showing 0 as the optimum recording level. Anything less than the optimum value is shown as a minus quantity.",
+      "bbox": [
+        357,
+        1380,
+        2156,
+        1586
+      ],
+      "segment_id": "page_0121_seg_006"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "SELECTING THE DATA OUTPUT RATE",
+      "bbox": [
+        359,
+        1707,
+        1210,
+        1751
+      ],
+      "segment_id": "page_0121_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The pitch of the sound produced by the waveform depends upon its frequency. To tell the system what frequency to use, you need to specify the sampling period. The sampling period specifies the number of system clock ticks, or timing intervals, that should elapse between each sample (byte of audio data) fed to the digital-to-analog converter in the audio channel. There is a period register for each audio channel. The value of the period register is used for count-down purposes; each time the register counts down to 0, another sample is retrieved from the waveform data set for output. In units, the period value represents clock ticks per sample. The minimum period value you should use is 124 ticks per sample NTSC (123 PAL) and the maximum is 65535. These limits apply to both PAL and NTSC machines. For high-quality sound, there are other constraints on the sampling period (see the section called “Producing High-quality Sound”).",
+      "bbox": [
+        356,
+        1844,
+        2156,
+        2373
+      ],
+      "segment_id": "page_0121_seg_008"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        1185,
+        2434,
+        1311,
+        2479
+      ],
+      "segment_id": "page_0121_seg_009"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "A low period value corresponds to a higher frequency sound and a high period value corresponds to a lower frequency sound.",
+      "bbox": [
+        460,
+        2513,
+        2052,
+        2611
+      ],
+      "segment_id": "page_0121_seg_010"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Audio Hardware 137",
+      "bbox": [
+        1751,
+        2980,
+        2144,
+        3025
+      ],
+      "segment_id": "page_0121_seg_011"
+    }
+  ]
+}

@@ -1,0 +1,367 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0083",
+  "page": 83,
+  "source_index": 82,
+  "prepared_index": 82,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "_\nSection 4.3\na\n",
+      "bbox": [
+        10.319999694824219,
+        46.3199462890625,
+        507.1680603027344,
+        78.24910736083984
+      ],
+      "bbox_norm": [
+        0.019060283038361266,
+        0.06426899235756346,
+        0.936702234810623,
+        0.10857074944725208
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Janus.Library\n",
+      "bbox": [
+        54.720008850097656,
+        85.43994140625,
+        167.6331024169922,
+        103.93846130371094
+      ],
+      "bbox_norm": [
+        0.101063845677009,
+        0.11854804206812239,
+        0.30960605359987814,
+        0.14421476513590975
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "PREFACE\nThis is a brief description of the janus code. This code supports low\nlevel access to the “janus” system — the link between a PC and an\n",
+      "bbox": [
+        55.440006256103516,
+        148.0799560546875,
+        505.9524230957031,
+        172.09219360351562
+      ],
+      "bbox_norm": [
+        0.10239362811413835,
+        0.20546115283890723,
+        0.9344570419886116,
+        0.23877816710923763
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "_\nAmiga.\n",
+      "bbox": [
+        10.32000732421875,
+        174.0,
+        240.20877075195312,
+        190.08187866210938
+      ],
+      "bbox_norm": [
+        0.019060297129293774,
+        0.24142525123904623,
+        0.4436479936259385,
+        0.26373888110338883
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "-\nTHE PUBLIC ROUTINES\n@ AllocJanusMem\n@ CheckJanusint\nContents\n@ CleanupJanusSig\n=\n@ FreeJanusMem\n@ GetJanusstart\n@ GetParamOffset\ne JBCopy\n~\n@ JanusLock\n@ JanusMemBase\n",
+      "bbox": [
+        10.32000732421875,
+        222.23995971679688,
+        335.9941101074219,
+        327.6091003417969
+      ],
+      "bbox_norm": [
+        0.019060297129293774,
+        0.30835826499990343,
+        0.6205564948884297,
+        0.45455809975986333
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "e@ JanusMemToOffset\n",
+      "bbox": [
+        253.6800537109375,
+        330.719970703125,
+        350.5343322753906,
+        340.0893249511719
+      ],
+      "bbox_norm": [
+        0.4685284658818506,
+        0.4588744368779998,
+        0.6474112195160994,
+        0.4718744294255995
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "—\n@ JanusMemType\n@ JanusUnLock\n@ SendJanusint\n",
+      "bbox": [
+        11.040054321289062,
+        343.1999816894531,
+        332.7934875488281,
+        376.56884765625
+      ],
+      "bbox_norm": [
+        0.020390171157484434,
+        0.47619047014144994,
+        0.614645179610353,
+        0.5224898198517718
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "_\n@ SetJanusEnable\n@ SetJanusHandler\n",
+      "bbox": [
+        10.320068359375,
+        379.4399719238281,
+        339.0898742675781,
+        399.6083679199219
+      ],
+      "bbox_norm": [
+        0.019060409856753835,
+        0.5264735089186601,
+        0.6262741443901236,
+        0.5544571874844388
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "e@ SetJanusRequest\n@ SetParamOffset\na\ne@ SetupJanussig\n",
+      "bbox": [
+        11.040054321289062,
+        403.1999816894531,
+        339.97198486328125,
+        438.0107727050781
+      ],
+      "bbox_norm": [
+        0.020390171157484434,
+        0.5594405567756038,
+        0.6279033380066381,
+        0.607740579573174
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Descriptions\nThe code is packaged as a library (specifically “janus.library”’), which\nis loaded during Autoconfig procedure.\n",
+      "bbox": [
+        58.320068359375,
+        473.03997802734375,
+        509.6400146484375,
+        497.53125
+      ],
+      "bbox_norm": [
+        0.10771289172651462,
+        0.6563436525365769,
+        0.9412677533067755,
+        0.6903253277616479
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "~\nAll routines that return a value return it in DO. There is a link library\nfor C routines, “jlib.lib”.\n",
+      "bbox": [
+        11.040069580078125,
+        509.0399475097656,
+        511.4208679199219,
+        533.530029296875
+      ],
+      "bbox_norm": [
+        0.02039019933934945,
+        0.7062936621738855,
+        0.9445568587726708,
+        0.7402736860147917
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "_\noldHandler = SetJanusHandler( jintnum,\nintserver\n)\nDO\nAl\n",
+      "bbox": [
+        11.760101318359375,
+        545.0399780273438,
+        480.7104797363281,
+        565.4486083984375
+      ],
+      "bbox_norm": [
+        0.02172004518567509,
+        0.7562437564975616,
+        0.887837022696434,
+        0.7845607606055278
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "_\nThis routine sets up an interrupt handler for a particularjanus inter-\n",
+      "bbox": [
+        11.52008056640625,
+        580.3199462890625,
+        510.048095703125,
+        597.1221313476562
+      ],
+      "bbox_norm": [
+        0.021276744448989866,
+        0.805194763401533,
+        0.9420214491047354,
+        0.8285078194310499
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": ",\nrupt. The old interrupt is returned. A null means that there is no in-\nterrupt handler. If there is no interrupt handler then interrupts not\nwill be processed for thatjintnum.\n",
+      "bbox": [
+        179.28009033203125,
+        592.5599975585938,
+        511.14013671875,
+        630.0112915039062
+      ],
+      "bbox_norm": [
+        0.3311171866201974,
+        0.822177852211449,
+        0.9440383688201256,
+        0.8741415766365894
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "oldEnable = SetJanusEnable({ jintnum, newvalue )\n",
+      "bbox": [
+        215.5200653076172,
+        640.7999267578125,
+        462.00006103515625,
+        652.3314819335938
+      ],
+      "bbox_norm": [
+        0.39804976421360816,
+        0.8891108236291225,
+        0.8532802507239076,
+        0.905110873085961
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "bo\nDi\n",
+      "bbox": [
+        378.9600524902344,
+        653.0399780273438,
+        434.13128662109375,
+        661.9288330078125
+      ],
+      "bbox_norm": [
+        0.699911441307377,
+        0.9060939124390385,
+        0.8018086670056758,
+        0.9184272115590794
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "131\n",
+      "bbox": [
+        278.1600646972656,
+        699.3599853515625,
+        291.5232849121094,
+        707.0476684570312
+      ],
+      "bbox_norm": [
+        0.5137412519263714,
+        0.9703629894829694,
+        0.5384221402142475,
+        0.9810296608920727
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

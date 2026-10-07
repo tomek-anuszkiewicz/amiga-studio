@@ -1,0 +1,85 @@
+{
+  "page": 23,
+  "image_width": 2100,
+  "image_height": 2704,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 2-2. Instruction Set Summary (Sheet 1 of 4)",
+      "bbox": [
+        535,
+        233,
+        1474,
+        275
+      ],
+      "segment_id": "page_0023_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        200,
+        292,
+        1809,
+        2251
+      ],
+      "segment_id": "page_0023_seg_002"
+    },
+    {
+      "type": "thumb_index",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2",
+      "bbox": [
+        1920,
+        490,
+        2087,
+        595
+      ],
+      "segment_id": "page_0023_seg_003"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        202,
+        2513,
+        397,
+        2543
+      ],
+      "segment_id": "page_0023_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 8-/16-/32-BIT MICROPROCESSOR USER’S MANUAL",
+      "bbox": [
+        530,
+        2513,
+        1480,
+        2543
+      ],
+      "segment_id": "page_0023_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "2-11",
+      "bbox": [
+        1735,
+        2515,
+        1805,
+        2544
+      ],
+      "segment_id": "page_0023_seg_006"
+    }
+  ]
+}

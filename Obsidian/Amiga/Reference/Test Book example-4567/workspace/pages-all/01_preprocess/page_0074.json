@@ -1,0 +1,231 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0074",
+  "page": 74,
+  "source_index": 73,
+  "prepared_index": 73,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "2000 SYSTEM BUS\nThe following numbers and notations are used for standard load and\nLOADING\ndrive values:\n",
+      "bbox": [
+        55.91999816894531,
+        73.91998291015625,
+        510.33001708984375,
+        103.93437957763672
+      ],
+      "bbox_norm": [
+        0.1032801379964475,
+        0.1025640830210947,
+        0.9425421372427517,
+        0.14420910173508816
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "From A2000\nTo A2000\nType\n(IC input load)\n(IC output drive)\n_\nF-Driver TIL\nFD\n20pA\n@27V fd\n20V@—-—15mA\n— 1.6mA @ 0.5V\n0.5V @ 64mA\n-\nF-Series TTL\nF\n2OpA\n=69@ 2.7V f\n2.7V @ —1imA\n",
+      "bbox": [
+        10.79998779296875,
+        108.9599609375,
+        505.6287536621094,
+        173.77122497558594
+      ],
+      "bbox_norm": [
+        0.019946785875204164,
+        0.1511821031283483,
+        0.9338592482679144,
+        0.2411078255623429
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "_\n—0.6mA @ 0.5V\n0.5V @ 20mA\nLS-Driver TTL\nLSD\n20pA\n@2.7V\nIsd\n20V@—-15mA\n—0.4mA @ 0.4V\n0.5V @ 24mA\nLS-Series TTL\nLS\n20pA\n8 @2.7V\nIs\n2.7V @ —400pA\n.\n~\n—0.AmA @ 0.4V\n0.5V @ 8mA\nMOS\nMOS\n10nA\n@2AV mos\n24V@ —Z2O0QpA\n—10pA @ 04V\n0.4V @ 3.2mA\n-\nOpen Collector\noc\nFROM RESISTOR\n0.5V @ 8mA\n",
+      "bbox": [
+        10.079986572265625,
+        174.719970703125,
+        540.4584350585938,
+        281.0493469238281
+      ],
+      "bbox_norm": [
+        0.01861699639260855,
+        0.24242421162919972,
+        0.9981871169873181,
+        0.3899563746646843
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Any lesser input load can be used ona signal in place of a greater\n~\nload or equivalent load. Varying the number of load elements while\nstill meeting the DC loading criteria can be done if necessary, but it is\nnot a good idea, as it can still exceed the expected capacitive loading\ncm\non the signal.\n",
+      "bbox": [
+        9.119964599609375,
+        294.47998046875,
+        511.9176025390625,
+        359.0531921386719
+      ],
+      "bbox_norm": [
+        0.016843906173327712,
+        0.40859139810078965,
+        0.9454742912063676,
+        0.49818682253023217
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "A final type of drive is the open collector (oc). Some PIC outputs\n",
+      "bbox": [
+        214.07997131347656,
+        368.15997314453125,
+        496.1999206542969,
+        380.1719665527344
+      ],
+      "bbox_norm": [
+        0.39539001615722685,
+        0.5108224943251665,
+        0.9164448847829539,
+        0.5274891525231964
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "~\nmust be open collector, as they are in a wired-or configuration with\nthe same output from other PICs or motherboard signals.\n",
+      "bbox": [
+        10.799957275390625,
+        379.91998291015625,
+        510.8111267089844,
+        403.2112731933594
+      ],
+      "bbox_norm": [
+        0.019946729511474134,
+        0.5271395248552795,
+        0.9434307114466732,
+        0.5594562237535776
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Most of the system bus signals provide a standard drive to their re-\n—_\nspective connectors. If your drivers can meet the input specification,\ndon't worry about what is actually required. However, even if your\nloading doesn't exceed the specified drive capacity of slot signal men-\n~\ntioned above, consult the following chart for specific signals that may\nprovide less drive than a standard signal of that type. Signals that\nmatch the STANDARD loading are not separately listed.\n",
+      "bbox": [
+        10.79998779296875,
+        415.6799621582031,
+        511.55999755859375,
+        498.25079345703125
+      ],
+      "bbox_norm": [
+        0.019946785875204164,
+        0.5767565476958703,
+        0.9448138210178771,
+        0.6913236953472294
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": ";\nNamed\nExpansion\nCoprocessor\nVideo\nSignals\nDIR\nSlots (each)\nSlot\nSlot\n=\nSTANDARD\nI\n2F\n1F\n1F\n|\nSTANDARD\n0\n10f\n10f\n10f\n/DTACK\n|\n1F\niF\n~\n6)\n10f\n10f\n/OVR\n0\noc\noc\nXRDY\nO\noc\noc\n|\n/INT2\n0\noc\noc\n_\n/INT6\n0)\noc\noc\n/EINT 1\n0\noc\n/EINT4\n0\noc\n—\n/EINTS\n0\noc\n.\n",
+      "bbox": [
+        11.51995849609375,
+        515.5199584960938,
+        540.9263916015625,
+        678.252685546875
+      ],
+      "bbox_norm": [
+        0.021276518994069748,
+        0.7152846867739202,
+        0.9990513984235967,
+        0.9410765805270812
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "39\n",
+      "bbox": [
+        275.2800598144531,
+        702.239990234375,
+        286.2624816894531,
+        709.9276733398438
+      ],
+      "bbox_norm": [
+        0.5084220939959889,
+        0.9743590004163182,
+        0.5287058222493118,
+        0.9850256718254214
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

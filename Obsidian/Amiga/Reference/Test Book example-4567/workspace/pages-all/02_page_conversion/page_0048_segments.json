@@ -1,0 +1,111 @@
+{
+  "page": 48,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        29,
+        36,
+        288,
+        131
+      ],
+      "segment_id": "page_0048_seg_001"
+    },
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Instruction Set Summary",
+      "bbox": [
+        262,
+        93,
+        756,
+        152
+      ],
+      "segment_id": "page_0048_seg_002"
+    },
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        490,
+        357,
+        2050,
+        2483
+      ],
+      "segment_id": "page_0048_seg_003"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 3-2. Rounding Algorithm Flowchart",
+      "bbox": [
+        762,
+        2521,
+        1763,
+        2591
+      ],
+      "segment_id": "page_0048_seg_004"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The three additional bits beyond the extended-precision format, the difference between the intermediate result’s 67-bit mantissa and the storing result’s 64-bit mantissa, allow the FPU to perform all calculations as though it were performing calculations using a float engine with infinite bit prec The result is always correct for the specified destination’s data format before performing rounding (unless an overflow or underflow error occurs). The specified rounding operation then produces a number that is as close as possible to the infinitely precise",
+      "bbox": [
+        262,
+        2637,
+        2265,
+        2999
+      ],
+      "segment_id": "page_0048_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "3-26",
+      "bbox": [
+        262,
+        3109,
+        347,
+        3168
+      ],
+      "segment_id": "page_0048_seg_006"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        690,
+        3109,
+        1836,
+        3168
+      ],
+      "segment_id": "page_0048_seg_007"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        2021,
+        3109,
+        2263,
+        3168
+      ],
+      "segment_id": "page_0048_seg_008"
+    }
+  ]
+}

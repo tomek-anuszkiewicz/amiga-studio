@@ -1,0 +1,85 @@
+{
+  "page": 156,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nBoard Offset\n($00/02)    7  6  5  4   3  2  1  0   Description of nibbles\nR/W info   \\___ ___/    \\___ ___/\n               \\/          \\/\n     Nibble at $E80000  Nibble at $E80002\n```",
+      "bbox": [
+        355,
+        224,
+        1700,
+        427
+      ],
+      "segment_id": "page_0156_seg_001"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure G-1: How to read the Address Specification Table",
+      "bbox": [
+        728,
+        531,
+        1775,
+        577
+      ],
+      "segment_id": "page_0156_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**NOTE**\n\nThe bit numbering (7 6 5 4 3 2 1 0) is for use when two nibbles are to be interpreted together as a byte. Physically, each nibble is the high nibble of the word at its address (ie. bits 15 14 13 12).",
+      "bbox": [
+        458,
+        690,
+        2053,
+        925
+      ],
+      "segment_id": "page_0156_seg_003"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table G-1: Address Specification Table",
+      "bbox": [
+        888,
+        1040,
+        1616,
+        1086
+      ],
+      "segment_id": "page_0156_seg_004"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nOFFSET:         Address 1    Address 2                 Description\n===========================================================================\n\n($00/02)        7  6  5  4   3  2  1  0___Board size   000=8meg   100=512k\n Read           |  |  |  |   |  \\__|__/                001=64k    101=1meg\n Not Inverted   |  |  |  |   |                         010=128k   110=2meg\n                |  |  |  |   |                         011=256k   111=4meg\n                |  |  |  |   \\----------  1 = Next card is also on this board\n                |  |  |  \\--------------  1 = Optional ROM vector valid\n                |  |  \\-----------------  1 = Link into memory free list (RAM)\n                |  \\--------------\\\n                |                  \\____\n                \\------------------/     Board type       00 = Reserved\n                                                         01 = Reserved\n                                                         10 = Reserved\n                                                         11 = Current type\n\n\n\n($04/06)        7  6  5  4   3  2  1  0   Manufacturer chosen product number\n Read           \\___ ___/   \\___ ___/\n Inverted           \\/          \\/\n                 Hi nibble   Lo nibble\n\n\n\n($08/0A)        7  6  5  4   3  2  1  0   (Remember - these read inverted)\n Read           |  |  |__|___|__|__|__|_  Reserved - Should be 0 currently\n Inverted       |  |\n                |  \\--------------------  0 = this board can be shut-up\n                |                         1 = this board ignores shut-up\n                |\n                \\-----------------------  0 = any space OK\n                                          1 = 8 Meg area preferred\n```",
+      "bbox": [
+        358,
+        1193,
+        2097,
+        2553
+      ],
+      "segment_id": "page_0156_seg_005"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "338 Appendix G",
+      "bbox": [
+        358,
+        2970,
+        674,
+        3018
+      ],
+      "segment_id": "page_0156_seg_006"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "page": 85,
+  "image_width": 2256,
+  "image_height": 3003,
+  "segments": [
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\n  UWORD  adr_BufferAddr          ; offset into MEMF-\n                                  _BUFFER memory for\n                                  buffer\n  UWORD  adr_Err                 ; return code, 0 if all OK\nLABEL    AmigaDskReq_SIZEOF\n\n; Function codes for AmigaDskReq adr_Fnctn word:\n\nADR_FNCTN_INIT       EQU    0     ; given nothings, sets adr_\n                                  Part to # partitions\nADR_FNCTN_READ       EQU    1     ; given partition, offset,\n                                  count, buffer\nADR_FNCTN_WRITE      EQU    2     ; given partition, offset,\n                                  count, buffer\nADR_FNCTN_SEEK       EQU    3     ; given partition, offset\nADR_FNCTN_INFO       EQU    4     ; given part, buff adr, cnt,\n                                  copys in a DskPartition\n                                  structure. cnt set to actual\n                                  number of bytes copied.\n\n; Error codes for adr_Err, returned in low byte:\n\nADR_ERR_OK          EQU    0     ; no error\nADR_ERR_OFFSET      EQU    1     ; offset not on sector\n                                  boundary\nADR_ERR_COUNT       EQU    2     ; dsk_count not a multiple\n                                  of sector size\nADR_ERR_PART        EQU    3     ; partition does not exist\nADR_ERR_FNCT        EQU    4     ; illegal function code\nADR_ERR_EOF         EQU    5     ; offset past end of\n                                  partition\nADR_ERR_MULPL       EQU    6     ; multiple calls while\n                                  pending service\n\n; Error condition from IBM-PC BIOS, returned in high byte:\n\nADR_ERR_SENSE_FAIL       EQU  $ff\nADR_ERR_UNDEF_ERR        EQU  $bb\nADR_ERR_TIME_OUT         EQU  $80\nADR_ERR_BAD_SEEK         EQU  $40\nADR_ERR_BAD_CNTRLR       EQU  $20\nADR_ERR_DATA_CORRECTED   EQU  $11 ; data corrected\nADR_ERR_BAD_ECC          EQU  $10\nADR_ERR_BAD_TRACK        EQU  $0b\nADR_ERR_DMA_BOUNDARY     EQU  $09\nADR_ERR_INIT_FAIL        EQU  $07\nADR_ERR_BAD_RESET        EQU  $05\nADR_ERR_RECRD_NOT_FOUND  EQU  $04\nADR_ERR_BAD_ADDR_MARK    EQU  $02\nADR_ERR_BAD_CMD          EQU  $01\n\nENDC     IJANUS_I86BLOCK_I\n```",
+      "bbox": [
+        786,
+        302,
+        2042,
+        2855
+      ],
+      "segment_id": "page_0085_seg_001"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "138",
+      "bbox": [
+        1046,
+        2900,
+        1117,
+        2949
+      ],
+      "segment_id": "page_0085_seg_002"
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "page": 154,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "CIAA Address Map",
+      "bbox": [
+        362,
+        211,
+        725,
+        246
+      ],
+      "segment_id": "page_0154_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        360,
+        262,
+        2037,
+        1075
+      ],
+      "segment_id": "page_0154_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**Note:** CIAA can generate interrupt INT2.",
+      "bbox": [
+        360,
+        1119,
+        1256,
+        1158
+      ],
+      "segment_id": "page_0154_seg_003"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "CIAB Address Map",
+      "bbox": [
+        360,
+        1242,
+        725,
+        1281
+      ],
+      "segment_id": "page_0154_seg_004"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        360,
+        1297,
+        2038,
+        2108
+      ],
+      "segment_id": "page_0154_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**Note:** CIAB can generate INT6.",
+      "bbox": [
+        360,
+        2152,
+        1032,
+        2192
+      ],
+      "segment_id": "page_0154_seg_006"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "318 Appendix F",
+      "bbox": [
+        363,
+        2971,
+        675,
+        3017
+      ],
+      "segment_id": "page_0154_seg_007"
+    }
+  ]
+}

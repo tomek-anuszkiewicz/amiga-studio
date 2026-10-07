@@ -1,0 +1,215 @@
+{
+  "page": 41,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        287,
+        131
+      ],
+      "segment_id": "page_0041_seg_001"
+    },
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Introduction",
+      "bbox": [
+        312,
+        93,
+        507,
+        151
+      ],
+      "segment_id": "page_0041_seg_002"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 3,
+      "md_text": "1.3.6 Transparent Translation/access Control Registers",
+      "bbox": [
+        262,
+        197,
+        1809,
+        278
+      ],
+      "segment_id": "page_0041_seg_003"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Transparent translation is actually a misnomer since the whole address space transparently translates in an embedded control environment with no on-chip MMU present as well as in processors that have built-in MMUs. For processors that have built-in MMUs, such as the MC68030, MC68040, and MC68LC040, the transparent translation (TT) registers define blocks of logical addresses that are transparently translated to corresponding physical addresses. These registers are independent of the on-chip MMU. For embedded controllers, such as the MC68EC030 and MC68EC040, the access control registers (AC) are similar in function to the TT registers but just named differently. The AC registers, main function are to define blocks of address space that control address space properties such as cachability. The following paragraphs describe these registers.",
+      "bbox": [
+        262,
+        317,
+        2264,
+        911
+      ],
+      "segment_id": "page_0041_seg_004"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        1194,
+        950,
+        1345,
+        1020
+      ],
+      "segment_id": "page_0041_seg_005"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "For the paged MMU related supervisor registers, please refer to the appropriate user’s manual for specific programming detail.",
+      "bbox": [
+        562,
+        1033,
+        1964,
+        1161
+      ],
+      "segment_id": "page_0041_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**1.3.6.1 TRANSPARENT TRANSLATION/ACCESS CONTROL REGISTER FIELDS FOR THE M68030.** Figure 1-9 illustrates the MC68030 transparent translation/MC68EC030 access control register format.",
+      "bbox": [
+        262,
+        1213,
+        2263,
+        1399
+      ],
+      "segment_id": "page_0041_seg_007"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        261,
+        1557,
+        2265,
+        1750
+      ],
+      "segment_id": "page_0041_seg_008"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Figure 1-9. MC68030 Transparent Translation/MC68EC030 Access Control Register Format",
+      "bbox": [
+        280,
+        1763,
+        2259,
+        1891
+      ],
+      "segment_id": "page_0041_seg_009"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 4,
+      "md_text": "Address Base",
+      "bbox": [
+        275,
+        1954,
+        601,
+        2024
+      ],
+      "segment_id": "page_0041_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This 8-bit field is compared with address bits A31 – A24. Addresses that match in this comparison (and are otherwise eligible) are transparently translated/access controlled.",
+      "bbox": [
+        334,
+        2012,
+        2263,
+        2141
+      ],
+      "segment_id": "page_0041_seg_011"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 4,
+      "md_text": "Address Mask",
+      "bbox": [
+        275,
+        2179,
+        606,
+        2249
+      ],
+      "segment_id": "page_0041_seg_012"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "This 8-bit field contains a mask for the address base field. Setting a bit in this field causes the corresponding bit of the address base field to be ignored. Blocks of memory larger than 16 Mbytes can be transparently translated/accessed controlled by setting some logical address mask bits to ones. The low-order bits of this field normally are set to define contiguous blocks larger than 16 Mbytes, although this is not required.",
+      "bbox": [
+        334,
+        2238,
+        2265,
+        2541
+      ],
+      "segment_id": "page_0041_seg_013"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "1-12",
+      "bbox": [
+        262,
+        3109,
+        346,
+        3167
+      ],
+      "segment_id": "page_0041_seg_014"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        693,
+        3109,
+        1833,
+        3167
+      ],
+      "segment_id": "page_0041_seg_015"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        2024,
+        3109,
+        2263,
+        3167
+      ],
+      "segment_id": "page_0041_seg_016"
+    }
+  ]
+}

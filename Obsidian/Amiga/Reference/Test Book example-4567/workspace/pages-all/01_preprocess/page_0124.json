@@ -1,0 +1,418 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0124",
+  "page": 124,
+  "source_index": 123,
+  "prepared_index": 123,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Table 5-6: Sampling Rate and Frequency Relationship\n",
+      "bbox": [
+        179.3800048828125,
+        69.91503143310547,
+        417.2680358886719,
+        80.41503143310547
+      ],
+      "bbox_norm": [
+        0.29855366706152653,
+        0.09057759106445572,
+        0.6944860010652175,
+        0.10418074172722501
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "Sampling\n",
+      "bbox": [
+        252.5760040283203,
+        102.16503143310547,
+        296.2455139160156,
+        112.66503143310547
+      ],
+      "bbox_norm": [
+        0.42037847118838595,
+        0.13235869667153286,
+        0.4930604422044334,
+        0.14596184733430215
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Period\n",
+      "bbox": [
+        259.5260009765625,
+        115.36400604248047,
+        289.6294860839844,
+        125.86400604248047
+      ],
+      "bbox_norm": [
+        0.43194579763772833,
+        0.14945847192918948,
+        0.4820489620122879,
+        0.16306162259195878
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "Sampling \nRate (KHz)\n",
+      "bbox": [
+        313.7744140625,
+        102.41698455810547,
+        366.8204040527344,
+        125.86400604248047
+      ],
+      "bbox_norm": [
+        0.5222349169275616,
+        0.13268511155908813,
+        0.6105227662050758,
+        0.16306162259195878
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Maximum Output \n",
+      "bbox": [
+        383.6234130859375,
+        102.41698455810547,
+        471.1829833984375,
+        112.91698455810547
+      ],
+      "bbox_norm": [
+        0.6384890937107978,
+        0.13268511155908813,
+        0.7842201121718927,
+        0.14628826222185742
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "Frequency (KHz)\n",
+      "bbox": [
+        385.5231018066406,
+        115.26696014404297,
+        466.4150695800781,
+        125.76696014404297
+      ],
+      "bbox_norm": [
+        0.6416508677012259,
+        0.14933274526465146,
+        0.7762845668716545,
+        0.16293589592742078
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "Maximum sampling rate\n124\n29\n7\n",
+      "bbox": [
+        128.73309326171875,
+        140.56591796875,
+        428.8985900878906,
+        151.31591796875
+      ],
+      "bbox_norm": [
+        0.21425875805147887,
+        0.18210851049327395,
+        0.7138434796671556,
+        0.19603554569563297
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "Minimum sampling rate \n",
+      "bbox": [
+        128.72207641601562,
+        166.01593017578125,
+        237.18716430664062,
+        176.51593017578125
+      ],
+      "bbox_norm": [
+        0.21424042200735696,
+        0.21507997243818477,
+        0.3947658365263954,
+        0.2286831231009541
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "for 7 KHz output\n",
+      "bbox": [
+        140.02207946777344,
+        178.86395263671875,
+        214.58258056640625,
+        189.36395263671875
+      ],
+      "bbox_norm": [
+        0.2330477430970889,
+        0.23172507579578258,
+        0.3571435754920333,
+        0.24532822645855187
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "256\n14\n7\n",
+      "bbox": [
+        266.70208740234375,
+        165.76593017578125,
+        428.89910888671875,
+        176.76593017578125
+      ],
+      "bbox_norm": [
+        0.4438894193304977,
+        0.21475608789859504,
+        0.7138443431373774,
+        0.22900700764054382
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Sampling rate too low \n",
+      "bbox": [
+        129.4490966796875,
+        204.91192626953125,
+        228.29611206054688,
+        215.41192626953125
+      ],
+      "bbox_norm": [
+        0.2154504485423048,
+        0.2654712195850198,
+        0.37996788703452733,
+        0.2790743702477891
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "for 7 KHz output\n",
+      "bbox": [
+        140.2490997314453,
+        217.9619140625,
+        214.757080078125,
+        228.4619140625
+      ],
+      "bbox_norm": [
+        0.23342558750767853,
+        0.28237797673692966,
+        0.35743400624075644,
+        0.295981127399699
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "320\n11\n4\n",
+      "bbox": [
+        266.9291076660156,
+        204.66192626953125,
+        428.88909912109375,
+        215.41192626953125
+      ],
+      "bbox_norm": [
+        0.4442672637410873,
+        0.26514733504543003,
+        0.7138276832413332,
+        0.2790743702477891
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "In A2000s with 2 layer motherboards and later A500 models there is a control bit that allows the \naudio output to bypass the low pass filter. This control bit is the same output bit of the 8520 CIA \nthat controls the brightness of the red “ power” LED. Bypassing the filter allows for improved \nsound in some applications, but an external filter with an appropriate cutoff frequency may be \nrequired.\n",
+      "bbox": [
+        85.47911071777344,
+        250.0089111328125,
+        516.4811401367188,
+        311.4079284667969
+      ],
+      "bbox_norm": [
+        0.14226837589073302,
+        0.323896084302338,
+        0.85961274477984,
+        0.40344085414425923
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "Using Direct (Non-DMA) Audio Output\n",
+      "bbox": [
+        86.22911071777344,
+        344.68707275390625,
+        354.5340881347656,
+        359.68707275390625
+      ],
+      "bbox_norm": [
+        0.14351664907727033,
+        0.4465552554457437,
+        0.5900738612427734,
+        0.4659883278211284
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "It is possible to create sound by writing audio data one word at a time to the audio output \naddresses, instead of setting up a list of audio data in memory. This method of controlling the \noutput is more processor-intensive and is therefore not recommended.\n",
+      "bbox": [
+        85.97911071777344,
+        387.3039245605469,
+        516.6156005859375,
+        423.1969299316406
+      ],
+      "bbox_norm": [
+        0.14310055801509122,
+        0.5017670131503765,
+        0.859836535944386,
+        0.5482677712268124
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "To use direct audio output, do not enable the DMA for the audio channel you wish to use; this \nchanges the timing of the interrupts. The normal interrupt occurs after a data address has been \nread; in direct audio output, the interrupt occurs after one data word has been output.\n",
+      "bbox": [
+        85.97911071777344,
+        438.0459289550781,
+        517.0234985351562,
+        474.5949401855469
+      ],
+      "bbox_norm": [
+        0.14310055801509122,
+        0.5675052160751108,
+        0.8605154267081905,
+        0.614855854774474
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "Unlike in the DMA-controlled automatic data output, in direct audio output, if you do not write a \nnew set of data to the output addresses before two sampling intervals have elapsed, the audio out­\nput will cease changing. The last value remains as an output of the digital-to-analog converter.\n",
+      "bbox": [
+        86.6791000366211,
+        489.7439270019531,
+        516.9671630859375,
+        525.7439575195312
+      ],
+      "bbox_norm": [
+        0.1442655952118646,
+        0.6344819452556054,
+        0.8604216640005754,
+        0.6811213584932158
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "The volume and period registers are set as usual.\n",
+      "bbox": [
+        86.4291000366211,
+        540.9939575195312,
+        297.1221923828125,
+        551.4939575195312
+      ],
+      "bbox_norm": [
+        0.1438495041496855,
+        0.7008783154081902,
+        0.4945195545021896,
+        0.7144814660709595
+      ]
+    },
+    {
+      "block_id": 19,
+      "type": 0,
+      "text": "Audio Hardware 153\n",
+      "bbox": [
+        421.5400085449219,
+        715.6150512695312,
+        515.6829223632812,
+        726.1150512695312
+      ],
+      "bbox_norm": [
+        0.7015961196257741,
+        0.9271066056156961,
+        0.8582842196550406,
+        0.9407097562784654
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

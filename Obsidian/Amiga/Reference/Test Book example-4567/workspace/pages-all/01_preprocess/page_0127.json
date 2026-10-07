@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0127",
+  "page": 127,
+  "source_index": 126,
+  "prepared_index": 126,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Function Generator\n",
+      "bbox": [
+        86.05000305175781,
+        86.69822692871094,
+        220.84002685546875,
+        101.69822692871094
+      ],
+      "bbox_norm": [
+        0.1432185486812829,
+        0.11232086124821117,
+        0.367558245383812,
+        0.1317539336235959
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "The blitter can combine the data from the three source DMA channels in up to 256 different ways \nto generate the values stored by the destination DMA channel. These sources might be one bit- \nplane from each of three separate graphics images. While each of these sources is a rectangular \nregion composed of many points, the same logic operation will be performed on each point \nthroughout the rectangular region. Thus, for purposes of defining the blitter logic operation it is \nonly necessary to consider what happens for all of the possible combinations of one bit from each \nof the three sources.\n",
+      "bbox": [
+        85.80000305175781,
+        129.0650634765625,
+        517.5073852539062,
+        217.20611572265625
+      ],
+      "bbox_norm": [
+        0.1428024576191038,
+        0.16720871464491074,
+        0.8613207904633067,
+        0.28139881114763776
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "There are eight possible combinations of values of the three bits, for each of which we need to \nspecify the corresponding destination bit as a zero or one. This can be visualized with a standard \ntruth table, as shown below. We have listed the three source channels, and the possible values for \na single bit from each one.\n",
+      "bbox": [
+        85.80000305175781,
+        232.255126953125,
+        517.5264282226562,
+        280.8021545410156
+      ],
+      "bbox_norm": [
+        0.1428024576191038,
+        0.30089537944228284,
+        0.8613524848996835,
+        0.3637899061573013
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "A \nB \nC \nD \nBLTCONO position \nMinterm\n",
+      "bbox": [
+        177.5,
+        302.4481506347656,
+        422.9375,
+        312.9481506347656
+      ],
+      "bbox_norm": [
+        0.2954246541471611,
+        0.39183312007244386,
+        0.7039220544414927,
+        0.40543627073521316
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "0 \n0 \n0 \n?\n0 \n0 \n1\n?\n0 \n1\n0\n? \nO\ni\nl\n?\n \n1 0 \n0\n? \n1\n0\n \n1\n?\n \n1\n1\n0\n?\n \n1\n1\n1\n?\n",
+      "bbox": [
+        178.4457550048828,
+        327.93170166015625,
+        258.3707580566406,
+        432.08514404296875
+      ],
+      "bbox_norm": [
+        0.2969987349653327,
+        0.42484803283632555,
+        0.4300230526232276,
+        0.5597827917677026
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "0\n1\n2\n3\n4\n5\n6 \n7\n",
+      "bbox": [
+        316.8655700683594,
+        328.9351501464844,
+        325.1655578613281,
+        432.31817626953125
+      ],
+      "bbox_norm": [
+        0.527379726470919,
+        0.4261480386403112,
+        0.5411939294183187,
+        0.5600846939093418
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "ABC\nABC\nABC\nABC\nABC\nABC\nABC\nABC\n",
+      "bbox": [
+        391.76556396484375,
+        329.1681823730469,
+        413.81756591796875,
+        432.30517578125
+      ],
+      "bbox_norm": [
+        0.6520405985413043,
+        0.42644994078195025,
+        0.6887431622047097,
+        0.5600678512806961
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "This information is collected in a standard format, the LF control byte in the BLTCONO register. \nThis byte programs the blitter to perform one of the 256 possible logic operations on three \nsources for a given blit.\n",
+      "bbox": [
+        86.01556396484375,
+        453.951171875,
+        517.5235595703125,
+        490.50018310546875
+      ],
+      "bbox_norm": [
+        0.14316122949626467,
+        0.5881110651958387,
+        0.8613477104172806,
+        0.6354617038952018
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "To calculate the LF control byte in BLTCONO, fill in the truth table with desired values for D, \nand read the function value from the bottom of the table up.\n",
+      "bbox": [
+        86.01556396484375,
+        505.2991943359375,
+        517.2610473632812,
+        528.6471557617188
+      ],
+      "bbox_norm": [
+        0.14316122949626467,
+        0.6546343876502572,
+        0.8609107944850461,
+        0.6848825625972503
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "For example, if we wanted to set all bits in the destination where the corresponding A source bit \nis 1 or the corresponding B source bit is 1, we would fill in the last four entries of the truth table \nwith 1 (because the A bit is set) and the third, fourth, seven, and eight entries with 1 (because the \nB bit is set), and all others (the first and second) with 0, because neither A nor B is set Then, we \nread the truth table from the bottom up, reading 11111100, or SFC.1 1\n",
+      "bbox": [
+        86.26556396484375,
+        543.6961669921875,
+        517.7734985351562,
+        604.9442138671875
+      ],
+      "bbox_norm": [
+        0.14357732055844377,
+        0.7043791308918955,
+        0.8617636998947278,
+        0.7837283127434175
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "1 “$” indicates hex notation.\n",
+      "bbox": [
+        97.26555633544922,
+        635.6401977539062,
+        203.9879608154297,
+        646.1401977539062
+      ],
+      "bbox_norm": [
+        0.16188531459623268,
+        0.823496131177034,
+        0.33951026914976323,
+        0.8370992818398033
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "168 Blitter Hardware\n",
+      "bbox": [
+        88.44999694824219,
+        715.6150512695312,
+        182.34100341796875,
+        726.1150512695312
+      ],
+      "bbox_norm": [
+        0.14721301271972906,
+        0.9271066056156961,
+        0.3034818471639422,
+        0.9407097562784654
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

@@ -1,0 +1,189 @@
+{
+  "page": 128,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "For another example, an LF control byte of $80 (= 1000 0000 binary) turns on bits only for those points of the D destination rectangle where the corresponding bits of A, B, and C sources were all on (ABC = 1, bit 7 of LF on). All other points in the rectangle, which correspond to other combinations for A, B, and C, will be 0. This is because bits 6 through 0 of the LF control byte, which specify the D output for these situations, are set to 0.",
+      "bbox": [
+        354,
+        233,
+        2156,
+        492
+      ],
+      "segment_id": "page_0128_seg_001"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "DESIGNING THE LF CONTROL BYTE WITH MINTERMS",
+      "bbox": [
+        356,
+        614,
+        1579,
+        658
+      ],
+      "segment_id": "page_0128_seg_002"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "One approach to designing the LF control byte uses logic equations. Each of the rows in the truth table corresponds to a “minterm”, which is a particular assignment of values to the A, B, and C bits. For instance, the first minterm is usually written $\\overline{ABC}$, or “not A and not B and not C”. The last is written as ABC.",
+      "bbox": [
+        354,
+        696,
+        2156,
+        904
+      ],
+      "segment_id": "page_0128_seg_003"
+    },
+    {
+      "type": "callout",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "NOTE",
+      "bbox": [
+        1185,
+        966,
+        1311,
+        1011
+      ],
+      "segment_id": "page_0128_seg_004"
+    },
+    {
+      "type": "callout_text",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Two terms that are adjacent are and’ed, and two terms that are separated by “+” are or’ed. “And” has a higher precedence, so AB + BC is equal to (AB) + (BC).",
+      "bbox": [
+        457,
+        1046,
+        2053,
+        1144
+      ],
+      "segment_id": "page_0128_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Any function can be written as a sum of minterms. If we wanted to calculate the function where D is one when the A bit is set and the C bit is clear, or when the B bit is set, we can write that as $A\\overline{C}+B$, or “A and not C or B”. Since “1 and A” is “A”:",
+      "bbox": [
+        357,
+        1207,
+        2158,
+        1360
+      ],
+      "segment_id": "page_0128_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "$$D = A\\overline{C} + B$$\n\n$$D = A(1)\\overline{C} + (1)B(1)$$",
+      "bbox": [
+        414,
+        1409,
+        794,
+        1580
+      ],
+      "segment_id": "page_0128_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Since either A or $\\overline{A}$ is true ($1 = A + \\overline{A}$), and similarly for B, and C; we can expand the above equation further:",
+      "bbox": [
+        357,
+        1628,
+        2156,
+        1743
+      ],
+      "segment_id": "page_0128_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "$$D = A(1)\\overline{C} + (1)B(1)$$\n\n$$D = A(B + \\overline{B})\\overline{C} + (A + \\overline{A})B(C + \\overline{C})$$\n\n$$D = AB\\overline{C} + A\\overline{B}\\overline{C} + AB(C + \\overline{C}) + \\overline{A}B(C + \\overline{C})$$\n\n$$D = AB\\overline{C} + A\\overline{B}\\overline{C} + ABC + AB\\overline{C} + \\overline{A}BC + \\overline{A}B\\overline{C}$$",
+      "bbox": [
+        414,
+        1792,
+        1303,
+        2181
+      ],
+      "segment_id": "page_0128_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "After eliminating duplicates, we end up with the five minterms:",
+      "bbox": [
+        357,
+        2244,
+        1510,
+        2289
+      ],
+      "segment_id": "page_0128_seg_010"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "$$A\\overline{C}+B = AB\\overline{C} + A\\overline{B}\\overline{C} + ABC + \\overline{A}BC + \\overline{A}B\\overline{C}$$",
+      "bbox": [
+        414,
+        2338,
+        1246,
+        2399
+      ],
+      "segment_id": "page_0128_seg_011"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "These correspond to BLTCON0 bit positions of 6, 4, 7, 3, and 2, according to our truth table, which we would then set, and clear the rest.",
+      "bbox": [
+        357,
+        2461,
+        2156,
+        2560
+      ],
+      "segment_id": "page_0128_seg_012"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The wide range of logic operations allow some sophisticated graphics techniques. For instance, you can move the image of a car across some pre-existing building images with a few blits. Producing this effect requires predrawn images of the car, the buildings (or background), and a car",
+      "bbox": [
+        358,
+        2621,
+        2156,
+        2773
+      ],
+      "segment_id": "page_0128_seg_013"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Blitter Hardware 169",
+      "bbox": [
+        1752,
+        2980,
+        2150,
+        3025
+      ],
+      "segment_id": "page_0128_seg_014"
+    }
+  ]
+}

@@ -1,0 +1,299 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0059",
+  "page": 59,
+  "source_index": 58,
+  "prepared_index": 58,
+  "geometry": {
+    "width": 612.0,
+    "height": 792.0,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      792.0
+    ]
+  },
+  "width": 612.0,
+  "height": 792.0,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2550,
+    "pixel_height": 3300,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "MOTOROLA\n",
+      "bbox": [
+        69.0,
+        746.25,
+        126.22999572753906,
+        759.989990234375
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.9422348484848485,
+        0.2062581629534952,
+        0.9595833210029987
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "MC68000 FAMILY PROGRAMMER’S REFERENCE MANUAL\n",
+      "bbox": [
+        168.74000549316406,
+        746.2999877929688,
+        449.3100280761719,
+        760.0700073242188
+      ],
+      "bbox_norm": [
+        0.27571896322412426,
+        0.9422979643850615,
+        0.7341667125427646,
+        0.9596843526820944
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "A-1\n",
+      "bbox": [
+        533.4400024414062,
+        746.25,
+        549.0,
+        759.989990234375
+      ],
+      "bbox_norm": [
+        0.8716339909173305,
+        0.9422348484848485,
+        0.8970588235294118,
+        0.9595833210029987
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "APPENDIX A\nPROCESSOR INSTRUCTION SUMMARY\n",
+      "bbox": [
+        69.0,
+        119.73999786376953,
+        410.0099792480469,
+        164.52398681640625
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.15118686598960798,
+        0.6699509464837368,
+        0.20773230658637154
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "This appendix provides a quick reference of the M68000 family instructions. The organiza-\ntion of this section is by processors and their addressing modes. All references to the\nMC68000, MC68020, and MC68030 include references to the corresponding embedded\ncontrollers, MC68EC000, MC68EC020, and MC68EC030. All references to the MC68040\ninclude the MC68LC040 and MC68EC040. This referencing applies throughout this section\nunless otherwise speciﬁed. Table A-1 lists the M68000 family instructions by mnemonic and\nindicates which processors they apply to. \n",
+      "bbox": [
+        69.0,
+        182.10000610351562,
+        549.3599853515625,
+        282.6121826171875
+      ],
+      "bbox_norm": [
+        0.11274509803921569,
+        0.22992425013070156,
+        0.897647034888174,
+        0.3568335639105903
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "Table A-1. M68000 Family Instruction Set And \n",
+      "bbox": [
+        179.3350067138672,
+        304.1600036621094,
+        442.0749816894531,
+        320.6839904785156
+      ],
+      "bbox_norm": [
+        0.2930310567220052,
+        0.3840404086642795,
+        0.7223447413226358,
+        0.40490402838196415
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Processor Cross-Reference\n",
+      "bbox": [
+        229.98699951171875,
+        318.16400146484375,
+        388.0389709472656,
+        334.68798828125
+      ],
+      "bbox_norm": [
+        0.37579575083614175,
+        0.40172222407177244,
+        0.634050606122983,
+        0.42258584378945707
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "Mnemonic\n68000\n68008\n68010\n68020\n68030\n68040\n68881/\n68882\n68851\nCPU32 \n",
+      "bbox": [
+        89.87999725341797,
+        338.9700012207031,
+        536.7100219726562,
+        364.7400207519531
+      ],
+      "bbox_norm": [
+        0.14686274061016008,
+        0.42799242578371605,
+        0.8769771600860397,
+        0.46053032923226406
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "ABCD\nX\nX\nX\nX\nX\nX\nX\nADD\nX\nX\nX\nX\nX\nX\nX\nADDA\nX\nX\nX\nX\nX\nX\nX\nADDI\nX\nX\nX\nX\nX\nX\nX\nADDQ\nX\nX\nX\nX\nX\nX\nX\nADDX\nX\nX\nX\nX\nX\nX\nX\nAND\nX\nX\nX\nX\nX\nX\nX\nANDI\nX\nX\nX\nX\nX\nX\nX\nANDI to CCR\nX\nX\nX\nX\nX\nX\nX\n",
+      "bbox": [
+        80.60099029541016,
+        365.3270263671875,
+        520.8090209960938,
+        481.6610412597656
+      ],
+      "bbox_norm": [
+        0.13170096453498392,
+        0.4612714979383681,
+        0.8509951323465584,
+        0.6081578803784919
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "ANDI to SR\n",
+      "bbox": [
+        80.60099029541016,
+        484.69403076171875,
+        127.11298370361328,
+        497.0600280761719
+      ],
+      "bbox_norm": [
+        0.13170096453498392,
+        0.6119874125779278,
+        0.207700953764074,
+        0.627601045550722
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "1\n",
+      "bbox": [
+        127.10299682617188,
+        483.0567626953125,
+        131.1078643798828,
+        492.95367431640625
+      ],
+      "bbox_norm": [
+        0.20768463533688214,
+        0.6099201549183239,
+        0.21422853656843596,
+        0.6224162554500079
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "X\nX\nX\nX\nX\nX\nX\n",
+      "bbox": [
+        169.2010040283203,
+        483.5240173339844,
+        520.8040161132812,
+        495.8900146484375
+      ],
+      "bbox_norm": [
+        0.27647222880444494,
+        0.6105101228964449,
+        0.8509869544334661,
+        0.6261237558692393
+      ]
+    },
+    {
+      "block_id": 19,
+      "type": 0,
+      "text": "ASL, ASR\nX\nX\nX\nX\nX\nX\nX\nBcc\nX\nX\nX\nX\nX\nX\nX\nBCHG\nX\nX\nX\nX\nX\nX\nX\nBCLR\nX\nX\nX\nX\nX\nX\nX\nBFCHG\nX\nX\nX\nBFCLR\nX\nX\nX\nBFEXTS\nX\nX\nX\nBFEXTU\nX\nX\nX\nBFFFO\nX\nX\nX\n",
+      "bbox": [
+        80.6050033569336,
+        497.72601318359375,
+        520.8130493164062,
+        614.0599975585938
+      ],
+      "bbox_norm": [
+        0.13170752182505488,
+        0.6284419358378709,
+        0.8510017145692913,
+        0.7753282797456992
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

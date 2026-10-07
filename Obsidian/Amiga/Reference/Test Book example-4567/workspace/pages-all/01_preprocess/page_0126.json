@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0126",
+  "page": 126,
+  "source_index": 125,
+  "prepared_index": 125,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Each of the DMA channels can be independently enabled or disabled. The enable bits are bits \nSRCA, SRCB, SRCC, and DEST in control register zero (BLTCONO).\n",
+      "bbox": [
+        82.9000015258789,
+        56.22502899169922,
+        514.3975219726562,
+        79.42400360107422
+      ],
+      "bbox_norm": [
+        0.13797579875820792,
+        0.07284167051358631,
+        0.8561448451995982,
+        0.10289682735483276
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "When disabled, no memory cycles will be executed for that channel and, for a source channel, the \nconstant value stored in the data register of that channel will be used for each blitter cycle. For \nthis purpose, each of the three source channels have preloadable data registers, called BLTxDAT.\n",
+      "bbox": [
+        82.9000015258789,
+        94.97301483154297,
+        515.1848754882812,
+        130.9730224609375
+      ],
+      "bbox_norm": [
+        0.13797579875820792,
+        0.12304116472865735,
+        0.8574552882421057,
+        0.1696805483137524
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Images in memory are usually stored in a linear fashion; each word of data on a line is located a t, \nan address that is one greater than the word on its left. i.e. Each line is a “ plus one” continua­\ntion of the previous line. (See Figure 6-1.)\n",
+      "bbox": [
+        82.9000015258789,
+        145.7230224609375,
+        519.9500122070312,
+        182.02001953125
+      ],
+      "bbox_norm": [
+        0.13797579875820792,
+        0.18878973614954736,
+        0.865386211437039,
+        0.23581388088798133
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "20\n21\n22\n23\n24\n24\n26\n",
+      "bbox": [
+        222.08999633789062,
+        249.37796020507812,
+        375.34002685546875,
+        258.3779602050781
+      ],
+      "bbox_norm": [
+        0.3696386499023415,
+        0.3230786632994061,
+        0.6247025218104959,
+        0.33473850672463695
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "27\n28\n29\n30\n31\n32\n33\n",
+      "bbox": [
+        222.3679962158203,
+        263.073974609375,
+        375.3551025390625,
+        272.02398681640625
+      ],
+      "bbox_norm": [
+        0.3701013429603152,
+        0.34082237257760695,
+        0.6247276132392943,
+        0.35241745490959464
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "34\n35\n36\n37\n38\n39\n40\n",
+      "bbox": [
+        222.51400756835938,
+        276.97198486328125,
+        375.21405029296875,
+        285.8219909667969
+      ],
+      "bbox_norm": [
+        0.370344359035388,
+        0.3588277751868069,
+        0.6244928509236948,
+        0.37029329579562126
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "41\n42\n43\n44\n45\n46\n47\n",
+      "bbox": [
+        222.26202392578125,
+        290.9209899902344,
+        375.03802490234375,
+        299.77099609375
+      ],
+      "bbox_norm": [
+        0.3699249664694196,
+        0.3768992435999197,
+        0.6241998805566722,
+        0.3883647642087341
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "48\n49\n50\n51\n52\n53\n54\n",
+      "bbox": [
+        222.27899169921875,
+        304.9209899902344,
+        375.2535400390625,
+        313.6709899902344
+      ],
+      "bbox_norm": [
+        0.3699532070249093,
+        0.39503677781694546,
+        0.6245585762452841,
+        0.40637273670258656
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "55\n56\n57\n58\n59\n60\n61\n",
+      "bbox": [
+        222.38497924804688,
+        318.8689880371094,
+        374.8074951171875,
+        327.8190002441406
+      ],
+      "bbox_norm": [
+        0.37012960891198793,
+        0.41310694151938854,
+        0.6238161950239938,
+        0.42470202385137623
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "Figure 6-1: How Images are Stored in Memory\n",
+      "bbox": [
+        193.82896423339844,
+        376.0090637207031,
+        399.81787109375,
+        386.5090637207031
+      ],
+      "bbox_norm": [
+        0.3226019984357983,
+        0.48713408993900437,
+        0.6654425706463399,
+        0.5007372406017737
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "The map in Figure 6-1 represents a single bit-plane (one bit of color) of an image at word \naddresses 20 through 61. Each of these addresses accesses one word (16 pixels) of a single bit- \nplane. If this image required sixteen colors, four bit-planes like this would be required in \nmemory, and four copy (move) operations would be required to completely move the image.\n",
+      "bbox": [
+        82.92896270751953,
+        414.6550598144531,
+        514.1744384765625,
+        464.153076171875
+      ],
+      "bbox_norm": [
+        0.13802400071353116,
+        0.5372014525462496,
+        0.8557735530042212,
+        0.6013280215003667
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "The blitter is very efficient at copying such blocks because it needs to be told only the starting \n",
+      "bbox": [
+        82.72897338867188,
+        479.45208740234375,
+        513.9849853515625,
+        489.95208740234375
+      ],
+      "bbox_norm": [
+        0.13769114564111598,
+        0.6211484743346015,
+        0.8554582339961635,
+        0.6347516249973708
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "address (20), the destination address, and the size of the block (height = 6, width = 7). It will then \nautomatically move the data, one word at a time, whenever the data bus is available. When the \ntransfer is complete, the blitter will signal the processor with a flag and an interrupt.\n",
+      "bbox": [
+        82.9289321899414,
+        492.3981018066406,
+        514.2021484375,
+        528.3461303710938
+      ],
+      "bbox_norm": [
+        0.13802394992116518,
+        0.6379205299940331,
+        0.8558196724725389,
+        0.6844925727170608
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "NOTE\n",
+      "bbox": [
+        281.4289245605469,
+        543.4951171875,
+        311.53240966796875,
+        553.9951171875
+      ],
+      "bbox_norm": [
+        0.4684002405932792,
+        0.7041186631981922,
+        0.5185034049678388,
+        0.7177218138609615
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "This copy (move) operation operates on memory and may or may not change the \nmemory currently being used for display.\n",
+      "bbox": [
+        106.92892456054688,
+        562.4951171875,
+        489.25482177734375,
+        586.2951049804688
+      ],
+      "bbox_norm": [
+        0.17796867919226728,
+        0.7287338882070128,
+        0.8142982338783252,
+        0.7595676805612818
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "All data copy blits are performed as rectangles of words, with a given width and height All four \nDMA channels use a single blit size register, called BLTSIZE, used for both the width and height \nThe width can take a value of from 1 to 64 words (16 to 1024 bits). The height can run from 1 to \n",
+      "bbox": [
+        83.17892456054688,
+        601.5941162109375,
+        514.7374877929688,
+        637.64111328125
+      ],
+      "bbox_norm": [
+        0.13844002828525276,
+        0.7793881333955166,
+        0.8567106721567119,
+        0.8260883935943608
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "1024 rows. The width is stored in the least significant six bits of the BLTSIZE register. If a \nvalue of zero is stored, a width count of 64 words is used. This is the only parameter in the blitter\n",
+      "bbox": [
+        83.4288330078125,
+        639.9910888671875,
+        514.7212524414062,
+        663.589111328125
+      ],
+      "bbox_norm": [
+        0.1388559669703339,
+        0.8291328766371548,
+        0.856683650618006,
+        0.8597050151971117
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "Blitter Hardware 165\n",
+      "bbox": [
+        417.25,
+        715.6150512695312,
+        512.075439453125,
+        726.1150512695312
+      ],
+      "bbox_norm": [
+        0.6944559827769182,
+        0.9271066056156961,
+        0.8522800540715212,
+        0.9407097562784654
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

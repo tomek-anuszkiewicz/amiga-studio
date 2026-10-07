@@ -1,0 +1,98 @@
+{
+  "page": 138,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 8-1: Typical Controller Connections",
+      "bbox": [
+        855,
+        285,
+        1635,
+        329
+      ],
+      "segment_id": "page_0138_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        410,
+        468,
+        2085,
+        1520
+      ],
+      "segment_id": "page_0138_seg_002"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "† These pins may also be configured as outputs",
+      "bbox": [
+        814,
+        1527,
+        1682,
+        1574
+      ],
+      "segment_id": "page_0138_seg_003"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "‡ These buttons are optional",
+      "bbox": [
+        988,
+        1580,
+        1507,
+        1625
+      ],
+      "segment_id": "page_0138_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "REGISTERS USED WITH THE CONTROLLER PORT",
+      "bbox": [
+        355,
+        1782,
+        1470,
+        1826
+      ],
+      "segment_id": "page_0138_seg_005"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        494,
+        1945,
+        2008,
+        2476
+      ],
+      "segment_id": "page_0138_seg_006"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Interface Hardware 223",
+      "bbox": [
+        1708,
+        2979,
+        2147,
+        3024
+      ],
+      "segment_id": "page_0138_seg_007"
+    }
+  ]
+}

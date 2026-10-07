@@ -1,0 +1,401 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0123",
+  "page": 123,
+  "source_index": 122,
+  "prepared_index": 122,
+  "geometry": {
+    "width": 600.8300170898438,
+    "height": 771.8800048828125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      1753.1600341796875,
+      600.8300170898438,
+      2525.0400390625
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      600.8300170898438,
+      771.8800048828125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      2525.0400390625
+    ]
+  },
+  "width": 600.8300170898438,
+  "height": 771.8800048828125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2504,
+    "pixel_height": 3217,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "Table 5-3: DMA and Audio Channel Enable Bits\n",
+      "bbox": [
+        192.10000610351562,
+        68.50511932373047,
+        406.58349609375,
+        79.00511932373047
+      ],
+      "bbox_norm": [
+        0.31972438233689376,
+        0.088750996126828,
+        0.6767030350165618,
+        0.1023541467895973
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "DMACON Register\n",
+      "bbox": [
+        254.29600524902344,
+        101.00511932373047,
+        345.593505859375,
+        111.50511932373047
+      ],
+      "bbox_norm": [
+        0.4232411797278728,
+        0.13085598627349487,
+        0.5751934757409057,
+        0.14445913693626417
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "Bit \nName\nFunction\n",
+      "bbox": [
+        171.49600219726562,
+        126.70409393310547,
+        365.49554443359375,
+        137.30413818359375
+      ],
+      "bbox_norm": [
+        0.2854318148549182,
+        0.16414998851063878,
+        0.6083177172204102,
+        0.17788275031744005
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": "15 \nSET/CLR \nWhen this bit is written as a 1, it\nsets any bit in DMACONW for which \nthe corresponding bit position is \nalso a 1, leaving all other bits alone.\n",
+      "bbox": [
+        172.19601440429688,
+        152.00311279296875,
+        431.6259765625,
+        201.14715576171875
+      ],
+      "bbox_norm": [
+        0.28659689014596607,
+        0.19692583281263518,
+        0.7183828442079281,
+        0.26059381573468415
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "9 \nDMAEN \nOnly while this bit is a 1 can\n",
+      "bbox": [
+        171.2490234375,
+        216.546142578125,
+        386.0895080566406,
+        227.046142578125
+      ],
+      "bbox_norm": [
+        0.285020752236972,
+        0.28054379075540536,
+        0.6425935740139754,
+        0.29414694141817466
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "any direct memory access occur.\n",
+      "bbox": [
+        261.69903564453125,
+        229.64141845703125,
+        403.7428894042969,
+        240.1441650390625
+      ],
+      "bbox_norm": [
+        0.4355625188503168,
+        0.2975092203507663,
+        0.6719752307979714,
+        0.3111159293153622
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "3\n2\n1\n0\n",
+      "bbox": [
+        171.49903869628906,
+        255.79315185546875,
+        177.94894409179688,
+        304.2421569824219
+      ],
+      "bbox_norm": [
+        0.2854368686953341,
+        0.3313897888756731,
+        0.2961718606432203,
+        0.3941573237521708
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "AUD3EN \nAudio channel 3 enable.\nAUD2EN \nAudio channel 2 enable.\nAUD1EN \nAudio channel 1 enable.\nAUDOEN \nAudio channel 0 enable.\n",
+      "bbox": [
+        201.6980438232422,
+        255.54214477539062,
+        367.6819763183594,
+        304.0891418457031
+      ],
+      "bbox_norm": [
+        0.33569901317543815,
+        0.3310645996254136,
+        0.6119567362816677,
+        0.3939590868037451
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "For example, if you are using channel 0, then you write a 1 into bit 9 to enable DMA and a 1 into \nbit 0 to enable the audio channel, as shown below.\n",
+      "bbox": [
+        86.31804656982422,
+        325.7351379394531,
+        517.3221435546875,
+        349.08514404296875
+      ],
+      "bbox_norm": [
+        0.14366467072985278,
+        0.42200230071888767,
+        0.8610124808017555,
+        0.45225312462390727
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": "B E G I N C H A N O :\n",
+      "bbox": [
+        86.51803588867188,
+        364.5025329589844,
+        145.14801025390625,
+        371.0025329589844
+      ],
+      "bbox_norm": [
+        0.14399752580226796,
+        0.4722269402668663,
+        0.2415791590389231,
+        0.4806479382961997
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "L E A \nC U S T O M , a O\n",
+      "bbox": [
+        129.01803588867188,
+        374.2525329589844,
+        217.57400512695312,
+        380.7525329589844
+      ],
+      "bbox_norm": [
+        0.214733006372715,
+        0.48485843731086636,
+        0.36212239558333964,
+        0.49327943534019975
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "M O V E .W \n# ( D M A F _ S E T C L R !D M A F _ A U D 0 !D M A F _ M A S T E R ) ,D M A C O N ( a O )\n",
+      "bbox": [
+        128.76803588867188,
+        384.2022399902344,
+        420.3317565917969,
+        390.7022399902344
+      ],
+      "bbox_norm": [
+        0.2143169153105359,
+        0.4977486624343434,
+        0.699585148271551,
+        0.5061696604636767
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "STOPPING THE AUDIO DMA\n",
+      "bbox": [
+        87.01803588867188,
+        420.93084716796875,
+        235.21495056152344,
+        431.43084716796875
+      ],
+      "bbox_norm": [
+        0.14482970792662617,
+        0.5453319745364759,
+        0.39148335447819527,
+        0.5589351251992452
+      ]
+    },
+    {
+      "block_id": 13,
+      "type": 0,
+      "text": "You can stop the channel by writing a 0 into the AUDxEN bit at any time. However, you cannot \nresume the output at the same point in the waveform by just writing a 1 in the bit again. Enabling \nan audio channel almost always starts the data output again from the top of the list of data pointed \nto by the location registers for that channel. If the channel is disabled for a very short time (less \nthan two sampling periods) it may stay on and thus continue from where it left off.\n",
+      "bbox": [
+        86.76803588867188,
+        454.27783203125,
+        517.81201171875,
+        516.0258178710938
+      ],
+      "bbox_norm": [
+        0.14441361686444706,
+        0.588534265893076,
+        0.8618277998606054,
+        0.6685311377504036
+      ]
+    },
+    {
+      "block_id": 14,
+      "type": 0,
+      "text": "The following example shows how to stop audio DMA for one channel.\n",
+      "bbox": [
+        86.76803588867188,
+        531.6748657226562,
+        400.0565185546875,
+        542.1748657226562
+      ],
+      "bbox_norm": [
+        0.14441361686444706,
+        0.6888050763840885,
+        0.6658397669483713,
+        0.7024082270468578
+      ]
+    },
+    {
+      "block_id": 15,
+      "type": 0,
+      "text": "S T O P A U D C H A N 0:\n",
+      "bbox": [
+        87.51803588867188,
+        556.9921875,
+        154.1365203857422,
+        563.4921875
+      ],
+      "bbox_norm": [
+        0.14566189005098437,
+        0.7216046328140902,
+        0.256539313951576,
+        0.7300256308434235
+      ]
+    },
+    {
+      "block_id": 16,
+      "type": 0,
+      "text": "L E A \nC U S T O M , a O\n",
+      "bbox": [
+        129.7140350341797,
+        567.042236328125,
+        218.1790008544922,
+        573.542236328125
+      ],
+      "bbox_norm": [
+        0.21589140246763536,
+        0.734624854564297,
+        0.36312932884288185,
+        0.7430458525936304
+      ]
+    },
+    {
+      "block_id": 17,
+      "type": 0,
+      "text": "M O V E .W \n# ( D M A F _ A U D 0 ) ,D M A C O N ( a O )\n",
+      "bbox": [
+        129.5140380859375,
+        577.1422119140625,
+        292.00750732421875,
+        583.6422119140625
+      ],
+      "bbox_norm": [
+        0.21555853469712868,
+        0.7477097583343731,
+        0.4860068555472222,
+        0.7561307563637065
+      ]
+    },
+    {
+      "block_id": 18,
+      "type": 0,
+      "text": "Audio Hardware 141\n",
+      "bbox": [
+        421.5400085449219,
+        715.6251831054688,
+        515.4414672851562,
+        726.1251831054688
+      ],
+      "bbox_norm": [
+        0.7015961196257741,
+        0.9271197317957673,
+        0.8578823504553383,
+        0.9407228824585366
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

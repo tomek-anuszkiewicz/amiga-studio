@@ -1,0 +1,202 @@
+{
+  "page": 53,
+  "image_width": 2550,
+  "image_height": 3300,
+  "segments": [
+    {
+      "type": "graphic",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        30,
+        37,
+        289,
+        131
+      ],
+      "segment_id": "page_0053_seg_001"
+    },
+    {
+      "type": "header",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Integer Instructions",
+      "bbox": [
+        312,
+        106,
+        654,
+        146
+      ],
+      "segment_id": "page_0053_seg_002"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        262,
+        212,
+        2267,
+        354
+      ],
+      "segment_id": "page_0053_seg_003"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nOperation:     Source + Destination → Destination\n```",
+      "bbox": [
+        262,
+        411,
+        1507,
+        463
+      ],
+      "segment_id": "page_0053_seg_004"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nAssembler      ADD < ea > ,Dn\nSyntax:        ADD Dn, < ea >\n```",
+      "bbox": [
+        262,
+        519,
+        1078,
+        627
+      ],
+      "segment_id": "page_0053_seg_005"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nAttributes:    Size = (Byte, Word, Long)\n```",
+      "bbox": [
+        262,
+        686,
+        1290,
+        738
+      ],
+      "segment_id": "page_0053_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "**Description:** Adds the source operand to the destination operand using binary addition and stores the result in the destination location. The size of the operation may be specified as byte, word, or long. The mode of the instruction indicates which operand is the source and which is the destination, as well as the operand size.",
+      "bbox": [
+        262,
+        794,
+        2266,
+        1019
+      ],
+      "segment_id": "page_0053_seg_007"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Condition Codes:",
+      "bbox": [
+        262,
+        1079,
+        682,
+        1120
+      ],
+      "segment_id": "page_0053_seg_008"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        410,
+        1200,
+        1040,
+        1303
+      ],
+      "segment_id": "page_0053_seg_009"
+    },
+    {
+      "type": "table_legend",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "X — Set the same as the carry bit.\n\nN — Set if the result is negative; cleared otherwise.\n\nZ — Set if the result is zero; cleared otherwise.\n\nV — Set if an overflow is generated; cleared otherwise.\n\nC — Set if a carry is generated; cleared otherwise.",
+      "bbox": [
+        406,
+        1369,
+        1645,
+        1653
+      ],
+      "segment_id": "page_0053_seg_010"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "Instruction Format:",
+      "bbox": [
+        262,
+        1711,
+        724,
+        1753
+      ],
+      "segment_id": "page_0053_seg_011"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        261,
+        1834,
+        2265,
+        1978
+      ],
+      "segment_id": "page_0053_seg_012"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "4-4",
+      "bbox": [
+        262,
+        3122,
+        324,
+        3157
+      ],
+      "segment_id": "page_0053_seg_013"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "M68000 FAMILY PROGRAMMER’S REFERENCE MANUAL",
+      "bbox": [
+        693,
+        3122,
+        1833,
+        3157
+      ],
+      "segment_id": "page_0053_seg_014"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "MOTOROLA",
+      "bbox": [
+        2024,
+        3122,
+        2264,
+        3157
+      ],
+      "segment_id": "page_0053_seg_015"
+    }
+  ]
+}

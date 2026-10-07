@@ -1,0 +1,72 @@
+{
+  "page": 115,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 3-19: High-resolution Color Selection",
+      "bbox": [
+        838,
+        284,
+        1655,
+        328
+      ],
+      "segment_id": "page_0115_seg_001"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        779,
+        417,
+        1720,
+        1798
+      ],
+      "segment_id": "page_0115_seg_002"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "\\* Selects “transparent” mode.",
+      "bbox": [
+        357,
+        1966,
+        931,
+        2012
+      ],
+      "segment_id": "page_0115_seg_003"
+    },
+    {
+      "type": "footnote",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "\\*\\* Color register 0 always defines the background color.",
+      "bbox": [
+        357,
+        2019,
+        1390,
+        2066
+      ],
+      "segment_id": "page_0115_seg_004"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Playfield Hardware 91",
+      "bbox": [
+        1728,
+        2972,
+        2155,
+        3021
+      ],
+      "segment_id": "page_0115_seg_005"
+    }
+  ]
+}

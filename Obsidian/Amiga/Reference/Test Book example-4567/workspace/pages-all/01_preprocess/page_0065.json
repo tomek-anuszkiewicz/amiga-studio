@@ -1,0 +1,299 @@
+{
+  "schema_version": 1,
+  "page_id": "page_0065",
+  "page": 65,
+  "source_index": 64,
+  "prepared_index": 64,
+  "geometry": {
+    "width": 541.4400024414062,
+    "height": 720.719970703125,
+    "rotation": 0,
+    "mediabox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox": [
+      0.0,
+      0.0,
+      541.4400024414062,
+      720.719970703125
+    ],
+    "cropbox_position": [
+      0.0,
+      0.0
+    ],
+    "extraction_to_display": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "pdf_to_extraction": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      720.719970703125
+    ]
+  },
+  "width": 541.4400024414062,
+  "height": 720.719970703125,
+  "rotation": 0,
+  "coordinates": {
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "units": "PDF points",
+    "bbox": "[x0, y0, x1, y1]",
+    "frame": "displayed-page"
+  },
+  "raster": {
+    "pixel_width": 2256,
+    "pixel_height": 3003,
+    "raster_origin": [
+      0,
+      0
+    ],
+    "display_to_pixels": [
+      4.166666666666667,
+      0,
+      0,
+      4.166666666666667,
+      0,
+      0
+    ],
+    "pixel_bounds_rounding": "outward floor/ceil",
+    "export_rounding": "none"
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "type": 0,
+      "text": "As you will notice, the A500 and 2000 deletes clocks and interrupt\nlines from the A1000. The +/—5Vdc and reset lines are also de-\nleted. The +/— 12Vdc lines are identical to\na PC10/20.\n~\n",
+      "bbox": [
+        191.52000427246094,
+        74.63995361328125,
+        535.4280395507812,
+        108.72981262207031
+      ],
+      "bbox_norm": [
+        0.3537234105512677,
+        0.10356304341124818,
+        0.9888963451841082,
+        0.15086277200837786
+      ]
+    },
+    {
+      "block_id": 1,
+      "type": 0,
+      "text": "The following signals (formerly on the RS232 connector) can be found\non other connectors:\n",
+      "bbox": [
+        191.52001953125,
+        122.87994384765625,
+        487.6920471191406,
+        144.96859741210938
+      ],
+      "bbox_norm": [
+        0.3537234387331327,
+        0.1704960995152891,
+        0.9007314659428362,
+        0.20114413822983135
+      ]
+    },
+    {
+      "block_id": 2,
+      "type": 0,
+      "text": "ResB = parallel connector\n",
+      "bbox": [
+        248.64004516601562,
+        153.5999755859375,
+        363.99853515625,
+        163.69007873535156
+      ],
+      "bbox_norm": [
+        0.4592199395036813,
+        0.21312018790888695,
+        0.6722786153866445,
+        0.22712022059782477
+      ]
+    },
+    {
+      "block_id": 3,
+      "type": 0,
+      "text": ".\nC2 = video connector\n",
+      "bbox": [
+        139.20005798339844,
+        165.3599853515625,
+        355.4772033691406,
+        178.08067321777344
+      ],
+      "bbox_norm": [
+        0.2570923045133933,
+        0.2294372184389999,
+        0.6565403401415835,
+        0.24708719122080142
+      ]
+    },
+    {
+      "block_id": 4,
+      "type": 0,
+      "text": "Centronics Port\nThe Centronics port also has some non-standard signals. Below is a\n.\ntable comparing the A1000 Centronics port with the A500/A2Z000\n=\nCentronics port. Again, this is the opposite sex from the A1000\nand the same sex connector as an IBM®-PC {i.e.,\na female DB25\nconnector).\n—\n",
+      "bbox": [
+        35.520050048828125,
+        212.63998413085938,
+        540.4392700195312,
+        276.0141296386719
+      ],
+      "bbox_norm": [
+        0.06560292902014023,
+        0.2950382850129858,
+        0.9981517205648592,
+        0.3829700034111669
+      ]
+    },
+    {
+      "block_id": 5,
+      "type": 0,
+      "text": "PIN\nA1000\nA500/A2000\nPC10\n—\n",
+      "bbox": [
+        188.880126953125,
+        302.15997314453125,
+        535.6561279296875,
+        311.2890930175781
+      ],
+      "bbox_norm": [
+        0.3488477506306256,
+        0.4192473990275973,
+        0.9893176077023517,
+        0.4319140660330094
+      ]
+    },
+    {
+      "block_id": 6,
+      "type": 0,
+      "text": "1\nDRDY*\nSTROBE*\nSTROBE*\n2\nData O\nData O\nData O\n3\nData 1\nData 1\nData 1\n_\n",
+      "bbox": [
+        188.16012573242188,
+        322.3199768066406,
+        536.12890625,
+        357.1297912597656
+      ],
+      "bbox_norm": [
+        0.34751796114802996,
+        0.447219433217855,
+        0.990190794607975,
+        0.4955181010335463
+      ]
+    },
+    {
+      "block_id": 7,
+      "type": 0,
+      "text": "-\n4\nData 2\nData 2\nData 2\ner ee\ney\n5\nData 3\nData 3\nData 3\n~\n",
+      "bbox": [
+        1.44012451171875,
+        359.51995849609375,
+        534.2281494140625,
+        383.7738952636719
+      ],
+      "bbox_norm": [
+        0.0026598044201113454,
+        0.4988344615251202,
+        0.9866802360467922,
+        0.5324868338104564
+      ]
+    },
+    {
+      "block_id": 8,
+      "type": 0,
+      "text": "7\nData 5\nData 5\nData 5\n",
+      "bbox": [
+        188.64013671875,
+        394.7999572753906,
+        467.7457580566406,
+        403.9291076660156
+      ],
+      "bbox_norm": [
+        0.3484045062576704,
+        0.5477855107722753,
+        0.8638921319952885,
+        0.5604522201208711
+      ]
+    },
+    {
+      "block_id": 9,
+      "type": 0,
+      "text": ":\n8\nData 6\nData 6\nData 6\n9\nData 7\nData 7\nData 7\n10\nACK*\nACK*\nACK*\na\n11\nBUSY (data)\nBUSY\nBUSY\n12\nPOUT(cIk)\nPOUT\nPOUT\n13\nSEL\nSEL\nSEL\n—\n14\nGND\n+5v pullup\nAUTOFDXT*\n15\nGND\nNC\nERROR*\n~\n16\nGND\nRESET*\nINIT*\n_\nrie\nBy\n17\nGND\nGND\nSLCT IN*\n18-22\nGND\nGND\nGND\n23\n+5v\nGND\nGND\n24\nNC\nGND\nGND\n_\n25\nReset*\nGND\nGND\n",
+      "bbox": [
+        86.64016723632812,
+        406.5599670410156,
+        535.6742553710938,
+        571.9293212890625
+      ],
+      "bbox_norm": [
+        0.16001803864815878,
+        0.5641025413023882,
+        0.9893510877579895,
+        0.793552759098788
+      ]
+    },
+    {
+      "block_id": 10,
+      "type": 0,
+      "text": "Video Output\nThe A500 and A2000, like the A1000, use a DB23 video connector.\n.\n_\n",
+      "bbox": [
+        31.920135498046875,
+        622.7999877929688,
+        534.6865234375,
+        636.73388671875
+      ],
+      "bbox_norm": [
+        0.058954150698352255,
+        0.8641358823252437,
+        0.9875268192718415,
+        0.8834691872039576
+      ]
+    },
+    {
+      "block_id": 11,
+      "type": 0,
+      "text": "This 23 pin connector contains all the signals necessary to work with\na Genlock, but the current Gentock will need to be redesigned in or-\nder to meet the physical requirements of the A500 and A2000, in-\n—\n",
+      "bbox": [
+        188.16012573242188,
+        646.0799560546875,
+        534.2017211914062,
+        681.8515014648438
+      ],
+      "bbox_norm": [
+        0.34751796114802996,
+        0.8964368719023844,
+        0.9866314250565864,
+        0.9460699428096023
+      ]
+    },
+    {
+      "block_id": 12,
+      "type": 0,
+      "text": "4\n5\nél\n",
+      "bbox": [
+        0.0001220703125,
+        703.4400024414062,
+        541.4016723632812,
+        720.719970703125
+      ],
+      "bbox_norm": [
+        2.254549201196309e-07,
+        0.9760240190862748,
+        0.9999292071550825,
+        1.0
+      ]
+    }
+  ],
+  "provenance": "prepared",
+  "page_type": "text_page",
+  "classification_basis": "inferred_from_prepared_spans"
+}

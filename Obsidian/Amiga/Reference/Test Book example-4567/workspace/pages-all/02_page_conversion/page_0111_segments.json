@@ -1,0 +1,150 @@
+{
+  "page": 111,
+  "image_width": 2504,
+  "image_height": 3217,
+  "segments": [
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The following example sets DIWSTOP for a basic playfield to $F4 for the vertical position and $C1 for the horizontal position.",
+      "bbox": [
+        354,
+        226,
+        2161,
+        325
+      ],
+      "segment_id": "page_0111_seg_001"
+    },
+    {
+      "type": "code_block",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "```text\nLEA     CUSTOM,a0               ; Get base address of custom hardware...\nMOVE.W  #$F4C1,DIWSTOP(a0)       ; Display window stop register...\n```",
+      "bbox": [
+        532,
+        380,
+        2146,
+        456
+      ],
+      "segment_id": "page_0111_seg_002"
+    },
+    {
+      "type": "caption",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Table 3-9: DIWSTRT AND DIWSTOP Summary.",
+      "bbox": [
+        784,
+        521,
+        1717,
+        566
+      ],
+      "segment_id": "page_0111_seg_003"
+    },
+    {
+      "type": "table",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "",
+      "bbox": [
+        581,
+        654,
+        1925,
+        1081
+      ],
+      "segment_id": "page_0111_seg_004"
+    },
+    {
+      "type": "heading",
+      "continuation": false,
+      "heading_level": 2,
+      "md_text": "TELLING THE SYSTEM HOW TO FETCH AND DISPLAY DATA",
+      "bbox": [
+        355,
+        1228,
+        1714,
+        1275
+      ],
+      "segment_id": "page_0111_seg_005"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "After defining the size and position of the display window, you need to give the system the on-screen location for data fetched from memory. To do this, you describe the horizontal positions where each line starts and stops and write these positions to the data-fetch registers. The data-fetch registers have a four-pixel resolution (unlike the display window registers, which have a one-pixel resolution). Each position specified is four pixels from the last one. Pixel 0 is position 0; pixel 4 is position 1, and so on.",
+      "bbox": [
+        354,
+        1367,
+        2162,
+        1681
+      ],
+      "segment_id": "page_0111_seg_006"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The data-fetch start and display window starting positions interact with each other. It is recommended that data-fetch start values be restricted to a programming resolution of 16 pixels (8 clocks in low-resolution mode, 4 clocks in high-resolution mode). The hardware requires some time after the first data fetch before it can actually display the data. As a result, there is a difference between the value of window start and data-fetch start of 4.5 color clocks.",
+      "bbox": [
+        353,
+        1742,
+        2162,
+        2004
+      ],
+      "segment_id": "page_0111_seg_007"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "The normal low-resolution DDFSTRT is ($0038).\nThe normal high-resolution DDFSTRT is ($003C).",
+      "bbox": [
+        501,
+        2063,
+        1439,
+        2164
+      ],
+      "segment_id": "page_0111_seg_008"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Recall that the hardware resolution of display window start and stop is twice the hardware resolution of data fetch:",
+      "bbox": [
+        353,
+        2225,
+        2150,
+        2327
+      ],
+      "segment_id": "page_0111_seg_009"
+    },
+    {
+      "type": "prose",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "$$\\frac{\\$81}{2} - 8.5 = \\$38$$\n\n$$\\frac{\\$81}{2} - 4.5 = \\$3C$$",
+      "bbox": [
+        586,
+        2405,
+        906,
+        2620
+      ],
+      "segment_id": "page_0111_seg_010"
+    },
+    {
+      "type": "footer",
+      "continuation": false,
+      "heading_level": null,
+      "md_text": "Playfield Hardware 53",
+      "bbox": [
+        1727,
+        2970,
+        2151,
+        3018
+      ],
+      "segment_id": "page_0111_seg_011"
+    }
+  ]
+}

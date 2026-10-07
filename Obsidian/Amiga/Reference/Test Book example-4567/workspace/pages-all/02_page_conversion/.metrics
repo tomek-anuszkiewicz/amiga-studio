@@ -1,0 +1,4807 @@
+{
+  "llm_calls": 139,
+  "llm_cached_calls": 21,
+  "llm_time_seconds": 2114.8222447000444,
+  "requests": [
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 17468,
+        "outputTokens": 60,
+        "reasoningOutputTokens": 0,
+        "totalTokens": 17528
+      },
+      "duration_seconds": 6.304445300003863,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18006,
+        "outputTokens": 631,
+        "reasoningOutputTokens": 55,
+        "totalTokens": 18637
+      },
+      "duration_seconds": 11.716627699992387,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 17566,
+        "outputTokens": 732,
+        "reasoningOutputTokens": 219,
+        "totalTokens": 18298
+      },
+      "duration_seconds": 18.288677200005623,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 0,
+        "inputTokens": 16882,
+        "outputTokens": 30,
+        "reasoningOutputTokens": 0,
+        "totalTokens": 16912
+      },
+      "duration_seconds": 3.3550668000098085,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 17758,
+        "outputTokens": 523,
+        "reasoningOutputTokens": 69,
+        "totalTokens": 18281
+      },
+      "duration_seconds": 11.519816300002276,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19678,
+        "outputTokens": 653,
+        "reasoningOutputTokens": 184,
+        "totalTokens": 20331
+      },
+      "duration_seconds": 16.22260580000875,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18313,
+        "outputTokens": 637,
+        "reasoningOutputTokens": 71,
+        "totalTokens": 18950
+      },
+      "duration_seconds": 12.54250470000261,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18472,
+        "outputTokens": 866,
+        "reasoningOutputTokens": 111,
+        "totalTokens": 19338
+      },
+      "duration_seconds": 16.211701299995184,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18199,
+        "outputTokens": 537,
+        "reasoningOutputTokens": 77,
+        "totalTokens": 18736
+      },
+      "duration_seconds": 12.443945400009397,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 0,
+        "inputTokens": 18215,
+        "outputTokens": 859,
+        "reasoningOutputTokens": 88,
+        "totalTokens": 19074
+      },
+      "duration_seconds": 17.40395599999465,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18318,
+        "outputTokens": 1014,
+        "reasoningOutputTokens": 121,
+        "totalTokens": 19332
+      },
+      "duration_seconds": 19.915687799992156,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18127,
+        "outputTokens": 801,
+        "reasoningOutputTokens": 78,
+        "totalTokens": 18928
+      },
+      "duration_seconds": 14.694630999991205,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18403,
+        "outputTokens": 897,
+        "reasoningOutputTokens": 84,
+        "totalTokens": 19300
+      },
+      "duration_seconds": 17.62762539999676,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18212,
+        "outputTokens": 832,
+        "reasoningOutputTokens": 89,
+        "totalTokens": 19044
+      },
+      "duration_seconds": 15.665485900011845,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18966,
+        "outputTokens": 824,
+        "reasoningOutputTokens": 105,
+        "totalTokens": 19790
+      },
+      "duration_seconds": 16.018966000003275,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18353,
+        "outputTokens": 1199,
+        "reasoningOutputTokens": 135,
+        "totalTokens": 19552
+      },
+      "duration_seconds": 24.664686999996775,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19939,
+        "outputTokens": 700,
+        "reasoningOutputTokens": 116,
+        "totalTokens": 20639
+      },
+      "duration_seconds": 14.482473900003242,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19295,
+        "outputTokens": 799,
+        "reasoningOutputTokens": 80,
+        "totalTokens": 20094
+      },
+      "duration_seconds": 15.53747039999871,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19413,
+        "outputTokens": 857,
+        "reasoningOutputTokens": 169,
+        "totalTokens": 20270
+      },
+      "duration_seconds": 17.410951099998783,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18535,
+        "outputTokens": 921,
+        "reasoningOutputTokens": 112,
+        "totalTokens": 19456
+      },
+      "duration_seconds": 17.644508400000632,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22790,
+        "outputTokens": 333,
+        "reasoningOutputTokens": 76,
+        "totalTokens": 23123
+      },
+      "duration_seconds": 10.733153000008315,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20191,
+        "outputTokens": 478,
+        "reasoningOutputTokens": 85,
+        "totalTokens": 20669
+      },
+      "duration_seconds": 11.371693299995968,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20331,
+        "outputTokens": 333,
+        "reasoningOutputTokens": 71,
+        "totalTokens": 20664
+      },
+      "duration_seconds": 9.735654299991438,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 0,
+        "inputTokens": 19675,
+        "outputTokens": 332,
+        "reasoningOutputTokens": 72,
+        "totalTokens": 20007
+      },
+      "duration_seconds": 8.764656100000138,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19266,
+        "outputTokens": 362,
+        "reasoningOutputTokens": 60,
+        "totalTokens": 19628
+      },
+      "duration_seconds": 9.687262300009024,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21175,
+        "outputTokens": 699,
+        "reasoningOutputTokens": 73,
+        "totalTokens": 21874
+      },
+      "duration_seconds": 13.653782800000045,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19181,
+        "outputTokens": 1416,
+        "reasoningOutputTokens": 94,
+        "totalTokens": 20597
+      },
+      "duration_seconds": 24.104872500000056,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18889,
+        "outputTokens": 1272,
+        "reasoningOutputTokens": 92,
+        "totalTokens": 20161
+      },
+      "duration_seconds": 23.599041900000884,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18506,
+        "outputTokens": 615,
+        "reasoningOutputTokens": 102,
+        "totalTokens": 19121
+      },
+      "duration_seconds": 13.974441900005331,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18824,
+        "outputTokens": 304,
+        "reasoningOutputTokens": 34,
+        "totalTokens": 19128
+      },
+      "duration_seconds": 7.37863040000957,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19734,
+        "outputTokens": 949,
+        "reasoningOutputTokens": 92,
+        "totalTokens": 20683
+      },
+      "duration_seconds": 17.9764439999999,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19656,
+        "outputTokens": 1371,
+        "reasoningOutputTokens": 176,
+        "totalTokens": 21027
+      },
+      "duration_seconds": 24.440203499994823,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 17924,
+        "outputTokens": 833,
+        "reasoningOutputTokens": 310,
+        "totalTokens": 18757
+      },
+      "duration_seconds": 22.111435700004222,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19212,
+        "outputTokens": 887,
+        "reasoningOutputTokens": 105,
+        "totalTokens": 20099
+      },
+      "duration_seconds": 16.837460499998997,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18722,
+        "outputTokens": 1269,
+        "reasoningOutputTokens": 327,
+        "totalTokens": 19991
+      },
+      "duration_seconds": 23.016559299998335,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20524,
+        "outputTokens": 625,
+        "reasoningOutputTokens": 56,
+        "totalTokens": 21149
+      },
+      "duration_seconds": 12.462852399999974,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20198,
+        "outputTokens": 2018,
+        "reasoningOutputTokens": 95,
+        "totalTokens": 22216
+      },
+      "duration_seconds": 30.339191200007917,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 24173,
+        "outputTokens": 859,
+        "reasoningOutputTokens": 102,
+        "totalTokens": 25032
+      },
+      "duration_seconds": 17.1171342000016,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22571,
+        "outputTokens": 991,
+        "reasoningOutputTokens": 76,
+        "totalTokens": 23562
+      },
+      "duration_seconds": 19.078618300001835,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 24544,
+        "outputTokens": 915,
+        "reasoningOutputTokens": 142,
+        "totalTokens": 25459
+      },
+      "duration_seconds": 17.432693599999766,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21802,
+        "outputTokens": 1093,
+        "reasoningOutputTokens": 149,
+        "totalTokens": 22895
+      },
+      "duration_seconds": 22.666699299996253,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 0,
+        "inputTokens": 22187,
+        "outputTokens": 1186,
+        "reasoningOutputTokens": 115,
+        "totalTokens": 23373
+      },
+      "duration_seconds": 23.128162499997416,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 24397,
+        "outputTokens": 365,
+        "reasoningOutputTokens": 86,
+        "totalTokens": 24762
+      },
+      "duration_seconds": 9.950115500003449,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21818,
+        "outputTokens": 721,
+        "reasoningOutputTokens": 50,
+        "totalTokens": 22539
+      },
+      "duration_seconds": 16.161484099997324,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22841,
+        "outputTokens": 951,
+        "reasoningOutputTokens": 112,
+        "totalTokens": 23792
+      },
+      "duration_seconds": 17.52013910000096,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22483,
+        "outputTokens": 525,
+        "reasoningOutputTokens": 97,
+        "totalTokens": 23008
+      },
+      "duration_seconds": 11.80317389999982,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 0,
+        "inputTokens": 24092,
+        "outputTokens": 373,
+        "reasoningOutputTokens": 107,
+        "totalTokens": 24465
+      },
+      "duration_seconds": 9.80174779999652,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 23033,
+        "outputTokens": 517,
+        "reasoningOutputTokens": 107,
+        "totalTokens": 23550
+      },
+      "duration_seconds": 11.296612400008598,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22371,
+        "outputTokens": 362,
+        "reasoningOutputTokens": 84,
+        "totalTokens": 22733
+      },
+      "duration_seconds": 9.322266900009708,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 0,
+        "inputTokens": 21501,
+        "outputTokens": 834,
+        "reasoningOutputTokens": 67,
+        "totalTokens": 22335
+      },
+      "duration_seconds": 16.37077870000212,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22402,
+        "outputTokens": 991,
+        "reasoningOutputTokens": 149,
+        "totalTokens": 23393
+      },
+      "duration_seconds": 18.23171320000256,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21441,
+        "outputTokens": 598,
+        "reasoningOutputTokens": 55,
+        "totalTokens": 22039
+      },
+      "duration_seconds": 14.611510000002454,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21778,
+        "outputTokens": 818,
+        "reasoningOutputTokens": 114,
+        "totalTokens": 22596
+      },
+      "duration_seconds": 16.947672299997066,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 23499,
+        "outputTokens": 723,
+        "reasoningOutputTokens": 143,
+        "totalTokens": 24222
+      },
+      "duration_seconds": 17.464838400002918,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 23284,
+        "outputTokens": 794,
+        "reasoningOutputTokens": 130,
+        "totalTokens": 24078
+      },
+      "duration_seconds": 16.381730499997502,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22038,
+        "outputTokens": 814,
+        "reasoningOutputTokens": 62,
+        "totalTokens": 22852
+      },
+      "duration_seconds": 15.977913900002022,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22820,
+        "outputTokens": 572,
+        "reasoningOutputTokens": 74,
+        "totalTokens": 23392
+      },
+      "duration_seconds": 11.883770399988862,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22572,
+        "outputTokens": 884,
+        "reasoningOutputTokens": 96,
+        "totalTokens": 23456
+      },
+      "duration_seconds": 17.94989469999564,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21577,
+        "outputTokens": 495,
+        "reasoningOutputTokens": 54,
+        "totalTokens": 22072
+      },
+      "duration_seconds": 11.08179770001152,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22550,
+        "outputTokens": 377,
+        "reasoningOutputTokens": 91,
+        "totalTokens": 22927
+      },
+      "duration_seconds": 10.149339000010514,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21470,
+        "outputTokens": 495,
+        "reasoningOutputTokens": 105,
+        "totalTokens": 21965
+      },
+      "duration_seconds": 11.68994830000156,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 25269,
+        "outputTokens": 502,
+        "reasoningOutputTokens": 132,
+        "totalTokens": 25771
+      },
+      "duration_seconds": 11.954719100001967,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 24319,
+        "outputTokens": 590,
+        "reasoningOutputTokens": 205,
+        "totalTokens": 24909
+      },
+      "duration_seconds": 14.715315800000099,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19814,
+        "outputTokens": 751,
+        "reasoningOutputTokens": 104,
+        "totalTokens": 20565
+      },
+      "duration_seconds": 13.687284100000397,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19711,
+        "outputTokens": 695,
+        "reasoningOutputTokens": 91,
+        "totalTokens": 20406
+      },
+      "duration_seconds": 14.936979399994016,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19874,
+        "outputTokens": 196,
+        "reasoningOutputTokens": 60,
+        "totalTokens": 20070
+      },
+      "duration_seconds": 6.845929099989007,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19528,
+        "outputTokens": 228,
+        "reasoningOutputTokens": 71,
+        "totalTokens": 19756
+      },
+      "duration_seconds": 7.364208800005144,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18953,
+        "outputTokens": 136,
+        "reasoningOutputTokens": 40,
+        "totalTokens": 19089
+      },
+      "duration_seconds": 5.571808599997894,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19745,
+        "outputTokens": 782,
+        "reasoningOutputTokens": 159,
+        "totalTokens": 20527
+      },
+      "duration_seconds": 16.415121900005033,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19403,
+        "outputTokens": 484,
+        "reasoningOutputTokens": 89,
+        "totalTokens": 19887
+      },
+      "duration_seconds": 10.210501900000963,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20536,
+        "outputTokens": 622,
+        "reasoningOutputTokens": 146,
+        "totalTokens": 21158
+      },
+      "duration_seconds": 14.941741700007697,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19685,
+        "outputTokens": 174,
+        "reasoningOutputTokens": 78,
+        "totalTokens": 19859
+      },
+      "duration_seconds": 6.55298340000445,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19734,
+        "outputTokens": 254,
+        "reasoningOutputTokens": 93,
+        "totalTokens": 19988
+      },
+      "duration_seconds": 9.204394500004128,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19453,
+        "outputTokens": 622,
+        "reasoningOutputTokens": 132,
+        "totalTokens": 20075
+      },
+      "duration_seconds": 14.32253980000678,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 18545,
+        "outputTokens": 164,
+        "reasoningOutputTokens": 68,
+        "totalTokens": 18709
+      },
+      "duration_seconds": 5.320261200002278,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20091,
+        "outputTokens": 722,
+        "reasoningOutputTokens": 165,
+        "totalTokens": 20813
+      },
+      "duration_seconds": 16.552336900000228,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20265,
+        "outputTokens": 647,
+        "reasoningOutputTokens": 97,
+        "totalTokens": 20912
+      },
+      "duration_seconds": 13.763418899994576,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19139,
+        "outputTokens": 567,
+        "reasoningOutputTokens": 101,
+        "totalTokens": 19706
+      },
+      "duration_seconds": 12.488282400008757,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20293,
+        "outputTokens": 296,
+        "reasoningOutputTokens": 96,
+        "totalTokens": 20589
+      },
+      "duration_seconds": 7.921405200002482,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19264,
+        "outputTokens": 176,
+        "reasoningOutputTokens": 80,
+        "totalTokens": 19440
+      },
+      "duration_seconds": 6.2446243000013055,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21188,
+        "outputTokens": 757,
+        "reasoningOutputTokens": 172,
+        "totalTokens": 21945
+      },
+      "duration_seconds": 15.386711900006048,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20692,
+        "outputTokens": 901,
+        "reasoningOutputTokens": 235,
+        "totalTokens": 21593
+      },
+      "duration_seconds": 20.142070100002456,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19887,
+        "outputTokens": 1009,
+        "reasoningOutputTokens": 228,
+        "totalTokens": 20896
+      },
+      "duration_seconds": 20.444132799995714,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20307,
+        "outputTokens": 846,
+        "reasoningOutputTokens": 133,
+        "totalTokens": 21153
+      },
+      "duration_seconds": 17.317005400007474,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19907,
+        "outputTokens": 890,
+        "reasoningOutputTokens": 258,
+        "totalTokens": 20797
+      },
+      "duration_seconds": 18.10538059999817,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20832,
+        "outputTokens": 752,
+        "reasoningOutputTokens": 139,
+        "totalTokens": 21584
+      },
+      "duration_seconds": 15.478996200006804,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20843,
+        "outputTokens": 768,
+        "reasoningOutputTokens": 134,
+        "totalTokens": 21611
+      },
+      "duration_seconds": 16.342290399988997,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21628,
+        "outputTokens": 702,
+        "reasoningOutputTokens": 137,
+        "totalTokens": 22330
+      },
+      "duration_seconds": 16.4478201999882,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20089,
+        "outputTokens": 982,
+        "reasoningOutputTokens": 65,
+        "totalTokens": 21071
+      },
+      "duration_seconds": 19.48325340000156,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19448,
+        "outputTokens": 833,
+        "reasoningOutputTokens": 126,
+        "totalTokens": 20281
+      },
+      "duration_seconds": 16.894809699995676,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20074,
+        "outputTokens": 892,
+        "reasoningOutputTokens": 77,
+        "totalTokens": 20966
+      },
+      "duration_seconds": 16.273572100006277,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19862,
+        "outputTokens": 735,
+        "reasoningOutputTokens": 103,
+        "totalTokens": 20597
+      },
+      "duration_seconds": 16.55191699998977,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19536,
+        "outputTokens": 620,
+        "reasoningOutputTokens": 115,
+        "totalTokens": 20156
+      },
+      "duration_seconds": 13.570399000003817,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20169,
+        "outputTokens": 719,
+        "reasoningOutputTokens": 302,
+        "totalTokens": 20888
+      },
+      "duration_seconds": 18.692796200004523,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19770,
+        "outputTokens": 693,
+        "reasoningOutputTokens": 93,
+        "totalTokens": 20463
+      },
+      "duration_seconds": 15.383296300002257,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19298,
+        "outputTokens": 239,
+        "reasoningOutputTokens": 103,
+        "totalTokens": 19537
+      },
+      "duration_seconds": 8.063960700004827,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22484,
+        "outputTokens": 1168,
+        "reasoningOutputTokens": 174,
+        "totalTokens": 23652
+      },
+      "duration_seconds": 21.373054800002137,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": true,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 19447,
+        "outputTokens": 999,
+        "reasoningOutputTokens": 242,
+        "totalTokens": 20446
+      },
+      "duration_seconds": 21.89535700000124,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 0,
+        "inputTokens": 48821,
+        "outputTokens": 581,
+        "reasoningOutputTokens": 483,
+        "totalTokens": 49402
+      },
+      "duration_seconds": 19.89095400000224,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 48177,
+        "outputTokens": 309,
+        "reasoningOutputTokens": 247,
+        "totalTokens": 48486
+      },
+      "duration_seconds": 14.450916599991615,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 23701,
+        "outputTokens": 302,
+        "reasoningOutputTokens": 202,
+        "totalTokens": 24003
+      },
+      "duration_seconds": 12.751063299991074,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22902,
+        "outputTokens": 417,
+        "reasoningOutputTokens": 318,
+        "totalTokens": 23319
+      },
+      "duration_seconds": 15.903294200004893,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21608,
+        "outputTokens": 857,
+        "reasoningOutputTokens": 75,
+        "totalTokens": 22465
+      },
+      "duration_seconds": 18.32012269999541,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21258,
+        "outputTokens": 1013,
+        "reasoningOutputTokens": 66,
+        "totalTokens": 22271
+      },
+      "duration_seconds": 18.025216199996066,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21786,
+        "outputTokens": 818,
+        "reasoningOutputTokens": 54,
+        "totalTokens": 22604
+      },
+      "duration_seconds": 16.74515539999993,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21277,
+        "outputTokens": 664,
+        "reasoningOutputTokens": 93,
+        "totalTokens": 21941
+      },
+      "duration_seconds": 14.690693399999873,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20905,
+        "outputTokens": 840,
+        "reasoningOutputTokens": 231,
+        "totalTokens": 21745
+      },
+      "duration_seconds": 18.817314700005227,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 0,
+        "inputTokens": 22114,
+        "outputTokens": 1016,
+        "reasoningOutputTokens": 120,
+        "totalTokens": 23130
+      },
+      "duration_seconds": 19.230721899992204,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21694,
+        "outputTokens": 735,
+        "reasoningOutputTokens": 67,
+        "totalTokens": 22429
+      },
+      "duration_seconds": 14.272823999999673,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20985,
+        "outputTokens": 482,
+        "reasoningOutputTokens": 0,
+        "totalTokens": 21467
+      },
+      "duration_seconds": 10.251460700004827,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21810,
+        "outputTokens": 842,
+        "reasoningOutputTokens": 66,
+        "totalTokens": 22652
+      },
+      "duration_seconds": 15.82151559999329,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21384,
+        "outputTokens": 645,
+        "reasoningOutputTokens": 46,
+        "totalTokens": 22029
+      },
+      "duration_seconds": 13.490898499992909,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21554,
+        "outputTokens": 806,
+        "reasoningOutputTokens": 63,
+        "totalTokens": 22360
+      },
+      "duration_seconds": 15.17041929998959,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21036,
+        "outputTokens": 430,
+        "reasoningOutputTokens": 0,
+        "totalTokens": 21466
+      },
+      "duration_seconds": 10.15525749999506,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21238,
+        "outputTokens": 308,
+        "reasoningOutputTokens": 82,
+        "totalTokens": 21546
+      },
+      "duration_seconds": 8.720486599995638,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22052,
+        "outputTokens": 901,
+        "reasoningOutputTokens": 81,
+        "totalTokens": 22953
+      },
+      "duration_seconds": 15.59361149999313,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21615,
+        "outputTokens": 766,
+        "reasoningOutputTokens": 51,
+        "totalTokens": 22381
+      },
+      "duration_seconds": 16.161792400002014,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20475,
+        "outputTokens": 238,
+        "reasoningOutputTokens": 0,
+        "totalTokens": 20713
+      },
+      "duration_seconds": 6.383755100003327,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20440,
+        "outputTokens": 429,
+        "reasoningOutputTokens": 142,
+        "totalTokens": 20869
+      },
+      "duration_seconds": 12.657048699998995,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21030,
+        "outputTokens": 705,
+        "reasoningOutputTokens": 98,
+        "totalTokens": 21735
+      },
+      "duration_seconds": 14.264034599997103,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21453,
+        "outputTokens": 941,
+        "reasoningOutputTokens": 144,
+        "totalTokens": 22394
+      },
+      "duration_seconds": 20.942165000000386,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21331,
+        "outputTokens": 976,
+        "reasoningOutputTokens": 53,
+        "totalTokens": 22307
+      },
+      "duration_seconds": 17.209104699999443,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21804,
+        "outputTokens": 695,
+        "reasoningOutputTokens": 116,
+        "totalTokens": 22499
+      },
+      "duration_seconds": 16.48851989999821,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21807,
+        "outputTokens": 740,
+        "reasoningOutputTokens": 143,
+        "totalTokens": 22547
+      },
+      "duration_seconds": 14.745928500007722,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21894,
+        "outputTokens": 1955,
+        "reasoningOutputTokens": 66,
+        "totalTokens": 23849
+      },
+      "duration_seconds": 28.1622614999942,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21834,
+        "outputTokens": 931,
+        "reasoningOutputTokens": 59,
+        "totalTokens": 22765
+      },
+      "duration_seconds": 16.846519700004137,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21184,
+        "outputTokens": 765,
+        "reasoningOutputTokens": 61,
+        "totalTokens": 21949
+      },
+      "duration_seconds": 14.380389600002673,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 20096,
+        "inputTokens": 21942,
+        "outputTokens": 1238,
+        "reasoningOutputTokens": 0,
+        "totalTokens": 23180
+      },
+      "duration_seconds": 44.010507999992114,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21382,
+        "outputTokens": 1004,
+        "reasoningOutputTokens": 58,
+        "totalTokens": 22386
+      },
+      "duration_seconds": 18.632668200007174,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21838,
+        "outputTokens": 424,
+        "reasoningOutputTokens": 63,
+        "totalTokens": 22262
+      },
+      "duration_seconds": 10.945850299991434,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21529,
+        "outputTokens": 987,
+        "reasoningOutputTokens": 95,
+        "totalTokens": 22516
+      },
+      "duration_seconds": 17.97492079999938,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21308,
+        "outputTokens": 1192,
+        "reasoningOutputTokens": 330,
+        "totalTokens": 22500
+      },
+      "duration_seconds": 23.451527500001248,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 0,
+        "inputTokens": 21034,
+        "outputTokens": 843,
+        "reasoningOutputTokens": 41,
+        "totalTokens": 21877
+      },
+      "duration_seconds": 11.307675100004417,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21703,
+        "outputTokens": 303,
+        "reasoningOutputTokens": 165,
+        "totalTokens": 22006
+      },
+      "duration_seconds": 9.507281599988346,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20914,
+        "outputTokens": 591,
+        "reasoningOutputTokens": 65,
+        "totalTokens": 21505
+      },
+      "duration_seconds": 10.962122400000226,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21173,
+        "outputTokens": 436,
+        "reasoningOutputTokens": 107,
+        "totalTokens": 21609
+      },
+      "duration_seconds": 11.381781199990655,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22941,
+        "outputTokens": 531,
+        "reasoningOutputTokens": 47,
+        "totalTokens": 23472
+      },
+      "duration_seconds": 11.164071799998055,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22294,
+        "outputTokens": 443,
+        "reasoningOutputTokens": 153,
+        "totalTokens": 22737
+      },
+      "duration_seconds": 10.61001170000236,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20969,
+        "outputTokens": 360,
+        "reasoningOutputTokens": 81,
+        "totalTokens": 21329
+      },
+      "duration_seconds": 9.029897999993409,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21037,
+        "outputTokens": 204,
+        "reasoningOutputTokens": 105,
+        "totalTokens": 21241
+      },
+      "duration_seconds": 7.669849500001874,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 40620,
+        "outputTokens": 234,
+        "reasoningOutputTokens": 0,
+        "totalTokens": 40854
+      },
+      "duration_seconds": 6.952349300001515,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22172,
+        "outputTokens": 265,
+        "reasoningOutputTokens": 77,
+        "totalTokens": 22437
+      },
+      "duration_seconds": 8.909198900000774,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21522,
+        "outputTokens": 700,
+        "reasoningOutputTokens": 170,
+        "totalTokens": 22222
+      },
+      "duration_seconds": 15.615766200004146,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22489,
+        "outputTokens": 557,
+        "reasoningOutputTokens": 200,
+        "totalTokens": 23046
+      },
+      "duration_seconds": 13.898375100005069,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 21760,
+        "inputTokens": 23813,
+        "outputTokens": 486,
+        "reasoningOutputTokens": 0,
+        "totalTokens": 24299
+      },
+      "duration_seconds": 28.6923311999999,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 25649,
+        "outputTokens": 993,
+        "reasoningOutputTokens": 314,
+        "totalTokens": 26642
+      },
+      "duration_seconds": 19.49547990001156,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 27981,
+        "outputTokens": 200,
+        "reasoningOutputTokens": 100,
+        "totalTokens": 28181
+      },
+      "duration_seconds": 9.581683399999747,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 27821,
+        "outputTokens": 184,
+        "reasoningOutputTokens": 88,
+        "totalTokens": 28005
+      },
+      "duration_seconds": 7.425523799989605,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 20854,
+        "outputTokens": 161,
+        "reasoningOutputTokens": 61,
+        "totalTokens": 21015
+      },
+      "duration_seconds": 6.141043499999796,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 22462,
+        "outputTokens": 301,
+        "reasoningOutputTokens": 100,
+        "totalTokens": 22763
+      },
+      "duration_seconds": 9.86090269999113,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 23642,
+        "outputTokens": 847,
+        "reasoningOutputTokens": 176,
+        "totalTokens": 24489
+      },
+      "duration_seconds": 19.69240670000727,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 25427,
+        "outputTokens": 549,
+        "reasoningOutputTokens": 180,
+        "totalTokens": 25976
+      },
+      "duration_seconds": 15.217179500003112,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 24600,
+        "outputTokens": 934,
+        "reasoningOutputTokens": 184,
+        "totalTokens": 25534
+      },
+      "duration_seconds": 21.79264790000161,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21341,
+        "outputTokens": 423,
+        "reasoningOutputTokens": 143,
+        "totalTokens": 21764
+      },
+      "duration_seconds": 11.981133400011458,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 23945,
+        "outputTokens": 534,
+        "reasoningOutputTokens": 162,
+        "totalTokens": 24479
+      },
+      "duration_seconds": 13.329370100007509,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 24360,
+        "outputTokens": 1013,
+        "reasoningOutputTokens": 162,
+        "totalTokens": 25373
+      },
+      "duration_seconds": 22.186521800002083,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21242,
+        "outputTokens": 1059,
+        "reasoningOutputTokens": 259,
+        "totalTokens": 22301
+      },
+      "duration_seconds": 25.245474499999546,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 23382,
+        "outputTokens": 1664,
+        "reasoningOutputTokens": 299,
+        "totalTokens": 25046
+      },
+      "duration_seconds": 29.063368900009664,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 23281,
+        "outputTokens": 1328,
+        "reasoningOutputTokens": 188,
+        "totalTokens": 24609
+      },
+      "duration_seconds": 24.66024749999633,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    },
+    {
+      "stage": "02_page_conversion",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
+      "cached": false,
+      "usage": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 4224,
+        "inputTokens": 21233,
+        "outputTokens": 1021,
+        "reasoningOutputTokens": 134,
+        "totalTokens": 22254
+      },
+      "duration_seconds": 18.71721489999618,
+      "events": [
+        "item/agentMessage/delta",
+        "item/completed",
+        "item/started",
+        "thread/tokenUsage/updated",
+        "turn/completed",
+        "turn/started"
+      ],
+      "execution": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "instruction_sources": [],
+        "sandbox": "read-only",
+        "image_detail": "original"
+      }
+    }
+  ]
+}
