@@ -22,3 +22,6 @@ Specialized worker for table blocks across all chapter streams:
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 07 --to-stage 07
 ```
+
+Chapter JSON includes `index`, `slug`, `title`, `target_md_file` and `nodes`.
+This automatic stage transforms nodes while preserving metadata and prior-stage files.

@@ -1,27 +1,43 @@
-# Global configuration for the modular PDF-to-Markdown pipeline
-
 render:
   dpi: 300
-  image_format: "png"
-
+  image_format: png
 ocr:
-  language: "eng"
-  tessdata: null  # Auto-detect or use TESSDATA_PREFIX; override locally if needed.
-
+  language: eng
+  tessdata: null
 llm:
   timeout_seconds: 180
   concurrency: 1
   stages:
-    02_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    04_stream_reduction: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    06_detect_continuations: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    07_transform_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    08_transform_graphics: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    09_transform_prose: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    10_proofread_stream: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    12_generate_properties: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    13_refine_first_chapter_name: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-
+    02_page_conversion:
+      model: gpt-6.1-sol
+      reasoning_effort: medium
+    04_stream_reduction:
+      model: gpt-6.1-sol
+      reasoning_effort: medium
+    06_detect_continuations:
+      model: gpt-6.1-sol
+      reasoning_effort: medium
+    07_transform_tables:
+      model: gpt-6.1-sol
+      reasoning_effort: medium
+    08_transform_graphics:
+      model: gpt-6.1-sol
+      reasoning_effort: medium
+    09_transform_prose:
+      model: gpt-6.1-sol
+      reasoning_effort: medium
+    10_proofread_stream:
+      model: gpt-6.1-sol
+      reasoning_effort: medium
+    12_generate_properties:
+      model: gpt-6.1-sol
+      reasoning_effort: medium
+    13_refine_first_chapter_name:
+      model: gpt-6.1-sol
+      reasoning_effort: medium
 markers:
-  toc_start: "<!-- TOC34534 -->"
-  toc_end: "<!-- /TOC34534 -->"
+  toc_start: <!-- TOC34534 -->
+  toc_end: <!-- /TOC34534 -->
+input:
+  source_pdf: ../../Amiga TestBook example-4567.pdf
+  pages: null

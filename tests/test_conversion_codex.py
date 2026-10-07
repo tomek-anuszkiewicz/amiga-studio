@@ -80,6 +80,13 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_config(value_config, HTML_STAGES, HTML_STAGES)
 
+    def test_pdf_configuration_is_parsed_without_html_validation(self):
+        from conversion.config import PDF_STAGES
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.yaml"
+            path.write_text("render: {dpi: 72}\nllm: {}\nllm: {extra: retained}\n")
+            self.assertEqual(load_config(path, known_stages=PDF_STAGES)["llm"], {"extra": "retained"})
+
     def test_runtime_capability_validation(self):
         transport = CodexTransport.__new__(CodexTransport)
         transport.models = [{"model": "gpt-6.1-sol", "supportedReasoningEfforts": [{"reasoningEffort": "medium"}], "inputModalities": ["text"]}]
@@ -269,6 +276,17 @@ class ClientTests(unittest.TestCase):
             self.assertEqual(len(transport.calls), 1)
         self.assertFalse(self.cache.directory.exists())
 
+    def test_pdf_json_uses_request_schema_without_local_enforcement(self):
+        pdf_config = {"llm": {"extra": True, "stages": {"02_page_conversion": {"model": "fixture", "reasoning_effort": "medium", "extra": "retained"}}}}
+        transport = FakeTransport(text='{"segments": "unvalidated"}')
+        transport.validate = lambda *args, **kwargs: self.fail("PDF model configuration must not be locally validated")
+        with CodexClient(pdf_config, stage="02_page_conversion", transport=transport, cache=self.cache) as client:
+            result = client.generate_json("PDF", schema={"type": "object", "required": ["missing"]},
+                                          validator=lambda value: self.fail("PDF callback must not execute"))
+            self.assertEqual(result, {"segments": "unvalidated"})
+            client.generate_json("PDF", schema={"type": "object", "required": ["missing"]})
+            self.assertEqual(len(transport.calls), 1)
+
     def test_markdown_validation_runs_before_cache_write(self):
         with self.assertRaises(ValueError):
             self.client(FakeTransport(text="partial prose")).generate_text("invalid", validator=html.validate_markdown)
@@ -345,6 +363,10 @@ class TransportTests(unittest.TestCase):
         self.assertTrue(all(p["sandbox"] == "read-only" and p["ephemeral"] for p in wire.threads))
         self.assertEqual(wire.turns[0][1][1]["detail"], "original")
         self.assertEqual(wire.turns[0][2]["effort"], "medium")
+        pdf_config = {"llm": {"stages": {"02_page_conversion": {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}}}}
+        transport.models = []
+        transport.run(selection(pdf_config, "02_page_conversion"), "PDF without catalog precheck")
+        self.assertEqual(len(wire.threads), 3)
 
     def test_timeout_closes_transport_and_rejects_completion(self):
         wire = WireClient(blocked=True)

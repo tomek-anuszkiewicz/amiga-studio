@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 """
 stages/10_proofread_stream/proofread_stream.py:
-Proofreads chapter streams and manifest metadata before Markdown serialization:
-1. Proofreads and corrects chapter titles in chapters_manifest.json using Codex LLM.
+Proofreads self-contained chapter titles and nodes before Markdown serialization:
+1. Proofreads and corrects chapter titles using Codex LLM.
 2. Harmonizes chapter titles with primary heading nodes in the stream.
-3. Derives clean slugs and target filenames directly in chapters_manifest.json.
-4. Performs an OCR proofreading pass on stream node text.
-5. Emits normalized chapter JSON files to workspace/10_proofread_stream/ and updates chapters_manifest.json.
+3. Derives clean slugs and target filenames directly.
+4. Emits normalized chapter JSON files to workspace/10_proofread_stream/.
 """
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import json
-import os
 from pathlib import Path
 import re
 import shutil
@@ -21,7 +19,6 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from conversion.config import UniqueLoader
 
 # Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
@@ -29,7 +26,6 @@ if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
 from conversion import CodexClient
-from common import pdf_schemas
 
 
 def generate_slug(text: str) -> str:
@@ -50,11 +46,9 @@ def proofread_title_llm(raw_title: str, codex: CodexClient) -> str:
     )
     try:
         c_title = codex.generate_text(prompt).strip().strip('"').strip("'")
-        if c_title and len(c_title) < len(raw_title) * 2:
-            return c_title
+        return c_title
     except Exception:
         raise
-    return raw_title
 
 
 def determine_section_title_llm(raw_title: str, raw_slug: str, sample_text: str, codex: CodexClient) -> str:
@@ -70,64 +64,33 @@ def determine_section_title_llm(raw_title: str, raw_slug: str, sample_text: str,
     )
     try:
         c_title = codex.generate_text(prompt).strip().strip('"').strip("'")
-        if c_title and len(c_title) < 100:
-            if raw_slug == "preface" and "table of contents" in c_title.lower():
-                return "Front Matter"
-            return c_title
+        if raw_slug == "preface" and "table of contents" in c_title.lower():
+            return "Front Matter"
+        return c_title
     except Exception:
         raise
-    return raw_title if (raw_slug != "preface" or "table of contents" not in raw_title.lower()) else "Front Matter"
-
-
-def proofread_node_text(text: str, codex: CodexClient, base_prompt: str) -> str:
-    if not text or not text.strip():
-        return text
-    # Only invoke LLM on blocks with substantial text or suspicious split words / punctuation
-    prompt = f"{base_prompt}\n\n## Content to Proofread:\n\n{text}"
-    try:
-        corrected = codex.generate_text(prompt).strip()
-        if corrected:
-            return corrected
-    except Exception:
-        raise
-    return text
 
 
 def process_proofread_stream(
     workspace_dir: Path,
     input_dir: Path,
     output_dir: Path,
-    config: dict,
-    skip_llm: bool = False
+    config: dict
 ):
     output_dir.mkdir(parents=True, exist_ok=True)
     out_assets = output_dir / "assets"
     out_assets.mkdir(parents=True, exist_ok=True)
 
     # Clean previous outputs in output_dir
-    for old_json in output_dir.glob("*.json"):
-        try:
-            old_json.unlink()
-        except Exception:
-            pass
+    for old_json in (path for path in output_dir.iterdir() if path.suffix == ".json"):
+        old_json.unlink()
     if out_assets.exists():
         for old_asset in out_assets.glob("*"):
             if old_asset.is_file():
-                try:
-                    old_asset.unlink()
-                except Exception:
-                    pass
+                old_asset.unlink()
 
-    manifest_path = workspace_dir / "chapters_manifest.json"
-    if not manifest_path.exists():
-        raise FileNotFoundError(f"Missing chapters_manifest.json in {workspace_dir}")
-
-    with open(manifest_path, "r", encoding="utf-8") as f:
-        manifest = json.load(f)
-
-    # Locate input chapters directory if not provided or missing
-    if not input_dir or not input_dir.exists():
-        raise FileNotFoundError(f"Missing input chapter files in {workspace_dir}")
+    chapters = [json.loads(path.read_text(encoding="utf-8"))
+                for path in sorted(input_dir.iterdir()) if path.suffix == ".json"]
 
     # Synchronize assets forward
     src_assets = input_dir / "assets"
@@ -138,13 +101,13 @@ def process_proofread_stream(
 
     with CodexClient(config, stage="10_proofread_stream", images=False) as codex:
         prompt_file = Path(__file__).resolve().parent / "prompt.md"
-        base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
+        base_prompt = prompt_file.read_text(encoding="utf-8")
 
         concurrency = int(config.get("llm", {}).get("concurrency", 1))
-        print(f"[*] Stream Proofreading LLM active ({codex.selected.model}). Processing {len(manifest)} partitions (concurrency={concurrency})...")
+        print(f"[*] Stream Proofreading LLM active ({codex.selected.model}). Processing {len(chapters)} partitions (concurrency={concurrency})...")
 
         title_map = {}
-        if manifest:
+        if chapters:
             from concurrent.futures import ThreadPoolExecutor
 
             def _proofread_single_title(entry):
@@ -153,21 +116,11 @@ def process_proofread_stream(
                 idx = entry.get("index", 0)
                 key = (idx, raw_slug)
 
-                # Sample text from chapter JSON to assist dynamic title determination
-                sample_text = ""
-                json_candidate = input_dir / f"{idx:02d}_{raw_slug}.json"
-                if not json_candidate.exists():
-                    json_candidate = workspace_dir / entry.get("json_file", "")
-                if json_candidate.exists():
-                    try:
-                        with open(json_candidate, "r", encoding="utf-8") as f:
-                            sample_nodes = json.load(f)
-                        informative_nodes = [n for n in sample_nodes if n.get("type") not in ("thumb_index", "header", "footer")]
-                        if not informative_nodes:
-                            informative_nodes = sample_nodes
-                        sample_text = " ".join([n.get("raw_text", "") or n.get("rendered_markdown", "") for n in informative_nodes[:10]])
-                    except Exception:
-                        pass
+                sample_nodes = entry["nodes"]
+                informative_nodes = [n for n in sample_nodes if n.get("type") not in ("thumb_index", "header", "footer")]
+                if not informative_nodes:
+                    informative_nodes = sample_nodes
+                sample_text = " ".join(n.get("raw_text", "") or n.get("rendered_markdown", "") for n in informative_nodes[:10])
 
                 if idx == 0 or raw_slug in ("preface", "toc"):
                     return key, determine_section_title_llm(raw_title, raw_slug, sample_text, codex)
@@ -175,34 +128,18 @@ def process_proofread_stream(
                     return key, proofread_title_llm(raw_title, codex)
                 return key, raw_title
 
-            with ThreadPoolExecutor(max_workers=min(len(manifest), concurrency)) as executor:
-                title_results = list(executor.map(_proofread_single_title, manifest))
+            with ThreadPoolExecutor(max_workers=min(len(chapters), concurrency)) as executor:
+                title_results = list(executor.map(_proofread_single_title, chapters))
             title_map = dict(title_results)
 
-        updated_manifest = []
+        outputs = []
 
-        for entry in manifest:
+        for entry in chapters:
             idx = entry["index"]
             raw_slug = entry["slug"]
             raw_title = entry["title"]
 
-            # Locate chapter json file
-            json_file = input_dir / f"{idx:02d}_{raw_slug}.json"
-            if not json_file.exists():
-                json_file = workspace_dir / entry.get("json_file", "")
-            if not json_file.exists():
-                # Match any json with prefix
-                matches = list(input_dir.glob(f"{idx:02d}_*.json"))
-                if matches:
-                    json_file = matches[0]
-
-            if not json_file.exists():
-                print(f"[!] Warning: Chapter JSON for {raw_title} not found at {json_file}")
-                updated_manifest.append(entry)
-                continue
-
-            with open(json_file, "r", encoding="utf-8") as f:
-                nodes = json.load(f)
+            nodes = entry["nodes"]
 
             # 1. Proofread and correct chapter title using composite key
             corrected_title = title_map.get((idx, raw_slug), raw_title)
@@ -244,43 +181,35 @@ def process_proofread_stream(
             clean_title_name = re.sub(r'\s+', ' ', clean_title_name).strip(' -.')
             target_md_name = f"{idx:02d} - {clean_title_name}.md" if clean_title_name else f"{target_file_slug}.md"
 
-            # Prevent duplicate target filenames across partitions in the manifest
-            existing_targets = [e.get("target_md_file") for e in updated_manifest]
+            # Prevent duplicate target filenames across partitions in the chapters
+            existing_targets = [e.get("target_md_file") for e in outputs]
             if target_md_name in existing_targets:
                 target_md_name = f"{idx:02d} - {new_slug.replace('_', ' ').title()}.md"
 
             # 4. Save proofread nodes to output_dir
             out_json_path = output_dir / out_json_name
-            with open(out_json_path, "w", encoding="utf-8") as f:
-                json.dump(nodes, f, indent=2)
 
             updated_entry = {
                 "index": idx,
                 "slug": new_slug,
                 "title": corrected_title,
-                "json_file": f"10_proofread_stream/{out_json_name}",
                 "target_md_file": target_md_name,
-                "node_count": len(nodes),
+                "nodes": nodes,
             }
-            updated_manifest.append(updated_entry)
+            with open(out_json_path, "w", encoding="utf-8") as f:
+                json.dump(updated_entry, f, indent=2)
+            outputs.append(updated_entry)
             print(f"    Proofread Partition {idx:02d}: {corrected_title} -> {out_json_name}")
-
-        # Write updated manifest back to workspace
-        with open(manifest_path, "w", encoding="utf-8") as f:
-            json.dump(updated_manifest, f, indent=2)
 
         # Clean empty assets directory if present
         if out_assets.exists() and not any(out_assets.iterdir()):
-            try:
-                out_assets.rmdir()
-            except Exception:
-                pass
+            out_assets.rmdir()
 
-        print(f"[+] Stage 10 complete. Proofread streams and manifest written to {output_dir}")
+        print(f"[+] Stage 10 complete. Proofread streams and chapters written to {output_dir}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 10: Proofread streams & manifest with LLM")
+    parser = argparse.ArgumentParser(description="Stage 10: Proofread streams & chapters with LLM")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/09_transform_prose)")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/10_proofread_stream)")
@@ -291,13 +220,9 @@ def main():
     output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "10_proofread_stream")
 
     config_path = Path(args.config)
-    if not config_path.is_file():
-        raise FileNotFoundError(f"Stage 10: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.load(f, Loader=UniqueLoader)
-    if not config or not isinstance(config, dict):
-        raise ValueError(f"Stage 10: Config file is empty or invalid: {config_path}")
+        config = yaml.safe_load(f)
 
     process_proofread_stream(
         workspace_dir,

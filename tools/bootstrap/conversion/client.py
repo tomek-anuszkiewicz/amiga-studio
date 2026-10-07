@@ -1,4 +1,4 @@
-"""Stage-bound calls; validate completion and JSON before publishing cache entries."""
+"""Stage-bound calls; retain completion handling and HTML response validation."""
 
 import json
 import os
@@ -14,7 +14,9 @@ from .metrics import record
 class CodexClient:
     def __init__(self, config, *, stage, transport=None, cache=None, images=False):
         known = HTML_STAGES if stage in HTML_STAGES else PDF_STAGES
-        validate_config(config, known, {stage})
+        self.pdf = stage in PDF_STAGES
+        if not self.pdf:
+            validate_config(config, known, {stage})
         self.selected = selection(config, stage)
         self.timeout = config["llm"].get("timeout_seconds", 180)
         self.transport = transport or CodexTransport()
@@ -23,21 +25,25 @@ class CodexClient:
         self.cached_call_count = 0
         self.metrics = []
         try:
-            self.transport.validate(self.selected, images=images)
+            if not self.pdf:
+                self.transport.validate(self.selected, images=images)
         except BaseException:
             self.close()
             raise
 
     def _generate(self, prompt, images=(), schema=None, validator=None):
-        self.transport.validate(self.selected, images=bool(images))
+        if not self.pdf:
+            self.transport.validate(self.selected, images=bool(images))
         request = identity(self.selected, prompt, images, schema)
 
         def checked(result):
             if result.get("status") != "completed" or not isinstance(result.get("text"), str) or not result["text"].strip():
                 raise RuntimeError("Incomplete conversion result")
             if schema is not None:
-                validate(json.loads(result["text"]), schema)
-            if validator is not None:
+                value = json.loads(result["text"])
+                if not self.pdf:
+                    validate(value, schema)
+            if not self.pdf and validator is not None:
                 validator(result["text"])
 
         result = self.cache.load(request)

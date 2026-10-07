@@ -2561,3 +2561,36 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Scoped git diff --check: passed
   - Graphify incremental code refresh: passed
   - No source conversion or quality evaluation run
+---
+
+### [2026-10-07 18:40 CET] — PDF-STATE-1: Use stage-owned PDF artifacts and execution status
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion`
+  - `tests`
+  - `converter contract`
+  - `Test Book pages-all attempt`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove conversion state, PDF manifests, snapshots, local PDF configuration/artifact/response validation and manual handoff modes
+  - persist requested inputs in attempt config
+  - carry chapter metadata with nodes through automatic stages
+  - record atomic status after worker and asset operations
+  - retain HTML checks and authenticated transport completion
+  - migrate only pages-all and preserve 645 result files plus status bytes
+  - close PDF-STATE-1 after verification
+- **Architectural Rationale & Trade-Offs**:
+  - Implement the user-approved execution plan: success records completed execution rather than artifact certification
+  - keep direct predecessor ownership without replacement registries, validators or older-stage fallbacks
+- **Verification & Test Results**:
+  - PDF offline suite 25/25
+  - shared conversion suite 21/21
+  - publication suite 10/10
+  - pre_flight --quick passed
+  - architecture suite 19/19
+  - Graphify incremental refresh passed
+  - CLI help and removed-mechanism searches passed
+  - Python compilation and global-reference check passed
+  - synthetic migration transferred 12 chapters and missing-metadata refusal preserved all files
+  - pages-all migration retained existing outputs and metrics with zero OCR/model calls
+  - no real fragment conversion or quality campaign ran
+  - roadmap milestones remain pending

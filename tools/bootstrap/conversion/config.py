@@ -1,4 +1,4 @@
-"""Strict, stage-specific conversion configuration."""
+"""Stage selections; HTML validation and direct PDF configuration parsing."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -63,6 +63,8 @@ def validate_config(config, known_stages, required_stages):
 
 
 def load_config(path: Path, *, known_stages=HTML_STAGES, required_stages=HTML_STAGES):
+    if known_stages == PDF_STAGES:
+        return yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     config = yaml.load(Path(path).read_text(encoding="utf-8"), Loader=UniqueLoader)
     return validate_config(config, known_stages, required_stages)
 

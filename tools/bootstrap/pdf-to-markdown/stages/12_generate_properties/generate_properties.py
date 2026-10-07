@@ -15,8 +15,6 @@ Generates publication-grade Obsidian YAML frontmatter properties using Codex LLM
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
-import json
-import os
 from pathlib import Path
 import re
 import shutil
@@ -25,7 +23,6 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from conversion.config import UniqueLoader
 
 # Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
@@ -64,8 +61,6 @@ def generate_chapter_properties(
     )
 
     data = codex.generate_json(full_prompt, schema=pdf_schemas.PROPERTIES)
-    if not isinstance(data, dict):
-        raise ValueError(f"Codex did not return a valid JSON dictionary for {file_path.name}: {data}")
 
     title = str(data.get("title", "")).strip().strip('"')
     book = str(data.get("book", "")).strip().strip('"')
@@ -73,11 +68,10 @@ def generate_chapter_properties(
     raw_tags = data.get("tags", [])
 
     clean_tags = []
-    if isinstance(raw_tags, list):
-        for t in raw_tags:
-            st = sanitize_tag(str(t))
-            if st and st not in clean_tags:
-                clean_tags.append(st)
+    for t in raw_tags:
+        st = sanitize_tag(str(t))
+        if st and st not in clean_tags:
+            clean_tags.append(st)
 
     if not clean_tags:
         clean_tags = ["amiga", "reference", "hardware"]
@@ -120,29 +114,18 @@ def process_generate_properties(
 
     # Clean old markdown files in output_dir
     for old_md in output_dir.glob("*.md"):
-        try:
-            old_md.unlink()
-        except Exception:
-            pass
+        old_md.unlink()
 
     # Synchronize assets from input directory
     in_assets = input_dir / "assets"
     if in_assets.exists():
         for asset in in_assets.glob("*"):
             if asset.is_file():
-                try:
-                    shutil.copy2(asset, out_assets / asset.name)
-                except Exception:
-                    pass
+                shutil.copy2(asset, out_assets / asset.name)
     if out_assets.exists() and not any(out_assets.iterdir()):
-        try:
-            out_assets.rmdir()
-        except Exception:
-            pass
+        out_assets.rmdir()
 
-    md_files = sorted(list(input_dir.glob("*.md")))
-    if not md_files:
-        raise FileNotFoundError(f"No Markdown files found in {input_dir}")
+    md_files = sorted(list((path for path in input_dir.iterdir() if path.suffix == ".md")))
 
     # Read first chapter for global book inference
     first_file = md_files[0]
@@ -153,7 +136,7 @@ def process_generate_properties(
     with CodexClient(config, stage="12_generate_properties", images=False) as codex:
 
         prompt_path = Path(__file__).parent / "prompt.md"
-        base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
+        base_prompt = prompt_path.read_text(encoding="utf-8")
 
         print(f"[*] Generating Obsidian properties for {len(md_files)} file(s) from {input_dir}...")
         print(f"    First chapter reference: {first_file.name}")
@@ -208,18 +191,11 @@ def main():
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     config_path = Path(args.config)
-    if not config_path.is_file():
-        raise FileNotFoundError(f"Stage 12: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.load(f, Loader=UniqueLoader)
-    if not config or not isinstance(config, dict):
-        raise ValueError(f"Stage 12: Config file is empty or invalid: {config_path}")
+        config = yaml.safe_load(f)
 
-    input_candidates = [Path(args.input_dir) if args.input_dir else None, workspace_dir / "11_emit_markdown"]
-    input_dir = next((p for p in input_candidates if p and p.exists() and list(p.glob("*.md"))), None)
-    if not input_dir:
-        raise FileNotFoundError(f"Stage 12: No input markdown files found in candidates under {workspace_dir}")
+    input_dir = Path(args.input_dir) if args.input_dir else workspace_dir / "11_emit_markdown"
 
     output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "12_generate_properties")
 

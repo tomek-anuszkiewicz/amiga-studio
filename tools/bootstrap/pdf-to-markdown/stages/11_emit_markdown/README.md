@@ -1,7 +1,7 @@
 # Stage 11: Emit Markdown
 
 ## Objective
-Serializes chapter streams into standalone Markdown files formatted as `<output_dir>/{index:02d}_{slug}.md`:
+Serializes chapter streams into standalone Markdown files formatted as `<output_dir>/{target_md_file}`:
 1. Emits clean Markdown body content for each chapter partition.
 2. Explicitly ignores and skips any segment of type `toc_heading` (eliminating redundant raw TOC banners).
 3. Skips child continuation nodes whose content was synthesized into the head node.
@@ -11,12 +11,11 @@ Serializes chapter streams into standalone Markdown files formatted as `<output_
 > Publication-grade YAML frontmatter (Obsidian properties: `title`, `book`, `chapter`, `tags`) is generated downstream in Stage 12 (`12_generate_properties`).
 
 ## Inputs
-- `workspace/chapters_manifest.json`: Section manifest proofread from Stage 10.
-- `workspace/10_proofread_stream/{index:02d}_{slug}.json`: Proofread chapter streams.
-- `workspace/assets/`: Visual crops (`.svg`, `.png`) and text sidecars (`.txt`).
+- `workspace/10_proofread_stream/{index:02d}_{slug}.json`: Self-contained chapter metadata and nodes from Stage 10.
+- `workspace/10_proofread_stream/assets/`: Visual crops (`.svg`, `.png`) and text sidecars (`.txt`).
 
 ## Outputs
-- `<output_dir>/{index:02d}_{slug}.md`: Emitted per-section Markdown documents.
+- `<output_dir>/{target_md_file}`: Emitted per-section Markdown documents.
 - `<output_dir>/assets/`: Synchronized visual assets and RAG sidecars.
 
 ## Invocation Through the Orchestrator

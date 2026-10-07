@@ -18,7 +18,6 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from conversion.config import UniqueLoader
 
 # Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
@@ -29,38 +28,21 @@ from conversion import CodexClient
 from common import pdf_schemas
 
 
-def generate_default_sidecar(node_id: str, raw_text: str, page_num: int) -> str:
-    lines = [l.strip() for l in raw_text.splitlines() if l.strip()]
-    labels = "\n".join(f"- {l}" for l in lines) if lines else "- (No OCR labels detected)"
-    return (
-        f"Title: Technical Schematic / Circuit Diagram (node_{node_id})\n"
-        f"Source Page: {page_num}\n"
-        f"Labels & Text Elements:\n{labels}\n"
-    )
-
-
 def process_graphics(workspace_dir: Path, config: dict):
-    input_candidates = [workspace_dir / "07_transform_tables"]
-    input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
-    if not input_dir:
-        raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
+    input_dir = workspace_dir / "07_transform_tables"
 
     out_dir = workspace_dir / "08_transform_graphics"
     out_dir.mkdir(parents=True, exist_ok=True)
-    for f in out_dir.glob("*.json"):
+    for f in (path for path in out_dir.iterdir() if path.suffix == ".json"):
         f.unlink()
 
     out_assets_dir = out_dir / "assets"
     out_assets_dir.mkdir(parents=True, exist_ok=True)
     for f in out_assets_dir.glob("*"):
-        try:
-            f.unlink()
-        except Exception:
-            pass
+        f.unlink()
 
-    asset_candidates = [workspace_dir / "07_transform_tables" / "assets"]
-    src_assets = next((p for p in asset_candidates if p.exists()), None)
-    if src_assets:
+    src_assets = workspace_dir / "07_transform_tables" / "assets"
+    if src_assets.exists():
         for f in src_assets.glob("*"):
             if f.is_file():
                 shutil.copy2(f, out_assets_dir / f.name)
@@ -69,23 +51,23 @@ def process_graphics(workspace_dir: Path, config: dict):
     with CodexClient(config, stage="08_transform_graphics", images=True) as codex:
 
         triage_prompt_path = Path(__file__).resolve().parent / "prompt_triage.md"
-        triage_prompt = triage_prompt_path.read_text(encoding="utf-8") if triage_prompt_path.exists() else ""
+        triage_prompt = triage_prompt_path.read_text(encoding="utf-8")
 
         mermaid_prompt_path = Path(__file__).resolve().parent / "prompt_mermaid.md"
-        mermaid_prompt = mermaid_prompt_path.read_text(encoding="utf-8") if mermaid_prompt_path.exists() else ""
+        mermaid_prompt = mermaid_prompt_path.read_text(encoding="utf-8")
 
         ascii_prompt_path = Path(__file__).resolve().parent / "prompt_ascii_art.md"
-        ascii_prompt = ascii_prompt_path.read_text(encoding="utf-8") if ascii_prompt_path.exists() else ""
+        ascii_prompt = ascii_prompt_path.read_text(encoding="utf-8")
 
         sidecar_prompt_path = Path(__file__).resolve().parent / "prompt_rag_sidecar.md"
-        sidecar_prompt = sidecar_prompt_path.read_text(encoding="utf-8") if sidecar_prompt_path.exists() else ""
+        sidecar_prompt = sidecar_prompt_path.read_text(encoding="utf-8")
 
         from concurrent.futures import ThreadPoolExecutor
 
         concurrency = int(config.get("llm", {}).get("concurrency", 1))
         print(f"[*] Graphics Worker LLM active ({codex.selected.model}). Transforming graphics (concurrency={concurrency})...")
 
-        chapter_files = sorted(list(input_dir.glob("*.json")))
+        chapter_files = sorted(list((path for path in input_dir.iterdir() if path.suffix == ".json")))
         print(f"[*] Transforming graphics across {len(chapter_files)} chapter files...")
 
         transformed_count = 0
@@ -103,8 +85,8 @@ def process_graphics(workspace_dir: Path, config: dict):
             png_path = workspace_dir / png_rel if png_rel else None
 
             # First, classify with Codex if this is a flowchart, ascii_art (register/bitfield), or circuit schematic
-            triage = codex.generate_json(triage_prompt, image_path=png_path, schema=pdf_schemas.GRAPHIC_TRIAGE) if png_path and png_path.exists() and triage_prompt else {}
-            graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
+            triage = codex.generate_json(triage_prompt, image_path=png_path, schema=pdf_schemas.GRAPHIC_TRIAGE) if png_path and triage_prompt else {}
+            graphic_type = triage.get("type", "schematic")
 
             # Check for genuine figure caption from raw_text or separate caption nodes
             fig_match = re.search(r"(Figure\s+[A-Z0-9]+(?:[\-\.][A-Z0-9]+)?[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
@@ -118,10 +100,10 @@ def process_graphics(workspace_dir: Path, config: dict):
 
             # Metadata title strictly for RAG sidecar (never injected as visible body text if absent from book)
             node_meta_caption = node.get("metadata", {}).get("caption")
-            sidecar_title = genuine_caption or node_meta_caption or (triage.get("caption") if isinstance(triage, dict) else None) or f"Figure on page {page_num}"
+            sidecar_title = genuine_caption or node_meta_caption or triage.get("caption") or f"Figure on page {page_num}"
             sidecar_title = re.sub(r"[\[\]|]", "", sidecar_title)
 
-            if graphic_type == "mermaid" and png_path and png_path.exists() and mermaid_prompt:
+            if graphic_type == "mermaid" and png_path and mermaid_prompt:
                 mermaid_res = codex.generate_vision(f"{mermaid_prompt}\n\nDiagram Labels:\n{raw_text}", png_path)
                 if mermaid_res:
                     return c_file, idx, {
@@ -131,7 +113,7 @@ def process_graphics(workspace_dir: Path, config: dict):
                         "sidecar_text": None,
                     }
 
-            if graphic_type == "ascii_art" and png_path and png_path.exists() and ascii_prompt:
+            if graphic_type == "ascii_art" and png_path and ascii_prompt:
                 caption_hint = (
                     "A dedicated caption node already exists in the document text, do not output any caption line."
                     if has_dedicated_caption else
@@ -160,7 +142,7 @@ def process_graphics(workspace_dir: Path, config: dict):
             # Generate technical engineering sidecar via Codex Vision
             sidecar_name = f"{asset_file}.txt"
             sidecar_text = None
-            if png_path and png_path.exists() and sidecar_prompt:
+            if png_path and sidecar_prompt:
                 sidecar_text = codex.generate_vision(f"{sidecar_prompt}\n\nExtracted Labels:\n{raw_text}", png_path)
 
             if not sidecar_text:
@@ -178,12 +160,15 @@ def process_graphics(workspace_dir: Path, config: dict):
             }
 
         chapters = {}
+        metadata = {}
         all_tasks = []
 
         for c_file in chapter_files:
             with open(c_file, "r", encoding="utf-8") as f:
-                nodes = json.load(f)
+                chapter = json.load(f)
+                nodes = chapter["nodes"]
             chapters[c_file] = nodes
+            metadata[c_file] = chapter
 
             for idx, node in enumerate(nodes):
                 if node.get("type") != "graphic":
@@ -202,10 +187,7 @@ def process_graphics(workspace_dir: Path, config: dict):
                 node["rendered_markdown"] = res["rendered_markdown"]
                 if res["prune_image"]:
                     for asset_f in out_assets_dir.glob(f"asset_{node_id}.*"):
-                        try:
-                            asset_f.unlink()
-                        except Exception:
-                            pass
+                        asset_f.unlink()
                     node["png_path"] = None
                     node["svg_path"] = None
                     node["sidecar_path"] = None
@@ -216,185 +198,23 @@ def process_graphics(workspace_dir: Path, config: dict):
         for c_file, nodes in chapters.items():
             target_file = out_dir / c_file.name
             with open(target_file, "w", encoding="utf-8") as f:
-                json.dump(nodes, f, indent=2)
+                json.dump({**metadata[c_file], "nodes": nodes}, f, indent=2)
 
         print(f"[+] Stage 08 complete. Transformed {transformed_count} graphics, generated {sidecar_count} RAG sidecars in {out_dir}.")
-
-
-def prepare_graphics_tasks(workspace_dir: Path) -> int:
-    """
-    Extracts graphic nodes into workspace/tasks/graphics/{node_id}.json and {node_id}.md
-    for the Agent to inspect image assets and author Mermaid or sidecars.
-    """
-    input_candidates = [workspace_dir / "07_transform_tables"]
-    chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
-    if not chapters_dir:
-        raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
-
-    tasks_dir = workspace_dir / "tasks" / "graphics"
-    tasks_dir.mkdir(parents=True, exist_ok=True)
-
-    count = 0
-    for c_file in sorted(list(chapters_dir.glob("*.json"))):
-        with open(c_file, "r", encoding="utf-8") as f:
-            nodes = json.load(f)
-
-        for node in nodes:
-            if node.get("type") != "graphic":
-                continue
-
-            node_id = node.get("node_id", "asset")
-            page_num = node.get("page", 1)
-            raw_text = node.get("raw_text", "")
-
-            svg_rel = node.get("svg_path")
-            png_rel = node.get("png_path")
-            asset_file = Path(svg_rel).name if svg_rel else (Path(png_rel).name if png_rel else f"asset_{node_id}.png")
-
-            fig_match = re.search(r"(Figure\s+\d+[\-\.]\d+[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
-            genuine_caption = fig_match.group(1).strip() if fig_match else None
-            if not genuine_caption and raw_text.strip():
-                fig_lines = [l.strip() for l in raw_text.splitlines() if l.strip().lower().startswith("figure")]
-                if fig_lines:
-                    genuine_caption = fig_lines[0]
-            if genuine_caption:
-                genuine_caption = re.sub(r"[\[\]|]", "", genuine_caption)
-
-            has_dedicated_caption = any(n.get("type") == "caption" and n.get("page") == node.get("page") for n in nodes)
-            if genuine_caption:
-                if has_dedicated_caption:
-                    draft_md = f"![[{asset_file}|{genuine_caption}]]\n"
-                else:
-                    draft_md = f"![[{asset_file}|{genuine_caption}]]\n\n*{genuine_caption}*\n"
-            else:
-                draft_md = f"![[{asset_file}]]\n"
-
-            task_meta = {
-                "node_id": node_id,
-                "chapter_file": c_file.name,
-                "page": page_num,
-                "svg_path": svg_rel,
-                "png_path": png_rel,
-                "asset_file": asset_file,
-                "raw_text": raw_text,
-            }
-
-            meta_file = tasks_dir / f"{node_id}.json"
-            md_file = tasks_dir / f"{node_id}.md"
-
-            with open(meta_file, "w", encoding="utf-8") as f:
-                json.dump(task_meta, f, indent=2)
-
-            if not md_file.exists():
-                with open(md_file, "w", encoding="utf-8") as f:
-                    f.write(draft_md)
-
-            count += 1
-
-    print(f"[+] Prepared {count} graphic tasks in {tasks_dir}")
-    return count
-
-
-def apply_graphics_tasks(workspace_dir: Path) -> int:
-    """
-    Reads workspace/tasks/graphics/{node_id}.md and sidecars,
-    updating workspace/08_transform_graphics/ and workspace/08_transform_graphics/assets/.
-    """
-    tasks_dir = workspace_dir / "tasks" / "graphics"
-    out_dir = workspace_dir / "08_transform_graphics"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_assets_dir = out_dir / "assets"
-    out_assets_dir.mkdir(parents=True, exist_ok=True)
-
-    asset_candidates = [workspace_dir / "07_transform_tables" / "assets"]
-    src_assets = next((p for p in asset_candidates if p.exists()), None)
-    if src_assets:
-        for f in src_assets.glob("*"):
-            if f.is_file():
-                shutil.copy2(f, out_assets_dir / f.name)
-    assets_dir = out_assets_dir
-
-    if not tasks_dir.exists():
-        print(f"[!] No graphic tasks directory found at {tasks_dir}")
-        return 0
-
-    input_candidates = [workspace_dir / "07_transform_tables"]
-    input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
-    if not input_dir:
-        raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
-
-    # Collect rendered markdown and sidecars
-    rendered_by_node = {}
-    for meta_file in sorted(list(tasks_dir.glob("*.json"))):
-        with open(meta_file, "r", encoding="utf-8") as f:
-            meta = json.load(f)
-
-        node_id = meta.get("node_id")
-        asset_file = meta.get("asset_file", f"asset_{node_id}.png")
-        md_file = tasks_dir / f"{node_id}.md"
-        sidecar_file = tasks_dir / f"{node_id}.sidecar.txt"
-
-        if md_file.exists():
-            with open(md_file, "r", encoding="utf-8") as f:
-                rendered_by_node[node_id] = f.read().strip()
-
-
-    applied_count = 0
-    for c_file in sorted(list(input_dir.glob("*.json"))):
-        with open(c_file, "r", encoding="utf-8") as f:
-            nodes = json.load(f)
-
-        for node in nodes:
-            n_id = node.get("node_id")
-            if n_id in rendered_by_node:
-                content = rendered_by_node[n_id]
-                node["rendered_markdown"] = content
-                if "```mermaid" in content or f"asset_{n_id}" not in content:
-                    for asset_f in out_assets_dir.glob(f"asset_{n_id}.*"):
-                        try:
-                            asset_f.unlink()
-                        except Exception:
-                            pass
-                    node["png_path"] = None
-                    node["svg_path"] = None
-                    node["sidecar_path"] = None
-                else:
-                    node["sidecar_path"] = None
-                applied_count += 1
-
-        target_file = out_dir / c_file.name
-        with open(target_file, "w", encoding="utf-8") as f:
-            json.dump(nodes, f, indent=2)
-
-    print(f"[+] Applied {applied_count} graphic tasks to {out_dir}.")
-    return applied_count
 
 
 def main():
     parser = argparse.ArgumentParser(description="Stage 08: Transform graphic nodes into Mermaid/Obsidian embeds with RAG sidecars")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
-    parser.add_argument("--prepare", action="store_true", help="Prepare graphic tasks for the Agent in workspace/tasks/graphics/")
-    parser.add_argument("--apply", action="store_true", help="Apply Agent's edited graphics and sidecars back to chapters")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     config_path = Path(args.config)
-    if not config_path.is_file():
-        raise FileNotFoundError(f"Stage 08: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.load(f, Loader=UniqueLoader)
-    if not config or not isinstance(config, dict):
-        raise ValueError(f"Stage 08: Config file is empty or invalid: {config_path}")
+        config = yaml.safe_load(f)
 
-    if args.prepare:
-        prepare_graphics_tasks(workspace_dir)
-        return
-
-    if args.apply:
-        apply_graphics_tasks(workspace_dir)
-        return
 
     process_graphics(workspace_dir, config)
 

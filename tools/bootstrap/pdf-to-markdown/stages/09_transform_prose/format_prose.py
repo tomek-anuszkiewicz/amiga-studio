@@ -20,7 +20,6 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from conversion.config import UniqueLoader
 
 # Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
@@ -28,7 +27,6 @@ if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
 from conversion import CodexClient
-from common import pdf_schemas
 
 TOC_START_MARKER = "<!-- TOC34534 -->"
 TOC_END_MARKER = "<!-- /TOC34534 -->"
@@ -131,18 +129,15 @@ def assemble_callouts(nodes: list) -> int:
 
 
 def process_prose(workspace_dir: Path, config: dict):
-    input_candidates = [workspace_dir / "08_transform_graphics"]
-    input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
-    if not input_dir:
-        raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
+    input_dir = workspace_dir / "08_transform_graphics"
 
     out_dir = workspace_dir / "09_transform_prose"
     out_dir.mkdir(parents=True, exist_ok=True)
-    for f in out_dir.glob("*.json"):
+    for f in (path for path in out_dir.iterdir() if path.suffix == ".json"):
         f.unlink()
 
     prompt_path = Path(__file__).resolve().parent / "prompt.md"
-    base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
+    base_prompt = prompt_path.read_text(encoding="utf-8")
 
     with CodexClient(config, stage="09_transform_prose", images=True) as codex:
 
@@ -151,7 +146,7 @@ def process_prose(workspace_dir: Path, config: dict):
         concurrency = int(config.get("llm", {}).get("concurrency", 1))
         print(f"[*] Prose Worker LLM active ({codex.selected.model}). Formatting prose/code (concurrency={concurrency})...")
 
-        chapter_files = sorted(list(input_dir.glob("*.json")))
+        chapter_files = sorted(list((path for path in input_dir.iterdir() if path.suffix == ".json")))
         formatted_count = 0
 
         def _format_prose_task(task):
@@ -161,7 +156,7 @@ def process_prose(workspace_dir: Path, config: dict):
                 f"## Node Type: {n_type}\n"
                 f"## Raw Text:\n```text\n{raw_text}\n```\n"
             )
-            if n_type == "code_block" and png_path and png_path.exists():
+            if n_type == "code_block" and png_path:
                 rendered = codex.generate_vision(full_prompt, image_path=png_path)
             else:
                 rendered = codex.generate_text(full_prompt)
@@ -175,12 +170,15 @@ def process_prose(workspace_dir: Path, config: dict):
                 return c_file, group_indices, raw_text + "\n\n"
 
         chapters = {}
+        metadata = {}
         all_llm_tasks = []
 
         for c_file in chapter_files:
             with open(c_file, "r", encoding="utf-8") as f:
-                nodes = json.load(f)
+                chapter = json.load(f)
+                nodes = chapter["nodes"]
             chapters[c_file] = nodes
+            metadata[c_file] = chapter
 
             i = 0
             while i < len(nodes):
@@ -289,131 +287,23 @@ def process_prose(workspace_dir: Path, config: dict):
                 formatted_count += assembled
             target_file = out_dir / c_file.name
             with open(target_file, "w", encoding="utf-8") as f:
-                json.dump(nodes, f, indent=2)
+                json.dump({**metadata[c_file], "nodes": nodes}, f, indent=2)
 
         print(f"[+] Stage 09 complete. Formatted {formatted_count} nodes into {out_dir}.")
-
-
-def prepare_prose_tasks(workspace_dir: Path) -> int:
-    """
-    Extracts TOC and code block nodes into workspace/tasks/prose/ for inspection.
-    """
-    input_candidates = [workspace_dir / "08_transform_graphics"]
-    chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
-    if not chapters_dir:
-        raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
-
-    tasks_dir = workspace_dir / "tasks" / "prose"
-    tasks_dir.mkdir(parents=True, exist_ok=True)
-
-    count = 0
-    for c_file in sorted(list(chapters_dir.glob("*.json"))):
-        with open(c_file, "r", encoding="utf-8") as f:
-            nodes = json.load(f)
-
-        for node in nodes:
-            n_type = node.get("type")
-            if n_type not in ("toc", "code_block"):
-                continue
-
-            node_id = node.get("node_id")
-            raw_text = node.get("raw_text", "")
-            draft_md = format_toc_block(raw_text) if n_type == "toc" else format_code_block(raw_text)
-
-            task_meta = {
-                "node_id": node_id,
-                "chapter_file": c_file.name,
-                "type": n_type,
-                "page": node.get("page"),
-                "raw_text": raw_text,
-            }
-
-            with open(tasks_dir / f"{node_id}.json", "w", encoding="utf-8") as f:
-                json.dump(task_meta, f, indent=2)
-
-            md_file = tasks_dir / f"{node_id}.md"
-            if not md_file.exists():
-                with open(md_file, "w", encoding="utf-8") as f:
-                    f.write(draft_md)
-
-            count += 1
-
-    print(f"[+] Prepared {count} special prose/TOC tasks in {tasks_dir}")
-    return count
-
-
-def apply_prose_tasks(workspace_dir: Path) -> int:
-    """
-    Applies edited prose/TOC tasks into workspace/09_transform_prose/.
-    """
-    tasks_dir = workspace_dir / "tasks" / "prose"
-    if not tasks_dir.exists():
-        print(f"[!] No prose tasks directory found at {tasks_dir}")
-        return 0
-
-    input_candidates = [workspace_dir / "08_transform_graphics"]
-    input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
-    if not input_dir:
-        raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
-
-    out_dir = workspace_dir / "09_transform_prose"
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    rendered_by_node = {}
-    for meta_file in sorted(list(tasks_dir.glob("*.json"))):
-        with open(meta_file, "r", encoding="utf-8") as f:
-            meta = json.load(f)
-        node_id = meta.get("node_id")
-        md_file = tasks_dir / f"{node_id}.md"
-        if md_file.exists():
-            with open(md_file, "r", encoding="utf-8") as f:
-                rendered_by_node[node_id] = f.read().strip()
-
-    applied_count = 0
-    for c_file in sorted(list(input_dir.glob("*.json"))):
-        with open(c_file, "r", encoding="utf-8") as f:
-            nodes = json.load(f)
-
-        for node in nodes:
-            n_id = node.get("node_id")
-            if n_id in rendered_by_node:
-                node["rendered_markdown"] = rendered_by_node[n_id]
-                applied_count += 1
-
-        assemble_callouts(nodes)
-        target_file = out_dir / c_file.name
-        with open(target_file, "w", encoding="utf-8") as f:
-            json.dump(nodes, f, indent=2)
-
-    print(f"[+] Applied {applied_count} prose tasks to {out_dir}.")
-    return applied_count
 
 
 def main():
     parser = argparse.ArgumentParser(description="Stage 09: Format prose, code blocks, and tag TOC")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
-    parser.add_argument("--prepare", action="store_true", help="Prepare TOC and code tasks in workspace/tasks/prose/")
-    parser.add_argument("--apply", action="store_true", help="Apply Agent's edited prose tasks back to chapters")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     config_path = Path(args.config)
-    if not config_path.is_file():
-        raise FileNotFoundError(f"Stage 09: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.load(f, Loader=UniqueLoader)
-    if not config or not isinstance(config, dict):
-        raise ValueError(f"Stage 09: Config file is empty or invalid: {config_path}")
+        config = yaml.safe_load(f)
 
-    if args.prepare:
-        prepare_prose_tasks(workspace_dir)
-        return
-
-    if args.apply:
-        apply_prose_tasks(workspace_dir)
-        return
 
     process_prose(workspace_dir, config)
 

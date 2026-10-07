@@ -2,7 +2,7 @@
 """Prepare a shared full-document PDF once, adding OCR where text is missing."""
 
 import argparse
-import os
+import hashlib
 from pathlib import Path
 import sys
 import pymupdf
@@ -10,26 +10,21 @@ import pymupdf
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
-from common.lineage import file_hash, read_state
-from common.pdf_artifacts import write_json, read_json, require
-from common.pdf_geometry import (SCHEMA_VERSION, page_geometry,
-                                     text_blocks)
-from common.pdf_selection import selected_pages
+from common.pdf_artifacts import write_json, read_json, prepared_pdf_path
+from common.pdf_geometry import page_geometry, text_blocks
+
+
+def file_hash(path):
+    """Identify compatible OCR recovery requests."""
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def tesseract_settings(config):
     """Resolve language data and fingerprint it without recording host paths."""
     settings = config.get("ocr", {})
-    require(isinstance(settings, dict) and not set(settings) - {"language", "tessdata"},
-            "ocr supports only language and tessdata")
     language = settings.get("language", "eng")
-    require(isinstance(language, str) and language and all(
-        code and all(c.isalnum() or c == "_" for c in code) for code in language.split("+")),
-        "ocr.language must contain Tesseract language identifiers")
     tessdata = Path(pymupdf.get_tessdata(settings.get("tessdata")))
     files = {code: tessdata / f"{code}.traineddata" for code in language.split("+")}
-    require(all(path.is_file() for path in files.values()),
-            "Missing Tesseract language data; configure ocr.tessdata or TESSDATA_PREFIX")
     identity = {"engine": "tesseract", "language": language, "pymupdf": pymupdf.__version__,
                 "traineddata": {code: file_hash(path) for code, path in files.items()}}
     return language, str(tessdata), identity
@@ -54,31 +49,15 @@ def insert_ocr_pdf(page, ocr):
 def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
     pdf_path, workspace = Path(pdf_path).resolve(), Path(workspace).resolve()
     stage_dir = workspace / "00_text_layer"
-    require(not pdf_path.is_relative_to(stage_dir), "Original PDF cannot live inside Stage 00 outputs")
-    source = {"name": pdf_path.name, "pages": None}
+    source = {"name": pdf_path.name, "pages": config.get("input", {}).get("pages")}
     dpi = config.get("render", {}).get("dpi", 300)
-    require(type(dpi) is int and dpi > 0, "render.dpi must be a positive integer")
     with pymupdf.open(pdf_path) as document:
-        require(document.is_pdf and not document.needs_pass, "Only readable, unencrypted PDFs are supported")
-        selection = selected_pages(page_ranges, len(document))
         pages = list(range(1, len(document) + 1))
-        source_page_count = len(document)
-        source["pages"] = selection if page_ranges is not None else None
-        state_source = read_state(workspace).get("source")
-        require(state_source is None or state_source == source, "Stage 00 source does not match workspace selection")
         stage_dir.mkdir(parents=True, exist_ok=True)
-        manifest_path = stage_dir / "text_layer_manifest.json"
-        manifest_path.unlink(missing_ok=True)
-        output = pdf_path.with_stem(f"{pdf_path.stem}-ocr")
-        manifest = {"schema_version": SCHEMA_VERSION, "source": source, "source_page_count": source_page_count,
-                    "selected_pages": pages, "source_file": Path(os.path.relpath(pdf_path, workspace)).as_posix(),
-                    "pdf_file": Path(os.path.relpath(output, workspace)).as_posix(),
-                    "pages": [{"page": number, "page_id": f"page_{number:04d}",
-                               "source_index": number - 1, "prepared_index": number - 1} for number in pages]}
+        output = prepared_pdf_path(pdf_path)
         if output.is_file():
-            write_json(manifest_path, manifest)
             print(f"[skip] Stage 00: {output.name} already exists; no OCR or PDF rewrite")
-            return manifest
+            return output
         candidate = output.with_suffix(".candidate.pdf")
         candidate.unlink(missing_ok=True)
         recovery = stage_dir / "recovery"
@@ -131,15 +110,13 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                     print(f"[{entry['provenance']}] {entry['page_id']}: {entry['page_type']}")
             document.save(candidate, deflate=True, garbage=4)
             candidate.replace(output)
-            write_json(manifest_path, manifest)
         except BaseException:
-            manifest_path.unlink(missing_ok=True)
             candidate.unlink(missing_ok=True)
             raise
         finally:
             (stage_dir / ".request.png").unlink(missing_ok=True)
     print(f"[+] Stage 00 published {output.name}; source pages: {pages}")
-    return manifest
+    return output
 
 
 def main():

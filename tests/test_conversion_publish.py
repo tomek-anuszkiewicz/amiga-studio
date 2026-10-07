@@ -3,6 +3,8 @@
 from pathlib import Path
 import contextlib
 import importlib.util
+import json
+import yaml
 import io
 import subprocess
 import sys
@@ -94,7 +96,7 @@ class PublicationTests(unittest.TestCase):
             argv = ["pipeline.py", "--publish", "--config", str(root / f"tools/bootstrap/{kind}-to-markdown/config.yaml")]
             if kind == "pdf":
                 argv += ["--workspace", str(self.output.parent)]
-                client_name = "CodexTransport"
+                client_name = "run_stage"
             else:
                 source = self.root / "Book-tmp/source.html"
                 source.write_text("<p>Source</p>", encoding="utf-8")
@@ -121,8 +123,9 @@ class PublicationTests(unittest.TestCase):
 
     def test_explicit_pdf_final_stage_publishes_regenerated_output(self):
         root, pipeline = self.load_pipeline("pdf")
-        state = {"source": {"name": "source.pdf", "pages": None},
-                 "stages": {stage["id"]: {} for stage in pipeline.STAGE_REGISTRY}}
+        (self.output.parent / "config.yaml").write_text(yaml.safe_dump({
+            "input": {"source_pdf": "../../source.pdf", "pages": None}}))
+        (self.output.parent / "stage_status.json").write_text(json.dumps({"13": {"status": "success"}}))
         argv = ["pipeline.py", "--workspace", str(self.output.parent), "--from-stage", "14", "--publish",
                 "--config", str(root / "tools/bootstrap/pdf-to-markdown/config.yaml")]
         def worker(stage, *args):
@@ -131,12 +134,8 @@ class PublicationTests(unittest.TestCase):
             self.output.mkdir(parents=True)
             (self.output / "Chapter.md").write_text("# Regenerated chapter\n", encoding="utf-8")
             return True
-        with patch.object(sys, "argv", argv), patch.object(pipeline, "read_state", return_value=state), \
-             patch.object(pipeline, "run_stage", side_effect=worker), \
-             patch.object(pipeline, "complete_pipeline_stage"), \
-             patch.object(pipeline, "validate_completed_stages") as validate, patch.object(pipeline, "restore_shared"):
+        with patch.object(sys, "argv", argv), patch.object(pipeline, "run_stage", side_effect=worker):
             pipeline.main()
-            self.assertEqual(len(validate.call_args_list[0].args[1]), len(pipeline.STAGE_REGISTRY) - 1)
         self.assertEqual((self.book / "Chapter.md").read_text(encoding="utf-8"), "# Regenerated chapter\n")
 
     def test_html_keeps_local_output_until_publish_without_parent_mirror(self):

@@ -2,7 +2,7 @@
 
 Emit one `02.9_emit_page_markdown/document.md` for every selected physical page,
 including disjoint ranges in source order. Its sibling `assets/` directory always
-exists. Inputs are validated Stage 02 object JSON and the exact original-resolution
+exists. Inputs are Stage 02 object JSON and the exact original-resolution
 Stage 01 PNGs; review PNGs, OCR blocks and source PDFs do not supply crop content.
 
 Text objects contribute their decoded `md_text` unchanged, with blank lines between
@@ -27,16 +27,16 @@ Run through the [orchestrator](../../README.md), including a standalone interval
 python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.9 --to-stage 02.9
 ```
 
-The worker validates all selected objects before writing a temporary bundle. It
-checks ordered document content, exact asset coverage, PNG readability/dimensions
-and every generated asset link before replacing the output. Replacement removes
-stale assets; failures stop with page/object context. Completion is recorded only
-after runtime validation. Execution requires completed Stage 01/02 and their files.
-There are no per-page Markdown files or metadata sidecars.
+The worker writes crops and Markdown into a temporary bundle and replaces prior
+output only after the writes finish. Replacement removes stale assets; filesystem
+and image-library failures stop with page/object context. There is no object,
+Markdown, asset-inventory, PNG-format or dimension validation. Execution requires
+successful Stage 01/02 statuses and reads their files directly. The source filename
+comes from the attempt configuration. There are no per-page Markdown files or metadata sidecars.
 
 Restart 01, 02 or 02.5 clears this bundle and all later stages. Restart 02.9
 clears this bundle and all later stages, even for a single-stage interval.
 Stage 03 still consumes Stage 02 directly; cleanup follows execution order.
 Stage 14 publication remains separate; `--publish` does not export this bundle.
-Technical validation does not establish source fidelity; the user assesses the
+Successful execution does not establish source fidelity; the user assesses the
 selected fragment and its reading order, text and crop boundaries.

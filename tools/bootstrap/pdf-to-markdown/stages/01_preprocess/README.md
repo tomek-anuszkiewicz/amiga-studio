@@ -2,8 +2,7 @@
 
 Stage 01 deterministically renders and extracts text from the separate, prepared
 [Stage 00 PDF](../00_text_layer/README.md). It performs no OCR and needs no model
-selection. Missing, incomplete or structurally invalid Stage 00 artifacts stop
-execution; preprocessing never falls back to the original PDF.
+selection. PDF-library and filesystem failures stop execution; preprocessing never falls back to the original PDF.
 
 For each selected physical page it writes `01_preprocess/page_XXXX.png` and
 `page_XXXX.json`, including legitimate blank pages. `XXXX` remains the physical
@@ -23,15 +22,13 @@ in the displayed-page frame. `geometry.extraction_to_display` records rotation
 from PyMuPDF's crop-relative, unrotated extraction frame; `pdf_to_extraction`
 records its PDF transformation. `raster.display_to_pixels` records the actual
 render transform, raster origin and outward floor/ceil pixel bounds. Actual PNG
-dimensions are persisted; exported coordinates are not rounded. Nonfinite,
-inverted or materially out-of-page boxes fail validation.
+dimensions are persisted; exported coordinates are not rounded. Existing extraction clipping is retained
+without rectangle bounds, structure or text-content validation.
 
-`pages_manifest.json` records document versus selected page counts, exact
-selection, shared prepared PDF path and relative PNG/JSON paths without hashes.
-It is published only when every required pair passes coverage, content, geometry
-and image-dimension validation. Completion retains a manifest snapshot;
-downstream workers validate pairs before requests. Predecessor checks use completion
-status only; no file inventory is stored or checked.
+Stage 01 publishes only page PNG/JSON files. Downstream stages enumerate known
+filenames in numeric physical-page order and read them directly. No coverage,
+pair-presence, identity, geometry, dimensions or PDF-text comparison checks run.
+Execution status and metrics belong to `stage_status.json`.
 
 Run preparation and preprocessing together for a new workspace:
 
@@ -39,9 +36,7 @@ Run preparation and preprocessing together for a new workspace:
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config tools/bootstrap/pdf-to-markdown/config.yaml --page-ranges "1-5,7" --from-stage 00 --to-stage 01
 ```
 
-For a workspace with a completed Stage 00, restart with `--from-stage 01
---to-stage 01`, or run `--from-stage 01 --run-deterministic` to select 01 explicitly.
-Stage 00 and the original source are retained. A different attempt selection
-requires restart at 00 or a new workspace; Stage 00 reuses the existing sibling
-PDF without repeating OCR. Legacy workspaces require restart at 00 with the
-source PDF to register the shared full-document preparation.
+For an attempt with successful Stage 00, restart with `--from-stage 01 --to-stage 01`.
+Omitting source/page arguments retains configured inputs. An explicit page selection
+updates config and can reuse the full-source sibling PDF without repeating OCR.
+Legacy attempts use the separate migration utility described in the [converter README](../../README.md).

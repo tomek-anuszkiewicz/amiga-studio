@@ -1,6 +1,6 @@
 # Stage 03: Build Raw Stream
 
-Consume validated `02_page_conversion/page_NNNN_segments.json` objects and
+Consume `02_page_conversion/page_NNNN_segments.json` objects and
 Stage 01 PNG/text pairs. Preserve physical page order and each segment array's
 reading order. Stage 02.5 review images are not inputs.
 
@@ -13,7 +13,8 @@ page width/height to produce the point-based `bbox` used by the existing cropper
 This conversion matches that cropper's actual-image scaling, rather than
 assuming that configured DPI exactly predicts rounded raster dimensions.
 
-Validate the complete selected page set before creating output. Emit
+Read existing page artifacts in numeric physical-page order, without coverage,
+pair-presence, schema or geometry checks. Emit
 `03_build_raw_stream/raw_stream.json` and crop visual assets for table, graphic
 and code-block nodes into `03_build_raw_stream/assets/`. The shared cropper keeps
 its existing padding and neighbor limits. All new object types remain intact;
@@ -25,6 +26,6 @@ Run through the [orchestrator](../../README.md):
 python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 03
 ```
 
-Stage 03 can run with validated 00/01/02 completion records, even when 02.5
+Stage 03 can run with successful Stage 02 execution status, even when 02.5
 has not run. Restart 02, 02.5 or 02.9 clears Stage 03 and all later stages,
 because cleanup follows execution order rather than artifact dependencies.
