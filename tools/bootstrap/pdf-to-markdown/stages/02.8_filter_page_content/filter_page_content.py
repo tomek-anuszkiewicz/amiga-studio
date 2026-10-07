@@ -68,12 +68,12 @@ def nxp_comparison(crop, reference):
     return (aspect_difference, score) if score <= NXP_RGB_TOLERANCE else None
 
 
-def filter_page_content(workspace):
+def filter_page_content(workspace, pages=None):
     with Image.open(NXP_TEMPLATE) as image:
         template_size = image.size
         reference = trim_nxp_margins(image.convert("RGB"))
     pages = [(path, read_json(path)) for path in
-             resolved_page_files(workspace)]
+             resolved_page_files(workspace, pages)]
     # Inspect original objects: even an excluded page can define the boundary.
     boundary = next(((page_index, segment_index)
                      for page_index, (_, value) in enumerate(pages)
@@ -124,8 +124,8 @@ def main():
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     args = parser.parse_args()
-    load_config(args.config, known_stages=PDF_STAGES, required_stages=())
-    filter_page_content(args.workspace.resolve())
+    config = load_config(args.config, known_stages=PDF_STAGES, required_stages=())
+    filter_page_content(args.workspace.resolve(), pages=config.get("input", {}).get("pages"))
 
 
 if __name__ == "__main__":

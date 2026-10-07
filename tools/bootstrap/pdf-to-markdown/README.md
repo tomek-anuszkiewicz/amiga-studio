@@ -79,6 +79,36 @@ The identity is index plus slug: both preface and TOC can use index zero.
 Prior-stage files remain unchanged. Filename collision handling and Stage 12
 frontmatter processing remain in place.
 
+### Physical-page selection through Stage 02.82
+
+`--page-ranges` persists physical 1-based pages as `input.pages` in the attempt
+configuration. Every page worker listed below applies that selection when reading
+its input, including a direct restart in a workspace retaining all-page predecessors.
+Missing or null `input.pages` means all available pages.
+
+| Stage | Selection behavior |
+| --- | --- |
+| 00 | Deliberate exception: prepare or reuse the full-source shared OCR PDF |
+| 01 | Extract only selected physical pages from the prepared PDF |
+| 02 | Select Stage 01 files before inference |
+| 02.4 | Select Stage 02 files before collecting keywords and requesting advisory recovery |
+| 02.5 | Select resolved Stage 02/02.4 pages before review rendering |
+| 02.8 | Select resolved pages before TOC-boundary detection and content exclusions |
+| 02.81 | Select pages from the configured 02.8 or explicit 02 predecessor before table inference |
+| 02.82 | Select Stage 02.81 pages before rendering table comparisons |
+
+Keep this rule when changing or adding page workers: use the shared page-file
+selection or pass `pages` to the shared conversion reader before opening source
+JSON/PNGs, collecting document context or issuing model requests. Filtered-out pages
+remain absent; selection never recovers them from an earlier predecessor.
+Focused restart regressions live in `tests/test_pdf_review_selection.py`.
+
+Stage 02.9 is a separate page-artifact export. Stage 03 assembles the retained
+Stage 02.81 input into a stream; stream workers do not apply a second physical-page
+filter. Establish the intended page subset in the page stages before stream creation.
+Restart cleanup still clears the entire selected stage and every later stage,
+regardless of the page selection; this is not an incremental single-page update.
+
 Stage 02 request schemas guide model output. Stage 02.4 interprets explicit edit
 ranges and retains ambiguous proposals; this does not certify text fidelity.
 The PDF path does not locally enforce

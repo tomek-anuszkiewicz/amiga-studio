@@ -42,9 +42,16 @@ The prompt excludes numbered/symbol-marked footnotes, table/figure legends and
 explanatory lists. Distinct NOTE labels introducing their own advisory paragraphs
 remain eligible even when they discuss a nearby table, image or figure.
 Only changed pages receive complete-page overrides; predecessors remain intact.
-Stage 02.4 and review 02.5 filter retained predecessor files by configured physical
+All page workers from 01 through 02.82 filter their input by configured physical
 `input.pages`, including selections changed through `--page-ranges` on a later-stage
-restart. Absent or null selection means all available predecessor pages.
+restart. Stage 00 deliberately prepares or reuses the full-source shared OCR PDF.
+Absent or null selection means all available predecessor pages.
+Apply selection before context collection, TOC-boundary detection,
+inference or review rendering. Stage 02.81 respects it for either configured
+predecessor, without recovering pages removed by filtering. Stage 03 creates the
+stream from retained 02.81 input; stream workers do not refilter physical pages.
+The [pipeline selection contract](pdf-to-markdown/README.md#physical-page-selection-through-stage-0282)
+records the per-stage behavior and maintenance rule. Restart cleanup remains global.
 Review 02.5, filtering 02.8 and explicit table predecessor `02` share the sparse
 resolver. Completed overrides are eligible, absent optional status means skipped,
 and running/failed 02.4 blocks direct consumers. Filtering omissions remain final.

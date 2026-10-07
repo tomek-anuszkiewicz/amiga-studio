@@ -19,7 +19,8 @@ def convert_pages(workspace, config):
     output = workspace / "02_page_conversion"
     output.mkdir(parents=True, exist_ok=True)
     with CodexClient(config, stage="02_page_conversion", images=True) as codex:
-        for path in page_files(workspace / "01_preprocess", "page_*.json"):
+        for path in page_files(workspace / "01_preprocess", "page_*.json",
+                               config.get("input", {}).get("pages")):
             data = read_json(path)
             entry = data
             page_id = path.stem

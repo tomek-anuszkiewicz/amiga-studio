@@ -87,7 +87,8 @@ def render_reviews(workspace, config):
             # Review only local artifacts; generated HTML cannot fetch remote content.
             browser_page.route("http://**/*", lambda route: route.abort())
             browser_page.route("https://**/*", lambda route: route.abort())
-            for entry, page in read_conversion(workspace, STAGE):
+            for entry, page in read_conversion(workspace, STAGE,
+                                               pages=config.get("input", {}).get("pages")):
                 for table in page["segments"]:
                     if table["type"] != "table":
                         continue
