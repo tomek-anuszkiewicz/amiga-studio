@@ -2612,3 +2612,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - git diff --check: passed
   - graphify update .: passed
   - No fragment conversion or conversion-quality evaluation run
+---
+
+### [2026-10-07 18:51 CEST] — PDF-MARKDOWN-02.9: record Test Book page Markdown export
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Reference/Test Book example-4567/workspace/pages-all`
+- **What Was Changed (The Concrete Reality)**:
+  - Track the generated Stage 02.9 document.md and 203 PNG assets
+  - Record successful Stage 02.9 execution in stage_status.json with 7.4 seconds duration and zero model calls
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the requested Stage 02.9 execution results in Git without rewriting the generated Markdown or claiming conversion-quality acceptance
+- **Verification & Test Results**:
+  - python tools/harness/pre_flight.py --quick: all six gates passed
+  - cargo test -p test_runner --test test_architecture_rules -- --quiet: 19 passed
+  - Inspected staged scope: document.md, 203 PNG assets and Stage 02.9 status
+  - git diff --cached --check reported nine two-space Markdown hard breaks, preserved under the unchanged-text contract
+  - No conversion rerun or visual fidelity assessment performed in this commit task
+  - Roadmap quality assessment remains pending
