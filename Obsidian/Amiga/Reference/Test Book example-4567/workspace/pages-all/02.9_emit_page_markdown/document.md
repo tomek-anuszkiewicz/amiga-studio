@@ -540,8 +540,6 @@ Table 7-2. Move Byte Instruction Execution Times
 
 \*The size of the index register (Xn) does not affect execution time.
 
-![Graphic page_0038_seg_001](assets/page_0038_seg_001.png)
-
 1.1 INTEGER UNIT USER PROGRAMMING MODEL
 
 Figure 1-1 illustrates the integer portion of the user programming model. It consists of the following registers:
@@ -564,8 +562,6 @@ These registers are for bit and bit field (1 – 32 bits), byte (8 bits), word (
 
 These registers can be used as software stack pointers, index registers, or base address registers. The base address registers can be used for word and long-word operations. Register A7 is used as a hardware stack pointer during stacking for subroutine calls and exception handling. In the user programming model, A7 refers to the user stack pointer (USP).
 
-![Graphic page_0039_seg_001](assets/page_0039_seg_001.png)
-
 1.2.2 Floating-Point Control Register (FPCR)
 
 The FPCR (see Figure 1-3) contains an exception enable (ENABLE) byte and a mode control (MODE) byte. The user can read or write to the FPCR. Motorola reserves bits 31 – 16 for future definition; these bits are always read as zero and are ignored during write operations. The reset function or a restore operation of the null state clears the FPCR. When cleared, this register provides the IEEE 754 Standard for Binary Floating-Point Arithmetic defaults.
@@ -584,8 +580,6 @@ The FPSR (see Figure 1-2) contains a floating-point condition code (FPCC) byte, 
 
 **1.2.3.1 FLOATING-POINT CONDITION CODE BYTE.** The FPCC byte, illustrated in Figure 1-4, contains four condition code bits that set after completion of all arithmetic instructions involving the floating-point data registers. The move floating-point data register
 
-![Graphic page_0040_seg_001](assets/page_0040_seg_001.png)
-
 supported, where T0 is always zero, and only one system stack where the M-bit is always zero. I2, I1, and I0 define the interrupt mask level.
 
 ![Table page_0040_seg_004](assets/page_0040_seg_004.png)
@@ -603,8 +597,6 @@ The alternate function code registers contain 3-bit function codes. Function cod
 1.3.5 Acu Status Register (MC68EC030 only)
 
 The access control unit status register (ACUSR) is a 16-bit register containing the status information returned by execution of the PTEST instruction. The PTEST instruction searches the access control (AC) registers to determine a match for a specified address. A match in either or both of the AC registers sets bit 6 in the ACUSR. All other bits in the ACUSR are undefined and must not be used.
-
-![Graphic page_0041_seg_001](assets/page_0041_seg_001.png)
 
 1.3.6 Transparent Translation/access Control Registers
 
@@ -627,8 +619,6 @@ This 8-bit field is compared with address bits A31 – A24. Addresses that match
 Address Mask
 
 This 8-bit field contains a mask for the address base field. Setting a bit in this field causes the corresponding bit of the address base field to be ignored. Blocks of memory larger than 16 Mbytes can be transparently translated/accessed controlled by setting some logical address mask bits to ones. The low-order bits of this field normally are set to define contiguous blocks larger than 16 Mbytes, although this is not required.
-
-![Graphic page_0042_seg_001](assets/page_0042_seg_001.png)
 
 1.6.1 Normalized Numbers
 
@@ -654,13 +644,9 @@ Traditionally, the detection of underflow causes floating-point number systems t
 
 Since the extended-precision data format has an explicit integer bit, a number can be formatted with a nonzero exponent, less than the maximum value, and a zero integer bit. The IEEE 754 standard does not define a zero integer bit. Such a number is an unnormalized number. Hardware does not directly support denormalized and unnormalized numbers, but implicitly supports them by trapping them as unimplemented data types, allowing efficient conversion in software.
 
-![Graphic page_0043_seg_001](assets/page_0043_seg_001.png)
-
 Table 1-4. Single-Precision Real Format Summary Data Format
 
 ![Table page_0043_seg_004](assets/page_0043_seg_004.png)
-
-![Graphic page_0044_seg_001](assets/page_0044_seg_001.png)
 
 SECTION 2
 ADDRESSING CAPABILITIES
@@ -674,8 +660,6 @@ M68000 family instructions consist of at least one word; some have as many as 11
 ![Graphic page_0044_seg_006](assets/page_0044_seg_006.png)
 
 Figure 2-1. Instruction Word General Format
-
-![Graphic page_0045_seg_001](assets/page_0045_seg_001.png)
 
 2.2.1 Data Register Direct Mode
 
@@ -719,8 +703,6 @@ NUMBER OF EXTENSION WORDS:        0
 
 ![Graphic page_0045_seg_014](assets/page_0045_seg_014.png)
 
-![Graphic page_0046_seg_001](assets/page_0046_seg_001.png)
-
 2.5.1 No Memory Indirect Action Mode
 
 No memory indirect action mode uses BR, Xn with its modifiers, and bd to calculate the address of the required operand. Data register indirect (Dn) and absolute address with index (bd,Xn.SIZE*SCALE) are examples of the no memory indirect action mode. Figure 2-5 illustrates the no memory indirect action mode.
@@ -733,15 +715,11 @@ NOTE: S indicates suppressed and A indicates active.
 
 Figure 2-5. No Memory Indirect Action
 
-![Graphic page_0047_seg_001](assets/page_0047_seg_001.png)
-
 Table 3-5. Shift and Rotate Operation Format
 
 ![Table page_0047_seg_004](assets/page_0047_seg_004.png)
 
 NOTE: X indicates the extend bit and C the carry bit in the CCR.
-
-![Graphic page_0048_seg_001](assets/page_0048_seg_001.png)
 
 ![Graphic page_0048_seg_003](assets/page_0048_seg_003.png)
 
@@ -749,13 +727,9 @@ Figure 3-2. Rounding Algorithm Flowchart
 
 The three additional bits beyond the extended-precision format, the difference between the intermediate result’s 67-bit mantissa and the storing result’s 64-bit mantissa, allow the FPU to perform all calculations as though it were performing calculations using a float engine with infinite bit prec The result is always correct for the specified destination’s data format before performing rounding (unless an overflow or underflow error occurs). The specified rounding operation then produces a number that is as close as possible to the infinitely precise
 
-![Graphic page_0049_seg_001](assets/page_0049_seg_001.png)
-
 ![Graphic page_0049_seg_003](assets/page_0049_seg_003.png)
 
 Figure 3-3. Instruction Description Format
-
-![Graphic page_0050_seg_001](assets/page_0050_seg_001.png)
 
 SECTION 4
 INTEGER INSTRUCTIONS
@@ -778,8 +752,6 @@ Identified within the paragraphs are the specific processors that use different 
 \*\*Can be used with CPU32 processor
 
 **Appendix A Processor Instruction Summary** provides a listing of all processors and the instructions that apply to them for quick reference.
-
-![Graphic page_0051_seg_001](assets/page_0051_seg_001.png)
 
 ![Table page_0051_seg_003](assets/page_0051_seg_003.png)
 
@@ -822,8 +794,6 @@ NOTE
 
 Normally, the Z condition code bit is set via programming before the start of an operation. This allows successful tests for zero results upon completion of multiple-precision operations.
 
-![Graphic page_0052_seg_001](assets/page_0052_seg_001.png)
-
 ![Table page_0052_seg_003](assets/page_0052_seg_003.png)
 
 Instruction Format:
@@ -846,8 +816,6 @@ Register Ry field—Specifies the source register.
 
 If R/M = 0, specifies a data register.
 If R/M = 1, specifies an address register for the predecrement addressing mode.
-
-![Graphic page_0053_seg_001](assets/page_0053_seg_001.png)
 
 ![Table page_0053_seg_003](assets/page_0053_seg_003.png)
 
@@ -884,8 +852,6 @@ Instruction Format:
 
 ![Table page_0053_seg_012](assets/page_0053_seg_012.png)
 
-![Graphic page_0054_seg_001](assets/page_0054_seg_001.png)
-
 ![Table page_0054_seg_003](assets/page_0054_seg_003.png)
 
 Instruction Fields:
@@ -905,8 +871,6 @@ a. If the location specified is a source operand, all addressing modes can be us
 \*Word and long only
 
 \*\*Can be used with CPU32.
-
-![Graphic page_0055_seg_001](assets/page_0055_seg_001.png)
 
 ![Table page_0055_seg_003](assets/page_0055_seg_003.png)
 
@@ -929,8 +893,6 @@ NOTE
 The Dn mode is used when the destination is a data register; the destination < ea > mode is invalid for a data register.
 
 ADDA is used when the destination is an address register. ADDI and ADDQ are used when the source is immediate data. Most assemblers automatically make this distinction.
-
-![Graphic page_0056_seg_001](assets/page_0056_seg_001.png)
 
 ![Table page_0056_seg_003](assets/page_0056_seg_003.png)
 
@@ -967,8 +929,6 @@ Opmode field—Specifies the size of the operation.
 
 111— Long operation.
 
-![Graphic page_0057_seg_001](assets/page_0057_seg_001.png)
-
 ![Table page_0057_seg_003](assets/page_0057_seg_003.png)
 
 Effective Address field—Specifies the source operand. All addressing modes can be used as listed in the following tables:
@@ -984,8 +944,6 @@ Effective Address field—Specifies the source operand. All addressing modes can
 ![Table page_0057_seg_009](assets/page_0057_seg_009.png)
 
 *Can be used with CPU32
-
-![Graphic page_0058_seg_001](assets/page_0058_seg_001.png)
 
 ![Table page_0058_seg_003](assets/page_0058_seg_003.png)
 
@@ -1023,8 +981,6 @@ NOTES:
 
 3. Sets the OPERR bit in the floating-point status register exception byte.
 
-![Graphic page_0059_seg_001](assets/page_0059_seg_001.png)
-
 APPENDIX A
 PROCESSOR INSTRUCTION SUMMARY
 
@@ -1035,14 +991,10 @@ Processor Cross-Reference
 
 ![Table page_0059_seg_005](assets/page_0059_seg_005.png)
 
-![Graphic page_0060_seg_001](assets/page_0060_seg_001.png)
-
 Table A-1. M68000 Family Instruction Set And
 Processor Cross-Reference (Continued)
 
 ![Table page_0060_seg_004](assets/page_0060_seg_004.png)
-
-![Graphic page_0061_seg_001](assets/page_0061_seg_001.png)
 
 Table A-1. M68000 Family Instruction Set And Processor Cross-Reference (Concluded)
 
@@ -1055,8 +1007,6 @@ NOTES:
 4. This instruction is not privileged for the MC68000 and MC68008.
 5. Not applicable to MC68EC030.
 
-![Graphic page_0062_seg_001](assets/page_0062_seg_001.png)
-
 ![Table page_0062_seg_003](assets/page_0062_seg_003.png)
 
 Figure B-7. MC68EC040 and MC68LC040 Floating-Point Unimplemented Stack Frame, Format $4
@@ -1064,8 +1014,6 @@ Figure B-7. MC68EC040 and MC68LC040 Floating-Point Unimplemented Stack Frame, Fo
 ![Table page_0062_seg_005](assets/page_0062_seg_005.png)
 
 Figure B-8. MC68040 Access Error Stack Frame, Format $7
-
-![Graphic page_0063_seg_001](assets/page_0063_seg_001.png)
 
 ![Table page_0063_seg_003](assets/page_0063_seg_003.png)
 

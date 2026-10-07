@@ -2722,3 +2722,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - graphify update completed
   - git diff --check passed. Pipeline stages 02.8-02.9 succeeded for only page 63 in workspace/page-63-nxp-fix-attempt-01 using copied successful Stage 01/02 predecessors, without model requests. Removed page_0063_seg_001 with aspect and RGB differences 0
   - filtered JSON and new Markdown/assets omit the logo, retaining two table crops. Existing pages-all artifacts and user edits untouched. Book-wide behavior and visual content assessment remain unverified.
+---
+
+### [2026-10-07 19:36 CEST] — PDF-GRAPHIC-EXCLUSION-3: Record regenerated Stage 02.8 and 02.9 outputs
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Reference/Test Book example-4567/workspace/pages-all/02.8_filter_page_content`
+  - `Obsidian/Amiga/Reference/Test Book example-4567/workspace/pages-all/02.9_emit_page_markdown`
+  - `stage_status.json`
+- **What Was Changed (The Concrete Reality)**:
+  - Commit existing regenerated filtered objects and Markdown bundle
+  - remove 26 standalone NXP logo segments, PNG assets and image links on physical pages 38-63
+  - retain associated execution status changes
+- **Architectural Rationale & Trade-Offs**:
+  - User explicitly requested committing Stage 02.8 and 02.9 results after the logo filter and landscape correction. Review and preserve the existing working-tree outputs without another conversion run.
+- **Verification & Test Results**:
+  - Diff verification passed: 26 page JSONs differ only by one removed graphic each
+  - all survivor fields and order unchanged
+  - Markdown differs only by the 26 corresponding image links
+  - exactly 26 logo PNGs deleted
+  - all 169 retained image links resolve. Existing status records report success, 0.60 seconds for Stage 02.8 and 7.74 seconds for Stage 02.9, with no model calls. These are recorded run metrics, not a new agent-run conversion. Quick preflight and architecture suite 19/19 passed. Visual content quality and book-wide matching are not certified.

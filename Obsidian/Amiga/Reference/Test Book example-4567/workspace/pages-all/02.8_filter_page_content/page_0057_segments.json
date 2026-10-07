@@ -4,19 +4,6 @@
   "image_height": 3300,
   "segments": [
     {
-      "type": "graphic",
-      "continuation": false,
-      "heading_level": null,
-      "md_text": "",
-      "bbox": [
-        30,
-        37,
-        287,
-        131
-      ],
-      "segment_id": "page_0057_seg_001"
-    },
-    {
       "type": "table",
       "continuation": false,
       "heading_level": null,

@@ -34,7 +34,7 @@
   "02.8": {
     "status": "success",
     "details": "",
-    "duration_seconds": 0.26,
+    "duration_seconds": 0.6,
     "llm_calls": 0,
     "llm_cached_calls": 0,
     "llm_time_seconds": 0.0
@@ -42,7 +42,7 @@
   "02.9": {
     "status": "success",
     "details": "",
-    "duration_seconds": 8.3,
+    "duration_seconds": 7.74,
     "llm_calls": 0,
     "llm_cached_calls": 0,
     "llm_time_seconds": 0.0
