@@ -35,10 +35,10 @@
       "heading_level": null,
       "md_text": "**NOTE**",
       "bbox": [
-        458,
+        1185,
         690,
-        2053,
-        925
+        1318,
+        728
       ],
       "segment_id": "page_0156_seg_003",
       "source_segment_ids": [
@@ -53,9 +53,9 @@
       "md_text": "The bit numbering (7 6 5 4 3 2 1 0) is for use when two nibbles are to be interpreted together as a byte. Physically, each nibble is the high nibble of the word at its address (ie. bits 15 14 13 12).",
       "bbox": [
         458,
-        690,
-        2053,
-        925
+        769,
+        2044,
+        922
       ],
       "segment_id": "page_0156_seg_003_callout_2",
       "source_segment_ids": [

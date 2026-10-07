@@ -48,10 +48,10 @@
       "heading_level": null,
       "md_text": "**NOTE**",
       "bbox": [
-        456,
+        1223,
         2131,
-        2052,
-        2523
+        1356,
+        2170
       ],
       "segment_id": "page_0130_seg_004",
       "source_segment_ids": [
@@ -66,7 +66,7 @@
       "md_text": "This Table is only meant to be an illustration of the typical order of blitter cycles on the bus. Bus cycles are dynamically allocated based on blitter operating mode; competing bus activity from processor, bit-planes, and other DMA channels; and other factors. Commodore Amiga does not guarantee the accuracy of or future adherence to this chart. We reserve the right to make product improvements or design changes in this area without notice.",
       "bbox": [
         456,
-        2131,
+        2210,
         2052,
         2523
       ],

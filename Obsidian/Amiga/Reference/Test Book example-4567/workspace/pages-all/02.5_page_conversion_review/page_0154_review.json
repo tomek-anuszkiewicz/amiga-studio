@@ -40,9 +40,9 @@
       "heading_level": null,
       "bbox": [
         360,
-        1119,
-        1256,
-        1158
+        1122,
+        470,
+        1151
       ],
       "continuation": false,
       "source_ordinals": [
@@ -56,8 +56,8 @@
       "type": "callout_text",
       "heading_level": null,
       "bbox": [
-        360,
-        1119,
+        517,
+        1120,
         1256,
         1158
       ],
@@ -108,9 +108,9 @@
       "heading_level": null,
       "bbox": [
         360,
-        2152,
-        1032,
-        2192
+        2156,
+        470,
+        2185
       ],
       "continuation": false,
       "source_ordinals": [
@@ -124,8 +124,8 @@
       "type": "callout_text",
       "heading_level": null,
       "bbox": [
-        360,
-        2152,
+        517,
+        2154,
         1032,
         2192
       ],

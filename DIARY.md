@@ -3444,3 +3444,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture rules passed (19 tests)
   - diff check passed
   - graphify update completed. Verified installed PyMuPDF discovery implementation. No live fragment conversion or existing book workspace modification.
+---
+
+### [2026-10-07 23:25 CET] — PDF-2.4-REFINE: record regenerated callout artifacts and close the plan
+- **Affected Subsystems**:
+  - `Test Book attempt pages-all`
+  - `Stage 02.4 overrides`
+  - `Stage 02.5 reviews`
+  - `Stage 02.8 filtered objects`
+  - `execution plan`
+- **What Was Changed (The Concrete Reality)**:
+  - Record refined callout geometry for pages 64, 73, 130, 144, 154 and 156 with corresponding review and filtered artifacts
+  - retain updated attempt configuration and execution status
+  - remove the completed pdf-2.4-simple-callout-recovery plan
+- **Architectural Rationale & Trade-Offs**:
+  - User requested committing the remaining 2.4 refinement work. Converter implementation and CLI-only configuration changes are already committed. Preserve the regenerated attempt artifacts as the concrete refinement record and close the active plan
+  - content fidelity remains subject to user assessment.
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture rules passed (19 tests). Existing attempt status records success through 02.8 and 14 cached Stage 02.4 requests with zero fresh model calls. This commit turn did not rerun conversion or certify output fidelity. Existing technical test evidence is retained in earlier diary entries.

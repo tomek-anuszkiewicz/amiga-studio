@@ -36,9 +36,9 @@
       "md_text": "**Note:**",
       "bbox": [
         360,
-        1119,
-        1256,
-        1158
+        1122,
+        470,
+        1151
       ],
       "segment_id": "page_0154_seg_003",
       "source_segment_ids": [
@@ -52,8 +52,8 @@
       "heading_level": null,
       "md_text": "CIAA can generate interrupt INT2.",
       "bbox": [
-        360,
-        1119,
+        517,
+        1120,
         1256,
         1158
       ],
@@ -96,9 +96,9 @@
       "md_text": "**Note:**",
       "bbox": [
         360,
-        2152,
-        1032,
-        2192
+        2156,
+        470,
+        2185
       ],
       "segment_id": "page_0154_seg_006",
       "source_segment_ids": [
@@ -112,8 +112,8 @@
       "heading_level": null,
       "md_text": "CIAB can generate INT6.",
       "bbox": [
-        360,
-        2152,
+        517,
+        2154,
         1032,
         2192
       ],

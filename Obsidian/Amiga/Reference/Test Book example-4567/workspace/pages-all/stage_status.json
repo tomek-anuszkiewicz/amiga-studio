@@ -26,15 +26,15 @@
   "02.4": {
     "status": "success",
     "details": "",
-    "duration_seconds": 51.26,
-    "llm_calls": 11,
-    "llm_cached_calls": 3,
-    "llm_time_seconds": 49.48722870000347
+    "duration_seconds": 1.71,
+    "llm_calls": 0,
+    "llm_cached_calls": 14,
+    "llm_time_seconds": 0.0
   },
   "02.5": {
     "status": "success",
     "details": "",
-    "duration_seconds": 38.75,
+    "duration_seconds": 38.14,
     "llm_calls": 0,
     "llm_cached_calls": 0,
     "llm_time_seconds": 0.0
@@ -42,7 +42,7 @@
   "02.8": {
     "status": "success",
     "details": "",
-    "duration_seconds": 0.6,
+    "duration_seconds": 0.59,
     "llm_calls": 0,
     "llm_cached_calls": 0,
     "llm_time_seconds": 0.0

@@ -143,10 +143,10 @@
       "type": "callout",
       "heading_level": null,
       "bbox": [
-        789,
-        2349,
-        2040,
-        2553
+        790,
+        2357,
+        902,
+        2395
       ],
       "continuation": false,
       "source_ordinals": [
@@ -160,7 +160,7 @@
       "type": "callout_text",
       "heading_level": null,
       "bbox": [
-        789,
+        923,
         2349,
         2040,
         2553

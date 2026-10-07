@@ -20,12 +20,12 @@
       "type": "callout",
       "continuation": false,
       "heading_level": null,
-      "md_text": "**NOTE:**",
+      "md_text": "NOTE:",
       "bbox": [
-        824,
-        1961,
-        2075,
-        2084
+        825,
+        1965,
+        935,
+        1993
       ],
       "segment_id": "page_0144_seg_002",
       "source_segment_ids": [
@@ -39,10 +39,10 @@
       "heading_level": null,
       "md_text": "If both period and volume are modulated on the same channel, the period and volume will be alternated. First word xxxxxxxx V6-V0 , Second word P15-P0 (etc)",
       "bbox": [
-        824,
-        1961,
-        2075,
-        2084
+        825,
+        1965,
+        2053,
+        2079
       ],
       "segment_id": "page_0144_seg_002_callout_2",
       "source_segment_ids": [

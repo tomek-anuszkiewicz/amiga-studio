@@ -1,12 +1,4 @@
-render:
-  dpi: 300
-  image_format: png
-ocr:
-  language: eng
-  tessdata: null
 llm:
-  timeout_seconds: 180
-  concurrency: 1
   stages:
     02_page_conversion:
       model: gpt-6.1-sol
@@ -41,9 +33,3 @@ llm:
 markers:
   toc_start: <!-- TOC34534 -->
   toc_end: <!-- /TOC34534 -->
-input:
-  source_pdf: ../../Amiga TestBook example-4567.pdf
-  pages:
-  - 64
-table_conversion:
-  predecessor: '02.8'

@@ -126,10 +126,10 @@
       "heading_level": null,
       "md_text": "**Note:**",
       "bbox": [
-        789,
-        2349,
-        2040,
-        2553
+        790,
+        2357,
+        902,
+        2395
       ],
       "segment_id": "page_0064_seg_010",
       "source_segment_ids": [
@@ -143,7 +143,7 @@
       "heading_level": null,
       "md_text": "On the U.S. keyboard, the keys with codes 44 and 60 are extended to include the European keys with codes 2B and 30, respectively. Also note that England uses the U.S. rather than the European keyboard, but not the U.S. keymap.",
       "bbox": [
-        789,
+        923,
         2349,
         2040,
         2553
