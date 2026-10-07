@@ -2839,3 +2839,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite passed 19 of 19 tests
   - Inspected affected planned contracts and consumers for obsolete companion references
   - Planning only: implementation and inference have not started
+---
+
+### [2026-10-07 19:58 CEST] — PDF-TABLE-2.81: Plan original-image details companions
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.81-table-transcription.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add a second collapsed details section immediately after each HTML textual RAG companion with the original table image
+  - Preserve the exact Stage 01 table crop as a published asset and link it relatively from the section
+  - Update page and stream export plans to retain HTML source-image assets while converted Markdown tables remain crop-free
+  - Separate published source crops from temporary inference crops
+  - Include the second collapsed section in Stage 02.82 while its source image is already shown at left
+  - Clarify that only the textual companion uses inference and both sections must survive export without duplication
+- **Architectural Rationale & Trade-Offs**:
+  - Provide the original raster for checking transcription fidelity
+  - Correct the earlier no-assets rule for converted HTML tables so source-image links remain valid
+  - Keep the active plan local under its existing Git exclusion
+- **Verification & Test Results**:
+  - Quick preflight passed all six gates
+  - Architecture suite passed 19 of 19 tests
+  - Checked planned export and asset lifecycle statements for consistency
+  - Planning only: no implementation, inference or images generated
