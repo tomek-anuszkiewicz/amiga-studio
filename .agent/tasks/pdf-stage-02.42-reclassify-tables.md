@@ -8,7 +8,8 @@ Add Stage `02.42_reclassify_tables` after table splitting at 02.41 and before
 review at 02.5. Review objects currently classified as `table` and suggest a
 different representation when the visible source is not a genuine table.
 Keep genuine tables unchanged. This plan records the requested work; it does
-not implement the stage or authorize a conversion run.
+not implement the stage. After implementation, the user requests the selected-page
+test and a separate workspace retained for assessment, as specified below.
 
 For each candidate, supply the complete unmodified original Stage 01 page image
 at original detail and the target's JSON, including its bounding box. Use
@@ -20,7 +21,7 @@ Do not use review images or substitute OCR geometry.
 ## Collaborative prompt work
 
 The page numbers below are physical PDF pages in the existing test book.
-They are selected examples for later user-requested runs, not hardcoded rules
+They are user-selected examples for the planned test, not hardcoded rules
 or confirmed classification results.
 
 | Transition | Physical pages | Prompt direction | Design status |
@@ -76,9 +77,19 @@ compound region into several tables merely because its predecessor was `table`.
    README, pipeline README, developer guide and reference conversion contract.
    Preserve existing attempt configuration. Follow the converter testing policy;
    do not add generic local geometry/schema gates or conversion-quality scoring.
-6. On a later explicit conversion request, run only the selected physical pages
-   39, 62, 40, 144 and 94 in the requested workspace and through the requested
-   stages. Report artifact paths and execution results for user assessment.
+6. After implementing 02.42, run the user-requested test on all five physical
+   pages `39,40,62,94,144` together in a separate named workspace under the test
+   book's `workspace/` directory, proposed name `stage-02.42-reclassification`.
+   Prepare or reuse compatible predecessors and run through 02.42 and review
+   02.5. Do not overwrite the existing `pages-all` workspace or expand the page
+   selection. If the proposed test workspace already exists, inspect its contents
+   and configuration before deciding whether it is the same compatible attempt.
+7. Leave the separate test workspace intact for the user to assess. Retain source
+   page images, predecessor objects, 02.42 outputs, resolved 02.5 review JSON/PNGs,
+   attempt configuration and execution status for all five pages. An unchanged
+   page may have no sparse 02.42 override; its resolved review must still be
+   available. Report the workspace path, review artifact paths and any failed or
+   incomplete pages. Do not delete the workspace during task-plan cleanup.
 
 ## Verification and closure
 
@@ -86,7 +97,9 @@ Run the required quick pre-flight and architecture suite for each implementation
 commit, plus existing technical checks relevant to the concrete change. Do not
 launch a full-book pilot or add a speculative test matrix. Technical execution
 does not establish that a proposed reclassification is correct; the user evaluates
-the selected page results.
+the selected page results. Delivery requires the selected-page test and the
+preserved separate assessment workspace; report failures rather than treating
+an unrun or incomplete test as complete.
 
 Record implementation decisions, actual checks and unresolved work under task ID
 `PDF-TABLE-2.42` in DIARY.md. Keep this plan active until implementation and the
