@@ -31,7 +31,7 @@ Write complete `page_NNNN_segments.json` overrides only for changed pages.
 `diagnostics/` contains framed PNGs, raw JSON responses and per-page decision
 reports with exact frame mappings, proposals, applied/retained ranges and output
 objects. Original request PNGs remain in `01_preprocess/`; reports reference them.
-`decision_report.json` records counts. No candidates or no accepted changes means
+Aggregate counts are printed to the console. No candidates or no accepted changes means
 success with an empty override set. Missing imagery and transport/parsing failures
 fail the stage normally.
 

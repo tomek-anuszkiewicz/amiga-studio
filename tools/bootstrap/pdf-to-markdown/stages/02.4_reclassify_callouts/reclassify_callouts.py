@@ -75,9 +75,8 @@ def reclassify_callouts(workspace, config):
                 hits += len(candidates)
             write_json(diagnostics / f"{page_id}_decisions.json", report)
             print(f"[callouts] {page_id}: candidates={len(candidates)}; changed={report['changed']}")
-        write_json(output / "decision_report.json", {
-            "input_pages": len(pages), "candidate_objects": hits, "requested_pages": requested,
-            "changed_pages": changed, "keywords": keywords})
+        print(f"[callouts] input pages={len(pages)}; candidate objects={hits}; "
+              f"requested pages={requested}; changed pages={changed}")
     finally:
         if codex is not None:
             codex.close()
