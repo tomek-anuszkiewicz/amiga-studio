@@ -5,10 +5,6 @@
 table_review:
   browser_channel: "msedge"  # Or "chrome" / installed Playwright "chromium".
 
-ocr:
-  language: "eng"
-  tessdata: null  # Auto-detect or use TESSDATA_PREFIX; override locally if needed.
-
 llm:
   stages:
     02_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

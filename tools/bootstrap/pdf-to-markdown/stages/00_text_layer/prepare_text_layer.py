@@ -15,16 +15,18 @@ from common.pdf_artifacts import write_json, read_json, prepared_pdf_path
 from common.pdf_geometry import page_geometry, text_blocks
 
 
+_OCR_LANGUAGE = "eng"
+
+
 def file_hash(path):
     """Identify compatible OCR recovery requests."""
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def tesseract_settings(config):
+def tesseract_settings():
     """Resolve language data and fingerprint it without recording host paths."""
-    settings = config.get("ocr", {})
-    language = settings.get("language", "eng")
-    tessdata = Path(pymupdf.get_tessdata(settings.get("tessdata")))
+    language = _OCR_LANGUAGE
+    tessdata = Path(pymupdf.get_tessdata())
     files = {code: tessdata / f"{code}.traineddata" for code in language.split("+")}
     identity = {"engine": "tesseract", "language": language, "pymupdf": pymupdf.__version__,
                 "traineddata": {code: file_hash(path) for code, path in files.items()}}
@@ -65,7 +67,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
         recovery.mkdir(exist_ok=True)
         engine = None
         procedure = {"script_sha256": file_hash(__file__),
-                     "settings": {key: value for key, value in config.items() if key != "llm"}}
+                     "settings": {"render_dpi": RENDER_DPI, "language": _OCR_LANGUAGE}}
         recovery_source = {**source, "sha256": file_hash(pdf_path)}
         try:
             for prepared_index, number in enumerate(pages):
@@ -81,7 +83,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                     pixmap = page.get_pixmap(dpi=dpi, colorspace=pymupdf.csRGB, alpha=False)
                     pixmap.save(image)
                     if engine is None:
-                        engine = tesseract_settings(config)
+                        engine = tesseract_settings()
                     language, tessdata, engine_identity = engine
                     identity = {"source": recovery_source, "page": number, "image_sha256": file_hash(image),
                                 "geometry": entry["geometry"], "format": "tesseract-pdf-v1", "procedure": procedure,

@@ -32,8 +32,10 @@ initializes only a missing configuration. Supply `--pdf` for every conversion or
 restart; the source path is never persisted. Status inspection does not require it.
 Rendering uses fixed 300 DPI PNGs, inference runs with concurrency 1 and a
 180-second request timeout. Stage 02.81 always consumes completed Stage 02.8.
-Existing attempt configurations retire the former input, render, table predecessor,
-timeout and concurrency fields on the next pipeline write; model settings remain.
+OCR uses fixed English (`eng`) language data with automatic discovery, including
+`TESSDATA_PREFIX`. Existing attempt configurations retire the former input, render,
+table predecessor, OCR, timeout and concurrency fields on the next pipeline write;
+model settings remain.
 
 `--page-ranges` controls only the current run and is never persisted in config.
 Omitting it selects all available pages. Legacy `input.pages` is ignored by workers

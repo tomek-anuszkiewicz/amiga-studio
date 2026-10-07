@@ -525,7 +525,7 @@ def main():
         config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
             "02.4_reclassify_callouts", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
     # Retire former settings from existing attempt configurations.
-    for key in ("input", "render", "table_conversion"):
+    for key in ("input", "render", "table_conversion", "ocr"):
         config.pop(key, None)
     for key in ("timeout_seconds", "concurrency"):
         config.get("llm", {}).pop(key, None)
