@@ -2,10 +2,13 @@
 
 ## Objective
 Performs sequential normalization across the global node stream:
-1. Strips repetitive running `header` and `footer` blocks.
-2. Identifies and unifies contiguous `graphic` fragments on the same page into a single consolidated diagram asset using Codex Vision (`prompt_graphics_union.md`), purging individual obsolete asset crops from `assets/` and replacing the constituent nodes with a single unified node.
-3. Fuses adjacent narrative `prose` nodes across page boundaries, performing de-hyphenation on split words via LLM evaluation (`prompt_seam.md`).
-4. Preserves structural node boundaries for tables, code listings, and headings.
+1. Identifies and unifies contiguous `graphic` fragments on the same page into a single consolidated diagram asset using Codex Vision (`prompt_graphics_union.md`), purging individual obsolete asset crops from `assets/` and replacing the constituent nodes with a single unified node.
+2. Fuses adjacent narrative `prose` nodes across page boundaries, performing de-hyphenation on split words via LLM evaluation (`prompt_seam.md`).
+3. Preserves structural node boundaries for tables, code listings, and headings.
+
+[Stage 02.8](../02.8_filter_page_content/README.md) owns source-content filtering
+before stream assembly, including header/footer removal. Stage 04 performs no
+additional source-content exclusion.
 
 ## Inputs
 - `workspace/03_build_raw_stream/raw_stream.json`: Master sequential node stream from Stage 03.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 stages/03_build_raw_stream/build_stream.py:
-Assemble Stage 02 objects into the downstream stream in reading order.
+Assemble retained Stage 02.8 objects into the downstream stream in reading order.
 """
 
 import argparse
@@ -19,7 +19,7 @@ from extract_initial_assets import extract_assets_for_nodes
 
 
 def build_raw_stream(workspace_dir: Path, config: dict):
-    pages = read_conversion(workspace_dir)
+    pages = read_conversion(workspace_dir, "02.8_filter_page_content")
     nodes = []
     for entry, value in pages:
         width, height = entry["width"], entry["height"]
@@ -51,7 +51,7 @@ def build_raw_stream(workspace_dir: Path, config: dict):
     nodes = extract_assets_for_nodes(workspace_dir, nodes, assets_dir=assets,
                                     dpi=config.get("render", {}).get("dpi", 300))
     (output / "raw_stream.json").write_text(json.dumps(nodes, indent=2), encoding="utf-8")
-    print(f"[+] Stage 03 complete: {len(nodes)} nodes from Stage 02 objects")
+    print(f"[+] Stage 03 complete: {len(nodes)} nodes from Stage 02.8 objects")
 
 
 def main():

@@ -250,8 +250,9 @@ PDF conversion starts with [Stage 00](../tools/bootstrap/pdf-to-markdown/stages/
    - Prepares a separate native/OCR PDF and matching positioned-text JSON/PNG pairs.
    - Stage 02 uses Codex text and original-detail image input to group page objects and produce Markdown text, types and pixel boxes.
    - Stage 02.5 renders frames and ordered labels for user assessment. Use `--to-stage 02.5` for review-only runs.
-   - Stage 02.9 emits one selected-page `document.md` with unchanged text and exact table/graphic/cover PNG crops in `assets/`. Use `--from-stage 02.9 --to-stage 02.9` with successful Stage 01/02 predecessors; it makes no model requests and remains separate from Stage 14 publication.
-   - Stage 03 consumes Stage 02 objects directly, preserving Markdown, classifications, order and continuation flags while providing point-based geometry and text fields for the existing downstream workers.
+   - Stage 02.8 deterministically removes headers/footers, objects before the first selected-input `toc_heading` when present, and whole list-of-tables/list-of-figures/index pages. This is the user's deliberate source-fidelity exception; review 02.5 still shows original objects. Surviving fields and geometry remain unchanged, and empty output is permitted.
+   - Stage 02.9 emits one retained-page `document.md` with unchanged text and exact table/graphic/cover PNG crops in `assets/`. Use `--from-stage 02.9 --to-stage 02.9` with successful Stage 01/02.8 predecessors; it makes no model requests and remains separate from Stage 14 publication. Existing 02.9/03 results require explicit regeneration starting at 02.8 to reflect filtering.
+   - Stage 03 consumes only Stage 02.8 objects with Stage 01 page data, preserving Markdown, classifications, order and continuation flags while providing point-based geometry and text fields for the existing downstream workers. Stage 04 retains graphics union and prose seam processing; filtering belongs to 02.8.
 
 2. **Web Crawls to Markdown ([`html-to-markdown`](../tools/bootstrap/html-to-markdown/README.md)):**
    - Converts downloaded multi-page HTML hierarchies (e.g. Kuba Winnicki's *Achtung! Amiga*).
