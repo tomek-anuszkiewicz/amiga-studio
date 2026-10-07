@@ -3607,3 +3607,31 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite 19/19 passed
   - plan language scan and diff check passed. Plan update only
   - the stage is not implemented and the planned conversion test has not run.
+---
+
+### [2026-10-08 00:58 CET] — PDF-TABLE-2.42: Reclassify table representations with original-page vision
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion`
+  - `docs/developers.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add Stage 02.42 after table splitting with one shared retain/replace prompt and ordered segment replacements
+  - Different cell backgrounds force graphic outcomes independently of table representability
+  - Transcribe textual replacements immediately and preserve raster decisions through exact Stage 03 crops, Stage 04 separation and Stage 08 image retention
+  - Integrate selection, optional sparse layers, configuration, restart cleanup and documentation
+  - Close and remove the completed PDF-TABLE-2.42 execution plan while preserving the assessment workspace
+- **Architectural Rationale & Trade-Offs**:
+  - Review the actual original page instead of accepting predecessor table labels
+  - Use existing segment schemas, transport, cache and lineage conventions without new local geometry/schema gates or page-specific rules
+  - Compounds use ordered existing types, singletons retain source bbox and continuation
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture suite 19 passed
+  - Existing PDF selection 6, PDF execution/restart 30 and shared conversion 21 tests passed (57 total)
+  - Restart fixture expectations updated for the added stage after initial failures
+  - graphify update completed
+  - Live pages 39,40,62,63,94,144 completed 02.42 and 02.5 with 11 requests, no cache, four changed pages
+  - 39 and both targets on 62/63 became images, 40 became graphic plus two tables, 94/144 remained tables
+  - Retained workspace Obsidian/Amiga/Reference/Test Book example-4567/workspace/stage-02.42-reclassification includes six reviews and copied successful predecessors
+  - Prose/code recovery not demonstrated, quality remains for user assessment, downstream live export and milestone gate not run

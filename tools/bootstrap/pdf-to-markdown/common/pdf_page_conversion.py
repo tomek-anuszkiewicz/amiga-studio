@@ -10,7 +10,9 @@ TYPES = ["cover", "header", "footer", "toc_heading", "toc", "thumb_index", "chap
 DEFERRED_TEXT_TYPES = {"graphic", "table", "cover"}
 CALLOUT_STAGE = "02.4_reclassify_callouts"
 TABLE_SPLIT_STAGE = "02.41_split_tables"
-PAGE_OVERRIDE_LAYERS = (("02.4", CALLOUT_STAGE), ("02.41", TABLE_SPLIT_STAGE))
+TABLE_RECLASSIFY_STAGE = "02.42_reclassify_tables"
+PAGE_OVERRIDE_LAYERS = (("02.4", CALLOUT_STAGE), ("02.41", TABLE_SPLIT_STAGE),
+                        ("02.42", TABLE_RECLASSIFY_STAGE))
 
 
 def page_override_layers(before_stage=None):

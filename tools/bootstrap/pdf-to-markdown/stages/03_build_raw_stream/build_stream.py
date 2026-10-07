@@ -47,7 +47,7 @@ def build_raw_stream(workspace_dir: Path, config: dict):
                     segment["type"] in ASSOCIATED and segment["segment_id"] in group_ids) else None,
                 "continuation_status": None,
                 **{key: segment[key] for key in FIELDS if key in segment},
-                "metadata": {key: segment[key] for key in ("source_segment_ids", "replacement_stage")
+                "metadata": {key: segment[key] for key in ("source_segment_ids", "replacement_stage", "image_only")
                              if key in segment},
             })
     output = workspace_dir / "03_build_raw_stream"

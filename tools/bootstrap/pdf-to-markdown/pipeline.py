@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conversion.config import load_config as parse_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json, prepared_pdf_path
 from common.pdf_selection import selected_pages
-from common.pdf_page_conversion import page_override_layers, TABLE_SPLIT_STAGE
+from common.pdf_page_conversion import page_override_layers, TABLE_SPLIT_STAGE, TABLE_RECLASSIFY_STAGE
 from conversion.publication import book_directory, check_destination, publish_output
 
 STAGE_REGISTRY: List[Dict[str, Any]] = [
@@ -56,6 +56,12 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "desc": "Split grouped table objects using original-page vision",
         "targets": [TABLE_SPLIT_STAGE],
         "inspect": ("page_*_segments.json", "sparse table split pages"),
+    },
+    {
+        "id": "02.42", "dir": TABLE_RECLASSIFY_STAGE, "script": "reclassify_tables.py",
+        "desc": "Reclassify table regions using original-page vision",
+        "targets": [TABLE_RECLASSIFY_STAGE],
+        "inspect": ("page_*_segments.json", "sparse table reclassification pages"),
     },
     {
         "id": "02.5", "dir": "02.5_page_conversion_review", "script": "render_review.py",
@@ -188,7 +194,7 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
 # Execution order and artifact dependencies are deliberately separate.
 for index, stage in enumerate(STAGE_REGISTRY):
     stage["inputs"] = {
-        "02": ["01"], "02.4": ["01", "02"], "02.41": ["01", "02"],
+        "02": ["01"], "02.4": ["01", "02"], "02.41": ["01", "02"], "02.42": ["01", "02"],
         "02.5": ["01", "02"], "02.8": ["01", "02"],
         "02.81": ["01", "02.8"], "02.82": ["01", "02.81"],
         "02.9": ["01", "02.81"], "03": ["01", "02.81"],
@@ -292,7 +298,7 @@ def run_stage(
     elif stage_num == "14" and output_dir:
         cmd.extend(["--output-dir", str(output_dir)])
 
-    if page_ranges is not None and stage_num in {"00", "01", "02", "02.4", "02.41", "02.5", "02.8", "02.81", "02.82"}:
+    if page_ranges is not None and stage_num in {"00", "01", "02", "02.4", "02.41", "02.42", "02.5", "02.8", "02.81", "02.82"}:
         cmd.extend(["--page-ranges", page_ranges])
 
     if verbose:
@@ -536,6 +542,9 @@ def main():
     if start <= resolve_stage_idx("02.41") <= end:
         config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
             TABLE_SPLIT_STAGE, {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
+    if start <= resolve_stage_idx("02.42") <= end:
+        config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
+            TABLE_RECLASSIFY_STAGE, {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
     # Retire former settings from existing attempt configurations.
     for key in ("input", "render", "table_conversion", "ocr"):
         config.pop(key, None)

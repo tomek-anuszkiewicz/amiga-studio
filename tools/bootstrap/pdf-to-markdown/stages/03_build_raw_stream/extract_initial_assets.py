@@ -95,6 +95,8 @@ def extract_assets_for_nodes(
                     min(pixel_width, math.ceil(padded_bbox[2] * scale_x)),
                     min(pixel_height, math.ceil(padded_bbox[3] * scale_y)),
                 )
+                if node.get("metadata", {}).get("image_only"):
+                    pixel_bbox = tuple(node["bbox_pixels"])
                 png_filename = f"asset_{node_id}.png"
                 with page_image.crop(pixel_bbox) as cropped_image:
                     cropped_image.save(assets_dir / png_filename)
