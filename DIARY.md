@@ -3423,3 +3423,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture passed (19)
   - changed Python files parsed and diff check passed
   - graphify update completed. No live fragment conversion or quality assessment performed.
+---
+
+### [2026-10-07 23:21 CET] — PDF-FIXED-OCR: remove OCR configuration knobs
+- **Affected Subsystems**:
+  - `PDF Stage 00`
+  - `pipeline configuration`
+  - `converter documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the OCR section from the template and retire it from existing attempt configs on the next pipeline write
+  - keep eng in a private Stage 00 constant
+  - discover Tesseract data through PyMuPDF and TESSDATA_PREFIX
+  - fingerprint fixed rendering and language settings for OCR recovery
+  - update documentation
+- **Architectural Rationale & Trade-Offs**:
+  - OCR language and data discovery are execution policy rather than YAML options. The existing prepared PDF reuse rule remains intact.
+- **Verification & Test Results**:
+  - Existing PDF suite passed (30 tests)
+  - quick pre-flight passed
+  - architecture rules passed (19 tests)
+  - diff check passed
+  - graphify update completed. Verified installed PyMuPDF discovery implementation. No live fragment conversion or existing book workspace modification.

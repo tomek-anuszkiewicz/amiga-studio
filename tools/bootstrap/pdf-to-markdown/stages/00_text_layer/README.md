@@ -8,25 +8,17 @@ through PyMuPDF and does not call a model.
 
 If the sibling `*-ocr.pdf` already exists, Stage 00 skips page processing,
 Tesseract setup and PDF writing. The orchestrator records successful execution in `stage_status.json`.
-File existence controls reuse; changes to the source, OCR configuration or
+File existence controls reuse; changes to the source, language data or
 procedure do not automatically regenerate an existing PDF. To regenerate it,
 remove the sibling prepared PDF explicitly and restart at 00 with the source.
 Restart cleanup affects workspace outputs, leaving this shared PDF intact.
 
-## OCR configuration
+## OCR language data
 
-Configure locally installed Tesseract language data:
-
-```yaml
-ocr:
-  language: "eng"
-  tessdata: null
-```
-
-`language` accepts Tesseract identifiers, including combinations such as
-`eng+pol`. `tessdata` can point to a directory containing the selected
-`.traineddata` files. When null, PyMuPDF uses `TESSDATA_PREFIX` or detects the
-installed directory. Keep host-specific overrides outside committed files.
+OCR uses fixed English (`eng`) language data. PyMuPDF uses `TESSDATA_PREFIX`
+or detects the installed directory; the YAML contains no OCR overrides.
+The language constant is private to Stage 00. Recovery identity includes the
+actual language-data hash and fixed rendering settings.
 Missing language data or OCR errors stop new preparation without a model fallback.
 Existing prepared PDFs need no Tesseract setup.
 

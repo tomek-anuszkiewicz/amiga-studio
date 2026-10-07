@@ -99,8 +99,8 @@ restart. The path is never persisted. Page ranges apply only to the current run,
 and omission selects all available pages. Existing workspace config takes
 precedence; `--config` initializes only a missing config. Rendering uses fixed
 300 DPI PNGs, inference concurrency 1 and a 180-second request timeout. The next
-pipeline config write retires the former input, render, table predecessor, timeout
-and concurrency fields while retaining model settings. No historical
+pipeline config write retires the former input, render, table predecessor, OCR,
+timeout and concurrency fields while retaining model settings. No historical
 source-selection comparison runs.
 
 `stage_status.json` is the only completion/metrics record, written atomically with
@@ -333,8 +333,8 @@ Stage 01 reads only this PDF using that mapping, applies the attempt page select
 and persists positioned text JSON with matching PNGs. Its provenance is `prepared`
 or `none`; a reused PDF does not establish native versus OCR origin. Native spans
 are preserved regardless of length. Textless source
-pages use local Tesseract through PyMuPDF, configured with `ocr.language` and
-`ocr.tessdata` (or auto-detected language data / `TESSDATA_PREFIX`). Stage 00 has
+pages use local Tesseract through PyMuPDF with fixed English (`eng`) language
+data, discovered automatically or through `TESSDATA_PREFIX`. Stage 00 has
 no Codex model selection, prompt or model request. Later inference stages retain
 the shared Codex transport.
 
