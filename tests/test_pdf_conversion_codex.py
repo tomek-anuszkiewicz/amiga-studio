@@ -35,6 +35,33 @@ class PdfNxpGeometryTests(unittest.TestCase):
 
 
 class PdfReviewContinuationTests(unittest.TestCase):
+    def test_02_5_joins_same_column_prose_with_short_paragraphs(self):
+        spec = importlib.util.spec_from_file_location(
+            "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review/render_review.py")
+        renderer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(renderer)
+        # Page 31: introduction and STATE 0-6 share a left-aligned flow, while
+        # paragraph lengths and heights vary and some gaps exceed a line height.
+        boxes = [[289, 1374, 1457, 1416], [290, 1438, 1896, 1525],
+                 [290, 1571, 1768, 1613], [290, 1654, 1800, 1700],
+                 [290, 1745, 1902, 1831], [290, 1874, 1908, 2193],
+                 [292, 2243, 1211, 2286], [292, 2330, 1211, 2372]]
+        segments = [{"type": "prose", "bbox": box, "segment_id": f"prose_{i}",
+                     "continuation": i == 7, "md_text": f"Paragraph {i}."}
+                    for i, box in enumerate(boxes)]
+        before = json.dumps(segments)
+        annotations = renderer.review_annotations(segments)
+        self.assertEqual(len(annotations), 1)
+        self.assertEqual(annotations[0]["bbox"], [289, 1374, 1908, 2372])
+        self.assertEqual(annotations[0]["source_ordinals"], list(range(1, 9)))
+        self.assertEqual(annotations[0]["source_ids"], [f"prose_{i}" for i in range(8)])
+        self.assertTrue(annotations[0]["continuation"])
+        self.assertEqual(json.dumps(segments), before)
+        # A hidden object elsewhere in source order still blocks the union.
+        hidden = {"type": "thumb_index", "bbox": [500, 1540, 600, 1560]}
+        blocked = renderer.review_annotations(segments + [hidden])
+        self.assertEqual([item["source_ordinals"] for item in blocked], [[1, 2], list(range(3, 9))])
+
     def test_02_5_labels_show_only_true_continuation(self):
         from PIL import Image, ImageDraw
         spec = importlib.util.spec_from_file_location(

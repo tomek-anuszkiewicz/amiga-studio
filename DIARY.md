@@ -3060,3 +3060,31 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - graphify update completed
   - No real fragment regenerated: user selection remains pending
   - No inference calls or quality certification
+---
+
+### [2026-10-07 21:22 CEST] — PDF-REVIEW-2.5: fix short-paragraph grouping and complete page-31 review
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Recognize a shared prose column by stable left alignment and overlap relative to its narrowest member
+  - Bound vertical gaps by column width instead of paragraph height so short aligned paragraphs remain in one run
+  - Retain complete-page obstacle checks and source-order boundaries
+  - Preserve actual segment_id values in review mappings with id fallback
+  - Add a focused regression from observed page-31 geometry and regenerate only its Stage 02.5 review through the orchestrator
+- **Architectural Rationale & Trade-Offs**:
+  - The original widest-width overlap and shortest-height gap conditions split page-31 prose into five groups despite a common unobstructed column
+  - Imported completed Stage 01/02 page-31 artifacts into workspace/page-31-prose-review-01 and retained source attempt settings apart from page selection
+  - PDF-REVIEW-2.5 implementation and requested fragment review execution are complete, allowing removal of its active plan
+  - Stage 02.4 remains independent and user assessment does not certify other pages
+- **Verification & Test Results**:
+  - Focused regression failed before repair with five annotations instead of one, then passed
+  - PDF technical suite: 27 tests passed
+  - Existing focused presentation diagnostic passed
+  - Quick preflight passed
+  - Architecture suite: 19 tests passed
+  - graphify update completed
+  - Stage 02.5 completed for physical page 31 with zero model calls and three annotations: graphic 1, caption 3 and prose 4-11
+  - Confirmed IDs, unchanged source-attempt hashes and retained settings
+  - Visually inspected regenerated page_0031_review.png at Obsidian/Amiga/Reference/Test Book example-4567/workspace/page-31-prose-review-01/02.5_page_conversion_review/
+  - No broader conversion or quality claim
