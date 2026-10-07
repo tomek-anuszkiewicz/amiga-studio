@@ -2761,3 +2761,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite passed 19 of 19 tests
   - Documentation planning only: implementation and inference have not started
   - Active plan remains open and is excluded from Git by repository policy
+---
+
+### [2026-10-07 19:51 CEST] — PDF-TABLE-2.81: Specify warnings for simple HTML table results
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.81-table-transcription.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Extend the active local plan with a console warning before Stage 02.81 completion
+  - Identify regular rectangular HTML tables with no effective colspan or rowspan and Markdown-compatible cell contents
+  - Include physical page and segment ID in each warning and inspect cached results too
+  - Preserve HTML output, Markdown companion and successful stage status without retries or automatic conversion
+- **Architectural Rationale & Trade-Offs**:
+  - Expose potentially unnecessary HTML choices for user review using generated table structure
+  - Treat spans of 1 as unmerged and avoid classifying complex cells from span absence alone
+  - Keep the active plan local under the existing Git exclusion
+- **Verification & Test Results**:
+  - Quick preflight passed all six gates
+  - Architecture suite passed 19 of 19 tests
+  - Planning only: no converter implementation or inference run
