@@ -3167,3 +3167,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify incremental code update completed and git diff --check passed
   - No source-book inference or conversion run: user-selected fragment and quality review remain pending
   - No milestone completion or conversion accuracy claim
+---
+
+### [2026-10-07 22:11 CEST] — PDF-CALLOUT-2.83: remove aggregate decision report file
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.4_reclassify_callouts`
+- **What Was Changed (The Concrete Reality)**:
+  - Stop writing decision_report.json and print aggregate counters to the console instead
+  - Update the stage README and remove the user-designated existing aggregate report from the pages-all attempt
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested removal of this aggregate file
+  - Keep sparse changed-page JSON output and per-page diagnostic behavior
+- **Verification & Test Results**:
+  - Python compilation passed
+  - Existing disposable synthetic replacement/routing/03-09 check passed
+  - Quick preflight passed
+  - Architecture suite passed 19/19
+  - No model inference or source conversion rerun
