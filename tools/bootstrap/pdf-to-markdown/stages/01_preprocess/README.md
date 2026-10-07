@@ -8,10 +8,12 @@ execution; preprocessing never falls back to the original PDF.
 For each selected physical page it writes `01_preprocess/page_XXXX.png` and
 `page_XXXX.json`, including legitimate blank pages. `XXXX` remains the physical
 1-based source page number; `source_index` is zero-based in the original source.
-`prepared_index` is zero-based in the selected-pages PDF and is used for reads.
+`prepared_index` equals `source_index`: the sibling prepared PDF contains every
+source page in the original order. Only Stage 01 applies `--page-ranges`.
 JSON contains schema
 version, stable page ID, dimensions, rotation, MediaBox,
-CropBox, provenance, page classification/evidence and ordered text blocks with
+CropBox, `prepared`/`none` text provenance, extraction-based page classification
+and ordered text blocks with
 IDs, text, `bbox` and `bbox_norm`. Only text blocks enter this collection; the
 worker does not claim word-level geometry or reconstruct semantic reading order.
 OCR text is extracted from the reopened PDF, never copied from cached model JSON.
@@ -25,7 +27,7 @@ dimensions are persisted; exported coordinates are not rounded. Nonfinite,
 inverted or materially out-of-page boxes fail validation.
 
 `pages_manifest.json` records document versus selected page counts, exact
-selection, prepared PDF identity and relative PNG/JSON paths with hashes.
+selection, shared prepared PDF path and relative PNG/JSON paths with hashes.
 It is published only when every required pair passes coverage, content, geometry
 and image-dimension validation. Completion snapshots it through shared lineage;
 downstream conversion validates pairs before cleanup or requests.
@@ -38,6 +40,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<W
 
 For a workspace with a completed Stage 00, restart with `--from-stage 01
 --to-stage 01`, or run `--run-deterministic` when 01 is the next ready stage.
-Stage 00 and the original source are retained. Selection cannot change without
-restarting preparation. Legacy workspaces require explicit restart at 00 with
-the source PDF; old page JSON receives no invented text-layer provenance.
+Stage 00 and the original source are retained. A different attempt selection
+requires restart at 00 or a new workspace; Stage 00 reuses the existing sibling
+PDF without repeating OCR. Legacy workspaces require restart at 00 with the
+source PDF to register the shared full-document preparation.

@@ -1,14 +1,22 @@
-# Stage 00: PDF Text Layer
+# Stage 00: Shared PDF Text Layer
 
-Stage 00 uses local Tesseract through PyMuPDF to publish
-`00_text_layer/<source stem>-ocr.pdf` and `text_layer_manifest.json`.
-Stage 01 consumes this prepared PDF exclusively. The source stays outside the
-workspace and is never overwritten. Stage 00 does not call Codex; later inference
-stages keep their configured models.
+Stage 00 prepares `<source stem>-ocr.pdf` beside the original source PDF.
+It always includes every source page in its original order, regardless of
+`--page-ranges`. Stage 01 reads this shared PDF and extracts only the selected
+pages. The original source is never overwritten. Stage 00 uses local Tesseract
+through PyMuPDF and does not call a model.
+
+If the sibling `*-ocr.pdf` already exists, Stage 00 skips page processing,
+Tesseract setup and PDF writing. It only registers the shared file in the
+attempt's `00_text_layer/text_layer_manifest.json` and completion record.
+File existence controls reuse; changes to the source, OCR configuration or
+procedure do not automatically regenerate an existing PDF. To regenerate it,
+remove the sibling prepared PDF explicitly and restart at 00 with the source.
+Restart cleanup affects workspace outputs, leaving this shared PDF intact.
 
 ## OCR configuration
 
-Tesseract language data must be installed locally. Configure the pipeline:
+Configure locally installed Tesseract language data:
 
 ```yaml
 ocr:
@@ -17,68 +25,49 @@ ocr:
 ```
 
 `language` accepts Tesseract identifiers, including combinations such as
-`eng+pol`. `tessdata` can point to a local directory containing the selected
+`eng+pol`. `tessdata` can point to a directory containing the selected
 `.traineddata` files. When null, PyMuPDF uses `TESSDATA_PREFIX` or detects the
-installed Tesseract data directory. Keep host-specific overrides in local
-configuration, outside committed files. Missing language data or an OCR execution
-error stops preparation; there is no model fallback.
-
-Existing native spans are retained even below 20 characters. For selected
-textless pages, the worker renders RGB at `render.dpi`, runs
-Tesseract on that displayed-page image and retains its original OCR PDF. Its text
-operators and font resources are overlaid onto the source page at their original
-scale. No fixed margin filter or size-based schematic exclusion is applied.
-
-`classification_basis: inferred_from_tesseract_lines` records extraction evidence.
-Recognized lines use `text_page`; no recognized lines use the legacy
-`pure_graphic` value with `provenance: none`. This does not certify that the image
-contains no text: Tesseract can miss text and does not perform semantic page
-classification. Native classification remains inferred from extracted spans.
+installed directory. Keep host-specific overrides outside committed files.
+Missing language data or OCR errors stop new preparation without a model fallback.
+Existing prepared PDFs need no Tesseract setup.
 
 ## Text insertion and publication
 
-Stage 00 copies the original text layer from Tesseract's PDF, including its font,
-glyph positions, horizontal spacing and invisible-text operators. It does not
-normalize or round coordinates, clamp OCR boxes, join lines, substitute text or
-fit reconstructed strings to bounding boxes. Only the OCR raster is replaced
-with a transparent image because the source page already owns its graphics.
-The overlay maps the displayed-page frame to the source page's rotation without
-resizing the text. Stage 00 trusts the PDF writer and does not compare reopened
-OCR text with recognition results. The user assesses the PDF; Stage 01 extracts
-its actual text. Native text remains unchanged.
+On first preparation, existing native spans are retained regardless of length.
+Every textless page is rendered in RGB at `render.dpi` and passed to Tesseract.
+The original OCR PDF's text operators and font resources are overlaid at their
+original scale. The OCR raster becomes transparent because the source page
+already owns its graphics. Rotation maps the displayed-page frame without
+resizing text. No margin filter, coordinate normalization, text reconstruction
+or size-based schematic exclusion is applied.
 
-The separate PDF contains only selected source pages, in source order, retaining
-their existing text and graphics and adding OCR only where text is missing.
-Stage 00 saves the PDF and its manifest without reopening or validating the
-output. It does not compare renders, geometry, source streams or extracted text,
-and does not reread the source to check it after saving.
-
-Fragment preparation excludes unselected pages from the output and processing.
-`page` and zero-based `source_index` identify the original source;
-zero-based `prepared_index` locates the page in the compact prepared PDF.
-Expanding selection requires restart
-at 00 with the original source or another workspace.
+Stage 00 saves a candidate beside the source and publishes it by rename after
+all pages finish. It does not reopen the result, compare renders or validate
+text geometry. Tesseract can miss text; no recognized text does not establish
+that a page is semantically graphic-only. The user assesses the PDF.
 
 ## Recovery and downstream handoff
 
-Stage 00 publishes the prepared PDF and its preparation manifest. Stage 01
-extracts per-page positioned text JSON from that PDF; Stage 00 does not write
-separate native/OCR inspection JSON. Recovery holds the unmodified per-page OCR
-PDF plus JSON identity metadata. Recovery reuse matches source, selection, image bytes, geometry, format,
-procedure, language-data hashes and PyMuPDF version; it performs no additional
-artifact integrity validation. OCR PDFs are opened to insert their text. Legacy normalized
-JSON and Codex recovery records are incompatible and are regenerated.
+Workspace-local recovery retains the original per-page OCR PDFs and their
+request identities. Compatible records can resume an interrupted preparation.
+Identity includes source selection, image bytes, geometry, format, procedure,
+language-data hashes and PyMuPDF version. Recovery does not perform additional
+artifact integrity checks.
 
-The manifest records the prepared PDF path, coverage, page geometry,
-provenance, inferred classification evidence and source-to-prepared page mapping.
+The local manifest records the source-relative shared PDF path, full source
+coverage and page mapping. Both `source_index` and `prepared_index` equal the
+physical page number minus one, so the same page keeps the same index in every
+attempt. Completion records hash the external shared PDF as well as local
+artifacts; later stages reject a modified retained PDF. Paths remain relative.
 
-Run through the pipeline, for example:
+Page JSON records extractable text provenance as `prepared` (or `none` when no
+text is extracted). An existing PDF alone cannot establish whether its text was
+native or OCR, so Stage 01 does not invent that distinction.
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<source.pdf>" --workspace "<workspace>" --from-stage 00 --to-stage 01
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<source.pdf>" --workspace "<workspace>" --config tools/bootstrap/pdf-to-markdown/config.yaml --page-ranges "1-5" --from-stage 00 --to-stage 01
 ```
 
-`--run-deterministic` can execute Stage 00 when it is the next ready stage.
-Restart at 01 retains completed preparation. Existing workspaces using the old
-backend, output name or full-document page layout require explicit restart at 00
-with the original PDF.
+Restart at 01 retains the shared preparation and needs no source path.
+Legacy workspace-local compact PDFs are not copied into the shared location;
+restart at 00 with the original source to register or prepare the full PDF.

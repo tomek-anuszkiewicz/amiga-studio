@@ -169,12 +169,17 @@ working state and metrics are retained. HTML no longer creates an automatic pare
 
 HTML and PDF use the shared Codex transport and strict stage configuration. PDF completion records validate predecessor artifacts and source/configuration/procedure identities; prepared manual tasks carry matching identity records. Existing migration evidence is the basis for proceeding with the separate roadmap work under the development workflow above. Do not treat arbitrary existing artifacts as validated predecessors.
 
-PDF Stage 00 publishes a separate prepared `<source stem>-ocr.pdf` containing
-only selected source pages in source order, and a text-layer manifest.
+PDF Stage 00 publishes a separate prepared `<source stem>-ocr.pdf` beside the
+source, containing every source page in original order. If that file already
+exists, Stage 00 skips OCR and PDF writing and registers it in the local
+text-layer manifest. File existence controls reuse, including when source or
+configuration changes; explicit removal of the shared file requests new OCR.
 `page` and zero-based `source_index` retain original source identity;
-zero-based `prepared_index` locates each page in the compact output PDF.
-Stage 01 reads only this PDF using that mapping and persists positioned text JSON with
-matching PNGs. Native spans are preserved regardless of length. Textless selected
+zero-based `prepared_index` equals `source_index` in the full prepared PDF.
+Stage 01 reads only this PDF using that mapping, applies the attempt page selection
+and persists positioned text JSON with matching PNGs. Its provenance is `prepared`
+or `none`; a reused PDF does not establish native versus OCR origin. Native spans
+are preserved regardless of length. Textless source
 pages use local Tesseract through PyMuPDF, configured with `ocr.language` and
 `ocr.tessdata` (or auto-detected language data / `TESSDATA_PREFIX`). Stage 00 has
 no Codex model selection, prompt or model request. Later inference stages retain
@@ -189,10 +194,12 @@ Stage 00 trusts PyMuPDF to store the OCR text: it does not compare
 reopened OCR line counts, text or positions with the recognition result.
 Stage 00 saves the output without reopening or validating it, comparing renders,
 checking geometry or retained streams, or rereading the source after saving. A page
-with no recognized lines uses the legacy `pure_graphic` classification with
-`inferred_from_tesseract_lines` evidence; it is not a visual confirmation that the
-page contains no text. Tesseract can miss text. No margin filter or size-based
-schematic omission is applied. Fragment coverage never certifies unselected pages.
+with no recognized lines receives no text overlay; this does not confirm that it
+contains no text. Tesseract can miss text. Stage 01 classifies pages from the
+prepared PDF spans, using `pure_graphic` when none are extractable and recording
+`inferred_from_prepared_spans` evidence. No margin filter or size-based schematic
+omission is applied. Stage 00 covers all source pages; a selected downstream
+fragment never certifies conversion of unselected pages.
 
 Stage 00 retains its preparation manifest and compatible recovery records.
 Stage 01 owns per-page positioned text JSON extraction from the prepared PDF;
@@ -203,10 +210,14 @@ language-data hashes, raw PDF format and the PyMuPDF version. Legacy normalized
 JSON and Codex recovery are incompatible and regenerated. OCR artifacts are opened to insert their text; there is no separate OCR-artifact
 validation pass. Recovery matches request identity without checking saved hashes. The user assesses the prepared PDF; Stage 01 consumes its
 actual extractable text. Native text is unchanged.
-Recovery records do not replace the preparation manifest.
+Recovery records do not replace the preparation manifest. The workspace-local
+manifest records the shared PDF through relative paths; completion records hash
+that external PDF and reject modified retained inputs. Restart cleanup never
+removes the sibling prepared PDF.
 Restart at 01 retains completed Stage 00; legacy workspaces require explicit
 regeneration from 00 with the original PDF after backend, name or prepared-page
-layout changes. Full-document fragment artifacts are not reused as compact PDFs.
+layout changes. Legacy compact workspace PDFs are not promoted to the shared
+full-document path; restart at 00 with the original source.
 
 The user closed PDF-TEXT-1.1 on 2026-10-06 using the page-64 fragment evidence,
 without requesting additional source-category runs. Native-copy, mixed,

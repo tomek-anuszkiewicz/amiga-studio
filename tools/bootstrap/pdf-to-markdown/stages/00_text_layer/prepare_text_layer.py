@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Prepare selected PDF pages, adding OCR only where text is missing."""
+"""Prepare a shared full-document PDF once, adding OCR where text is missing."""
 
 import argparse
+import os
 from pathlib import Path
 import sys
 import pymupdf
@@ -60,22 +61,32 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
     require(type(dpi) is int and dpi > 0, "render.dpi must be a positive integer")
     with pymupdf.open(pdf_path) as document:
         require(document.is_pdf and not document.needs_pass, "Only readable, unencrypted PDFs are supported")
-        pages = selected_pages(page_ranges, len(document))
+        selection = selected_pages(page_ranges, len(document))
+        pages = list(range(1, len(document) + 1))
         source_page_count = len(document)
-        document.select([number - 1 for number in pages])
-        source["pages"] = pages if page_ranges is not None else None
+        source["pages"] = selection if page_ranges is not None else None
         state_source = read_state(workspace).get("source")
         require(state_source is None or state_source == source, "Stage 00 source does not match workspace selection")
         stage_dir.mkdir(parents=True, exist_ok=True)
         manifest_path = stage_dir / "text_layer_manifest.json"
         manifest_path.unlink(missing_ok=True)
-        output = stage_dir / f"{pdf_path.stem}-ocr.pdf"
-        candidate = stage_dir / ".candidate.pdf"
+        output = pdf_path.with_stem(f"{pdf_path.stem}-ocr")
+        procedure = stage_identity({"id": "00", "dir": "00_text_layer"}, config, source, None, Path(__file__).resolve().parents[2])
+        manifest = {"schema_version": SCHEMA_VERSION, "source": source, "source_page_count": source_page_count,
+                    "selected_pages": pages, "source_file": Path(os.path.relpath(pdf_path, workspace)).as_posix(),
+                    "pdf_file": Path(os.path.relpath(output, workspace)).as_posix(),
+                    "pages": [{"page": number, "page_id": f"page_{number:04d}",
+                               "source_index": number - 1, "prepared_index": number - 1} for number in pages],
+                    "ocr_procedure": procedure}
+        if output.is_file():
+            write_json(manifest_path, manifest)
+            print(f"[skip] Stage 00: {output.name} already exists; no OCR or PDF rewrite")
+            return manifest
+        candidate = output.with_suffix(".candidate.pdf")
         candidate.unlink(missing_ok=True)
         recovery = stage_dir / "recovery"
         recovery.mkdir(exist_ok=True)
-        procedure = stage_identity({"id": "00", "dir": "00_text_layer"}, config, source, None, Path(__file__).resolve().parents[2])
-        entries, engine = [], None
+        engine = None
         try:
             for prepared_index, number in enumerate(pages):
                 page = document[prepared_index]
@@ -118,11 +129,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                         recovery_pdf.write_bytes(payload)
                         write_json(recovery_file, {"identity": identity})
                     print(f"[{entry['provenance']}] {entry['page_id']}: {entry['page_type']}")
-                entries.append(entry)
             document.save(candidate, deflate=True, garbage=4)
-            manifest = {"schema_version": SCHEMA_VERSION, "source": source, "source_page_count": source_page_count,
-                        "selected_pages": pages, "pdf_file": output.relative_to(workspace).as_posix(),
-                        "pages": entries, "ocr_procedure": procedure}
             candidate.replace(output)
             write_json(manifest_path, manifest)
         except BaseException:
@@ -136,7 +143,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 00: prepare a selected-pages OCR PDF")
+    parser = argparse.ArgumentParser(description="Stage 00: prepare a full-source OCR PDF unless it already exists")
     parser.add_argument("--pdf", type=Path, required=True)
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)

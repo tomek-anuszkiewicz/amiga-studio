@@ -5,7 +5,7 @@ from pathlib import Path
 import pymupdf
 
 from conversion.cache import digest
-from .lineage import file_hash, read_state
+from .lineage import file_hash, read_state, record_path
 from .pdf_geometry import (SCHEMA_VERSION, COORDINATES, page_geometry, text_blocks,
                            valid_box, valid_text, raster_transform)
 
@@ -36,6 +36,27 @@ def artifact_path(workspace, relative):
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def prepared_pdf_path(workspace, manifest):
+    """Resolve the shared PDF beside its source; workspace artifacts stay confined."""
+    relative = manifest.get("source_file")
+    require(isinstance(relative, str) and "\\" not in relative and ":" not in relative
+            and not Path(relative).is_absolute(), "Stage 00 source path must be relative")
+    source = workspace / relative
+    require(source.name == manifest["source"]["name"] and not source.resolve().is_relative_to(workspace.resolve()),
+            "Stage 00 source must be outside the workspace")
+    expected = source.with_stem(f"{source.stem}-ocr")
+    require(manifest.get("pdf_file") == Path(relative).with_stem(f"{source.stem}-ocr").as_posix(),
+            "Unexpected Stage 00 prepared PDF path; restart at 00")
+    return expected.resolve()
+
+
+def prepared_text_metadata(blocks):
+    """A reused PDF does not establish whether its text was native or OCR."""
+    return {"provenance": "prepared" if blocks else "none",
+            "page_type": "text_page" if blocks else "pure_graphic",
+            "classification_basis": "inferred_from_prepared_spans"}
 
 
 def coverage(manifest):
@@ -70,11 +91,12 @@ def validate_text_layer(workspace, source=None, *, require_completion=False):
     require(procedure.get("source") == identity and procedure.get("stage") == "00_text_layer"
             and procedure.get("selection") is None and bool(procedure.get("procedure")),
             "Stage 00 OCR procedure/configuration identity is missing")
-    require(identity.get("pages") is None and manifest["selected_pages"] == list(range(1, manifest["source_page_count"] + 1))
-            or identity.get("pages") == manifest["selected_pages"], "Stage 00 selection differs from its source identity")
-    relative = f"00_text_layer/{Path(identity['name']).stem}-ocr.pdf"
-    require(manifest.get("pdf_file") == relative, "Unexpected Stage 00 prepared PDF path")
-    pdf = artifact_path(workspace, relative)
+    require(manifest["selected_pages"] == list(range(1, manifest["source_page_count"] + 1)),
+            "Stage 00 must cover every source page; restart at 00")
+    require(all(entry.get("source_index") == entry["page"] - 1
+                and entry.get("prepared_index") == entry["page"] - 1 for entry in entries),
+            "Stage 00 must preserve full-source page indices")
+    pdf = prepared_pdf_path(workspace, manifest)
     require(pdf.is_file(), "Stage 00 prepared PDF is missing")
     if require_completion:
         record = read_state(workspace).get("stages", {}).get("00", {})
@@ -84,11 +106,9 @@ def validate_text_layer(workspace, source=None, *, require_completion=False):
         require(record.get("identity", {}).get("source") == identity, "Stage 00 completion source mismatch")
         require(record.get("identity") == procedure, "Stage 00 manifest procedure differs from its completion record")
         for relative_name, expected_hash in record["files"].items():
-            anchor, name = relative_name.split(":", 1)
-            require(anchor == "workspace", "Invalid Stage 00 artifact anchor")
-            path = artifact_path(workspace, name)
-            require(path.is_file() and file_hash(path) == expected_hash, f"Missing/modified Stage 00 artifact: {name}")
-        require("workspace:" + relative in record["files"]
+            path = record_path(workspace, None, relative_name)
+            require(path.is_file() and file_hash(path) == expected_hash, f"Missing/modified Stage 00 artifact: {relative_name}")
+        require("prepared:" + pdf.name in record["files"]
                 and record["files"].get("workspace:00_text_layer/text_layer_manifest.json") == file_hash(manifest_path),
                 "Stage 00 completion omits required artifacts")
     return manifest, pdf
@@ -99,14 +119,16 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
     manifest = read_json(manifest_path or workspace / "pages_manifest.json")
     entries = coverage(manifest)
     require(manifest.get("pdf_file") == prepared["pdf_file"]
-            and manifest["selected_pages"] == prepared["selected_pages"]
+            and manifest["selected_pages"] == (prepared["source"]["pages"] or prepared["selected_pages"])
             and manifest["source_page_count"] == prepared["source_page_count"]
             and manifest.get("source") == prepared["source"], "Stage 01 prepared-PDF/coverage identity mismatch")
     require(manifest.get("total_pages") == len(entries), "Stage 01 selected page count mismatch")
     dpi = manifest.get("dpi")
     require(type(dpi) is int and dpi > 0, "Invalid Stage 01 raster DPI")
     with pymupdf.open(pdf) as document:
-        for entry, origin in zip(entries, prepared["pages"]):
+        require(len(document) == prepared["source_page_count"], "Prepared PDF must contain every source page")
+        for entry in entries:
+            origin = prepared["pages"][entry["page"] - 1]
             page_id = entry["page_id"]
             page = document[origin["prepared_index"]]
             for field, suffix in (("png_file", ".png"), ("json_file", ".json")):
@@ -116,6 +138,7 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
                         f"Missing/modified Stage 01 page pair: {page_id}")
             data = read_json(workspace / entry["json_file"])
             geometry = page_geometry(page)
+            blocks = text_blocks(page)
             require(type(data.get("schema_version")) is int, "Stage 01 page schema version must be an integer")
             block_ids = []
             for block in data.get("blocks", []):
@@ -129,10 +152,9 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
                                  "source_index": origin["source_index"], "prepared_index": origin["prepared_index"],
                                  "geometry": geometry, "width": geometry["width"], "height": geometry["height"],
                                  "rotation": page.rotation, "coordinates": COORDINATES,
-                                 "provenance": origin["provenance"], "page_type": origin["page_type"],
-                                 "classification_basis": origin["classification_basis"]}.items():
+                                 **prepared_text_metadata(blocks)}.items():
                 require(data.get(field) == value, f"Stage 01 page JSON {field} mismatch: {page_id}")
-            require(data.get("blocks") == text_blocks(page), "Stage 01 text is not derived from its reopened PDF")
+            require(data.get("blocks") == blocks, "Stage 01 text is not derived from its reopened PDF")
             image = pymupdf.Pixmap(workspace / entry["png_file"])
             transform = raster_transform(page, image, dpi)
             require(data.get("raster") == transform and entry.get("raster") == transform, "Stage 01 PNG transform mismatch")
@@ -144,7 +166,9 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
 
 def validate_stage_artifacts(stage, workspace, source, *, snapshot=False):
     contract = stage.get("artifact_contract")
-    if contract == "pdf_preprocess":
+    if contract == "pdf_text_layer":
+        validate_text_layer(workspace, source)
+    elif contract == "pdf_preprocess":
         path = workspace / stage["dir"] / ".manifests/pages_manifest.json" if snapshot else None
         validate_preprocess(workspace, source, manifest_path=path)
 

@@ -11,6 +11,21 @@ from conversion.transport import SDK_VERSION
 SHARED_MANIFESTS = {"01": ("pages_manifest.json",), "05": ("chapters_manifest.json",), "10": ("chapters_manifest.json",)}
 
 
+def record_path(workspace, output, relative):
+    """Resolve workspace/output artifacts and the single shared prepared PDF."""
+    from .pdf_artifacts import artifact_path, prepared_pdf_path, read_json
+    anchor, name = relative.split(":", 1)
+    if anchor == "prepared":
+        pdf = prepared_pdf_path(workspace, read_json(workspace / "00_text_layer/text_layer_manifest.json"))
+        if name != pdf.name:
+            raise ValueError("Unexpected shared prepared artifact")
+        return pdf
+    base = {"workspace": workspace, "output": output}.get(anchor)
+    if base is None:
+        raise ValueError(f"Invalid conversion artifact anchor: {anchor}")
+    return artifact_path(base, name)
+
+
 def first_incomplete_stage(state, registry, workspace, output):
     """Resume at the first missing result, without repairing modified artifacts."""
     for index, stage in enumerate(registry):
@@ -18,9 +33,11 @@ def first_incomplete_stage(state, registry, workspace, output):
         if not record or record.get("status") != "completed":
             return index
         for relative in record["files"]:
-            anchor, name = relative.split(":", 1)
-            base = workspace if anchor == "workspace" else output
-            if base is None or not (base / name).is_file():
+            try:
+                path = record_path(workspace, output, relative)
+            except FileNotFoundError:
+                return index
+            if not path.is_file():
                 return index
     return len(registry)
 
@@ -78,11 +95,9 @@ def validate_prefix(state, registry, count, config, source, skill_dir, workspace
         if record["identity"] != expected:
             raise ValueError(f"Incompatible conversion: regenerate Stage {stage['id']} and dependents")
         for relative, expected_hash in record["files"].items():
-            anchor, name = relative.split(":", 1)
-            base = workspace if anchor == "workspace" else output
-            path = base / name if base is not None else None
-            if path is None or not path.is_file() or file_hash(path) != expected_hash:
-                raise ValueError(f"Changed/missing Stage {stage['id']} artifact: {name}")
+            path = record_path(workspace, output, relative)
+            if not path.is_file() or file_hash(path) != expected_hash:
+                raise ValueError(f"Changed/missing Stage {stage['id']} artifact: {relative}")
         from .pdf_artifacts import validate_stage_artifacts
         validate_stage_artifacts(stage, workspace, source, snapshot=True)
         shared_outputs.update(record.get("shared_outputs", {}))
@@ -122,13 +137,17 @@ def complete_stage(state, stage, identity, workspace, output):
         shutil.copyfile(workspace / name, snapshot)
         shared_outputs[name] = {"hash": file_hash(snapshot), "snapshot": snapshot.relative_to(workspace).as_posix()}
     paths.extend(("workspace", p) for p in sorted(directory.rglob("*")) if p.is_file())
+    if stage.get("artifact_contract") == "pdf_text_layer":
+        from .pdf_artifacts import validate_text_layer
+        _, pdf = validate_text_layer(workspace, identity["source"])
+        paths.append(("prepared", pdf))
     if stage["id"] == "14" and output is not None:
         paths.extend(("output", p) for p in sorted(output.rglob("*")) if p.is_file() and p.suffix != ".json")
     files = {}
     for anchor, path in paths:
         if path.suffix == ".json":
             json.loads(path.read_text(encoding="utf-8"))
-        base = workspace if anchor == "workspace" else output
+        base = workspace if anchor == "workspace" else (path.parent if anchor == "prepared" else output)
         files[f"{anchor}:{path.relative_to(base).as_posix()}"] = file_hash(path)
     if not files:
         raise ValueError(f"Stage {stage['id']} produced no artifacts")

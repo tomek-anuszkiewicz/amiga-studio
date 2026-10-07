@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
 from common.lineage import file_hash
-from common.pdf_artifacts import validate_text_layer, validate_preprocess, write_json, require
+from common.pdf_artifacts import validate_text_layer, validate_preprocess, write_json, require, prepared_text_metadata
 from common.pdf_geometry import SCHEMA_VERSION, COORDINATES, page_geometry, text_blocks, raster_transform
 from common.pdf_selection import selected_pages
 
@@ -21,8 +21,10 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):
     require(Path(pdf_path).resolve() == prepared_pdf.resolve(), "Stage 01 must read only the validated Stage 00 PDF")
     require(type(dpi) is int and dpi > 0, "render.dpi must be a positive integer")
     with pymupdf.open(prepared_pdf) as document:
-        pages = selected_pages(page_ranges, prepared["source_page_count"]) if page_ranges is not None else prepared["selected_pages"]
-        require(pages == prepared["selected_pages"], "Stage 01 page selection differs from Stage 00 coverage; restart at 00")
+        require(len(document) == prepared["source_page_count"], "Prepared PDF must contain every source page")
+        pages = selected_pages(page_ranges, prepared["source_page_count"]) if page_ranges is not None else (prepared["source"]["pages"] or prepared["selected_pages"])
+        require(pages == (prepared["source"]["pages"] or prepared["selected_pages"]),
+                "Stage 01 page selection differs from workspace selection; restart at 00")
         directory = workspace_dir / "01_preprocess"
         directory.mkdir(parents=True, exist_ok=True)
         manifest_path = workspace_dir / "pages_manifest.json"
@@ -37,6 +39,8 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):
                     "end_page": pages[-1], "dpi": dpi, "pages": []}
         for origin in prepared["pages"]:
             number, page_id = origin["page"], origin["page_id"]
+            if number not in pages:
+                continue
             page = document[origin["prepared_index"]]
             geometry = page_geometry(page)
             pixmap = page.get_pixmap(dpi=dpi)
@@ -44,7 +48,7 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):
             png = directory / f"{page_id}.png"
             pixmap.save(png)
             blocks = text_blocks(page)
-            metadata = {field: origin[field] for field in ("provenance", "page_type", "classification_basis")}
+            metadata = prepared_text_metadata(blocks)
             data = {"schema_version": SCHEMA_VERSION, "page_id": page_id, "page": number,
                     "source_index": number - 1, "prepared_index": origin["prepared_index"],
                     "geometry": geometry,

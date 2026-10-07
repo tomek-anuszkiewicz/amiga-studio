@@ -2332,3 +2332,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite 19 passed
   - graphify update completed
   - no live fragment conversion run
+---
+
+### [2026-10-07 16:00 CEST] — PDF-OCR-SHARED: reuse a full-document sibling prepared PDF
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Stage 00 prepares every source page into a sibling -ocr.pdf and skips page processing and PDF writing when it already exists
+  - Stage 01 applies the attempt page selection with stable full-source page indices
+  - Register and hash the shared external PDF in local completion records while preserving it through workspace cleanup
+  - Record prepared or absent text provenance without inventing native versus OCR origin for an existing PDF
+  - Adapt fragment regressions and verify cross-workspace byte-identical inputs and CLI restart
+- **Architectural Rationale & Trade-Offs**:
+  - The compact prepared-page index changed Stage 02 prompts across overlapping fragments and prevented exact response-cache reuse
+  - Shared full-source preparation gives stable page inputs and avoids repeated OCR
+  - File existence deliberately controls preparation reuse and explicit shared-file removal requests regeneration
+- **Verification & Test Results**:
+  - Original focused regressions failed for omitted textless pages and compact output
+  - PDF suite 32/32 passed including deterministic CLI execution and restart
+  - Shared conversion suite 19/19 passed
+  - Quick pre-flight passed
+  - Architecture rules 19/19 passed
+  - Graphify incremental update passed
+  - No real-book conversion or live model call was run

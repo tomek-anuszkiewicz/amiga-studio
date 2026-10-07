@@ -92,7 +92,40 @@ class PdfTextBoundsTests(unittest.TestCase):
 
 
 class PdfOcrValidationTests(unittest.TestCase):
-    def test_fragment_ocr_runs_only_for_selected_textless_page(self):
+    def test_pipeline_directory_reuses_shared_pdf_and_restart_keeps_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            book = Path(directory)
+            source = book / "source.pdf"
+            with pymupdf.open() as document:
+                for number in range(1, 4):
+                    document.new_page(width=200, height=200).insert_text((20, 40), f"Page {number}")
+                document.save(source)
+            command = [sys.executable, str(ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py"),
+                       "--config", str(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")]
+            first, second = book / "workspace/first", book / "workspace/second"
+            result = subprocess.run(command + ["--pdf", str(book), "--workspace", str(first),
+                                    "--page-ranges", "1-2", "--from-stage", "00", "--to-stage", "01"],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            prepared = book / "source-ocr.pdf"
+            before, mtime = prepared.read_bytes(), prepared.stat().st_mtime_ns
+            result = subprocess.run(command + ["--pdf", str(book), "--workspace", str(second),
+                                    "--page-ranges", "2-3", "--from-stage", "00", "--to-stage", "01"],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("[skip] Stage 00", result.stdout)
+            result = subprocess.run(command + ["--workspace", str(second), "--from-stage", "01", "--to-stage", "01"],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(prepared.read_bytes(), before)
+            self.assertEqual(prepared.stat().st_mtime_ns, mtime)
+            self.assertEqual(sorted(p.name for p in (second / "01_preprocess").glob("*.png")),
+                             ["page_0002.png", "page_0003.png"])
+            for suffix in ("json", "png"):
+                self.assertEqual((first / f"01_preprocess/page_0002.{suffix}").read_bytes(),
+                                 (second / f"01_preprocess/page_0002.{suffix}").read_bytes())
+
+    def test_full_document_ocr_includes_textless_pages_outside_fragment(self):
         spec = importlib.util.spec_from_file_location(
             "prepare_ocr_fragment", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
         stage = importlib.util.module_from_spec(spec)
@@ -112,13 +145,14 @@ class PdfOcrValidationTests(unittest.TestCase):
             with patch.object(stage, "tesseract_settings", return_value=("eng", "unused", {"engine": "tesseract"})), \
                     patch.object(stage, "tesseract_ocr", return_value=payload) as recognize:
                 manifest = stage.prepare_text_layer(source, workspace, config, "2-3")
-            recognize.assert_called_once()
-            self.assertEqual([entry["provenance"] for entry in manifest["pages"]], ["native", "ocr"])
+            self.assertEqual(recognize.call_count, 2)
             with pymupdf.open(workspace / manifest["pdf_file"]) as prepared:
-                self.assertEqual(len(prepared), 2)
-                self.assertEqual([page.get_text().strip() for page in prepared], ["Native text", "Recovered text"])
+                self.assertEqual(len(prepared), 3)
+                self.assertEqual([page.get_text().strip() for page in prepared],
+                                 ["Recovered text", "Native text", "Recovered text"])
+            self.assertEqual((workspace / manifest["pdf_file"]).resolve(), source.with_stem("source-ocr"))
 
-    def test_fragment_pdf_contains_only_selected_pages_and_preprocess_maps_source_numbers(self):
+    def test_shared_full_pdf_gives_identical_page_inputs_across_fragments(self):
         def load_stage(name, relative):
             spec = importlib.util.spec_from_file_location(name, ROOT / relative)
             module = importlib.util.module_from_spec(spec)
@@ -143,12 +177,13 @@ class PdfOcrValidationTests(unittest.TestCase):
                 manifest = stage.prepare_text_layer(source, workspace, config, "2,5")
             prepared = workspace / manifest["pdf_file"]
             with pymupdf.open(prepared) as document:
-                self.assertEqual(len(document), 2)
-                self.assertEqual([page.get_text().strip() for page in document], ["Source page 2", "Source page 5"])
+                self.assertEqual(len(document), 5)
+                self.assertEqual([page.get_text().strip() for page in document],
+                                 [f"Source page {number}" for number in range(1, 6)])
             self.assertEqual(file_hash(source), original_hash)
-            self.assertEqual([entry["source_index"] for entry in manifest["pages"]], [1, 4])
-            self.assertEqual([entry["prepared_index"] for entry in manifest["pages"]], [0, 1])
-            registry = {"id": "00", "dir": "00_text_layer", "artifact_contract": "text_layer"}
+            self.assertEqual([entry["source_index"] for entry in manifest["pages"]], list(range(5)))
+            self.assertEqual([entry["prepared_index"] for entry in manifest["pages"]], list(range(5)))
+            registry = {"id": "00", "dir": "00_text_layer", "artifact_contract": "pdf_text_layer"}
             state = {"source": manifest["source"], "stages": {}}
             complete_stage(state, registry, manifest["ocr_procedure"], workspace, workspace / "14_link_toc")
             preprocess.preprocess_pdf(prepared, workspace, dpi=72, page_ranges="2,5")
@@ -156,7 +191,24 @@ class PdfOcrValidationTests(unittest.TestCase):
             self.assertNotIn("pdf_sha256", manifest)
             self.assertNotIn("pdf_sha256", page_data)
             self.assertEqual(page_data["source_index"], 4)
-            self.assertEqual(page_data["prepared_index"], 1)
+            self.assertEqual(page_data["prepared_index"], 4)
+            original_bytes, original_mtime = prepared.read_bytes(), prepared.stat().st_mtime_ns
+            other = Path(directory) / "other-workspace"
+            with patch.object(stage, "text_blocks", side_effect=AssertionError("Existing PDF must skip page processing")), \
+                    patch.object(stage, "tesseract_settings", side_effect=AssertionError("Existing PDF must skip Tesseract setup")):
+                reused = stage.prepare_text_layer(source, other, config, "1-2")
+            self.assertEqual(prepared.read_bytes(), original_bytes)
+            self.assertEqual(prepared.stat().st_mtime_ns, original_mtime)
+            other_state = {"source": reused["source"], "stages": {}}
+            complete_stage(other_state, registry, reused["ocr_procedure"], other, other / "14_link_toc")
+            preprocess.preprocess_pdf(prepared, other, dpi=72, page_ranges="1-2")
+            for suffix in ("json", "png"):
+                self.assertEqual((workspace / f"01_preprocess/page_0002.{suffix}").read_bytes(),
+                                 (other / f"01_preprocess/page_0002.{suffix}").read_bytes())
+            from common.pdf_artifacts import validate_text_layer
+            prepared.write_bytes(original_bytes + b"\n")
+            with self.assertRaisesRegex(ValueError, "Missing/modified Stage 00 artifact"):
+                validate_text_layer(other, require_completion=True)
 
     def test_raw_ocr_pdf_overlay_preserves_fractional_text_and_spacing(self):
         spec = importlib.util.spec_from_file_location(
@@ -234,6 +286,16 @@ class PdfRestartTests(unittest.TestCase):
         directory = self.workspace / stage["dir"]
         directory.mkdir(parents=True, exist_ok=True)
         (directory / "artifact.json").write_text('{"generated":true}')
+        if stage["id"] == "00":
+            prepared = self.pdf.with_stem("sample-ocr")
+            prepared.write_bytes(self.pdf.read_bytes())
+            (directory / "text_layer_manifest.json").write_text(json.dumps({
+                "source": self.source, "source_file": "../sample.pdf", "pdf_file": "../sample-ocr.pdf",
+                "schema_version": 1, "source_page_count": 10, "selected_pages": list(range(1, 11)),
+                "pages": [{"page": p, "page_id": f"page_{p:04d}", "source_index": p-1,
+                           "prepared_index": p-1} for p in range(1, 11)],
+                "ocr_procedure": stage_identity(stage, self.config, self.source, None,
+                                                ROOT / "tools/bootstrap/pdf-to-markdown")}))
         if stage["id"] == "01":
             (self.workspace / "pages_manifest.json").write_text('{"pages":[5,6,7,8,9,10]}')
         if stage["id"] in ("05", "10"):

@@ -31,9 +31,10 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "id": "00",
         "dir": "00_text_layer",
         "script": "prepare_text_layer.py",
-        "desc": "Prepare and validate a separate PDF with native/OCR text provenance",
+        "desc": "Prepare a shared full-source OCR PDF, or reuse the existing file",
         "targets": ["00_text_layer"],
         "inspect": ("text_layer_manifest.json", "text-layer manifest"),
+        "artifact_contract": "pdf_text_layer",
     },
     {
         "id": "01",
@@ -490,7 +491,7 @@ def complete_pipeline_stage(state, stage, identity, workspace, output):
 
 def main():
     parser = argparse.ArgumentParser(description="PDF-to-Markdown Pipeline Orchestrator (Stages 00-14)")
-    parser.add_argument("--pdf", type=Path, help="Source PDF or directory containing exactly one PDF")
+    parser.add_argument("--pdf", type=Path, help="Source PDF or directory containing exactly one source PDF")
     parser.add_argument("--workspace", type=Path)
     parser.add_argument("--publish", action="store_true", help="Copy finished Markdown/assets into the empty sibling book directory without -tmp")
     parser.add_argument("--config", type=Path, required=True)
@@ -510,7 +511,8 @@ def main():
     config = parse_config(config_source, known_stages=PDF_STAGES, required_stages=())
     pdf = args.pdf.resolve() if args.pdf else None
     if pdf and pdf.is_dir():
-        candidates = list(pdf.glob("*.pdf"))
+        candidates = [path for path in pdf.glob("*.pdf") if not path.stem.lower().endswith("-ocr")
+                      and not path.name.lower().endswith(".candidate.pdf")]
         if len(candidates) != 1:
             raise ValueError("Source directory must contain exactly one PDF")
         pdf = candidates[0]
