@@ -84,11 +84,7 @@ pages, correct classifications/geometry, matching Markdown or complete assets.
 Full runs, intervals and individual deterministic/inference stages use
 `--from-stage`/`--to-stage`; matching boundaries select one stage. Stages 06-09
 process automatically with their inference calls and no manual task files.
-Legacy attempts are transferred only by the explicit [one-time utility](pdf-to-markdown/migrate_attempt.py).
-It moves inputs to config and embeds Stage 05 metadata in 05-09 chapter arrays and
-Stage 10 metadata in 10. Missing required metadata stops it before writes/removal.
-Existing outputs/status metrics remain; no OCR/model, removed validator, success
-recertification or all-workspace scan occurs. The normal pipeline has no legacy reader.
+The normal pipeline has no legacy reader.
 
 The execution sequence is `00 -> 01 -> 02 -> 02.5 -> 02.9 -> 03`, then 04-14.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,

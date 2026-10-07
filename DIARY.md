@@ -2594,3 +2594,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - pages-all migration retained existing outputs and metrics with zero OCR/model calls
   - no real fragment conversion or quality campaign ran
   - roadmap milestones remain pending
+---
+
+### [2026-10-07 18:43 CEST] — chore(pdf): remove the one-time legacy attempt migrator
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Delete migrate_attempt.py
+  - Remove legacy transfer instructions and the obsolete utility link
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested removal after inspection established that the utility was manually invoked and had no pipeline callers
+- **Verification & Test Results**:
+  - python tools/harness/pre_flight.py --quick: all six gates passed
+  - cargo test -p test_runner --test test_architecture_rules -- --quiet: 19 passed
+  - Repository search found no remaining migrator references before this entry
+  - git diff --check: passed
+  - graphify update .: passed
+  - No fragment conversion or conversion-quality evaluation run
