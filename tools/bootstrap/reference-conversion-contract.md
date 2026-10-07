@@ -36,6 +36,8 @@ overlaps and read-only anchors retain source ranges with concise console message
 Responses contain only replacements using stable source segment IDs, without
 attachment decisions. Local geometry/IDs and lineage derive from contributors.
 No framed companions, response dumps or decision reports are created.
+The prompt excludes footnotes, notes and explanations belonging to tables,
+images or figures, including NOTE labels; these retain their source roles.
 Only changed pages receive complete-page overrides; predecessors remain intact.
 Review 02.5, filtering 02.8 and explicit table predecessor `02` share the sparse
 resolver. Completed overrides are eligible, absent optional status means skipped,
