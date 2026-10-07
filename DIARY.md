@@ -3713,3 +3713,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture tests 19/19 passed
   - no table transcription or publication
   - user content assessment pending
+---
+
+### [2026-10-08 01:51 CET] — PDF-CODE-2.43: Close accepted code-block reclassification
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.43_reclassify_code_blocks`
+- **What Was Changed (The Concrete Reality)**:
+  - Record explicit user acceptance of Stage 02.43 and close PDF-CODE-2.43
+  - Preserve selected review artifacts and remove the closed execution plan after committing this closure record
+- **Architectural Rationale & Trade-Offs**:
+  - The user accepted the revised-prompt fragment and explicitly requested closure
+  - no roadmap milestone is being declared
+- **Verification & Test Results**:
+  - Implementation commit 2106a4b and prompt revision 5b7ca73 retained
+  - rerun recorded in c8f7585 completed 02.43 and 02.5 for physical pages 76,78,81,82,89,91,95,145,146,151,158,159 with 29 live calls, 22 prose, 6 table and 1 retained code decisions and 12 reviews
+  - historical PDF technical tests 36/36 passed
+  - current quick pre-flight passed and architecture tests 19/19 passed
+  - user content assessment accepted on 2026-10-08
+  - optional 02.42 was absent
+  - no full-book conversion, 02.81 transcription, publication or milestone gate run
