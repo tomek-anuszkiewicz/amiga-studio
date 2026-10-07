@@ -2675,3 +2675,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Parsed all 147 Stage 02.8 JSON files and checked all 195 Markdown asset links resolve
   - Existing status records report 0.26 seconds for Stage 02.8 and 8.3 seconds for Stage 02.9
   - No conversion rerun or visual fidelity assessment performed in this commit task
+---
+
+### [2026-10-07 19:18 CEST] — PDF-GRAPHIC-EXCLUSION-1: Exclude the recurring standalone NXP logo
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Bundle the exact supplied page-49 NXP PNG
+  - filter surviving standalone upper-left graphics with fixed relative geometry, foreground aspect and RGB comparison
+  - require Stage 01/02 completion
+  - document restart and export preservation
+- **Architectural Rationale & Trade-Offs**:
+  - Implement the authorized source-fidelity exception upstream of both Stage 02.9 and Stage 03 without configuration or generic exclusion infrastructure. Preserve all survivor fields, IDs, geometry and order
+  - retain merged or nonmatching objects. Fixed constants: reference page 2550x3300, region [0,0,0.13,0.055], size tolerance 0.20, aspect tolerance 0.03, RGB tolerance 0.02, foreground channel below 245. Source and existing attempts remain untouched.
+- **Verification & Test Results**:
+  - PASS: 25 existing PDF technical tests
+  - existing offline filtered routing/upstream-preservation/single-stage-cleanup diagnostic
+  - quick preflight
+  - architecture suite 19/19
+  - git diff --check
+  - explicit graphify update. Read-only comparison of supplied page-49/50 crops passes geometry and image gates: page 49 aspect/RGB 0/0, page 50 aspect 0.01052632 and RGB 0.00569827. Bundled 257x94 template is pixel-identical to original page-49 crop. No fragment pipeline conversion or downstream regeneration requested or run
+  - pre-existing edited export preserved. Book-wide adequacy remains unverified. Implementation task closed
+  - remove its active plan after committing this record.
+  - Staged language scan reported two false positives for the proper algorithm name Lanczos in English documentation; reviewed and retained the correct technical name. No language-checker changes made.

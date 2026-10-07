@@ -21,7 +21,10 @@ Preserve technical meaning, reading order, prose, footnotes, captions, labels, c
 PDF Stage 02.8 applies the user's deliberate source-fidelity exception: remove
 headers/footers, objects before the first selected-input TOC heading when present,
 and whole pages containing list-of-tables, list-of-figures or index objects/headings.
-This exception affects source content only; generated YAML metadata remains.
+It also removes standalone upper-left NXP `graphic` objects matching a bundled
+raster after fixed geometry/aspect/RGB gates on original Stage 01 PNGs. No logo
+configuration is added. These exceptions affect source content only; generated
+YAML metadata remains.
 Review Stage 02.5 continues to show the complete Stage 02 objects.
 
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.
@@ -181,13 +184,29 @@ pages containing `list_of_tables_heading`, `list_of_tables`,
 `list_of_figures_heading`, `list_of_figures`, `index_heading` or `index`.
 A heading on an excluded page still defines the boundary. Without a `toc_heading`,
 skip pre-TOC removal; never inspect unselected PDF pages. Exact types determine
-removal, without text, geometry or continuation inference. The actual TOC remains
+these removals, without text, geometry or continuation inference. The actual TOC remains
 subject to whole-page exclusions. `02.8_filter_page_content/` retains filenames,
 page identities, dimensions and every surviving object's fields, IDs, text,
 geometry and order without renumbering. Omit empty pages; an empty output is valid.
 Report page/object counts and boundary presence through worker output, with no
 model calls, inference configuration, manifest or runtime artifact/schema checks.
 Original Stage 01, 02 and 02.5 artifacts remain unchanged.
+
+After existing removals, Stage 02.8 compares only surviving standalone `graphic`
+objects against its required module-relative [NXP raster](pdf-to-markdown/stages/02.8_filter_page_content/resources/nxp.png).
+The template retains the exact supplied page-49 pixels. Entire boxes must lie
+inside `[0, 0, 0.13, 0.055]` in page fractions, with relative width/height within
+20% of the template dimensions divided by the fixed 2550 x 3300 reference page.
+Open original Stage 01 PNGs only for geometry candidates, once per page. Trim
+outer margins using any RGB channel below 245 as foreground, keeping all
+components. Blank candidates remain. Require relative foreground aspect
+difference at most 0.03 and normalized RGB mean absolute difference at most 0.02
+after Lanczos resizing solely for comparison. Geometry alone never removes an
+object; tables, covers and larger illustrations remain. Print candidate/match
+counts and removed page/segment IDs with scores. No temporary crop, new manifest,
+configuration or dependency is added. Missing resources fail through normal IO.
+The tolerances derive from the supplied page-49/50 pair; book-wide adequacy is
+unverified. Merged or nonmatching objects remain.
 
 Stage 02.9 consumes only Stage 02.8 objects and exact Stage 01 original PNGs,
 independently of review images. It writes one
@@ -226,7 +245,7 @@ and all stream stages.
 The operator selects each subsequent start with `--from-stage`; there is no
 automatic continuation or completed-stage skipping. Before cleanup, only retained
 completion statuses are checked. Stage 02.5 requires completed Stage 01/02;
-02.8 requires Stage 02; 02.9 and 03 require Stage 01/02.8. Their workers read
+02.8 requires Stage 01/02; 02.9 and 03 require Stage 01/02.8. Their workers read
 the input files directly, without fallback to unfiltered Stage 02. Empty filtered
 input yields normal empty object outputs. Stage 04 retains graphics union and
 prose seams; it no longer removes headers/footers. No completion
@@ -234,7 +253,9 @@ digests bind their results. Drawing primitives
 live in 02.5. Changes to shared procedures do not automatically invalidate saved
 completion statuses. Existing 02.9/03 successes require explicit regeneration
 starting at 02.8 before representing filtered behavior; implementation does not
-mutate old attempt artifacts. Renamed stage directories and configuration keys require
+mutate old attempt artifacts. Preserve edited Stage 02.9 bundles outside cleanup
+before restarting; regeneration rebuilds links/assets and removes obsolete assets.
+The bundled NXP resource survives attempt cleanup. Renamed stage directories and configuration keys require
 regeneration; old 02d/02m artifacts are never relabeled or migrated.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays

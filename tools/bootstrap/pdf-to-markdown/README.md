@@ -53,7 +53,7 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [01](stages/01_preprocess/README.md) | Prepared PDF -> physical-page PNGs and positioned text JSON |
 | [02](stages/02_page_conversion/README.md) | Stage 01 -> ordered logical objects, Markdown and pixel boxes |
 | [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01/02 -> review frames and ordered labels |
-| [02.8](stages/02.8_filter_page_content/README.md) | Stage 02 -> retained objects after source-content exclusions |
+| [02.8](stages/02.8_filter_page_content/README.md) | Stage 01/02 -> retained objects after source-content and fixed NXP-logo exclusions |
 | [02.9](stages/02.9_emit_page_markdown/README.md) | Stage 01/02.8 -> one unchanged-text `document.md` and original-PNG crops |
 | [03](stages/03_build_raw_stream/README.md) | Stage 02.8 objects and Stage 01 geometry -> raw stream and initial assets |
 | [04](stages/04_stream_reduction/README.md) | Raw stream -> reduced stream |
@@ -101,6 +101,11 @@ graphics union and prose seam processing.
 Stage 02.8 applies the user's deliberate source-fidelity exception: remove
 headers/footers, all objects before the first selected-input `toc_heading`, and
 entire pages containing a list-of-tables, list-of-figures or index object/heading.
+After those rules, standalone upper-left `graphic` objects matching the bundled
+NXP raster are excluded using original Stage 01 PNGs. Fixed geometry, foreground
+aspect and RGB gates must all pass, without configuration. See
+[Stage 02.8](stages/02.8_filter_page_content/README.md) for thresholds and evidence
+limits. Stage 01/02 completion is required.
 The boundary and page triggers come from original Stage 02 objects and exact types.
 A TOC heading on an excluded page still defines the boundary. Without a TOC heading,
 skip pre-TOC removal. Retain the actual TOC subject to whole-page exclusions.
@@ -117,6 +122,9 @@ stage retains earlier results; changing code or input files does not recertify t
 Restart 02.8 clears its filtered objects and every later result even when ending at
 02.8. Existing 02.9/03 successes require explicit regeneration through 02.8 before
 they represent filtering; implementation does not mutate saved attempt artifacts.
+Preserve edited Stage 02.9 bundles outside cleanup before restarting. Regeneration
+rebuilds image links/assets and removes obsolete assets; the bundled NXP resource
+survives attempt cleanup.
 
 `stage_status.json` is the only completion/metrics record. Atomic writes retain
 running/success/failed and execution metrics. Success follows worker execution and
