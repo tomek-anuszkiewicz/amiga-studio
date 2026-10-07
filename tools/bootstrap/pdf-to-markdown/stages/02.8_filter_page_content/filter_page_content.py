@@ -38,6 +38,10 @@ def nxp_geometry_matches(segment, page, template_size):
         return False
     x0, y0, x1, y1 = segment["bbox"]
     width, height = page["image_width"], page["image_height"]
+    # Canvas orientation changes page proportions, not the upright logo.
+    reference_width, reference_height = NXP_REFERENCE_PAGE_SIZE
+    if width > height:
+        reference_width, reference_height = reference_height, reference_width
     left, top, right, bottom = NXP_REGION
     if not (left <= x0 / width < x1 / width <= right
             and top <= y0 / height < y1 / height <= bottom):
@@ -45,8 +49,8 @@ def nxp_geometry_matches(segment, page, template_size):
     return all(abs(actual / expected - 1) <= NXP_SIZE_TOLERANCE
                for actual, expected in zip(
                    ((x1 - x0) / width, (y1 - y0) / height),
-                   (template_size[0] / NXP_REFERENCE_PAGE_SIZE[0],
-                    template_size[1] / NXP_REFERENCE_PAGE_SIZE[1])))
+                   (template_size[0] / reference_width,
+                    template_size[1] / reference_height)))
 
 
 def nxp_comparison(crop, reference):

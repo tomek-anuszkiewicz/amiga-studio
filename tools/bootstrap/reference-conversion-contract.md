@@ -196,7 +196,8 @@ After existing removals, Stage 02.8 compares only surviving standalone `graphic`
 objects against its required module-relative [NXP raster](pdf-to-markdown/stages/02.8_filter_page_content/resources/nxp.png).
 The template retains the exact supplied page-49 pixels. Entire boxes must lie
 inside `[0, 0, 0.13, 0.055]` in page fractions, with relative width/height within
-20% of the template dimensions divided by the fixed 2550 x 3300 reference page.
+20% of the template dimensions divided by the fixed 2550 x 3300 portrait reference
+page, or 3300 x 2550 for landscape canvases. The logo itself remains upright.
 Open original Stage 01 PNGs only for geometry candidates, once per page. Trim
 outer margins using any RGB channel below 245 as foreground, keeping all
 components. Blank candidates remain. Require relative foreground aspect
@@ -205,7 +206,8 @@ after Lanczos resizing solely for comparison. Geometry alone never removes an
 object; tables, covers and larger illustrations remain. Print candidate/match
 counts and removed page/segment IDs with scores. No temporary crop, new manifest,
 configuration or dependency is added. Missing resources fail through normal IO.
-The tolerances derive from the supplied page-49/50 pair; book-wide adequacy is
+The tolerances derive from the supplied page-49/50 pair; page 63 established the
+landscape reference correction. Book-wide adequacy is
 unverified. Merged or nonmatching objects remain.
 
 Stage 02.9 consumes only Stage 02.8 objects and exact Stage 01 original PNGs,
