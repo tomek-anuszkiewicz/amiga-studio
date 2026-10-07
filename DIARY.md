@@ -2995,3 +2995,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19 of 19
   - reviewed planned routing and checked active task and converter documentation for stale stage-directory references
   - planning only with no implementation inference or regeneration
+---
+
+### [2026-10-07 21:02 CEST] — PDF-CALLOUT-2.83: Plan Stage 02.5 annotation changes
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.4-callout-reclassification.md`
+  - `tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review`
+- **What Was Changed (The Concrete Reality)**:
+  - Extend the active local plan with stable colors per displayed object type
+  - consolidate uninterrupted adjacent prose into one review frame and type label before annotation
+  - require the union to avoid intervening or overlapping objects and preserve source mappings
+  - omit header footer and thumb-index bookmark-tab frames leaders and labels
+- **Architectural Rationale & Trade-Offs**:
+  - Make Stage 02.5 page reviews easier to read while retaining source pixels and predecessor objects
+  - keep Stage 02.4 inference frames mapped to original objects
+  - preserve the existing Git exclusion for the active plan
+- **Verification & Test Results**:
+  - Quick preflight passed all six gates
+  - architecture suite passed 19 of 19
+  - reviewed the added requirements against the existing Stage 02.5 README
+  - planning only with implementation inference and artifact regeneration pending
