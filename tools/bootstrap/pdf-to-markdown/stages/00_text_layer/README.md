@@ -7,8 +7,7 @@ pages. The original source is never overwritten. Stage 00 uses local Tesseract
 through PyMuPDF and does not call a model.
 
 If the sibling `*-ocr.pdf` already exists, Stage 00 skips page processing,
-Tesseract setup and PDF writing. It only registers the shared file in the
-attempt's `00_text_layer/text_layer_manifest.json` and records completed status.
+Tesseract setup and PDF writing. The orchestrator records successful execution in `stage_status.json`.
 File existence controls reuse; changes to the source, OCR configuration or
 procedure do not automatically regenerate an existing PDF. To regenerate it,
 remove the sibling prepared PDF explicitly and restart at 00 with the source.
@@ -54,12 +53,10 @@ Identity includes source selection, image bytes, geometry, format, procedure,
 language-data hashes and PyMuPDF version. Recovery does not perform additional
 artifact integrity checks.
 
-The local manifest records the source-relative shared PDF path, full source
-coverage and page mapping. Both `source_index` and `prepared_index` equal the
-physical page number minus one, so the same page keeps the same index in every
-attempt. Completion records store status without file inventories;
-retained-predecessor validation checks only that status. Executing workers
-validate the prepared PDF and manifest when needed. Manifest paths remain relative.
+The source path and requested physical pages live in the attempt's `config.yaml`.
+The sibling PDF path is derived from that source. Both `source_index` and
+`prepared_index` equal the physical page number minus one. `stage_status.json`
+records execution status and metrics; Stage 00 publishes no manifest or snapshot.
 
 Page JSON records extractable text provenance as `prepared` (or `none` when no
 text is extracted). An existing PDF alone cannot establish whether its text was
@@ -71,4 +68,4 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<source.pdf>" --worksp
 
 Restart at 01 retains the shared preparation and needs no source path.
 Legacy workspace-local compact PDFs are not copied into the shared location;
-restart at 00 with the original source to register or prepare the full PDF.
+restart at 00 with the original source to prepare or reuse the full PDF.

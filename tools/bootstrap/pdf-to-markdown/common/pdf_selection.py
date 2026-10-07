@@ -25,10 +25,3 @@ def parse_page_ranges(value):
             else:
                 raise ValueError(f"Malformed physical PDF page selection: {token}")
     return sorted(pages)
-
-
-def selected_pages(value, page_count):
-    pages = parse_page_ranges(value) if value is not None else list(range(1, page_count + 1))
-    if not pages or pages[-1] > page_count:
-        raise ValueError("Physical PDF page selection is empty or outside the source document")
-    return pages

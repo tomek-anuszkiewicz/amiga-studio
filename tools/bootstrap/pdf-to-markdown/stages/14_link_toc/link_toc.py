@@ -11,7 +11,6 @@ Dedicated fuzzy cross-document Table of Contents linker:
 
 import argparse
 import difflib
-import os
 import re
 import shutil
 import sys
@@ -19,7 +18,6 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from conversion.config import UniqueLoader
 
 
 TOC_START_MARKER = "<!-- TOC34534 -->"
@@ -145,7 +143,6 @@ def find_best_header_match(
     return best_entry
 
 
-
 def link_toc_in_file(md_path: Path, catalog: list) -> bool:
     with open(md_path, "r", encoding="utf-8") as f:
         content = f.read()
@@ -198,8 +195,6 @@ def link_toc_in_file(md_path: Path, catalog: list) -> bool:
 
 
 def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, config: dict = None):
-    if not input_dir.exists():
-        raise FileNotFoundError(f"Input directory does not exist: {input_dir}")
 
     start_marker = (config or {}).get("markers", {}).get("toc_start", TOC_START_MARKER) if config else TOC_START_MARKER
     end_marker = (config or {}).get("markers", {}).get("toc_end", TOC_END_MARKER) if config else TOC_END_MARKER
@@ -218,16 +213,13 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, 
                 shutil.copy2(f, out_assets_dir / f.name)
 
     if out_assets_dir.exists() and not any(out_assets_dir.iterdir()):
-        try:
-            out_assets_dir.rmdir()
-        except Exception:
-            pass
+        out_assets_dir.rmdir()
 
     print(f"[*] Cataloging headers across documents in {input_dir}...")
     catalog = catalog_headers_across_documents(input_dir)
     print(f"    Cataloged {len(catalog)} headers.")
 
-    md_files = sorted(list(input_dir.glob("*.md")))
+    md_files = sorted(list((path for path in input_dir.iterdir() if path.suffix == ".md")))
     linked_count = 0
 
     for md_path in md_files:
@@ -381,18 +373,11 @@ def main():
     workspace_dir = Path(args.workspace)
 
     config_path = Path(args.config)
-    if not config_path.is_file():
-        raise FileNotFoundError(f"Stage 14: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.load(f, Loader=UniqueLoader)
-    if not config or not isinstance(config, dict):
-        raise ValueError(f"Stage 14: Config file is empty or invalid: {config_path}")
+        config = yaml.safe_load(f)
 
-    input_candidates = [Path(args.input_dir) if args.input_dir else None, workspace_dir / "13_refine_first_chapter_name"]
-    input_dir = next((p for p in input_candidates if p and p.exists() and list(p.glob("*.md"))), None)
-    if not input_dir:
-        raise FileNotFoundError("No input markdown files found for Stage 14")
+    input_dir = Path(args.input_dir) if args.input_dir else workspace_dir / "13_refine_first_chapter_name"
 
     output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "14_link_toc")
 

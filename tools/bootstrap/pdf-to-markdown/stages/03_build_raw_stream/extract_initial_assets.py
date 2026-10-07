@@ -55,8 +55,6 @@ def extract_assets_for_nodes(
         page_data = json.loads(json_page_path.read_text(encoding="utf-8"))
         page_width = page_data["width"]
         page_height = page_data["height"]
-        if page_width <= 0 or page_height <= 0:
-            raise ValueError(f"Invalid page dimensions in {json_page_path}")
 
         with Image.open(png_page_path) as page_image:
             pixel_width, pixel_height = page_image.size
@@ -65,8 +63,6 @@ def extract_assets_for_nodes(
             for node in page_nodes:
                 node_id = node["node_id"]
                 bbox = node["bbox"]  # [x0, y0, x1, y1] in page points
-                if len(bbox) != 4 or bbox[2] <= bbox[0] or bbox[3] <= bbox[1]:
-                    raise ValueError(f"Invalid bounding box for {node_id} on page {page_num}")
                 padded_bbox = [
                     max(0.0, bbox[0] - padding_pt),
                     max(0.0, bbox[1] - padding_pt),
@@ -90,8 +86,6 @@ def extract_assets_for_nodes(
                     min(pixel_width, math.ceil(padded_bbox[2] * scale_x)),
                     min(pixel_height, math.ceil(padded_bbox[3] * scale_y)),
                 )
-                if pixel_bbox[2] <= pixel_bbox[0] or pixel_bbox[3] <= pixel_bbox[1]:
-                    raise ValueError(f"Empty crop for {node_id} on page {page_num}")
                 png_filename = f"asset_{node_id}.png"
                 with page_image.crop(pixel_bbox) as cropped_image:
                     cropped_image.save(assets_dir / png_filename)

@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import threading
 import time
+from .config import PDF_STAGES
 
 SDK_VERSION = "0.160.1"
 BASE_INSTRUCTIONS = (
@@ -83,7 +84,8 @@ class CodexTransport:
             raise ValueError(f"{selected.stage}: missing input capabilities {required}")
 
     def run(self, selected, prompt, *, images=(), schema=None, timeout=180):
-        self.validate(selected, images=bool(images))
+        if selected.stage not in PDF_STAGES:
+            self.validate(selected, images=bool(images))
         started = time.monotonic()
         expired = threading.Event()
 

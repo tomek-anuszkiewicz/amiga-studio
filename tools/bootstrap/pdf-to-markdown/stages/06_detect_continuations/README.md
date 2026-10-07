@@ -15,3 +15,6 @@ Links head nodes and continuation nodes via explicit JSON metadata (`continuatio
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 06 --to-stage 06
 ```
+
+Chapter JSON includes `index`, `slug`, `title`, `target_md_file` and `nodes`.
+This automatic stage transforms nodes while preserving metadata and prior-stage files.

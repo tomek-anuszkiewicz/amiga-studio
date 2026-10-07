@@ -11,8 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
-from common.pdf_page_conversion import validate_conversion
-from common.pdf_artifacts import require
+from common.pdf_page_conversion import read_conversion
 
 FRAME_WIDTH = 2
 
@@ -20,11 +19,7 @@ FRAME_WIDTH = 2
 def frame_box(segment, raster):
     """Map object bounds through the raster transform, rounding out."""
     box = segment.get("bbox")
-    require(isinstance(box, list) and len(box) == 4
-            and all(not isinstance(v, bool) and isinstance(v, (int, float)) and math.isfinite(v) for v in box),
-            "Segment bbox must contain four finite coordinates")
     x0, y0, x1, y1 = box
-    require(x0 <= x1 and y0 <= y1, "Segment bbox edges are reversed")
     a, b, c, d, e, f = raster["display_to_pixels"]
     corners = [(a*x + c*y + e, b*x + d*y + f) for x, y in ((x0, y0), (x1, y0), (x0, y1), (x1, y1))]
     # Pillow draws the stroke inside its rectangle. Move the outer edge out
@@ -54,18 +49,13 @@ def draw_review_image(image, page_data, segments, *, include_continuation=False)
     for index, segment in enumerate(segments):
         kind = segment.get("type")
         level = segment.get("heading_level")
-        require(isinstance(kind, str) and kind, "Segment type is missing")
-        require(level is None or type(level) is int and level > 0, "Invalid segment heading_level")
         label = f"{index+1}. {kind}"
         if level is not None:
             label += f" | heading_level: {level}"
         if include_continuation:
             continuation = segment.get("continuation")
-            require(type(continuation) is bool, "Invalid segment continuation")
             if continuation:
                 label += " | continuation: true"
-        require(draw.textlength(label, font=font) <= width*2 - label_x - margin,
-                "Segment label does not fit the review panel")
         color = tuple(round(channel*255) for channel in colorsys.hsv_to_rgb((index*0.61803398875) % 1, 0.8, 0.65))
         frame = frames[index]
         left, top, right, bottom = frame
@@ -80,7 +70,6 @@ def draw_review_image(image, page_data, segments, *, include_continuation=False)
     return canvas
 
 
-
 def review_image(image, value):
     width, height = image.size
     raster = {"display_to_pixels": [1, 0, 0, 1, 0, 0],
@@ -90,7 +79,7 @@ def review_image(image, value):
 
 
 def render_reviews(workspace):
-    pages = validate_conversion(workspace)
+    pages = list(read_conversion(workspace))
     output = workspace / "02.5_page_conversion_review"
     output.mkdir(parents=True, exist_ok=True)
     for entry, value in pages:

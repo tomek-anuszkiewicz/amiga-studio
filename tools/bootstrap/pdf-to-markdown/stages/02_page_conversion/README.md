@@ -1,6 +1,6 @@
 # Stage 02: Independent Page Conversion
 
-Read validated Stage 01 original-resolution PNGs and their complete text JSON.
+Read Stage 01 original-resolution PNGs and their complete text JSON.
 The model excludes scan artifacts and incidental fragments from adjacent pages,
 including their associated text. Image-edge contact or incompleteness alone does
 not justify exclusion: intended-page content and uncertain ownership are preserved.
@@ -21,7 +21,8 @@ Every object has a nonempty box: integer original-PNG pixels, top-left origin,
 including text, captions, legends and page furniture. No raw_text is emitted.
 Text boxes support graphical review; later Markdown assembly may ignore them.
 Table/graphic boxes can also define crops. No OCR geometry is substituted.
-Schema and contextual geometry/page validation run before response caching.
+Request schemas guide the model; responses and saved artifacts receive no local
+schema, semantic, geometry or page-identity validation.
 Standard JSON serialization preserves decoded Markdown without pre-escaping.
 
 Use the [orchestrator](../../README.md); do not run workers for real conversions.

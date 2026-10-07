@@ -11,7 +11,9 @@ Slices the global `reduced_stream.json` into independent, chapter-level JSON str
 
 ## Outputs
 - `workspace/05_chapter_partition/{index:02d}_{slug}.json`: Partitioned section stream files.
-- `workspace/chapters_manifest.json`: Document section manifest mapping section index, slug, title, and target Markdown file.
+Each chapter file contains `index`, `slug`, `title`, `target_md_file` and `nodes`.
+Preface and TOC share index zero and retain distinct slugs. Stages 06-09 preserve
+these metadata fields alongside their transformed nodes.
 
 ## Invocation Through the Orchestrator
 ```powershell

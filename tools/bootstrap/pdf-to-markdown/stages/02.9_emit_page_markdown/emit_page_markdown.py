@@ -11,16 +11,15 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
-from common.lineage import read_state
-from common.pdf_artifacts import require
-from common.pdf_page_conversion import validate_conversion
-from common.pdf_page_markdown import crop_objects, document_markdown, validate_bundle
+from common.pdf_artifacts import source_pdf
+from common.pdf_page_conversion import read_conversion
+from common.pdf_page_markdown import crop_objects, document_markdown
 
 
-def emit_page_markdown(workspace):
-    source = read_state(workspace)["source"]
-    pages = validate_conversion(workspace, source)
-    crops = list(crop_objects(pages))  # Reject duplicate identities before writing.
+def emit_page_markdown(workspace, config_path=None):
+    source = {"name": source_pdf(config_path or workspace / "config.yaml").name}
+    pages = list(read_conversion(workspace))
+    crops = list(crop_objects(pages))
     crops_by_page = {}
     for entry, segment in crops:
         crops_by_page.setdefault(entry["page_id"], []).append(segment)
@@ -38,8 +37,6 @@ def emit_page_markdown(workspace):
             context = entry["page_id"]
             try:
                 with Image.open(workspace / entry["png_file"]) as image:
-                    require(image.format == "PNG" and image.size == (value["image_width"], value["image_height"]),
-                            "original PNG format/dimensions mismatch")
                     image.load()
                     for segment in page_crops:
                         context = f"{entry['page_id']}/{segment['segment_id']}"
@@ -48,8 +45,7 @@ def emit_page_markdown(workspace):
             except Exception as error:
                 raise ValueError(f"Stage 02.9 {context}: crop write failed: {error}") from error
         (bundle / "document.md").write_text(document_markdown(pages, source), encoding="utf-8", newline="\n")
-        validate_bundle(bundle, pages, source)
-        # Keep any previous bundle until the candidate has been validated. Moving
+        # Keep any previous bundle until the candidate has been written. Moving
         # it into the temporary directory also removes all stale assets on success.
         previous = temporary / "previous"
         if output.exists():
@@ -69,7 +65,7 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     args = parser.parse_args()
     load_config(args.config, known_stages=PDF_STAGES, required_stages=())
-    emit_page_markdown(args.workspace.resolve())
+    emit_page_markdown(args.workspace.resolve(), args.config)
 
 
 if __name__ == "__main__":

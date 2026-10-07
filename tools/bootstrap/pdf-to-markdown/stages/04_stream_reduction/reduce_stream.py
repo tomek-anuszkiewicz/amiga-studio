@@ -18,7 +18,6 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from conversion.config import UniqueLoader
 
 # Import CodexClient and extract_assets_for_nodes
 SKILL_ROOT = Path(__file__).resolve().parents[2]
@@ -52,7 +51,7 @@ def weld_prose_with_codex(text1: str, text2: str, codex: CodexClient, prompt_tem
             f"## Head Text of Next Page:\n```text\n{t2[:300]}\n```\n"
         )
         res = codex.generate_json(prompt, schema=pdf_schemas.SEAM)
-        if isinstance(res, dict) and res.get("is_continuation"):
+        if res["is_continuation"]:
             dehyphen = res.get("de_hyphenated_word")
             if dehyphen and "-" in t1[-12:]:
                 base1 = re.sub(r"\b\w+-\s*$", "", t1)
@@ -114,7 +113,7 @@ def reduce_contiguous_graphics(
         labels = [n.get("raw_text", "").strip() for n in run if n.get("raw_text", "").strip()]
         png_path = pages_dir / f"page_{page_num:04d}.png"
 
-        if png_path.exists() and graphics_prompt:
+        if graphics_prompt:
             prompt = (
                 f"{graphics_prompt}\n\n"
                 f"Page: {page_num}\n"
@@ -133,7 +132,7 @@ def reduce_contiguous_graphics(
             res = codex.generate_json(prompt, image_path=png_path, schema=pdf_schemas.GRAPHIC_UNION)
             is_single = False
             res_title = ""
-            if isinstance(res, dict) and res.get("is_single_graphic"):
+            if res["is_single_graphic"]:
                 is_single = True
                 res_title = res.get("title", "")
             return start_idx, is_single, res_title
@@ -181,10 +180,7 @@ def reduce_contiguous_graphics(
                         if old_id:
                             for ext in [".png", ".svg", ".png.txt", ".svg.txt"]:
                                 f_asset = reduced_assets_dir / f"asset_{old_id}{ext}"
-                                try:
-                                    f_asset.unlink(missing_ok=True)
-                                except Exception:
-                                    pass
+                                f_asset.unlink(missing_ok=True)
 
                 # 2. Build single consolidated node
                 unified_node = {
@@ -287,10 +283,7 @@ def reduce_contiguous_tables(
                         if old_id:
                             for ext in [".png", ".svg", ".png.txt", ".svg.txt"]:
                                 f_asset = reduced_assets_dir / f"asset_{old_id}{ext}"
-                                try:
-                                    f_asset.unlink(missing_ok=True)
-                                except Exception:
-                                    pass
+                                f_asset.unlink(missing_ok=True)
 
                 # 2. Build the single consolidated node
                 unified_node = {
@@ -338,14 +331,12 @@ def reduce_contiguous_tables(
 def reduce_stream(workspace_dir: Path, config: dict):
     raw_stream_path = workspace_dir / "03_build_raw_stream" / "raw_stream.json"
 
-    if not raw_stream_path.exists():
-        raise FileNotFoundError(f"Missing raw_stream.json in {raw_stream_path.parent}")
 
     seam_prompt_path = Path(__file__).resolve().parent / "prompt_seam.md"
-    seam_prompt_template = seam_prompt_path.read_text(encoding="utf-8") if seam_prompt_path.exists() else ""
+    seam_prompt_template = seam_prompt_path.read_text(encoding="utf-8")
 
     graphics_prompt_path = Path(__file__).resolve().parent / "prompt_graphics_union.md"
-    graphics_prompt_template = graphics_prompt_path.read_text(encoding="utf-8") if graphics_prompt_path.exists() else ""
+    graphics_prompt_template = graphics_prompt_path.read_text(encoding="utf-8")
 
     with CodexClient(config, stage="04_stream_reduction", images=True) as codex:
 
@@ -513,10 +504,7 @@ def reduce_stream(workspace_dir: Path, config: dict):
             for f in list(reduced_assets_dir.glob("asset_*")):
                 m = re.match(r"asset_(node_\d+)", f.name)
                 if m and m.group(1) not in active_node_ids:
-                    try:
-                        f.unlink(missing_ok=True)
-                    except Exception:
-                        pass
+                    f.unlink(missing_ok=True)
 
         reduced_stream_path = out_dir / "reduced_stream.json"
         with open(reduced_stream_path, "w", encoding="utf-8") as f:
@@ -533,13 +521,9 @@ def main():
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     config_path = Path(args.config)
-    if not config_path.is_file():
-        raise FileNotFoundError(f"Stage 04: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.load(f, Loader=UniqueLoader)
-    if not config or not isinstance(config, dict):
-        raise ValueError(f"Stage 04: Config file is empty or invalid: {config_path}")
+        config = yaml.safe_load(f)
 
     reduce_stream(workspace_dir, config)
 

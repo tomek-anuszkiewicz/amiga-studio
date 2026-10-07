@@ -12,7 +12,7 @@ Work on the converter through user-directed iterations:
 
 The agent handles execution and technical failures; the user assesses transcription, tables, images and layout. Automated checks do not replace that assessment. A successful fragment run is evidence for that run, not proof of the whole book or every pipeline branch.
 
-Do not schedule additional sample conversions, a full-book/full-crawl run, quality scoring, model comparisons or prompt/effort tuning independently. The [bootstrap converter testing policy](../../.agents/rules/unit-testing-policy.md#bootstrap-converter-scope) retains technical safeguards and excludes routine test expansion and reinstatement of the removed asset/crop tests. Repository commit checks and runtime schema validation have separate purposes from the user's assessment of conversion results.
+Do not schedule additional sample conversions, a full-book/full-crawl run, quality scoring, model comparisons or prompt/effort tuning independently. The [bootstrap converter testing policy](../../.agents/rules/unit-testing-policy.md#bootstrap-converter-scope) retains technical safeguards and excludes routine test expansion and reinstatement of the removed asset/crop tests. Repository checks and retained HTML validation have separate purposes from the user's assessment of conversion results. PDF runtime artifact and local schema validation are removed by PDF-STATE-1.
 
 ## Source fidelity
 
@@ -35,31 +35,66 @@ contract is not injected into the request. Existing stage instructions remain un
 
 ## Codex boundary
 
-Use ChatGPT authentication through the pinned Python SDK and app-server runtime. API-key billing is not a fallback. Each inference stage selects its own explicit model and reasoning effort. Validate the runtime catalog and required input capabilities; a completed live request establishes access for that request, not future entitlement or a quota estimate.
+Use ChatGPT authentication through the pinned Python SDK and app-server runtime. API-key billing is not a fallback. Each inference stage selects its own explicit model and reasoning effort. HTML checks the runtime catalog and input capabilities; PDF sends its configured selection without those local prechecks. Actual thread selection and transport completion handling remain enforced. A completed live request establishes access for that request, not future entitlement or a quota estimate.
 
-Run each request in a fresh isolated thread with explicit conversion instructions, no inherited repository instruction files, read-only execution and disabled shell, web, MCP, app and agent tools. Pass images with `detail: original` through the SDK's public low-level client because its high-level image wrappers do not expose detail. Check completion, actual thread selection and schema before caching. Stop errors without retrying another model, effort, provider, configuration or deterministic conversion.
+Run each request in a fresh isolated thread with explicit conversion instructions, no inherited repository instruction files, read-only execution and disabled shell, web, MCP, app and agent tools. Pass images with `detail: original` through the SDK's public low-level client because its high-level image wrappers do not expose detail. Check completion and actual thread selection before caching. HTML also enforces local response schemas; PDF parses JSON without local schema enforcement or validator callbacks. Stop errors without retrying another model, effort, provider, configuration or deterministic conversion.
 
-The Codex cache is separate from legacy Gemini data. Its identity includes engine, stage, model, effort, pinned runtime, contract version, execution instructions, prompt, ordered image bytes, image detail and output schema. Validated cached outputs are reusable; partial, interrupted, empty or invalid outputs are not. Cache reuse still validates the authenticated runtime and selected capabilities. Record calls, cache hits, elapsed time and available token usage; cached usage describes the original request, not new consumption.
+The Codex cache is separate from legacy Gemini data. Its identity includes engine, stage, model, effort, pinned runtime, contract version, execution instructions, prompt, ordered image bytes, image detail and output schema. Completed cached outputs are reusable; partial, interrupted, empty or unparseable JSON outputs are not. Cache reuse retains authenticated runtime handling; HTML also validates selected capabilities and response content. Record calls, cache hits, elapsed time and available token usage; cached usage describes the original request, not new consumption.
 
-Prepared-PDF hashes are not stored in preparation manifests, page JSON or OCR
+Prepared-PDF hashes are not stored in page JSON or OCR
 recovery metadata. Stage 02 receives page data without a document-wide hash, so
-rewriting the prepared PDF alone does not change the page request. General stage
-completion records store completed status and manifest snapshot paths, without file inventories or hashes. Older page JSON and
-cached prompts containing the removed field require regeneration from Stage 00;
-saved cache entries are not rewritten.
+rewriting the prepared PDF alone does not change the page request. PDF completion and metrics live only in `stage_status.json`; request-cache records
+remain separate from execution status. Existing cached prompts are not rewritten.
 
 ## Implementation and pending scope
 
 For agent-run PDF conversions, treat the source PDF directory's `workspace/` as a container for named attempt directories, never as an attempt workspace itself, even when it is empty. Create a named child from the first attempt, such as `<PDF_DIRECTORY>/workspace/page-64-attempt-01/`, and always pass that child explicitly with `--workspace`. Use a new child for each independent attempt; continue or explicitly restart the same attempt in its existing child. The CLI currently defaults to `<PDF_DIRECTORY>/workspace/` when `--pdf` is supplied without `--workspace`, so agents must override that default. The original PDF stays outside the attempt workspace. Bootstrap downloads PDFs into `<book>-tmp/`; agent-run attempts belong under `<book>-tmp/workspace/<attempt>/`. A locally supplied PDF in `<book>/` uses `<book>/workspace/<attempt>/`.
 
-Each PDF workspace owns one source filename/page selection and its intermediate conversion state. Retained-predecessor validation checks only `status: completed`; it does not compare source bytes, artifact contents, configuration, prompts or code with historical hashes. Use Git to review procedure changes and explicitly restart stages when existing results should be regenerated. Every start checks retained completion statuses, persists invalidation of the selected stage and all later stages in execution order before deletion, restores retained manifest snapshots and clears invalidated artifacts/manual tasks. The requested end stage limits execution, not cleanup; the operator must advance the start stage to retain completed results on the next run. Completion is saved only after successful execution and runtime output validation. Legacy file lists and checksum fields are discarded on read; completion statuses and manifest snapshot paths are retained and written without file inventories or hashes. Final output stays in the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored. Runtime schema, coverage and geometry validation remains in workers; conversion quality remains the user's assessment.
+Each attempt persists requested `input.source_pdf` relative to its `config.yaml`
+and `input.pages` as a physical-page list or null for all pages. Existing workspace
+config takes precedence; `--config` initializes only a missing config. Explicit
+source/page arguments update these inputs; omitted arguments retain them. No
+historical source-selection comparison runs.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.5 -> 03`, then 04-14.
+`stage_status.json` is the only completion/metrics record, written atomically with
+running/success/failed states. Predecessor routing checks successful statuses using
+`STAGE_REGISTRY.inputs`. Invalidation of the selected stage and all later stages
+is persisted before deletion, regardless of the end stage. Success follows worker
+execution and required output/asset operations, without final artifact validation.
+Actual failure records failed. There is no automatic completed-stage skipping.
+
+Each stage reads known files from its predecessor's own directory and writes its
+own outputs. Page filenames are ordered numerically without coverage or pair gates.
+Stage 05 chapter JSON contains `index`, `slug`, `title`, `target_md_file` and `nodes`;
+06-09 preserve metadata, 10 writes corrected metadata and nodes, and 11 reads those
+files directly. Index plus slug distinguishes the preface and TOC at index zero.
+Prior outputs remain unchanged; filename collision and frontmatter behavior remain.
+Normal execution uses no conversion state, manifest, snapshot or chapter registry.
+
+The PDF path removes local input/configuration/response checks, page/block/segment
+identity and coverage checks, geometry and text validation, PDF-text re-extraction
+comparisons, review-frame/label checks and Markdown/asset/crop verification.
+Request schemas remain model guidance. Necessary parsing, coordinate calculations,
+extraction, drawing, cropping and IO remain; ordinary library errors stop execution.
+These checks must not reappear in shared loaders or clients. HTML validations,
+provider authentication/completion handling, cleanup confinement and publication
+destination protection remain. Success means completed execution, not complete
+pages, correct classifications/geometry, matching Markdown or complete assets.
+
+Full runs, intervals and individual deterministic/inference stages use
+`--from-stage`/`--to-stage`; matching boundaries select one stage. Stages 06-09
+process automatically with their inference calls and no manual task files.
+Legacy attempts are transferred only by the explicit [one-time utility](pdf-to-markdown/migrate_attempt.py).
+It moves inputs to config and embeds Stage 05 metadata in 05-09 chapter arrays and
+Stage 10 metadata in 10. Missing required metadata stops it before writes/removal.
+Existing outputs/status metrics remain; no OCR/model, removed validator, success
+recertification or all-workspace scan occurs. The normal pipeline has no legacy reader.
+
+The execution sequence is `00 -> 01 -> 02 -> 02.5 -> 02.9 -> 03`, then 04-14.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.
-The former segmentation and review stages have been removed. Stage 02 reads only validated Stage 01 PNG/complete text
-JSON pairs and defines independent logical objects in model array order, with
+The former segmentation and review stages have been removed. Stage 02 reads Stage 01 PNG/text JSON files directly and defines independent logical objects in model array order, with
 `md_text` and no `raw_text`. `02_page_conversion/page_NNNN_segments.json` records
 physical page identity, original PNG dimensions, deterministic page-scoped IDs,
 classifications, heading levels and a required boolean `continuation`.
@@ -67,8 +102,7 @@ For `graphic`, `table` and `cover`, `md_text` is required and must be `""`.
 Stage 02 only identifies, classifies and bounds these objects; internal text,
 table reconstruction and graphic/cover content processing are deferred to later
 stages using original image crops. Complete bounds still include internal labels
-and connected explanatory text. Validation rejects nonempty content before
-caching and when reading saved artifacts. Existing objects with nonempty content
+and connected explanatory text. This is request guidance; local code does not reject nonempty content. Existing objects with nonempty content
 for these types require regeneration from 02, not in-place clearing. A title,
 heading or caption at the top of the page has `continuation: true` only when its
 source-visible name explicitly indicates continuation from the previous page,
@@ -138,7 +172,7 @@ their model-selected boxes. This supports review of textual spatial order as wel
 as tables and graphics. No OCR geometry is synthesized; the review stage
 does not correct conversion or call a model.
 
-Stage 02.9 consumes validated Stage 02 objects and exact Stage 01 original PNGs,
+Stage 02.9 consumes Stage 02 objects and exact Stage 01 original PNGs,
 independently of review images. It writes one
 `02.9_emit_page_markdown/document.md` and an always-present `assets/` directory
 for all selected pages, including disjoint ranges, in physical-page/array order.
@@ -152,15 +186,13 @@ generated descriptions, stitching or TOC repair occur. Minimal valid YAML and a
 document heading use the known source filename stem; publication metadata is not
 invented. TOC link repair and reconstruction remain downstream work.
 
-Use `--from-stage 02.9 --to-stage 02.9` with compatible validated Stage 01/02
-records. A temporary bundle is validated for ordered document content, successful
-PNG writes and resolving generated crop links before replacing prior output.
-Replacement removes stale assets; invalid input or failed writes stop the stage.
-Completion metadata stays in workspace state, with no per-page Markdown or asset
-sidecars. The user evaluates source fidelity and crop boundaries on the requested
-fragment; technical completion does not certify quality.
+Use `--from-stage 02.9 --to-stage 02.9` with compatible Stage 01/02
+records. A temporary bundle replaces prior output after Markdown/crop writes finish;
+there is no content comparison, inventory or PNG/dimension verification. Replacement
+removes stale assets; actual write failures stop the stage. The source name comes
+from config. The user evaluates fidelity and crop boundaries on the requested fragment.
 
-Stage 03 consumes validated Stage 02 objects directly, independently of the
+Stage 03 consumes Stage 02 objects directly, independently of the
 02.5 review. It preserves page/array order, object types, heading levels,
 segment IDs, continuation flags, `md_text` and original `bbox_pixels`.
 The downstream `raw_text` field contains the same Markdown, not re-extracted OCR;
@@ -176,7 +208,7 @@ The operator selects each subsequent start with `--from-stage`; there is no
 automatic continuation or completed-stage skipping. Stage 03 still consumes
 completed Stage 02 directly. Before cleanup, only retained completion statuses
 are checked. Stages 02.5 and 02.9 require completed Stage 01
-and 02; their workers validate the input artifacts during execution. No completion
+and 02; their workers read the input files directly. No completion
 digests bind their results. Drawing primitives
 live in 02.5. Changes to shared procedures do not automatically invalidate saved
 completion statuses. Renamed stage directories and configuration keys require
@@ -194,12 +226,13 @@ before execution and again after preparing the publication copy. A directory ren
 publishes the prepared copy without overwriting an occupied directory. Source files,
 working state and metrics are retained. HTML no longer creates an automatic parent mirror.
 
-HTML and PDF use the shared Codex transport and strict stage configuration. PDF completion records track status and manifest snapshot paths; the workspace retains its source filename/page selection. Prepared manual tasks carry that selection and their stage name, and restart of their inputs removes them. Existing migration evidence is the basis for proceeding with the separate roadmap work under the development workflow above. Existing files alone do not establish completed predecessors.
+HTML and PDF share Codex transport, cache and publication. HTML retains strict
+configuration and local response validation; PDF configuration is parsed directly.
+Existing files alone do not establish successful predecessor execution.
 
 PDF Stage 00 publishes a separate prepared `<source stem>-ocr.pdf` beside the
 source, containing every source page in original order. If that file already
-exists, Stage 00 skips OCR and PDF writing and registers it in the local
-text-layer manifest. File existence controls reuse, including when source or
+exists, Stage 00 skips OCR and PDF writing. File existence controls reuse, including when source or
 configuration changes; explicit removal of the shared file requests new OCR.
 `page` and zero-based `source_index` retain original source identity;
 zero-based `prepared_index` equals `source_index` in the full prepared PDF.
@@ -228,7 +261,7 @@ prepared PDF spans, using `pure_graphic` when none are extractable and recording
 omission is applied. Stage 00 covers all source pages; a selected downstream
 fragment never certifies conversion of unselected pages.
 
-Stage 00 retains its preparation manifest and compatible recovery records.
+Stage 00 retains compatible OCR recovery records.
 Stage 01 owns per-page positioned text JSON extraction from the prepared PDF;
 Stage 00 does not duplicate those reads in separate inspection JSON. Recovery
 retains each unmodified OCR PDF and JSON identity/hash metadata. Its identity
@@ -237,10 +270,7 @@ language-data hashes, raw PDF format and the PyMuPDF version. Legacy normalized
 JSON and Codex recovery are incompatible and regenerated. OCR artifacts are opened to insert their text; there is no separate OCR-artifact
 validation pass. Recovery matches request identity without checking saved hashes. The user assesses the prepared PDF; Stage 01 consumes its
 actual extractable text. Native text is unchanged.
-Recovery records do not replace the preparation manifest. The workspace-local
-manifest records the shared PDF through relative paths; completion records do not inventory files
-or check the prepared PDF on reuse. Executing workers validate the PDF when needed. Restart cleanup never
-removes the sibling prepared PDF.
+Restart cleanup never removes the sibling prepared PDF.
 Restart at 01 retains completed Stage 00; legacy workspaces require explicit
 regeneration from 00 with the original PDF after backend, name or prepared-page
 layout changes. Legacy compact workspace PDFs are not promoted to the shared

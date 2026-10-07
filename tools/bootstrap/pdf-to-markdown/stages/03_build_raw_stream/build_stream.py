@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 stages/03_build_raw_stream/build_stream.py:
-Assemble validated Stage 02 objects into the downstream stream in reading order.
+Assemble Stage 02 objects into the downstream stream in reading order.
 """
 
 import argparse
@@ -12,16 +12,14 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from conversion.config import UniqueLoader
-from common.pdf_page_conversion import validate_conversion
+from common.pdf_page_conversion import read_conversion
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from extract_initial_assets import extract_assets_for_nodes
 
 
-
 def build_raw_stream(workspace_dir: Path, config: dict):
-    pages = validate_conversion(workspace_dir)
+    pages = read_conversion(workspace_dir)
     nodes = []
     for entry, value in pages:
         width, height = entry["width"], entry["height"]
@@ -53,7 +51,7 @@ def build_raw_stream(workspace_dir: Path, config: dict):
     nodes = extract_assets_for_nodes(workspace_dir, nodes, assets_dir=assets,
                                     dpi=config.get("render", {}).get("dpi", 300))
     (output / "raw_stream.json").write_text(json.dumps(nodes, indent=2), encoding="utf-8")
-    print(f"[+] Stage 03 complete: {len(nodes)} nodes from validated Stage 02 objects")
+    print(f"[+] Stage 03 complete: {len(nodes)} nodes from Stage 02 objects")
 
 
 def main():
@@ -64,13 +62,9 @@ def main():
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     config_path = Path(args.config)
-    if not config_path.is_file():
-        raise FileNotFoundError(f"Stage 03: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.load(f, Loader=UniqueLoader)
-    if not config or not isinstance(config, dict):
-        raise ValueError(f"Stage 03: Config file is empty or invalid: {config_path}")
+        config = yaml.safe_load(f)
 
     build_raw_stream(workspace_dir, config)
 

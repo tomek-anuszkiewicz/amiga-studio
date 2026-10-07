@@ -7,8 +7,6 @@ Renames the file, updates its Line 1 YAML title, and synchronizes any cross-file
 """
 
 import argparse
-import json
-import os
 from pathlib import Path
 import re
 import shutil
@@ -17,7 +15,6 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from conversion.config import UniqueLoader
 
 # Import CodexClient from skill root
 SKILL_ROOT = Path(__file__).resolve().parents[2]
@@ -50,16 +47,10 @@ def process_first_chapter_refinement(
     input_dir: Path = None,
 ):
     if not input_dir:
-        candidates = [workspace_dir / "12_generate_properties"]
-        input_dir = next((p for p in candidates if p.exists() and list(p.glob("*.md"))), output_dir)
+        input_dir = workspace_dir / "12_generate_properties"
 
-    if not input_dir.exists():
-        raise FileNotFoundError(f"Input directory does not exist: {input_dir}")
 
-    md_files = sorted(list(input_dir.glob("*.md")))
-    if not md_files:
-        print("[!] No Markdown files found in input directory.")
-        return
+    md_files = sorted(list((path for path in input_dir.iterdir() if path.suffix == ".md")))
 
     first_file = md_files[0]
     old_stem = first_file.stem
@@ -69,16 +60,12 @@ def process_first_chapter_refinement(
     with open(first_file, "r", encoding="utf-8") as f:
         content = f.read()
 
-    if not config_path or not config_path.is_file():
-        raise FileNotFoundError(f"Stage 13: Config file not found: {config_path}")
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.load(f, Loader=UniqueLoader)
-    if not config or not isinstance(config, dict):
-        raise ValueError(f"Stage 13: Config file is empty or invalid: {config_path}")
+        config = yaml.safe_load(f)
 
     with CodexClient(config, stage="13_refine_first_chapter_name", images=False) as codex:
         prompt_file = Path(__file__).parent / "prompt.md"
-        base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
+        base_prompt = prompt_file.read_text(encoding="utf-8")
 
         full_prompt = (
             f"{base_prompt}\n\n"
@@ -87,8 +74,6 @@ def process_first_chapter_refinement(
         )
 
         parsed = codex.generate_json(full_prompt, schema=pdf_schemas.TITLE)
-        if not isinstance(parsed, dict) or "title" not in parsed or "slug" not in parsed:
-            raise ValueError(f"Codex did not return valid title and slug JSON for {first_file.name}: {parsed}")
 
         new_title = str(parsed["title"]).strip().strip('"')
         new_slug = str(parsed["slug"]).strip().strip('"')
@@ -109,10 +94,7 @@ def process_first_chapter_refinement(
                     if f.is_file():
                         shutil.copy2(f, out_assets_dir / f.name)
             if out_assets_dir.exists() and not any(out_assets_dir.iterdir()):
-                try:
-                    out_assets_dir.rmdir()
-                except Exception:
-                    pass
+                out_assets_dir.rmdir()
             for old_f in output_dir.glob("*.md"):
                 old_f.unlink()
             for f in md_files:
@@ -139,9 +121,6 @@ def process_first_chapter_refinement(
             )
 
             parsed = codex.generate_json(full_prompt, schema=pdf_schemas.TITLE)
-            if not isinstance(parsed, dict) or "title" not in parsed or "slug" not in parsed:
-                print(f"[!] Warning: Codex did not return valid title and slug JSON for {target_file.name}: {parsed}")
-                continue
 
             new_title = str(parsed["title"]).strip().strip('"')
             new_slug = str(parsed["slug"]).strip().strip('"')
@@ -195,8 +174,6 @@ def main():
     output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "13_refine_first_chapter_name")
     input_dir = Path(args.input_dir) if args.input_dir else None
     config_path = Path(args.config)
-    if not config_path.is_file():
-        raise FileNotFoundError(f"Stage 13: Config file not found: {config_path}")
 
     process_first_chapter_refinement(
         output_dir=output_dir,

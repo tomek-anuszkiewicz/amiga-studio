@@ -10,7 +10,6 @@ Serializes partitioned chapter node streams into final Markdown documents:
 
 import argparse
 import json
-import os
 import re
 import shutil
 import sys
@@ -18,21 +17,12 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from conversion.config import UniqueLoader
 
 
 def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
-    input_candidates = [workspace_dir / "10_proofread_stream"]
-    chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
-    if not chapters_dir:
-        raise FileNotFoundError(f"Missing formatted chapters in {workspace_dir}")
-
-    manifest_path = workspace_dir / "chapters_manifest.json"
-    if not manifest_path.exists():
-        raise FileNotFoundError(f"Missing chapters_manifest.json in {workspace_dir}")
-
-    with open(manifest_path, "r", encoding="utf-8") as f:
-        manifest = json.load(f)
+    chapters_dir = workspace_dir / "10_proofread_stream"
+    chapters = [json.loads(path.read_text(encoding="utf-8"))
+                for path in sorted(chapters_dir.iterdir()) if path.suffix == ".json"]
 
     output_dir.mkdir(parents=True, exist_ok=True)
     for old_md in output_dir.glob("*.md"):
@@ -45,27 +35,15 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
 
     # Collect explicitly referenced asset filenames from rendered markdown
     referenced_assets = set()
-    for entry in manifest:
-        idx = entry["index"]
-        slug = entry["slug"]
-        c_path = chapters_dir / f"{idx:02d}_{slug}.json"
-        if not c_path.exists():
-            c_path = workspace_dir / entry.get("json_file", "")
-        if c_path.exists():
-            try:
-                with open(c_path, "r", encoding="utf-8") as f:
-                    c_nodes = json.load(f)
-                for cn in c_nodes:
-                    rendered = cn.get("rendered_markdown", "")
-                    for m in re.finditer(r"asset_node_\d+\.[a-zA-Z0-9]+", rendered):
-                        referenced_assets.add(m.group(0))
-            except Exception:
-                pass
+    for entry in chapters:
+        for node in entry["nodes"]:
+            rendered = node.get("rendered_markdown") or ""
+            for match in re.finditer(r"asset_node_\d+\.[a-zA-Z0-9]+", rendered):
+                referenced_assets.add(match.group(0))
 
     # 1. Synchronize assets from latest stage (only active, referenced assets)
-    asset_candidates = [workspace_dir / "10_proofread_stream" / "assets"]
-    src_assets_dir = next((p for p in asset_candidates if p.exists()), None)
-    if src_assets_dir and src_assets_dir.exists():
+    src_assets_dir = chapters_dir / "assets"
+    if src_assets_dir.exists():
         for asset_file in src_assets_dir.glob("*"):
             if asset_file.is_file():
                 base_name = re.sub(r"\.txt$", "", asset_file.name)
@@ -77,40 +55,24 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
             if src_assets_dir:
                 print(f"[*] Synchronized active assets from {src_assets_dir} to {out_assets_dir}")
         else:
-            try:
-                out_assets_dir.rmdir()
-            except Exception:
-                pass
+            out_assets_dir.rmdir()
 
-    print(f"[*] Emitting {len(manifest)} Markdown files from {chapters_dir.name} to {output_dir}...")
+    print(f"[*] Emitting {len(chapters)} Markdown files from {chapters_dir.name} to {output_dir}...")
 
     # Assert uniqueness of target Markdown filenames to prevent silent overwrites
-    target_names = [e.get("target_md_file") for e in manifest if e.get("target_md_file")]
+    target_names = [e.get("target_md_file") for e in chapters if e.get("target_md_file")]
     if len(target_names) != len(set(target_names)):
         duplicates = [name for name in target_names if target_names.count(name) > 1]
-        raise ValueError(f"Stage 11 Collision Error: Duplicate target Markdown filenames detected in manifest: {set(duplicates)}")
+        raise ValueError(f"Stage 11 Collision Error: Duplicate target Markdown filenames detected in chapters: {set(duplicates)}")
 
-    for entry in manifest:
+    for entry in chapters:
         idx = entry["index"]
         slug = entry["slug"]
         title = entry["title"]
         target_md_name = entry.get("target_md_file", f"{idx:02d}_{slug}.md")
         target_path = output_dir / target_md_name
 
-        file_slug = f"{idx:02d}_{slug}.json"
-        json_file = chapters_dir / file_slug
-        if not json_file.exists():
-            # Try path from manifest
-            json_file = workspace_dir / entry.get("json_file", "")
-            if not json_file.exists():
-                matches = list(chapters_dir.glob(f"{idx:02d}_*.json"))
-                if matches:
-                    json_file = matches[0]
-                else:
-                    continue
-
-        with open(json_file, "r", encoding="utf-8") as f:
-            nodes = json.load(f)
+        nodes = entry["nodes"]
 
         content_parts = []
 
@@ -150,13 +112,9 @@ def main():
     workspace_dir = Path(args.workspace)
     output_dir = Path(args.output_dir)
     config_path = Path(args.config)
-    if not config_path.is_file():
-        raise FileNotFoundError(f"Stage 11: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.load(f, Loader=UniqueLoader)
-    if not config or not isinstance(config, dict):
-        raise ValueError(f"Stage 11: Config file is empty or invalid: {config_path}")
+        config = yaml.safe_load(f)
 
     emit_markdown(workspace_dir, output_dir, config)
 

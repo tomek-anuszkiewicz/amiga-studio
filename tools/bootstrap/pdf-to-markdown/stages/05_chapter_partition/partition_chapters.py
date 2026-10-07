@@ -7,7 +7,7 @@ Partitions the monolithic reduced_stream.json into clean chapter-level streams:
 3. Real Chapters: welds chapter numbers and titles (e.g. "Chapter 1" + "INTRODUCTION")
    into unified chapter streams (e.g. 01_chapter_1_introduction.json).
 4. Subsections within chapters remain inside their respective chapter stream.
-5. Emits workspace/05_chapter_partition/*.json and workspace/chapters_manifest.json.
+5. Emits self-contained chapter metadata and nodes in 05_chapter_partition/*.json.
 """
 
 import argparse
@@ -18,7 +18,6 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from conversion.config import UniqueLoader
 
 
 def generate_slug(text: str) -> str:
@@ -30,8 +29,6 @@ def generate_slug(text: str) -> str:
 def partition_chapters(workspace_dir: Path, config: dict):
     reduced_stream_path = workspace_dir / "04_stream_reduction" / "reduced_stream.json"
 
-    if not reduced_stream_path.exists():
-        raise FileNotFoundError(f"Missing reduced_stream.json in {reduced_stream_path.parent}")
 
     with open(reduced_stream_path, "r", encoding="utf-8") as f:
         nodes = json.load(f)
@@ -42,7 +39,7 @@ def partition_chapters(workspace_dir: Path, config: dict):
     print(f"[*] Partitioning {len(nodes)} nodes into chapter streams...")
 
     # Clean prior chapter json files
-    for f in chapters_raw_dir.glob("*.json"):
+    for f in (path for path in chapters_raw_dir.iterdir() if path.suffix == ".json"):
         f.unlink()
 
     # Find boundaries for Front Matter and Table of Contents
@@ -160,33 +157,21 @@ def partition_chapters(workspace_dir: Path, config: dict):
             "nodes": nodes
         }]
 
-    manifest = []
     for part in partitions:
         idx = part["index"]
         file_slug = f"{idx:02d}_{part['slug']}"
         file_name = f"{file_slug}.json"
         target_path = chapters_raw_dir / file_name
-        with open(target_path, "w", encoding="utf-8") as f:
-            json.dump(part["nodes"], f, indent=2)
 
         clean_title_name = re.sub(r'[:/\\|]', ' - ', part['title'])
         clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name)
         clean_title_name = re.sub(r'\s+', ' ', clean_title_name).strip(' -.')
         target_md_name = f"{idx:02d} - {clean_title_name}.md" if clean_title_name else f"{file_slug}.md"
 
-        manifest.append({
-            "index": idx,
-            "slug": part["slug"],
-            "title": part["title"],
-            "json_file": f"05_chapter_partition/{file_name}",
-            "target_md_file": target_md_name,
-            "node_count": len(part["nodes"])
-        })
+        part["target_md_file"] = target_md_name
+        with open(target_path, "w", encoding="utf-8") as f:
+            json.dump(part, f, indent=2)
         print(f"    Partition {idx:02d}: {part['title']} ({len(part['nodes'])} nodes) -> {file_name}")
-
-    manifest_path = workspace_dir / "chapters_manifest.json"
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, indent=2)
 
     print(f"[+] Stage 05 complete. {len(partitions)} clean chapter streams emitted to {chapters_raw_dir}")
 
@@ -199,13 +184,9 @@ def main():
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     config_path = Path(args.config)
-    if not config_path.is_file():
-        raise FileNotFoundError(f"Stage 05: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.load(f, Loader=UniqueLoader)
-    if not config or not isinstance(config, dict):
-        raise ValueError(f"Stage 05: Config file is empty or invalid: {config_path}")
+        config = yaml.safe_load(f)
 
     partition_chapters(workspace_dir, config)
 

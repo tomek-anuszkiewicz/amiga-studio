@@ -24,3 +24,6 @@ Formats narrative body text, programming code listings, section headings, and ta
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 09 --to-stage 09
 ```
+
+Chapter JSON includes `index`, `slug`, `title`, `target_md_file` and `nodes`.
+This automatic stage transforms nodes while preserving metadata and prior-stage files.
