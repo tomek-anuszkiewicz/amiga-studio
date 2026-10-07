@@ -2741,3 +2741,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Markdown differs only by the 26 corresponding image links
   - exactly 26 logo PNGs deleted
   - all 169 retained image links resolve. Existing status records report success, 0.60 seconds for Stage 02.8 and 7.74 seconds for Stage 02.9, with no model calls. These are recorded run metrics, not a new agent-run conversion. Quick preflight and architecture suite 19/19 passed. Visual content quality and book-wide matching are not certified.
+---
+
+### [2026-10-07 19:50 CEST] — PDF-TABLE-2.81: Specify collapsible Markdown companions for HTML tables
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.81-table-transcription.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Extend the active local plan and proposed response contract with table_markdown for HTML results
+  - Require exactly one details section with a Markdown transcription inside a fenced text block
+  - Repeat associated caption, footnote and table_legend content in source order while retaining their visible source positions
+  - Place details after the last associated block, allowing captions above or below and footnotes before or after legends
+  - Carry companion text and table ownership through page and stream renderers without duplicate emission
+- **Architectural Rationale & Trade-Offs**:
+  - Record the requested behavior before implementation
+  - Assemble associated text from source segments rather than inventing content outside the table crop
+  - Keep the active execution plan local under the existing Git exclusion
+- **Verification & Test Results**:
+  - Quick preflight passed all six gates
+  - Architecture suite passed 19 of 19 tests
+  - Documentation planning only: implementation and inference have not started
+  - Active plan remains open and is excluded from Git by repository policy
