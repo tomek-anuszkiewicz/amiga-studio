@@ -3321,3 +3321,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - existing PDF conversion suite passed (29 tests)
   - quick pre-flight passed
   - architecture rules passed (19 tests). No live fragment conversion or visual quality assessment performed.
+---
+
+### [2026-10-07 23:07 CET] — PDF-PAGE-SELECTION-2.4-2.5: honor configured pages on restart
+- **Affected Subsystems**:
+  - `PDF artifact enumeration`
+  - `sparse page resolver`
+  - `Stage 02.4`
+  - `Stage 02.5`
+  - `tests/test_pdf_review_selection.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Filter predecessor filenames by configured physical input.pages before callout keyword collection and requests
+  - pass review configuration selection through the sparse override resolver
+  - preserve all-page behavior for absent or null selections
+  - document selected-page restarts
+- **Architectural Rationale & Trade-Offs**:
+  - An all-page workspace retained every Stage 02 artifact
+  - so later-stage restarts ignored --page-ranges despite the pipeline persisting the selection. Both stages now share optional selection in page-file enumeration. Existing workspace artifacts and global downstream cleanup behavior are unchanged.
+- **Verification & Test Results**:
+  - Both targeted regressions failed before repair by processing 63 and 64 despite selecting only 64, then passed (2 tests)
+  - geometry regression passed (1 test)
+  - existing PDF suite passed (29 tests)
+  - quick pre-flight passed
+  - architecture rules passed (19 tests)
+  - graphify update completed. No live conversion or user workspace regeneration performed.

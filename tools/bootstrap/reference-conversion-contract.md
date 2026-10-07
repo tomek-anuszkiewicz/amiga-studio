@@ -42,6 +42,9 @@ The prompt excludes numbered/symbol-marked footnotes, table/figure legends and
 explanatory lists. Distinct NOTE labels introducing their own advisory paragraphs
 remain eligible even when they discuss a nearby table, image or figure.
 Only changed pages receive complete-page overrides; predecessors remain intact.
+Stage 02.4 and review 02.5 filter retained predecessor files by configured physical
+`input.pages`, including selections changed through `--page-ranges` on a later-stage
+restart. Absent or null selection means all available predecessor pages.
 Review 02.5, filtering 02.8 and explicit table predecessor `02` share the sparse
 resolver. Completed overrides are eligible, absent optional status means skipped,
 and running/failed 02.4 blocks direct consumers. Filtering omissions remain final.

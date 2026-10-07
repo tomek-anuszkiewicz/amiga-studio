@@ -30,8 +30,10 @@ def prepared_pdf_path(source):
     return source.with_stem(f"{source.stem}-ocr")
 
 
-def page_files(directory, pattern):
-    return sorted((path for path in Path(directory).iterdir() if path.match(pattern)),
+def page_files(directory, pattern, pages=None):
+    selected = set(pages) if pages is not None else None
+    return sorted((path for path in Path(directory).iterdir() if path.match(pattern)
+                   and (selected is None or int(path.stem.split("_")[1]) in selected)),
                   key=lambda path: int(path.stem.split("_")[1]))
 
 
