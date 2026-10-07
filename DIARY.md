@@ -2860,3 +2860,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite passed 19 of 19 tests
   - Checked planned export and asset lifecycle statements for consistency
   - Planning only: no implementation, inference or images generated
+---
+
+### [2026-10-07 20:09 CEST] — PDF-TABLE-2.81: Resolve table grouping and reusable crop decisions
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.81-table-transcription.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Use existing Stage 02 table classifications and collect associated blocks upward/downward in source order
+  - Retain repeated caption, footnote and table_legend blocks with console warnings including captions above and below
+  - Bound initial collection to adjacent associated blocks on the same page and warn on ambiguous ownership
+  - Record ordered table_group_segment_ids and persistent table_source_asset crops for all table outcomes
+  - Have Stage 02.82 reuse crops and Stage 02.9/03 copy required table assets while still cropping graphics/covers
+  - Allow RAG inference to express HTML relationships freely and faithfully in plain text rather than require a Markdown grid
+  - Limit later companion edits to typo corrections or source-grounded additions and defer RAG ingestion verification to the user TODO
+- **Architectural Rationale & Trade-Offs**:
+  - Record user decisions resolving the reviewed plan gaps
+  - Preserve anomalous source content instead of dropping extra blocks
+  - Remove recropping and the dependency on a later export for original table images
+  - Keep the primary conversion prompt minimal and the active plan local under its Git exclusion
+- **Verification & Test Results**:
+  - Quick preflight passed all six gates
+  - Architecture suite passed 19 of 19 tests
+  - Reviewed crop lifecycle, companion prompt and downstream field propagation in the plan
+  - Planning only: no implementation, inference or review image generation performed
