@@ -3732,3 +3732,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - user content assessment accepted on 2026-10-08
   - optional 02.42 was absent
   - no full-book conversion, 02.81 transcription, publication or milestone gate run
+---
+
+### [2026-10-08 01:54 CEST] — PDF-CODE-2.45: Plan prose-to-code recovery
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-stage-02.45-recover-code-from-prose.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add planned Stage 02.45 after 02.44 and before review
+  - Specify one page JSON and original image request per page containing prose
+  - Record source-preserving code reclassification and indentation recovery
+  - Select physical page 131 for implementation verification
+- **Architectural Rationale & Trade-Offs**:
+  - Recover source code misclassified as prose using existing optional page overrides
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture tests 19/19 passed
+  - Plan only: no implementation or page-131 conversion run
