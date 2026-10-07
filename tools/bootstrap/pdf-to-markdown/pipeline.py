@@ -60,6 +60,13 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "artifact_contract": "pdf_page_conversion_review",
     },
     {
+        "id": "02.9", "dir": "02.9_emit_page_markdown", "script": "emit_page_markdown.py",
+        "desc": "Assemble unchanged page Markdown and exact original-PNG crops",
+        "targets": ["02.9_emit_page_markdown"],
+        "inspect": ("document.md", "selected-page Markdown"),
+        "artifact_contract": "pdf_page_markdown",
+    },
+    {
         "id": "03",
         "dir": "03_build_raw_stream",
         "script": "build_stream.py",
@@ -160,7 +167,7 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
 # Execution order and artifact dependencies are deliberately separate.
 for index, stage in enumerate(STAGE_REGISTRY):
     stage["inputs"] = {
-        "02": ["01"], "02.5": ["01", "02"], "03": ["02"],
+        "02": ["01"], "02.5": ["01", "02"], "02.9": ["01", "02"], "03": ["02"],
     }.get(stage["id"], [STAGE_REGISTRY[index-1]["id"]] if index else [])
 
 
@@ -504,7 +511,7 @@ def main():
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--prepare-stage")
     parser.add_argument("--apply-stage")
-    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (00, 01, 02.5, 03, 05, 11, 14)")
+    parser.add_argument("--run-deterministic", action="store_true", help="Run the next ready deterministic stage (00, 01, 02.5, 02.9, 03, 05, 11, 14)")
     args = parser.parse_args()
     skill_dir = Path(__file__).resolve().parent
     config_source = args.config.resolve()
@@ -541,7 +548,7 @@ def main():
     elif args.run_deterministic:
         start = completed
         end = start
-        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("00", "01", "02.5", "03", "05", "11", "14"):
+        if start >= len(STAGE_REGISTRY) or STAGE_REGISTRY[start]["id"] not in ("00", "01", "02.5", "02.9", "03", "05", "11", "14"):
             raise ValueError("Next stage requires inference; use an explicit stage interval")
     elif args.resume:
         start, end = completed, len(STAGE_REGISTRY)-1

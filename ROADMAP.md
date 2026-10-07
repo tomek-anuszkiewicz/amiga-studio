@@ -12,7 +12,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
   - **Gate:** Review the selected fragment against the source and compare accepted output, correction effort, elapsed time and cost with the Codex baseline. Choose a model and integration approach from measured evidence before full-book conversion; report Codex weekly usage separately from GPU cost and raw token counts.
 
 - **1.2: PNG-to-Markdown and Crops with OCR Text JSON**
-  - Request a source fragment and assess Stage 02 objects, decoded `md_text`, classifications and table/graphic crops through Stage 02.5 (task `PDF-INDEPENDENT-02D-02M`). Technical implementation and Stage 03 consumption of Stage 02 objects are available; user assessment remains pending.
+  - Request a source fragment and assess Stage 02 objects, decoded `md_text`, classifications and Stage 02.5 review frames, then inspect Stage 02.9 `document.md` and table/graphic/cover crops (tasks `PDF-INDEPENDENT-02D-02M`, `PDF-MARKDOWN-02.9`). User assessment remains pending.
   - Connect the new stream explicitly to Stages 03-14 after review: preserve `md_text` without automatic reformatting, let text assembly ignore review boxes, and adapt table/asset handling. Never concatenate the branches or implicitly reinterpret old schemas.
   - **Gate:** User-selected fragments establish source fidelity and reading order for those pages; technical JSON/lineage checks do not establish conversion quality. Verify explicit new-stream assembly, input identity and retained artifacts before later crop review and bulk conversion.
 

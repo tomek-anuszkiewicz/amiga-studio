@@ -137,6 +137,29 @@ All objects have containing 2-pixel frames and straight review leaders based on
 their model-selected boxes. This supports review of textual spatial order as well
 as tables and graphics. No OCR geometry is synthesized; the review stage
 does not correct conversion or call a model.
+
+Stage 02.9 consumes validated Stage 02 objects and exact Stage 01 original PNGs,
+independently of review images. It writes one
+`02.9_emit_page_markdown/document.md` and an always-present `assets/` directory
+for all selected pages, including disjoint ranges, in physical-page/array order.
+Decoded textual `md_text` is unchanged, separated by blank lines; source-visible
+TOC text, captions, footnotes and page furniture are retained. Each `table`,
+`graphic` or `cover` becomes an exact PNG crop using its integer pixel rectangle,
+with no padding, rescaling or geometry correction. Its upstream segment ID names
+the asset and a neutral relative image link marks its original object position.
+Multi-page objects remain separate crops. No model requests, text rewriting,
+generated descriptions, stitching or TOC repair occur. Minimal valid YAML and a
+document heading use the known source filename stem; publication metadata is not
+invented. TOC link repair and reconstruction remain downstream work.
+
+Use `--from-stage 02.9 --to-stage 02.9` with compatible validated Stage 01/02
+records. A temporary bundle is validated for ordered document content, successful
+PNG writes and resolving generated crop links before replacing prior output.
+Replacement removes stale assets; invalid input or failed writes stop the stage.
+Completion metadata stays in workspace state, with no per-page Markdown or asset
+sidecars. The user evaluates source fidelity and crop boundaries on the requested
+fragment; technical completion does not certify quality.
+
 Stage 03 consumes validated Stage 02 objects directly, independently of the
 02.5 review. It preserves page/array order, object types, heading levels,
 segment IDs, continuation flags, `md_text` and original `bbox_pixels`.
@@ -146,18 +169,21 @@ by displayed-page dimensions for the existing point-based consumers/cropper.
 Later formatting and merging workers retain their current behavior; this adapter
 does not redesign the remaining pipeline or certify conversion quality.
 
-Restart 02 invalidates 02.5 and later stream stages. Restart 02.5 retains the
-stream; Stage 03 binds only the 02 completion digest. Restart 01 invalidates
+Restart 02 invalidates 02.5, 02.9 and later stream stages. Restart 02.5 retains the
+page Markdown bundle and stream; restart 02.9 invalidates only its own bundle.
+Stage 03 binds only the 02 completion digest. Restart 01 invalidates
 page conversion and its dependents. Before cleanup, all retained records and
 external inputs are validated. Completion identities follow artifact inputs;
-02.5 binds both the 01 and 02 completion digests. Drawing primitives now live
+02.5 and 02.9 bind both the 01 and 02 completion digests and their applicable
+configuration/procedure. Drawing primitives now live
 in 02.5 and are fingerprinted with its procedure. The former shared-code
 compatibility bridge has been removed; changed shared procedures invalidate
 old identities normally. Renamed stage directories and configuration keys require
 regeneration; old 02d/02m artifacts are never relabeled or migrated.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
-in the source book's `workspace/html_to_markdown/`; PDF output stays in `workspace/14_link_toc/`.
+in the source book's `workspace/html_to_markdown/`; final PDF output stays in `workspace/14_link_toc/`.
+Stage 02.9 is a separate intermediate export; `--publish` does not publish its bundle.
 Bootstrap downloads sources into `<book>-tmp/`; `-Markdown` only converts locally.
 Its separate `-Publish` switch passes the boolean `--publish` to the converter,
 which copies completed Markdown and assets to the sibling `<book>/` directory.

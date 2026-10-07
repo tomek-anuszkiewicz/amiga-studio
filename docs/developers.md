@@ -250,6 +250,7 @@ PDF conversion starts with [Stage 00](../tools/bootstrap/pdf-to-markdown/stages/
    - Prepares a separate native/OCR PDF and matching positioned-text JSON/PNG pairs.
    - Stage 02 uses Codex text and original-detail image input to group page objects and produce Markdown text, types and pixel boxes.
    - Stage 02.5 renders frames and ordered labels for user assessment. Use `--to-stage 02.5` for review-only runs.
+   - Stage 02.9 emits one selected-page `document.md` with unchanged text and exact table/graphic/cover PNG crops in `assets/`. Use `--from-stage 02.9 --to-stage 02.9` with validated Stage 01/02 predecessors; it makes no model requests and remains separate from Stage 14 publication.
    - Stage 03 consumes Stage 02 objects directly, preserving Markdown, classifications, order and continuation flags while providing point-based geometry and text fields for the existing downstream workers.
 
 2. **Web Crawls to Markdown ([`html-to-markdown`](../tools/bootstrap/html-to-markdown/README.md)):**

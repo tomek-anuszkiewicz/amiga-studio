@@ -172,9 +172,12 @@ def validate_stage_artifacts(stage, workspace, source, *, snapshot=False):
         path = workspace / stage["dir"] / ".manifests/pages_manifest.json" if snapshot else None
         validate_preprocess(workspace, source, manifest_path=path)
 
-    elif contract in ("pdf_page_conversion", "pdf_page_conversion_review"):
+    elif contract in ("pdf_page_conversion", "pdf_page_conversion_review", "pdf_page_markdown"):
         from .pdf_page_conversion import validate_conversion
         pages = validate_conversion(workspace, source)
+        if contract == "pdf_page_markdown":
+            from .pdf_page_markdown import validate_bundle
+            validate_bundle(workspace / stage["dir"], pages, source)
         if contract == "pdf_page_conversion_review":
             directory = workspace / stage["dir"]
             expected = {f"{entry['page_id']}_review.png" for entry, value in pages}
