@@ -34,20 +34,8 @@ def union_box(boxes):
 
 
 def prose_run_can_extend(segments, start, end):
-    """Require one nearby downward flow and a union clear of all other objects."""
+    """Extend a source-ordered prose run only if its union has no other object."""
     boxes = [segment["bbox"] for segment in segments[start:end+1]]
-    previous, candidate = boxes[-2:]
-    gap = candidate[1] - previous[3]
-    widths = [box[2]-box[0] for box in boxes]
-    # Text length changes the right edge and paragraph height, not the column.
-    # Use a stable left margin and a gap scaled to the column's widest member.
-    if gap < 0 or gap > 0.1 * max(widths):
-        return False
-    if max(box[0] for box in boxes) - min(box[0] for box in boxes) > 0.05 * min(widths):
-        return False
-    shared_width = min(box[2] for box in boxes) - max(box[0] for box in boxes)
-    if shared_width < 0.8 * min(widths):
-        return False
     left, top, right, bottom = union_box(boxes)
     for index, segment in enumerate(segments):
         if start <= index <= end:

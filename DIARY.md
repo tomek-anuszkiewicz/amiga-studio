@@ -3088,3 +3088,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Confirmed IDs, unchanged source-attempt hashes and retained settings
   - Visually inspected regenerated page_0031_review.png at Obsidian/Amiga/Reference/Test Book example-4567/workspace/page-31-prose-review-01/02.5_page_conversion_review/
   - No broader conversion or quality claim
+---
+
+### [2026-10-07 21:28 CEST] — PDF-REVIEW-2.5: use only source adjacency and union obstacles
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove prose alignment, column, overlap-width and vertical-gap thresholds
+  - Extend consecutive source-order prose by its smallest enclosing rectangle only when no other page object overlaps it
+  - Keep hidden objects as obstacles and exclude all contributing source members from the check
+  - Preserve run restart behavior, source mappings, continuation and original artifacts
+  - Update the stage README and shared conversion contract to the user-approved union-only rule
+- **Architectural Rationale & Trade-Offs**:
+  - The user explicitly replaced spatial-flow heuristics with an enclosing-rectangle obstacle check
+  - Shifted, distant or overlapping contributing prose may join if the union contains no other object
+  - Any non-prose source-order interruption ends the run
+- **Verification & Test Results**:
+  - Focused union-only regression failed before repair with three separate annotations, then passed including blocked-run restart
+  - PDF technical suite: 28 tests passed
+  - Quick preflight passed
+  - Architecture suite: 19 tests passed
+  - graphify update completed
+  - Regenerated only physical page 31 through orchestrator Stage 02.5 in workspace/page-31-prose-review-01 with zero model calls
+  - Prose ordinals 4-11 remain one annotation
+  - Predecessor artifact and config hashes unchanged
