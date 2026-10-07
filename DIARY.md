@@ -2527,3 +2527,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Repository search: no remaining active references
   - Graphify incremental code refresh: passed
   - No source conversion or quality evaluation run
+---
+
+### [2026-10-07 18:37 CEST] — Remove unused Markdown reference comparator
+- **Affected Subsystems**:
+  - `tools/bootstrap/html-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Delete the standalone reference comparison script
+  - Remove its file listing from the HTML converter README
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested removal after repository searches found no external callers or pipeline integration.
+- **Verification & Test Results**:
+  - python tools/harness/pre_flight.py --quick: passed
+  - cargo test -p test_runner --test test_architecture_rules -- --quiet: 19 passed
+  - Repository search after deletion found no remaining comparator references before this diary entry
+  - graphify update .: passed
+  - Full-worktree git diff --check reports an existing blank line at EOF in the unrelated PDF selection module.
