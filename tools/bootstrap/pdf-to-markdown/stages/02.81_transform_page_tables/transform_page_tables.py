@@ -15,13 +15,14 @@ from common.pdf_artifacts import write_json
 from common.pdf_page_conversion import read_conversion
 from common.pdf_schemas import object_schema, STRING
 from common.pdf_tables import STAGE, collect_groups, simple_html
+from common.pdf_selection import selected_pages
 
 RESPONSE = object_schema({"format": {"type": "string", "enum": ["markdown", "html", "unconverted"]},
                           "md_text": STRING})
 COMPANION = object_schema({"rag_text": {"type": "string", "minLength": 1}})
 
 
-def transform_tables(workspace, config):
+def transform_tables(workspace, config, pages=None):
     directory = Path(__file__).parent
     prompt = (directory / "prompt.md").read_text(encoding="utf-8")
     group_prompt = (directory / "group_prompt.md").read_text(encoding="utf-8")
@@ -33,7 +34,7 @@ def transform_tables(workspace, config):
     counts = dict.fromkeys(("markdown", "html", "unconverted"), 0)
     with CodexClient(config, stage=STAGE, images=True) as codex:
         for entry, page in read_conversion(workspace, input_dir,
-                                           pages=config.get("input", {}).get("pages")):
+                                           pages=pages):
             groups = collect_groups(page["segments"], page["page"])
             tables = [s for s in page["segments"] if s["type"] == "table"]
             if tables:
@@ -72,8 +73,10 @@ def main():
     parser = argparse.ArgumentParser(description="Stage 02.81: transcribe page tables")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--page-ranges")
     args = parser.parse_args()
-    transform_tables(args.workspace.resolve(), load_config(args.config, known_stages=PDF_STAGES))
+    transform_tables(args.workspace.resolve(), load_config(args.config, known_stages=PDF_STAGES),
+                     pages=selected_pages(args.page_ranges))
 
 
 if __name__ == "__main__":

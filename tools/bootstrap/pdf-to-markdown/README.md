@@ -28,16 +28,17 @@ a sibling `<source stem>-ocr.pdf`; an existing sibling skips OCR and PDF writing
 Restart cleanup never deletes that sibling. Stage 01 applies the physical page selection.
 
 The existing attempt's `config.yaml` takes precedence over `--config`; the argument
-initializes only a missing configuration. Requested inputs persist there:
+initializes only a missing configuration. The source PDF path persists there:
 
 ```yaml
 input:
   source_pdf: ../../source.pdf  # Relative to this config.yaml
-  pages: [1, 2, 3, 4, 5, 7]   # null means every physical page
 ```
 
-Explicit `--pdf` and `--page-ranges` update the inputs. Omitted arguments retain
-configured values, including when restarting at 00. Input configuration describes
+Explicit `--pdf` updates the source path; omission retains that configured path.
+`--page-ranges` controls only the current run and is never persisted in config.
+Omitting it selects all available pages. Legacy `input.pages` is ignored by workers
+and removed when the pipeline next writes config. Input configuration describes
 requests; it contains no output inventory or completion history. PDF configuration
 is parsed without local validation. Filesystem, YAML, JSON and image/PDF-library
 errors stop execution normally. No older-stage inputs or alternative models are substituted.
@@ -81,10 +82,10 @@ frontmatter processing remain in place.
 
 ### Physical-page selection through Stage 02.82
 
-`--page-ranges` persists physical 1-based pages as `input.pages` in the attempt
-configuration. Every page worker listed below applies that selection when reading
+`--page-ranges` selects physical 1-based pages for the current invocation only.
+The pipeline forwards it to every page worker listed below, which applies it when reading
 its input, including a direct restart in a workspace retaining all-page predecessors.
-Missing or null `input.pages` means all available pages.
+Omission means all available pages, regardless of a previous run or legacy config.
 
 | Stage | Selection behavior |
 | --- | --- |
@@ -98,7 +99,7 @@ Missing or null `input.pages` means all available pages.
 | 02.82 | Select Stage 02.81 pages before rendering table comparisons |
 
 Keep this rule when changing or adding page workers: use the shared page-file
-selection or pass `pages` to the shared conversion reader before opening source
+selection or pass CLI-derived `pages` to the shared conversion reader before opening source
 JSON/PNGs, collecting document context or issuing model requests. Filtered-out pages
 remain absent; selection never recovers them from an earlier predecessor.
 Focused restart regressions live in `tests/test_pdf_review_selection.py`.

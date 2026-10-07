@@ -4,7 +4,6 @@
 
 input:
   source_pdf: null  # Initialize with --pdf; persisted relative to this config.
-  pages: null       # All physical pages, or a list initialized by --page-ranges.
 
 render:
   dpi: 300

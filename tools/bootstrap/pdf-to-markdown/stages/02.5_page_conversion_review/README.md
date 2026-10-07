@@ -5,9 +5,9 @@ Consume resolved Stage 02/02.4 JSON and the exact Stage 01 PNG. Completed sparse
 02.4 blocks execution. Save `02.5_page_conversion_review/page_NNNN_review.png` at original
 page height and twice its width, with a blank equal-width right panel.
 
-Read only physical pages selected by the workspace configuration's `input.pages`;
-an absent or null selection reads all available predecessor pages. The pipeline
-persists `--page-ranges` here even when restarting directly at 02.5. Resolve sparse
+Read only physical pages selected by this invocation's `--page-ranges`;
+omission reads all available predecessor pages, regardless of legacy `input.pages`.
+The pipeline forwards the parameter even when restarting directly at 02.5. Resolve sparse
 02.4 overrides within that selection before rendering.
 
 Each displayed type has a fixed distinct color for its containing 2-pixel frame,

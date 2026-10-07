@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conversion.config import load_config as parse_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json, prepared_pdf_path
-from common.pdf_selection import parse_page_ranges
+from common.pdf_selection import selected_pages
 from conversion.publication import book_directory, check_destination, publish_output
 
 STAGE_REGISTRY: List[Dict[str, Any]] = [
@@ -275,17 +275,16 @@ def run_stage(
     # Stage-specific standard parameter injection
     if stage_num == "00":
         cmd.extend(["--pdf", str(pdf_path)])
-        if page_ranges:
-            cmd.extend(["--page-ranges", str(page_ranges)])
     elif stage_num == "01":
         prepared_pdf = prepared_pdf_path(pdf_path)
         cmd.extend(["--pdf", str(prepared_pdf)])
-        if page_ranges:
-            cmd.extend(["--page-ranges", str(page_ranges)])
     elif stage_num == "11":
         cmd.extend(["--output-dir", str(workspace_dir / "11_emit_markdown")])
     elif stage_num == "14" and output_dir:
         cmd.extend(["--output-dir", str(output_dir)])
+
+    if page_ranges is not None and stage_num in {"00", "01", "02", "02.4", "02.5", "02.8", "02.81", "02.82"}:
+        cmd.extend(["--page-ranges", page_ranges])
 
     if verbose:
         print(f"[CMD] {' '.join(cmd)}")
@@ -488,7 +487,7 @@ def main():
     parser.add_argument("--cache-dir", type=Path, help="Codex cache directory for worker subprocesses")
     parser.add_argument("--from-stage", help="Start stage (default: 00); clears this stage and all later results")
     parser.add_argument("--to-stage", help="Last stage to execute; does not limit cleanup")
-    parser.add_argument("--page-ranges", help="Physical 1-based source PDF pages; omitted retains configured selection")
+    parser.add_argument("--page-ranges", help="Physical 1-based pages for this run only; omitted selects all available pages")
     parser.add_argument("--table-predecessor", choices=["02.8", "02"],
                         help="Whole-input table source; 02 only when filtering was deliberately skipped")
     parser.add_argument("--verbose", action="store_true")
@@ -540,10 +539,9 @@ def main():
         # relative to the template until the attempt config is persisted.
         pdf = (config_source.parent / inputs["source_pdf"]).resolve()
         inputs["source_pdf"] = Path(os.path.relpath(pdf, workspace)).as_posix()
-    if args.page_ranges is not None:
-        inputs["pages"] = parse_page_ranges(args.page_ranges)
-    else:
-        inputs.setdefault("pages", None)
+    pages = selected_pages(args.page_ranges)
+    # Retire legacy persisted selection; CLI arguments alone control this run.
+    inputs.pop("pages", None)
 
     status_file = workspace / "stage_status.json"
     statuses = read_json(status_file) if status_file.exists() else {}
@@ -569,7 +567,6 @@ def main():
     # Persist invalidation before any cleanup can fail or be interrupted.
     invalidate_status(status_file, invalid)
     clean_downstream_stages(workspace, output, start, status_file)
-    pages = inputs["pages"]
     page_ranges = ",".join(map(str, pages)) if pages is not None else None
     print(f"[*] PDF source: {pdf.name}; selected pages: {pages}; stages: {[stage['id'] for stage in selected]}")
     for stage in selected:

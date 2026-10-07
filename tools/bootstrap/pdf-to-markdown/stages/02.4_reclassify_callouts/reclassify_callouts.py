@@ -14,11 +14,12 @@ from conversion.config import load_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json, page_files
 from common.pdf_page_conversion import CALLOUT_STAGE
 from common.pdf_callouts import RESPONSE, advisory_keywords, request_objects, apply_replacements
+from common.pdf_selection import selected_pages
 
 
-def reclassify_callouts(workspace, config):
+def reclassify_callouts(workspace, config, pages=None):
     paths = page_files(workspace / "02_page_conversion", "page_*_segments.json",
-                       config.get("input", {}).get("pages"))
+                       pages)
     pages = [read_json(path) for path in paths]
     keywords = advisory_keywords(pages)
     output = workspace / CALLOUT_STAGE
@@ -69,8 +70,10 @@ def main():
     parser = argparse.ArgumentParser(description="Stage 02.4: recover complete advisory ranges with original-page vision")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--page-ranges")
     args = parser.parse_args()
-    reclassify_callouts(args.workspace.resolve(), load_config(args.config, known_stages=PDF_STAGES))
+    reclassify_callouts(args.workspace.resolve(), load_config(args.config, known_stages=PDF_STAGES),
+                        pages=selected_pages(args.page_ranges))
 
 
 if __name__ == "__main__":

@@ -8,7 +8,8 @@ For each selected physical page it writes `01_preprocess/page_XXXX.png` and
 `page_XXXX.json`, including legitimate blank pages. `XXXX` remains the physical
 1-based source page number; `source_index` is zero-based in the original source.
 `prepared_index` equals `source_index`: the sibling prepared PDF contains every
-source page in the original order. Only Stage 01 applies `--page-ranges`.
+source page in the original order. Stage 01 applies the current `--page-ranges`;
+page workers through 02.82 also apply it when reading their own predecessors.
 JSON contains schema
 version, stable page ID, dimensions, rotation, MediaBox,
 CropBox, `prepared`/`none` text provenance, extraction-based page classification
@@ -37,6 +38,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<W
 ```
 
 For an attempt with successful Stage 00, restart with `--from-stage 01 --to-stage 01`.
-Omitting source/page arguments retains configured inputs. An explicit page selection
-updates config and can reuse the full-source sibling PDF without repeating OCR.
+Omitting the source argument retains its configured path. Omitting `--page-ranges`
+selects all pages; an explicit selection applies to this run only and can reuse
+the full-source sibling PDF without repeating OCR. Legacy `input.pages` is ignored.
 Legacy attempts use the separate migration utility described in the [converter README](../../README.md).
