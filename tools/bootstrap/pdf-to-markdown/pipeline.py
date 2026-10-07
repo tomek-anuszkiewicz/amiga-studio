@@ -51,6 +51,12 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("page_*_review.png", "page conversion review PNGs"),
     },
     {
+        "id": "02.8", "dir": "02.8_filter_page_content", "script": "filter_page_content.py",
+        "desc": "Remove page furniture, pre-TOC content and list/index pages",
+        "targets": ["02.8_filter_page_content"],
+        "inspect": ("page_*_segments.json", "filtered page conversion JSON files"),
+    },
+    {
         "id": "02.9", "dir": "02.9_emit_page_markdown", "script": "emit_page_markdown.py",
         "desc": "Assemble unchanged page Markdown and exact original-PNG crops",
         "targets": ["02.9_emit_page_markdown"],
@@ -157,7 +163,8 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
 # Execution order and artifact dependencies are deliberately separate.
 for index, stage in enumerate(STAGE_REGISTRY):
     stage["inputs"] = {
-        "02": ["01"], "02.5": ["01", "02"], "02.9": ["01", "02"], "03": ["02"],
+        "02": ["01"], "02.5": ["01", "02"], "02.8": ["02"],
+        "02.9": ["01", "02.8"], "03": ["01", "02.8"],
     }.get(stage["id"], [STAGE_REGISTRY[index-1]["id"]] if index else [])
 
 

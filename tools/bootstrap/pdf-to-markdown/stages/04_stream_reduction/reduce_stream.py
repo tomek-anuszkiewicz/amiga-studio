@@ -2,10 +2,9 @@
 """
 stages/04_stream_reduction/reduce_stream.py:
 Normalizes the sequential node stream:
-1. Suppresses all header and footer nodes.
-2. Identifies and unifies contiguous graphic fragments on the same page into a single diagram asset using Codex Vision.
-3. Welds consecutive prose nodes across page breaks and performs de-hyphenation.
-4. Emits workspace/04_stream_reduction/reduced_stream.json.
+1. Identifies and unifies contiguous graphic fragments on the same page into a single diagram asset using Codex Vision.
+2. Welds consecutive prose nodes across page breaks and performs de-hyphenation.
+3. Emits workspace/04_stream_reduction/reduced_stream.json.
 """
 
 import argparse
@@ -345,16 +344,7 @@ def reduce_stream(workspace_dir: Path, config: dict):
 
         print(f"[*] Reducing stream of {len(raw_nodes)} nodes from {raw_stream_path.name}...")
 
-        # Step 1: Suppress headers and footers
-        active_nodes = []
-        skipped_count = 0
-        for node in raw_nodes:
-            if node.get("type") in ("header", "footer"):
-                skipped_count += 1
-            else:
-                active_nodes.append(node)
-
-        print(f"[*] Suppressed {skipped_count} header/footer nodes.")
+        active_nodes = raw_nodes
 
         # Prepare Stage 04 assets directory by synchronizing from Stage 03
         import shutil

@@ -288,7 +288,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual((self.workspace / "04_stream_reduction/artifact.json").read_bytes(), before)
         self.assertEqual(other_output.read_text(), "Independent conversion")
         state = read_json(self.workspace / "stage_status.json")
-        self.assertEqual(list(state), ["00", "01", "02", "02.5", "02.9", "03", "04", "05"])
+        self.assertEqual(list(state), ["00", "01", "02", "02.5", "02.8", "02.9", "03", "04", "05"])
 
 
     def test_explicit_restart_rebuilds_missing_output_and_later_stages(self):
@@ -390,7 +390,7 @@ class PdfConfigurationTests(unittest.TestCase):
             with patch.object(worker, "read_conversion", return_value=[(entry, objects)]) as validate, \
                  patch.object(worker, "extract_assets_for_nodes", side_effect=lambda root, nodes, **kwargs: nodes):
                 worker.build_raw_stream(workspace, {})
-            validate.assert_called_once_with(workspace)
+            validate.assert_called_once_with(workspace, "02.8_filter_page_content")
             nodes = json.loads((workspace / "03_build_raw_stream/raw_stream.json").read_text())
             self.assertEqual([n["md_text"] for n in nodes], ["## Continued", "*Source note*"])
             self.assertEqual(nodes[0]["raw_text"], "## Continued")

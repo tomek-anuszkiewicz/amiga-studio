@@ -23,9 +23,9 @@ RESPONSE = object_schema({
 })
 
 
-def read_conversion(workspace):
-    """Read Stage 02 objects and their Stage 01 page data in physical-page order."""
-    for path in page_files(workspace / "02_page_conversion", "page_*_segments.json"):
+def read_conversion(workspace, page_object_directory="02_page_conversion"):
+    """Read the specified page objects with Stage 01 data in physical-page order."""
+    for path in page_files(workspace / page_object_directory, "page_*_segments.json"):
         page_id = path.stem.removesuffix("_segments")
         entry = read_json(workspace / "01_preprocess" / f"{page_id}.json")
         entry["png_file"] = f"01_preprocess/{page_id}.png"

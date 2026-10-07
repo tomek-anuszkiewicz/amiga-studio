@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage 02.9: one selected-page document with exact Stage 02 raster crops."""
+"""Stage 02.9: retained page Markdown with exact original-PNG raster crops."""
 
 import argparse
 from pathlib import Path
@@ -18,7 +18,7 @@ from common.pdf_page_markdown import crop_objects, document_markdown
 
 def emit_page_markdown(workspace, config_path=None):
     source = {"name": source_pdf(config_path or workspace / "config.yaml").name}
-    pages = list(read_conversion(workspace))
+    pages = list(read_conversion(workspace, "02.8_filter_page_content"))
     crops = list(crop_objects(pages))
     crops_by_page = {}
     for entry, segment in crops:

@@ -18,6 +18,12 @@ Do not schedule additional sample conversions, a full-book/full-crawl run, quali
 
 Preserve technical meaning, reading order, prose, footnotes, captions, labels, code, hexadecimal values, mathematics and tables. Formatting can change; conversion must not summarize, invent facts or silently omit material. Use source metadata only, omitting unknown publication details. Mark unreadable material rather than reconstructing it without evidence.
 
+PDF Stage 02.8 applies the user's deliberate source-fidelity exception: remove
+headers/footers, objects before the first selected-input TOC heading when present,
+and whole pages containing list-of-tables, list-of-figures or index objects/headings.
+This exception affects source content only; generated YAML metadata remains.
+Review Stage 02.5 continues to show the complete Stage 02 objects.
+
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.
 
 Use Mermaid with an ASCII fallback when it faithfully represents a diagram; avoid duplicating the same diagram as an embedded raster. Use images for schematics, photographs, dense waveforms and figures that cannot be represented faithfully. Keep accompanying labels and decoded bit fields visible. Preserve original image assets and recovery artifacts. Technical image descriptions must explain what the source shows without adding inferred hardware behavior as fact.
@@ -86,7 +92,7 @@ Full runs, intervals and individual deterministic/inference stages use
 process automatically with their inference calls and no manual task files.
 The normal pipeline has no legacy reader.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.5 -> 02.9 -> 03`, then 04-14.
+The execution sequence is `00 -> 01 -> 02 -> 02.5 -> 02.8 -> 02.9 -> 03`, then 04-14.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.
@@ -168,12 +174,27 @@ their model-selected boxes. This supports review of textual spatial order as wel
 as tables and graphics. No OCR geometry is synthesized; the review stage
 does not correct conversion or call a model.
 
-Stage 02.9 consumes Stage 02 objects and exact Stage 01 original PNGs,
+Stage 02.8 reads Stage 02 JSON in numeric physical-page and segment-array order.
+It determines the first `toc_heading` and page exclusions from original objects,
+then removes all `header`/`footer` objects, objects before that boundary, and whole
+pages containing `list_of_tables_heading`, `list_of_tables`,
+`list_of_figures_heading`, `list_of_figures`, `index_heading` or `index`.
+A heading on an excluded page still defines the boundary. Without a `toc_heading`,
+skip pre-TOC removal; never inspect unselected PDF pages. Exact types determine
+removal, without text, geometry or continuation inference. The actual TOC remains
+subject to whole-page exclusions. `02.8_filter_page_content/` retains filenames,
+page identities, dimensions and every surviving object's fields, IDs, text,
+geometry and order without renumbering. Omit empty pages; an empty output is valid.
+Report page/object counts and boundary presence through worker output, with no
+model calls, inference configuration, manifest or runtime artifact/schema checks.
+Original Stage 01, 02 and 02.5 artifacts remain unchanged.
+
+Stage 02.9 consumes only Stage 02.8 objects and exact Stage 01 original PNGs,
 independently of review images. It writes one
 `02.9_emit_page_markdown/document.md` and an always-present `assets/` directory
-for all selected pages, including disjoint ranges, in physical-page/array order.
+for retained pages, including disjoint ranges, in physical-page/array order.
 Decoded textual `md_text` is unchanged, separated by blank lines; source-visible
-TOC text, captions, footnotes and page furniture are retained. Each `table`,
+TOC text, captions and footnotes are retained after Stage 02.8 exclusions. Each `table`,
 `graphic` or `cover` becomes an exact PNG crop using its integer pixel rectangle,
 with no padding, rescaling or geometry correction. Its upstream segment ID names
 the asset and a neutral relative image link marks its original object position.
@@ -182,13 +203,13 @@ generated descriptions, stitching or TOC repair occur. Minimal valid YAML and a
 document heading use the known source filename stem; publication metadata is not
 invented. TOC link repair and reconstruction remain downstream work.
 
-Use `--from-stage 02.9 --to-stage 02.9` with compatible Stage 01/02
+Use `--from-stage 02.9 --to-stage 02.9` with completed Stage 01/02.8
 records. A temporary bundle replaces prior output after Markdown/crop writes finish;
 there is no content comparison, inventory or PNG/dimension verification. Replacement
 removes stale assets; actual write failures stop the stage. The source name comes
 from config. The user evaluates fidelity and crop boundaries on the requested fragment.
 
-Stage 03 consumes Stage 02 objects directly, independently of the
+Stage 03 consumes only Stage 02.8 objects with Stage 01 page data, independently of the
 02.5 review. It preserves page/array order, object types, heading levels,
 segment IDs, continuation flags, `md_text` and original `bbox_pixels`.
 The downstream `raw_text` field contains the same Markdown, not re-extracted OCR;
@@ -199,15 +220,21 @@ does not redesign the remaining pipeline or certify conversion quality.
 
 Starting at a stage clears that stage and every later stage in execution order,
 regardless of artifact dependencies or the requested end stage. Restart 02.5 clears
-02.9 and all stream stages; restart 02.9 clears its bundle and all stream stages.
+02.8, 02.9 and all stream stages; restart 02.8 clears its filtered output and every
+later stage, including for a single-stage interval. Restart 02.9 clears its bundle
+and all stream stages.
 The operator selects each subsequent start with `--from-stage`; there is no
-automatic continuation or completed-stage skipping. Stage 03 still consumes
-completed Stage 02 directly. Before cleanup, only retained completion statuses
-are checked. Stages 02.5 and 02.9 require completed Stage 01
-and 02; their workers read the input files directly. No completion
+automatic continuation or completed-stage skipping. Before cleanup, only retained
+completion statuses are checked. Stage 02.5 requires completed Stage 01/02;
+02.8 requires Stage 02; 02.9 and 03 require Stage 01/02.8. Their workers read
+the input files directly, without fallback to unfiltered Stage 02. Empty filtered
+input yields normal empty object outputs. Stage 04 retains graphics union and
+prose seams; it no longer removes headers/footers. No completion
 digests bind their results. Drawing primitives
 live in 02.5. Changes to shared procedures do not automatically invalidate saved
-completion statuses. Renamed stage directories and configuration keys require
+completion statuses. Existing 02.9/03 successes require explicit regeneration
+starting at 02.8 before representing filtered behavior; implementation does not
+mutate old attempt artifacts. Renamed stage directories and configuration keys require
 regeneration; old 02d/02m artifacts are never relabeled or migrated.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays

@@ -2629,3 +2629,31 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - git diff --cached --check reported nine two-space Markdown hard breaks, preserved under the unchanged-text contract
   - No conversion rerun or visual fidelity assessment performed in this commit task
   - Roadmap quality assessment remains pending
+---
+
+### [2026-10-07 19:00 CEST] — PDF-FILTER-02.8: filter source objects before Markdown and stream assembly
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add deterministic Stage 02.8 with ordered page JSON, exact type exclusions and page/object statistics
+  - Remove headers and footers, pre-TOC objects and whole list/index pages while preserving surviving fields and IDs
+  - Route 02.9 and 03 exclusively through 02.8 with Stage 01 geometry and original PNGs
+  - Register dependencies, inventory and execution-order cleanup, and remove header/footer filtering from Stage 04
+  - Update workflow documentation and the two existing test expectations superseded by routing
+  - Close the execution plan after this commit
+- **Architectural Rationale & Trade-Offs**:
+  - PDF-FILTER-02.8 makes source removal explicit before either assets or downstream nodes exist
+  - Determine the TOC boundary from original objects even on an excluded page, and skip pre-TOC removal when no selected-input heading exists
+  - Preserve complete Stage 02.5 review and original predecessor artifacts, add no inference configuration or runtime validation, and keep generated YAML metadata
+  - Existing downstream successes need explicit regeneration starting at 02.8 and were not changed during implementation
+- **Verification & Test Results**:
+  - Python compilation and diff whitespace check passed
+  - Existing offline PDF suite passed all 25 tests
+  - Bounded synthetic pipeline check passed filtered routing, field preservation, predecessor preservation and single-stage downstream cleanup
+  - graphify update . completed without model calls
+  - python tools/harness/pre_flight.py --quick passed
+  - cargo test -p test_runner --test test_architecture_rules -- --quiet passed all 19 tests
+  - No source-fragment conversion or conversion-quality assessment ran, and no milestone completion is claimed

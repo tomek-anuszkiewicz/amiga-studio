@@ -44,7 +44,7 @@ errors stop execution normally. No older-stage inputs or alternative models are 
 
 ## Stage data and execution
 
-Execution order is `00 -> 01 -> 02 -> 02.5 -> 02.9 -> 03`, then 04-14.
+Execution order is `00 -> 01 -> 02 -> 02.5 -> 02.8 -> 02.9 -> 03`, then 04-14.
 Each worker reads the predecessor's own directory and writes its own results:
 
 | Stage | Input and result |
@@ -53,8 +53,9 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [01](stages/01_preprocess/README.md) | Prepared PDF -> physical-page PNGs and positioned text JSON |
 | [02](stages/02_page_conversion/README.md) | Stage 01 -> ordered logical objects, Markdown and pixel boxes |
 | [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01/02 -> review frames and ordered labels |
-| [02.9](stages/02.9_emit_page_markdown/README.md) | Stage 01/02 -> one unchanged-text `document.md` and original-PNG crops |
-| [03](stages/03_build_raw_stream/README.md) | Stage 02 objects and Stage 01 geometry -> raw stream and initial assets |
+| [02.8](stages/02.8_filter_page_content/README.md) | Stage 02 -> retained objects after source-content exclusions |
+| [02.9](stages/02.9_emit_page_markdown/README.md) | Stage 01/02.8 -> one unchanged-text `document.md` and original-PNG crops |
+| [03](stages/03_build_raw_stream/README.md) | Stage 02.8 objects and Stage 01 geometry -> raw stream and initial assets |
 | [04](stages/04_stream_reduction/README.md) | Raw stream -> reduced stream |
 | [05](stages/05_chapter_partition/README.md) | Reduced stream -> self-contained chapters |
 | [06](stages/06_detect_continuations/README.md) | Stage 05 -> continuation metadata |
@@ -92,7 +93,19 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --c
 
 Stages 06-09 run automatically, including their inference calls. All real conversions
 use `pipeline.py` so they receive status, metrics, cleanup and publication handling.
-Stage 02.9 is a separate intermediate export; Stage 03 reads Stage 02 directly.
+Stage 02.9 is a separate intermediate export; it and Stage 03 read only Stage 02.8
+objects, using Stage 01 geometry and original PNGs. Stage 02.5 still reviews complete
+Stage 02 objects. Stage 02.8 owns all source-content removal; Stage 04 retains
+graphics union and prose seam processing.
+
+Stage 02.8 applies the user's deliberate source-fidelity exception: remove
+headers/footers, all objects before the first selected-input `toc_heading`, and
+entire pages containing a list-of-tables, list-of-figures or index object/heading.
+The boundary and page triggers come from original Stage 02 objects and exact types.
+A TOC heading on an excluded page still defines the boundary. Without a TOC heading,
+skip pre-TOC removal. Retain the actual TOC subject to whole-page exclusions.
+Surviving fields, IDs, text and geometry remain unchanged; empty pages are omitted
+and an empty filtered result is valid. Generated YAML metadata remains unchanged.
 
 ## Restart, status and publication
 
@@ -101,6 +114,9 @@ deleting their outputs. The end stage limits execution, not cleanup. Missing suc
 external predecessors are rejected before cleanup using `STAGE_REGISTRY.inputs` and
 `stage_status.json`. No completed stage is automatically skipped. Advancing the start
 stage retains earlier results; changing code or input files does not recertify them.
+Restart 02.8 clears its filtered objects and every later result even when ending at
+02.8. Existing 02.9/03 successes require explicit regeneration through 02.8 before
+they represent filtering; implementation does not mutate saved attempt artifacts.
 
 `stage_status.json` is the only completion/metrics record. Atomic writes retain
 running/success/failed and execution metrics. Success follows worker execution and

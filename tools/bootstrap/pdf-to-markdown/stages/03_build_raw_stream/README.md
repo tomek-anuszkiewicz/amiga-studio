@@ -1,8 +1,11 @@
 # Stage 03: Build Raw Stream
 
-Consume `02_page_conversion/page_NNNN_segments.json` objects and
+Consume retained `02.8_filter_page_content/page_NNNN_segments.json` objects and
 Stage 01 PNG/text pairs. Preserve physical page order and each segment array's
-reading order. Stage 02.5 review images are not inputs.
+reading order. Stage 02.5 review images are not inputs. Stage 02.8 removes
+headers/footers, pre-TOC objects when a boundary exists, and entire list/index
+pages before nodes or assets are assembled. There is no fallback to Stage 02;
+an empty filtered input produces an empty node stream and assets directory.
 
 Each node keeps `segment_id`, `type`, `heading_level`, `continuation`, `md_text`
 and the original integer `bbox_pixels`. Copy `md_text` into `raw_text` for the
@@ -26,6 +29,8 @@ Run through the [orchestrator](../../README.md):
 python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 03
 ```
 
-Stage 03 can run with successful Stage 02 execution status, even when 02.5
-has not run. Restart 02, 02.5 or 02.9 clears Stage 03 and all later stages,
-because cleanup follows execution order rather than artifact dependencies.
+Stage 03 requires successful Stage 01 and 02.8 execution statuses, even when
+02.5 or 02.9 has not run. Restart 02, 02.5, 02.8 or 02.9 clears Stage 03 and all
+later stages, because cleanup follows execution order rather than artifact
+dependencies. Existing 02.9/03 successes require regeneration starting at 02.8
+to reflect filtering.
