@@ -3205,3 +3205,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Previously inspected user-run pages-all artifacts showed successful execution on 160 input pages with 18 candidate objects on 14 requested pages and zero changed pages
   - No inference or conversion run in this closure
   - No milestone or classification-quality certification
+---
+
+### [2026-10-07 22:27 CEST] — PDF-CALLOUT-SIMPLE-2.4: plan simplified advisory recovery
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.4-simple-callout-recovery.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Create a new active plan replacing the closed PDF-CALLOUT-2.83 approach
+  - Specify one original page image with candidate segment IDs and containing pixel boxes, a concise callout question and replacement-only JSON
+  - Remove planned frame companions and persistent diagnostics while preserving changed-page-only output, successful sparse fallback, configuration and source lineage
+  - Define bounded technical verification and user-selected fragment review without changing current code
+- **Architectural Rationale & Trade-Offs**:
+  - Align the next implementation with the user corrections and reduce model-facing protocol complexity
+  - Nearby tables or figures must not automatically exclude visibly distinct advisories
+  - Preserve explicit source mapping so unrelated content stays intact
+- **Verification & Test Results**:
+  - Planning only: no converter implementation or source conversion run
+  - Quick preflight passed
+  - Architecture suite passed 19/19
+  - Plan uses portable paths and English repository content
