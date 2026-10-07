@@ -2975,3 +2975,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight passed all six gates
   - architecture suite passed 19 of 19
   - planning only with no implementation inference or artifact regeneration
+---
+
+### [2026-10-07 21:00 CEST] — PDF-CALLOUT-2.83: Move planned callout recovery to Stage 02.4
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.4-callout-reclassification.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Rename the active local plan and planned stage directory from 02.83 to 02.4 at the user's request while retaining the stable task reference
+  - place recovery after Stage 02 and before Stage 02.5
+  - change planned sparse overrides to use Stage 02 as predecessor
+  - route effective pages into review filtering and explicit direct table input
+  - remove post-table companion repair because grouping now occurs after recovery
+- **Architectural Rationale & Trade-Offs**:
+  - Keep stage numbering execution order and artifact dependencies consistent
+  - later table grouping and companions consume corrected objects through existing downstream stages
+  - preserve historical diary references and existing Stage 02.82 table review
+- **Verification & Test Results**:
+  - Quick preflight passed all six gates
+  - architecture suite passed 19 of 19
+  - reviewed planned routing and checked active task and converter documentation for stale stage-directory references
+  - planning only with no implementation inference or regeneration
