@@ -105,8 +105,10 @@ fragments through stream reduction, continuation detection and Stage 07.
 The explicit whole-input alternative `--table-predecessor 02` requires restart at
 02.81 when filtering was deliberately skipped; default remains completed 02.8.
 Existing attempt settings are retained; missing 02.81 model settings are added
-only when that stage is selected. Review backend setup is in the Stage 02.82 README. Stage 02.5 still reviews complete
-Stage 02 objects. Stage 02.8 owns all source-content removal; Stage 04 retains
+only when that stage is selected. Review backend setup is in the Stage 02.82 README.
+Stage 02.5 uses complete Stage 02 input for type-colored review annotations,
+consolidates unobstructed consecutive prose, and hides header/footer/thumb-index
+annotations without removing source content. Stage 02.8 owns all source-content removal; Stage 04 retains
 graphics union and prose seam processing.
 
 Stage 02.8 applies the user's deliberate source-fidelity exception: remove

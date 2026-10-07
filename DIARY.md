@@ -3035,3 +3035,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - both plans passed the explicit language scan
   - checked requirement placement priority and reciprocal plan references
   - planning only with no implementation inference or regeneration
+---
+
+### [2026-10-07 21:07 CEST] — PDF-REVIEW-2.5: type colors and consolidated prose review annotations
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review`
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Use fixed distinct colors keyed by object type for frames, leaders and labels
+  - Consolidate consecutive nearby prose in a common column only when the complete-page union is unobstructed
+  - Suppress header/footer/thumb-index annotations and restore their original pixels under crossing leaders
+  - Save review-only source ordinal/ID mappings and combined continuation flags
+  - Update presentation documentation while preserving Stage 02 inputs, downstream content and raw inference-object drawing
+- **Architectural Rationale & Trade-Offs**:
+  - PDF-REVIEW-2.5 is an independent presentation change before planned Stage 02.4
+  - Conservative shared-column and relative-gap rules can leave narrower or distant prose separate
+  - Keep the active plan until user-selected fragment review execution and assessment
+- **Verification & Test Results**:
+  - Existing PDF technical suite: 26 tests passed
+  - Focused disposable presentation diagnostic passed grouping/blocking, columns, source identity/immutability, type colors, continuation and hidden-pixel checks
+  - Quick preflight passed
+  - Architecture suite: 19 tests passed
+  - graphify update completed
+  - No real fragment regenerated: user selection remains pending
+  - No inference calls or quality certification
