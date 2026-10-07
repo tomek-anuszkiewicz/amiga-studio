@@ -41,6 +41,13 @@ Run each request in a fresh isolated thread with explicit conversion instruction
 
 The Codex cache is separate from legacy Gemini data. Its identity includes engine, stage, model, effort, pinned runtime, contract version, execution instructions, prompt, ordered image bytes, image detail and output schema. Validated cached outputs are reusable; partial, interrupted, empty or invalid outputs are not. Cache reuse still validates the authenticated runtime and selected capabilities. Record calls, cache hits, elapsed time and available token usage; cached usage describes the original request, not new consumption.
 
+Prepared-PDF hashes are not stored in preparation manifests, page JSON or OCR
+recovery metadata. Stage 02 receives page data without a document-wide hash, so
+rewriting the prepared PDF alone does not change the page request. General stage
+completion records retain their existing artifact hashes. Older page JSON and
+cached prompts containing the removed field require regeneration from Stage 00;
+saved cache entries are not rewritten.
+
 ## Implementation and pending scope
 
 For agent-run PDF conversions, treat the source PDF directory's `workspace/` as a container for named attempt directories, never as an attempt workspace itself, even when it is empty. Create a named child from the first attempt, such as `<PDF_DIRECTORY>/workspace/page-64-attempt-01/`, and always pass that child explicitly with `--workspace`. Use a new child for each independent attempt; continue or explicitly restart the same attempt in its existing child. The CLI currently defaults to `<PDF_DIRECTORY>/workspace/` when `--pdf` is supplied without `--workspace`, so agents must override that default. The original PDF stays outside the attempt workspace. Bootstrap downloads PDFs into `<book>-tmp/`; agent-run attempts belong under `<book>-tmp/workspace/<attempt>/`. A locally supplied PDF in `<book>/` uses `<book>/workspace/<attempt>/`.

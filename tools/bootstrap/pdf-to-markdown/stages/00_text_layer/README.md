@@ -64,12 +64,12 @@ at 00 with the original source or another workspace.
 Stage 00 publishes the prepared PDF and its preparation manifest. Stage 01
 extracts per-page positioned text JSON from that PDF; Stage 00 does not write
 separate native/OCR inspection JSON. Recovery holds the unmodified per-page OCR
-PDF plus JSON identity/hash metadata. Recovery reuse matches source, selection, image bytes, geometry, format,
+PDF plus JSON identity metadata. Recovery reuse matches source, selection, image bytes, geometry, format,
 procedure, language-data hashes and PyMuPDF version; it performs no additional
 artifact integrity validation. OCR PDFs are opened to insert their text. Legacy normalized
 JSON and Codex recovery records are incompatible and are regenerated.
 
-The manifest records the prepared PDF path/hash, coverage, page geometry,
+The manifest records the prepared PDF path, coverage, page geometry,
 provenance, inferred classification evidence and source-to-prepared page mapping.
 
 Run through the pipeline, for example:

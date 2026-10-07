@@ -153,6 +153,8 @@ class PdfOcrValidationTests(unittest.TestCase):
             complete_stage(state, registry, manifest["ocr_procedure"], workspace, workspace / "14_link_toc")
             preprocess.preprocess_pdf(prepared, workspace, dpi=72, page_ranges="2,5")
             page_data = json.loads((workspace / "01_preprocess/page_0005.json").read_text())
+            self.assertNotIn("pdf_sha256", manifest)
+            self.assertNotIn("pdf_sha256", page_data)
             self.assertEqual(page_data["source_index"], 4)
             self.assertEqual(page_data["prepared_index"], 1)
 

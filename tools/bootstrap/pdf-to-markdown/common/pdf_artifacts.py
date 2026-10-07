@@ -75,7 +75,7 @@ def validate_text_layer(workspace, source=None, *, require_completion=False):
     relative = f"00_text_layer/{Path(identity['name']).stem}-ocr.pdf"
     require(manifest.get("pdf_file") == relative, "Unexpected Stage 00 prepared PDF path")
     pdf = artifact_path(workspace, relative)
-    require(pdf.is_file() and file_hash(pdf) == manifest.get("pdf_sha256"), "Stage 00 prepared PDF is missing or modified")
+    require(pdf.is_file(), "Stage 00 prepared PDF is missing")
     if require_completion:
         record = read_state(workspace).get("stages", {}).get("00", {})
         require(record.get("status") == "completed", "Stage 00 has no validated completion record; restart at 00")
@@ -88,7 +88,7 @@ def validate_text_layer(workspace, source=None, *, require_completion=False):
             require(anchor == "workspace", "Invalid Stage 00 artifact anchor")
             path = artifact_path(workspace, name)
             require(path.is_file() and file_hash(path) == expected_hash, f"Missing/modified Stage 00 artifact: {name}")
-        require(record["files"].get("workspace:" + relative) == manifest["pdf_sha256"]
+        require("workspace:" + relative in record["files"]
                 and record["files"].get("workspace:00_text_layer/text_layer_manifest.json") == file_hash(manifest_path),
                 "Stage 00 completion omits required artifacts")
     return manifest, pdf
@@ -98,7 +98,7 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
     prepared, pdf = validate_text_layer(workspace, source)
     manifest = read_json(manifest_path or workspace / "pages_manifest.json")
     entries = coverage(manifest)
-    require(manifest.get("pdf_file") == prepared["pdf_file"] and manifest.get("pdf_sha256") == prepared["pdf_sha256"]
+    require(manifest.get("pdf_file") == prepared["pdf_file"]
             and manifest["selected_pages"] == prepared["selected_pages"]
             and manifest["source_page_count"] == prepared["source_page_count"]
             and manifest.get("source") == prepared["source"], "Stage 01 prepared-PDF/coverage identity mismatch")
@@ -127,7 +127,6 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
             require(len(block_ids) == len(set(block_ids)), "Stage 01 duplicate text block IDs")
             for field, value in {"schema_version": SCHEMA_VERSION, "page": entry["page"], "page_id": page_id,
                                  "source_index": origin["source_index"], "prepared_index": origin["prepared_index"],
-                                 "pdf_sha256": prepared["pdf_sha256"],
                                  "geometry": geometry, "width": geometry["width"], "height": geometry["height"],
                                  "rotation": page.rotation, "coordinates": COORDINATES,
                                  "provenance": origin["provenance"], "page_type": origin["page_type"],
@@ -139,8 +138,7 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
             require(data.get("raster") == transform and entry.get("raster") == transform, "Stage 01 PNG transform mismatch")
             for field in ("width", "height", "rotation", "provenance", "page_type", "classification_basis"):
                 require(entry.get(field) == data[field], f"Stage 01 manifest {field} mismatch")
-            require(entry.get("pdf_sha256") == prepared["pdf_sha256"] and entry.get("block_count") == len(data["blocks"]),
-                    "Stage 01 page manifest identity/block count mismatch")
+            require(entry.get("block_count") == len(data["blocks"]), "Stage 01 page manifest block count mismatch")
     return manifest
 
 

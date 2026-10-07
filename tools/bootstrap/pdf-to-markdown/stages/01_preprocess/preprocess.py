@@ -32,7 +32,7 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):
             old.unlink()
         manifest = {"schema_version": SCHEMA_VERSION, "source": prepared["source"],
                     "source_pdf": prepared["pdf_file"], "pdf_file": prepared["pdf_file"],
-                    "pdf_sha256": prepared["pdf_sha256"], "source_page_count": prepared["source_page_count"],
+                    "source_page_count": prepared["source_page_count"],
                     "selected_pages": pages, "total_pages": len(pages), "start_page": pages[0],
                     "end_page": pages[-1], "dpi": dpi, "pages": []}
         for origin in prepared["pages"]:
@@ -47,7 +47,7 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):
             metadata = {field: origin[field] for field in ("provenance", "page_type", "classification_basis")}
             data = {"schema_version": SCHEMA_VERSION, "page_id": page_id, "page": number,
                     "source_index": number - 1, "prepared_index": origin["prepared_index"],
-                    "pdf_sha256": prepared["pdf_sha256"], "geometry": geometry,
+                    "geometry": geometry,
                     "width": geometry["width"], "height": geometry["height"], "rotation": page.rotation,
                     "coordinates": COORDINATES, "raster": raster, "blocks": blocks, **metadata}
             json_file = directory / f"{page_id}.json"
@@ -56,7 +56,7 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):
                                       "png_file": png.relative_to(workspace_dir).as_posix(),
                                       "json_file": json_file.relative_to(workspace_dir).as_posix(),
                                       "png_sha256": file_hash(png), "json_sha256": file_hash(json_file),
-                                      "pdf_sha256": prepared["pdf_sha256"], "width": geometry["width"],
+                                      "width": geometry["width"],
                                       "height": geometry["height"], "rotation": page.rotation,
                                       "block_count": len(blocks), "raster": raster, **metadata})
             print(f"[extract] {page_id}: {len(blocks)} text blocks from {prepared_pdf.name}")
@@ -64,7 +64,6 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):
         try:
             write_json(candidate, manifest)
             validate_preprocess(workspace_dir, prepared["source"], manifest_path=candidate)
-            require(file_hash(prepared_pdf) == prepared["pdf_sha256"], "Prepared PDF changed during extraction")
             candidate.replace(manifest_path)
         finally:
             candidate.unlink(missing_ok=True)

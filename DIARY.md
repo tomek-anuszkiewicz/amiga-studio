@@ -2310,3 +2310,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture tests 19/19 passed
   - Graphify refreshed
   - no live fragment conversion or timing measurement
+---
+
+### [2026-10-07 16:07 CET] — Remove prepared PDF hashes from conversion metadata
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove pdf_sha256 from preparation manifests, per-page metadata and OCR recovery
+  - remove dedicated PDF hash validation
+  - update stage documentation and existing regression assertions
+- **Architectural Rationale & Trade-Offs**:
+  - Document-wide prepared PDF hashes changed otherwise identical page prompts and prevented response cache reuse across attempts
+  - retain general stage artifact lineage
+- **Verification & Test Results**:
+  - Focused existing regression failed before implementation and passed after removal
+  - PDF suite 31 passed
+  - conversion transport/cache suite 19 passed
+  - quick pre-flight passed
+  - architecture suite 19 passed
+  - graphify update completed
+  - no live fragment conversion run

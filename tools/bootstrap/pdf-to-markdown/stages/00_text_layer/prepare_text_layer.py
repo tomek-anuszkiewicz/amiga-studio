@@ -8,7 +8,6 @@ import pymupdf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from conversion.cache import digest
 from conversion.config import load_config, PDF_STAGES
 from common.lineage import file_hash, read_state, stage_identity
 from common.pdf_artifacts import write_json, read_json, require
@@ -117,15 +116,13 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                             insert_ocr_pdf(page, ocr)
                     if fresh_ocr:
                         recovery_pdf.write_bytes(payload)
-                        record = {"identity": identity, "pdf_sha256": file_hash(recovery_pdf)}
-                        record["digest"] = digest(record)
-                        write_json(recovery_file, record)
+                        write_json(recovery_file, {"identity": identity})
                     print(f"[{entry['provenance']}] {entry['page_id']}: {entry['page_type']}")
                 entries.append(entry)
             document.save(candidate, deflate=True, garbage=4)
             manifest = {"schema_version": SCHEMA_VERSION, "source": source, "source_page_count": source_page_count,
                         "selected_pages": pages, "pdf_file": output.relative_to(workspace).as_posix(),
-                        "pdf_sha256": file_hash(candidate), "pages": entries, "ocr_procedure": procedure}
+                        "pages": entries, "ocr_procedure": procedure}
             candidate.replace(output)
             write_json(manifest_path, manifest)
         except BaseException:

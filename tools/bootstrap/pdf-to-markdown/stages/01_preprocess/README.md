@@ -10,7 +10,7 @@ For each selected physical page it writes `01_preprocess/page_XXXX.png` and
 1-based source page number; `source_index` is zero-based in the original source.
 `prepared_index` is zero-based in the selected-pages PDF and is used for reads.
 JSON contains schema
-version, stable page ID, prepared-PDF hash, dimensions, rotation, MediaBox,
+version, stable page ID, dimensions, rotation, MediaBox,
 CropBox, provenance, page classification/evidence and ordered text blocks with
 IDs, text, `bbox` and `bbox_norm`. Only text blocks enter this collection; the
 worker does not claim word-level geometry or reconstruct semantic reading order.
