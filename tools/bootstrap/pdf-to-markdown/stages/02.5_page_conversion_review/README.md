@@ -3,13 +3,36 @@
 Consume Stage 02 JSON and the exact Stage 01 PNG. Save `02.5_page_conversion_review/page_NNNN_review.png` at original
 page height and twice its width, with a blank equal-width right panel.
 
-Labels show every object's ordinal, type, optional heading level and
-`continuation: true` only when the flag is true, in exact JSON
-array order. Every object receives a containing 2-pixel frame and straight review
-leader, using the local renderer with an identity pixel transform and
-continuation labels enabled. This includes prose, captions, table
-legends, footnotes, headers and footers. All geometry comes from the Stage 02 model output; no OCR geometry is synthesized. Crossed leaders can expose
-order inversions for any object. Labels contain neither text nor coordinates.
+Each displayed type has a fixed distinct color for its containing 2-pixel frame,
+straight leader and label, independent of page and object order. Labels show
+source ordinals, type, optional heading level and `continuation: true` when any
+contributing object has that flag. False flags are omitted. A merged run uses
+an ordinal range, such as `3-5. prose`; other labels retain their source ordinal.
+Labels contain neither text nor coordinates. JSON source order is preserved.
+
+Only consecutive `prose` objects can form one review annotation. Require a
+downward run with no vertical overlap, a gap no taller than either adjacent
+block, and a common horizontal span covering at least 80% of the widest member.
+This conservative column/adjacency rule can leave narrower or distant prose
+separate. Extend a run only when its enclosing union overlaps no other source
+object on the complete page, including hidden annotations and later objects.
+Column transitions, intervening roles and overlapping content block joining.
+Other roles always remain separate; source text is never assembled or changed.
+
+`header`, `footer` and `thumb_index` receive no frames, leaders or labels.
+Their original pixels remain visible, including where another leader would
+cross their boxes. They still participate in reading-order and overlap decisions.
+The source page remains at original scale with an equal-width right label panel.
+All bounds derive from Stage 02 boxes; no OCR geometry is synthesized.
+
+Each `page_NNNN_review.json` sidecar maps annotations to one-based
+`source_ordinals` and corresponding `source_ids` (null where Stage 02 supplies
+no `id`), recording union bounds, type, heading level and combined continuation.
+It also records `hidden_source_ordinals`. These are review-only records; Stage 02
+JSONs and downstream conversion content remain untouched. The low-level
+`draw_review_image` draws exactly the objects supplied by its caller, without
+grouping or suppression, so future inference can retain original-object mapping.
+
 No inference, segmentation correction, sorting or line rerouting occurs. The
 worker performs no completeness, dimension, frame or label validation; drawing
 and image-library errors propagate normally.
