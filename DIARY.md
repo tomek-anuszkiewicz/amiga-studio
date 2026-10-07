@@ -3264,3 +3264,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite passed 19/19
   - No source conversion or model requests ran
   - Earlier pages 64/130/144 outputs predate this prompt refinement
+---
+
+### [2026-10-07 22:47 CEST] — PDF-CALLOUT-SIMPLE-2.4: Distinguish footnotes from separate NOTE advisories
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.4_reclassify_callouts`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Narrow the prompt exclusion to numbered or symbol-marked footnotes and table/figure legends or explanatory lists
+  - Recover visually distinct NOTE labels with advisory paragraphs even when their subject concerns a table or figure
+  - Regenerate only pages 64/130/144 through 02.4 in workspace/callouts-distinct-note-64-130-144 and update the active plan
+- **Architectural Rationale & Trade-Offs**:
+  - The previous broad exclusion treated the advisory subject as disqualifying and the user reported missing NOTE objects
+  - Classification follows the label and presentation instead of subject association
+- **Verification & Test Results**:
+  - Three fresh model requests and zero cache hits completed in 24.32 seconds
+  - All three page overrides contain NOTE callout labels and callout_text bodies
+  - Page 130 Notes for the above Table remains prose
+  - Quick preflight and 19 architecture tests passed
+  - No other source pages or later stages ran and user content assessment remains pending
