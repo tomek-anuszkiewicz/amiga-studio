@@ -1,11 +1,10 @@
-"""Runtime PDF handoff contracts; hashes alone do not validate page coverage."""
+"""Validate runtime PDF handoff schemas, page coverage and geometry."""
 
 import json
 from pathlib import Path
 import pymupdf
 
-from conversion.cache import digest
-from .lineage import file_hash, read_state, record_path
+from .lineage import read_state, source_selection
 from .pdf_geometry import (SCHEMA_VERSION, COORDINATES, page_geometry, text_blocks,
                            valid_box, valid_text, raster_transform)
 
@@ -82,15 +81,10 @@ def validate_text_layer(workspace, source=None, *, require_completion=False):
     manifest = read_json(manifest_path)
     entries = coverage(manifest)
     if source is not None:
-        require(manifest.get("source") == source, "Stage 00 source/selection identity mismatch")
+        require(source_selection(manifest["source"]) == source_selection(source), "Stage 00 source/selection identity mismatch")
     identity = manifest.get("source", {})
-    require(isinstance(identity.get("name"), str) and Path(identity["name"]).name == identity["name"]
-            and isinstance(identity.get("sha256"), str) and len(identity["sha256"]) == 64,
+    require(isinstance(identity.get("name"), str) and Path(identity["name"]).name == identity["name"],
             "Stage 00 source identity is invalid")
-    procedure = manifest.get("ocr_procedure", {})
-    require(procedure.get("source") == identity and procedure.get("stage") == "00_text_layer"
-            and procedure.get("selection") is None and bool(procedure.get("procedure")),
-            "Stage 00 OCR procedure/configuration identity is missing")
     require(manifest["selected_pages"] == list(range(1, manifest["source_page_count"] + 1)),
             "Stage 00 must cover every source page; restart at 00")
     require(all(entry.get("source_index") == entry["page"] - 1
@@ -101,15 +95,8 @@ def validate_text_layer(workspace, source=None, *, require_completion=False):
     if require_completion:
         record = read_state(workspace).get("stages", {}).get("00", {})
         require(record.get("status") == "completed", "Stage 00 has no validated completion record; restart at 00")
-        require(record.get("completion") == digest({k: v for k, v in record.items() if k != "completion"}),
-                "Damaged Stage 00 completion record")
-        require(record.get("identity", {}).get("source") == identity, "Stage 00 completion source mismatch")
-        require(record.get("identity") == procedure, "Stage 00 manifest procedure differs from its completion record")
-        for relative_name, expected_hash in record["files"].items():
-            path = record_path(workspace, None, relative_name)
-            require(path.is_file() and file_hash(path) == expected_hash, f"Missing/modified Stage 00 artifact: {relative_name}")
         require("prepared:" + pdf.name in record["files"]
-                and record["files"].get("workspace:00_text_layer/text_layer_manifest.json") == file_hash(manifest_path),
+                and "workspace:00_text_layer/text_layer_manifest.json" in record["files"],
                 "Stage 00 completion omits required artifacts")
     return manifest, pdf
 
@@ -121,7 +108,7 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
     require(manifest.get("pdf_file") == prepared["pdf_file"]
             and manifest["selected_pages"] == (prepared["source"]["pages"] or prepared["selected_pages"])
             and manifest["source_page_count"] == prepared["source_page_count"]
-            and manifest.get("source") == prepared["source"], "Stage 01 prepared-PDF/coverage identity mismatch")
+            and source_selection(manifest["source"]) == source_selection(prepared["source"]), "Stage 01 prepared-PDF/coverage identity mismatch")
     require(manifest.get("total_pages") == len(entries), "Stage 01 selected page count mismatch")
     dpi = manifest.get("dpi")
     require(type(dpi) is int and dpi > 0, "Invalid Stage 01 raster DPI")
@@ -134,8 +121,7 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
             for field, suffix in (("png_file", ".png"), ("json_file", ".json")):
                 require(entry.get(field) == f"01_preprocess/{page_id}{suffix}", "Stage 01 page pair identity mismatch")
                 path = artifact_path(workspace, entry[field])
-                require(path.is_file() and file_hash(path) == entry.get(field.replace("_file", "_sha256")),
-                        f"Missing/modified Stage 01 page pair: {page_id}")
+                require(path.is_file(), f"Missing Stage 01 page pair: {page_id}")
             data = read_json(workspace / entry["json_file"])
             geometry = page_geometry(page)
             blocks = text_blocks(page)
@@ -164,13 +150,12 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
     return manifest
 
 
-def validate_stage_artifacts(stage, workspace, source, *, snapshot=False):
+def validate_stage_artifacts(stage, workspace, source):
     contract = stage.get("artifact_contract")
     if contract == "pdf_text_layer":
         validate_text_layer(workspace, source)
     elif contract == "pdf_preprocess":
-        path = workspace / stage["dir"] / ".manifests/pages_manifest.json" if snapshot else None
-        validate_preprocess(workspace, source, manifest_path=path)
+        validate_preprocess(workspace, source)
 
     elif contract in ("pdf_page_conversion", "pdf_page_conversion_review", "pdf_page_markdown"):
         from .pdf_page_conversion import validate_conversion

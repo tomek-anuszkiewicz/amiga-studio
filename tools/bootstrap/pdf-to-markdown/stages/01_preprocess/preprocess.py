@@ -9,7 +9,6 @@ import pymupdf
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
-from common.lineage import file_hash
 from common.pdf_artifacts import validate_text_layer, validate_preprocess, write_json, require, prepared_text_metadata
 from common.pdf_geometry import SCHEMA_VERSION, COORDINATES, page_geometry, text_blocks, raster_transform
 from common.pdf_selection import selected_pages
@@ -59,7 +58,6 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):
             manifest["pages"].append({"page_id": page_id, "page": number,
                                       "png_file": png.relative_to(workspace_dir).as_posix(),
                                       "json_file": json_file.relative_to(workspace_dir).as_posix(),
-                                      "png_sha256": file_hash(png), "json_sha256": file_hash(json_file),
                                       "width": geometry["width"],
                                       "height": geometry["height"], "rotation": page.rotation,
                                       "block_count": len(blocks), "raster": raster, **metadata})

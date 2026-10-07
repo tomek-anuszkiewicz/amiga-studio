@@ -44,7 +44,7 @@ The Codex cache is separate from legacy Gemini data. Its identity includes engin
 Prepared-PDF hashes are not stored in preparation manifests, page JSON or OCR
 recovery metadata. Stage 02 receives page data without a document-wide hash, so
 rewriting the prepared PDF alone does not change the page request. General stage
-completion records retain their existing artifact hashes. Older page JSON and
+completion records store completed status and required paths without hashes. Older page JSON and
 cached prompts containing the removed field require regeneration from Stage 00;
 saved cache entries are not rewritten.
 
@@ -52,7 +52,7 @@ saved cache entries are not rewritten.
 
 For agent-run PDF conversions, treat the source PDF directory's `workspace/` as a container for named attempt directories, never as an attempt workspace itself, even when it is empty. Create a named child from the first attempt, such as `<PDF_DIRECTORY>/workspace/page-64-attempt-01/`, and always pass that child explicitly with `--workspace`. Use a new child for each independent attempt; continue or explicitly restart the same attempt in its existing child. The CLI currently defaults to `<PDF_DIRECTORY>/workspace/` when `--pdf` is supplied without `--workspace`, so agents must override that default. The original PDF stays outside the attempt workspace. Bootstrap downloads PDFs into `<book>-tmp/`; agent-run attempts belong under `<book>-tmp/workspace/<attempt>/`. A locally supplied PDF in `<book>/` uses `<book>/workspace/<attempt>/`.
 
-Each PDF workspace owns one source/page selection and its intermediate conversion state. Explicit restart validates retained artifact inputs, clears the selected stage and its artifact descendants (including their status/manual tasks), and restores retained manifest snapshots. Final output stays in the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored; modified retained artifacts are rejected rather than automatically repaired. Broader manual content editing and conversion quality remain separate work.
+Each PDF workspace owns one source filename/page selection and its intermediate conversion state. Resume checks `status: completed` and required file existence; it does not compare source bytes, artifact contents, configuration, prompts or code with historical hashes. Use Git to review procedure changes and explicitly restart stages when existing results should be regenerated. Explicit restart checks retained completion statuses and files, persists invalidation of the selected stage and its artifact descendants before deletion, restores retained manifest snapshots and clears invalidated artifacts/manual tasks. Completion is saved only after successful execution and runtime output validation. Existing checksum records retain their statuses and paths when read and are rewritten without hashes on execution. Final output stays in the selected workspace; separate workspaces retain independent test conversions. Missing files can be regenerated or working manifests restored. Runtime schema, coverage and geometry validation remains in workers; conversion quality remains the user's assessment.
 
 The execution sequence is `00 -> 01 -> 02 -> 02.5 -> 03`, then 04-14.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
@@ -171,14 +171,12 @@ does not redesign the remaining pipeline or certify conversion quality.
 
 Restart 02 invalidates 02.5, 02.9 and later stream stages. Restart 02.5 retains the
 page Markdown bundle and stream; restart 02.9 invalidates only its own bundle.
-Stage 03 binds only the 02 completion digest. Restart 01 invalidates
-page conversion and its dependents. Before cleanup, all retained records and
-external inputs are validated. Completion identities follow artifact inputs;
-02.5 and 02.9 bind both the 01 and 02 completion digests and their applicable
-configuration/procedure. Drawing primitives now live
-in 02.5 and are fingerprinted with its procedure. The former shared-code
-compatibility bridge has been removed; changed shared procedures invalidate
-old identities normally. Renamed stage directories and configuration keys require
+Stage 03 depends directly on completed Stage 02. Restart 01 invalidates
+page conversion and its dependents. Before cleanup, retained completion statuses
+and required files are checked. Stages 02.5 and 02.9 require completed Stage 01
+and 02 and their files; no completion digests bind their results. Drawing primitives
+live in 02.5. Changes to shared procedures do not automatically invalidate saved
+completion statuses. Renamed stage directories and configuration keys require
 regeneration; old 02d/02m artifacts are never relabeled or migrated.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
@@ -193,7 +191,7 @@ before execution and again after preparing the publication copy. A directory ren
 publishes the prepared copy without overwriting an occupied directory. Source files,
 working state and metrics are retained. HTML no longer creates an automatic parent mirror.
 
-HTML and PDF use the shared Codex transport and strict stage configuration. PDF completion records validate predecessor artifacts and source/configuration/procedure identities; prepared manual tasks carry matching identity records. Existing migration evidence is the basis for proceeding with the separate roadmap work under the development workflow above. Do not treat arbitrary existing artifacts as validated predecessors.
+HTML and PDF use the shared Codex transport and strict stage configuration. PDF completion records track status and required file paths; the workspace retains its source filename/page selection. Prepared manual tasks carry that selection and their stage name, and restart of their inputs removes them. Existing migration evidence is the basis for proceeding with the separate roadmap work under the development workflow above. Existing files alone do not establish completed predecessors.
 
 PDF Stage 00 publishes a separate prepared `<source stem>-ocr.pdf` beside the
 source, containing every source page in original order. If that file already
@@ -237,8 +235,8 @@ JSON and Codex recovery are incompatible and regenerated. OCR artifacts are open
 validation pass. Recovery matches request identity without checking saved hashes. The user assesses the prepared PDF; Stage 01 consumes its
 actual extractable text. Native text is unchanged.
 Recovery records do not replace the preparation manifest. The workspace-local
-manifest records the shared PDF through relative paths; completion records hash
-that external PDF and reject modified retained inputs. Restart cleanup never
+manifest records the shared PDF through relative paths; completion records list
+that external PDF and check its existence when reusing Stage 00. Restart cleanup never
 removes the sibling prepared PDF.
 Restart at 01 retains completed Stage 00; legacy workspaces require explicit
 regeneration from 00 with the original PDF after backend, name or prepared-page

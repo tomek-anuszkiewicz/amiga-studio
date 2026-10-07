@@ -2440,3 +2440,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - python tools/harness/pre_flight.py --quick passed and architecture rules passed 19/19
   - graphify update . completed AST refresh, with optional PDF extraction skipped on the first refresh because pypdf was unavailable
   - No real-source fragment conversion, quality assessment, full-book run, milestone gate or publication was performed
+---
+
+### [2026-10-07 17:54 CEST] — Simplify PDF resume to completed stage status
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tests/test_conversion_publish.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Task pdf-status-resume: remove stage, source, artifact and procedure digests from completion tracking
+  - retain required file paths and manifest snapshots
+  - normalize existing saved records and simplify the selected Test Book state
+  - persist invalidation before cleanup
+  - preserve runtime validators and request caches
+- **Architectural Rationale & Trade-Offs**:
+  - Resume should skip completed stages with existing files
+  - Git and explicit restarts control applying procedure changes to saved results
+- **Verification & Test Results**:
+  - Cleanup interruption regression failed before repair and passes afterward
+  - PDF tests 34/34, shared conversion/cache tests 19/19, publication tests 10/10
+  - quick pre-flight passed
+  - architecture tests 19/19
+  - Graphify incremental code refresh completed
+  - no user-book conversion run

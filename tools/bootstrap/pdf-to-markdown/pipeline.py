@@ -19,7 +19,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conversion.config import load_config as parse_config, validate_config, PDF_STAGES, selection
 from conversion.transport import CodexTransport
-from common.lineage import read_state, write_state, file_hash, stage_identity, validate_prefix, restore_shared, complete_stage, first_incomplete_stage, artifact_predecessor
+from common.lineage import (read_state, write_state, source_selection, validate_completed_stages,
+                            restore_shared, complete_stage, first_incomplete_stage)
 from common.pdf_artifacts import validate_text_layer
 from common.pdf_selection import parse_page_ranges, selected_pages
 from conversion.publication import book_directory, check_destination, publish_output
@@ -439,6 +440,10 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], sta
         shutil.rmtree(path)
 
     stages_to_clean = invalidated_stages(start_idx)
+    if status_file.exists():
+        from common.pdf_artifacts import read_json, write_json
+        data = read_json(status_file)
+        write_json(status_file, {k: v for k, v in data.items() if k not in stages_to_clean})
     print(f"[*] Invalidation: Wiping Stage {STAGE_REGISTRY[start_idx]['id']} and its descendants...")
     for s in STAGE_REGISTRY:
         if s["id"] not in stages_to_clean:
@@ -475,25 +480,14 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], sta
                 elif p.is_file():
                     p.unlink(missing_ok=True)
 
-    if status_file.exists():
-        try:
-            with open(status_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            updated = {k: v for k, v in data.items() if k not in stages_to_clean}
-            with open(status_file, "w", encoding="utf-8") as f:
-                json.dump(updated, f, indent=2)
-        except Exception:
-            pass
-
-
-def complete_pipeline_stage(state, stage, identity, workspace, output):
+def complete_pipeline_stage(state, stage, source, workspace, output):
     if stage["id"] in ("05", "06"):
         position = next(index for index, item in enumerate(STAGE_REGISTRY) if item["id"] == stage["id"])
         previous_dir = STAGE_REGISTRY[position - 1]["dir"]
         assets = workspace / previous_dir / "assets"
         if assets.is_dir():
             shutil.copytree(assets, workspace / stage["dir"] / "assets", dirs_exist_ok=True)
-    return complete_stage(state, stage, identity, workspace, output)
+    complete_stage(state, stage, source, workspace, output)
 
 
 def main():
@@ -561,7 +555,7 @@ def main():
         raise ValueError("Invalid stage interval")
     if args.publish and end != len(STAGE_REGISTRY)-1:
         raise ValueError("Publishing requires completion through Stage 14")
-    source = {"name": pdf.name, "sha256": file_hash(pdf)} if pdf else state.get("source")
+    source = {"name": pdf.name} if pdf else state.get("source")
     if not source:
         raise ValueError("--pdf is required for a new conversion")
     source = dict(source)
@@ -580,12 +574,13 @@ def main():
         raise ValueError("Keep the original source PDF outside the conversion workspace")
     invalid = invalidated_stages(start) if start < len(STAGE_REGISTRY) else set()
     retained_registry = [item for item in STAGE_REGISTRY if item["id"] not in invalid and item["id"] in state.get("stages", {})]
-    validate_prefix(state, retained_registry, len(retained_registry), config, source, skill_dir, workspace, output)
-    if start < len(STAGE_REGISTRY):
-        predecessor = artifact_predecessor(state, STAGE_REGISTRY, STAGE_REGISTRY[start])
+    if retained_registry and source_selection(state["source"]) != source_selection(source):
+        raise ValueError("Stage 00 source/page selection differs; restart at 00 or use another workspace")
+    validate_completed_stages(state, retained_registry, workspace, output)
     if start == len(STAGE_REGISTRY):
-        restore_shared(state, retained_registry, len(retained_registry), workspace)
-        print("[+] All PDF stages have validated completion records.")
+        restore_shared(state, retained_registry, workspace)
+        write_state(workspace, state)
+        print("[+] All PDF stages are completed and their recorded files exist.")
         if destination is not None:
             publish_output(output, destination)
             print(f"[+] Published reference book: {destination}")
@@ -609,13 +604,13 @@ def main():
         finally:
             transport.close()
     stage = STAGE_REGISTRY[start]
-    identity = stage_identity(stage, config, source, predecessor, skill_dir)
     marker = workspace / "tasks/.lineage" / f"{stage['id']}.json"
     if manual and stage["id"] not in MANUAL_TASKS:
         raise ValueError("Manual handoff is available only for Stages 06–09")
     if args.apply_stage:
-        if not marker.is_file() or json.loads(marker.read_text(encoding="utf-8")) != identity:
-            raise ValueError("Prepared tasks do not match source, predecessor, model/effort or procedure; prepare again")
+        prepared = json.loads(marker.read_text(encoding="utf-8")) if marker.is_file() else {}
+        if prepared.get("stage") != stage["dir"] or source_selection(prepared.get("source", {"name": None})) != source:
+            raise ValueError("Missing prepared tasks for this stage/source/page selection; prepare again")
     # All configuration and predecessor validation precedes writes and cleanup.
     workspace.mkdir(parents=True, exist_ok=True)
     config_path = workspace / "config.yaml"
@@ -623,22 +618,23 @@ def main():
         shutil.copyfile(config_source, config_path)
     if args.cache_dir:
         os.environ["CONVERSION_CACHE_DIR"] = str(args.cache_dir.resolve())
-    restore_shared(state, retained_registry, len(retained_registry), workspace)
-    clean_downstream_stages(workspace, output, start, workspace / "stage_status.json",
-                            keep_tasks_for=stage["id"] if args.apply_stage else None)
     state["source"] = source
     retained_ids = {item["id"] for item in retained_registry}
     state["stages"] = {key: value for key, value in state.get("stages", {}).items() if key in retained_ids}
     write_state(workspace, state)
+    # Persist invalidation before restoration or deletion can be interrupted.
+    restore_shared(state, retained_registry, workspace)
+    clean_downstream_stages(workspace, output, start, workspace / "stage_status.json",
+                            keep_tasks_for=stage["id"] if args.apply_stage else None)
     if manual:
         script = skill_dir / "stages" / stage["dir"] / stage["script"]
         mode = "--prepare" if args.prepare_stage else "--apply"
         subprocess.run([sys.executable, str(script), "--workspace", str(workspace), "--config", str(config_path), mode], check=True)
         if args.prepare_stage:
             marker.parent.mkdir(parents=True, exist_ok=True)
-            marker.write_text(json.dumps(identity, indent=2), encoding="utf-8")
+            marker.write_text(json.dumps({"stage": stage["dir"], "source": source}, indent=2), encoding="utf-8")
         else:
-            complete_pipeline_stage(state, stage, identity, workspace, output)
+            complete_pipeline_stage(state, stage, source, workspace, output)
             update_status(workspace / "stage_status.json", stage["id"], "success", "Validated manual handoff")
         return
     print(f"[*] PDF source: {source['name']}; selected pages: {source['pages']}; stages: {[stage['id'] for stage in selected]}")
@@ -652,18 +648,16 @@ def main():
             if item["id"] in ancestors:
                 ancestors.update(item["inputs"])
         input_registry = [item for item in STAGE_REGISTRY if item["id"] in ancestors]
-        validate_prefix(state, input_registry, len(input_registry), config, source, skill_dir, workspace, output)
-        predecessor = artifact_predecessor(state, STAGE_REGISTRY, stage)
-        identity = stage_identity(stage, config, source, predecessor, skill_dir)
+        validate_completed_stages(state, input_registry, workspace, output)
         page_ranges = ",".join(map(str, source["pages"])) if source["pages"] else None
         if not run_stage(stage, skill_dir, workspace, pdf, output, config_path, args.verbose, page_ranges):
             raise RuntimeError(f"Pipeline halted at Stage {stage['id']}")
         try:
-            predecessor = complete_pipeline_stage(state, stage, identity, workspace, output)
+            complete_pipeline_stage(state, stage, source, workspace, output)
         except Exception:
             update_status(workspace / "stage_status.json", stage["id"], "failed", "Artifact completion validation failed")
             raise
-    print("[+] Selected PDF pipeline stages completed with validated lineage.")
+    print("[+] Selected PDF pipeline stages completed with validated outputs.")
     if destination is not None:
         publish_output(output, destination)
         print(f"[+] Published reference book: {destination}")

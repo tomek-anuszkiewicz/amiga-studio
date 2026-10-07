@@ -1,18 +1,19 @@
-"""Validate PDF predecessor completion and configuration before cleanup or reuse."""
+"""Track completed PDF stages and required files without content fingerprints."""
 
 from pathlib import Path
 import hashlib
 import json
 import shutil
 
-from conversion.cache import CONTRACT_VERSION, digest
-from conversion.transport import SDK_VERSION
-
 SHARED_MANIFESTS = {"01": ("pages_manifest.json",), "05": ("chapters_manifest.json",), "10": ("chapters_manifest.json",)}
 
 
+def source_selection(source):
+    """Keep workspace ownership while ignoring old source checksums."""
+    return {"name": source["name"], "pages": source.get("pages")}
+
+
 def record_path(workspace, output, relative):
-    """Resolve workspace/output artifacts and the single shared prepared PDF."""
     from .pdf_artifacts import artifact_path, prepared_pdf_path, read_json
     anchor, name = relative.split(":", 1)
     if anchor == "prepared":
@@ -27,10 +28,10 @@ def record_path(workspace, output, relative):
 
 
 def first_incomplete_stage(state, registry, workspace, output):
-    """Resume at the first missing result, without repairing modified artifacts."""
+    """Resume at the first unfinished stage or missing recorded file."""
     for index, stage in enumerate(registry):
         record = state.get("stages", {}).get(stage["id"])
-        if not record or record.get("status") != "completed":
+        if not record or record.get("status") != "completed" or not record.get("files"):
             return index
         for relative in record["files"]:
             try:
@@ -43,12 +44,24 @@ def first_incomplete_stage(state, registry, workspace, output):
 
 
 def file_hash(path):
+    """Identify OCR recovery requests; never used to validate stage completion."""
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def read_state(workspace):
     path = workspace / ".conversion-state.json"
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"stages": {}}
+    state = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"stages": {}}
+    if state.get("source"):
+        state["source"] = source_selection(state["source"])
+    # Existing user workspaces retain their completion statuses and file paths.
+    for record in state.get("stages", {}).values():
+        for key in ("identity", "completion"):
+            record.pop(key, None)
+        record["files"] = [name for name in record.get("files", [])
+                           if not name.endswith(("/.metrics", "/.metrics.json")) and "/recovery/" not in name]
+        record["shared_outputs"] = {name: {"snapshot": entry["snapshot"]}
+                                    for name, entry in record.get("shared_outputs", {}).items()}
+    return state
 
 
 def write_state(workspace, state):
@@ -58,101 +71,57 @@ def write_state(workspace, state):
     temporary.replace(path)
 
 
-def stage_identity(stage, config, source, predecessor, skill_dir):
-    directory = skill_dir / "stages" / stage["dir"]
-    shared = Path(__file__).resolve().parents[2] / "conversion"
-    pdf_common = Path(__file__).resolve().parent
-    procedure = {p.relative_to(directory).as_posix(): file_hash(p) for p in sorted(directory.iterdir()) if p.suffix in (".py", ".md")}
-    hashes = {f"{directory.name}/{p.name}": file_hash(p)
-              for directory in (shared, pdf_common)
-              for p in sorted(directory.glob("*.py"))}
-    procedure["shared"] = digest(hashes)
-    return {"contract": CONTRACT_VERSION, "sdk_runtime": SDK_VERSION, "stage": stage["dir"],
-            "selection": config["llm"]["stages"].get(stage["dir"]),
-            "settings": {key: value for key, value in config.items() if key != "llm"},
-            "source": source, "predecessor": predecessor, "procedure": procedure}
+def validate_completed_stages(state, registry, workspace, output):
+    """Check status and file existence; execution validates artifact contents."""
+    from .pdf_artifacts import artifact_path
+    for stage in registry:
+        record = state.get("stages", {}).get(stage["id"], {})
+        if record.get("status") != "completed" or not record.get("files"):
+            raise ValueError(f"Missing completed predecessor: regenerate Stage {stage['id']}")
+        for relative in record["files"]:
+            if not record_path(workspace, output, relative).is_file():
+                raise ValueError(f"Missing Stage {stage['id']} artifact: {relative}")
+        for entry in record.get("shared_outputs", {}).values():
+            if not artifact_path(workspace, entry["snapshot"]).is_file():
+                raise ValueError(f"Missing Stage {stage['id']} manifest snapshot")
 
 
-def artifact_predecessor(state, registry, stage):
-    position = next(i for i, item in enumerate(registry) if item["id"] == stage["id"])
-    inputs = stage.get("inputs", [registry[position-1]["id"]] if position else [])
-    completions = {key: state.get("stages", {}).get(key, {}).get("completion") for key in inputs}
-    if any(value is None for value in completions.values()):
-        raise ValueError(f"Missing validated artifact inputs for Stage {stage['id']}")
-    return next(iter(completions.values())) if len(completions) == 1 else (completions or None)
-
-
-def validate_prefix(state, registry, count, config, source, skill_dir, workspace, output):
-    previous = None
-    shared_outputs = {}
-    for stage in registry[:count]:
-        record = state.get("stages", {}).get(stage["id"])
-        if not record or record.get("status") != "completed":
-            raise ValueError(f"Missing validated predecessor: regenerate Stage {stage['id']}")
-        if record.get("completion") != digest({key: value for key, value in record.items() if key != "completion"}):
-            raise ValueError(f"Damaged Stage {stage['id']} completion record")
-        expected = stage_identity(stage, config, source, artifact_predecessor(state, registry, stage), skill_dir)
-        if record["identity"] != expected:
-            raise ValueError(f"Incompatible conversion: regenerate Stage {stage['id']} and dependents")
-        for relative, expected_hash in record["files"].items():
-            path = record_path(workspace, output, relative)
-            if not path.is_file() or file_hash(path) != expected_hash:
-                raise ValueError(f"Changed/missing Stage {stage['id']} artifact: {relative}")
-        from .pdf_artifacts import validate_stage_artifacts
-        validate_stage_artifacts(stage, workspace, source, snapshot=True)
-        shared_outputs.update(record.get("shared_outputs", {}))
-        previous = record["completion"]
-    current_shared = {}
-    for record in state.get("stages", {}).values():
-        current_shared.update(record.get("shared_outputs", {}))
-    for name in shared_outputs:
-        entry = current_shared[name]
-        path = workspace / name
-        # Missing working copies are reconstructed from validated snapshots.
-        # Only manifests needed by retained predecessors affect a restart.
-        if path.exists() and (not path.is_file() or file_hash(path) != entry["hash"]):
-            raise ValueError(f"Changed shared conversion manifest: {name}")
-    return previous
-
-
-def restore_shared(state, registry, count, workspace):
+def restore_shared(state, registry, workspace):
+    from .pdf_artifacts import artifact_path
     outputs = {}
-    for stage in registry[:count]:
+    for stage in registry:
         outputs.update(state["stages"][stage["id"]].get("shared_outputs", {}))
     for name in {name for names in SHARED_MANIFESTS.values() for name in names} - outputs.keys():
         (workspace / name).unlink(missing_ok=True)
     for name, entry in outputs.items():
-        shutil.copyfile(workspace / entry["snapshot"], workspace / name)
+        shutil.copyfile(artifact_path(workspace, entry["snapshot"]), artifact_path(workspace, name))
 
 
-def complete_stage(state, stage, identity, workspace, output):
+def complete_stage(state, stage, source, workspace, output):
     from .pdf_artifacts import validate_stage_artifacts
-    validate_stage_artifacts(stage, workspace, identity["source"])
-    paths = []
+    validate_stage_artifacts(stage, workspace, source)
     directory = workspace / stage["dir"]
     shared_outputs = {}
     for name in SHARED_MANIFESTS.get(stage["id"], ()):
         snapshot = directory / ".manifests" / name
         snapshot.parent.mkdir(exist_ok=True)
         shutil.copyfile(workspace / name, snapshot)
-        shared_outputs[name] = {"hash": file_hash(snapshot), "snapshot": snapshot.relative_to(workspace).as_posix()}
-    paths.extend(("workspace", p) for p in sorted(directory.rglob("*")) if p.is_file())
+        shared_outputs[name] = {"snapshot": snapshot.relative_to(workspace).as_posix()}
+    paths = [("workspace", p) for p in sorted(directory.rglob("*"))
+             if p.is_file() and p.name not in (".metrics", ".metrics.json") and "recovery" not in p.relative_to(directory).parts]
     if stage.get("artifact_contract") == "pdf_text_layer":
         from .pdf_artifacts import validate_text_layer
-        _, pdf = validate_text_layer(workspace, identity["source"])
+        _, pdf = validate_text_layer(workspace, source)
         paths.append(("prepared", pdf))
     if stage["id"] == "14" and output is not None:
         paths.extend(("output", p) for p in sorted(output.rglob("*")) if p.is_file() and p.suffix != ".json")
-    files = {}
+    files = []
     for anchor, path in paths:
         if path.suffix == ".json":
             json.loads(path.read_text(encoding="utf-8"))
         base = workspace if anchor == "workspace" else (path.parent if anchor == "prepared" else output)
-        files[f"{anchor}:{path.relative_to(base).as_posix()}"] = file_hash(path)
+        files.append(f"{anchor}:{path.relative_to(base).as_posix()}")
     if not files:
         raise ValueError(f"Stage {stage['id']} produced no artifacts")
-    record = {"status": "completed", "identity": identity, "files": files, "shared_outputs": shared_outputs}
-    record["completion"] = digest(record)
-    state.setdefault("stages", {})[stage["id"]] = record
+    state.setdefault("stages", {})[stage["id"]] = {"status": "completed", "files": files, "shared_outputs": shared_outputs}
     write_state(workspace, state)
-    return record["completion"]

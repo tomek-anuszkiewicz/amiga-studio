@@ -15,7 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap/pdf-to-markdown"))
 from conversion import load_config
 from conversion.config import PDF_STAGES
-from common.lineage import complete_stage, validate_prefix, restore_shared, stage_identity, file_hash, artifact_predecessor
+from common.lineage import (complete_stage, validate_completed_stages, restore_shared,
+                            file_hash, read_state, first_incomplete_stage)
 from common.pdf_geometry import text_blocks
 from common.pdf_page_conversion import validate_page
 
@@ -185,7 +186,7 @@ class PdfOcrValidationTests(unittest.TestCase):
             self.assertEqual([entry["prepared_index"] for entry in manifest["pages"]], list(range(5)))
             registry = {"id": "00", "dir": "00_text_layer", "artifact_contract": "pdf_text_layer"}
             state = {"source": manifest["source"], "stages": {}}
-            complete_stage(state, registry, manifest["ocr_procedure"], workspace, workspace / "14_link_toc")
+            complete_stage(state, registry, manifest["source"], workspace, workspace / "14_link_toc")
             preprocess.preprocess_pdf(prepared, workspace, dpi=72, page_ranges="2,5")
             page_data = json.loads((workspace / "01_preprocess/page_0005.json").read_text())
             self.assertNotIn("pdf_sha256", manifest)
@@ -200,15 +201,14 @@ class PdfOcrValidationTests(unittest.TestCase):
             self.assertEqual(prepared.read_bytes(), original_bytes)
             self.assertEqual(prepared.stat().st_mtime_ns, original_mtime)
             other_state = {"source": reused["source"], "stages": {}}
-            complete_stage(other_state, registry, reused["ocr_procedure"], other, other / "14_link_toc")
+            complete_stage(other_state, registry, reused["source"], other, other / "14_link_toc")
             preprocess.preprocess_pdf(prepared, other, dpi=72, page_ranges="1-2")
             for suffix in ("json", "png"):
                 self.assertEqual((workspace / f"01_preprocess/page_0002.{suffix}").read_bytes(),
                                  (other / f"01_preprocess/page_0002.{suffix}").read_bytes())
             from common.pdf_artifacts import validate_text_layer
             prepared.write_bytes(original_bytes + b"\n")
-            with self.assertRaisesRegex(ValueError, "Missing/modified Stage 00 artifact"):
-                validate_text_layer(other, require_completion=True)
+            validate_text_layer(other, require_completion=True)
 
     def test_raw_ocr_pdf_overlay_preserves_fractional_text_and_spacing(self):
         spec = importlib.util.spec_from_file_location(
@@ -267,13 +267,11 @@ class PdfRestartTests(unittest.TestCase):
             for _ in range(10):
                 document.new_page()
             document.save(self.pdf)
-        self.source = {"name": self.pdf.name, "sha256": file_hash(self.pdf), "pages": list(range(5, 11))}
+        self.source = {"name": self.pdf.name, "pages": list(range(5, 11))}
         self.state = {"source": self.source, "stages": {}}
-        previous = None
         for stage in self.pipeline.STAGE_REGISTRY:
             self.write_artifacts(stage)
-            identity = stage_identity(stage, self.config, self.source, artifact_predecessor(self.state, self.pipeline.STAGE_REGISTRY, stage), ROOT / "tools/bootstrap/pdf-to-markdown")
-            previous = complete_stage(self.state, stage, identity, self.workspace, self.output)
+            complete_stage(self.state, stage, self.source, self.workspace, self.output)
         for number, name in (("06", "continuations"), ("07", "tables"), ("08", "graphics"), ("09", "prose")):
             task = self.workspace / "tasks" / name / "old.md"
             task.parent.mkdir(parents=True, exist_ok=True)
@@ -293,9 +291,7 @@ class PdfRestartTests(unittest.TestCase):
                 "source": self.source, "source_file": "../sample.pdf", "pdf_file": "../sample-ocr.pdf",
                 "schema_version": 1, "source_page_count": 10, "selected_pages": list(range(1, 11)),
                 "pages": [{"page": p, "page_id": f"page_{p:04d}", "source_index": p-1,
-                           "prepared_index": p-1} for p in range(1, 11)],
-                "ocr_procedure": stage_identity(stage, self.config, self.source, None,
-                                                ROOT / "tools/bootstrap/pdf-to-markdown")}))
+                           "prepared_index": p-1} for p in range(1, 11)]}))
         if stage["id"] == "01":
             (self.workspace / "pages_manifest.json").write_text('{"pages":[5,6,7,8,9,10]}')
         if stage["id"] in ("05", "10"):
@@ -407,6 +403,16 @@ class PdfRestartTests(unittest.TestCase):
             self.run_pipeline(["--from-stage", "5", "--to-stage", "5", "--page-ranges", "6-10"], lambda *args: self.fail("Worker must not run"))
         self.assertTrue((self.workspace / "14_link_toc/artifact.json").exists())
 
+    def test_interrupted_cleanup_has_already_invalidated_completion(self):
+        with patch.object(self.pipeline, "clean_downstream_stages", side_effect=OSError("Interrupted cleanup")):
+            with self.assertRaisesRegex(OSError, "Interrupted cleanup"):
+                self.run_pipeline(["--from-stage", "5", "--to-stage", "5"],
+                                  lambda *args: self.fail("Worker must not run"))
+        state = json.loads((self.workspace / ".conversion-state.json").read_text())
+        self.assertNotIn("05", state["stages"])
+        self.assertNotIn("14", state["stages"])
+        self.assertIn("04", state["stages"])
+
     def test_reset_graphics_does_not_delete_preserved_assets(self):
         asset = self.workspace / "04_stream_reduction/assets/source.png.txt"
         asset.parent.mkdir()
@@ -469,7 +475,7 @@ class PdfRestartTests(unittest.TestCase):
         with patch.object(self.pipeline.subprocess, "run", side_effect=apply):
             self.run_pipeline(["--apply-stage", "7"], lambda *args: self.fail("Automatic worker must not run"))
         state = json.loads((self.workspace / ".conversion-state.json").read_text())
-        validate_prefix(state, self.pipeline.STAGE_REGISTRY, self.stage_idx("07") + 1, self.config, self.source, ROOT / "tools/bootstrap/pdf-to-markdown", self.workspace, self.output)
+        validate_completed_stages(state, self.pipeline.STAGE_REGISTRY[:self.stage_idx("07") + 1], self.workspace, self.output)
 
 
 class PdfConfigurationTests(unittest.TestCase):
@@ -560,7 +566,7 @@ class PdfConfigurationTests(unittest.TestCase):
             self.assertTrue(sentinel.is_file())
 
 
-class LineageTests(unittest.TestCase):
+class StageCompletionTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -570,9 +576,8 @@ class LineageTests(unittest.TestCase):
         self.registry = [{"id": "00", "dir": "00_text_layer"}, {"id": "01", "dir": "01_preprocess"}, {"id": "02", "dir": "02_page_conversion"}]
         self.config = {"llm": {"stages": {stage["dir"]: {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}
                                           for stage in self.registry if stage["dir"] in PDF_STAGES}}}
-        self.source = {"name": "sample.pdf", "sha256": "source-identity", "pages": [19]}
+        self.source = {"name": "sample.pdf", "pages": [19]}
         self.state = {"source": self.source, "stages": {}}
-        previous = None
         (self.workspace / "pages_manifest.json").write_text('{"pages":[19]}')
         for stage in self.registry:
             directory = self.skill / "stages" / stage["dir"]
@@ -581,28 +586,48 @@ class LineageTests(unittest.TestCase):
             output = self.workspace / stage["dir"]
             output.mkdir()
             (output / "page_0019.json").write_text('{"page":19}')
-            identity = stage_identity(stage, self.config, self.source, previous, self.skill)
-            previous = complete_stage(self.state, stage, identity, self.workspace, None)
+            complete_stage(self.state, stage, self.source, self.workspace, None)
 
     def validate(self):
-        return validate_prefix(self.state, self.registry, len(self.registry), self.config, self.source, self.skill, self.workspace, None)
+        validate_completed_stages(self.state, self.registry, self.workspace, None)
 
     def test_unchanged_predecessors_validate(self):
-        self.assertEqual(self.validate(), self.state["stages"]["02"]["completion"])
+        self.validate()
+        self.assertEqual(first_incomplete_stage(self.state, self.registry, self.workspace, None), len(self.registry))
+        self.assertEqual(set(self.state["stages"]["02"]), {"status", "files", "shared_outputs"})
 
-    def test_changed_effort_identifies_earliest_affected_stage(self):
+    def test_changed_effort_and_prompt_do_not_invalidate_completed_stages(self):
         self.config["llm"]["stages"]["02_page_conversion"]["reasoning_effort"] = "high"
-        with self.assertRaisesRegex(ValueError, "Stage 02"):
-            self.validate()
+        (self.skill / "stages/02_page_conversion/prompt.md").write_text("Updated prompt")
+        self.validate()
+        self.assertEqual(first_incomplete_stage(self.state, self.registry, self.workspace, None), len(self.registry))
 
-    def test_modified_artifact_or_source_is_rejected(self):
+    def test_modified_artifact_is_retained_but_missing_artifact_requires_restart(self):
         (self.workspace / "01_preprocess/page_0019.json").write_text('{"page":20}')
+        self.validate()
+        self.assertEqual(first_incomplete_stage(self.state, self.registry, self.workspace, None), len(self.registry))
+        (self.workspace / "01_preprocess/page_0019.json").unlink()
         with self.assertRaisesRegex(ValueError, "Stage 01"):
             self.validate()
+        self.assertEqual(first_incomplete_stage(self.state, self.registry, self.workspace, None), 1)
 
     def test_shared_manifest_snapshot_restores_original(self):
-        restore_shared(self.state, self.registry, 2, self.workspace)
+        restore_shared(self.state, self.registry[:2], self.workspace)
         self.assertEqual(json.loads((self.workspace / "pages_manifest.json").read_text()), {"pages": [19]})
+
+    def test_old_checksum_records_retain_status_and_file_paths(self):
+        legacy = json.loads((self.workspace / ".conversion-state.json").read_text())
+        legacy["source"]["sha256"] = "old-source-hash"
+        for record in legacy["stages"].values():
+            record["files"] = {name: "old-artifact-hash" for name in record["files"]}
+            record["identity"] = {"procedure": "old-procedure-hash"}
+            record["completion"] = "old-completion-hash"
+            for entry in record["shared_outputs"].values():
+                entry["hash"] = "old-manifest-hash"
+        (self.workspace / ".conversion-state.json").write_text(json.dumps(legacy))
+        migrated = read_state(self.workspace)
+        self.assertEqual(migrated, self.state)
+        self.assertEqual(first_incomplete_stage(migrated, self.registry, self.workspace, None), len(self.registry))
 
 
 if __name__ == "__main__":
