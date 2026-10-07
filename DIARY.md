@@ -2800,3 +2800,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick preflight passed all six gates
   - Architecture suite passed 19 of 19 tests
   - Planning only: no implementation, inference, browser backend checks or comparison PNG generation performed
+---
+
+### [2026-10-07 19:55 CEST] — PDF-TABLE-2.81: Simplify the planned transcription prompt
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-2.81-table-transcription.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the detailed prompt draft with a minimal faithful Markdown-first transcription instruction and HTML fallback
+  - Retain only the JSON response contract, closest Markdown companion for HTML and unconverted outcome
+  - Remove suggested merged-cell patterns and detailed source-layout guidance
+- **Architectural Rationale & Trade-Offs**:
+  - Follow the user request for a minimal prompt without suggested table structure
+  - Keep caption association, companion assembly, warnings and visual review in the pipeline rather than the transcription prompt
+  - Preserve the active local plan under its Git exclusion
+- **Verification & Test Results**:
+  - Quick preflight passed all six gates
+  - Architecture suite passed 19 of 19 tests
+  - Planning only: no implementation or inference performed
