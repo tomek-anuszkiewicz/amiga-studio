@@ -3542,3 +3542,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Inspected the original Stage 01 image and Stage 02 JSON for physical page 144. Quick pre-flight and architecture 19/19 passed
   - diff check passed. Prompt-only change: no converter code changes, fragment conversion or quality claim. Existing workspace changes were left untouched.
+---
+
+### [2026-10-08 00:21 CET] — PDF-TABLE-2.41: Record refined table split artifacts
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Reference/Test Book example-4567/workspace/pages-all`
+- **What Was Changed (The Concrete Reality)**:
+  - Record sparse Stage 02.41 overrides for pages 50, 54 and 112
+  - save matching Stage 02.5 review JSON/PNGs and Stage 02.8 filtered objects
+  - persist attempt model setting and recorded successful stage status
+- **Architectural Rationale & Trade-Offs**:
+  - Checkpoint the current table-boundary refinements and downstream review artifacts after the prompt changes
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture 19/19
+  - JSON parsing, unique IDs and non-table preservation verified for all three overrides
+  - filtered table objects match the overrides
+  - all three review PNGs are readable. Table counts: page 50 1 to 2, page 54 3 to 6, page 112 1 to 2. The recorded stage status reports successful 02.41/02.5/02.8 runs
+  - conversion was not rerun for this commit and these checks do not certify content quality. The disposable review-copy directory remains untracked.
