@@ -120,22 +120,6 @@ through Stage 14 and copies Markdown/assets to the empty or absent sibling book
 directory without `-tmp`. Destination protection remains enforced before execution
 and when publishing. Independent attempts retain their own outputs.
 
-## One-time legacy transfer
-
-Migrate only an explicitly selected existing attempt, separately from conversion:
-
-```powershell
-python tools/bootstrap/pdf-to-markdown/migrate_attempt.py --workspace "<LEGACY_ATTEMPT>"
-```
-
-Supply `--pdf` if legacy preparation metadata has no source path. The utility moves
-source/selection into config and combines chapter arrays with the owning metadata
-(Stage 05 for 05-09; Stage 10 for 10). Missing required metadata stops migration
-before writes or removal. It preserves output data and status metrics, then removes
-obsolete state/manifests/snapshots. It calls no OCR/model, scans no other attempt,
-runs no removed validator and does not recertify historical success. The normal
-pipeline has no legacy reader.
-
 ## Fragment evidence and closure limits
 
 On 2026-10-06, physical TestBook page 64 completed stages 00-01. Its source render
