@@ -3778,3 +3778,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick pre-flight passed and architecture suite 19 passed
   - Explicit graphify update completed
   - User orientation assessment pending and asset rotation deferred with no extra sample conversion or milestone claim
+---
+
+### [2026-10-08 01:58 CEST] — PDF-ORDER-2.46: Plan suspicious reading-order review
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-stage-02.46-review-reading-order.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Plan geometry-triggered whole-page order review after 02.45
+  - Specify original image plus labeled bounding boxes and frozen page JSON
+  - Preserve source objects through an ID permutation
+  - Record physical page 82 as the implementation test with user assessment pending
+- **Architectural Rationale & Trade-Offs**:
+  - Existing page-82 JSON lists the right subsection before the left section title at the same top coordinate
+  - Geometry selects suspects while the model decides reading order
+- **Verification & Test Results**:
+  - Inspected existing physical-page-82 JSON and original PNG
+  - Quick pre-flight passed
+  - Architecture tests 19/19 passed
+  - Plan only - Stage 02.46 is unimplemented and page 82 was not reconverted
