@@ -45,7 +45,7 @@ errors stop execution normally. No older-stage inputs or alternative models are 
 
 ## Stage data and execution
 
-Execution order is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
+Execution order is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
 Each worker reads the predecessor's own directory and writes its own results:
 
 | Stage | Input and result |
@@ -57,8 +57,9 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [02.41](stages/02.41_split_tables/README.md) | Stage 01 and resolved 02/02.4 -> vision-assisted splits of grouped tables, changed pages only |
 | [02.42](stages/02.42_reclassify_tables/README.md) | Stage 01 and resolved 02/02.4/02.41 -> table representation decisions and textual replacements, changed pages only |
 | [02.43](stages/02.43_reclassify_code_blocks/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42 -> code blocks retained, transcribed as prose or marked as tables, changed pages only |
-| [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42/02.43 -> review frames and ordered labels |
-| [02.8](stages/02.8_filter_page_content/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42/02.43 -> retained objects after source-content and fixed NXP-logo exclusions |
+| [02.44](stages/02.44_detect_image_rotation/README.md) | Stage 01 and resolved predecessors through 02.43 -> clockwise graphic rotation metadata, changed pages only |
+| [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42/02.43/02.44 -> review frames and ordered labels |
+| [02.8](stages/02.8_filter_page_content/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42/02.43/02.44 -> retained objects after source-content and fixed NXP-logo exclusions |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.8 -> table markup, saved crops and inferred HTML group text |
 | [02.82](stages/02.82_table_conversion_review/README.md) | Stage 01/02.81 -> side-by-side table review PNGs, no inference |
 | [02.9](stages/02.9_emit_page_markdown/README.md) | Stage 01/02.81 -> `document.md`, converted tables and required raster assets |
@@ -99,7 +100,8 @@ Omission means all available pages, regardless of a previous run or legacy confi
 | 02.41 | Select resolved Stage 02/02.4 pages before requesting per-table vision splits |
 | 02.42 | Select resolved Stage 02/02.4/02.41 pages before requesting per-table representation decisions |
 | 02.43 | Select resolved Stage 02/02.4/02.41/02.42 pages before requesting per-code-block representation decisions |
-| 02.5 | Select resolved Stage 02/02.4/02.41/02.42/02.43 pages before review rendering |
+| 02.44 | Select resolved predecessors through 02.43 before requesting per-graphic rotation decisions |
+| 02.5 | Select resolved Stage 02/02.4/02.41/02.42/02.43/02.44 pages before review rendering |
 | 02.8 | Select resolved pages before TOC-boundary detection and content exclusions |
 | 02.81 | Select pages from the completed 02.8 predecessor before table inference |
 | 02.82 | Select Stage 02.81 pages before rendering table comparisons |
@@ -143,7 +145,7 @@ objects directly, using Stage 01 geometry and original PNGs. HTML tables publish
 collapsed literal-text and original-image companions after their source groups.
 Markdown tables need no published crop. Tables retain their separate converted
 fragments through stream reduction, continuation detection and Stage 07.
-Existing attempt settings are retained; missing 02.4/02.41/02.42/02.43/02.81 model settings are added
+Existing attempt settings are retained; missing 02.4/02.41/02.42/02.43/02.44/02.81 model settings are added
 only when their stage is selected. Review backend setup is in the Stage 02.82 README.
 Stage 02.5 uses resolved complete page input for type-colored review annotations,
 consolidates unobstructed consecutive prose, and hides header/footer/thumb-index
@@ -183,7 +185,7 @@ table to continue another, including a table beside it; independent tables recei
 false. Singleton responses retain the predecessor object unchanged.
 Transcription remains deferred to 02.81. Only changed complete-page overrides
 are saved. The shared resolver applies completed sparse layers in order
-`02 -> 02.4 -> 02.41 -> 02.42 -> 02.43` for review 02.5 and filtering 02.8; absent optional status
+`02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44` for review 02.5 and filtering 02.8; absent optional status
 means skipped, while running/failed status blocks direct consumers. Stage 02.41
 reads only predecessor layers. Restarting it preserves 01/02/02.4 and clears
 every later stage. See the [02.41 contract](stages/02.41_split_tables/README.md).
@@ -202,6 +204,14 @@ and marks faithful table representations for later 02.81 transcription. Pages
 without code blocks make no requests. Sparse overrides layer after 02.42 for
 review/filtering; restart and selection follow the shared optional-stage rules.
 See the [02.43 contract](stages/02.43_reclassify_code_blocks/README.md).
+
+Stage 02.44 records numeric clockwise correction degrees on resolved graphics,
+including table reclassifications, using their JSON/bbox, frozen objects and the
+complete original Stage 01 PNG. Fractional angles in `[0, 360)` are allowed;
+absence means no recorded decision, while zero records no correction needed.
+Review labels show the angle and filtering/table transformations/Stage 03 retain
+it, including stream node metadata. Boxes and review/crop pixels stay unchanged;
+exported asset rotation is deferred. See the [02.44 contract](stages/02.44_detect_image_rotation/README.md).
 
 ## Restart, status and publication
 

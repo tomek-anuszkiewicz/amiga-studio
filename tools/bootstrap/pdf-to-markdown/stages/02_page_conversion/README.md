@@ -98,3 +98,11 @@ Stage 02 pages remain frozen when Stage 02.4 proposes advisory range replacement
 The optional recovery stage writes complete-page sparse overrides separately;
 review, filtering and direct Stage 02 table input use the shared completed-layer
 resolver. See [Stage 02.4](../02.4_reclassify_callouts/README.md).
+
+Stage [02.44](../02.44_detect_image_rotation/README.md) adds optional `rotation`
+metadata only to resolved graphics. It records the correction in clockwise degrees
+from the original PNG orientation, allowing fractional values in `[0, 360)`.
+Missing means no recorded decision; zero explicitly means no correction needed.
+Stage 02 inference responses do not require this field. Later filtering and table
+transformation preserve it, and Stage 03 copies it onto nodes and their metadata.
+The field does not change source geometry or rotate exported pixels.
