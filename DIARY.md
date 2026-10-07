@@ -3748,3 +3748,33 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick pre-flight passed
   - Architecture tests 19/19 passed
   - Plan only: no implementation or page-131 conversion run
+---
+
+### [2026-10-08 01:55 CEST] — PDF-ROTATION-2.44: Record clockwise graphic rotation decisions
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion/config.py`
+  - `tests/test_pdf_conversion_codex.py`
+  - `docs/developers.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `.agent/tasks/pdf-stage-02.44-image-rotation.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add optional Stage 02.44 after 02.43 with one original-page vision request per resolved graphic and sparse full-page overrides
+  - Record numeric clockwise correction degrees including explicit zero and fractions without local PDF validators or pixel changes
+  - Preserve source IDs and record replacement stage while retaining boxes text order and dimensions
+  - Register order dependencies selection restart cleanup missing-only model defaults and shared optional layers
+  - Show saved angles in review and retain rotation on Stage 03 nodes and metadata
+  - Update pipeline contracts and four existing registry expectations
+- **Architectural Rationale & Trade-Offs**:
+  - Keep decision metadata separate from deferred asset rotation
+  - Reuse isolated read-only transport completion and stage/prompt/schema/image-aware cache
+  - Keep PDF-ROTATION-2.44 active until user orientation assessment
+- **Verification & Test Results**:
+  - Page 134 named attempt completed 02.44 through 02.5 with one graphic and one live request and zero cache hits: saved rotation 270 degrees clockwise
+  - Reused byte-identical page 134 predecessors and real successful statuses from pages-all then prepared missing 02.42/02.43 on page 134 with zero requests
+  - Original fields/order and Stage 01/02 bytes preserved and review label visually inspected
+  - Existing PDF conversion/config/restart suite 30 passed after adapting four stage-order expectations
+  - Existing page-selection suite 6 passed and transport/cache/config suite 21 passed
+  - Quick pre-flight passed and architecture suite 19 passed
+  - Explicit graphify update completed
+  - User orientation assessment pending and asset rotation deferred with no extra sample conversion or milestone claim

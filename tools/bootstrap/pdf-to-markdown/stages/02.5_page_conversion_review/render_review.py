@@ -57,6 +57,7 @@ def review_annotations(segments):
             "continuation": any(member.get("continuation") for member in members),
             "source_ordinals": list(range(index+1, end+2)),
             "source_ids": [member.get("segment_id", member.get("id")) for member in members],
+            **({"rotation": segment["rotation"]} if "rotation" in segment else {}),
         })
         index = end+1
     return annotations

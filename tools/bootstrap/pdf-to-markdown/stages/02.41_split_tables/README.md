@@ -36,7 +36,7 @@ imagery, transport and parsing failures fail normally. Counts go to the console;
 no request images, response dumps or diagnostic reports are created. Requests
 reuse ChatGPT authentication, original image detail, cache, metrics and timeout.
 
-The shared resolver applies `02 -> 02.4 -> 02.41` before review 02.5 and
+The shared resolver applies `02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44` before review 02.5 and
 filtering 02.8. Absent optional status means skipped; running/failed status
 blocks consumers. Stage 02.41 reads only predecessor layers, never itself.
 Filtering remains authoritative for Stage 02.81 and later exports.

@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-Planned; implementation and the selected-page conversion have not run.
+Implemented and technically verified; awaiting user assessment of the page-134 output.
 Add Stage `02.44`, directory `02.44_detect_image_rotation`, after `02.43`
 and before review `02.5`. Ask the model whether each resolved image needs
 rotation and persist its answer in that image object's JSON as `rotation`.
@@ -99,3 +99,24 @@ required quick pre-flight and architecture suite. Do not add a quality matrix,
 extra sample pages or crop tests. Commit implementation, documentation and its
 DIARY.md entry atomically. Keep this plan active until the user has assessed
 the selected output; follow the execution-plan lifecycle on closure.
+
+## Execution evidence (2026-10-08)
+
+- Attempt: `<BOOK>/workspace/stage-02.44-image-rotation-review/`.
+- Copied byte-identical page-134 Stage 01/02 artifacts and original successful
+  00/01/02/02.4/02.41 status records from `pages-all`. No sparse predecessor
+  override existed for page 134. Prepared missing 02.42/02.43 through the pipeline
+  for page 134 only; each had no candidates and made no requests.
+- Pipeline 02.44 through 02.5 completed: one graphic, one live request, zero cache
+  hits, saved `page_0134_seg_001.rotation: 270`. No expected angle was encoded.
+- Override: `02.44_detect_image_rotation/page_0134_segments.json`.
+- Review: `02.5_page_conversion_review/page_0134_review.png` and its JSON sidecar.
+  Visually inspected the emitted label. Source fields/order and original Stage 01/02
+  bytes remain unchanged; no rotation was applied to pixels.
+- Existing checks: PDF conversion/config/restart 30 passed; page selection 6 passed;
+  transport/cache/config 21 passed. Four registry expectations were updated for
+  the inserted stage. Quick pre-flight passed; architecture rules 19 passed.
+  Explicit `graphify update .` completed.
+- Implementation and documentation are ready; keep this plan active until the
+  user assesses orientation. Asset rotation remains deferred. No broader sample,
+  quality matrix, crop tests, full-book run or milestone completion is claimed.
