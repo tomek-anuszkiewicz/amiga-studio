@@ -162,8 +162,11 @@ working state and metrics are retained. HTML no longer creates an automatic pare
 
 HTML and PDF use the shared Codex transport and strict stage configuration. PDF completion records validate predecessor artifacts and source/configuration/procedure identities; prepared manual tasks carry matching identity records. Existing migration evidence is the basis for proceeding with the separate roadmap work under the development workflow above. Do not treat arbitrary existing artifacts as validated predecessors.
 
-PDF Stage 00 publishes a separate validated `<source stem>-ocr.pdf` and text-layer
-manifest. Stage 01 reads only this PDF and persists positioned text JSON with
+PDF Stage 00 publishes a separate validated `<source stem>-ocr.pdf` containing
+only selected source pages in source order, and a text-layer manifest.
+`page` and zero-based `source_index` retain original source identity;
+zero-based `prepared_index` locates each page in the compact output PDF.
+Stage 01 reads only this PDF using that mapping and persists positioned text JSON with
 matching PNGs. Native spans are preserved regardless of length. Textless selected
 pages use local Tesseract through PyMuPDF, configured with `ocr.language` and
 `ocr.tessdata` (or auto-detected language data / `TESSDATA_PREFIX`). Stage 00 has
@@ -177,7 +180,7 @@ text to boxes. The OCR raster becomes transparent so the original page graphics
 remain visible. Page rotation maps the displayed frame without resizing the text.
 Stage 00 trusts PyMuPDF to store the OCR text: it does not compare
 reopened OCR line counts, text or positions with the recognition result.
-Publication checks source hashes, page geometry,
+Publication checks source hashes, selected-page count and geometry,
 retained source streams/native text and identical selected-page renders. A page
 with no recognized lines uses the legacy `pure_graphic` classification with
 `inferred_from_tesseract_lines` evidence; it is not a visual confirmation that the
@@ -195,7 +198,8 @@ OCR artifacts fail. The user assesses the prepared PDF; Stage 01 consumes its
 actual extractable text. Native text is unchanged.
 Recovery records do not replace the validated manifest.
 Restart at 01 retains validated Stage 00; legacy workspaces require explicit
-regeneration from 00 with the original PDF after this backend/name change.
+regeneration from 00 with the original PDF after backend, name or prepared-page
+layout changes. Full-document fragment artifacts are not reused as compact PDFs.
 
 The user closed PDF-TEXT-1.1 on 2026-10-06 using the page-64 fragment evidence,
 without requesting additional source-category runs. Native-copy, mixed,

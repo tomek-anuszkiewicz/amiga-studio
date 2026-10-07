@@ -92,11 +92,12 @@ def validate_text_layer(workspace, source=None, *, require_completion=False):
                 and record["files"].get("workspace:00_text_layer/text_layer_manifest.json") == file_hash(manifest_path),
                 "Stage 00 completion omits required artifacts")
     with pymupdf.open(pdf) as document:
-        require(document.is_pdf and not document.needs_pass and len(document) == manifest["source_page_count"],
-                "Prepared PDF page tree differs from source")
-        for entry in entries:
-            page = document[entry["page"] - 1]
-            require(entry.get("source_index") == page.number and entry.get("geometry") == page_geometry(page),
+        require(document.is_pdf and not document.needs_pass and len(document) == len(entries),
+                "Prepared PDF must contain only selected pages; restart at 00")
+        for prepared_index, entry in enumerate(entries):
+            page = document[prepared_index]
+            require(type(entry.get("prepared_index")) is int and entry["prepared_index"] == prepared_index
+                    and entry.get("source_index") == entry["page"] - 1 and entry.get("geometry") == page_geometry(page),
                     "Stage 00 page index/geometry mismatch")
             provenance = entry.get("provenance")
             kind = entry.get("page_type")
@@ -126,7 +127,7 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
     with pymupdf.open(pdf) as document:
         for entry, origin in zip(entries, prepared["pages"]):
             page_id = entry["page_id"]
-            page = document[entry["page"] - 1]
+            page = document[origin["prepared_index"]]
             for field, suffix in (("png_file", ".png"), ("json_file", ".json")):
                 require(entry.get(field) == f"01_preprocess/{page_id}{suffix}", "Stage 01 page pair identity mismatch")
                 path = artifact_path(workspace, entry[field])
@@ -144,7 +145,8 @@ def validate_preprocess(workspace, source=None, *, manifest_path=None):
                 block_ids.append(block["block_id"])
             require(len(block_ids) == len(set(block_ids)), "Stage 01 duplicate text block IDs")
             for field, value in {"schema_version": SCHEMA_VERSION, "page": entry["page"], "page_id": page_id,
-                                 "source_index": page.number, "pdf_sha256": prepared["pdf_sha256"],
+                                 "source_index": origin["source_index"], "prepared_index": origin["prepared_index"],
+                                 "pdf_sha256": prepared["pdf_sha256"],
                                  "geometry": geometry, "width": geometry["width"], "height": geometry["height"],
                                  "rotation": page.rotation, "coordinates": COORDINATES,
                                  "provenance": origin["provenance"], "page_type": origin["page_type"],

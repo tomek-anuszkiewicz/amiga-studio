@@ -3,7 +3,6 @@
 
 import argparse
 from pathlib import Path
-import shutil
 import sys
 import pymupdf
 
@@ -53,11 +52,11 @@ def insert_ocr_pdf(page, ocr):
 
 
 def verify_candidate(source_path, candidate, entries, dpi):
-    selected = {entry["page"]: entry for entry in entries}
     with pymupdf.open(source_path) as original, pymupdf.open(candidate) as prepared:
-        require(len(original) == len(prepared), "Preparation changed the source page tree")
-        for number in range(len(original)):
-            before, after = original[number], prepared[number]
+        require(len(prepared) == len(entries), "Prepared PDF must contain only selected pages")
+        for entry in entries:
+            before = original[entry["source_index"]]
+            after = prepared[entry["prepared_index"]]
             require(page_geometry(before) == page_geometry(after), "Preparation changed page geometry")
             old_streams = [original.xref_stream(xref) for xref in before.get_contents()]
             new_streams = [prepared.xref_stream(xref) for xref in after.get_contents()]
@@ -69,16 +68,14 @@ def verify_candidate(source_path, candidate, entries, dpi):
                 match = next((i for i in range(cursor, len(new_streams)) if new_streams[i] == stream), None)
                 require(match is not None, "Preparation changed source content streams")
                 cursor = match + 1
-            entry = selected.get(number + 1)
-            if not entry or entry["provenance"] != "ocr":
+            if entry["provenance"] != "ocr":
                 require(before.get_text("rawdict") == after.get_text("rawdict"), "Preparation changed retained native content")
                 require(old_streams == new_streams, "Preparation changed a page outside OCR coverage")
-            if entry:
-                left, right = before.get_pixmap(dpi=dpi), after.get_pixmap(dpi=dpi)
-                require((left.x, left.y, left.width, left.height, left.n, left.samples)
-                        == (right.x, right.y, right.width, right.height, right.n, right.samples),
-                        f"Preparation changed visible content on page {number + 1}")
-                entry["text_digest"] = digest(text_blocks(after))
+            left, right = before.get_pixmap(dpi=dpi), after.get_pixmap(dpi=dpi)
+            require((left.x, left.y, left.width, left.height, left.n, left.samples)
+                    == (right.x, right.y, right.width, right.height, right.n, right.samples),
+                    f"Preparation changed visible content on source page {entry['page']}")
+            entry["text_digest"] = digest(text_blocks(after))
 
 
 def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
@@ -92,6 +89,8 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
     with pymupdf.open(pdf_path) as document:
         require(document.is_pdf and not document.needs_pass, "Only readable, unencrypted PDFs are supported")
         pages = selected_pages(page_ranges, len(document))
+        source_page_count = len(document)
+        document.select([number - 1 for number in pages])
         source["pages"] = pages if page_ranges is not None else None
         state_source = read_state(workspace).get("source")
         require(state_source is None or state_source == source, "Stage 00 source does not match workspace selection")
@@ -104,11 +103,12 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
         recovery = stage_dir / "recovery"
         recovery.mkdir(exist_ok=True)
         procedure = stage_identity({"id": "00", "dir": "00_text_layer"}, config, source, None, Path(__file__).resolve().parents[2])
-        entries, engine, added_text = [], None, False
+        entries, engine = [], None
         try:
-            for number in pages:
-                page = document[number - 1]
+            for prepared_index, number in enumerate(pages):
+                page = document[prepared_index]
                 entry = {"page": number, "page_id": f"page_{number:04d}", "source_index": number - 1,
+                         "prepared_index": prepared_index,
                          "geometry": page_geometry(page)}
                 if text_blocks(page):
                     entry.update(provenance="native", page_type="text_page", classification_basis="inferred_from_native_spans")
@@ -152,22 +152,18 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                                      provenance="ocr" if has_text else "none")
                         if has_text:
                             insert_ocr_pdf(page, ocr)
-                            added_text = True
                     print(f"[{entry['provenance']}] {entry['page_id']}: {entry['page_type']}")
                 entries.append(entry)
-            if added_text:
-                document.save(candidate, deflate=True)
-            else:
-                shutil.copyfile(pdf_path, candidate)
+            document.save(candidate, deflate=True, garbage=4)
             verify_candidate(pdf_path, candidate, entries, dpi)
             require(file_hash(pdf_path) == source_hash, "Source PDF changed during preparation")
-            manifest = {"schema_version": SCHEMA_VERSION, "source": source, "source_page_count": len(document),
+            manifest = {"schema_version": SCHEMA_VERSION, "source": source, "source_page_count": source_page_count,
                         "selected_pages": pages, "pdf_file": output.relative_to(workspace).as_posix(),
                         "pdf_sha256": file_hash(candidate), "pages": entries, "ocr_procedure": procedure,
                         "publication_validation": {"dpi": dpi, "selected_page_renders": "identical",
-                                                   "all_page_geometry": "identical", "source_streams": "retained",
+                                                   "selected_page_geometry": "identical", "source_streams": "retained",
                                                    "ocr_text_insertion": "trusted_pdf_writer",
-                                                   "unselected_pages": "unchanged; outside preparation coverage"}}
+                                                   "unselected_pages": "excluded from prepared PDF"}}
             candidate.replace(output)
             write_json(manifest_path, manifest)
             validate_text_layer(workspace, source)

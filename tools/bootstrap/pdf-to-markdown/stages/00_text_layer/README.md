@@ -48,14 +48,17 @@ resizing the text. Stage 00 trusts the PDF writer and does not compare reopened
 OCR text with recognition results. The user assesses the PDF; Stage 01 extracts
 its actual text. Native text remains unchanged.
 
-If no text is added, the separate PDF is a byte-for-byte copy. Otherwise a
-candidate is saved and reopened. Validation checks the complete page tree and
+The separate PDF contains only selected source pages, in source order, retaining
+their existing text and graphics and adding OCR only where text is missing.
+A candidate is saved and reopened. Validation checks the selected page count and
 geometry, retained original streams in order, unchanged native content, identical
 selected-page renders and the original source hash. Publication happens only
 after those checks; failure leaves no consumable manifest.
 
-Fragment preparation retains all physical pages but certifies only selected
-pages. Unselected pages remain unchanged. Expanding selection requires restart
+Fragment preparation excludes unselected pages from the output and its page
+validation. `page` and zero-based `source_index` identify the original source;
+zero-based `prepared_index` locates the page in the compact prepared PDF.
+Expanding selection requires restart
 at 00 with the original source or another workspace.
 
 ## Recovery and downstream handoff
@@ -80,4 +83,5 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<source.pdf>" --worksp
 
 `--run-deterministic` can execute Stage 00 when it is the next ready stage.
 Restart at 01 retains validated preparation. Existing workspaces using the old
-backend or output name require explicit restart at 00 with the original PDF.
+backend, output name or full-document page layout require explicit restart at 00
+with the original PDF.

@@ -7,7 +7,9 @@ execution; preprocessing never falls back to the original PDF.
 
 For each selected physical page it writes `01_preprocess/page_XXXX.png` and
 `page_XXXX.json`, including legitimate blank pages. `XXXX` remains the physical
-1-based source page number; `source_index` is zero-based. JSON contains schema
+1-based source page number; `source_index` is zero-based in the original source.
+`prepared_index` is zero-based in the selected-pages PDF and is used for reads.
+JSON contains schema
 version, stable page ID, prepared-PDF hash, dimensions, rotation, MediaBox,
 CropBox, provenance, page classification/evidence and ordered text blocks with
 IDs, text, `bbox` and `bbox_norm`. Only text blocks enter this collection; the

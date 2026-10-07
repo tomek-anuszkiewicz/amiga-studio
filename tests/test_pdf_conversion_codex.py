@@ -92,6 +92,69 @@ class PdfTextBoundsTests(unittest.TestCase):
 
 
 class PdfOcrValidationTests(unittest.TestCase):
+    def test_fragment_ocr_runs_only_for_selected_textless_page(self):
+        spec = importlib.util.spec_from_file_location(
+            "prepare_ocr_fragment", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
+        stage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(stage)
+        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
+                             known_stages=PDF_STAGES, required_stages=())
+        config["render"]["dpi"] = 72
+        with tempfile.TemporaryDirectory() as directory, pymupdf.open() as ocr:
+            source, workspace = Path(directory) / "source.pdf", Path(directory) / "workspace"
+            ocr.new_page(width=200, height=200).insert_text((20, 40), "Recovered text", render_mode=3)
+            payload = ocr.tobytes()
+            with pymupdf.open() as document:
+                document.new_page(width=200, height=200)
+                document.new_page(width=200, height=200).insert_text((20, 40), "Native text")
+                document.new_page(width=200, height=200)
+                document.save(source)
+            with patch.object(stage, "tesseract_settings", return_value=("eng", "unused", {"engine": "tesseract"})), \
+                    patch.object(stage, "tesseract_ocr", return_value=payload) as recognize:
+                manifest = stage.prepare_text_layer(source, workspace, config, "2-3")
+            recognize.assert_called_once()
+            self.assertEqual([entry["provenance"] for entry in manifest["pages"]], ["native", "ocr"])
+            with pymupdf.open(workspace / manifest["pdf_file"]) as prepared:
+                self.assertEqual(len(prepared), 2)
+                self.assertEqual([page.get_text().strip() for page in prepared], ["Native text", "Recovered text"])
+
+    def test_fragment_pdf_contains_only_selected_pages_and_preprocess_maps_source_numbers(self):
+        def load_stage(name, relative):
+            spec = importlib.util.spec_from_file_location(name, ROOT / relative)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+
+        stage = load_stage("prepare_fragment", "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
+        preprocess = load_stage("preprocess_fragment", "tools/bootstrap/pdf-to-markdown/stages/01_preprocess/preprocess.py")
+        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
+                             known_stages=PDF_STAGES, required_stages=())
+        config["render"]["dpi"] = 72
+        with tempfile.TemporaryDirectory() as directory:
+            source, workspace = Path(directory) / "source.pdf", Path(directory) / "workspace"
+            with pymupdf.open() as document:
+                for number in range(1, 6):
+                    page = document.new_page(width=200, height=200)
+                    page.insert_text((20, 40), f"Source page {number}")
+                document.save(source)
+            original_hash = file_hash(source)
+            with patch.object(stage, "tesseract_ocr", side_effect=AssertionError("Native pages must not use OCR")):
+                manifest = stage.prepare_text_layer(source, workspace, config, "2,5")
+            prepared = workspace / manifest["pdf_file"]
+            with pymupdf.open(prepared) as document:
+                self.assertEqual(len(document), 2)
+                self.assertEqual([page.get_text().strip() for page in document], ["Source page 2", "Source page 5"])
+            self.assertEqual(file_hash(source), original_hash)
+            self.assertEqual([entry["source_index"] for entry in manifest["pages"]], [1, 4])
+            self.assertEqual([entry["prepared_index"] for entry in manifest["pages"]], [0, 1])
+            registry = {"id": "00", "dir": "00_text_layer", "artifact_contract": "text_layer"}
+            state = {"source": manifest["source"], "stages": {}}
+            complete_stage(state, registry, manifest["ocr_procedure"], workspace, workspace / "14_link_toc")
+            preprocess.preprocess_pdf(prepared, workspace, dpi=72, page_ranges="2,5")
+            page_data = json.loads((workspace / "01_preprocess/page_0005.json").read_text())
+            self.assertEqual(page_data["source_index"], 4)
+            self.assertEqual(page_data["prepared_index"], 1)
+
     def test_raw_ocr_pdf_overlay_preserves_fractional_text_and_spacing(self):
         spec = importlib.util.spec_from_file_location(
             "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
@@ -403,7 +466,7 @@ class PdfConfigurationTests(unittest.TestCase):
                     layer.insert_text((20, 40), "A", render_mode=3)
                     worker.insert_ocr_pdf(document[0], ocr)
                 document.save(candidate)
-            entry = {"page": 1, "provenance": "ocr"}
+            entry = {"page": 1, "source_index": 0, "prepared_index": 0, "provenance": "ocr"}
             worker.verify_candidate(source, candidate, [entry], 72)
 
     def test_preprocess_rejects_missing_text_layer_before_worker(self):

@@ -2264,3 +2264,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Architecture suite passed 19/19
   - Graphify code update completed
   - No source conversion run
+---
+
+### [2026-10-07 16:00 CET] — PDF-FRAGMENT-00: prepare only selected source pages
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Stage 00 writes only selected pages and applies OCR only to selected textless pages
+  - validate only selected pages
+  - retain source numbering with explicit prepared_index mapping through Stage 01
+  - document restart requirements
+- **Architectural Rationale & Trade-Offs**:
+  - Fragment preparation must not save or validate all source pages
+  - compact output must preserve original page identities for downstream conversion
+- **Verification & Test Results**:
+  - Reproduction failed before fix: five-page output for two-page selection
+  - 32 PDF technical tests passed, including native noncontiguous mapping and mixed OCR selection
+  - quick preflight passed
+  - architecture suite 19/19 passed
+  - graphify update completed
+  - no real-source fragment conversion or performance benchmark run

@@ -21,7 +21,7 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):
     require(Path(pdf_path).resolve() == prepared_pdf.resolve(), "Stage 01 must read only the validated Stage 00 PDF")
     require(type(dpi) is int and dpi > 0, "render.dpi must be a positive integer")
     with pymupdf.open(prepared_pdf) as document:
-        pages = selected_pages(page_ranges, len(document)) if page_ranges is not None else prepared["selected_pages"]
+        pages = selected_pages(page_ranges, prepared["source_page_count"]) if page_ranges is not None else prepared["selected_pages"]
         require(pages == prepared["selected_pages"], "Stage 01 page selection differs from Stage 00 coverage; restart at 00")
         directory = workspace_dir / "01_preprocess"
         directory.mkdir(parents=True, exist_ok=True)
@@ -32,12 +32,12 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):
             old.unlink()
         manifest = {"schema_version": SCHEMA_VERSION, "source": prepared["source"],
                     "source_pdf": prepared["pdf_file"], "pdf_file": prepared["pdf_file"],
-                    "pdf_sha256": prepared["pdf_sha256"], "source_page_count": len(document),
+                    "pdf_sha256": prepared["pdf_sha256"], "source_page_count": prepared["source_page_count"],
                     "selected_pages": pages, "total_pages": len(pages), "start_page": pages[0],
                     "end_page": pages[-1], "dpi": dpi, "pages": []}
         for origin in prepared["pages"]:
             number, page_id = origin["page"], origin["page_id"]
-            page = document[number - 1]
+            page = document[origin["prepared_index"]]
             geometry = page_geometry(page)
             pixmap = page.get_pixmap(dpi=dpi)
             raster = raster_transform(page, pixmap, dpi)
@@ -46,7 +46,8 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=300, page_ranges=None):
             blocks = text_blocks(page)
             metadata = {field: origin[field] for field in ("provenance", "page_type", "classification_basis")}
             data = {"schema_version": SCHEMA_VERSION, "page_id": page_id, "page": number,
-                    "source_index": number - 1, "pdf_sha256": prepared["pdf_sha256"], "geometry": geometry,
+                    "source_index": number - 1, "prepared_index": origin["prepared_index"],
+                    "pdf_sha256": prepared["pdf_sha256"], "geometry": geometry,
                     "width": geometry["width"], "height": geometry["height"], "rotation": page.rotation,
                     "coordinates": COORDINATES, "raster": raster, "blocks": blocks, **metadata}
             json_file = directory / f"{page_id}.json"
