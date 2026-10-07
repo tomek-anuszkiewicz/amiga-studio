@@ -2,7 +2,7 @@
 
 Stage 01 deterministically renders and extracts text from the separate, prepared
 [Stage 00 PDF](../00_text_layer/README.md). It performs no OCR and needs no model
-selection. Missing, incomplete, modified or incompatible Stage 00 artifacts stop
+selection. Missing, incomplete or structurally invalid Stage 00 artifacts stop
 execution; preprocessing never falls back to the original PDF.
 
 For each selected physical page it writes `01_preprocess/page_XXXX.png` and
@@ -27,10 +27,11 @@ dimensions are persisted; exported coordinates are not rounded. Nonfinite,
 inverted or materially out-of-page boxes fail validation.
 
 `pages_manifest.json` records document versus selected page counts, exact
-selection, shared prepared PDF path and relative PNG/JSON paths with hashes.
+selection, shared prepared PDF path and relative PNG/JSON paths without hashes.
 It is published only when every required pair passes coverage, content, geometry
-and image-dimension validation. Completion snapshots it through shared lineage;
-downstream conversion validates pairs before cleanup or requests.
+and image-dimension validation. Completion retains a manifest snapshot;
+downstream workers validate pairs before requests. Resume checks completion
+status and file existence without rereading page contents.
 
 Run preparation and preprocessing together for a new workspace:
 

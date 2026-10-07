@@ -121,15 +121,15 @@ class PublicationTests(unittest.TestCase):
 
     def test_validated_pdf_resume_publishes_workspace_output(self):
         root, pipeline = self.load_pipeline("pdf")
-        state = {"source": {"name": "source.pdf", "sha256": "fixture", "pages": None},
+        state = {"source": {"name": "source.pdf", "pages": None},
                  "stages": {stage["id"]: {} for stage in pipeline.STAGE_REGISTRY}}
         argv = ["pipeline.py", "--workspace", str(self.output.parent), "--resume", "--publish",
                 "--config", str(root / "tools/bootstrap/pdf-to-markdown/config.yaml")]
         with patch.object(sys, "argv", argv), patch.object(pipeline, "read_state", return_value=state), \
              patch.object(pipeline, "first_incomplete_stage", return_value=len(pipeline.STAGE_REGISTRY)), \
-             patch.object(pipeline, "validate_prefix") as validate, patch.object(pipeline, "restore_shared"):
+             patch.object(pipeline, "validate_completed_stages") as validate, patch.object(pipeline, "restore_shared"):
             pipeline.main()
-            self.assertEqual(validate.call_args.args[2], len(pipeline.STAGE_REGISTRY))
+            self.assertEqual(len(validate.call_args.args[1]), len(pipeline.STAGE_REGISTRY))
         self.assertTrue((self.book / "Chapter.md").is_file())
 
     def test_html_keeps_local_output_until_publish_without_parent_mirror(self):

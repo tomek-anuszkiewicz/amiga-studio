@@ -17,13 +17,13 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --config "tools/bootstrap/pdf-to-markdown/config.yaml"
 ```
 
-The workspace holds intermediate page images, JSON streams, task files, a configuration snapshot, stage status and `.conversion-state.json`. Stage directories are created when their stages execute; a partial run through `02.5` does not create `14_link_toc`. Final Markdown and assets remain in workspace/14_link_toc. The shared `../conversion/` package owns configuration, Codex transport, cache and publication for both converters. The PDF-only `common/` package owns stage lineage, artifact validation, page geometry, page selection and response schemas. Stage procedure identities fingerprint both packages; this relocation changes those identities, so existing saved completions require regeneration before reuse. Use `--cache-dir` to select a disposable cache; the default is `.cache/codex`. Completed schema-validated responses are cached separately from legacy Gemini data.
+The workspace holds intermediate page images, JSON streams, task files, a configuration snapshot, stage status and `.conversion-state.json`. Stage directories are created when their stages execute; a partial run through `02.5` does not create `14_link_toc`. Final Markdown and assets remain in workspace/14_link_toc. The shared `../conversion/` package owns configuration, Codex transport, cache and publication for both converters. The PDF-only `common/` package owns stage completion, artifact validation, page geometry, page selection and response schemas. Completion records store `status: completed`, required file paths and manifest snapshot paths, without content, configuration or procedure hashes. Existing checksum records are read as statuses and paths and rewritten in the simpler format on execution. Use `--cache-dir` to select a disposable cache; the default is `.cache/codex`. Completed schema-validated responses are cached separately from legacy Gemini data.
 
 [Stage 00](stages/00_text_layer/README.md) prepares `<source stem>-ocr.pdf` beside the source, always covering the whole document. It preserves native text and graphics and uses local Tesseract through PyMuPDF on textless pages. If the sibling prepared PDF already exists, it skips OCR and PDF writing, registering the file in the workspace-local manifest and completion record. Existence controls reuse; remove the sibling file explicitly to request fresh preparation. Stage 00 saves new output without render comparison or text/geometry validation. Source page numbers and `prepared_index` remain stable across attempt selections. The original PDF must remain outside the workspace.
 
-[Stage 01](stages/01_preprocess/README.md) reads only that prepared PDF and deterministically emits PNGs and positioned text JSON. Text comes from the reopened PDF, including its OCR spans. `--page-ranges` applies here. Page IDs retain physical source numbers; manifests record relative paths, hashes, `prepared`/`none` text provenance, displayed-page coordinates and actual raster transforms. Missing or invalid predecessors and mismatched page pairs stop conversion before cleanup or requests.
+[Stage 01](stages/01_preprocess/README.md) reads only that prepared PDF and deterministically emits PNGs and positioned text JSON. Text comes from the reopened PDF, including its OCR spans. `--page-ranges` applies here. Page IDs retain physical source numbers; manifests record relative paths, `prepared`/`none` text provenance, displayed-page coordinates and actual raster transforms. Missing predecessors stop conversion before cleanup. Workers validate schemas, coverage and geometry when consuming inputs and producing results.
 
-Use `--page-ranges "19"` for a single physical PDF page. Keep the same source/page selection, workspace and configuration when continuing a stage interval. `--resume` validates completed predecessor artifacts and their source, procedure and stage model/effort identities before reuse. An incompatible or legacy workspace requires explicit regeneration from the reported stage. Prepared manual tasks also record their predecessor identity. Runtime/schema failures stop the pipeline without model or provider substitution.
+Use `--page-ranges "19"` for a single physical PDF page. Keep the same source filename/page selection and workspace when continuing a stage interval. `--resume` skips completed stages whose recorded files exist. Changes to code, prompts, model settings or existing file contents do not invalidate completion; use Git to review changes and explicitly restart affected stages. Prepared manual tasks record their stage and source/page selection. Runtime/schema failures stop the pipeline without model or provider substitution.
 
 ## Independent test workspaces and restarts
 
@@ -50,8 +50,8 @@ IDs, continuation flags and pixel boxes. It copies Markdown into the legacy
 `raw_text` field and derives point/normalized boxes for existing downstream
 consumers; those later workers retain their current formatting and merging behavior.
 Renamed configuration keys and workspace directories require regeneration;
-old 02d/02m artifacts are not automatically moved. Changed shared procedure fingerprints require explicit regeneration from the
-reported stage; existing saved artifacts are not migrated or relabeled.
+old 02d/02m artifacts are not automatically moved. Choose an explicit restart when
+procedure changes should apply to existing results; saved content is not relabeled.
 
 Stage 02.9 writes exactly one `<WORKSPACE>/02.9_emit_page_markdown/document.md`
 and a sibling `assets/` directory, including when there are no crops. All selected
@@ -71,7 +71,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --c
 
 The stage validates inputs and writes a temporary bundle, verifies its Markdown
 and crop links, then replaces the output without accumulating stale assets.
-Completion binds both Stage 01 and 02 records and the procedure/configuration.
+Execution requires completed Stage 01 and 02 with their recorded files present.
 Restart `02.9` invalidates only its own bundle; Stage 03 keeps its direct Stage 02
 dependency. Review PNGs are neither crop sources nor required inputs. Publication
 through `--publish` remains restricted to Stage 14 and does not export this bundle.
@@ -83,8 +83,8 @@ Add `--publish` to copy completed Markdown and assets into the sibling book dire
 without `-tmp`. The workspace must be inside `<book>-tmp/`. The target must be absent
 or empty; occupied directories and links are rejected before execution and checked
 again before copying. Publication requires completion through Stage 14. An already
-completed conversion can use `--resume --publish`; retained artifacts and lineage
-are validated before copying. Intermediate state and metrics stay in the workspace.
+completed conversion can use `--resume --publish`; completion statuses and required
+file existence are checked before copying. Intermediate state and metrics stay in the workspace.
 
 For example, first prepare stages 00–04 for physical pages 5–10 in `<WORKSPACE_A>`. Then restart from stage 05:
 
@@ -95,9 +95,9 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --page-ranges "5-10" --from-stage 05
 ```
 
-Before running stage 05, the orchestrator validates retained stages 00–04, clears all stage 05–14 artifacts and completion/status records, removes their manual tasks and final Markdown/assets, and restores shared working manifests from retained snapshots. Cleanup covers the entire downstream conversion, even when `--to-stage` requests only one stage. It never selectively clears individual pages. A different page range requires a separate workspace or explicit regeneration from stage 00; retained stages from another range cannot supply stage 05.
+Before running stage 05, the orchestrator checks retained stages 00–04, persists invalidation of stages 05–14, restores shared working manifests from retained snapshots, and clears invalidated artifacts, statistics and manual tasks. Invalidation is saved before deletion, so interrupted cleanup cannot leave a deleted result marked completed. Each stage is marked completed only after successful output validation. Cleanup covers the entire downstream conversion, even when `--to-stage` requests only one stage. It never selectively clears individual pages. A different page range requires a separate workspace or explicit regeneration from stage 00; retained stages from another range cannot supply stage 05.
 
-Missing downstream files do not prevent explicit restart. Missing shared working manifests are restored from retained snapshots. `--resume` returns to the earliest stage with missing artifacts, clears that stage and all dependents, and regenerates them. A missing retained predecessor in an explicit interval requires restarting at its owning stage. Running stage 00 requires `--pdf`; an existing sibling OCR PDF is retained even on an explicit restart. Resumed page selection is retained even when `--page-ranges` is omitted. Restart at 01 retains validated Stage 00 and needs no source path. Restart at 00 retains per-page recovery records, which are reused only after identity/content validation. Modified retained artifacts remain incompatible; automatic corruption repair is outside this workflow. Legacy workspaces require `--pdf "<PDF>" --from-stage 00` to register or prepare the shared full-document PDF; their compact workspace PDFs are not reused as full documents.
+Missing downstream files do not prevent explicit restart. Missing shared working manifests are restored from retained snapshots. `--resume` returns to the earliest unfinished stage or stage with missing artifacts, clears that stage and all dependents, and regenerates them. A missing retained predecessor in an explicit interval requires restarting at its owning stage. Running stage 00 requires `--pdf`; an existing sibling OCR PDF is retained even on an explicit restart. Resumed page selection is retained even when `--page-ranges` is omitted. Restart at 01 retains completed Stage 00 and needs no source path. Restart at 00 retains per-page OCR request recovery records, whose request identities are separate from stage completion. Modified retained files are not checked against historical contents. Workspaces without Stage 00 completion require `--pdf "<PDF>" --from-stage 00` to register or prepare the shared full-document PDF; their compact workspace PDFs are not reused as full documents.
 
 Manual `--prepare-stage` also resets that stage and all dependents. `--apply-stage` preserves the current stage's prepared edits while clearing old stage outputs and later tasks. Earlier source assets remain intact.
 
@@ -211,7 +211,7 @@ tools/bootstrap/pdf-to-markdown/
 > Directly executing sub-scripts bypasses:
 > 1. Status progression tracking in `stage_status.json`
 > 2. LLM call metrics logging in `.metrics` (JSON content)
-> 3. Validated predecessor lineage and downstream artifact invalidation
+> 3. Completed predecessor status, required files and downstream artifact invalidation
 > 4. Workspace path normalization and guarded publication (`--workspace`, `--publish`, `--config`)
 > 5. Hermetic configuration snapshotting to `<WORKSPACE>/config.yaml`
 >

@@ -31,7 +31,7 @@ The worker validates all selected objects before writing a temporary bundle. It
 checks ordered document content, exact asset coverage, PNG readability/dimensions
 and every generated asset link before replacing the output. Replacement removes
 stale assets; failures stop with page/object context. Completion is recorded only
-after runtime validation and binds both Stage 01/02 records, procedure and config.
+after runtime validation. Execution requires completed Stage 01/02 and their files.
 There are no per-page Markdown files or metadata sidecars.
 
 Restart 01 or 02 invalidates this bundle. Restart 02.5 preserves it; restart 02.9

@@ -10,7 +10,7 @@ import pymupdf
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
-from common.lineage import file_hash, read_state, stage_identity
+from common.lineage import file_hash, read_state
 from common.pdf_artifacts import write_json, read_json, require
 from common.pdf_geometry import (SCHEMA_VERSION, page_geometry,
                                      text_blocks)
@@ -55,8 +55,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
     pdf_path, workspace = Path(pdf_path).resolve(), Path(workspace).resolve()
     stage_dir = workspace / "00_text_layer"
     require(not pdf_path.is_relative_to(stage_dir), "Original PDF cannot live inside Stage 00 outputs")
-    source_hash = file_hash(pdf_path)
-    source = {"name": pdf_path.name, "sha256": source_hash, "pages": None}
+    source = {"name": pdf_path.name, "pages": None}
     dpi = config.get("render", {}).get("dpi", 300)
     require(type(dpi) is int and dpi > 0, "render.dpi must be a positive integer")
     with pymupdf.open(pdf_path) as document:
@@ -71,13 +70,11 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
         manifest_path = stage_dir / "text_layer_manifest.json"
         manifest_path.unlink(missing_ok=True)
         output = pdf_path.with_stem(f"{pdf_path.stem}-ocr")
-        procedure = stage_identity({"id": "00", "dir": "00_text_layer"}, config, source, None, Path(__file__).resolve().parents[2])
         manifest = {"schema_version": SCHEMA_VERSION, "source": source, "source_page_count": source_page_count,
                     "selected_pages": pages, "source_file": Path(os.path.relpath(pdf_path, workspace)).as_posix(),
                     "pdf_file": Path(os.path.relpath(output, workspace)).as_posix(),
                     "pages": [{"page": number, "page_id": f"page_{number:04d}",
-                               "source_index": number - 1, "prepared_index": number - 1} for number in pages],
-                    "ocr_procedure": procedure}
+                               "source_index": number - 1, "prepared_index": number - 1} for number in pages]}
         if output.is_file():
             write_json(manifest_path, manifest)
             print(f"[skip] Stage 00: {output.name} already exists; no OCR or PDF rewrite")
@@ -87,6 +84,9 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
         recovery = stage_dir / "recovery"
         recovery.mkdir(exist_ok=True)
         engine = None
+        procedure = {"script_sha256": file_hash(__file__),
+                     "settings": {key: value for key, value in config.items() if key != "llm"}}
+        recovery_source = {**source, "sha256": file_hash(pdf_path)}
         try:
             for prepared_index, number in enumerate(pages):
                 page = document[prepared_index]
@@ -103,7 +103,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                     if engine is None:
                         engine = tesseract_settings(config)
                     language, tessdata, engine_identity = engine
-                    identity = {"source": source, "page": number, "image_sha256": file_hash(image),
+                    identity = {"source": recovery_source, "page": number, "image_sha256": file_hash(image),
                                 "geometry": entry["geometry"], "format": "tesseract-pdf-v1", "procedure": procedure,
                                 "engine": engine_identity}
                     recovery_file = recovery / f"{entry['page_id']}.json"

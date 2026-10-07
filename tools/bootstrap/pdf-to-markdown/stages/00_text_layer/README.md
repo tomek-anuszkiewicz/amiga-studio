@@ -57,8 +57,8 @@ artifact integrity checks.
 The local manifest records the source-relative shared PDF path, full source
 coverage and page mapping. Both `source_index` and `prepared_index` equal the
 physical page number minus one, so the same page keeps the same index in every
-attempt. Completion records hash the external shared PDF as well as local
-artifacts; later stages reject a modified retained PDF. Paths remain relative.
+attempt. Completion records list the external shared PDF and local artifacts;
+resume checks their existence without hashing their contents. Paths remain relative.
 
 Page JSON records extractable text provenance as `prepared` (or `none` when no
 text is extracted). An existing PDF alone cannot establish whether its text was
