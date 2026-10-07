@@ -3576,3 +3576,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite 19/19 passed
   - plan language scan and five relative links passed
   - staged diff check passed. Planning only: no converter implementation or conversion run.
+---
+
+### [2026-10-08 00:37 CET] — PDF-TABLE-2.42: Record the supplied code-block prompt
+- **Affected Subsystems**:
+  - `.agent/tasks/pdf-stage-02.42-reclassify-tables.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the missing prompt placeholder with the user direction to reclassify monospaced code regions as code_block
+  - remove obsolete pending-prompt wording
+- **Architectural Rationale & Trade-Offs**:
+  - Complete the four requested prompt directions while leaving transcription timing and implementation decisions open
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite 19/19 passed
+  - plan language scan and diff check passed. Plan update only
+  - no conversion run.
