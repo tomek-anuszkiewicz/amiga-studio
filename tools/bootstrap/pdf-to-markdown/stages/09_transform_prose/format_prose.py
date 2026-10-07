@@ -27,6 +27,7 @@ if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
 from conversion import CodexClient
+from common.pdf_callouts import advisory_prefix
 
 TOC_START_MARKER = "<!-- TOC34534 -->"
 TOC_END_MARKER = "<!-- /TOC34534 -->"
@@ -52,6 +53,10 @@ def assemble_callouts(nodes: list) -> int:
     while k < len(nodes):
         node = nodes[k]
         n_type = node.get("type")
+        if (n_type == "callout_text" and node.get("continuation_status") == "continuation"
+                and node.get("rendered_markdown") == ""):
+            k += 1
+            continue
         raw_title = node.get("raw_text", "").strip()
         clean_tag = re.sub(r"[^\w]", "", raw_title).upper()
 
@@ -67,7 +72,13 @@ def assemble_callouts(nodes: list) -> int:
                 next_n = nodes[m]
                 next_type = next_n.get("type")
                 if next_type == "callout_text":
-                    txt = next_n.get("rendered_markdown", "").strip() or next_n.get("raw_text", "").strip()
+                    # Batched tails already occur in the head's formatted body.
+                    # Empty rendering plus continuation is an explicit suppression,
+                    # not a reason to recover the original text a second time.
+                    batched_tail = (next_n.get("continuation_status") == "continuation"
+                                    and next_n.get("rendered_markdown") == "")
+                    txt = "" if batched_tail else ((next_n.get("rendered_markdown") or "").strip()
+                                                   or next_n.get("raw_text", "").strip())
                     if txt:
                         body_parts.append(txt)
                     consumed_indices.append(m)
@@ -80,7 +91,7 @@ def assemble_callouts(nodes: list) -> int:
             if body_parts:
                 combined_body = "\n\n".join(body_parts).strip()
                 # Strip redundant leading "NOTE:" / "WARNING:" from the body if present
-                combined_body = re.sub(rf"^(?:{tag})\s*[:.-]?\s*", "", combined_body, flags=re.IGNORECASE).strip()
+                _, combined_body = advisory_prefix(combined_body, {tag})
 
                 callout_lines = [f"> [!{tag}]"]
                 for line in combined_body.splitlines():
@@ -105,14 +116,10 @@ def assemble_callouts(nodes: list) -> int:
 
         elif n_type == "callout_text" and not (node.get("rendered_markdown") or "").startswith("> [!"):
             # Standalone callout_text not preceded by a callout header
-            txt = node.get("rendered_markdown", "").strip() or node.get("raw_text", "").strip()
+            txt = (node.get("rendered_markdown") or "").strip() or node.get("raw_text", "").strip()
             if txt:
-                clean_tag = "NOTE"
-                for word in ADVISORY_WORDS:
-                    if re.match(rf"^{word}\s*[:.-]", txt, flags=re.IGNORECASE):
-                        clean_tag = word
-                        txt = re.sub(rf"^{word}\s*[:.-]?\s*", "", txt, flags=re.IGNORECASE).strip()
-                        break
+                clean_tag, txt = advisory_prefix(txt, ADVISORY_WORDS)
+                clean_tag = clean_tag or "NOTE"
                 callout_lines = [f"> [!{clean_tag}]"]
                 for line in txt.splitlines():
                     if line.strip():

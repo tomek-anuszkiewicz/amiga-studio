@@ -27,3 +27,9 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --c
 
 Chapter JSON includes `index`, `slug`, `title`, `target_md_file` and `nodes`.
 This automatic stage transforms nodes while preserving metadata and prior-stage files.
+
+Native callout assembly combines `callout` labels and subsequent `callout_text`
+bodies once, suppressing consumed body rendering. Standalone bodies recognize
+plain or Markdown-decorated leading NOTE/CAUTION/WARNING and the existing
+advisory kinds; only label decoration is stripped, preserving body Markdown.
+Replacement lineage remains in node metadata.

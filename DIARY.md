@@ -3134,3 +3134,36 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick preflight passed
   - Architecture suite: 19 tests passed
   - User visual quality assessment remains separate
+---
+
+### [2026-10-07 21:59 CEST] — PDF-CALLOUT-2.83: implement Stage 02.4 advisory range recovery
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion/config.py`
+  - `tests/test_pdf_conversion_codex.py`
+  - `docs/developers.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add candidate keyword discovery and one frozen-page two-image vision request per candidate-bearing page using original detail
+  - Share page outline rendering with exact frame-ID legends and read-only structural anchors
+  - Interpret explicit contiguous replacement ranges with deterministic identities, source geometry, continuation and lineage while retaining conflicts
+  - Write complete-page sparse overrides only for changed pages and route review/filter/direct table inputs through completed optional-layer resolution
+  - Preserve existing attempt model selections and add restart invalidation and stage registration
+  - Carry lineage into Stage 03 metadata and normalize decorated advisory labels in Stage 09
+  - Fix demonstrated duplicate callout-body rendering after Stage 09 batching and retain its regression test
+  - Update converter and stage contracts while retaining the active task for user-selected fragment review
+- **Architectural Rationale & Trade-Offs**:
+  - Keyword hits initiate review rather than establish advisory roles
+  - Source-page layout and explicit replacement mappings avoid deleting unrelated prose, listings or table/figure notes
+  - Sparse overrides preserve Stage 02 evidence and filtering remains authoritative for omitted pages
+  - The recovered roles need assembly that does not reread already batched body tails
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - Architecture suite passed 19/19
+  - PDF execution/configuration/restart suite passed 29/29, including the duplicate-body regression that failed 2 != 1 before repair
+  - Shared Codex transport/cache suite passed 21/21
+  - Python compileall and both CLI help checks passed
+  - Disposable synthetic fixture verified exact range splicing, retained conflicts/anchors, untouched predecessors, sparse completed/absent/failed routing, two-image original-detail cache identity and callout text/lineage through actual Stage 03-09 workers with formatting stub
+  - Graphify incremental code update completed and git diff --check passed
+  - No source-book inference or conversion run: user-selected fragment and quality review remain pending
+  - No milestone completion or conversion accuracy claim

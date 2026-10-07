@@ -1,6 +1,7 @@
 # Stage 02.8: Filter Page Content
 
-Read `02_page_conversion/page_*_segments.json` in numeric physical-page order
+Enumerate `02_page_conversion/page_*_segments.json` in numeric physical-page order,
+selecting same-name completed sparse 02.4 overrides through the shared resolver
 and preserve each page's segment-array order. Write retained page objects with
 the same filenames to `02.8_filter_page_content/`. This deterministic stage
 makes no model requests and needs no inference configuration entry.
@@ -15,7 +16,7 @@ Apply the user's requested source-fidelity exception:
   `list_of_tables`, `list_of_figures_heading`, `list_of_figures`, `index_heading`
   or `index`. This also removes unrelated text and crop candidates on that page.
 
-Find the TOC boundary and page-removal triggers in the original objects. A heading
+Find the TOC boundary and page-removal triggers in the resolved input objects. A heading
 on an excluded page still defines the boundary. Match exact types; do not infer
 roles from text, geometry or continuation flags, or inspect unselected PDF pages.
 The actual TOC remains, except where a whole-page exclusion applies.
@@ -64,3 +65,7 @@ need explicit regeneration starting at 02.8 to represent this filtering.
 Preserve edited Stage 02.9 bundles outside cleanup before restarting; regeneration
 rebuilds links/assets and removes stale assets. The bundled resource survives
 attempt cleanup.
+
+An absent optional 02.4 status uses Stage 02 only; failed/running status blocks
+execution. Filtering writes full retained pages. Its omitted pages are never
+filled from 02 or 02.4, including default Stage 02.81 consumption.

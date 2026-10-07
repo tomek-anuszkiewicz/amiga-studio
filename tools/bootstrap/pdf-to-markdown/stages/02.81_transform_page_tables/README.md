@@ -47,3 +47,9 @@ an existing attempt's model settings or continue beyond the requested end stage.
 See [review](../02.82_table_conversion_review/README.md),
 [page export](../02.9_emit_page_markdown/README.md) and
 [conversion contract](../../../reference-conversion-contract.md).
+
+The explicit whole-input predecessor `02` shares the 02/02.4 page resolver with
+review and filtering: enumerate Stage 02 filenames, select same-name overrides
+only after successful 02.4, and block running/failed 02.4. An absent optional
+status means skipped. Default 02.8 input remains authoritative, including page
+omissions. Table groups and companions are inferred from corrected objects here.

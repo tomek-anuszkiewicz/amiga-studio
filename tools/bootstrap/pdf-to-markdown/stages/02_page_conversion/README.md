@@ -93,3 +93,8 @@ from OCR or inserted into existing saved JSON.
 Existing Stage 02 objects with nonempty `md_text` for `graphic`, `table` or `cover`
 require regeneration from 02; do not clear saved content in place. Validation
 rejects such responses before caching and rejects incompatible stored artifacts.
+
+Stage 02 pages remain frozen when Stage 02.4 proposes advisory range replacements.
+The optional recovery stage writes complete-page sparse overrides separately;
+review, filtering and direct Stage 02 table input use the shared completed-layer
+resolver. See [Stage 02.4](../02.4_reclassify_callouts/README.md).
