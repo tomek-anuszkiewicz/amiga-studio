@@ -32,7 +32,8 @@ def transform_tables(workspace, config):
     assets.mkdir(parents=True, exist_ok=True)
     counts = dict.fromkeys(("markdown", "html", "unconverted"), 0)
     with CodexClient(config, stage=STAGE, images=True) as codex:
-        for entry, page in read_conversion(workspace, input_dir):
+        for entry, page in read_conversion(workspace, input_dir,
+                                           pages=config.get("input", {}).get("pages")):
             groups = collect_groups(page["segments"], page["page"])
             tables = [s for s in page["segments"] if s["type"] == "table"]
             if tables:

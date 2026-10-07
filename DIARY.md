@@ -3345,3 +3345,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick pre-flight passed
   - architecture rules passed (19 tests)
   - graphify update completed. No live conversion or user workspace regeneration performed.
+---
+
+### [2026-10-07 23:10 CET] — PDF-PAGE-SELECTION-THROUGH-2.82: enforce page-worker selection
+- **Affected Subsystems**:
+  - `Stage 02`
+  - `Stage 02.8`
+  - `Stage 02.81`
+  - `Stage 02.82`
+  - `PDF pipeline README`
+  - `reference conversion contract`
+  - `selection regressions`
+- **What Was Changed (The Concrete Reality)**:
+  - Pass configured physical pages into predecessor enumeration in the four remaining page workers
+  - apply Stage 02.8 selection before TOC-boundary discovery
+  - preserve selected input for either table predecessor
+  - record the per-stage selection contract and maintenance rule through 02.82
+- **Architectural Rationale & Trade-Offs**:
+  - User requested an audit through 02.82 and a durable reminder. Inspection confirmed Stage 01 already honors configured selection and Stage 00 deliberately prepares or reuses the full-source PDF. Stages 02.4 and 02.5 were repaired previously. Stage 03 creates a stream
+  - stream stages do not refilter physical pages. Stage 02.9 is a separate page export outside this repair scope. Restart cleanup remains global.
+- **Verification & Test Results**:
+  - Four new focused regressions reproduced unwanted all-page requests/rendering and an out-of-selection TOC boundary before repair
+  - all six selection tests passed after repair. Existing PDF suite passed (29 tests), including full-source OCR and selected preprocessing checks
+  - callout geometry regression passed (1 test)
+  - quick pre-flight passed
+  - architecture rules passed (19 tests)
+  - graphify update completed. No live fragment conversion, quality assessment or user workspace regeneration performed.
