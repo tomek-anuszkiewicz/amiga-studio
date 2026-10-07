@@ -2543,3 +2543,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Repository search after deletion found no remaining comparator references before this diary entry
   - graphify update .: passed
   - Full-worktree git diff --check reports an existing blank line at EOF in the unrelated PDF selection module.
+---
+
+### [2026-10-07 18:39 CEST] — HTML-RENDER-REMOVE: remove unused visual comparison renderer
+- **Affected Subsystems**:
+  - `tools/bootstrap/html-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Delete the standalone visual comparison renderer
+  - Remove its README listing and usage section
+  - Update optional dependency guidance and renumber link validation
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested removal after inspection found only manual README usage and no pipeline callers.
+- **Verification & Test Results**:
+  - Quick pre-flight: all six gates passed
+  - Architecture rules: 19 passed
+  - Repository search: no remaining active renderer or comparison-image references
+  - Scoped git diff --check: passed
+  - Graphify incremental code refresh: passed
+  - No source conversion or quality evaluation run
