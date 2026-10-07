@@ -89,6 +89,15 @@ receive exact original-pixel crops and remain independent raster images through
 new layer; 02.81 receives only remaining tables. Restart clears 02.42 and every
 later stage. See [Stage 02.42](pdf-to-markdown/stages/02.42_reclassify_tables/README.md).
 
+Stage 02.43 reviews only existing code blocks with their JSON/bbox, frozen page
+context and the complete original Stage 01 PNG. It retains genuine code,
+transcribes ordinary prose, or marks a faithful table representation with empty
+text for 02.81. Replacements preserve identity, bbox, continuation and order,
+with lineage; only changed pages receive overrides. The shared resolver layers
+02.43 after 02.42 for 02.5/02.8, while this worker reads only predecessors.
+Pages without code blocks make no model requests. Shared optional-status, page
+selection and restart rules apply. See [Stage 02.43](pdf-to-markdown/stages/02.43_reclassify_code_blocks/README.md).
+
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.
 
 Use Mermaid with an ASCII fallback when it faithfully represents a diagram; avoid duplicating the same diagram as an embedded raster. Use images for schematics, photographs, dense waveforms and figures that cannot be represented faithfully. Keep accompanying labels and decoded bit fields visible. Preserve original image assets and recovery artifacts. Technical image descriptions must explain what the source shows without adding inferred hardware behavior as fact.
@@ -160,7 +169,7 @@ Full runs, intervals and individual deterministic/inference stages use
 process automatically with their inference calls and no manual task files.
 The normal pipeline has no legacy reader.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
+The execution sequence is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.
