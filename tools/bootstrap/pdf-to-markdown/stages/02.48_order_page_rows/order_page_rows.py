@@ -28,7 +28,7 @@ def order_row_segments(objects):
         if len(members) > 1:
             groups += 1
             positions = sorted(position for position, _ in members)
-            row = sorted(members, key=lambda item: (item[1]["bbox"][1], item[0]))
+            row = sorted(members, key=lambda item: (item[1]["bbox"][0], item[0]))
             for position, (_, obj) in zip(positions, row):
                 ordered[position] = obj
         start = end

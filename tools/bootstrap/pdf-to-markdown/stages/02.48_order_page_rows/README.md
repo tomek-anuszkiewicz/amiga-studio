@@ -11,7 +11,7 @@ Include subsequent tops while `top - anchor <= ROW_TOP_TOLERANCE_PX`, initially
 This is a maximum 7-pixel separation, with no midpoint band or neighbor chaining.
 
 For every group with at least two objects, sort its original objects by ascending
-Y, with equal Y retaining predecessor order. Put them into the group's occupied
+X (`bbox[0]`, left to right), with equal X retaining predecessor order. Put them into the group's occupied
 array positions in ascending position order. Apply the rule to every object type
 and any group size. Keep singletons, unrelated slots, IDs, all object fields and
 page metadata unchanged. Nonadjacent members remain in their original slots;
@@ -37,5 +37,5 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<B
 
 Use `--to-stage 02.50` when review regeneration is also requested. Technical
 ordering checks do not certify transcription quality or resolve every layout
-observation. In particular, Y order can place a right object before a left object
-whose top is lower by one pixel; this stage does not impose left-to-right order.
+observation. The Y tolerance determines row membership; X determines the order
+written to the JSON array within each row's occupied positions.

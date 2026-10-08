@@ -725,3 +725,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify incremental AST refresh completed
   - new documentation links resolve
   - no book conversion, live inference or emulator domain changes
+---
+
+### [2026-10-08 18:28 CEST] — PDF-ORDER-2.48: Sort row objects left to right by X
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.48_order_page_rows`
+  - `PDF conversion documentation`
+  - `tests/test_pdf_review_selection.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Change the within-row sort key to bbox[0] with predecessor-position ties
+  - retain anchored inclusive 7-pixel Y grouping and original occupied JSON slots
+  - update active documentation to X ordering
+  - retain one regression covering page-64 geometry, equal-X stability, unrelated slots and JSON field preservation
+- **Architectural Rationale & Trade-Offs**:
+  - The user explicitly corrected the requested axis from Y to X after page 64 placed the right-hand prose before its left heading
+  - group by Y but order each group's JSON objects from left to right
+- **Verification & Test Results**:
+  - Focused regression failed with Y ordering before the change and passed with X
+  - PDF review selection 10 tests passed
+  - eight disposable geometry examples and synthetic orchestrator/restart/status/selection checks passed
+  - read-only page-64 predecessor check confirms left heading precedes right prose
+  - quick pre-flight passed
+  - architecture rules 19 tests passed
+  - Graphify AST refresh completed
+  - existing book conversion and review artifacts were not regenerated or staged
+  - no live model calls

@@ -327,7 +327,7 @@ See [Stage 02.47](pdf-to-markdown/stages/02.47_reclassify_graphics/README.md). T
 Stage 02.48 deterministically groups all resolved object types by original-PNG
 `bbox[1]`. Each group has a fixed smallest-top anchor and includes tops at most
 7 pixels greater than it; neighboring gaps do not chain groups. Within each multi-object
-group, ascending Y order with stable ties fills only that group's original array
+group, ascending X order with stable ties fills only that group's original array
 positions. IDs, object fields, page metadata and unrelated slots remain unchanged.
 The worker reads JSON only, writes complete-page overrides only for changed pages,
 and reports multi-object group and changed-page counts without retained diagnostics.
