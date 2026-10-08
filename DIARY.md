@@ -3796,3 +3796,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick pre-flight passed
   - Architecture tests 19/19 passed
   - Plan only - Stage 02.46 is unimplemented and page 82 was not reconverted
+---
+
+### [2026-10-08 02:04 CEST] — PDF-ROTATION-2.44: Close accepted image rotation metadata task
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.44_detect_image_rotation`
+  - `.agent/tasks/pdf-stage-02.44-image-rotation.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Record explicit user-directed closure of PDF-ROTATION-2.44 after the page-134 review
+  - Preserve implementation and fragment artifacts and remove the closed execution plan after committing this record
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested closure on 2026-10-08 following the selected fragment rerun
+  - Rotation decisions remain numeric clockwise correction metadata and exported asset rotation remains deferred
+  - Broader roadmap 1.2 and subsequent stages remain active without a milestone completion claim
+- **Verification & Test Results**:
+  - Implementation retained in daa9f43 with documented per-graphic original-image requests, sparse overrides, selection, restart and downstream metadata preservation
+  - Earlier implementation checks recorded 30 PDF configuration/restart tests, 6 selection tests and 21 transport/cache/config tests passing
+  - Current page-134 pipeline rerun completed 02.44 through 02.5 with one cache hit and zero live requests, recording rotation 270 degrees clockwise
+  - Review regenerated with two labels for three source objects and no pixel rotation
+  - Current quick pre-flight passed and architecture rules 19/19 passed
+  - No additional sample conversion, full-book run, publication or milestone gate was performed
