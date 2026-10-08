@@ -1019,3 +1019,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight passed
   - architecture suite passed 19 tests
   - no conversion fragment requested or run
+---
+
+### [2026-10-08 21:16 CEST] — Limit automatic PDF filtering to page furniture and the fixed NXP logo
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.80_filter_page_content`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `tests/test_pdf_review_selection.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove pre-TOC boundary deletion and whole-page index/list exclusions
+  - retain editor-assigned roles even in older artifacts
+  - preserve header/footer and fixed NXP matching removals
+  - update the stage README and shared documentation
+  - adapt the existing selection regression to verify retained roles and removed page furniture
+- **Architectural Rationale & Trade-Offs**:
+  - The simplified Stage 02 prompt leaves cover and contents/index/list classification to later manual editing
+  - filtering must preserve that content rather than delete it based on legacy roles
+- **Verification & Test Results**:
+  - Three PDF selection and stage-consumer tests passed
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - git diff --check passed
+  - Graphify incremental code update completed
+  - no source conversion requested or run

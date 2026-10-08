@@ -14,11 +14,6 @@ from common.pdf_artifacts import page_files
 from common.pdf_selection import selected_pages
 from common.pdf_artifacts import read_json, write_json
 
-EXCLUDED_PAGE_TYPES = {
-    "list_of_tables_heading", "list_of_tables", "list_of_figures_heading",
-    "list_of_figures", "index_heading", "index",
-}
-
 NXP_TEMPLATE = Path(__file__).resolve().parent / "resources" / "nxp.png"
 NXP_REFERENCE_PAGE_SIZE = (2550, 3300)
 NXP_REGION = (0.0, 0.0, 0.13, 0.055)
@@ -75,21 +70,13 @@ def filter_page_content(workspace, pages=None):
         reference = trim_nxp_margins(image.convert("RGB"))
     pages = [(path, read_json(path)) for path in
              page_files(workspace / "02_page_conversion", "page_*_segments.json", pages)]
-    # Inspect original objects: even an excluded page can define the boundary.
-    boundary = next(((page_index, segment_index)
-                     for page_index, (_, value) in enumerate(pages)
-                     for segment_index, segment in enumerate(value["segments"])
-                     if segment["type"] == "toc_heading"), None)
     output = workspace / "02.80_filter_page_content"
     output.mkdir(parents=True, exist_ok=True)
     input_objects = sum(len(value["segments"]) for _, value in pages)
     output_pages = output_objects = nxp_candidates = nxp_matches = 0
-    for page_index, (path, value) in enumerate(pages):
-        if any(segment["type"] in EXCLUDED_PAGE_TYPES for segment in value["segments"]):
-            continue
-        segments = [segment for segment_index, segment in enumerate(value["segments"])
-                    if segment["type"] not in {"header", "footer"}
-                    and (boundary is None or (page_index, segment_index) >= boundary)]
+    for path, value in pages:
+        segments = [segment for segment in value["segments"]
+                    if segment["type"] not in {"header", "footer"}]
         candidates = [segment for segment in segments
                       if nxp_geometry_matches(segment, value, template_size)]
         nxp_candidates += len(candidates)
@@ -115,8 +102,7 @@ def filter_page_content(workspace, pages=None):
         output_objects += len(segments)
     print(f"[filter] pages {len(pages)} -> {output_pages}; "
           f"objects {input_objects} -> {output_objects}; "
-          f"removed pages: {len(pages) - output_pages}; "
-          f"TOC boundary found: {boundary is not None}")
+          f"removed empty pages: {len(pages) - output_pages}")
     print(f"[nxp] geometry candidates: {nxp_candidates}; matches removed: {nxp_matches}")
 
 

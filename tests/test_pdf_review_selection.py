@@ -55,9 +55,22 @@ class ReviewSelectionTests(unittest.TestCase):
         self.assertEqual([p.name for p in (self.workspace / "02_page_conversion").glob("*_segments.json")
                           if json.loads(p.read_text())["segments"] == []], ["page_0064_segments.json"])
 
-    def test_filter_selects_pages_before_toc_boundary(self):
+    def test_filter_preserves_editor_roles_on_selected_pages(self):
         stage = stage_module("02.80_filter_page_content", "filter_page_content")
-        # An unselected later TOC must not discard selected page 64's prose.
+        selected = self.workspace / "02_page_conversion/page_0064_segments.json"
+        value = json.loads(selected.read_text())
+        # Older dedicated roles must neither discard earlier prose nor whole pages.
+        roles = ["cover", "toc_heading", "toc", "index_heading", "index",
+                 "list_of_tables_heading", "list_of_tables",
+                 "list_of_figures_heading", "list_of_figures"]
+        retained = value["segments"] + [
+            {"segment_id": f"s{index}", "type": role, "bbox": [0, 0, 10, 10]}
+            for index, role in enumerate(roles, 2)]
+        value["segments"] = retained + [
+            {"type": "header", "bbox": [0, 0, 10, 10]},
+            {"type": "footer", "bbox": [0, 0, 10, 10]}]
+        selected.write_text(json.dumps(value))
+        # An unselected page remains outside the filter input.
         path = self.workspace / "02_page_conversion/page_0065_segments.json"
         path.write_text(json.dumps({"page": 65, "segments": [{"type": "toc_heading"}]}))
         config_path = self.workspace / "config.yaml"
@@ -67,6 +80,7 @@ class ReviewSelectionTests(unittest.TestCase):
             stage.main()
         output = self.workspace / "02.80_filter_page_content"
         self.assertEqual([p.name for p in output.iterdir()], ["page_0064_segments.json"])
+        self.assertEqual(json.loads((output / selected.name).read_text())["segments"], retained)
 
     def table_pages(self, directory):
         target = self.workspace / directory

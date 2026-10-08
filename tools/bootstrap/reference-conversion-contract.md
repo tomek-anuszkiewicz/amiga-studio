@@ -19,8 +19,8 @@ Do not schedule additional sample conversions, a full-book/full-crawl run, quali
 Preserve technical meaning, reading order, prose, footnotes, captions, labels, code, hexadecimal values, mathematics and tables. Formatting can change; conversion must not summarize, invent facts or silently omit material. Use source metadata only, omitting unknown publication details. Mark unreadable material rather than reconstructing it without evidence.
 
 PDF Stage 02.80 applies the user's deliberate source-fidelity exception: remove
-headers/footers, objects before the first selected-input TOC heading when present,
-and whole pages containing list-of-tables, list-of-figures or index objects/headings.
+headers/footers. Covers, contents, indexes and lists of tables or illustrations
+remain for later manual classification and removal, even in older saved objects.
 It also removes standalone upper-left NXP `graphic` objects matching a bundled
 raster after fixed geometry/aspect/RGB gates on original Stage 01 PNGs. No logo
 configuration is added. These exceptions affect source content only; generated
@@ -185,17 +185,14 @@ edges nearly align. Semantic association does not move headings ahead of earlier
 source content. Regenerate 02 to apply this ordering to saved results.
 
 Stage 02.80 reads Stage 02 JSON in numeric physical-page and segment-array order.
-It determines the first `toc_heading` and page exclusions from original objects,
-then removes all `header`/`footer` objects, objects before that boundary, and whole
-pages containing `list_of_tables_heading`, `list_of_tables`,
-`list_of_figures_heading`, `list_of_figures`, `index_heading` or `index`.
-A heading on an excluded page still defines the boundary. Without a `toc_heading`,
-skip pre-TOC removal; never inspect unselected PDF pages. Exact types determine
-these removals, without text, geometry or continuation inference. The actual TOC remains
-subject to whole-page exclusions. `02.80_filter_page_content/` retains filenames,
+It removes all `header`/`footer` objects by exact type. No TOC boundary or
+whole-page document-role exclusions apply, including to older saved objects;
+those decisions belong to the later manual editor. Never inspect unselected PDF
+pages or infer these roles from text, geometry or continuation flags.
+`02.80_filter_page_content/` retains filenames,
 page identities, dimensions and every surviving object's fields, IDs, text,
 geometry and order without renumbering. Omit empty pages; an empty output is valid.
-Report page/object counts and boundary presence through worker output, with no
+Report page/object counts and the number of pages emptied by filtering, with no
 model calls, inference configuration, manifest or runtime artifact/schema checks.
 Original Stage 01 and 02 artifacts remain unchanged.
 
