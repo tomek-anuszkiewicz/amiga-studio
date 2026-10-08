@@ -1469,3 +1469,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify refresh completes
   - scoped diff check passes
   - no live inference and no generated page outputs changed
+---
+
+### [2026-10-09 00:53 CET] — Scope temporary textbook work to bootstrap guidance
+- **Affected Subsystems**:
+  - `AGENTS.md`
+  - `tools/bootstrap/AGENTS.md`
+  - `.agents/skills/textbook-pdf-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Add nested bootstrap instructions for the temporary textbook and PDF-to-Markdown priority
+  - add a focused local skill
+  - route root-started sessions to the nested instructions
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the current authoring priority scoped to bootstrap while preserving shared repository rules and user-directed conversion iterations
+- **Verification & Test Results**:
+  - Skill validator passed
+  - quick preflight passed
+  - all 19 architecture tests passed
+  - diff check passed
+  - no conversion run
