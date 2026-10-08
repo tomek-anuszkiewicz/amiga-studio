@@ -779,3 +779,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - page-144 current and committed review JSON and PNG pixels matched the corresponding ordered and predecessor inputs before restoration
   - Graphify AST refresh completed
   - no book conversion or live inference
+---
+
+### [2026-10-08 20:04 CEST] — BOOK-RECIPE-PROOFREAD-1: Add chapter proofreading instructions
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Create the tool directory with a starter README
+  - Adapt Stage 09 and Stage 10 prompts and worker behavior into a manual chapter proofreading instruction
+  - Preserve recipe-owned structure and require evidence for technical OCR substitutions
+- **Architectural Rationale & Trade-Offs**:
+  - Prepare the optional agent editing pass before implementing deterministic chapter generation
+  - Keep inferred naming and legacy stage orchestration outside the chapter prompt
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture rules 19 tests passed
+  - English-language scans passed
+  - All new relative documentation links resolve
+  - No live proofreading or book conversion was run
