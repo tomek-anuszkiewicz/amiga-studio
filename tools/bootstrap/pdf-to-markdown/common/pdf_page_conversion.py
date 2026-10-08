@@ -15,10 +15,11 @@ CODE_RECLASSIFY_STAGE = "02.43_reclassify_code_blocks"
 IMAGE_ROTATION_STAGE = "02.44_detect_image_rotation"
 CODE_REFORMAT_STAGE = "02.45_reformat_code_block"
 READING_ORDER_STAGE = "02.46_review_reading_order"
+GRAPHIC_RECLASSIFY_STAGE = "02.47_reclassify_graphics"
 PAGE_OVERRIDE_LAYERS = (("02.40", CALLOUT_STAGE), ("02.41", TABLE_SPLIT_STAGE),
                         ("02.42", TABLE_RECLASSIFY_STAGE), ("02.43", CODE_RECLASSIFY_STAGE),
                         ("02.44", IMAGE_ROTATION_STAGE), ("02.45", CODE_REFORMAT_STAGE),
-                        ("02.46", READING_ORDER_STAGE))
+                        ("02.46", READING_ORDER_STAGE), ("02.47", GRAPHIC_RECLASSIFY_STAGE))
 
 
 def page_override_layers(before_stage=None):

@@ -70,7 +70,7 @@ true when the model judges it to continue another table, including an adjacent
 table on the same page; independent tables receive false. A singleton
 retains its predecessor flag along with the unchanged source object.
 Transcription stays deferred to 02.81. Completed sparse overrides layer as
-`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46` for review/filtering, with absent optional status meaning
+`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47` for review/filtering, with absent optional status meaning
 skipped and failed/running status blocking direct consumers. Stage 02.41 reads
 only predecessors. No generic local geometry/schema or quality gate is added.
 See [Stage 02.41](pdf-to-markdown/stages/02.41_split_tables/README.md).
@@ -82,7 +82,7 @@ the table. Otherwise retain genuine tables, reclassify unsuitable drawings,
 transcribe prose/code, or split independent elements into source-ordered existing
 types. Singleton replacements retain bbox/continuation; children receive stable
 IDs. Only changed pages receive complete-page overrides, layered as
-`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46`; the worker reads only predecessors. Shared optional
+`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47`; the worker reads only predecessors. Shared optional
 status and selection rules apply. Graphics follow the standard Stage 03 crop
 path with bounded padding and may merge in Stage 04 when vision confirms a
 unified diagram. Later chapter stages retain raster assets. Existing sidecar
@@ -189,7 +189,7 @@ Full runs, intervals and individual deterministic/inference stages use
 processes automatically with its inference calls and no manual task files.
 The normal pipeline has no legacy reader.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.83 -> 02.90 -> 03`, then `04 -> 05 -> 09 -> 10 -> 11 -> 14`.
+The execution sequence is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.83 -> 02.90 -> 03`, then `04 -> 05 -> 09 -> 10 -> 11 -> 14`.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.
@@ -273,7 +273,7 @@ PNG input. It adds numeric `rotation`: the correction clockwise from current PNG
 orientation in `[0, 360)`, including fractional values. Zero correction is omitted
 from saved objects; missing rotation means no correction. Preserve source fields,
 record the replacement stage, and write complete-page overrides only when changed.
-The resolver chain is `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46`;
+The resolver chain is `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47`;
 absent optional status skips a layer and failed/running status blocks consumers.
 Selection precedes candidates; pages without graphics make no requests. Existing
 model settings survive and missing settings default to `gpt-6.1-sol` / `medium`.
@@ -300,6 +300,15 @@ Diagnostics retain all suspect pairs and before/after IDs separately from origin
 images and published content. The detector misses vertically disjoint inversions
 and other layouts; legitimate column flow may be flagged for model assessment.
 See [Stage 02.46](pdf-to-markdown/stages/02.46_review_reading_order/README.md).
+
+Stage 02.47 reassesses resolved graphics against the complete original PNG and
+frozen page context. Its initial prompt retains images or replaces whole objects
+with table/code/prose, preserving IDs, bounds, continuation and order. Text is
+transcribed here; table transcription stays in 02.81. Mixed cell backgrounds
+remain graphic. Changed pages form sparse overrides after 02.46; consumers use
+them before review/filtering. Restart clears 02.47 and later artifacts only.
+See [Stage 02.47](pdf-to-markdown/stages/02.47_reclassify_graphics/README.md). The user assesses fragment quality.
+
 
 Stage 02.50 reads resolved Stage 02 JSON and the exact Stage 01 PNG.
 Its `02.50_page_conversion_review/page_NNNN_review.png` preserves resolution and adds

@@ -4214,3 +4214,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - 19 architecture tests passed
   - Graphify AST update completed
   - no existing source artifacts regenerated
+---
+
+### [2026-10-08 15:26 CEST] — PDF-GRAPHIC-2.47: Add graphic reclassification and initial selected-page trial
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion/config.py`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add optional Stage 02.47 with original-page vision and a simple retain/table/code/prose prompt
+  - Integrate configuration defaults, selection, sparse resolution and restart invalidation
+  - Preserve singleton identity, bounds, continuation and order, removing rotation on non-graphic replacements
+  - Update execution contracts and existing restart expectations
+- **Architectural Rationale & Trade-Offs**:
+  - Graphics previously bypassed table reclassification
+  - Keep the first prompt simple and leave quality assessment and subsequent tuning to the user
+  - Copy selected predecessor artifacts into a separate graphic-reclassify-01 attempt to preserve pages-all
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture suite passed 19 tests
+  - Existing PDF execution/restart suite passed 30 tests and selection suite passed 8 tests
+  - Stage 02.42 comparison identified 13 table-to-graphic replacements across 11 pages and 23 changed pages in total
+  - Selected page 35 plus all 23 changed pages: Stage 02.47 succeeded with 26 live requests in 122.42 seconds and Stage 02.50 produced 24 previews
+  - Ten graphics became tables on nine pages including page 35, with nine of the thirteen prior table-to-graphic changes reversed
+  - REVIEW_INDEX.md and local trial artifacts retained in workspace/graphic-reclassify-01 without publishing or indexing
+  - Graphify update completed
+  - Conversion quality remains for user assessment

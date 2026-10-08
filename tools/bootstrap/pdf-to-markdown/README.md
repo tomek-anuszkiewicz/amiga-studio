@@ -62,7 +62,7 @@ errors stop execution normally. No older-stage inputs or alternative models are 
 
 ## Stage data and execution
 
-Execution order is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.83 -> 02.90 -> 03`, then 04-14.
+Execution order is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.83 -> 02.90 -> 03`, then 04-14.
 Each worker reads the predecessor's own directory and writes its own results:
 
 | Stage | Input and result |
@@ -77,8 +77,9 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [02.44](stages/02.44_detect_image_rotation/README.md) | Stage 01 and resolved predecessors through 02.43 -> clockwise graphic rotation metadata, changed pages only |
 | [02.45](stages/02.45_reformat_code_block/README.md) | Stage 01 and resolved predecessors through 02.44 -> existing code blocks reformatted with consistent structural indentation, changed pages only |
 | [02.46](stages/02.46_review_reading_order/README.md) | Stage 01 and resolved predecessors through 02.45 -> whole-page reading-order assessment for suspicious pairs, changed pages only |
-| [02.50](stages/02.50_page_conversion_review/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 -> review frames and ordered labels |
-| [02.80](stages/02.80_filter_page_content/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 -> retained objects after source-content and fixed NXP-logo exclusions |
+| [02.47](stages/02.47_reclassify_graphics/README.md) | Stage 01 and resolved predecessors through 02.46 -> graphics retained or reclassified as table/code/prose, changed pages only |
+| [02.50](stages/02.50_page_conversion_review/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47 -> review frames and ordered labels |
+| [02.80](stages/02.80_filter_page_content/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47 -> retained objects after source-content and fixed NXP-logo exclusions |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> table markup, saved crops and inferred HTML group text |
 | [02.82](stages/02.82_remove_empty_table_rows/README.md) | Stage 01/02.81 -> remove empty Markdown/HTML table rows, preserve saved crops |
 | [02.83](stages/02.83_table_conversion_review/README.md) | Stage 01/02.82 -> side-by-side table review PNGs, no inference |
@@ -119,7 +120,8 @@ Omission means all available pages, regardless of a previous run or legacy confi
 | 02.44 | Select resolved predecessors through 02.43 before requesting per-graphic rotation decisions |
 | 02.45 | Select resolved predecessors through 02.44 before one formatting request per existing code block |
 | 02.46 | Select resolved predecessors through 02.45 before geometry detection and one whole-page order request per suspicious page |
-| 02.50 | Select resolved Stage 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 pages before review rendering |
+| 02.47 | Reassess resolved graphics as tables, code, prose or retained images |
+| 02.50 | Select resolved Stage 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47 pages before review rendering |
 | 02.80 | Select resolved pages before TOC-boundary detection and content exclusions |
 | 02.81 | Select pages from the completed 02.80 predecessor before table inference |
 | 02.83 | Select Stage 02.81 pages before rendering table comparisons |
@@ -163,7 +165,7 @@ objects directly, using Stage 01 geometry and original PNGs. HTML tables publish
 collapsed literal-text and original-image companions after their source groups.
 Markdown tables need no published crop. Tables retain their separate converted
 fragments through stream reduction, continuation detection and Stage 07.
-Existing attempt settings are retained; missing 02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.81 model settings are added
+Existing attempt settings are retained; missing 02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47/02.81 model settings are added
 only when their stage is selected. Review backend setup is in the Stage 02.83 README.
 Stage 02.50 uses resolved complete page input for type-colored review annotations,
 consolidates unobstructed consecutive prose, and hides header/footer/thumb-index
@@ -203,7 +205,7 @@ table to continue another, including a table beside it; independent tables recei
 false. Singleton responses retain the predecessor object unchanged.
 Transcription remains deferred to 02.81. Only changed complete-page overrides
 are saved. The shared resolver applies completed sparse layers in order
-`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46` for review 02.50 and filtering 02.80; absent optional status
+`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47` for review 02.50 and filtering 02.80; absent optional status
 means skipped, while running/failed status blocks direct consumers. Stage 02.41
 reads only predecessor layers. Restarting it preserves 01/02/02.40 and clears
 every later stage. See the [02.41 contract](stages/02.41_split_tables/README.md).
@@ -239,6 +241,15 @@ Diagnostics retain all suspect pairs and before/after IDs separately from origin
 images and published content. The detector misses vertically disjoint inversions
 and other layouts; legitimate column flow may be flagged for model assessment.
 See [Stage 02.46](stages/02.46_review_reading_order/README.md).
+
+Stage 02.47 reassesses resolved graphics against the complete original PNG and
+frozen page context. Its initial prompt retains images or replaces whole objects
+with table/code/prose, preserving IDs, bounds, continuation and order. Text is
+transcribed here; table transcription stays in 02.81. Mixed cell backgrounds
+remain graphic. Changed pages form sparse overrides after 02.46; consumers use
+them before review/filtering. Restart clears 02.47 and later artifacts only.
+See [Stage 02.47](stages/02.47_reclassify_graphics/README.md). The user assesses fragment quality.
+
 
 Stage 02.45 reformats each resolved `code_block` using its existing Markdown and
 frozen full-page JSON, without attaching an image. One request per block
