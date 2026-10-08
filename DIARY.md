@@ -3841,3 +3841,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - prepared 02.42-02.44 with 4 live calls and 0 cache hits. Stages 02.45-02.5 passed: 7 prose candidates, 1 live call, 0 cache hits, no qualifying code or changed IDs. Saved review PNG/JSON and resolved text Markdown in named stage-02.45-prose-code-review attempt. User quality assessment pending
   - plan remains active
   - no additional fragment or milestone checks run.
+---
+
+### [2026-10-08 02:11 CET] — PDF-CODE-2.45: Replace prose recovery with Reformat Code Block
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion/config.py`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Rename Stage 02.45 to reformat_code_block across worker, directory, configuration, resolver, stream marker, documentation and active plan
+  - replace prose classification with one formatting request per existing code block
+  - focus on indentation, nesting, leading spaces and tabs while preserving tokens, literals and fence language
+  - transfer saved stage model settings on explicit execution
+  - mark all formatted blocks rendered to avoid Stage 09 reinference
+- **Architectural Rationale & Trade-Offs**:
+  - User corrected the intended stage purpose: formatting existing code blocks rather than recovering code from prose
+  - keep ID 02.45 and existing override data flow
+- **Verification & Test Results**:
+  - Page 131 stages 02.45-02.5 completed in stage-02.45-reformat-code-block-review using retained successful predecessors through 02.44: 3 live requests, 0 cache hits
+  - formatted page_0131_seg_004/006/008, all returned text and indentation unchanged. Saved complete-page override with formatting markers, review PNG/JSON and resolved Markdown. Verified exact source-field/non-code preservation and saved configuration transfer. Passed 30 PDF, 6 selection, 21 shared conversion checks
+  - quick pre-flight and architecture 19/19 passed
+  - Graphify AST refreshed. No additional source fragment or milestone checks
+  - user assessment pending and renamed plan remains active.
