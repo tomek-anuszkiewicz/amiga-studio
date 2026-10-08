@@ -883,3 +883,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - 19 architecture tests passed
   - Graphify refreshed
   - no source fragment conversion requested or run
+---
+
+### [2026-10-08 20:58 CET] — Define draft book element vocabulary
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Add an element list based on the Stage 02 source vocabulary
+  - define image_note and image_legend as separate image-associated source blocks
+  - link the catalog from the book tool README
+- **Architectural Rationale & Trade-Offs**:
+  - User requested an initial element catalog for book authoring with explicit image note and legend roles
+- **Verification & Test Results**:
+  - Verified all 23 Stage 02 types plus the two requested image roles and resolved local links
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - PDF schema and runtime unchanged
+  - no conversion requested or run

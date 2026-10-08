@@ -2,6 +2,10 @@
 
 This directory starts the planned deterministic chapter generator. It will consume prepared data from [PDF-to-Markdown](../pdf-to-markdown/README.md) and authored JSON recipes. The generator is not implemented yet.
 
+## Element vocabulary
+
+The initial [element list](elements.md) records source roles used in book authoring. It retains the Stage 02 vocabulary and adds `image_note` and `image_legend` for separate notes and legends attached to an image. Image elements retain the existing `graphic` identifier. Grouping is authored separately from PDF table transcription.
+
 ## Chapter proofreading
 
 The initial [proofreading instruction](prompts/proofreading.md) is intended for manual agent processing of an already generated Markdown chapter. Supply the instruction and chapter; the agent can inspect linked images when needed. Keep the generated source chapter available for comparison and retain the edited copy outside generator-managed output cleanup.
