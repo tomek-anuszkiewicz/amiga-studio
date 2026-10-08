@@ -949,3 +949,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight passed
   - architecture suite passed 19 tests
   - no runtime or PDF schema change
+---
+
+### [2026-10-08 21:06 CET] — Separate book code listings from preformatted text
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Restrict code_block to program and command listings
+  - add preformatted_text for ASCII art, dumps and aligned source layouts
+  - specify text fences and preservation of original character spacing and line breaks
+  - update the README
+- **Architectural Rationale & Trade-Offs**:
+  - User distinguished source code from fixed-width source material that must retain its original layout
+- **Verification & Test Results**:
+  - Catalog and proofreading instructions reviewed for consistency
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - no runtime or PDF schema change

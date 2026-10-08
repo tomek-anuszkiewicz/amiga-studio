@@ -9,6 +9,8 @@ The initial [element list](elements.md) records source roles used in book author
 Chapter, appendix and section titles use `heading` with a `level` property for hierarchy depth and an optional `number` string for their source numbering.
 The dedicated contents, index, table-list and figure-list heading types retain their roles and are treated as level-1 headings.
 
+`code_block` represents source code and similar listings. `preformatted_text` preserves original character layout for ASCII art, dumps and other aligned text, rendered in a fenced `text` block.
+
 ## Chapter proofreading
 
 The initial [proofreading instruction](prompts/proofreading.md) is intended for manual agent processing of an already generated Markdown chapter. Supply the instruction and chapter; the agent can inspect linked images when needed. Keep the generated source chapter available for comparison and retain the edited copy outside generator-managed output cleanup.

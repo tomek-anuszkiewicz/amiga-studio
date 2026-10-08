@@ -14,7 +14,8 @@ This initial vocabulary describes the source elements distinguished during book 
 | `callout` | A standalone advisory label, such as NOTE, WARNING or CAUTION. |
 | `callout_text` | The body of an advisory callout, including its paragraphs, lists or formulas. |
 | `prose` | Narrative paragraphs and general explanations, including run-in titles. |
-| `code_block` | Code, assembly, dumps, aligned technical text and character-built diagrams whose spacing carries meaning. |
+| `code_block` | Source code, assembly, pseudocode, scripts and similar program or command listings. Preserve their tokens, indentation and line breaks. |
+| `preformatted_text` | Fixed-width source text whose original spacing, alignment and line breaks carry meaning: ASCII art, character-built diagrams, dumps and aligned technical layouts. Preserve it as written. |
 | `table` | A table of related rows and columns, represented as Markdown or HTML after transcription. |
 | `graphic` | An image, diagram, schematic, photograph or complete technical drawing composition. This is the existing identifier for an image element. |
 | `caption` | A separate formal table or figure number and title. |
@@ -27,6 +28,12 @@ This initial vocabulary describes the source elements distinguished during book 
 | `list_of_tables` | List-of-tables entries, including table identifiers, titles and page references. |
 | `list_of_figures_heading` | A list-of-figures or illustrations title, including a continuation title; treated as a level-1 heading. |
 | `list_of_figures` | List-of-figures entries, including figure identifiers, titles and page references. |
+
+## Code and preformatted text
+
+Use `code_block` for program or command listings and `preformatted_text` for material whose character layout must be preserved, such as ASCII timing diagrams, bit-field layouts, memory dumps and aligned explanatory text. A monospaced font alone does not establish that something is source code.
+
+Render `preformatted_text` in a fenced `text` block, preserving its characters, spaces, indentation, blank lines and line breaks. Do not reflow it into prose or reconstruct it as a table or drawing. Render `code_block` with an appropriate language tag when known, preserving the source listing. Mixed objects can be explicitly split during recipe authoring; this vocabulary does not trigger automatic splitting or reclassification of saved PDF objects.
 
 ## Notes, legends and groups
 
