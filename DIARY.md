@@ -1285,3 +1285,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - git diff --check passes
   - quick preflight passes
   - all 19 architecture tests pass
+---
+
+### [2026-10-08 22:57 CET] — Rename Test Book tracker to snake case
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Rename TEST_PAGES_TRACKER.md to test_pages_tracker.md in the Test Book catalog directory
+  - update the README link
+- **Architectural Rationale & Trade-Offs**:
+  - Use the requested lowercase snake case filename
+- **Verification & Test Results**:
+  - Renamed file exists and no current catalog links use the old name
+  - git diff --check passes
+  - quick preflight passes
+  - all 19 architecture tests pass

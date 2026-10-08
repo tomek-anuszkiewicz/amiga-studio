@@ -45,7 +45,7 @@ local and are ignored by Git; the catalog metadata is tracked.
 
 The composite Test Book lives separately in `books/test-book-example-4567/`
 and does not need `source.json`. Its
-[page tracker](books/test-book-example-4567/TEST_PAGES_TRACKER.md) records the
+[page tracker](books/test-book-example-4567/test_pages_tracker.md) records the
 four source variants, their full hashes and the 160-page assembly order. Use
 that mapping to reconstruct the test PDF locally after obtaining those sources.
 
