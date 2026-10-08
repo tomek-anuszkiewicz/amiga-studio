@@ -1,14 +1,14 @@
 # Stage 02.50: Independent Page Conversion Review
 
-Consume resolved Stage 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47/02.48 JSON and the exact Stage 01 PNG. Completed sparse
-02.40, 02.41, 02.42, 02.43, 02.44, 02.45, 02.46, 02.47 and 02.48 overrides replace same-name pages in that order; absent optional
+Consume resolved Stage 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47 JSON and the exact Stage 01 PNG. Completed sparse
+02.40, 02.41, 02.42, 02.43, 02.44, 02.45, 02.46 and 02.47 overrides replace same-name pages in that order; absent optional
 status skips that layer, while failed/running status blocks execution. Save `02.50_page_conversion_review/page_NNNN_review.png` at original
 page height and twice its width, with a blank equal-width right panel.
 
 Read only physical pages selected by this invocation's `--page-ranges`;
 omission reads all available predecessor pages, regardless of legacy `input.pages`.
 The pipeline forwards the parameter even when restarting directly at 02.50. Resolve sparse
-02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47/02.48 overrides within that selection before rendering.
+02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47 overrides within that selection before rendering.
 
 Each displayed type has a fixed distinct color for its containing 2-pixel frame,
 straight leader and label, independent of page and object order. Labels show

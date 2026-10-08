@@ -750,3 +750,32 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify AST refresh completed
   - existing book conversion and review artifacts were not regenerated or staged
   - no live model calls
+---
+
+### [2026-10-08 18:40 CEST] — PDF-ORDER-2.48: Remove deterministic row ordering at user request
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `PDF converter tests`
+  - `Test Book pages-all workspace`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove Stage 02.48 worker and README, registry entry, sparse resolver layer and page-range routing
+  - remove its regression and update retained restart expectations
+  - remove active documentation and temporary verification script
+  - delete the two generated row-order overrides on pages 63 and 144 and remove stage status
+  - restore page-144 review and its recorded checkpoint to the committed pre-stage versions
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested removal after strict coordinate ordering inverted NOTE and its body on page 144
+  - resume predecessor order through 02.47 before review/filtering
+  - retain historical diary records
+- **Verification & Test Results**:
+  - PDF review selection 9 tests passed
+  - PDF conversion Codex 35 tests passed
+  - quick pre-flight passed
+  - architecture rules 19 tests passed
+  - active code/test/documentation search found no 02.48 references
+  - removed CLI stage lookup and predecessor resolution for pages 63 and 144 verified
+  - page-144 current and committed review JSON and PNG pixels matched the corresponding ordered and predecessor inputs before restoration
+  - Graphify AST refresh completed
+  - no book conversion or live inference

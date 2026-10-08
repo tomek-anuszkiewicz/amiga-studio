@@ -70,7 +70,7 @@ true when the model judges it to continue another table, including an adjacent
 table on the same page; independent tables receive false. A singleton
 retains its predecessor flag along with the unchanged source object.
 Transcription stays deferred to 02.81. Completed sparse overrides layer as
-`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47 -> 02.48` for review/filtering, with absent optional status meaning
+`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47` for review/filtering, with absent optional status meaning
 skipped and failed/running status blocking direct consumers. Stage 02.41 reads
 only predecessors. No generic local geometry/schema or quality gate is added.
 See [Stage 02.41](pdf-to-markdown/stages/02.41_split_tables/README.md).
@@ -82,7 +82,7 @@ the table. Otherwise retain genuine tables, reclassify unsuitable drawings,
 transcribe prose/code, or split independent elements into source-ordered existing
 types. Singleton replacements retain bbox/continuation; children receive stable
 IDs. Only changed pages receive complete-page overrides, layered as
-`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47 -> 02.48`; the worker reads only predecessors. Shared optional
+`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47`; the worker reads only predecessors. Shared optional
 status and selection rules apply. Graphics follow the standard Stage 03 crop
 path with bounded padding and may merge in Stage 04 when vision confirms a
 unified diagram. Later chapter stages retain raster assets. Existing sidecar
@@ -188,7 +188,7 @@ Full runs, intervals and individual deterministic/inference stages use
 processes automatically with its inference calls and no manual task files.
 The normal pipeline has no legacy reader.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47 -> 02.48 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.83 -> 02.90 -> 03`, then `04 -> 05 -> 09 -> 10 -> 11 -> 14`.
+The execution sequence is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.83 -> 02.90 -> 03`, then `04 -> 05 -> 09 -> 10 -> 11 -> 14`.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.
@@ -282,7 +282,7 @@ PNG input. It adds numeric `rotation`: the correction clockwise from current PNG
 orientation in `[0, 360)`, including fractional values. Missing means zero
 correction; zero is omitted on save. Preserve source fields and write complete-page
 overrides only when changed, without replacement metadata.
-The resolver chain is `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47 -> 02.48`;
+The resolver chain is `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47`;
 absent optional status skips a layer and failed/running status blocks consumers.
 Selection precedes candidates; pages without graphics make no requests. Existing
 model settings survive and missing settings default to `gpt-6.1-sol` / `medium`.
@@ -323,18 +323,6 @@ Whole-target table reclassification is no longer performed. Sparse overrides
 feed review/filtering; restart clears 02.47 and later artifacts only.
 See [Stage 02.47](pdf-to-markdown/stages/02.47_reclassify_graphics/README.md). The current user-selected trial covers pages 21 and 35.
 
-
-Stage 02.48 deterministically groups all resolved object types by original-PNG
-`bbox[1]`. Each group has a fixed smallest-top anchor and includes tops at most
-7 pixels greater than it; neighboring gaps do not chain groups. Within each multi-object
-group, ascending X order with stable ties fills only that group's original array
-positions. IDs, object fields, page metadata and unrelated slots remain unchanged.
-The worker reads JSON only, writes complete-page overrides only for changed pages,
-and reports multi-object group and changed-page counts without retained diagnostics.
-Review/filtering resolve the layer after 02.47. Absent status skips it; failed/running
-status blocks consumers. Restart removes 02.48 and later artifacts, including stale
-overrides when the rerun makes no change, while preserving predecessors/cache.
-No model, prompt or inference settings are added. See [Stage 02.48](pdf-to-markdown/stages/02.48_order_page_rows/README.md).
 
 Stage 02.50 reads resolved Stage 02 JSON and the exact Stage 01 PNG.
 Its `02.50_page_conversion_review/page_NNNN_review.png` preserves resolution and adds

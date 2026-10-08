@@ -25,26 +25,6 @@ def stage_module(directory, script):
 
 
 class ReviewSelectionTests(unittest.TestCase):
-    def test_row_order_uses_x_despite_small_top_differences(self):
-        stage = stage_module("02.48_order_page_rows", "order_page_rows")
-        path = self.workspace / "02_page_conversion/page_0064_segments.json"
-        right = {"segment_id": "right", "type": "prose", "bbox": [788, 307, 2031, 504],
-                 "md_text": "Both the Amiga 2000 and 500"}
-        left = {"segment_id": "left", "type": "heading", "bbox": [140, 309, 672, 422],
-                "md_text": "EXTRA KEYS ON THE KEYBOARD"}
-        tied = {"segment_id": "tied", "type": "graphic", "bbox": [140, 306, 250, 400]}
-        unrelated = {"segment_id": "other", "type": "table", "bbox": [0, 600, 500, 800]}
-        page = {"page": 64, "custom": {"preserved": True},
-                "segments": [right, unrelated, left, tied]}
-        path.write_text(json.dumps(page))
-        stage.order_page_rows(self.workspace, pages=[64])
-        output = self.workspace / stage.ROW_ORDER_STAGE
-        ordered = json.loads((output / path.name).read_text())
-        self.assertEqual(ordered, {**page, "segments": [left, unrelated, tied, right]})
-        self.assertEqual(stage.order_row_segments(ordered["segments"])[0], ordered["segments"])
-        self.assertEqual(json.loads(path.read_text()), page)
-        self.assertEqual([p.name for p in output.iterdir()], [path.name])
-
     def test_reading_order_does_not_retain_request_artifacts(self):
         stage = stage_module("02.46_review_reading_order", "review_reading_order")
         page_path = self.workspace / "02_page_conversion/page_0064_segments.json"
