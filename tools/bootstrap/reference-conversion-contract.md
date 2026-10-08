@@ -195,8 +195,13 @@ omission; intended-page content and uncertain ownership are preserved.
 The former segmentation and review stages have been removed. Stage 02 reads Stage 01 PNG/text JSON files directly and defines independent logical objects in model array order, with
 `md_text` and no `raw_text`. `02_page_conversion/page_NNNN_segments.json` records
 physical page identity, original PNG dimensions, deterministic page-scoped IDs,
-classifications, heading levels and a required boolean `continuation`.
-For `graphic`, `table` and `cover`, `md_text` is required and must be `""`.
+classifications and nondefault object fields. Saved objects omit `continuation: false`,
+`heading_level: null`, `md_text: ""` and `rotation: 0`; shared artifact reads
+restore the first three defaults for downstream workers. Missing object rotation
+means zero correction. Page geometry rotation remains explicit. This applies to
+page segments, review annotations and stream nodes; existing files remain readable.
+Inference schemas still require boolean `continuation`, nullable `heading_level`
+and `md_text`. For `graphic`, `table` and `cover`, returned `md_text` must be `""`.
 Stage 02 only identifies, classifies and bounds these objects; internal text,
 table reconstruction and graphic/cover content processing are deferred to later
 stages using original image crops. Complete bounds still include internal labels
@@ -264,8 +269,8 @@ source content. Regenerate 02/02.50 to apply this ordering to saved results.
 Stage 02.44 assesses only resolved `graphic` objects, including reclassified
 tables, with one read-only request per image and complete original-detail Stage 01
 PNG input. It adds numeric `rotation`: the correction clockwise from current PNG
-orientation in `[0, 360)`, including fractional values. Missing means no recorded
-decision; zero explicitly records no correction. Preserve source fields,
+orientation in `[0, 360)`, including fractional values. Zero correction is omitted
+from saved objects; missing rotation means no correction. Preserve source fields,
 record the replacement stage, and write complete-page overrides only when changed.
 The resolver chain is `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46`;
 absent optional status skips a layer and failed/running status blocks consumers.

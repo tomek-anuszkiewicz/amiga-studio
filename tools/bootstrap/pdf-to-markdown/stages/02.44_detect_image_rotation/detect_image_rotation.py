@@ -47,7 +47,7 @@ def detect_image_rotation(workspace, config, pages=None):
                         {**context, "target_image": target}, ensure_ascii=False)
                     response = codex.generate_json(request, schema=RESPONSE, image_path=source)
                     rotation = response["rotation"]
-                    if "rotation" not in target or target["rotation"] != rotation:
+                    if target.get("rotation", 0) != rotation:
                         replacements[target["segment_id"]] = {
                             **target, "rotation": rotation,
                         }

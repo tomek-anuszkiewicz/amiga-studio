@@ -4152,3 +4152,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify AST refresh completed
   - git diff --check passed
   - no fragment conversion run
+---
+
+### [2026-10-08 14:55 CET] — PDF-JSON-1: Omit default object fields from saved artifacts
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Omit false continuation, null heading levels, empty Markdown and zero object rotation from segments, annotations and stream nodes
+  - restore downstream defaults on artifact reads
+  - treat absent graphic rotation as zero
+  - synchronize converter contracts
+- **Architectural Rationale & Trade-Offs**:
+  - Keep saved object JSON concise while preserving consumer compatibility
+  - nondefault values and explicit page geometry
+- **Verification & Test Results**:
+  - 30 PDF converter tests passed
+  - isolated compact-write/read check passed
+  - quick pre-flight passed
+  - 19 architecture tests passed
+  - Graphify AST update completed. No source conversion or migration of existing artifacts was run.

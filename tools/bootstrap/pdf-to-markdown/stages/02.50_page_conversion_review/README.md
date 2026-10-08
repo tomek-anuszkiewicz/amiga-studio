@@ -15,8 +15,9 @@ straight leader and label, independent of page and object order. Labels show
 source ordinals, type, optional heading level and `continuation: true` when any
 contributing object has that flag. False flags are omitted. A merged run uses
 an ordinal range, such as `3-5. prose`; other labels retain their source ordinal.
-Graphic labels also show saved `rotation: <number> deg CW`, including zero;
-review JSON retains the value. No source pixels or boxes are rotated.
+Graphic labels also show saved nonzero `rotation: <number> deg CW`;
+review JSON omits zero rotation, false continuation and null heading levels.
+No source pixels or boxes are rotated.
 Labels contain neither text nor coordinates. JSON source order is preserved.
 
 Only consecutive `prose` objects in source order can form one review annotation.
