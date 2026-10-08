@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conversion.config import load_config as parse_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json, prepared_pdf_path
 from common.pdf_selection import selected_pages
-from common.pdf_page_conversion import page_override_layers, TABLE_SPLIT_STAGE, TABLE_RECLASSIFY_STAGE, CODE_RECLASSIFY_STAGE, IMAGE_ROTATION_STAGE, PROSE_CODE_STAGE
+from common.pdf_page_conversion import page_override_layers, TABLE_SPLIT_STAGE, TABLE_RECLASSIFY_STAGE, CODE_RECLASSIFY_STAGE, IMAGE_ROTATION_STAGE, CODE_REFORMAT_STAGE
 from conversion.publication import book_directory, check_destination, publish_output
 
 STAGE_REGISTRY: List[Dict[str, Any]] = [
@@ -76,10 +76,10 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("page_*_segments.json", "sparse image rotation pages"),
     },
     {
-        "id": "02.45", "dir": PROSE_CODE_STAGE, "script": "recover_code_from_prose.py",
-        "desc": "Recover source code classified as prose using original-page vision",
-        "targets": [PROSE_CODE_STAGE],
-        "inspect": ("page_*_segments.json", "sparse prose-to-code replacement pages"),
+        "id": "02.45", "dir": CODE_REFORMAT_STAGE, "script": "reformat_code_block.py",
+        "desc": "Reformat code blocks and indentation using original-page vision",
+        "targets": [CODE_REFORMAT_STAGE],
+        "inspect": ("page_*_segments.json", "sparse reformatted code pages"),
     },
     {
         "id": "02.5", "dir": "02.5_page_conversion_review", "script": "render_review.py",
@@ -571,7 +571,9 @@ def main():
         config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
             IMAGE_ROTATION_STAGE, {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
     if start <= resolve_stage_idx("02.45") <= end:
-        pair = config.setdefault("llm", {}).setdefault("stages", {}).setdefault(PROSE_CODE_STAGE, {})
+        stages = config.setdefault("llm", {}).setdefault("stages", {})
+        previous = stages.pop("02.45_recover_code_from_prose", {})
+        pair = stages.setdefault(CODE_REFORMAT_STAGE, previous)
         pair.setdefault("model", "gpt-6.1-sol")
         pair.setdefault("reasoning_effort", "medium")
     # Retire former settings from existing attempt configurations.

@@ -13,7 +13,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from common.pdf_runtime import RENDER_DPI
-from common.pdf_page_conversion import read_conversion, PROSE_CODE_STAGE
+from common.pdf_page_conversion import read_conversion, CODE_REFORMAT_STAGE
 from common.pdf_tables import STAGE, FIELDS, ASSOCIATED, converted
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -44,7 +44,7 @@ def build_raw_stream(workspace_dir: Path, config: dict):
                 "bbox": [normalized[0] * width, normalized[1] * height,
                          normalized[2] * width, normalized[3] * height],
                 "rendered_markdown": segment["md_text"] if converted(segment) or (
-                    segment["type"] == "code_block" and segment.get("replacement_stage") == PROSE_CODE_STAGE) or (
+                    segment["type"] == "code_block" and segment.get("replacement_stage") == CODE_REFORMAT_STAGE) or (
                     segment["type"] in ASSOCIATED and segment["segment_id"] in group_ids) else None,
                 "continuation_status": None,
                 **{key: segment[key] for key in ("rotation",) if key in segment},

@@ -13,7 +13,7 @@ llm:
     02.42_reclassify_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     02.43_reclassify_code_blocks: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     02.44_detect_image_rotation: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    02.45_recover_code_from_prose: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    02.45_reformat_code_block: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     02.81_transform_page_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     04_stream_reduction: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     06_detect_continuations: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

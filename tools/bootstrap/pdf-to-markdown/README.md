@@ -58,7 +58,7 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [02.42](stages/02.42_reclassify_tables/README.md) | Stage 01 and resolved 02/02.4/02.41 -> table representation decisions and textual replacements, changed pages only |
 | [02.43](stages/02.43_reclassify_code_blocks/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42 -> code blocks retained, transcribed as prose or marked as tables, changed pages only |
 | [02.44](stages/02.44_detect_image_rotation/README.md) | Stage 01 and resolved predecessors through 02.43 -> clockwise graphic rotation metadata, changed pages only |
-| [02.45](stages/02.45_recover_code_from_prose/README.md) | Stage 01 and resolved predecessors through 02.44 -> prose recovered as faithfully indented code, changed pages only |
+| [02.45](stages/02.45_reformat_code_block/README.md) | Stage 01 and resolved predecessors through 02.44 -> existing code blocks reformatted with source-faithful indentation, changed pages only |
 | [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42/02.43/02.44/02.45 -> review frames and ordered labels |
 | [02.8](stages/02.8_filter_page_content/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42/02.43/02.44/02.45 -> retained objects after source-content and fixed NXP-logo exclusions |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.8 -> table markup, saved crops and inferred HTML group text |
@@ -102,7 +102,7 @@ Omission means all available pages, regardless of a previous run or legacy confi
 | 02.42 | Select resolved Stage 02/02.4/02.41 pages before requesting per-table representation decisions |
 | 02.43 | Select resolved Stage 02/02.4/02.41/02.42 pages before requesting per-code-block representation decisions |
 | 02.44 | Select resolved predecessors through 02.43 before requesting per-graphic rotation decisions |
-| 02.45 | Select resolved predecessors through 02.44 before one prose-to-code request per candidate-bearing page |
+| 02.45 | Select resolved predecessors through 02.44 before one formatting request per existing code block |
 | 02.5 | Select resolved Stage 02/02.4/02.41/02.42/02.43/02.44/02.45 pages before review rendering |
 | 02.8 | Select resolved pages before TOC-boundary detection and content exclusions |
 | 02.81 | Select pages from the completed 02.8 predecessor before table inference |
@@ -207,14 +207,13 @@ without code blocks make no requests. Sparse overrides layer after 02.42 for
 review/filtering; restart and selection follow the shared optional-stage rules.
 See the [02.43 contract](stages/02.43_reclassify_code_blocks/README.md).
 
-Stage 02.45 sends the frozen resolved page JSON and eligible prose IDs with the
-complete original Stage 01 PNG in one request per page containing prose. Positive
-decisions supply fenced source code with restored indentation; tokens, comments,
-values and line order remain faithful. Parameter/register descriptions and aligned
-labels remain prose unless they actually contain code. Sparse page overrides
-preserve source fields and lineage. Downstream export and stream construction
-retain recovered fences and indentation without another formatting request.
-See the [02.45 contract](stages/02.45_recover_code_from_prose/README.md).
+Stage 02.45 reformats each resolved `code_block` using its existing Markdown,
+frozen full-page JSON and complete original Stage 01 PNG. One request per block
+focuses on indentation, nesting, spaces and tabs while preserving tokens,
+comments, values, line order and fence language. Types and geometry remain
+unchanged. Reformatted blocks carry source lineage and a stage marker so Stage
+03 initializes rendered Markdown and Stage 09 does not format them again.
+See the [02.45 contract](stages/02.45_reformat_code_block/README.md).
 
 Stage 02.44 records numeric clockwise correction degrees on resolved graphics,
 including table reclassifications, using their JSON/bbox, frozen objects and the

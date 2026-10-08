@@ -101,17 +101,21 @@ with lineage; only changed pages receive overrides. The shared resolver layers
 Pages without code blocks make no model requests. Shared optional-status, page
 selection and restart rules apply. See [Stage 02.43](pdf-to-markdown/stages/02.43_reclassify_code_blocks/README.md).
 
-Stage 02.45 reviews resolved prose with one request per candidate-bearing page,
-using complete frozen page JSON, eligible IDs and the complete original Stage 01
-PNG at original detail. Return only ID/fenced-Markdown replacements, or an empty
-array. Recover actual source code and indentation without correcting, completing
-or rewriting tokens, comments, values or order. Aligned parameter/register
-descriptions remain prose. Preserve IDs, geometry, continuation, source fields
-and lineage; save changed complete pages only. The worker reads predecessors
-through 02.44; review/filtering resolve the additional 02.45 layer. Shared status,
-selection, cache and restart rules apply. Stage 03 marks recovered code already
-rendered so later formatting retains its fences and indentation. No code is
-executed or reconstructed across pages. See [Stage 02.45](pdf-to-markdown/stages/02.45_recover_code_from_prose/README.md).
+Stage 02.45 reformats each resolved `code_block` with one request per block,
+using the frozen page JSON, target ID/Markdown and complete original Stage 01
+PNG at original detail. Return fenced `md_text`, paying particular attention to
+indentation, nesting, spaces and tabs. Preserve tokens, comments, values, line
+order and existing fence language. Do not classify prose, change object types,
+correct code, split/merge blocks or reconstruct code across pages. Preserve IDs,
+geometry, continuation, source fields and lineage; record formatting with a
+replacement-stage marker, even when text was already formatted. Save changed
+complete pages only. Read predecessors through 02.44; review/filtering resolve
+02.45. Shared status, selection, cache and restart rules apply. Stage 03 marks
+formatted code already rendered so Stage 09 retains fences and indentation.
+Existing attempts require explicit regeneration from 02.45; earlier artifacts
+remain unchanged. Explicit 02.45 execution transfers existing saved model/effort
+settings to the renamed configuration key, initializing only missing settings.
+See [Stage 02.45](pdf-to-markdown/stages/02.45_reformat_code_block/README.md).
 
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.
 

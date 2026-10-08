@@ -469,7 +469,7 @@ class PdfConfigurationTests(unittest.TestCase):
              "continuation": False, "md_text": "*Source note*", "bbox": [60, 120, 360, 240]},
             {"segment_id": "page_0007_seg_003", "type": "code_block", "heading_level": None,
              "continuation": False, "md_text": "```\nlabel:\n    move.w #$0001,d0\n```",
-             "bbox": [60, 300, 360, 420], "replacement_stage": "02.45_recover_code_from_prose"},
+             "bbox": [60, 300, 360, 420], "replacement_stage": "02.45_reformat_code_block"},
         ]}
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
