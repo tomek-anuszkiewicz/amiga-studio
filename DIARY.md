@@ -1315,3 +1315,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight passes
   - all 19 architecture tests pass
   - existing user deletions are left unstaged
+---
+
+### [2026-10-08 23:02 CET] — Point shared conversion cache to the book catalog
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/cache.py`
+  - `tools/bootstrap/html-to-markdown/README.md`
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Resolve the shared default response cache from the bootstrap directory at book-to-markdown/books/.cache/codex
+  - update HTML and PDF cache location documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Reuse the relocated cache through one portable shared default while preserving existing explicit cache overrides and request identities
+- **Verification & Test Results**:
+  - Default ResponseCache resolves to the existing relocated directory
+  - 21 shared conversion tests and 26 PDF tests pass
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - scoped diff check passes
+  - no old Reference/.cache paths remain in bootstrap code or Markdown
+  - no live conversion or cache content changes

@@ -47,7 +47,7 @@ for a disposable pilot cache. The baseline is `gpt-6.1-sol` / `medium`, concurre
 Invalid configuration, authentication and inference failures stop conversion; no PDF
 configuration or DOM result substitutes for Codex.
 
-The shared client caches only completed, validated responses under `Reference/.cache/codex` and writes `.conversion-metrics.json` beside the output. Cached usage belongs to the original request. See the [conversion contract](../reference-conversion-contract.md) for source fidelity and transport boundaries; development runs use the fragment requested by the user.
+The shared client caches only completed, validated responses under `tools/bootstrap/book-to-markdown/books/.cache/codex` and writes `.conversion-metrics.json` beside the output. Cached usage belongs to the original request. See the [conversion contract](../reference-conversion-contract.md) for source fidelity and transport boundaries; development runs use the fragment requested by the user.
 
 Optional page rendering requires Chrome, Chromium, or Edge and PyMuPDF. Image crop extraction requires Pillow. See the operational workflow below for these tools and link validation.
 

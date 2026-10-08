@@ -60,7 +60,7 @@ Attempts using the previous stage numbering require a new named workspace.
 python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --status
 ```
 
-The shared response cache defaults to `Obsidian/Amiga/Reference/.cache/codex`;
+The shared response cache defaults to `tools/bootstrap/book-to-markdown/books/.cache/codex`;
 `--cache-dir` overrides it. Stage IDs participate in cache identity.
 
 Follow the [developer-led workflow](../reference-conversion-contract.md#development-workflow):
