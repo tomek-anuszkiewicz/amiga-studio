@@ -42,8 +42,6 @@ def table_replacements(source, response, reserved_ids):
         replacement = {**source, **child, "segment_id": identity}
         if len(children) == 1:
             replacement.update(bbox=list(source["bbox"]), continuation=source["continuation"])
-        if child["type"] == "graphic":
-            replacement["image_only"] = True
         replacements.append(replacement)
     return replacements
 

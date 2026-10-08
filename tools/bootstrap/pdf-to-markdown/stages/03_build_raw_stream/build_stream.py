@@ -49,7 +49,7 @@ def build_raw_stream(workspace_dir: Path, config: dict):
                 "continuation_status": None,
                 **{key: segment[key] for key in ("rotation",) if key in segment},
                 **{key: segment[key] for key in FIELDS if key in segment},
-                "metadata": {key: segment[key] for key in ("source_segment_ids", "replacement_stage", "image_only", "rotation")
+                "metadata": {key: segment[key] for key in ("source_segment_ids", "replacement_stage", "rotation")
                              if key in segment},
             })
     output = workspace_dir / "03_build_raw_stream"

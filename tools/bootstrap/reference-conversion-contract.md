@@ -83,9 +83,10 @@ transcribe prose/code, or split independent elements into source-ordered existin
 types. Singleton replacements retain bbox/continuation; children receive stable
 IDs. Only changed pages receive complete-page overrides, layered as
 `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46`; the worker reads only predecessors. Shared optional
-status and selection rules apply. Graphics carry `image_only` through Stage 03,
-receive exact original-pixel crops and remain independent raster images through
-04/08. Existing sidecar processing remains. Review 02.50/filtering 02.80 resolve the
+status and selection rules apply. Graphics follow the standard Stage 03 crop
+path with bounded padding and may merge in Stage 04 when vision confirms a
+unified diagram. Later chapter stages retain raster assets. Existing sidecar
+processing remains. Review 02.50/filtering 02.80 resolve the
 new layer; 02.81 receives only remaining tables. Restart clears 02.42 and every
 later stage. See [Stage 02.42](pdf-to-markdown/stages/02.42_reclassify_tables/README.md).
 

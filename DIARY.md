@@ -4172,3 +4172,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick pre-flight passed
   - 19 architecture tests passed
   - Graphify AST update completed. No source conversion or migration of existing artifacts was run.
+---
+
+### [2026-10-08 15:03 CEST] — PDF-GRAPHIC-1: Remove image-only processing flag
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.42_reclassify_tables`
+  - `tools/bootstrap/pdf-to-markdown/stages/03_build_raw_stream`
+  - `tools/bootstrap/pdf-to-markdown/stages/04_stream_reduction`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove flag generation and Stage 03 metadata propagation
+  - Use standard padded crops and adjacent-graphic merge eligibility for all graphic objects
+  - Update the stage README and conversion contract
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested removal of the separate image_only flag
+  - Graphic type now follows one shared crop and reduction path
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture rules passed: 19 tests
+  - Existing PDF conversion tests passed: 30 tests
+  - Python syntax checked for all four modified modules
+  - No image_only references remain under tools
+  - Graphify incremental code update completed
+  - No source fragment conversion or existing artifact regeneration requested or performed

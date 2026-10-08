@@ -87,12 +87,11 @@ def reduce_contiguous_graphics(
     i = 0
     while i < len(nodes):
         node = nodes[i]
-        if node.get("type") == "graphic" and not node.get("metadata", {}).get("image_only"):
+        if node.get("type") == "graphic":
             run = [node]
             j = i + 1
             while (j < len(nodes) and nodes[j].get("type") == "graphic"
-                   and nodes[j].get("page") == node.get("page")
-                   and not nodes[j].get("metadata", {}).get("image_only")):
+                   and nodes[j].get("page") == node.get("page")):
                 run.append(nodes[j])
                 j += 1
             if len(run) >= 2:
