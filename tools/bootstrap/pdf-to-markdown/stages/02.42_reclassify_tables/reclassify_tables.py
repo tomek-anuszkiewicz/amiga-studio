@@ -14,7 +14,7 @@ from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json
 from common.pdf_page_conversion import resolved_page_files, TABLE_RECLASSIFY_STAGE, SEGMENT
-from common.pdf_segment_replacements import segment_replacements as table_replacements
+from common.pdf_segment_replacements import segment_replacements
 from common.pdf_schemas import object_schema
 from common.pdf_selection import selected_pages
 
@@ -51,7 +51,11 @@ def reclassify_tables(workspace, config, pages=None):
                     request = prompt + "\n\nFrozen source page and target table:\n" + json.dumps(
                         {**context, "target_table": target}, ensure_ascii=False)
                     response = codex.generate_json(request, schema=RESPONSE, image_path=source)
-                    children = table_replacements(target, response, reserved_ids)
+                    children = segment_replacements(target, response, reserved_ids, TABLE_RECLASSIFY_STAGE)
+                    if response["action"] != "retain":
+                        for child in children:
+                            if child["type"] == "graphic":
+                                child["image_only"] = True
                     replacements[target["segment_id"]] = children
                     requested += 1
                     print(f"[table-reclassify] {page_id}/{target['segment_id']}: "

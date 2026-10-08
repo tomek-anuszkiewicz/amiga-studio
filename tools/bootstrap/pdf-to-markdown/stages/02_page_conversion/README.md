@@ -15,10 +15,7 @@ authenticated Codex request uses original image detail and its explicit
 
 Output: `02_page_conversion/page_NNNN_segments.json`, recording `page`,
 `image_width`, `image_height` and ordered `segments`. Each segment has its
-post-parse deterministic `segment_id`, `type` and `bbox`. Saved objects omit
-`continuation: false`, `heading_level: null`, `md_text: ""` and `rotation: 0`.
-Shared artifact reads restore the text, heading and continuation defaults;
-missing object rotation means no correction. Inference response fields remain required.
+post-parse deterministic `segment_id`, `type`, `heading_level`, `md_text` and `bbox`.
 Every object has a nonempty box: integer original-PNG pixels, top-left origin,
 `[x0,y0,x1,y1]`, exclusive upper bounds. The model bounds complete logical objects,
 including text, captions, legends and page furniture. No raw_text is emitted.
@@ -105,7 +102,7 @@ resolver. See [Stage 02.40](../02.40_reclassify_callouts/README.md).
 Stage [02.44](../02.44_detect_image_rotation/README.md) adds optional `rotation`
 metadata only to resolved graphics. It records the correction in clockwise degrees
 from the original PNG orientation, allowing fractional values in `[0, 360)`.
-Missing or zero means no correction needed; zero is omitted from saved objects.
+Missing means no recorded decision; zero explicitly means no correction needed.
 Stage 02 inference responses do not require this field. Later filtering and table
 transformation preserve it, and Stage 03 copies it onto nodes and their metadata.
 The field does not change source geometry or rotate exported pixels.

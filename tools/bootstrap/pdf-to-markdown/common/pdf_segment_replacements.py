@@ -1,6 +1,6 @@
 """Stable identities and source-field preservation for split page objects."""
 
-def segment_replacements(source, response, reserved_ids):
+def segment_replacements(source, response, reserved_ids, replacement_stage=None):
     """Preserve retained objects and assign stable child identities in source order."""
     if response["action"] == "retain":
         return [source]
@@ -17,6 +17,9 @@ def segment_replacements(source, response, reserved_ids):
             identity = f"{identity}_part_{suffix}"
         reserved_ids.add(identity)
         replacement = {**source, **child, "segment_id": identity}
+        if replacement_stage is not None:
+            replacement["source_segment_ids"] = [source["segment_id"]]
+            replacement["replacement_stage"] = replacement_stage
         if len(children) == 1:
             replacement.update(bbox=list(source["bbox"]), continuation=source["continuation"])
         replacements.append(replacement)

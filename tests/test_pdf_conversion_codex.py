@@ -22,6 +22,26 @@ from common.pdf_artifacts import read_json, write_json
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class PdfArtifactIdentityTests(unittest.TestCase):
+    def test_read_preserves_extracted_text_prompt_data(self):
+        value = {"blocks": [{"type": 0, "bbox": [1, 2, 3, 4], "text": "Source"}]}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "page.json"
+            path.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
+            self.assertEqual(json.dumps(read_json(path), ensure_ascii=False),
+                             json.dumps(value, ensure_ascii=False))
+
+    def test_write_preserves_explicit_object_defaults(self):
+        value = {"segments": [{"type": "graphic", "bbox": [1, 2, 3, 4],
+                              "continuation": False, "heading_level": None,
+                              "md_text": "", "rotation": 0}]}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "page.json"
+            write_json(path, value)
+            self.assertEqual(path.read_text(encoding="utf-8"),
+                             json.dumps(value, indent=2, ensure_ascii=False))
+
+
 class PdfNxpGeometryTests(unittest.TestCase):
     def test_landscape_page_keeps_unrotated_logo_size(self):
         spec = importlib.util.spec_from_file_location(

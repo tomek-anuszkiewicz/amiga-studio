@@ -265,7 +265,7 @@ See the [02.45 contract](stages/02.45_reformat_code_block/README.md).
 Stage 02.44 records numeric clockwise correction degrees on resolved graphics,
 including table reclassifications, using their JSON/bbox, frozen objects and the
 complete original Stage 01 PNG. Fractional angles in `[0, 360)` are allowed;
-absence means zero correction; zero is omitted from saved objects.
+absence means no recorded decision, while zero records no correction needed.
 Review labels show the angle and filtering/table transformations/Stage 03 retain
 it, including stream node metadata. Boxes and review/crop pixels stay unchanged;
 exported asset rotation is deferred. See the [02.44 contract](stages/02.44_detect_image_rotation/README.md).

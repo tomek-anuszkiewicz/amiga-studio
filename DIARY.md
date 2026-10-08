@@ -4266,3 +4266,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - REVIEW_INDEX.md records the current page-only trial
   - Graphify incremental update completed and diff whitespace check passed
   - No conversion-quality certification or additional page trial performed
+---
+
+### [2026-10-08 15:48 CEST] — PDF-CACHE-JSON: Restore historical artifact serialization and replacement metadata
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_pdf_conversion_codex.py`
+  - `tests/test_pdf_callout_geometry.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Restore direct JSON reads and full JSON writes without recursive compaction or default injection
+  - Restore source_segment_ids and replacement_stage persistence in Stages 02.40-02.45
+  - Restore explicit zero rotation decisions
+  - Restore Stage 02.42 image_only serialization for historical cache identity while current graphic processing ignores it
+  - Keep shared split handling and Stage 02.47 descriptive-text extraction
+  - Update contracts and focused technical regressions
+- **Architectural Rationale & Trade-Offs**:
+  - Default restoration polluted Stage 01 OCR blocks in the complete JSON embedded in Stage 02 prompts
+  - Removing replacement metadata also changed subsequent request identities
+  - The user requested code-only restoration and will regenerate pages, so existing workspaces and cache entries remain untouched
+- **Verification & Test Results**:
+  - Two focused artifact-identity tests failed before restoration due to added input defaults and stripped output defaults, then passed
+  - Existing callout regression reproduced missing source lineage and passed after restoration
+  - PDF execution suite passed 32 tests, callout suite passed one test, review-selection suite passed eight tests
+  - Page 35 read-only request reconstruction restored cache key 7978bdafe8a860da364ec8fcfc5f67feec69fd6a7db3edd2728c508b2c74ce4e and found its saved completed response
+  - Stage 02.42 representative replacement serialization matched the historical implementation including field order
+  - Quick pre-flight and 19 architecture tests passed
+  - Graphify update and whitespace checks completed
+  - No fragment conversion, existing JSON rewrite, cache mutation, publishing or indexing performed

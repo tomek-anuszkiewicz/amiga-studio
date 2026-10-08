@@ -39,9 +39,8 @@ The program saves these coordinates directly; contributor boxes provide request
 context and do not determine replacement geometry. The prompt and schema change
 invalidates previous cached responses; existing overrides require an explicit
 restart at 02.40 to regenerate their boxes.
-Continuation is retained. Source IDs identify contributors in the replacement
-response only; saved segments omit `source_segment_ids` and `replacement_stage`.
-Cross-page restructuring is outside scope.
+Continuation and source segment lineage are retained; cross-page restructuring
+is outside scope.
 
 Write complete `page_NNNN_segments.json` overrides only for changed pages.
 No request images, response dumps, diagnostics directory or decision reports
@@ -56,7 +55,8 @@ authoritative Stage 02 filenames through completed sparse overrides. An absent
 02.40 status means deliberately skipped; running/failed status blocks these inputs.
 Filtering omissions are never filled from earlier stages. Stage 02.81 builds table
 groups and companions from the corrected objects, then 02.82 removes empty rows before 02.90/03 consume its output.
-Stage 09 assembles native callouts and recognizes decorated leading advisory labels.
+Stage 03 carries replacement lineage in node metadata; Stage 09 assembles native
+callouts and recognizes decorated leading advisory labels.
 
 Run through the orchestrator in a named attempt:
 

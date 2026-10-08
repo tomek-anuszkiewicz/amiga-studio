@@ -36,7 +36,7 @@ overlaps and read-only anchors retain source ranges with concise console message
 Responses contain only replacements using stable source segment IDs, without
 attachment decisions. Each replacement includes its own tight pixel box inferred
 from the original image, separating label, body and retained remainder geometry.
-The program preserves those boxes directly; IDs derive from contributors. Saved segments omit source-lineage and replacement-stage metadata.
+The program preserves those boxes directly; IDs derive from contributors. Saved segments retain `source_segment_ids` and `replacement_stage`.
 No framed companions, response dumps or decision reports are created.
 The prompt excludes numbered/symbol-marked footnotes, table/figure legends and
 explanatory lists. Distinct NOTE labels introducing their own advisory paragraphs
@@ -108,11 +108,11 @@ level, consistent brace alignment and indentation tabs normalized to spaces.
 Existing source indentation is input to improve, not a formatting reference. Preserve tokens, comments, values, line
 order and existing fence language. Do not classify prose, change object types,
 correct code, split/merge blocks or reconstruct code across pages. Preserve IDs,
-geometry, continuation and source fields. Saved segments omit source-lineage
-and replacement-stage metadata. Save changed
+geometry, continuation, source fields and lineage; record formatting with a
+replacement-stage marker, even when text was already formatted. Save changed
 complete pages only. Read predecessors through 02.44; review/filtering resolve
-02.45. Shared status, selection, cache and restart rules apply. The existing Stage 03/09 marker-based behavior is outside this change and
-requires a separate update to reuse formatted code without the removed marker.
+02.45. Shared status, selection, cache and restart rules apply. Stage 03 marks formatted code already rendered so Stage 09 retains its fences
+and indentation.
 Existing attempts require explicit regeneration from 02.45; earlier artifacts
 remain unchanged. Explicit 02.45 execution transfers existing saved model/effort
 settings to the renamed configuration key, initializing only missing settings.
@@ -196,13 +196,21 @@ omission; intended-page content and uncertain ownership are preserved.
 The former segmentation and review stages have been removed. Stage 02 reads Stage 01 PNG/text JSON files directly and defines independent logical objects in model array order, with
 `md_text` and no `raw_text`. `02_page_conversion/page_NNNN_segments.json` records
 physical page identity, original PNG dimensions, deterministic page-scoped IDs,
-classifications and nondefault object fields. Saved objects omit `continuation: false`,
-`heading_level: null`, `md_text: ""` and `rotation: 0`; shared artifact reads
-restore the first three defaults for downstream workers. Missing object rotation
-means zero correction. Page geometry rotation remains explicit. This applies to
-page segments, review annotations and stream nodes; existing files remain readable.
-Inference schemas still require boolean `continuation`, nullable `heading_level`
-and `md_text`. For `graphic`, `table` and `cover`, returned `md_text` must be `""`.
+classifications, heading levels and explicit boolean `continuation`.
+Saved objects retain `continuation: false`, `heading_level: null`, `md_text: ""`
+and explicit `rotation: 0`. Artifact IO reads and writes supplied JSON without
+adding or removing object fields. This preserves the source JSON embedded in
+inference prompts and its response-cache identity. For `graphic`, `table` and
+`cover`, returned `md_text` must be "".
+The former compact JSON and removed replacement metadata are reversed in code.
+Stages 02.40-02.45 again persist their original lineage/stage fields. Stage 02.42
+also writes its former `image_only: true` on graphic replacements solely for
+historical JSON/cache compatibility; current graphic processing ignores it.
+Existing workspaces and cache entries are not rewritten. Regenerate compact
+artifacts and predecessor stages explicitly before running their consumers.
+Cache reuse requires identical PNGs, prompt data, schema and model/runtime settings;
+restoring serialization does not make intentionally changed prompts identical.
+
 Stage 02 only identifies, classifies and bounds these objects; internal text,
 table reconstruction and graphic/cover content processing are deferred to later
 stages using original image crops. Complete bounds still include internal labels
@@ -270,8 +278,8 @@ source content. Regenerate 02/02.50 to apply this ordering to saved results.
 Stage 02.44 assesses only resolved `graphic` objects, including reclassified
 tables, with one read-only request per image and complete original-detail Stage 01
 PNG input. It adds numeric `rotation`: the correction clockwise from current PNG
-orientation in `[0, 360)`, including fractional values. Zero correction is omitted
-from saved objects; missing rotation means no correction. Preserve source fields,
+orientation in `[0, 360)`, including fractional values. Missing means no recorded
+decision; zero explicitly records no correction. Preserve source fields and lineage,
 record the replacement stage, and write complete-page overrides only when changed.
 The resolver chain is `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47`;
 absent optional status skips a layer and failed/running status blocks consumers.

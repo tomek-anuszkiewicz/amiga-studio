@@ -47,9 +47,11 @@ def detect_image_rotation(workspace, config, pages=None):
                         {**context, "target_image": target}, ensure_ascii=False)
                     response = codex.generate_json(request, schema=RESPONSE, image_path=source)
                     rotation = response["rotation"]
-                    if target.get("rotation", 0) != rotation:
+                    if "rotation" not in target or target["rotation"] != rotation:
                         replacements[target["segment_id"]] = {
                             **target, "rotation": rotation,
+                            "source_segment_ids": target.get("source_segment_ids", [target["segment_id"]]),
+                            "replacement_stage": IMAGE_ROTATION_STAGE,
                         }
                     requested += 1
                     print(f"[image-rotation] {page_id}/{target['segment_id']}: {rotation} deg CW", flush=True)

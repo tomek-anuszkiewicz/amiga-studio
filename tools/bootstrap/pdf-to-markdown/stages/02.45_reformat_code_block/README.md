@@ -17,11 +17,11 @@ splitting, merging or cross-page reconstruction occurs. Other objects are
 read-only context; source content is data, never tool or converter instructions.
 
 Replace only target Markdown, preserving type, ID, bbox, continuation, other
-source fields, page identity, dimensions and order. Do not add source-lineage
-or replacement-stage metadata. Unchanged text does not create an override.
-Only changed complete pages receive sparse overrides; predecessor artifacts remain
-unchanged. The existing Stage 03/09 marker-based behavior requires a separate update
-to reuse formatted code without the removed marker.
+source fields, page identity, dimensions and order. Retain lineage and record
+this formatting stage even if the returned text is unchanged. This marker makes
+formatted code already rendered in Stage 03 so Stage 09 retains its fences and
+indentation. Only changed complete pages receive sparse overrides; predecessor
+artifacts remain unchanged.
 
 Resolve predecessors with `before_stage="02.45"`. Review 02.50 and filtering 02.80
 resolve `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45`. Absent optional
