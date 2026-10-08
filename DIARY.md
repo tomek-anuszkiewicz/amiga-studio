@@ -999,3 +999,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19 tests
   - no fragment conversion requested or run
   - vocabulary-check command corrected for shell quoting and to exclude the separate heading-example table before passing
+---
+
+### [2026-10-08 21:14 CEST] — Simplify page classification for manual editor review
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion/prompt.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Reduce prompt from 284 to 84 lines
+  - remove cover and contents/index/table-list/figure-list classification
+  - define ordered checks starting with headers and footers then callouts and separate annotations
+  - identify tables before graphics and leave prose as the final fallback
+- **Architectural Rationale & Trade-Offs**:
+  - User will assign document-specific roles and correct approximate classification in a manual editor
+  - classification priority is explicit and separate from output reading order
+  - preserve the previously selected prompt-only scope and unchanged legacy response schema
+- **Verification & Test Results**:
+  - Classification order and excluded roles reviewed
+  - git diff --check passed
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - no conversion fragment requested or run
