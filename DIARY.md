@@ -966,3 +966,16 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight passed
   - architecture suite passed 19 tests
   - no runtime or PDF schema change
+---
+
+### [2026-10-08 21:07 CET] — Align book caption terminology with graphic elements
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/elements.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace figure with graphic in the caption definition and its explanatory paragraph
+- **Architectural Rationale & Trade-Offs**:
+  - User requested terminology consistent with the graphic element type
+- **Verification & Test Results**:
+  - Diff reviewed
+  - quick preflight passed
+  - architecture suite passed 19 tests
