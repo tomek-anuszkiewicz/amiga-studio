@@ -77,7 +77,7 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [02.44](stages/02.44_detect_image_rotation/README.md) | Stage 01 and resolved predecessors through 02.43 -> clockwise graphic rotation metadata, changed pages only |
 | [02.45](stages/02.45_reformat_code_block/README.md) | Stage 01 and resolved predecessors through 02.44 -> existing code blocks reformatted with consistent structural indentation, changed pages only |
 | [02.46](stages/02.46_review_reading_order/README.md) | Stage 01 and resolved predecessors through 02.45 -> whole-page reading-order assessment for suspicious pairs, changed pages only |
-| [02.47](stages/02.47_reclassify_graphics/README.md) | Stage 01 and resolved predecessors through 02.46 -> graphics retained or reclassified as table/code/prose, changed pages only |
+| [02.47](stages/02.47_reclassify_graphics/README.md) | Stage 01 and resolved predecessors through 02.46 -> graphics retained or split into illustration and descriptive prose, changed pages only |
 | [02.50](stages/02.50_page_conversion_review/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47 -> review frames and ordered labels |
 | [02.80](stages/02.80_filter_page_content/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47 -> retained objects after source-content and fixed NXP-logo exclusions |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> table markup, saved crops and inferred HTML group text |
@@ -120,7 +120,7 @@ Omission means all available pages, regardless of a previous run or legacy confi
 | 02.44 | Select resolved predecessors through 02.43 before requesting per-graphic rotation decisions |
 | 02.45 | Select resolved predecessors through 02.44 before one formatting request per existing code block |
 | 02.46 | Select resolved predecessors through 02.45 before geometry detection and one whole-page order request per suspicious page |
-| 02.47 | Reassess resolved graphics as tables, code, prose or retained images |
+| 02.47 | Extract clearly separate descriptive prose from resolved graphics |
 | 02.50 | Select resolved Stage 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47 pages before review rendering |
 | 02.80 | Select resolved pages before TOC-boundary detection and content exclusions |
 | 02.81 | Select pages from the completed 02.80 predecessor before table inference |
@@ -242,13 +242,15 @@ images and published content. The detector misses vertically disjoint inversions
 and other layouts; legitimate column flow may be flagged for model assessment.
 See [Stage 02.46](stages/02.46_review_reading_order/README.md).
 
-Stage 02.47 reassesses resolved graphics against the complete original PNG and
-frozen page context. Its initial prompt retains images or replaces whole objects
-with table/code/prose, preserving IDs, bounds, continuation and order. Text is
-transcribed here; table transcription stays in 02.81. Mixed cell backgrounds
-remain graphic. Changed pages form sparse overrides after 02.46; consumers use
-them before review/filtering. Restart clears 02.47 and later artifacts only.
-See [Stage 02.47](stages/02.47_reclassify_graphics/README.md). The user assesses fragment quality.
+Stage 02.47 asks whether a resolved graphic contains clearly separate descriptive
+text, using the complete original PNG, frozen JSON and target bbox. It retains
+the source or splits it into graphic/prose children with their own tight boxes
+and source order. Labels and text graphically connected to the illustration
+remain inside the graphic; a separate description may still concern the drawing.
+Shared replacement handling assigns stable child IDs; prose drops rotation.
+Whole-target table reclassification is no longer performed. Sparse overrides
+feed review/filtering; restart clears 02.47 and later artifacts only.
+See [Stage 02.47](stages/02.47_reclassify_graphics/README.md). The current user-selected trial is page 35.
 
 
 Stage 02.45 reformats each resolved `code_block` using its existing Markdown and

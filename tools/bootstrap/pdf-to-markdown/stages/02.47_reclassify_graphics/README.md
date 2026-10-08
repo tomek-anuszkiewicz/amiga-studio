@@ -1,27 +1,35 @@
-# Stage 02.47: Reclassify graphics
+# Stage 02.47: Extract descriptive text from graphics
 
-Reassess every resolved `graphic` using its JSON/bbox, frozen page objects and
-the complete unmodified Stage 01 PNG at original detail. Apply page selection
-before requests. The initial [prompt](prompt.md) chooses `retain`, `table`,
-`code_block` or `prose` for the whole target, without splitting. Tables with
-mixed cell background colors remain graphics, matching Stage 02.42.
+For every resolved `graphic`, ask whether it contains visibly independent
+descriptive text that can be separated from the illustration. Send the complete
+unmodified Stage 01 PNG at original detail, frozen page JSON and target bbox.
+No request annotation or cropped image is needed. Apply page selection before
+requests; pages without graphics make no requests.
 
-Retention preserves the object exactly. A replacement preserves its ID, bbox,
-continuation and order, removes graphic-only rotation metadata, and transcribes
-prose/code immediately. Tables retain empty `md_text` for Stage 02.81.
-New code blocks are transcribed here because Stage 02.45 has already run.
-Only changed pages receive full-page overrides.
+The [prompt](prompt.md) retains the source when uncertain. A clear split returns
+`graphic` and `prose` children with their own model-provided tight pixel boxes
+and continuation flags in source reading order. Prose is transcribed faithfully
+into Markdown; graphic content remains deferred. Internal labels, bit numbers,
+cell text and text connected by arrows, lines, shared borders or meaningful
+geometry remain in the image. A separate description may concern the drawing
+without being graphically connected to it. Whole-target table reclassification
+is no longer performed.
+
+Shared replacement handling preserves retained objects exactly, gives the first
+child the source ID and subsequent children collision-free `_part_N` IDs. Split
+children retain other source fields; prose drops graphic-only rotation while
+remaining graphics preserve it. Only changed pages receive full-page overrides.
 
 Resolution appends 02.47 after 02.46 before review/filtering and downstream
 consumers. The worker reads only predecessors. Absent optional status skips the
 layer; failed/running status blocks consumers. Restart clears 02.47 and later
-stages, preserving predecessors and the shared request cache. Existing attempt
-model/effort settings remain; missing settings initialize to gpt-6.1-sol/medium.
-Pages without graphics make no requests. Use the pipeline:
+stages, preserving predecessors and cache. Existing attempt model/effort settings
+remain; missing settings initialize to gpt-6.1-sol/medium. Prompt/schema changes
+change request identity, so former whole-target answers are not reused.
 
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "35" --from-stage 02.47 --to-stage 02.50
 ```
 
-The user selects fragments and assesses classification quality. Successful
-execution does not certify fidelity; the initial prompt remains subject to review.
+The user selects fragments and assesses quality; execution success does not
+certify the split or transcription. The current trial is limited to page 35.

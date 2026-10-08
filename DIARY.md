@@ -4240,3 +4240,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - REVIEW_INDEX.md and local trial artifacts retained in workspace/graphic-reclassify-01 without publishing or indexing
   - Graphify update completed
   - Conversion quality remains for user assessment
+---
+
+### [2026-10-08 15:37 CEST] — PDF-GRAPHIC-2.47: Split independent descriptive prose from graphics
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace whole-target table/code/prose reclassification with retain or graphic/prose splits
+  - Prompt distinguishes separate descriptive blocks from labels and graphically connected text
+  - Reuse Stage 02.42 stable replacement handling through a shared helper, preserving source fields and collision-free child IDs
+  - Keep rotation on graphic children and remove it from prose
+  - Synchronize converter contracts and narrow local review index to page 35
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested separation of clearly independent descriptions while preserving meaningful illustration geometry
+  - Complete original PNG, frozen page JSON and target bbox provide context without extra annotations
+  - Quality assessment and further prompt changes remain user-led
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture suite passed 19 tests
+  - Existing PDF execution/restart suite passed 30 tests and review-selection suite passed 8 tests
+  - Page 35 only: Stage 02.47 succeeded with one fresh request in 11.90 seconds and returned graphic plus prose
+  - The illustration uses bbox [211 797 1817 885] and extracted descriptions use [222 899 1757 1199]
+  - Stage 02.50 regenerated one preview in 0.42 seconds
+  - REVIEW_INDEX.md records the current page-only trial
+  - Graphify incremental update completed and diff whitespace check passed
+  - No conversion-quality certification or additional page trial performed

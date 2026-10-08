@@ -14,6 +14,7 @@ from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json
 from common.pdf_page_conversion import resolved_page_files, TABLE_RECLASSIFY_STAGE, SEGMENT
+from common.pdf_segment_replacements import segment_replacements as table_replacements
 from common.pdf_schemas import object_schema
 from common.pdf_selection import selected_pages
 
@@ -21,29 +22,6 @@ RESPONSE = object_schema({
     "action": {"type": "string", "enum": ["retain", "replace"]},
     "replacements": {"type": "array", "items": SEGMENT},
 })
-
-
-def table_replacements(source, response, reserved_ids):
-    """Preserve retained objects and assign stable child identities in source order."""
-    if response["action"] == "retain":
-        return [source]
-    children = response["replacements"]
-    if not children:
-        raise ValueError("Table reclassification replacement contains no objects")
-    replacements = []
-    for index, child in enumerate(children):
-        identity = source["segment_id"]
-        if index:
-            suffix = 2
-            while f"{identity}_part_{suffix}" in reserved_ids:
-                suffix += 1
-            identity = f"{identity}_part_{suffix}"
-        reserved_ids.add(identity)
-        replacement = {**source, **child, "segment_id": identity}
-        if len(children) == 1:
-            replacement.update(bbox=list(source["bbox"]), continuation=source["continuation"])
-        replacements.append(replacement)
-    return replacements
 
 
 def reclassify_tables(workspace, config, pages=None):

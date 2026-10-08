@@ -89,7 +89,7 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
     },
     {
         "id": "02.47", "dir": GRAPHIC_RECLASSIFY_STAGE, "script": "reclassify_graphics.py",
-        "desc": "Reclassify graphics using original-page vision",
+        "desc": "Extract independent descriptive text from graphics using original-page vision",
         "targets": [GRAPHIC_RECLASSIFY_STAGE],
         "inspect": ("page_*_segments.json", "sparse graphic reclassification pages"),
     },

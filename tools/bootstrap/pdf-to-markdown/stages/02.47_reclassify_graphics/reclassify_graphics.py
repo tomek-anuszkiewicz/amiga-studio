@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage 02.47: reconsider existing graphics using original-page vision."""
+"""Stage 02.47: extract independent descriptive text from graphics using original-page vision."""
 
 import argparse
 import json
@@ -13,13 +13,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json
-from common.pdf_page_conversion import resolved_page_files, GRAPHIC_RECLASSIFY_STAGE
-from common.pdf_schemas import object_schema, STRING
+from common.pdf_page_conversion import resolved_page_files, GRAPHIC_RECLASSIFY_STAGE, SEGMENT
+from common.pdf_schemas import object_schema
+from common.pdf_segment_replacements import segment_replacements
 from common.pdf_selection import selected_pages
 
+SPLIT_SEGMENT = object_schema({
+    **SEGMENT["properties"],
+    "type": {"type": "string", "enum": ["graphic", "prose"]},
+})
 RESPONSE = object_schema({
-    "action": {"type": "string", "enum": ["retain", "prose", "table", "code_block"]},
-    "md_text": STRING,
+    "action": {"type": "string", "enum": ["retain", "replace"]},
+    "replacements": {"type": "array", "items": SPLIT_SEGMENT},
 })
 
 
@@ -37,6 +42,7 @@ def reclassify_graphics(workspace, config, pages=None):
             candidates = [obj for obj in objects if obj["type"] == "graphic"]
             page_id = path.stem.removesuffix("_segments")
             replacements = {}
+            reserved_ids = {obj["segment_id"] for obj in objects}
             if candidates:
                 source = workspace / "01_preprocess" / f"{page_id}.png"
                 with Image.open(source) as image:
@@ -49,17 +55,16 @@ def reclassify_graphics(workspace, config, pages=None):
                     request = prompt + "\n\nFrozen source page and target graphic:\n" + json.dumps(
                         {**context, "target_graphic": target}, ensure_ascii=False)
                     response = codex.generate_json(request, schema=RESPONSE, image_path=source)
-                    action = response["action"]
-                    if action != "retain":
-                        replacements[target["segment_id"]] = {
-                            **target, "type": action,
-                            "md_text": response["md_text"] if action in {"prose", "code_block"} else "",
-                            "heading_level": None,
-                        }
-                        replacements[target["segment_id"]].pop("rotation", None)
+                    children = segment_replacements(target, response, reserved_ids)
+                    for child in children:
+                        if child["type"] != "graphic":
+                            child.pop("rotation", None)
+                    replacements[target["segment_id"]] = children
                     requested += 1
-                    print(f"[graphic-reclassify] {page_id}/{target['segment_id']}: {action}", flush=True)
-            segments = [replacements.get(obj["segment_id"], obj) for obj in objects]
+                    print(f"[graphic-reclassify] {page_id}/{target['segment_id']}: "
+                          f"{response['action']} -> {[child['type'] for child in children]}", flush=True)
+            segments = [child for obj in objects
+                        for child in replacements.get(obj["segment_id"], [obj])]
             if segments != objects:
                 write_json(output / path.name, {**page, "segments": segments})
                 changed_pages += 1
@@ -72,7 +77,7 @@ def reclassify_graphics(workspace, config, pages=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 02.47: reclassify graphics using original-page vision")
+    parser = argparse.ArgumentParser(description="Stage 02.47: extract independent descriptive text from graphics")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--page-ranges")
