@@ -1043,3 +1043,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - git diff --check passed
   - Graphify incremental code update completed
   - no source conversion requested or run
+---
+
+### [2026-10-08 21:17 CEST] — Replace fixed NXP image exclusion with margin-logo classification
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Delete the NXP template and all image-comparison code
+  - filter only header and footer types without reading images
+  - classify recurring margin logos and publisher branding as header/footer in the page prompt
+  - remove the obsolete logo geometry test and update documentation and CLI stage description
+- **Architectural Rationale & Trade-Offs**:
+  - User removed the fixed logo-elimination mechanism
+  - page furniture classification handles margin branding while graphics remain for manual editing
+- **Verification & Test Results**:
+  - Three PDF selection tests and 26 PDF conversion tests passed
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - Graphify incremental code refresh completed
+  - no source conversion run and prompt effectiveness remains unevaluated

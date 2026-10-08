@@ -37,7 +37,7 @@ Each stage reads explicitly named predecessors and writes its own results.
 | [00](stages/00_text_layer/README.md) | Source PDF -> shared full-source sibling OCR PDF and reusable recovery records |
 | [01](stages/01_preprocess/README.md) | Prepared PDF -> positioned text JSON and physical-page PNGs |
 | [02](stages/02_page_conversion/README.md) | Stage 01 -> ordered logical objects, Markdown and pixel boxes |
-| [02.80](stages/02.80_filter_page_content/README.md) | Stage 01/02 -> filtered objects and fixed NXP-logo exclusion |
+| [02.80](stages/02.80_filter_page_content/README.md) | Stage 01/02 -> objects with headers and footers removed |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> table markup |
 | [02.90](stages/02.90_emit_page_markdown/README.md) | Stage 01/02.81 -> `document.md` and required raster assets |
 
@@ -69,8 +69,8 @@ outputs. The end stage limits execution, not cleanup. Successful external
 predecessors are checked before cleanup through `STAGE_REGISTRY.inputs` and
 `stage_status.json`. There is no automatic completed-stage skipping.
 Changing code does not regenerate retained artifacts. Preserve edited exports
-outside cleanup before restarting. The sibling prepared OCR PDF, request cache
-and bundled NXP resource survive cleanup. Removed-stage artifacts in historical
+outside cleanup before restarting. The sibling prepared OCR PDF and request cache
+survive cleanup. Removed-stage artifacts in historical
 attempts remain untouched and are not consumed by the active pipeline.
 
 `stage_status.json` records running/success/failed and execution metrics atomically.

@@ -94,18 +94,6 @@ class PdfArtifactIdentityTests(unittest.TestCase):
                                         indent=2, ensure_ascii=False))
 
 
-class PdfNxpGeometryTests(unittest.TestCase):
-    def test_landscape_page_keeps_unrotated_logo_size(self):
-        spec = importlib.util.spec_from_file_location(
-            "filter_page_content", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.80_filter_page_content/filter_page_content.py")
-        stage = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(stage)
-        # Page 63 has a landscape canvas, but its standalone logo is unrotated.
-        segment = {"type": "graphic", "bbox": [30, 37, 288, 131]}
-        page = {"image_width": 3300, "image_height": 2550}
-        self.assertTrue(stage.nxp_geometry_matches(segment, page, (257, 94)))
-
-
 class PdfOcrValidationTests(unittest.TestCase):
     def test_pipeline_directory_reuses_shared_pdf_and_restart_keeps_it(self):
         with tempfile.TemporaryDirectory() as directory:

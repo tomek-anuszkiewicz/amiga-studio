@@ -21,10 +21,8 @@ Preserve technical meaning, reading order, prose, footnotes, captions, labels, c
 PDF Stage 02.80 applies the user's deliberate source-fidelity exception: remove
 headers/footers. Covers, contents, indexes and lists of tables or illustrations
 remain for later manual classification and removal, even in older saved objects.
-It also removes standalone upper-left NXP `graphic` objects matching a bundled
-raster after fixed geometry/aspect/RGB gates on original Stage 01 PNGs. No logo
-configuration is added. These exceptions affect source content only; generated
-YAML metadata remains.
+The Stage 02 prompt classifies recurring margin logos as header/footer content;
+Stage 02.80 performs no image matching. Generated YAML metadata remains.
 All page workers from 01 through 02.81 apply the current invocation's
 `--page-ranges` before reading inputs. Selection is not persisted in config;
 omission means all available predecessor pages. Stage 00 prepares or reuses the
@@ -196,24 +194,6 @@ Report page/object counts and the number of pages emptied by filtering, with no
 model calls, inference configuration, manifest or runtime artifact/schema checks.
 Original Stage 01 and 02 artifacts remain unchanged.
 
-After existing removals, Stage 02.80 compares only surviving standalone `graphic`
-objects against its required module-relative [NXP raster](pdf-to-markdown/stages/02.80_filter_page_content/resources/nxp.png).
-The template retains the exact supplied page-49 pixels. Entire boxes must lie
-inside `[0, 0, 0.13, 0.055]` in page fractions, with relative width/height within
-20% of the template dimensions divided by the fixed 2550 x 3300 portrait reference
-page, or 3300 x 2550 for landscape canvases. The logo itself remains upright.
-Open original Stage 01 PNGs only for geometry candidates, once per page. Trim
-outer margins using any RGB channel below 245 as foreground, keeping all
-components. Blank candidates remain. Require relative foreground aspect
-difference at most 0.03 and normalized RGB mean absolute difference at most 0.02
-after Lanczos resizing solely for comparison. Geometry alone never removes an
-object; tables, covers and larger illustrations remain. Print candidate/match
-counts and removed page/segment IDs with scores. No temporary crop, new manifest,
-configuration or dependency is added. Missing resources fail through normal IO.
-The tolerances derive from the supplied page-49/50 pair; page 63 established the
-landscape reference correction. Book-wide adequacy is
-unverified. Merged or nonmatching objects remain.
-
 Stage 02.81 consumes completed 02.80 full page JSONs and original Stage 01 PNGs.
 Stage 02.80 is the fixed predecessor; filtering cannot be bypassed.
 Never recover removed filtered pages from Stage 02.
@@ -244,7 +224,7 @@ Stage 02.90 requires completed 01/02.81. No automatic continuation or completed-
 skipping occurs. Existing exports require explicit regeneration from 02.90 using
 the intended 02.81 dataset. Implementation does not mutate old attempts.
 Preserve edited exports outside cleanup before restart.
-The bundled NXP resource and request cache survive attempt cleanup.
+The request cache survives attempt cleanup.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
 in the source book's `workspace/html_to_markdown/`; final PDF output stays in `workspace/02.90_emit_page_markdown/`.

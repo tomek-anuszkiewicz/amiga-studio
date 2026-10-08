@@ -46,7 +46,7 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
     },
     {
         "id": "02.80", "dir": "02.80_filter_page_content", "script": "filter_page_content.py",
-        "desc": "Remove page furniture, pre-TOC content and list/index pages",
+        "desc": "Remove objects classified as headers or footers",
         "targets": ["02.80_filter_page_content"],
         "inspect": ("page_*_segments.json", "filtered page conversion JSON files"),
     },

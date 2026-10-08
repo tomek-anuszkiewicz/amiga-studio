@@ -9,11 +9,13 @@ checks below rather than trying to resolve every ambiguous layout. Classify each
 object once, then exclude it from subsequent checks. The order is classification
 priority, not the order of the returned segments.
 
-1. `header`: Running text in the top margin, such as the repeated document,
-   chapter or section title. Identify it for later removal and do not analyze
-   its contents further.
-2. `footer`: Running text in the bottom margin and printed page numbers.
-   Identify it for later removal and do not analyze its contents further.
+1. `header`: Running content in the top margin, such as the repeated document,
+   chapter or section title, recurring publisher logo or branding. Include margin
+   logos in this type even when they are images rather than text. Identify this
+   content for later removal and do not analyze it further.
+2. `footer`: Running content in the bottom margin, printed page numbers and
+   recurring publisher logos or branding. Identify it for later removal and do
+   not analyze it further. Logos within the main page artwork remain graphic.
 3. `callout`: A standalone advisory label or banner, such as NOTE, WARNING,
    CAUTION, IMPORTANT or TIP.
 4. `callout_text`: The content belonging to that advisory label, including its
