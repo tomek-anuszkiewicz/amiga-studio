@@ -4195,3 +4195,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - No image_only references remain under tools
   - Graphify incremental code update completed
   - No source fragment conversion or existing artifact regeneration requested or performed
+---
+
+### [2026-10-08 15:07 CEST] — PDF-ROTATION-LABEL-1: Simplify graphic rotation labels
+- **Affected Subsystems**:
+  - `PDF shared frame renderer`
+  - `Stage 02.50 review`
+- **What Was Changed (The Concrete Reality)**:
+  - Hide zero rotation even in retained JSON
+  - render nonzero angles with the degree symbol and omit trailing decimal zeros
+  - synchronize Stage 02.50 documentation
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested plain graphic labels for zero correction and concise angle labels otherwise
+- **Verification & Test Results**:
+  - Regression reproduced the old zero label before repair
+  - 8 review and selection tests passed
+  - quick pre-flight passed
+  - 19 architecture tests passed
+  - Graphify AST update completed
+  - no existing source artifacts regenerated

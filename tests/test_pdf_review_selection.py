@@ -25,6 +25,15 @@ def stage_module(directory, script):
 
 
 class ReviewSelectionTests(unittest.TestCase):
+    def test_graphic_rotation_labels_omit_zero_and_use_degrees(self):
+        stage = stage_module("02.50_page_conversion_review", "render_review")
+        segments = [{"type": "graphic", "bbox": [0, 0, 10, 10], **rotation}
+                    for rotation in ({}, {"rotation": 0}, {"rotation": 90.0})]
+        with patch("common.pdf_frames.ImageDraw.Draw") as draw:
+            stage.review_image(Image.new("RGB", (100, 100)), {"segments": segments})
+        labels = [call.args[1] for call in draw.return_value.text.call_args_list]
+        self.assertEqual(labels, ["1. graphic", "2. graphic", "3. graphic | rotation: 90°"])
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)

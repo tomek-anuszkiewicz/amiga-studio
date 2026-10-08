@@ -57,8 +57,9 @@ def draw_review_image(image, page_data, segments, *, include_continuation=False,
             label += f" | {segment['segment_id']}"
         if level is not None:
             label += f" | heading_level: {level}"
-        if "rotation" in segment:
-            label += f" | rotation: {segment['rotation']} deg CW"
+        rotation = segment.get("rotation", 0)
+        if rotation != 0:
+            label += f" | rotation: {rotation:g}°"
         if include_continuation:
             continuation = segment.get("continuation")
             if continuation:
