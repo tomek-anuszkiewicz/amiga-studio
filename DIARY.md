@@ -3882,3 +3882,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Page 131 stages 02.45-02.5 completed in stage-02.45-json-code-format-review: 3 live requests, 0 cache hits. Only page_0131_seg_006 text changed: braces align with if and body has four-space indentation
   - seg_004/008 text unchanged. Saved override, review PNG/JSON and resolved Markdown. Confirmed zero image attachments in all request identities, whitespace-only selected code changes and unchanged source fields/non-code objects. Passed 30 PDF, 6 selection, 21 shared conversion checks, quick pre-flight and architecture 19/19. Graphify refreshed. No additional pages or milestone checks
   - user output assessment pending.
+---
+
+### [2026-10-08 02:20 CET] — PDF-CODE-2.45: Close Reformat Code Block task
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.45_reformat_code_block`
+  - `.agent/tasks/pdf-stage-02.45-reformat-code-block.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Record explicit user-directed task closure after inspection of the page-131 indentation change
+  - remove the closed execution plan
+  - retain implementation, documentation and named conversion artifacts
+- **Architectural Rationale & Trade-Offs**:
+  - Stage 02.45 now formats each existing code block from frozen page/target JSON without an image
+  - using four-space structural indentation and preserving code tokens
+  - object fields and downstream rendered Markdown. Implementation history: 6b2f207
+  - cdc9909
+  - 66b1dda. No remaining requested work or further fragment assessment was requested at closure.
+- **Verification & Test Results**:
+  - Verified saved 02.45 and 02.5 success records and existence of page-131 override, review PNG/JSON and Markdown in stage-02.45-json-code-format-review: 3 live requests, 0 cache hits
+  - seg_006 braces aligned with if and statements indented four spaces, seg_004/008 text unchanged. Prior implementation checks passed: 30 PDF, 6 selection, 21 shared conversion tests
+  - zero-image request identities, whitespace-only selected code changes and unchanged source fields verified
+  - Graphify refreshed. Closure quick pre-flight and architecture 19/19 passed. No new conversion run, full-book conversion, additional source categories, milestone gate or broad quality certification
+  - these limits remain unchanged.
