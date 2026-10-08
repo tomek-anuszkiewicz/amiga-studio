@@ -65,8 +65,10 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF_DIRECTORY>/source
 ```
 
 PDF worker responses use the fixed shared cache at
-`tools/bootstrap/book-to-markdown/books/.cache/codex`. Stage IDs participate in
-cache identity. The pipeline has no `--config`, `--cache-dir` or `--verbose` options.
+`tools/bootstrap/book-to-markdown/books/.cache/codex`. Cache identity uses stable
+operation IDs (`pdf_page_to_objects`, `pdf_table_to_markup`), independent of stage
+names and numbering. Prompts, inputs, model settings and response schemas still
+participate in the key. The pipeline has no `--config`, `--cache-dir` or `--verbose` options.
 
 Follow the [developer-led workflow](../reference-conversion-contract.md#development-workflow):
 run the selected fragment and inspect its content. A successful stage confirms

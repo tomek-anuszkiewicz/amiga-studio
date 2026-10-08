@@ -1,6 +1,5 @@
 """Completed-response cache isolated from legacy Gemini entries."""
 
-from dataclasses import asdict
 from pathlib import Path
 import hashlib
 import json
@@ -13,9 +12,10 @@ CONTRACT_VERSION = "1"
 DEFAULT_CACHE = Path(__file__).resolve().parents[1] / "book-to-markdown/books/.cache/codex"
 
 
-def identity(selected, prompt, images, schema):
+def identity(selected, prompt, images, schema, *, operation):
     return {"engine": "codex-chatgpt", "sdk_runtime": SDK_VERSION, "contract": CONTRACT_VERSION,
-            **asdict(selected), "instructions": BASE_INSTRUCTIONS,
+            "operation": operation, "model": selected.model,
+            "reasoning_effort": selected.reasoning_effort, "instructions": BASE_INSTRUCTIONS,
             "developer_instructions": DEVELOPER_INSTRUCTIONS, "execution": OVERRIDES,
             "prompt": prompt, "image_detail": "original", "schema": schema,
             "images": [hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in images]}

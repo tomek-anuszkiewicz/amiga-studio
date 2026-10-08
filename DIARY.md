@@ -1441,3 +1441,31 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight and all 19 architecture tests pass
   - no page outputs changed and no live conversion run
   - migration script remains disposable in .agent/tmp and cache remains ignored
+---
+
+### [2026-10-08 23:25 CET] — Decouple response cache identity from stage naming
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/html-to-markdown/support/client.py`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_conversion_codex.py`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Require an explicit stable operation ID in the shared client and response identity
+  - remove stage names from cache keys while retaining them in model selection, status and metrics
+  - assign stable HTML, page-object and table-markup operations
+  - update consumers, existing invalidation tests and documentation
+  - migrate 520 compatible local completed entries without removing old records
+- **Architectural Rationale & Trade-Offs**:
+  - Stage numbering and directory names describe pipeline organization rather than inference semantics
+  - cache reuse must survive stage renames while remaining sensitive to operation, prompts, image bytes, models, instructions and schemas
+- **Verification & Test Results**:
+  - Stage-rename regression failed before implementation and passes afterward
+  - 22 shared conversion tests and 26 PDF tests pass
+  - operation and input changes still invalidate cache
+  - offline Test Book replay returns 160 cache hits and zero model calls
+  - quick preflight and all 19 architecture tests pass
+  - Graphify refresh completes
+  - scoped diff check passes
+  - no live inference and no generated page outputs changed

@@ -8,7 +8,7 @@ from .transport import HtmlTransport
 class HtmlClient(CodexClient):
     def __init__(self, config, *, stage="html_to_markdown", transport=None, cache=None):
         validate_config(config, HTML_STAGES, {stage})
-        super().__init__(config, stage=stage, transport=transport or HtmlTransport(),
+        super().__init__(config, stage=stage, operation="html_to_markdown", transport=transport or HtmlTransport(),
                          cache=cache, timeout=config["llm"].get("timeout_seconds", 180))
         try:
             self.transport.validate(self.selected)

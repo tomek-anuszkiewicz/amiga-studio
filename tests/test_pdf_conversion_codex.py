@@ -59,8 +59,8 @@ class PdfArtifactIdentityTests(unittest.TestCase):
             cache = ResponseCache(Path(directory) / "cache")
             transport = Mock()
             transport.run.side_effect = AssertionError("Preloaded cache must avoid inference")
-            with CodexClient(config, stage=stage, cache=cache, transport=transport) as client:
-                cache.save(identity(client.selected, seeded_prompt, [], schema), result)
+            with CodexClient(config, stage=stage, cache=cache, transport=transport, operation="pdf_page_to_objects") as client:
+                cache.save(identity(client.selected, seeded_prompt, [], schema, operation="pdf_page_to_objects"), result)
                 path = Path(directory) / "page.json"
                 write_json(path, {"segments": [{"type": "graphic", "bbox": [1, 2, 3, 4],
                                               "rotation": 0, "md_text": None,

@@ -32,7 +32,7 @@ def transform_tables(workspace, config, pages=None):
     counts = dict.fromkeys(("markdown", "html", "unconverted"), 0)
     saved_pages = 0
     with tempfile.TemporaryDirectory(prefix=".05-", dir=workspace) as temporary, \
-            CodexClient(config, stage=STAGE) as codex:
+            CodexClient(config, stage=STAGE, operation="pdf_table_to_markup") as codex:
         for entry, page in read_conversion(workspace, input_dir,
                                            pages=pages):
             tables = [s for s in page["segments"] if s["type"] == "table"]

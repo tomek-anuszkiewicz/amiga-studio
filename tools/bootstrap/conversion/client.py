@@ -14,8 +14,9 @@ _REQUEST_TIMEOUT_SECONDS = 180
 
 
 class CodexClient:
-    def __init__(self, config, *, stage, transport=None, cache=None, timeout=_REQUEST_TIMEOUT_SECONDS):
+    def __init__(self, config, *, stage, operation, transport=None, cache=None, timeout=_REQUEST_TIMEOUT_SECONDS):
         self.selected = selection(config, stage)
+        self.operation = operation
         self.timeout = timeout
         self.transport = transport or CodexTransport()
         self.cache = cache or (ResponseCache(os.environ["CONVERSION_CACHE_DIR"]) if os.environ.get("CONVERSION_CACHE_DIR") else ResponseCache())
@@ -24,7 +25,7 @@ class CodexClient:
         self.metrics = []
 
     def _generate(self, prompt, images=(), schema=None, validator=None):
-        request = identity(self.selected, prompt, images, schema)
+        request = identity(self.selected, prompt, images, schema, operation=self.operation)
 
         def checked(result):
             if result.get("status") != "completed" or not isinstance(result.get("text"), str) or not result["text"].strip():

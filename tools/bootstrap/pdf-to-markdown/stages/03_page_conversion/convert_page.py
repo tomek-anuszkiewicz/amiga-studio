@@ -19,7 +19,7 @@ def convert_pages(workspace, config, pages=None):
     prompt = Path(__file__).with_name("prompt.md").read_text(encoding="utf-8")
     output = workspace / "03_page_conversion"
     output.mkdir(parents=True, exist_ok=True)
-    with CodexClient(config, stage="03_page_conversion") as codex:
+    with CodexClient(config, stage="03_page_conversion", operation="pdf_page_to_objects") as codex:
         for path in page_files(workspace / "02_preprocess", "page_*.json",
                                pages):
             data = read_json(path)
