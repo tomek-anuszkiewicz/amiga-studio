@@ -917,3 +917,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight passed
   - architecture suite passed 19 tests
   - PDF response schema and runtime unchanged
+---
+
+### [2026-10-08 21:04 CET] — Represent book headings with explicit hierarchy levels
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Use heading for chapter, appendix and section titles
+  - define level as hierarchy depth and optional number as source numbering
+  - document numbered and unnumbered headings in the catalog and README
+- **Architectural Rationale & Trade-Offs**:
+  - User accepted heading plus level instead of chapter types encoding depth
+- **Verification & Test Results**:
+  - Documentation diff reviewed
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - PDF schema and runtime unchanged

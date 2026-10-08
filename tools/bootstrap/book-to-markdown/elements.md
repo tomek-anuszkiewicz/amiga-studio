@@ -10,8 +10,7 @@ This initial vocabulary describes the source elements distinguished during book 
 | `toc_heading` | The title of the formal table of contents, including a continuation title. |
 | `toc` | Formal table-of-contents entries and their page references. |
 | `thumb_index` | Printed edge tabs and marginal chapter navigation markers. |
-| `chapter` | A chapter or appendix opening. |
-| `heading` | A section or subsection title establishing document hierarchy. |
+| `heading` | A chapter, appendix, section or subsection title. Its `level` property defines its depth in the document hierarchy. |
 | `callout` | A standalone advisory label, such as NOTE, WARNING or CAUTION. |
 | `callout_text` | The body of an advisory callout, including its paragraphs, lists or formulas. |
 | `prose` | Narrative paragraphs and general explanations, including run-in titles. |
@@ -37,4 +36,16 @@ Use `note` for source notes and qualifications, and `legend` for definitions nee
 
 Prepared groups provide the source context for the [image description prompt](prompts/describe-images.md). Generated descriptions are additions to those source elements, not source notes or legends. Table descriptions follow the [table description prompt](prompts/describe-tables.md). PDF Stage 02.81 continues to replace table markup only; grouping and descriptions are separate book-processing work.
 
-`continuation`, heading level, geometry and group membership are properties of elements rather than additional element types.
+## Heading hierarchy
+
+Use one `heading` type with an integer `level` property for hierarchy depth. The section's source number is a separate optional `number` string; it identifies the section rather than determining its type.
+
+| Type | Level | Example number |
+| --- | --- | --- |
+| `heading` | 1 | `1` |
+| `heading` | 2 | `1.1` |
+| `heading` | 3 | `1.1.1` |
+
+Unnumbered titles still have a level and omit `number`. Preserve appendix identifiers such as `A` or `A.1` as strings when present. Do not introduce `chapter1`, `chapter2` or `chapter3` types; chapter and appendix openings use `heading` at the appropriate level. The PDF preparation vocabulary remains separate from this book-authoring model.
+
+`continuation`, `level`, `number`, geometry and group membership are properties of elements rather than additional element types.

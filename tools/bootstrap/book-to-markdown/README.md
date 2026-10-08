@@ -6,6 +6,8 @@ This directory starts the planned deterministic chapter generator. It will consu
 
 The initial [element list](elements.md) records source roles used in book authoring. Notes and legends use generic `note` and `legend` types; authored groups associate them with tables or images, and notes may also stand independently in the text. Image elements retain the existing `graphic` identifier. Grouping is authored separately from PDF table transcription.
 
+Chapter, appendix and section titles use `heading` with a `level` property for hierarchy depth and an optional `number` string for their source numbering.
+
 ## Chapter proofreading
 
 The initial [proofreading instruction](prompts/proofreading.md) is intended for manual agent processing of an already generated Markdown chapter. Supply the instruction and chapter; the agent can inspect linked images when needed. Keep the generated source chapter available for comparison and retain the edited copy outside generator-managed output cleanup.
