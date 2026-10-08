@@ -4419,3 +4419,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - page 54 downstream audit remains blocked by its missing Stage 02.44 response
   - zero model calls and no stage/artifact regeneration
   - quick pre-flight passed and architecture suite passed 19 tests
+---
+
+### [2026-10-08 17:30 CET] — PDF-TESTBOOK-HISTORY: Record compact artifacts and unchanged review assets
+- **Affected Subsystems**:
+  - `Test Book example-4567 pages-all artifacts`
+- **What Was Changed (The Concrete Reality)**:
+  - Commit the user-approved staged snapshot
+  - retain 159 compact Stage 02 JSON files and the equivalent page 112 Stage 02.41 JSON
+  - move 114 equivalent review JSON files and 114 byte-identical review PNGs from 02.5 to 02.50
+  - include staged metrics removals, configuration and recorded stage status
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve conversion history while separating equivalent artifact simplification from substantive changes left outside this snapshot
+  - this is a partial review-directory migration, not a complete pipeline checkpoint
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 19 tests
+  - staged JSON parsing passed
+  - equivalence audit verified approved field deletions and unchanged PNG bytes
+  - no conversion or model calls performed
+  - emulator domain tests not run because executable code is unchanged
