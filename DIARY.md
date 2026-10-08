@@ -900,3 +900,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19 tests
   - PDF schema and runtime unchanged
   - no conversion requested or run
+---
+
+### [2026-10-08 21:03 CET] — Use generic book note and legend types
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace table_legend, image_note and image_legend in the book vocabulary with note and legend
+  - define authored group membership independently of type
+  - allow standalone notes in chapter text
+  - update the README
+- **Architectural Rationale & Trade-Offs**:
+  - User requested shared note and legend roles without table or image specialization
+- **Verification & Test Results**:
+  - Reviewed the catalog and README for consistent terminology
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - PDF response schema and runtime unchanged

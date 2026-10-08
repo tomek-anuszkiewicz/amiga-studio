@@ -1,6 +1,6 @@
 # Book Element Types
 
-This initial vocabulary describes the source elements distinguished during book recipe authoring. It starts from the [Stage 02 classification prompt](../pdf-to-markdown/stages/02_page_conversion/prompt.md) and adds `image_note` and `image_legend` for explicitly identified image groups. It is a book-authoring draft; the PDF Stage 02 response schema remains unchanged.
+This initial vocabulary describes the source elements distinguished during book recipe authoring. It starts from the [Stage 02 classification prompt](../pdf-to-markdown/stages/02_page_conversion/prompt.md) and uses generic `note` and `legend` roles. Their association with a table, image or passage belongs to authored grouping. It is a book-authoring draft; the PDF Stage 02 response schema remains unchanged.
 
 | Type | Meaning |
 | --- | --- |
@@ -20,9 +20,8 @@ This initial vocabulary describes the source elements distinguished during book 
 | `graphic` | An image, diagram, schematic, photograph or complete technical drawing composition. This is the existing identifier for an image element. |
 | `caption` | A separate formal table or figure number and title. |
 | `footnote` | A source note referenced by a marker; preserve the marker and the complete note. |
-| `table_legend` | A separate block defining a table's symbols, notation or abbreviations. |
-| `image_note` | A separate source note attached to a specific image: explanations, assumptions, conditions or qualifications. Keep its introductory label with the note. |
-| `image_legend` | A separate block defining an image's symbols, line styles, colors, notation or abbreviations. |
+| `note` | A source note containing explanations, assumptions, conditions or qualifications. It can belong to a table or image group, or stand independently in the text. Keep its introductory label with the note. |
+| `legend` | A separate block defining symbols, line styles, colors, notation or abbreviations. Its association with the relevant source content belongs to grouping. |
 | `index_heading` | An index title, including a continuation title. |
 | `index` | Alphabetical or subject-index entries and their page references. |
 | `list_of_tables_heading` | A list-of-tables title, including a continuation title. |
@@ -30,11 +29,11 @@ This initial vocabulary describes the source elements distinguished during book 
 | `list_of_figures_heading` | A list-of-figures or illustrations title, including a continuation title. |
 | `list_of_figures` | List-of-figures entries, including figure identifiers, titles and page references. |
 
-## Image groups
+## Notes, legends and groups
 
-An authored image group can associate its `graphic` with a `caption`, `image_note`, `image_legend` and any relevant `footnote` objects. Group membership identifies the image each text block belongs to; proximity alone does not establish that relationship.
+An authored table or image group can associate its `table` or `graphic` with a `caption`, `note`, `legend` and any relevant `footnote` objects. Group membership identifies the source content each text block belongs to; proximity alone does not establish that relationship. A standalone `note` does not require membership in a table or image group.
 
-Use `image_note` for explanations and qualifications, and `image_legend` for definitions needed to interpret visual notation. A NOTES or LEGEND label alone does not determine the role. General narrative remains `prose`, and a figure's formal name remains `caption`. Text integrated into the artwork stays inside the `graphic`; these additional types describe separate source blocks, not a requirement to extract labels from an image.
+Use `note` for source notes and qualifications, and `legend` for definitions needed to interpret notation. A NOTES or LEGEND label alone does not determine the role. General narrative remains `prose`, and a table's or figure's formal name remains `caption`. Text integrated into the artwork stays inside the `graphic`; these roles describe separate source blocks, not a requirement to extract labels from an image.
 
 Prepared groups provide the source context for the [image description prompt](prompts/describe-images.md). Generated descriptions are additions to those source elements, not source notes or legends. Table descriptions follow the [table description prompt](prompts/describe-tables.md). PDF Stage 02.81 continues to replace table markup only; grouping and descriptions are separate book-processing work.
 

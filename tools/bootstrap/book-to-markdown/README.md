@@ -4,7 +4,7 @@ This directory starts the planned deterministic chapter generator. It will consu
 
 ## Element vocabulary
 
-The initial [element list](elements.md) records source roles used in book authoring. It retains the Stage 02 vocabulary and adds `image_note` and `image_legend` for separate notes and legends attached to an image. Image elements retain the existing `graphic` identifier. Grouping is authored separately from PDF table transcription.
+The initial [element list](elements.md) records source roles used in book authoring. Notes and legends use generic `note` and `legend` types; authored groups associate them with tables or images, and notes may also stand independently in the text. Image elements retain the existing `graphic` identifier. Grouping is authored separately from PDF table transcription.
 
 ## Chapter proofreading
 
