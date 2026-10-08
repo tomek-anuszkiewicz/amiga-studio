@@ -91,6 +91,42 @@ class ReviewSelectionTests(unittest.TestCase):
                      "bbox": [0, 0, 10, 10], "table_format": "unconverted"}
             (target / f"page_{page:04d}_segments.json").write_text(json.dumps({"page": page, "segments": [table]}))
 
+    def test_table_conversion_saves_only_changed_pages(self):
+        stage = stage_module("02.81_transform_page_tables", "transform_page_tables")
+        self.table_pages("02.80_filter_page_content")
+        prose = self.workspace / "02.80_filter_page_content/page_0065_segments.json"
+        prose.write_text(json.dumps({"page": 65, "segments": [{"type": "prose", "md_text": "Keep me"}]}))
+        (self.workspace / "01_preprocess/page_0065.json").write_text(json.dumps({"page": 65, "page_id": "page_0065"}))
+        with patch.object(stage, "CodexClient") as client:
+            client.return_value.__enter__.return_value.generate_json.side_effect = [
+                {"format": "markdown", "md_text": "| A |\n| --- |\n| B |"},
+                {"format": "unconverted", "md_text": ""}]
+            stage.transform_tables(self.workspace, {})
+        self.assertEqual([p.name for p in (self.workspace / stage.STAGE).glob("*_segments.json")],
+                         ["page_0063_segments.json"])
+        (self.workspace / "stage_status.json").write_text(json.dumps({
+            "02.81": {"status": "success", "page_ranges": None}}))
+        emitter = stage_module("02.90_emit_page_markdown", "emit_page_markdown")
+        emitter.emit_page_markdown(self.workspace, Path("fixture.pdf"))
+        markdown = (self.workspace / "02.90_emit_page_markdown/document.md").read_text()
+        self.assertIn("| B |", markdown)
+        self.assertIn("Keep me", markdown)
+        self.assertIn("page_0064_table.png", markdown)
+
+    def test_export_keeps_unchanged_selected_pages_with_sparse_tables(self):
+        stage = stage_module("02.90_emit_page_markdown", "emit_page_markdown")
+        self.table_pages("02.80_filter_page_content")
+        for page, text in ((63, "Excluded page"), (64, "Unchanged selected page")):
+            path = self.workspace / f"02.80_filter_page_content/page_{page:04d}_segments.json"
+            path.write_text(json.dumps({"page": page, "segments": [{"type": "prose", "md_text": text}]}))
+        (self.workspace / "02.81_transform_page_tables").mkdir()
+        (self.workspace / "stage_status.json").write_text(json.dumps({
+            "02.81": {"status": "success", "page_ranges": "64"}}))
+        stage.emit_page_markdown(self.workspace, Path("fixture.pdf"))
+        markdown = (self.workspace / "02.90_emit_page_markdown/document.md").read_text()
+        self.assertIn("Unchanged selected page", markdown)
+        self.assertNotIn("Excluded page", markdown)
+
     def test_table_conversion_requests_only_selected_page(self):
         stage = stage_module("02.81_transform_page_tables", "transform_page_tables")
         self.table_pages("02.80_filter_page_content")

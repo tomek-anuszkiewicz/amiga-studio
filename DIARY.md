@@ -1065,3 +1065,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19 tests
   - Graphify incremental code refresh completed
   - no source conversion run and prompt effectiveness remains unevaluated
+---
+
+### [2026-10-08 22:33 CET] — Save only changed PDF table pages
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_pdf_review_selection.py`
+  - `tests/test_pdf_conversion_codex.py`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Stage 02.81 saves full page JSON only when table processing changes its data
+  - Stage 02.90 overlays changed pages on selected filtered input
+  - persist the table-stage invocation range in stage_status.json
+  - retain historical full-dataset export behavior
+- **Architectural Rationale & Trade-Offs**:
+  - Avoid copying pages without table changes while preserving unchanged selected pages and fragment boundaries in final export
+- **Verification & Test Results**:
+  - Reproduced redundant page writes and missing sparse export pages before repair
+  - 31 PDF selection/orchestration tests pass
+  - pre_flight.py --quick passes
+  - all 19 architecture tests pass
+  - git diff --check passes
+  - no live book rerun requested or performed

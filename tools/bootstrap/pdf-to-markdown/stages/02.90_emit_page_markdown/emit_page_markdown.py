@@ -11,14 +11,13 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
-from common.pdf_page_conversion import read_conversion
 from common.pdf_page_markdown import crop_objects, document_markdown
-from common.pdf_tables import STAGE
+from common.pdf_tables import read_table_conversion
 
 
 def emit_page_markdown(workspace, pdf_path):
     source = {"name": Path(pdf_path).name}
-    pages = list(read_conversion(workspace, STAGE))
+    pages = list(read_table_conversion(workspace))
     crops = list(crop_objects(pages))
     crops_by_page = {}
     for entry, segment in crops:

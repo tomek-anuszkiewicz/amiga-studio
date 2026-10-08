@@ -2,6 +2,7 @@
 """Replace table content with Markdown or HTML transcribed from temporary crops."""
 
 import argparse
+from copy import deepcopy
 from pathlib import Path
 import sys
 import tempfile
@@ -28,12 +29,14 @@ def transform_tables(workspace, config, pages=None):
     output = workspace / STAGE
     output.mkdir(parents=True, exist_ok=True)
     counts = dict.fromkeys(("markdown", "html", "unconverted"), 0)
+    saved_pages = 0
     with tempfile.TemporaryDirectory(prefix=".02.81-", dir=workspace) as temporary, \
             CodexClient(config, stage=STAGE, images=True) as codex:
         for entry, page in read_conversion(workspace, input_dir,
                                            pages=pages):
             tables = [s for s in page["segments"] if s["type"] == "table"]
             if tables:
+                original = deepcopy(page)
                 with Image.open(workspace / entry["png_file"]) as image:
                     for table in tables:
                         crop_path = Path(temporary) / f"{table['segment_id']}.png"
@@ -46,8 +49,10 @@ def transform_tables(workspace, config, pages=None):
                         if converted(table):
                             table["md_text"] = result["md_text"]
                         counts[result["format"]] += 1
-            write_json(output / f"{entry['page_id']}_segments.json", page)
-    print(f"[tables] {counts}; JSON: {output}")
+                if page != original:
+                    write_json(output / f"{entry['page_id']}_segments.json", page)
+                    saved_pages += 1
+    print(f"[tables] {counts}; changed pages saved: {saved_pages}; JSON: {output}")
 
 
 def main():

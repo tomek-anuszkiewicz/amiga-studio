@@ -459,7 +459,7 @@ class StageCompletionTests(unittest.TestCase):
 
     def test_page_worker_receives_only_current_cli_range(self):
         pipeline = self.load("selection_pipeline", "pipeline.py")
-        stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "02.80")
+        stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "02.81")
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
             args = (stage, ROOT / "tools/bootstrap/pdf-to-markdown", workspace,
@@ -468,8 +468,10 @@ class StageCompletionTests(unittest.TestCase):
                 self.assertTrue(pipeline.run_stage(*args, page_ranges="64"))
                 command = run.call_args.args[0]
                 self.assertEqual(command[command.index("--page-ranges") + 1], "64")
+                self.assertEqual(read_json(workspace / "stage_status.json")["02.81"]["page_ranges"], "64")
                 self.assertTrue(pipeline.run_stage(*args))
                 self.assertNotIn("--page-ranges", run.call_args.args[0])
+                self.assertIsNone(read_json(workspace / "stage_status.json")["02.81"]["page_ranges"])
 
     def test_worker_failures_record_failed_execution(self):
         pipeline = self.load("execution_pipeline", "pipeline.py")

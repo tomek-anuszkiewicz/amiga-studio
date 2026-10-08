@@ -38,12 +38,13 @@ Each stage reads explicitly named predecessors and writes its own results.
 | [01](stages/01_preprocess/README.md) | Prepared PDF -> positioned text JSON and physical-page PNGs |
 | [02](stages/02_page_conversion/README.md) | Stage 01 -> ordered logical objects, Markdown and pixel boxes |
 | [02.80](stages/02.80_filter_page_content/README.md) | Stage 01/02 -> objects with headers and footers removed |
-| [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> table markup |
-| [02.90](stages/02.90_emit_page_markdown/README.md) | Stage 01/02.81 -> `document.md` and required raster assets |
+| [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> changed table pages only |
+| [02.90](stages/02.90_emit_page_markdown/README.md) | Stage 01/02.80 plus 02.81 replacements -> `document.md` and required raster assets |
 
 Filtering reads Stage 02 directly, without reclassification overrides.
 Table conversion reads only Stage 02.80; omitted pages never fall back to Stage 02.
-Export reads Stage 02.81 directly and emits converted table markup at its source
+Stage 02.81 saves only pages changed by table processing. Export overlays these
+pages on the selected Stage 02.80 dataset and emits converted markup at its source
 position, without `<details>`, RAG text or source-image companions. Stage 02.81
 uses temporary crops for transcription only. Separate captions, notes and legends
 remain unchanged; grouping and descriptions belong to later book processing.
@@ -58,8 +59,9 @@ after successful writes and removes obsolete assets.
 Stage 00 always prepares or reuses the complete source PDF. Stages 01, 02, 02.80
 and 02.81 apply the selection while enumerating their input, including direct
 restarts with all-page predecessors. Omission means all available input pages;
-selection is not stored in config. Stage 02.90 exports the whole completed 02.81
-dataset, so select the intended fragment when generating that predecessor.
+selection is not stored in config. The 02.81 status entry records its invocation's
+page range so Stage 02.90 retains unchanged selected pages without including
+unselected predecessor pages. Select the intended fragment when running 02.81.
 Page files are ordered numerically, without coverage or PNG/JSON pairing checks.
 
 ## Restart, status and publication

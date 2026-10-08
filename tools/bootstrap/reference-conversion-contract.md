@@ -27,7 +27,9 @@ All page workers from 01 through 02.81 apply the current invocation's
 `--page-ranges` before reading inputs. Selection is not persisted in config;
 omission means all available predecessor pages. Stage 00 prepares or reuses the
 full-source OCR PDF. Stage 02.80 reads Stage 02 directly, and Stage 02.81 reads
-only filtered objects. Stage 02.90 exports the completed Stage 02.81 dataset.
+only filtered objects. Stage 02.81 saves only changed table pages and records its
+invocation's page range in stage_status.json. Stage 02.90 overlays those pages on
+the selected Stage 02.80 dataset, retaining unchanged selected pages.
 See the [pipeline selection contract](pdf-to-markdown/README.md#physical-page-selection).
 
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.
@@ -210,8 +212,15 @@ removed after execution; no persistent table source assets, group assignments,
 RAG inference or descriptions are produced. Retired companion fields are omitted
 from converted output. Technical errors stop execution normally.
 
-Stage 02.90 consumes completed Stage 01/02.81 directly and emits one `document.md`
-with minimal filename-derived YAML/title. Converted table Markdown or HTML stays
+Stage 02.81 saves a full page JSON only when table processing changes its data;
+pages without tables and unchanged pages remain in Stage 02.80. An empty 02.81
+directory is valid. Its status entry records page_ranges (null means all input
+pages), so a later export reconstructs the selected dataset without a page registry.
+
+Stage 02.90 consumes completed Stage 01/02.80/02.81 and emits one `document.md`
+by overlaying changed 02.81 pages on selected 02.80 pages. Historical 02.81 statuses
+without page_ranges retain their full saved dataset. The document has
+minimal filename-derived YAML/title. Converted table Markdown or HTML stays
 at its original position, with no `<details>` or image/text companions. Unconverted
 tables, graphics and covers crop exact Stage 01 pixels. A temporary bundle replaces
 old output and removes obsolete assets after successful writes. Grouping and
@@ -220,7 +229,7 @@ descriptions belong to separately requested book processing.
 Restart clears the selected stage and every later stage in execution order, even
 when stopping at that stage. Restart 02.81 preserves predecessors and rebuilds
 table markup and clears export. Stage 02.81 requires completed 01/02.80;
-Stage 02.90 requires completed 01/02.81. No automatic continuation or completed-stage
+Stage 02.90 requires completed 01/02.80/02.81. No automatic continuation or completed-stage
 skipping occurs. Existing exports require explicit regeneration from 02.90 using
 the intended 02.81 dataset. Implementation does not mutate old attempts.
 Preserve edited exports outside cleanup before restart.

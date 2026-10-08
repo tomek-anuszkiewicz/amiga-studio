@@ -68,7 +68,7 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
 for stage in STAGE_REGISTRY:
     stage["inputs"] = {
         "00": [], "01": ["00"], "02": ["01"], "02.80": ["01", "02"],
-        "02.81": ["01", "02.80"], "02.90": ["01", "02.81"],
+        "02.81": ["01", "02.80"], "02.90": ["01", "02.80", "02.81"],
     }[stage["id"]]
 
 
@@ -85,12 +85,15 @@ def update_status(
     llm_calls: Optional[int] = None,
     llm_cached_calls: Optional[int] = None,
     llm_time_seconds: Optional[float] = None,
+    page_ranges: Optional[str] = None,
 ):
     data = {}
     if status_file.exists():
         data = read_json(status_file)
     entry = data.setdefault(stage_num, {})
     entry["status"] = status
+    if stage_num == "02.81":
+        entry["page_ranges"] = page_ranges
     if details or "details" not in entry:
         entry["details"] = details
     if duration_seconds is not None or "duration_seconds" not in entry:
@@ -187,7 +190,7 @@ def run_stage(
         stage_metrics_file.unlink(missing_ok=True)
         return m
 
-    update_status(status_file, stage_num, "running")
+    update_status(status_file, stage_num, "running", page_ranges=page_ranges)
     start_time = time.time()
     try:
         subprocess.run(cmd, env=env, check=True)
@@ -201,6 +204,7 @@ def run_stage(
             llm_calls=m["llm_calls"],
             llm_cached_calls=m["llm_cached_calls"],
             llm_time_seconds=m["llm_time_seconds"],
+            page_ranges=page_ranges,
         )
         print(f"[*] Stage {stage_num} finished in {duration:.2f}s (Codex calls: {m['llm_calls']}, Cache: {m['llm_cached_calls']}).")
         return True
@@ -217,6 +221,7 @@ def run_stage(
             llm_calls=m["llm_calls"],
             llm_cached_calls=m["llm_cached_calls"],
             llm_time_seconds=m["llm_time_seconds"],
+            page_ranges=page_ranges,
         )
         return False
     except BaseException as e:
@@ -232,6 +237,7 @@ def run_stage(
             llm_calls=m["llm_calls"],
             llm_cached_calls=m["llm_cached_calls"],
             llm_time_seconds=m["llm_time_seconds"],
+            page_ranges=page_ranges,
         )
         if not isinstance(e, Exception):
             raise

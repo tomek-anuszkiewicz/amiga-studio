@@ -6,6 +6,12 @@ table's `md_text` with the returned Markdown or HTML and record `table_format`.
 Preserve identity, geometry, classification, continuation, object order and all
 other source objects, including separate captions, notes and legends.
 
+Save a full page JSON only when a table transformation changes that page's data.
+Pages without tables and unchanged table pages remain solely in Stage 02.80.
+The orchestrator records this invocation's page range in the 02.81 status entry;
+Stage 02.90 overlays the saved replacements on that selected filtered dataset.
+An empty output directory is valid and does not remove unchanged pages from export.
+
 The [prompt](prompt.md) uses Markdown where possible and HTML with `rowspan` and
 `colspan` for merged cells. An `unconverted` result preserves the original content
 and raster fallback. Transport, authentication and JSON parsing failures stop the stage.
