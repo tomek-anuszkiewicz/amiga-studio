@@ -4480,3 +4480,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - temporary review folder retains 92 PNG files
   - no conversion or model calls performed
   - emulator domain tests not run because executable code is unchanged
+---
+
+### [2026-10-08 18:15 CEST] — PDF-ORDER-2.48: Plan deterministic ordering within page rows
+- **Affected Subsystems**:
+  - `.agent/tasks/PDF-ORDER-2.48.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Record a planned Stage 02.48 after 02.47 and before 02.50
+  - define anchored inclusive 7-pixel top-coordinate groups of arbitrary size
+  - preserve objects and unrelated array positions
+  - record the pending X-versus-Y clarification with literal Y as the current request
+- **Architectural Rationale & Trade-Offs**:
+  - Use deterministic geometry for the requested row ordering
+  - keep planning separate from implementation and user-requested conversion
+  - page 81 remains an unresolved user quality observation
+- **Verification & Test Results**:
+  - Read-only grouping measurement completed for physical pages 81 and 90 and 91
+  - quick pre-flight passed
+  - architecture suite passed 19 tests
+  - no converter implementation or model calls or conversion runs
