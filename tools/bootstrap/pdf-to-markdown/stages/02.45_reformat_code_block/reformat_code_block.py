@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json
+from common.pdf_segment_replacements import merge_segment
 from common.pdf_page_conversion import resolved_page_files, CODE_REFORMAT_STAGE
 from common.pdf_schemas import object_schema, STRING
 from common.pdf_selection import selected_pages
@@ -40,9 +41,7 @@ def reformat_code_block(workspace, config, pages=None):
                     request = prompt + "\n\nFrozen resolved page JSON and target code block:\n" + json.dumps(
                         {"page_json": page, "target_code_block": target}, ensure_ascii=False)
                     response = codex.generate_json(request, schema=RESPONSE)
-                    replacements[identity] = {
-                        **target, "md_text": response["md_text"],
-                    }
+                    replacements[identity] = merge_segment(target, {"md_text": response["md_text"]})
                     requested += 1
                     print(f"[code-reformat] {page_id}/{identity}: "
                           f"text changed={response['md_text'] != target.get('md_text', '')}", flush=True)

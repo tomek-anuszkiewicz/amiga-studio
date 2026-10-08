@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json
+from common.pdf_segment_replacements import merge_segment
 from common.pdf_page_conversion import resolved_page_files, TABLE_SPLIT_STAGE, SEGMENT
 from common.pdf_schemas import object_schema, STRING
 from common.pdf_selection import selected_pages
@@ -37,7 +38,7 @@ def table_replacements(source, tables, reserved_ids):
                 suffix += 1
             identity = f"{identity}_table_{suffix}"
         reserved_ids.add(identity)
-        replacements.append({**source, **table, "segment_id": identity})
+        replacements.append(merge_segment(source, {**table, "segment_id": identity}))
     return replacements
 
 

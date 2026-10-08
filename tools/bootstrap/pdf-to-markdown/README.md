@@ -304,6 +304,10 @@ are omitted. Source lineage, replacement stage and `image_only` are not persiste
 Meaningful values, field order and source geometry remain. Consumers use missing
 field defaults locally without adding them to prompt data. Inference uses this
 compact JSON directly and can reuse the compact keys prepared in the cache.
+When a replacement gives an omitted field a meaningful value, the shared segment
+merge inserts it at its response-contract position rather than appending it after
+the segment ID. This preserves prepared cache keys for split continuation and
+newly transcribed text.
 The temporary dual-key writer has been removed; schema, model/effort, images and
 instruction text still participate in cache identity. Existing files are compacted
 in memory when read and saved in compact form when their stage writes output.

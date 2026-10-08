@@ -27,6 +27,34 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class PdfArtifactIdentityTests(unittest.TestCase):
+    def test_table_split_retains_compact_cache_field_positions(self):
+        spec = importlib.util.spec_from_file_location(
+            "split_tables_cache", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.41_split_tables/split_tables.py")
+        worker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(worker)
+        source = {"type": "table", "continuation": False, "heading_level": None,
+                  "md_text": "", "bbox": [1, 2, 30, 40], "segment_id": "s1"}
+        children = [
+            {"type": "table", "continuation": True, "heading_level": None,
+             "md_text": "", "bbox": [1, 2, 10, 20]},
+            {"type": "table", "continuation": False, "heading_level": None,
+             "md_text": "", "bbox": [11, 21, 30, 40]},
+        ]
+        actual = worker.table_replacements(compact_objects(source), children, {"s1"})
+        expected = [compact_objects({**source, **child, "segment_id": identity})
+                    for child, identity in zip(children, ("s1", "s1_table_2"))]
+        self.assertEqual(json.dumps(compact_objects(actual), ensure_ascii=False),
+                         json.dumps(expected, ensure_ascii=False))
+        # Reclassification may also turn omitted text into meaningful content.
+        from common.pdf_segment_replacements import segment_replacements
+        child = {**children[0], "type": "prose", "md_text": "Explanation"}
+        reclassified = segment_replacements(compact_objects(source),
+            {"action": "replace", "replacements": [child]}, {"s1"})
+        historical = {**source, **child, "segment_id": "s1",
+                      "bbox": source["bbox"], "continuation": source["continuation"]}
+        self.assertEqual(json.dumps(compact_objects(reclassified), ensure_ascii=False),
+                         json.dumps([compact_objects(historical)], ensure_ascii=False))
+
     def test_compact_artifacts_preserve_source_and_meaningful_fields(self):
         obj = {"type": "graphic", "bbox": [1, 2, 3, 4], "segment_id": "g",
                "continuation": False, "heading_level": None, "md_text": "",

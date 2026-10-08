@@ -4370,3 +4370,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19 tests
   - Graphify update completed
   - no real fragment conversion, bulk cache migration, publishing or indexing run
+---
+
+### [2026-10-08 17:05 CEST] — PDF-CACHE-ORDER: Preserve returning field positions in compact replacements
+- **Affected Subsystems**:
+  - `PDF segment replacement helpers`
+  - `Stages 02.41, 02.42, 02.43, 02.45 and 02.47`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Insert newly meaningful omitted fields at their SEGMENT response-contract position
+  - reuse the merge in table splits, shared reclassification, code classification and code formatting
+  - preserve existing field order and unrelated source fields
+  - document the cache identity invariant
+- **Architectural Rationale & Trade-Offs**:
+  - Compaction removed continuation:false before Stage 02.41
+  - a split adding continuation:true appended it after segment_id, changing Stage 02.42 prompt bytes despite equal JSON values
+  - nonempty Markdown can trigger the same mechanism
+- **Verification & Test Results**:
+  - Focused regression failed before the fix due to continuation field order and passed after repair
+  - PDF suite passed 35 tests, shared conversion 21, review selection eight and callout geometry one
+  - quick pre-flight passed and architecture tests passed 19
+  - current pages-all reconstruction found 133 hits and five order-only misses, all on page 54
+  - added five one-time cache aliases only after verifying equal payloads, identical prompt instructions and identical nonprompt identity fields
+  - recheck found 138 hits and zero misses
+  - independent read-only reconstruction from 133 cached Stage 02.41 responses also found all 138 Stage 02.42 keys
+  - Graphify update and whitespace checks passed
+  - no model calls, artifact rewrites or conversion run performed
