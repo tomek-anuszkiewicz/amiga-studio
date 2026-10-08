@@ -1424,3 +1424,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify refresh completes
   - automatic command policy rejected deletion of existing Test Book recovery artifacts, which remain unused
   - no live conversion performed
+---
+
+### [2026-10-08 23:21 CET] — Migrate matching Stage 03 Test Book cache entries
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books/.cache/codex`
+- **What Was Changed (The Concrete Reality)**:
+  - Add 159 local cache entries under the current 03_page_conversion identity from completed legacy 02_page_conversion entries
+  - preserve all legacy records and the existing current entry
+- **Architectural Rationale & Trade-Offs**:
+  - The stage rename invalidated cache digests although all 160 Test Book requests otherwise match exactly
+  - copy only entries with identical full request identities after substituting the renamed stage
+- **Verification & Test Results**:
+  - Offline replay through CodexClient returns 160 cache hits and zero model calls with transport forbidden
+  - prompts, images, model settings, execution instructions, schema and runtime identity match
+  - quick preflight and all 19 architecture tests pass
+  - no page outputs changed and no live conversion run
+  - migration script remains disposable in .agent/tmp and cache remains ignored
