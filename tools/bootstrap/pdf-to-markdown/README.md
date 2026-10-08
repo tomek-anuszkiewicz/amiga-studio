@@ -259,15 +259,14 @@ Stage 02.45 reformats each resolved `code_block` using its existing Markdown and
 frozen full-page JSON, without attaching an image. One request per block
 normalizes structural indentation with four spaces per level, consistent brace
 alignment and indentation tabs converted to spaces. Tokens, comments, values,
-line order, literal whitespace and fence language remain unchanged. Reformatted
-blocks carry source lineage and a stage marker so Stage 03 initializes rendered
-Markdown and Stage 09 does not format them again.
+line order, literal whitespace and fence language remain unchanged. Stage 03 initializes saved code Markdown as rendered content, so Stage 09
+retains its fences and indentation without replacement metadata.
 See the [02.45 contract](stages/02.45_reformat_code_block/README.md).
 
 Stage 02.44 records numeric clockwise correction degrees on resolved graphics,
 including table reclassifications, using their JSON/bbox, frozen objects and the
 complete original Stage 01 PNG. Fractional angles in `[0, 360)` are allowed;
-absence means no recorded decision, while zero records no correction needed.
+absence means zero correction; zero is omitted from saved objects.
 Review labels show the angle and filtering/table transformations/Stage 03 retain
 it, including stream node metadata. Boxes and review/crop pixels stay unchanged;
 exported asset rotation is deferred. See the [02.44 contract](stages/02.44_detect_image_rotation/README.md).
@@ -299,15 +298,15 @@ Use `--cache-dir` to override the shared `.cache/codex` request cache. PDF reque
 retain completion/authentication/transport handling and JSON parsing, with no local
 configuration/catalog checks, schema enforcement or validator callbacks. HTML keeps its existing validations.
 
-Stage 02 and refinement stages 02.40–02.47 also save successful responses under
-an additional key built from a compact copy of their input JSON, including on
-historical cache hits. The copy omits zero rotation (also in object metadata),
-false continuation, null heading level, empty/null Markdown text, source segment
-lineage, replacement stage and `image_only`. Meaningful values and field order
-remain. Inference still receives the historical full JSON; responses and saved
-stage artifacts remain unchanged. Existing compact-key responses are preserved.
-This prepares cache reuse for a later artifact simplification with the same prompt,
-schema, model/effort and images; it does not perform that simplification now.
+Page objects are read and saved in compact form: zero rotation (also in object
+metadata), false continuation, null heading level and empty/null Markdown text
+are omitted. Source lineage, replacement stage and `image_only` are not persisted.
+Meaningful values, field order and source geometry remain. Consumers use missing
+field defaults locally without adding them to prompt data. Inference uses this
+compact JSON directly and can reuse the compact keys prepared in the cache.
+The temporary dual-key writer has been removed; schema, model/effort, images and
+instruction text still participate in cache identity. Existing files are compacted
+in memory when read and saved in compact form when their stage writes output.
 
 Final output remains in `<WORKSPACE>/14_link_toc/`. `--publish` requires completion
 through Stage 14 and copies Markdown/assets to the empty or absent sibling book

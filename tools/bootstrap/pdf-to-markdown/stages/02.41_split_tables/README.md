@@ -26,8 +26,8 @@ another, including a neighboring table on the same page. Independent tables
 receive false. The worker preserves the model's per-table decision.
 Singleton responses still preserve the predecessor object unchanged, including
 its existing continuation flag. IDs retain the original for the first child, then receive
-deterministic collision-free `_table_N` suffixes. Source-segment lineage and
-replacement-stage metadata accompany each child. Other objects remain unchanged.
+deterministic collision-free `_table_N` suffixes. No replacement metadata is
+persisted. Other objects remain unchanged.
 There is no generic local schema/geometry gate or quality certification.
 
 Write complete `page_NNNN_segments.json` overrides only for changed pages.

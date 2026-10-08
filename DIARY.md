@@ -4338,3 +4338,35 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify incremental update completed
   - diff whitespace check passed
   - no real fragment conversion or bulk cache migration run
+---
+
+### [2026-10-08 16:59 CEST] — PDF-COMPACT-JSON: Adopt compact artifacts and remove cache migration scaffolding
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion/client.py`
+  - `PDF technical tests and contracts`
+- **What Was Changed (The Concrete Reality)**:
+  - Compact page and stream objects on artifact IO and later stream writes
+  - remove persisted source lineage, replacement stages and image_only production/propagation
+  - omit zero rotation, false continuation, null heading levels and empty/null Markdown
+  - apply missing-field defaults locally without injecting prompt fields
+  - retain callout contributor IDs only in the response mapping contract
+  - preserve saved code Markdown in Stage 03 without stage markers
+  - remove dual-key cache writer and temporary prompt helpers
+  - synchronize affected documentation
+- **Architectural Rationale & Trade-Offs**:
+  - The user confirmed cache preparation and authorized final compact serialization
+  - compact input prompts now directly address preloaded keys
+  - Stage 01 numeric OCR blocks remain unchanged
+  - existing workspaces are compacted in memory when read rather than bulk-rewritten
+- **Verification & Test Results**:
+  - PDF execution/artifact/cache suite passed 34 tests
+  - shared conversion suite passed 21 tests
+  - review selection passed eight tests
+  - callout geometry passed one test
+  - preloaded compact cache replay made zero model calls
+  - CLI import checks passed for 15 changed stage programs
+  - quick pre-flight passed
+  - architecture suite passed 19 tests
+  - Graphify update completed
+  - no real fragment conversion, bulk cache migration, publishing or indexing run

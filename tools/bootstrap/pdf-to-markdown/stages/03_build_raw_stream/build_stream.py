@@ -5,7 +5,6 @@ Assemble Stage 02.82 objects into the downstream stream in reading order.
 """
 
 import argparse
-import json
 import sys
 from pathlib import Path
 import yaml
@@ -13,7 +12,8 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from common.pdf_runtime import RENDER_DPI
-from common.pdf_page_conversion import read_conversion, CODE_REFORMAT_STAGE
+from common.pdf_page_conversion import read_conversion
+from common.pdf_artifacts import write_json
 from common.pdf_tables import CLEANED_STAGE as STAGE, FIELDS, ASSOCIATED, converted
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -37,19 +37,19 @@ def build_raw_stream(workspace_dir: Path, config: dict):
             nodes.append({
                 "node_id": f"node_{len(nodes)+1:05d}", "page": entry["page"],
                 "segment_id": segment["segment_id"], "type": segment["type"],
-                "heading_level": segment["heading_level"],
-                "continuation": segment["continuation"],
-                "md_text": segment["md_text"], "raw_text": segment["md_text"],
+                "heading_level": segment.get("heading_level"),
+                "continuation": segment.get("continuation", False),
+                "md_text": segment.get("md_text", ""), "raw_text": segment.get("md_text", ""),
                 "bbox_pixels": list(segment["bbox"]), "bbox_norm": normalized,
                 "bbox": [normalized[0] * width, normalized[1] * height,
                          normalized[2] * width, normalized[3] * height],
-                "rendered_markdown": segment["md_text"] if converted(segment) or (
-                    segment["type"] == "code_block" and segment.get("replacement_stage") == CODE_REFORMAT_STAGE) or (
+                "rendered_markdown": segment.get("md_text", "") if converted(segment) or (
+                    segment["type"] == "code_block") or (
                     segment["type"] in ASSOCIATED and segment["segment_id"] in group_ids) else None,
                 "continuation_status": None,
                 **{key: segment[key] for key in ("rotation",) if key in segment},
                 **{key: segment[key] for key in FIELDS if key in segment},
-                "metadata": {key: segment[key] for key in ("source_segment_ids", "replacement_stage", "rotation")
+                "metadata": {key: segment[key] for key in ("rotation",)
                              if key in segment},
             })
     output = workspace_dir / "03_build_raw_stream"
@@ -63,7 +63,7 @@ def build_raw_stream(workspace_dir: Path, config: dict):
     for node in nodes:
         if node["type"] == "cover":
             node["rendered_markdown"] = f"![Cover](assets/{Path(node['png_path']).name})"
-    (output / "raw_stream.json").write_text(json.dumps(nodes, indent=2), encoding="utf-8")
+    write_json(output / "raw_stream.json", nodes)
     print(f"[+] Stage 03 complete: {len(nodes)} nodes from Stage 02.82 objects")
 
 

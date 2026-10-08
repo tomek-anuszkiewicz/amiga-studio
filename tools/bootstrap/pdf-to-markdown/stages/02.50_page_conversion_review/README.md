@@ -17,7 +17,7 @@ contributing object has that flag. False flags are omitted. A merged run uses
 an ordinal range, such as `3-5. prose`; other labels retain their source ordinal.
 Graphic labels also show saved nonzero `rotation: <number>°` (clockwise);
 zero or absent rotation leaves the type label alone.
-Review JSON preserves explicit zero rotation, false continuation and null heading levels.
+Review JSON omits zero rotation, false continuation and null heading levels.
 No source pixels or boxes are rotated.
 Labels contain neither text nor coordinates. JSON source order is preserved.
 

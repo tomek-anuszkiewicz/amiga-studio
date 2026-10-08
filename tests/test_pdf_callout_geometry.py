@@ -30,8 +30,8 @@ class CalloutGeometryTests(unittest.TestCase):
                          [item["bbox"] for item in replacements])
         self.assertEqual(page["segments"], [original])
         self.assertEqual(original["bbox"], [20, 30, 400, 180])
-        self.assertTrue(all(segment["source_segment_ids"] == ["s1"] and
-                            segment["replacement_stage"] == "02.40_reclassify_callouts"
+        self.assertTrue(all("source_segment_ids" not in segment and
+                            "replacement_stage" not in segment
                             for segment in corrected["segments"]))
 
 

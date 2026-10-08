@@ -17,6 +17,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_artifacts import compact_objects
 from common.pdf_runtime import RENDER_DPI, LLM_CONCURRENCY
 
 # Import CodexClient and extract_assets_for_nodes
@@ -502,7 +503,7 @@ def reduce_stream(workspace_dir: Path, config: dict):
 
         reduced_stream_path = out_dir / "reduced_stream.json"
         with open(reduced_stream_path, "w", encoding="utf-8") as f:
-            json.dump(final_nodes, f, indent=2)
+            json.dump(compact_objects(final_nodes), f, indent=2)
 
         print(f"[+] Stage 04 complete. Stream reduced from {len(raw_nodes)} -> {len(final_nodes)} nodes in {reduced_stream_path}")
 

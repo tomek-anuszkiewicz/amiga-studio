@@ -18,6 +18,8 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_artifacts import compact_objects
 
 
 def generate_slug(text: str) -> str:
@@ -170,7 +172,7 @@ def partition_chapters(workspace_dir: Path, config: dict):
 
         part["target_md_file"] = target_md_name
         with open(target_path, "w", encoding="utf-8") as f:
-            json.dump(part, f, indent=2)
+            json.dump(compact_objects(part), f, indent=2)
         print(f"    Partition {idx:02d}: {part['title']} ({len(part['nodes'])} nodes) -> {file_name}")
 
     print(f"[+] Stage 05 complete. {len(partitions)} clean chapter streams emitted to {chapters_raw_dir}")

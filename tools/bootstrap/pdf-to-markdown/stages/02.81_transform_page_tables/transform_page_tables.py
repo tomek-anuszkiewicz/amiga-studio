@@ -49,7 +49,7 @@ def transform_tables(workspace, config, pages=None):
                             table["md_text"] = result["md_text"]
                         if result["format"] == "html":
                             group = [{"segment_id": s["segment_id"], "type": s["type"],
-                                      "md_text": s["md_text"]} for s in groups[table["segment_id"]]]
+                                      "md_text": s.get("md_text", "")} for s in groups[table["segment_id"]]]
                             request = group_prompt + "\n\nSource-ordered group:\n" + json.dumps({
                                 "table_segment_id": table["segment_id"],
                                 "table_position": next(i for i, s in enumerate(group)

@@ -18,7 +18,7 @@ from conversion import load_config
 from conversion.config import PDF_STAGES
 import yaml
 from common.pdf_artifacts import read_json, write_json
-from common.pdf_cache import page_json_prompts
+from common.pdf_artifacts import compact_objects
 from conversion import CodexClient
 from conversion.cache import ResponseCache, identity
 from unittest.mock import Mock
@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class PdfArtifactIdentityTests(unittest.TestCase):
-    def test_compact_cache_prompt_preserves_source_and_meaningful_fields(self):
+    def test_compact_artifacts_preserve_source_and_meaningful_fields(self):
         obj = {"type": "graphic", "bbox": [1, 2, 3, 4], "segment_id": "g",
                "continuation": False, "heading_level": None, "md_text": "",
                "rotation": 0, "source_segment_ids": ["s"],
@@ -38,10 +38,8 @@ class PdfArtifactIdentityTests(unittest.TestCase):
         value = {"segments": [obj, meaningful, {**obj, "md_text": None}],
                  "blocks": [{"type": 0, "bbox": [0, 0, 1, 1], "text": "OCR"}]}
         before = json.dumps(value, ensure_ascii=False)
-        prompt, alias = page_json_prompts("Prefix\n", value, "\nSuffix")
-        self.assertEqual(prompt, "Prefix\n" + before + "\nSuffix")
+        compact = compact_objects(value)
         self.assertEqual(json.dumps(value, ensure_ascii=False), before)
-        compact = json.loads(alias[len("Prefix\n"):-len("\nSuffix")])
         self.assertEqual(compact["segments"][0], {
             "type": "graphic", "bbox": [1, 2, 3, 4], "segment_id": "g",
             "metadata": {"other": "retained"}})
@@ -50,39 +48,30 @@ class PdfArtifactIdentityTests(unittest.TestCase):
         for key in ("rotation", "md_text", "heading_level", "continuation", "metadata"):
             self.assertEqual(compact["segments"][1][key], meaningful[key])
 
-    def test_live_and_historical_results_seed_compact_cache_without_changing_response(self):
+    def test_compact_artifact_prompt_replays_preloaded_cache(self):
         stage = "02.44_detect_image_rotation"
         config = {"llm": {"stages": {stage: {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}}}}
         schema = {"type": "object"}
-        prompt, alias = page_json_prompts("Frozen page:\n", {"segments": [
-            {"type": "graphic", "bbox": [1, 2, 3, 4], "rotation": 0}]})
+        # This identity is the compact alias prepared before artifact migration.
+        seeded_prompt = 'Frozen page:\n{"segments": [{"type": "graphic", "bbox": [1, 2, 3, 4]}]}'
         result = {"status": "completed", "text": '{"rotation": 0}', "usage": {"inputTokens": 12}}
-        for historical in (False, True):
-            with self.subTest(historical=historical), tempfile.TemporaryDirectory() as directory:
-                cache = ResponseCache(directory)
-                transport = Mock()
-                transport.run.return_value = result
-                with CodexClient(config, stage=stage, cache=cache, transport=transport) as client:
-                    old_key = identity(client.selected, prompt, [], schema)
-                    new_key = identity(client.selected, alias, [], schema)
-                    if historical:
-                        cache.save(old_key, result)
-                    self.assertEqual(client.generate_json(prompt, schema=schema, cache_prompt=alias),
-                                     {"rotation": 0})
-                    self.assertEqual(transport.run.call_count, 0 if historical else 1)
-                    if not historical:
-                        self.assertEqual(transport.run.call_args.args[1], prompt)
-                    for key in (old_key, new_key):
-                        entry = cache.load(key)
-                        self.assertEqual(entry["text"], result["text"])
-                        self.assertEqual(entry["usage"], result["usage"])
-                    # Future compact requests replay without model calls.
-                    self.assertEqual(client.generate_json(alias, schema=schema), {"rotation": 0})
-                    self.assertEqual(transport.run.call_count, 0 if historical else 1)
-                    # An independently generated compact response must survive.
-                    cache.save(new_key, {**result, "text": '{"rotation": 90}'})
-                    client.generate_json(prompt, schema=schema, cache_prompt=alias)
-                    self.assertEqual(cache.load(new_key)["text"], '{"rotation": 90}')
+        with tempfile.TemporaryDirectory() as directory:
+            cache = ResponseCache(Path(directory) / "cache")
+            transport = Mock()
+            transport.run.side_effect = AssertionError("Preloaded cache must avoid inference")
+            with CodexClient(config, stage=stage, cache=cache, transport=transport) as client:
+                cache.save(identity(client.selected, seeded_prompt, [], schema), result)
+                path = Path(directory) / "page.json"
+                write_json(path, {"segments": [{"type": "graphic", "bbox": [1, 2, 3, 4],
+                                              "rotation": 0, "md_text": None,
+                                              "continuation": False, "heading_level": None,
+                                              "source_segment_ids": ["s"],
+                                              "replacement_stage": "02.44", "image_only": True}]})
+                prompt = "Frozen page:\n" + json.dumps(read_json(path), ensure_ascii=False)
+                self.assertEqual(prompt, seeded_prompt)
+                self.assertEqual(client.generate_json(prompt, schema=schema), {"rotation": 0})
+                transport.run.assert_not_called()
+                self.assertEqual((client.call_count, client.cached_call_count), (0, 1))
 
     def test_read_preserves_extracted_text_prompt_data(self):
         value = {"blocks": [{"type": 0, "bbox": [1, 2, 3, 4], "text": "Source"}]}
@@ -92,7 +81,7 @@ class PdfArtifactIdentityTests(unittest.TestCase):
             self.assertEqual(json.dumps(read_json(path), ensure_ascii=False),
                              json.dumps(value, ensure_ascii=False))
 
-    def test_write_preserves_explicit_object_defaults(self):
+    def test_write_omits_explicit_object_defaults(self):
         value = {"segments": [{"type": "graphic", "bbox": [1, 2, 3, 4],
                               "continuation": False, "heading_level": None,
                               "md_text": "", "rotation": 0}]}
@@ -100,7 +89,8 @@ class PdfArtifactIdentityTests(unittest.TestCase):
             path = Path(directory) / "page.json"
             write_json(path, value)
             self.assertEqual(path.read_text(encoding="utf-8"),
-                             json.dumps(value, indent=2, ensure_ascii=False))
+                             json.dumps({"segments": [{"type": "graphic", "bbox": [1, 2, 3, 4]}]},
+                                        indent=2, ensure_ascii=False))
 
 
 class PdfNxpGeometryTests(unittest.TestCase):
@@ -546,11 +536,11 @@ class PdfConfigurationTests(unittest.TestCase):
         objects = {"image_width": 600, "image_height": 1200, "segments": [
             {"segment_id": "page_0007_seg_001", "type": "heading", "heading_level": 2,
              "continuation": True, "md_text": "## Continued", "bbox": [30, 900, 300, 990]},
-            {"segment_id": "page_0007_seg_002", "type": "footnote", "heading_level": None,
-             "continuation": False, "md_text": "*Source note*", "bbox": [60, 120, 360, 240]},
-            {"segment_id": "page_0007_seg_003", "type": "code_block", "heading_level": None,
-             "continuation": False, "md_text": "```\nlabel:\n    move.w #$0001,d0\n```",
-             "bbox": [60, 300, 360, 420], "replacement_stage": "02.45_reformat_code_block"},
+            {"segment_id": "page_0007_seg_002", "type": "footnote",
+             "md_text": "*Source note*", "bbox": [60, 120, 360, 240]},
+            {"segment_id": "page_0007_seg_003", "type": "code_block",
+             "md_text": "```\nlabel:\n    move.w #$0001,d0\n```",
+             "bbox": [60, 300, 360, 420]},
         ]}
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)

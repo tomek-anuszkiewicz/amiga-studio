@@ -19,6 +19,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_artifacts import compact_objects
 from common.pdf_runtime import LLM_CONCURRENCY
 
 # Import CodexClient from skill root
@@ -198,7 +199,7 @@ def process_proofread_stream(
                 "nodes": nodes,
             }
             with open(out_json_path, "w", encoding="utf-8") as f:
-                json.dump(updated_entry, f, indent=2)
+                json.dump(compact_objects(updated_entry), f, indent=2)
             outputs.append(updated_entry)
             print(f"    Proofread Partition {idx:02d}: {corrected_title} -> {out_json_name}")
 

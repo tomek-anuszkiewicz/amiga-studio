@@ -20,6 +20,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_artifacts import compact_objects
 from common.pdf_runtime import LLM_CONCURRENCY
 
 # Import CodexClient from skill root
@@ -295,7 +296,7 @@ def process_prose(workspace_dir: Path, config: dict):
                 formatted_count += assembled
             target_file = out_dir / c_file.name
             with open(target_file, "w", encoding="utf-8") as f:
-                json.dump({**metadata[c_file], "nodes": nodes}, f, indent=2)
+                json.dump(compact_objects({**metadata[c_file], "nodes": nodes}), f, indent=2)
 
         print(f"[+] Stage 09 complete. Formatted {formatted_count} nodes into {out_dir}.")
 

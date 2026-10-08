@@ -2,6 +2,7 @@
 """Stage 02.43: reconsider existing code blocks using original-page vision."""
 
 import argparse
+import json
 from pathlib import Path
 import sys
 
@@ -11,7 +12,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
-from common.pdf_cache import page_json_prompts
 from common.pdf_artifacts import read_json, write_json
 from common.pdf_page_conversion import resolved_page_files, CODE_RECLASSIFY_STAGE
 from common.pdf_schemas import object_schema, STRING
@@ -46,17 +46,15 @@ def reclassify_code_blocks(workspace, config, pages=None):
                 if codex is None:
                     codex = CodexClient(config, stage=CODE_RECLASSIFY_STAGE, images=True)
                 for target in candidates:
-                    request, cache_prompt = page_json_prompts(prompt + "\n\nFrozen source page and target code block:\n",
-                        {**context, "target_code_block": target})
-                    response = codex.generate_json(request, schema=RESPONSE, cache_prompt=cache_prompt, image_path=source)
+                    request = prompt + "\n\nFrozen source page and target code block:\n" + json.dumps(
+                        {**context, "target_code_block": target}, ensure_ascii=False)
+                    response = codex.generate_json(request, schema=RESPONSE, image_path=source)
                     action = response["action"]
                     if action != "retain":
                         replacements[target["segment_id"]] = {
                             **target, "type": action,
                             "md_text": response["md_text"] if action == "prose" else "",
                             "heading_level": None,
-                            "source_segment_ids": [target["segment_id"]],
-                            "replacement_stage": CODE_RECLASSIFY_STAGE,
                         }
                     requested += 1
                     print(f"[code-reclassify] {page_id}/{target['segment_id']}: {action}", flush=True)

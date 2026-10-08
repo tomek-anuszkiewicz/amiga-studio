@@ -11,7 +11,7 @@ def segment_markdown(segment):
     if segment["type"] in DEFERRED_TEXT_TYPES and not converted(segment):
         identity = segment["segment_id"]
         return f"![{segment['type'].capitalize()} {identity}](assets/{identity}.png)"
-    return segment["md_text"]
+    return segment.get("md_text", "")
 
 
 def crop_objects(pages):

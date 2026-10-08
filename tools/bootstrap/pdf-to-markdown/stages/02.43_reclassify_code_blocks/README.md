@@ -8,7 +8,7 @@ preserved; missing stage settings default to `gpt-6.1-sol` / `medium`.
 The model returns `retain`, `prose` or `table`. Retention preserves the source
 exactly; prose includes a faithful Markdown transcription; tables receive empty
 `md_text` and are transcribed later by 02.81. A replacement preserves the source
-ID, bbox, continuation flag and order, with source lineage and replacement stage.
+ID, bbox, meaningful continuation flag and order. No replacement metadata is added.
 Only changed pages receive complete-page overrides.
 
 Parameter descriptions pairing names with values or meanings, including

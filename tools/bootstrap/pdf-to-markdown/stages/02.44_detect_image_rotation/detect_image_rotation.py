@@ -2,6 +2,7 @@
 """Stage 02.44: record clockwise image corrections without changing pixels."""
 
 import argparse
+import json
 from pathlib import Path
 import sys
 
@@ -11,7 +12,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
-from common.pdf_cache import page_json_prompts
 from common.pdf_artifacts import read_json, write_json
 from common.pdf_page_conversion import resolved_page_files, IMAGE_ROTATION_STAGE
 from common.pdf_schemas import object_schema
@@ -43,16 +43,17 @@ def detect_image_rotation(workspace, config, pages=None):
                 if codex is None:
                     codex = CodexClient(config, stage=IMAGE_ROTATION_STAGE, images=True)
                 for target in candidates:
-                    request, cache_prompt = page_json_prompts(prompt + "\n\nFrozen source page and target image:\n",
-                        {**context, "target_image": target})
-                    response = codex.generate_json(request, schema=RESPONSE, cache_prompt=cache_prompt, image_path=source)
+                    request = prompt + "\n\nFrozen source page and target image:\n" + json.dumps(
+                        {**context, "target_image": target}, ensure_ascii=False)
+                    response = codex.generate_json(request, schema=RESPONSE, image_path=source)
                     rotation = response["rotation"]
-                    if "rotation" not in target or target["rotation"] != rotation:
-                        replacements[target["segment_id"]] = {
-                            **target, "rotation": rotation,
-                            "source_segment_ids": target.get("source_segment_ids", [target["segment_id"]]),
-                            "replacement_stage": IMAGE_ROTATION_STAGE,
-                        }
+                    if target.get("rotation", 0) != rotation:
+                        replacement = dict(target)
+                        if rotation:
+                            replacement["rotation"] = rotation
+                        else:
+                            replacement.pop("rotation", None)
+                        replacements[target["segment_id"]] = replacement
                     requested += 1
                     print(f"[image-rotation] {page_id}/{target['segment_id']}: {rotation} deg CW", flush=True)
             segments = [replacements.get(obj["segment_id"], obj) for obj in objects]

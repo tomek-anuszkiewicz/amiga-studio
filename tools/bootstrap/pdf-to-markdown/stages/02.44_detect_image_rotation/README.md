@@ -5,7 +5,7 @@ graphics produced by table reclassification. The value is the correction to
 apply clockwise from its current orientation in the original Stage 01 PNG:
 `0` needs no correction, `90` is clockwise, `180` is a half turn and `270` is
 counterclockwise. Fractional values in `[0, 360)` are allowed. Missing metadata
-means no recorded decision; zero explicitly records no correction.
+means zero correction; zero is omitted from saved objects.
 
 Send one isolated read-only request per graphic using its JSON/bbox, frozen
 resolved page objects and the complete unmodified Stage 01 PNG at original detail.
@@ -16,9 +16,10 @@ handling apply, without local PDF schema validation. Cache identity includes the
 stage, model/effort, prompt, schema and original image bytes.
 
 Only changed pages receive complete-page sparse overrides in
-`02.44_detect_image_rotation/page_NNNN_segments.json`; adding zero is a change.
+`02.44_detect_image_rotation/page_NNNN_segments.json`; absent rotation receiving
+zero is unchanged, while zero clears any previous nonzero correction.
 Preserve IDs, types, boxes, text, continuation, dimensions and order. Existing
-source IDs survive, and `replacement_stage` records this contribution.
+segment IDs survive; no replacement metadata is added.
 
 The shared resolver applies `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45`
 for review 02.50 and filtering 02.80. This worker resolves only predecessors.

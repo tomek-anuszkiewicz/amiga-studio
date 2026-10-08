@@ -31,10 +31,9 @@ run. Restart cleanup follows execution order. Existing streams require explicit
 regeneration through 02.82 to adopt table conversion. Success establishes execution,
 not transcription fidelity or RAG ingestion behavior.
 
-Stage 02.40 replacement `source_segment_ids` and `replacement_stage` are carried
-in node metadata alongside unchanged callout roles and text. The stream contains
+Callout roles and text are retained without replacement metadata. The stream contains
 replacement objects once; consumed predecessor objects are not reintroduced.
 
 Optional graphic `rotation` from 02.44 survives on each stream node and in its
-metadata. Missing decisions remain absent. Asset crops use unchanged source pixels;
+metadata. Zero corrections remain absent. Asset crops use unchanged source pixels;
 applying the saved clockwise correction is deferred.
