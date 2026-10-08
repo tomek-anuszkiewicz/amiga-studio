@@ -143,10 +143,11 @@ class PdfOcrValidationTests(unittest.TestCase):
                 document.new_page(width=200, height=200).insert_text((20, 40), "Native text")
                 document.new_page(width=200, height=200)
                 document.save(source)
-            with patch.object(stage, "tesseract_settings", return_value=("eng", "unused", {"engine": "tesseract"})), \
+            with patch.object(stage, "tesseract_settings", return_value=("eng", "unused")), \
                     patch.object(stage, "tesseract_ocr", return_value=payload) as recognize:
                 prepared_path = stage.prepare_text_layer(source, workspace, config, "2-3")
             self.assertEqual(recognize.call_count, 2)
+            self.assertFalse((workspace / "01_text_layer/recovery").exists())
             with pymupdf.open(prepared_path) as prepared:
                 self.assertEqual(len(prepared), 3)
                 self.assertEqual([page.get_text().strip() for page in prepared],
@@ -170,7 +171,7 @@ class PdfOcrValidationTests(unittest.TestCase):
                     page = document.new_page(width=200, height=200)
                     page.insert_text((20, 40), f"Source page {number}")
                 document.save(source)
-            original_hash = stage.file_hash(source)
+            original_bytes = source.read_bytes()
             with patch.object(stage, "tesseract_ocr", side_effect=AssertionError("Native pages must not use OCR")), \
                     patch.object(pymupdf.Page, "get_pixmap", side_effect=AssertionError("Stage 01 must not render native pages for validation")):
                 prepared_path = stage.prepare_text_layer(source, workspace, config, "2,5")
@@ -179,7 +180,7 @@ class PdfOcrValidationTests(unittest.TestCase):
                 self.assertEqual(len(document), 5)
                 self.assertEqual([page.get_text().strip() for page in document],
                                  [f"Source page {number}" for number in range(1, 6)])
-            self.assertEqual(stage.file_hash(source), original_hash)
+            self.assertEqual(source.read_bytes(), original_bytes)
             preprocess.preprocess_pdf(prepared, workspace, dpi=72, page_ranges="2,5")
             page_data = json.loads((workspace / "02_preprocess/page_0005.json").read_text())
             self.assertNotIn("pdf_sha256", page_data)
@@ -212,7 +213,7 @@ class PdfOcrValidationTests(unittest.TestCase):
             actual = page.get_text("rawdict")
             self.assertEqual(actual["blocks"], expected["blocks"])
 
-    def test_failed_ocr_pdf_publishes_no_recovery_or_output(self):
+    def test_failed_ocr_pdf_publishes_no_output(self):
         spec = importlib.util.spec_from_file_location(
             "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/01_text_layer/prepare_text_layer.py")
         stage = importlib.util.module_from_spec(spec)
@@ -223,12 +224,10 @@ class PdfOcrValidationTests(unittest.TestCase):
             with pymupdf.open() as document:
                 document.new_page()
                 document.save(source)
-            with patch.object(stage, "tesseract_settings", return_value=("eng", "unused", {"engine": "tesseract"})), \
+            with patch.object(stage, "tesseract_settings", return_value=("eng", "unused")), \
                     patch.object(stage, "tesseract_ocr", return_value=b"invalid PDF"):
                 with self.assertRaises(pymupdf.FileDataError):
                     stage.prepare_text_layer(source, workspace, config)
-            self.assertFalse((workspace / "01_text_layer/recovery/page_0001.json").exists())
-            self.assertFalse((workspace / "01_text_layer/recovery/page_0001.pdf").exists())
             self.assertFalse(source.with_stem("source-ocr").exists())
 
 

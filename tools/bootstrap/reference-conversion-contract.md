@@ -55,8 +55,8 @@ Run each request in a fresh isolated thread with explicit conversion instruction
 
 The Codex cache is separate from legacy Gemini data. Its identity includes engine, stage, model, effort, pinned runtime, contract version, execution instructions, prompt, ordered image bytes, image detail and output schema. Completed cached outputs are reusable; partial, interrupted, empty or unparseable JSON outputs are not. Cache reuse retains authenticated runtime handling; HTML also validates selected capabilities and response content. Record calls, cache hits, elapsed time and available token usage; cached usage describes the original request, not new consumption.
 
-Prepared-PDF hashes are not stored in page JSON or OCR
-recovery metadata. Stage 03 receives page data without a document-wide hash, so
+Prepared-PDF hashes are not stored in page JSON.
+Stage 03 receives page data without a document-wide hash, so
 rewriting the prepared PDF alone does not change the page request. PDF completion and metrics live only in `stage_status.json`; request-cache records
 remain separate from execution status. Existing cached prompts are not rewritten.
 
@@ -289,14 +289,13 @@ prepared PDF spans, using `pure_graphic` when none are extractable and recording
 omission is applied. Stage 01 covers all source pages; a selected downstream
 fragment never certifies conversion of unselected pages.
 
-Stage 01 retains compatible OCR recovery records.
+Stage 01 does not persist or reuse per-page OCR recovery records.
 Stage 02 owns per-page positioned text JSON extraction from the prepared PDF;
-Stage 01 does not duplicate those reads in separate inspection JSON. Recovery
-retains each unmodified OCR PDF and JSON identity/hash metadata. Its identity
-includes rendered image bytes, procedure, geometry, source selection,
-language-data hashes, raw PDF format and the PyMuPDF version. Legacy normalized
-JSON and Codex recovery are incompatible and regenerated. OCR artifacts are opened to insert their text; there is no separate OCR-artifact
-validation pass. Recovery matches request identity without checking saved hashes. The user assesses the prepared PDF; Stage 02 consumes its
+Stage 01 does not duplicate those reads in separate inspection JSON.
+OCR PDFs from Tesseract are opened in memory to insert their text, without a
+separate OCR-artifact validation pass. Interrupted preparation starts again
+from the source PDF. Restart clears the complete Stage 01 directory, including
+any old recovery files. The user assesses the prepared PDF; Stage 02 consumes its
 actual extractable text. Native text is unchanged.
 Restart cleanup never removes the sibling prepared PDF.
 Restart at 02 retains completed Stage 01; legacy workspaces require explicit

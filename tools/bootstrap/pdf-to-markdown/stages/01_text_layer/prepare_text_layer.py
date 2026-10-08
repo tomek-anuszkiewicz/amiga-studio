@@ -2,7 +2,6 @@
 """Prepare a shared full-document PDF once, adding OCR where text is missing."""
 
 import argparse
-import hashlib
 from pathlib import Path
 import sys
 import pymupdf
@@ -11,26 +10,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from common.pdf_runtime import RENDER_DPI
 from common.pdf_config import load_config
-from common.pdf_artifacts import write_json, read_json, prepared_pdf_path
-from common.pdf_geometry import page_geometry, text_blocks
+from common.pdf_artifacts import prepared_pdf_path
+from common.pdf_geometry import text_blocks
 
 
 _OCR_LANGUAGE = "eng"
 
 
-def file_hash(path):
-    """Identify compatible OCR recovery requests."""
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-
-
 def tesseract_settings():
-    """Resolve language data and fingerprint it without recording host paths."""
-    language = _OCR_LANGUAGE
-    tessdata = Path(pymupdf.get_tessdata())
-    files = {code: tessdata / f"{code}.traineddata" for code in language.split("+")}
-    identity = {"engine": "tesseract", "language": language, "pymupdf": pymupdf.__version__,
-                "traineddata": {code: file_hash(path) for code, path in files.items()}}
-    return language, str(tessdata), identity
+    """Resolve the language and local Tesseract data directory."""
+    return _OCR_LANGUAGE, pymupdf.get_tessdata()
 
 
 def tesseract_ocr(pixmap, language, tessdata):
@@ -52,7 +41,6 @@ def insert_ocr_pdf(page, ocr):
 def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
     pdf_path, workspace = Path(pdf_path).resolve(), Path(workspace).resolve()
     stage_dir = workspace / "01_text_layer"
-    source = {"name": pdf_path.name}
     dpi = RENDER_DPI
     with pymupdf.open(pdf_path) as document:
         pages = list(range(1, len(document) + 1))
@@ -63,61 +51,31 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
             return output
         candidate = output.with_suffix(".candidate.pdf")
         candidate.unlink(missing_ok=True)
-        recovery = stage_dir / "recovery"
-        recovery.mkdir(exist_ok=True)
         engine = None
-        procedure = {"script_sha256": file_hash(__file__),
-                     "settings": {"render_dpi": RENDER_DPI, "language": _OCR_LANGUAGE}}
-        recovery_source = {**source, "sha256": file_hash(pdf_path)}
         try:
             for prepared_index, number in enumerate(pages):
                 page = document[prepared_index]
-                entry = {"page": number, "page_id": f"page_{number:04d}", "source_index": number - 1,
-                         "prepared_index": prepared_index,
-                         "geometry": page_geometry(page)}
+                page_id = f"page_{number:04d}"
                 if text_blocks(page):
-                    entry.update(provenance="native", page_type="text_page", classification_basis="inferred_from_native_spans")
-                    print(f"[native] {entry['page_id']}: retained existing text spans")
+                    print(f"[native] {page_id}: retained existing text spans")
                 else:
-                    image = stage_dir / ".request.png"
                     pixmap = page.get_pixmap(dpi=dpi, colorspace=pymupdf.csRGB, alpha=False)
-                    pixmap.save(image)
                     if engine is None:
                         engine = tesseract_settings()
-                    language, tessdata, engine_identity = engine
-                    identity = {"source": recovery_source, "page": number, "image_sha256": file_hash(image),
-                                "geometry": entry["geometry"], "format": "tesseract-pdf-v1", "procedure": procedure,
-                                "engine": engine_identity}
-                    recovery_file = recovery / f"{entry['page_id']}.json"
-                    recovery_pdf = recovery / f"{entry['page_id']}.pdf"
-                    payload = None
-                    if recovery_file.is_file():
-                        retained = read_json(recovery_file)
-                        if retained.get("identity") == identity and recovery_pdf.is_file():
-                            payload = recovery_pdf.read_bytes()
-                            print(f"[recovery] {entry['page_id']}: compatible original OCR PDF")
-                    fresh_ocr = payload is None
-                    if payload is None:
-                        payload = tesseract_ocr(pixmap, language, tessdata)
-                    image.unlink()
+                    language, tessdata = engine
+                    payload = tesseract_ocr(pixmap, language, tessdata)
                     with pymupdf.open("pdf", payload) as ocr:
                         has_text = bool(ocr[0].get_text().strip())
-                        entry.update(page_type="text_page" if has_text else "pure_graphic", caption=None,
-                                     classification_basis="inferred_from_tesseract_lines",
-                                     provenance="ocr" if has_text else "none")
                         if has_text:
                             insert_ocr_pdf(page, ocr)
-                    if fresh_ocr:
-                        recovery_pdf.write_bytes(payload)
-                        write_json(recovery_file, {"identity": identity})
-                    print(f"[{entry['provenance']}] {entry['page_id']}: {entry['page_type']}")
+                    provenance = "ocr" if has_text else "none"
+                    page_type = "text_page" if has_text else "pure_graphic"
+                    print(f"[{provenance}] {page_id}: {page_type}")
             document.save(candidate, deflate=True, garbage=4)
             candidate.replace(output)
         except BaseException:
             candidate.unlink(missing_ok=True)
             raise
-        finally:
-            (stage_dir / ".request.png").unlink(missing_ok=True)
     print(f"[+] Stage 01 published {output.name}; source pages: {pages}")
     return output
 

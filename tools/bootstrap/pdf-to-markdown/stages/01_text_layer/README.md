@@ -10,9 +10,9 @@ Retain native text. For textless pages, run local Tesseract through PyMuPDF at
 `TESSDATA_PREFIX`. Overlay the OCR text while retaining the original page graphics.
 No model request is made.
 
-Compatible per-page OCR recovery files in `01_text_layer/recovery/` can resume
-interrupted preparation. The completed PDF is saved beside the source and used
-by [Stage 02](../02_preprocess/README.md). OCR can miss text; inspect the result.
+Per-page OCR results are not cached or saved separately. Interrupted preparation
+starts again from the source PDF. The completed PDF is saved beside the source
+and used by [Stage 02](../02_preprocess/README.md). OCR can miss text; inspect the result.
 
 Run through the [pipeline](../../README.md) with `--from-stage 01 --to-stage 01`,
 or through 02 to also produce page images and positioned text.

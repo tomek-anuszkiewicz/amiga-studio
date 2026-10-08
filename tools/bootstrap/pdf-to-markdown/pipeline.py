@@ -26,7 +26,6 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "script": "prepare_text_layer.py",
         "desc": "Prepare a shared full-source OCR PDF, or reuse the existing file",
         "targets": ["01_text_layer"],
-        "inspect": ("recovery/*.json", "OCR recovery records"),
     },
     {
         "id": "02",
@@ -238,6 +237,8 @@ def print_pipeline_status(workspace_dir: Path):
     print("==================================================")
 
     for s in STAGE_REGISTRY:
+        if "inspect" not in s:
+            continue
         dir_name = s["dir"]
         pattern, label = s["inspect"]
         target = workspace_dir / dir_name
@@ -300,17 +301,7 @@ def clean_downstream_stages(workspace_dir: Path, start_idx: int, status_file: Pa
         for target in s["targets"]:
             p = workspace_dir / target
             if p.is_dir():
-                if s_id == "01":
-                    # Partial OCR results are reusable only after Stage 01
-                    # checks source/image/procedure/configuration identities.
-                    for child in p.iterdir():
-                        if child.name != "recovery":
-                            if child.is_dir():
-                                remove_directory(child, workspace_dir)
-                            else:
-                                child.unlink()
-                else:
-                    remove_directory(p, workspace_dir)
+                remove_directory(p, workspace_dir)
             elif p.is_file():
                 p.unlink(missing_ok=True)
 

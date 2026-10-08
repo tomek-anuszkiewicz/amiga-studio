@@ -1401,3 +1401,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight and all 19 architecture tests pass
   - scoped diff check passes
   - no conversion or downloads performed
+---
+
+### [2026-10-08 23:19 CET] — Remove per-page OCR recovery caching
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove persistent per-page Tesseract PDFs, recovery metadata, identity fingerprints and temporary request images
+  - run OCR directly in memory
+  - remove the Stage 01 recovery retention exception and recovery status inspection
+  - update existing OCR tests and documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Use only the completed sibling OCR PDF for reuse
+  - interrupted preparation restarts from the source without per-page recovery state
+- **Verification & Test Results**:
+  - 26 PDF tests and 21 shared conversion tests pass
+  - quick preflight and all 19 architecture tests pass
+  - pipeline status works without recovery inspection
+  - scoped diff check passes
+  - Graphify refresh completes
+  - automatic command policy rejected deletion of existing Test Book recovery artifacts, which remain unused
+  - no live conversion performed
