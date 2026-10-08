@@ -76,11 +76,11 @@ def comparison_html(workspace, entry, page, table):
 
 
 def render_reviews(workspace, config, pages=None):
-    output = workspace / "02.82_table_conversion_review"
+    output = workspace / "02.83_table_conversion_review"
     output.mkdir(parents=True, exist_ok=True)
     counts = dict.fromkeys(("markdown", "html", "unconverted"), 0)
     channel = config.get("table_review", {}).get("browser_channel", "msedge")
-    with tempfile.TemporaryDirectory(prefix=".02.82-", dir=workspace) as temporary, sync_playwright() as backend:
+    with tempfile.TemporaryDirectory(prefix=".02.83-", dir=workspace) as temporary, sync_playwright() as backend:
         browser = backend.chromium.launch(channel=channel, headless=True)
         try:
             browser_page = browser.new_page(viewport={"width": 1800, "height": 1000},
@@ -110,7 +110,7 @@ def render_reviews(workspace, config, pages=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 02.82: table source/conversion review")
+    parser = argparse.ArgumentParser(description="Stage 02.83: table source/conversion review")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--page-ranges")

@@ -28,7 +28,7 @@ Existing attempt settings are preserved; missing stage settings initialize to
 `gpt-6.1-sol` / `medium`.
 
 Filtering 02.80 and table transformation 02.81 retain graphic metadata; review
-02.82 reads those pages without changing them. Stage 03 carries `rotation` on
+02.83 reads those pages without changing them. Stage 03 carries `rotation` on
 the node and in its metadata. Review 02.50 labels show the saved angle.
 Original boxes and all review/crop pixels remain unchanged. Applying the angle
 to exported assets is deferred; a completed request does not certify orientation.

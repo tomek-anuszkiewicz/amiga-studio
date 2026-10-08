@@ -44,7 +44,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<W
 
 Use a named attempt and only the fragment selected by the user. Do not rewrite
 an existing attempt's model settings or continue beyond the requested end stage.
-See [review](../02.82_table_conversion_review/README.md),
+See [review](../02.83_table_conversion_review/README.md),
 [page export](../02.90_emit_page_markdown/README.md) and
 [conversion contract](../../../reference-conversion-contract.md).
 

@@ -7,12 +7,18 @@ let the user assess the output. Offline tests check execution mechanics, not con
 
 Fractional stage IDs use two digits after the dot so directory sorting follows
 execution order: `02.40`, `02.41` through `02.46`, `02.50`, `02.80`, `02.81`,
-`02.82`, `02.90`. CLI selectors, configuration keys and artifact directories use
+`02.83`, `02.90`. CLI selectors, configuration keys and artifact directories use
 these names. Saved attempts are not migrated automatically. To reuse an older
 attempt, rename its `02.4`, `02.5`, `02.8` and `02.9` stage directories to the
 corresponding two-digit names, update those stage IDs in `stage_status.json`, and
 update the `02.4_reclassify_callouts` key in its `config.yaml`. Otherwise start a
 new named attempt. Historical diary entries and stable task IDs retain their names.
+
+Table conversion review is now Stage `02.83` (formerly `02.82`). Existing attempts
+retain their saved names. To reuse a saved review, rename its
+`02.82_table_conversion_review` directory to `02.83_table_conversion_review` and
+change its `stage_status.json` key from `02.82` to `02.83`, or regenerate review
+with `--from-stage 02.83 --to-stage 02.83` using completed Stage 01/02.81 inputs.
 
 ## Run an attempt
 
@@ -54,7 +60,7 @@ errors stop execution normally. No older-stage inputs or alternative models are 
 
 ## Stage data and execution
 
-Execution order is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.90 -> 03`, then 04-14.
+Execution order is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.50 -> 02.80 -> 02.81 -> 02.83 -> 02.90 -> 03`, then 04-14.
 Each worker reads the predecessor's own directory and writes its own results:
 
 | Stage | Input and result |
@@ -72,7 +78,7 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [02.50](stages/02.50_page_conversion_review/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 -> review frames and ordered labels |
 | [02.80](stages/02.80_filter_page_content/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 -> retained objects after source-content and fixed NXP-logo exclusions |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> table markup, saved crops and inferred HTML group text |
-| [02.82](stages/02.82_table_conversion_review/README.md) | Stage 01/02.81 -> side-by-side table review PNGs, no inference |
+| [02.83](stages/02.83_table_conversion_review/README.md) | Stage 01/02.81 -> side-by-side table review PNGs, no inference |
 | [02.90](stages/02.90_emit_page_markdown/README.md) | Stage 01/02.81 -> `document.md`, converted tables and required raster assets |
 | [03](stages/03_build_raw_stream/README.md) | Stage 02.81 objects and Stage 01 geometry -> raw stream and initial assets |
 | [04](stages/04_stream_reduction/README.md) | Raw stream -> reduced stream |
@@ -91,7 +97,7 @@ Prior-stage files remain unchanged. Filename collision handling remains in place
 The chapter branch runs `03 -> 04 -> 05 -> 09 -> 10 -> 11 -> 14`; stage IDs
 retain their original numbers.
 
-### Physical-page selection through Stage 02.82
+### Physical-page selection through Stage 02.83
 
 `--page-ranges` selects physical 1-based pages for the current invocation only.
 The pipeline forwards it to every page worker listed below, which applies it when reading
@@ -113,7 +119,7 @@ Omission means all available pages, regardless of a previous run or legacy confi
 | 02.50 | Select resolved Stage 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 pages before review rendering |
 | 02.80 | Select resolved pages before TOC-boundary detection and content exclusions |
 | 02.81 | Select pages from the completed 02.80 predecessor before table inference |
-| 02.82 | Select Stage 02.81 pages before rendering table comparisons |
+| 02.83 | Select Stage 02.81 pages before rendering table comparisons |
 
 Keep this rule when changing or adding page workers: use the shared page-file
 selection or pass CLI-derived `pages` to the shared conversion reader before opening source
@@ -148,14 +154,14 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<W
 Stages 06-09 run automatically, including their inference calls. All real conversions
 use `pipeline.py` so they receive status, metrics, cleanup and publication handling.
 Stage 02.81 transcribes exact table crops and separately infers complete HTML group
-text. Stage 02.82 reviews saved results with a local browser and no model calls.
+text. Stage 02.83 reviews saved results with a local browser and no model calls.
 Stage 02.90 is a separate intermediate export; it and Stage 03 read Stage 02.81
 objects directly, using Stage 01 geometry and original PNGs. HTML tables publish
 collapsed literal-text and original-image companions after their source groups.
 Markdown tables need no published crop. Tables retain their separate converted
 fragments through stream reduction, continuation detection and Stage 07.
 Existing attempt settings are retained; missing 02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.81 model settings are added
-only when their stage is selected. Review backend setup is in the Stage 02.82 README.
+only when their stage is selected. Review backend setup is in the Stage 02.83 README.
 Stage 02.50 uses resolved complete page input for type-colored review annotations,
 consolidates unobstructed consecutive prose, and hides header/footer/thumb-index
 annotations without removing source content. Stage 02.80 owns all source-content removal; Stage 04 retains
@@ -257,7 +263,7 @@ external predecessors are rejected before cleanup using `STAGE_REGISTRY.inputs` 
 stage retains earlier results; changing code or input files does not recertify them.
 Restart 02.80 clears its filtered objects and every later result even when ending at
 02.80. Existing 02.90/03 exports require explicit regeneration through 02.81 to
-represent table conversion; restart 02.82 preserves 02.81 and clears later stages; implementation does not mutate saved attempt artifacts.
+represent table conversion; restart 02.83 preserves 02.81 and clears later stages; implementation does not mutate saved attempt artifacts.
 Preserve edited Stage 02.90 bundles outside cleanup before restarting. Regeneration
 rebuilds image links/assets and removes obsolete assets; the bundled NXP resource
 survives attempt cleanup.

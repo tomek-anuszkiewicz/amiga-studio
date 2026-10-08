@@ -4017,3 +4017,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - git diff --check passed
   - prompt-only change with no new conversion or content-quality verification
   - existing attempt artifacts remain unchanged
+---
+
+### [2026-10-08 03:29 CET] — PDF-REVIEW-STAGE-1: Rename table review to Stage 02.83
+- **Affected Subsystems**:
+  - `PDF pipeline registry and review worker`
+  - `converter tests and documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Rename Stage 02.82 and its source directory to 02.83
+  - update stage selection dependencies cleanup targets output paths temporary prefix tests and documentation
+  - document reuse of saved reviews under the new stage name
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the user's requested stage number consistently across the active pipeline without rewriting historical entries or existing attempt artifacts
+- **Verification & Test Results**:
+  - Page selection tests 6/6 passed
+  - PDF execution and restart tests 30/30 passed
+  - quick pre-flight passed
+  - architecture tests 19/19 passed
+  - git diff --check passed
+  - no fragment conversion requested or run

@@ -87,7 +87,7 @@ class ReviewSelectionTests(unittest.TestCase):
         self.assertEqual([p.name for p in output.glob("*_segments.json")], ["page_0064_segments.json"])
 
     def test_table_review_renders_only_selected_page(self):
-        stage = stage_module("02.82_table_conversion_review", "render_table_review")
+        stage = stage_module("02.83_table_conversion_review", "render_table_review")
         self.table_pages(stage.STAGE)
         with patch.object(stage, "sync_playwright") as backend, patch.object(stage, "comparison_html", return_value="local") as comparison:
             browser = backend.return_value.__enter__.return_value.chromium.launch.return_value

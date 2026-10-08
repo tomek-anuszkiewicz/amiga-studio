@@ -42,7 +42,7 @@ The prompt excludes numbered/symbol-marked footnotes, table/figure legends and
 explanatory lists. Distinct NOTE labels introducing their own advisory paragraphs
 remain eligible even when they discuss a nearby table, image or figure.
 Only changed pages receive complete-page overrides; predecessors remain intact.
-All page workers from 01 through 02.82 filter their input by the current invocation's
+All page workers from 01 through 02.83 filter their input by the current invocation's
 `--page-ranges`, forwarded by the pipeline even on a later-stage restart. Selection
 is not persisted in config; omission means all available predecessor pages.
 Legacy `input.pages` is ignored and removed on the next pipeline config write.
@@ -189,7 +189,7 @@ Full runs, intervals and individual deterministic/inference stages use
 processes automatically with its inference calls and no manual task files.
 The normal pipeline has no legacy reader.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.90 -> 03`, then `04 -> 05 -> 09 -> 10 -> 11 -> 14`.
+The execution sequence is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.50 -> 02.80 -> 02.81 -> 02.83 -> 02.90 -> 03`, then `04 -> 05 -> 09 -> 10 -> 11 -> 14`.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.
@@ -273,7 +273,7 @@ absent optional status skips a layer and failed/running status blocks consumers.
 Selection precedes candidates; pages without graphics make no requests. Existing
 model settings survive and missing settings default to `gpt-6.1-sol` / `medium`.
 Restart clears this and later stages, retaining predecessors/cache.
-Filtering 02.80 and transformations/review 02.81/02.82 preserve graphic metadata;
+Filtering 02.80 and transformations/review 02.81/02.83 preserve graphic metadata;
 03 carries the angle on nodes and in metadata. Review 02.50 displays saved angles
 without rotating boxes or pixels. Exported asset rotation remains deferred.
 Stage 02 does not require rotation in inference responses or other object types.
@@ -364,7 +364,7 @@ HTML tables require a separate crop/HTML/source-ordered-group inference saving
 complete nonempty `table_rag_text`. Preserve all values and relationships without
 summarization. A conservative local simple-HTML warning changes no result.
 
-Stage 02.82 produces a labeled Source/Converted PNG per table from completed
+Stage 02.83 produces a labeled Source/Converted PNG per table from completed
 01/02.81 artifacts without inference or export dependency. Shared group assembly
 renders GFM/HTML with a local Playwright browser, complete source context, expanded
 literal RAG text and a collapsed original-image companion. Full-width/full-height
@@ -392,9 +392,9 @@ companion duplication. Later processing does not automatically rewrite saved RAG
 
 Restart clears the selected stage and every later stage in execution order, even
 when stopping at that stage. Restart 02.81 preserves predecessors and rebuilds
-persistent crops; restart 02.82 preserves conversion and rebuilds reviews. Required
+persistent crops; restart 02.83 preserves conversion and rebuilds reviews. Required
 completed dependencies are 01 plus the selected predecessor for 02.81, and 01/02.81
-for 02.82, 02.90 and 03. No automatic continuation or completed-stage skipping occurs.
+for 02.83, 02.90 and 03. No automatic continuation or completed-stage skipping occurs.
 Existing exports/streams require explicit regeneration through 02.81; implementation
 does not mutate old attempts. Preserve edited exports outside cleanup before restart.
 The bundled NXP resource and request cache survive attempt cleanup.
