@@ -4396,3 +4396,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - independent read-only reconstruction from 133 cached Stage 02.41 responses also found all 138 Stage 02.42 keys
   - Graphify update and whitespace checks passed
   - no model calls, artifact rewrites or conversion run performed
+---
+
+### [2026-10-08 17:09 CEST] — PDF-CACHE-AUDIT: Retain changed page geometry and repair an equivalent graphic key
+- **Affected Subsystems**:
+  - `PDF refinement cache`
+  - `pages-all diagnostic evidence`
+  - `Stage 02.44 and downstream stages`
+- **What Was Changed (The Concrete Reality)**:
+  - Diagnose one Stage 02.44 miss on physical page 54 as changed predecessor geometry plus inherited field ordering
+  - retain new Stage 02.42 results at explicit user direction
+  - add one Stage 02.47 page-50 cache alias for equal payload values differing only in field order
+  - leave code and stage artifacts unchanged
+- **Architectural Rationale & Trade-Offs**:
+  - Fresh Stage 02.42 responses generated during the earlier cache miss changed heading boxes by 1-3 pixels
+  - reusing an old rotation response under changed source context would conflate different requests
+  - the user explicitly chose to preserve new geometry and accept its legitimate cache miss
+- **Verification & Test Results**:
+  - Read-only Stage 02.44 request reconstruction found 81 hits and one legitimate miss
+  - remaining cache-only reconstruction outside blocked page 54 found 43 Stage 02.45 hits, 21 Stage 02.46 hits and 81 Stage 02.47 hits after the one order-only alias repair
+  - alias copied only after equal parsed payloads, matching prompt instructions and equal nonprompt identities
+  - page 54 downstream audit remains blocked by its missing Stage 02.44 response
+  - zero model calls and no stage/artifact regeneration
+  - quick pre-flight passed and architecture suite passed 19 tests
