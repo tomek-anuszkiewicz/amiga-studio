@@ -7,7 +7,7 @@ This initial vocabulary describes the source elements distinguished during book 
 | `cover` | A complete front or back book cover, including its publication text and artwork. |
 | `header` | A running page header or repeated chapter/section title in the top margin. |
 | `footer` | A running page footer or printed page number. |
-| `toc_heading` | The title of the formal table of contents, including a continuation title. |
+| `toc_heading` | The title of the formal table of contents, including a continuation title; treated as a level-1 heading. |
 | `toc` | Formal table-of-contents entries and their page references. |
 | `thumb_index` | Printed edge tabs and marginal chapter navigation markers. |
 | `heading` | A chapter, appendix, section or subsection title. Its `level` property defines its depth in the document hierarchy. |
@@ -21,11 +21,11 @@ This initial vocabulary describes the source elements distinguished during book 
 | `footnote` | A source note referenced by a marker; preserve the marker and the complete note. |
 | `note` | A source note containing explanations, assumptions, conditions or qualifications. It can belong to a table or image group, or stand independently in the text. Keep its introductory label with the note. |
 | `legend` | A separate block defining symbols, line styles, colors, notation or abbreviations. Its association with the relevant source content belongs to grouping. |
-| `index_heading` | An index title, including a continuation title. |
+| `index_heading` | An index title, including a continuation title; treated as a level-1 heading. |
 | `index` | Alphabetical or subject-index entries and their page references. |
-| `list_of_tables_heading` | A list-of-tables title, including a continuation title. |
+| `list_of_tables_heading` | A list-of-tables title, including a continuation title; treated as a level-1 heading. |
 | `list_of_tables` | List-of-tables entries, including table identifiers, titles and page references. |
-| `list_of_figures_heading` | A list-of-figures or illustrations title, including a continuation title. |
+| `list_of_figures_heading` | A list-of-figures or illustrations title, including a continuation title; treated as a level-1 heading. |
 | `list_of_figures` | List-of-figures entries, including figure identifiers, titles and page references. |
 
 ## Notes, legends and groups
@@ -47,5 +47,7 @@ Use one `heading` type with an integer `level` property for hierarchy depth. The
 | `heading` | 3 | `1.1.1` |
 
 Unnumbered titles still have a level and omit `number`. Preserve appendix identifiers such as `A` or `A.1` as strings when present. Do not introduce `chapter1`, `chapter2` or `chapter3` types; chapter and appendix openings use `heading` at the appropriate level. The PDF preparation vocabulary remains separate from this book-authoring model.
+
+`toc_heading`, `index_heading`, `list_of_tables_heading` and `list_of_figures_heading` retain their semantic types but use `level: 1`. Book processing treats them like `heading` with `level: 1` for hierarchy and Markdown heading rendering (`#`). Their types identify which contents, index or list they introduce; the following entries retain their own element types.
 
 `continuation`, `level`, `number`, geometry and group membership are properties of elements rather than additional element types.

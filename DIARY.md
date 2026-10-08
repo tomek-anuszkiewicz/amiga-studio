@@ -933,3 +933,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight passed
   - architecture suite passed 19 tests
   - PDF schema and runtime unchanged
+---
+
+### [2026-10-08 21:05 CET] — Treat dedicated book heading roles as level one
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Assign level-one treatment to toc_heading, index_heading, list_of_tables_heading and list_of_figures_heading
+  - retain semantic types while sharing heading hierarchy and Markdown rendering behavior
+  - update the catalog and README
+- **Architectural Rationale & Trade-Offs**:
+  - User specified that these dedicated headings should be treated like heading at level one
+- **Verification & Test Results**:
+  - Documentation diff reviewed
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - no runtime or PDF schema change

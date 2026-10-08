@@ -7,6 +7,7 @@ This directory starts the planned deterministic chapter generator. It will consu
 The initial [element list](elements.md) records source roles used in book authoring. Notes and legends use generic `note` and `legend` types; authored groups associate them with tables or images, and notes may also stand independently in the text. Image elements retain the existing `graphic` identifier. Grouping is authored separately from PDF table transcription.
 
 Chapter, appendix and section titles use `heading` with a `level` property for hierarchy depth and an optional `number` string for their source numbering.
+The dedicated contents, index, table-list and figure-list heading types retain their roles and are treated as level-1 headings.
 
 ## Chapter proofreading
 
