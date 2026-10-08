@@ -7,6 +7,8 @@ PNG input. Empty input produces an empty stream and assets directory.
 
 Copy Markdown into `raw_text`; normalized and point-based boxes support existing
 stream consumers. Converted tables initialize `rendered_markdown` with their markup.
+Code recovered by Stage 02.45 also initializes `rendered_markdown`, preserving
+its fenced transcription and indentation without another Stage 09 request.
 Source captions, footnotes and legends also retain their Markdown for final assembly.
 Carry `table_format`, `table_rag_text`, `table_group_segment_ids` and
 `table_source_asset` unchanged. Stage 04 keeps converted table fragments separate,

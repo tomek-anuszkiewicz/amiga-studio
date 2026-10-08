@@ -16,7 +16,7 @@ INPUT/OUTPUT register descriptions, use prose even when aligned in columns.
 Preserve labels, values and qualifications as paragraphs or meaningful lists;
 tables remain appropriate for matrices with additional row/column relationships.
 
-The shared resolver applies `02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44` for review
+The shared resolver applies `02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45` for review
 02.5 and filtering 02.8. This worker reads only predecessor layers. Absent
 optional status skips a layer; failed/running status blocks consumers. Physical
 page selection applies before candidate collection or inference. Restarting

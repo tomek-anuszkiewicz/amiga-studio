@@ -3816,3 +3816,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Review regenerated with two labels for three source objects and no pixel rotation
   - Current quick pre-flight passed and architecture rules 19/19 passed
   - No additional sample conversion, full-book run, publication or milestone gate was performed
+---
+
+### [2026-10-08 02:07 CET] — PDF-CODE-2.45: Recover source code classified as prose
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion/config.py`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add one original-page vision request per selected prose-bearing page and sparse eligible-ID code replacements
+  - register optional resolver layer, model defaults, execution order, selection, dependencies and restart cleanup
+  - preserve recovered fences and indentation as rendered stream content
+  - update conversion documentation and active plan
+- **Architectural Rationale & Trade-Offs**:
+  - Recover missed code using existing transport and page overrides while preserving source identity
+  - geometry
+  - lineage and untouched content
+- **Verification & Test Results**:
+  - Passed 30 existing PDF configuration/restart/stream tests, 6 selection checks and 21 shared transport/cache/configuration tests
+  - targeted positive replacement and status-blocking diagnostic passed
+  - quick pre-flight passed
+  - architecture 19/19 passed
+  - Graphify AST refreshed. Page 131: reused successful records/artifacts through 02.41
+  - prepared 02.42-02.44 with 4 live calls and 0 cache hits. Stages 02.45-02.5 passed: 7 prose candidates, 1 live call, 0 cache hits, no qualifying code or changed IDs. Saved review PNG/JSON and resolved text Markdown in named stage-02.45-prose-code-review attempt. User quality assessment pending
+  - plan remains active
+  - no additional fragment or milestone checks run.

@@ -13,9 +13,10 @@ TABLE_SPLIT_STAGE = "02.41_split_tables"
 TABLE_RECLASSIFY_STAGE = "02.42_reclassify_tables"
 CODE_RECLASSIFY_STAGE = "02.43_reclassify_code_blocks"
 IMAGE_ROTATION_STAGE = "02.44_detect_image_rotation"
+PROSE_CODE_STAGE = "02.45_recover_code_from_prose"
 PAGE_OVERRIDE_LAYERS = (("02.4", CALLOUT_STAGE), ("02.41", TABLE_SPLIT_STAGE),
                         ("02.42", TABLE_RECLASSIFY_STAGE), ("02.43", CODE_RECLASSIFY_STAGE),
-                        ("02.44", IMAGE_ROTATION_STAGE))
+                        ("02.44", IMAGE_ROTATION_STAGE), ("02.45", PROSE_CODE_STAGE))
 
 
 def page_override_layers(before_stage=None):
