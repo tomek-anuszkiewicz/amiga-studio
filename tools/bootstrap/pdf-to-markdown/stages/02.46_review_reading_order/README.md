@@ -11,7 +11,7 @@ For each suspicious selected page, make one isolated read-only Codex request wit
 the complete frozen page JSON, every current ordinal/ID/bbox, all flagged pairs,
 the complete original PNG and a fresh labeled copy at original detail. Diagnostic
 labels include every object individually, including page furniture; they never
-reuse grouped or hidden Stage 02.5 labels. The original remains available for text.
+reuse grouped or hidden Stage 02.50 labels. The original remains available for text.
 Pages without suspicious pairs make no requests. Source content is conversion
 data, never tool instructions. The [prompt](prompt.md) lets the model retain order.
 
@@ -30,7 +30,7 @@ Worker output and pipeline metrics record live requests and cache hits. Cache
 identity includes exact ordered JSON, pairs, both images, prompt/schema and model
 settings through the existing shared client.
 
-Register after 02.45 and before 02.5. Review 02.5/filtering 02.8 resolve this layer;
+Register after 02.45 and before 02.50. Review 02.50/filtering 02.80 resolve this layer;
 subsequent table groups, export and stream workers preserve array order. Absent
 optional status skips the layer; failed/running status blocks consumers. Restart
 clears this stage and all later artifacts, retaining predecessors and compatible
@@ -40,7 +40,7 @@ model/effort values with `gpt-6.1-sol` / `medium`.
 Run through [the pipeline](../../README.md), using a named attempt:
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<BOOK>/workspace/<ATTEMPT>" --config "<CONFIG>" --page-ranges "82" --from-stage 02.46 --to-stage 02.5
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<BOOK>/workspace/<ATTEMPT>" --config "<CONFIG>" --page-ranges "82" --from-stage 02.46 --to-stage 02.50
 ```
 
 Successful execution does not certify reading order. The user assesses the

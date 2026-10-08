@@ -23,8 +23,8 @@ formatted code already rendered in Stage 03 so Stage 09 retains its fences and
 indentation. Only changed complete pages receive sparse overrides; predecessor
 artifacts remain unchanged.
 
-Resolve predecessors with `before_stage="02.45"`. Review 02.5 and filtering 02.8
-resolve `02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45`. Absent optional
+Resolve predecessors with `before_stage="02.45"`. Review 02.50 and filtering 02.80
+resolve `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45`. Absent optional
 status skips a layer; failed/running status blocks consumers. Selection precedes
 candidate collection. Restart clears 02.45 and later outputs while preserving
 predecessors and compatible request cache. Identity covers the new stage,
@@ -33,10 +33,10 @@ Earlier stage-name outputs are not reused; regenerate existing attempts from
 02.45. Filtering/table transformation carry formatted text to export and stream.
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<NAMED_ATTEMPT>" --config "<CONFIG>" --page-ranges "131" --from-stage 02.45 --to-stage 02.5
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<NAMED_ATTEMPT>" --config "<CONFIG>" --page-ranges "131" --from-stage 02.45 --to-stage 02.50
 ```
 
 Inspect `02.45_reformat_code_block/page_0131_segments.json`, saved Markdown and
-`02.5_page_conversion_review/` artifacts. The review image shows classification;
+`02.50_page_conversion_review/` artifacts. The review image shows classification;
 Markdown shows indentation. Execution success does not certify source fidelity;
 the user assesses the selected fragment.

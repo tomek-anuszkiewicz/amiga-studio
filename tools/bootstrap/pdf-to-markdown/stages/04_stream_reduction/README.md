@@ -6,7 +6,7 @@ Performs sequential normalization across the global node stream:
 2. Fuses adjacent narrative `prose` nodes across page boundaries, performing de-hyphenation on split words via LLM evaluation (`prompt_seam.md`).
 3. Preserves structural node boundaries for tables, code listings, and headings.
 
-[Stage 02.8](../02.8_filter_page_content/README.md) owns source-content filtering
+[Stage 02.80](../02.80_filter_page_content/README.md) owns source-content filtering
 before stream assembly, including header/footer removal. Stage 04 performs no
 additional source-content exclusion.
 

@@ -3974,3 +3974,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - git diff --check passed
   - Graphify incremental code refresh completed
   - no source fragment conversion requested or run
+---
+
+### [2026-10-08 02:43 CET] — PDF-STAGE-NAMES-1: Pad fractional stage numbers
+- **Affected Subsystems**:
+  - `PDF converter stages`
+  - `pipeline registry and resolver`
+  - `shared configuration`
+  - `converter tests and documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Rename stages 02.4/02.5/02.8/02.9 to 02.40/02.50/02.80/02.90
+  - update CLI IDs artifact paths configuration dependencies restart cleanup tests and current documentation
+  - retain historical diary entries and stable task IDs
+- **Architectural Rationale & Trade-Offs**:
+  - Two-digit fractional stage numbers make natural directory sorting match pipeline execution order
+  - saved conversion attempts are not migrated automatically
+- **Verification & Test Results**:
+  - PDF execution/config/restart 30/30
+  - page selection 6/6
+  - shared Codex conversion 21/21
+  - quick pre-flight passed
+  - architecture 19/19
+  - natural stage sorting selectors and script paths verified
+  - git diff --check passed
+  - Graphify AST refresh completed
+  - no fragment conversion or milestone gate requested or run

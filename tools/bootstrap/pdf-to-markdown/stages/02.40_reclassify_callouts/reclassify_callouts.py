@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage 02.4: vision-assisted advisory recovery with sparse page overrides."""
+"""Stage 02.40: vision-assisted advisory recovery with sparse page overrides."""
 
 import argparse
 import json
@@ -67,7 +67,7 @@ def reclassify_callouts(workspace, config, pages=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 02.4: recover complete advisory ranges with original-page vision")
+    parser = argparse.ArgumentParser(description="Stage 02.40: recover complete advisory ranges with original-page vision")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--page-ranges")

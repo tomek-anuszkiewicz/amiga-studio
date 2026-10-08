@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage 02.5: type-colored annotations and source-mapped prose runs."""
+"""Stage 02.50: type-colored annotations and source-mapped prose runs."""
 
 import argparse
 from pathlib import Path
@@ -83,7 +83,7 @@ def review_image(image, value, *, annotations=None):
 
 def render_reviews(workspace, pages=None):
     pages = list(read_conversion(workspace, pages=pages))
-    output = workspace / "02.5_page_conversion_review"
+    output = workspace / "02.50_page_conversion_review"
     output.mkdir(parents=True, exist_ok=True)
     for entry, value in pages:
         annotations = review_annotations(value["segments"])
@@ -98,7 +98,7 @@ def render_reviews(workspace, pages=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 02.5: independent page-conversion review")
+    parser = argparse.ArgumentParser(description="Stage 02.50: independent page-conversion review")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--page-ranges")

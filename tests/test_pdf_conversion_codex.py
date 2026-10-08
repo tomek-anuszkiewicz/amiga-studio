@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class PdfNxpGeometryTests(unittest.TestCase):
     def test_landscape_page_keeps_unrotated_logo_size(self):
         spec = importlib.util.spec_from_file_location(
-            "filter_page_content", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.8_filter_page_content/filter_page_content.py")
+            "filter_page_content", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.80_filter_page_content/filter_page_content.py")
         stage = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(stage)
         # Page 63 has a landscape canvas, but its standalone logo is unrotated.
@@ -63,7 +63,7 @@ class PdfReviewContinuationTests(unittest.TestCase):
 
     def test_02_5_groups_prose_by_union_obstacles_only(self):
         spec = importlib.util.spec_from_file_location(
-            "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review/render_review.py")
+            "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.50_page_conversion_review/render_review.py")
         renderer = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(renderer)
         # Empty union space permits joining regardless of alignment or distance.
@@ -79,7 +79,7 @@ class PdfReviewContinuationTests(unittest.TestCase):
 
     def test_02_5_joins_same_column_prose_with_short_paragraphs(self):
         spec = importlib.util.spec_from_file_location(
-            "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review/render_review.py")
+            "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.50_page_conversion_review/render_review.py")
         renderer = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(renderer)
         # Page 31: introduction and STATE 0-6 share a left-aligned flow, while
@@ -107,7 +107,7 @@ class PdfReviewContinuationTests(unittest.TestCase):
     def test_02_5_labels_show_only_true_continuation(self):
         from PIL import Image, ImageDraw
         spec = importlib.util.spec_from_file_location(
-            "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.5_page_conversion_review/render_review.py")
+            "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.50_page_conversion_review/render_review.py")
         renderer = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(renderer)
         segments = [
@@ -302,22 +302,22 @@ class PdfRestartTests(unittest.TestCase):
 
     def test_named_review_stage_restarts_by_registry_order(self):
         self.assertEqual(self.pipeline.resolve_stage_idx("02"), self.stage_idx("02"))
-        self.assertEqual(self.pipeline.resolve_stage_idx("2.5"), self.stage_idx("02.5"))
+        self.assertEqual(self.pipeline.resolve_stage_idx("2.50"), self.stage_idx("02.50"))
         self.assertIsNone(self.pipeline.resolve_stage_idx("02k"))
-        self.assertEqual(self.pipeline.resolve_stage_idx("02.5"), self.stage_idx("02.5"))
+        self.assertEqual(self.pipeline.resolve_stage_idx("02.50"), self.stage_idx("02.50"))
         before = read_json(self.workspace / "stage_status.json")["02"]
         def worker(stage, *args):
-            self.assertEqual(stage["id"], "02.5")
+            self.assertEqual(stage["id"], "02.50")
             retained = read_json(self.workspace / "stage_status.json")
-            self.assertEqual(set(retained), {"00", "01", "02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46"})
-            for later in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.5"):]:
+            self.assertEqual(set(retained), {"00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46"})
+            for later in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.50"):]:
                 self.assertFalse((self.workspace / later["dir"]).exists())
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "02.5", "--to-stage", "02.5"], worker)
+        self.run_pipeline(["--from-stage", "02.50", "--to-stage", "02.50"], worker)
         after = read_json(self.workspace / "stage_status.json")
         self.assertEqual(after["02"], before)
-        self.assertEqual(after["02.5"]["status"], "success")
+        self.assertEqual(after["02.50"]["status"], "success")
         self.assertNotIn("03", after)
 
     def test_partial_page_conversion_does_not_create_final_output(self):
@@ -335,22 +335,22 @@ class PdfRestartTests(unittest.TestCase):
             self.write_artifacts(stage)
             return True
 
-        self.run_pipeline(["--from-stage", "02", "--to-stage", "02.5"], worker)
-        self.assertEqual(executed, ["02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.5"])
+        self.run_pipeline(["--from-stage", "02", "--to-stage", "02.50"], worker)
+        self.assertEqual(executed, ["02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.50"])
         self.assertFalse(self.output.exists())
 
     def test_missing_input_of_later_selected_branch_rejects_before_cleanup(self):
         state_path = self.workspace / "stage_status.json"
         state = json.loads(state_path.read_text())
         del state["02"]
-        for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.5"):]:
+        for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.50"):]:
             state.pop(stage["id"], None)
         state_path.write_text(json.dumps(state))
-        before = (self.workspace / "02.5_page_conversion_review/artifact.json").read_bytes()
-        with self.assertRaisesRegex(ValueError, "Stage 02.5"):
-            self.run_pipeline(["--from-stage", "02.5", "--to-stage", "02.5"],
+        before = (self.workspace / "02.50_page_conversion_review/artifact.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "Stage 02.50"):
+            self.run_pipeline(["--from-stage", "02.50", "--to-stage", "02.50"],
                               lambda *args: self.fail("Worker must not run before all external inputs validate"))
-        self.assertEqual((self.workspace / "02.5_page_conversion_review/artifact.json").read_bytes(), before)
+        self.assertEqual((self.workspace / "02.50_page_conversion_review/artifact.json").read_bytes(), before)
 
     def test_restart_five_clears_dependents_and_preserves_prior_outputs(self):
         before = (self.workspace / "04_stream_reduction/artifact.json").read_bytes()
@@ -367,7 +367,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual((self.workspace / "04_stream_reduction/artifact.json").read_bytes(), before)
         self.assertEqual(other_output.read_text(), "Independent conversion")
         state = read_json(self.workspace / "stage_status.json")
-        self.assertEqual(list(state), ["00", "01", "02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.5", "02.8", "02.81", "02.82", "02.9", "03", "04", "05"])
+        self.assertEqual(list(state), ["00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.50", "02.80", "02.81", "02.82", "02.90", "03", "04", "05"])
 
 
     def test_explicit_restart_rebuilds_missing_output_and_later_stages(self):
@@ -449,9 +449,9 @@ class PdfRestartTests(unittest.TestCase):
         self.assertTrue((self.output / "artifact.json").exists())
 
     def test_individual_stage_uses_matching_interval(self):
-        self.run_pipeline(["--from-stage", "02.5", "--to-stage", "02.5"],
+        self.run_pipeline(["--from-stage", "02.50", "--to-stage", "02.50"],
                           lambda stage, *args: self.write_artifacts(stage) or True)
-        self.assertEqual(set(read_json(self.workspace / "stage_status.json")), {"00", "01", "02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.5"})
+        self.assertEqual(set(read_json(self.workspace / "stage_status.json")), {"00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.50"})
         self.assertFalse(self.output.exists())
 
 
@@ -532,7 +532,7 @@ class StageCompletionTests(unittest.TestCase):
 
     def test_page_worker_receives_only_current_cli_range(self):
         pipeline = self.load("selection_pipeline", "pipeline.py")
-        stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "02.4")
+        stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "02.40")
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
             args = (stage, ROOT / "tools/bootstrap/pdf-to-markdown", workspace,

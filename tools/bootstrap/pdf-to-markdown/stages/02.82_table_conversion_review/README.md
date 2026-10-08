@@ -1,7 +1,7 @@
 # Stage 02.82: Table Conversion Review
 
 Deterministic review of completed Stage 01 and 02.81 artifacts, without inference
-or Stage 02.9 output. Produce one `<segment_id>_review.png` per table, in physical
+or Stage 02.90 output. Produce one `<segment_id>_review.png` per table, in physical
 page and source order, and report paths and counts by HTML/Markdown/unconverted.
 
 The Source panel shows original Stage 01 pixels for the table's recorded source
@@ -30,8 +30,8 @@ are never modified. Review disables page scripts and remote HTTP requests.
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.82 --to-stage 02.82
 ```
 
-Restart clears 02.82 and all later results, preserving 01/02/02.8/02.81. Review
-PNGs are neither document assets nor conversion inputs: 02.9 and 03 require
+Restart clears 02.82 and all later results, preserving 01/02/02.80/02.81. Review
+PNGs are neither document assets nor conversion inputs: 02.90 and 03 require
 completed 02.81 directly. A stop at 02.82 does not export or build the stream.
 Use compatible existing artifacts for a user-requested review-only run; do not
 repeat inference or choose extra fragments. Rendering success proves production

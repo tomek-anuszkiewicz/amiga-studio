@@ -1,4 +1,4 @@
-# Stage 02.4: recover advisory callouts
+# Stage 02.40: recover advisory callouts
 
 After completed Stage 01/02, scan other text roles for whole-word NOTE, CAUTION,
 WARNING and additional leading labels found on existing callout objects in the
@@ -38,7 +38,7 @@ complete body and ordinary remainder receive separate tight boxes from the image
 The program saves these coordinates directly; contributor boxes provide request
 context and do not determine replacement geometry. The prompt and schema change
 invalidates previous cached responses; existing overrides require an explicit
-restart at 02.4 to regenerate their boxes.
+restart at 02.40 to regenerate their boxes.
 Continuation and source segment lineage are retained; cross-page restructuring
 is outside scope.
 
@@ -50,21 +50,21 @@ Shared request cache, stage status and metrics retain their established location
 Missing imagery and transport/parsing failures fail the stage normally.
 
 Stage 02.41 reads these corrections before table splitting.
-Review 02.5 and filtering 02.8 resolve the
+Review 02.50 and filtering 02.80 resolve the
 authoritative Stage 02 filenames through completed sparse overrides. An absent
-02.4 status means deliberately skipped; running/failed status blocks these inputs.
+02.40 status means deliberately skipped; running/failed status blocks these inputs.
 Filtering omissions are never filled from earlier stages. Stage 02.81 builds table
-groups and companions from the corrected objects, then 02.9/03 consume its output.
+groups and companions from the corrected objects, then 02.90/03 consume its output.
 Stage 03 carries replacement lineage in node metadata; Stage 09 assembles native
 callouts and recognizes decorated leading advisory labels.
 
 Run through the orchestrator in a named attempt:
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.4 --to-stage 02.4
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.40 --to-stage 02.40
 ```
 
-Restart clears 02.4 and every later stage, preserving 01/02 and the request cache.
+Restart clears 02.40 and every later stage, preserving 01/02 and the request cache.
 Existing attempt model/effort selections stay intact; missing stage settings are
-initialized to `gpt-6.1-sol` / `medium` only when 02.4 is selected. The user selects
+initialized to `gpt-6.1-sol` / `medium` only when 02.40 is selected. The user selects
 real fragments and assesses recovery quality.

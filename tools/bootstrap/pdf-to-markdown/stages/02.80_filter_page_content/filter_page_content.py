@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage 02.8: apply requested source-content exclusions to page objects."""
+"""Stage 02.80: apply requested source-content exclusions to page objects."""
 
 import argparse
 from pathlib import Path
@@ -80,7 +80,7 @@ def filter_page_content(workspace, pages=None):
                      for page_index, (_, value) in enumerate(pages)
                      for segment_index, segment in enumerate(value["segments"])
                      if segment["type"] == "toc_heading"), None)
-    output = workspace / "02.8_filter_page_content"
+    output = workspace / "02.80_filter_page_content"
     output.mkdir(parents=True, exist_ok=True)
     input_objects = sum(len(value["segments"]) for _, value in pages)
     output_pages = output_objects = nxp_candidates = nxp_matches = 0
@@ -121,7 +121,7 @@ def filter_page_content(workspace, pages=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 02.8: filter page content")
+    parser = argparse.ArgumentParser(description="Stage 02.80: filter page content")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--page-ranges")

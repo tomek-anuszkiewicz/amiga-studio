@@ -54,7 +54,7 @@ class ReviewSelectionTests(unittest.TestCase):
                           if json.loads(p.read_text())["segments"] == []], ["page_0064_segments.json"])
 
     def test_filter_selects_pages_before_toc_boundary(self):
-        stage = stage_module("02.8_filter_page_content", "filter_page_content")
+        stage = stage_module("02.80_filter_page_content", "filter_page_content")
         # An unselected later TOC must not discard selected page 64's prose.
         path = self.workspace / "02_page_conversion/page_0065_segments.json"
         path.write_text(json.dumps({"page": 65, "segments": [{"type": "toc_heading"}]}))
@@ -63,7 +63,7 @@ class ReviewSelectionTests(unittest.TestCase):
         with patch.object(sys, "argv", ["filter_page_content.py", "--workspace", str(self.workspace),
                                         "--config", str(config_path), "--page-ranges", "64"]):
             stage.main()
-        output = self.workspace / "02.8_filter_page_content"
+        output = self.workspace / "02.80_filter_page_content"
         self.assertEqual([p.name for p in output.iterdir()], ["page_0064_segments.json"])
 
     def table_pages(self, directory):
@@ -77,7 +77,7 @@ class ReviewSelectionTests(unittest.TestCase):
 
     def test_table_conversion_requests_only_selected_page(self):
         stage = stage_module("02.81_transform_page_tables", "transform_page_tables")
-        self.table_pages("02.8_filter_page_content")
+        self.table_pages("02.80_filter_page_content")
         with patch.object(stage, "CodexClient") as client:
             transport = client.return_value.__enter__.return_value
             transport.generate_json.return_value = {"format": "unconverted", "md_text": "source"}
@@ -100,7 +100,7 @@ class ReviewSelectionTests(unittest.TestCase):
         self.assertEqual(Path(page.screenshot.call_args.kwargs["path"]).name, "page_0064_table_review.png")
 
     def test_callout_requests_only_selected_page(self):
-        stage = stage_module("02.4_reclassify_callouts", "reclassify_callouts")
+        stage = stage_module("02.40_reclassify_callouts", "reclassify_callouts")
         with patch.object(stage, "CodexClient") as client:
             client.return_value.generate_json.return_value = {"replacements": []}
             stage.reclassify_callouts(self.workspace, {"input": {"pages": [63]}}, pages=[64])
@@ -109,10 +109,10 @@ class ReviewSelectionTests(unittest.TestCase):
         self.assertEqual(calls[0].kwargs["image_path"].name, "page_0064.png")
 
     def test_review_selects_cli_page_and_resolves_override(self):
-        stage = stage_module("02.5_page_conversion_review", "render_review")
-        override = self.workspace / "02.4_reclassify_callouts"
+        stage = stage_module("02.50_page_conversion_review", "render_review")
+        override = self.workspace / "02.40_reclassify_callouts"
         override.mkdir()
-        (self.workspace / "stage_status.json").write_text(json.dumps({"02.4": {"status": "success"}}))
+        (self.workspace / "stage_status.json").write_text(json.dumps({"02.40": {"status": "success"}}))
         (override / "page_0064_segments.json").write_text(json.dumps({"page": 64, "segments": []}))
         config_path = self.workspace / "config.yaml"
         config_path.write_text("input:\n  pages: [63]\n")
@@ -122,7 +122,7 @@ class ReviewSelectionTests(unittest.TestCase):
                 stage.main()
         self.assertEqual(render.call_count, 1)
         self.assertEqual(render.call_args.args[1]["segments"], [])
-        output = self.workspace / "02.5_page_conversion_review"
+        output = self.workspace / "02.50_page_conversion_review"
         self.assertEqual(sorted(path.name for path in output.iterdir()),
                          ["page_0064_review.json", "page_0064_review.png"])
 

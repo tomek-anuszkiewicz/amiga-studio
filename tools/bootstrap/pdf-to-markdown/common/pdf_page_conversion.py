@@ -8,14 +8,14 @@ TYPES = ["cover", "header", "footer", "toc_heading", "toc", "thumb_index", "chap
          "footnote", "table_legend", "index_heading", "index",
          "list_of_tables_heading", "list_of_tables", "list_of_figures_heading", "list_of_figures"]
 DEFERRED_TEXT_TYPES = {"graphic", "table", "cover"}
-CALLOUT_STAGE = "02.4_reclassify_callouts"
+CALLOUT_STAGE = "02.40_reclassify_callouts"
 TABLE_SPLIT_STAGE = "02.41_split_tables"
 TABLE_RECLASSIFY_STAGE = "02.42_reclassify_tables"
 CODE_RECLASSIFY_STAGE = "02.43_reclassify_code_blocks"
 IMAGE_ROTATION_STAGE = "02.44_detect_image_rotation"
 CODE_REFORMAT_STAGE = "02.45_reformat_code_block"
 READING_ORDER_STAGE = "02.46_review_reading_order"
-PAGE_OVERRIDE_LAYERS = (("02.4", CALLOUT_STAGE), ("02.41", TABLE_SPLIT_STAGE),
+PAGE_OVERRIDE_LAYERS = (("02.40", CALLOUT_STAGE), ("02.41", TABLE_SPLIT_STAGE),
                         ("02.42", TABLE_RECLASSIFY_STAGE), ("02.43", CODE_RECLASSIFY_STAGE),
                         ("02.44", IMAGE_ROTATION_STAGE), ("02.45", CODE_REFORMAT_STAGE),
                         ("02.46", READING_ORDER_STAGE))

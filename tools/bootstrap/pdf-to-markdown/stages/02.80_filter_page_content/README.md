@@ -1,9 +1,9 @@
-# Stage 02.8: Filter Page Content
+# Stage 02.80: Filter Page Content
 
 Enumerate `02_page_conversion/page_*_segments.json` in numeric physical-page order,
-selecting same-name completed sparse 02.4/02.41/02.42/02.43/02.44/02.45/02.46 overrides in that order through the shared resolver
+selecting same-name completed sparse 02.40/02.41/02.42/02.43/02.44/02.45/02.46 overrides in that order through the shared resolver
 and preserve each page's segment-array order. Write retained page objects with
-the same filenames to `02.8_filter_page_content/`. This deterministic stage
+the same filenames to `02.80_filter_page_content/`. This deterministic stage
 makes no model requests and needs no inference configuration entry.
 
 Apply the user's requested source-fidelity exception:
@@ -26,7 +26,7 @@ Omit pages with no surviving objects; an empty output is permitted. Print input
 and output page/object counts, removed page count and whether a boundary was found.
 JSON parsing and filesystem failures stop execution; no runtime schema or artifact
 validation is added. Source front matter here means pre-TOC content, not generated
-YAML metadata. Stages 02.9 and 12 keep their metadata behavior.
+YAML metadata. Stages 02.90 and 12 keep their metadata behavior.
 
 After the existing exclusions, compare only surviving standalone `graphic`
 objects with the required [NXP template](resources/nxp.png), resolved relative to
@@ -52,20 +52,20 @@ remains unverified. Merged or nonmatching objects remain.
 Run through the [orchestrator](../../README.md):
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.8 --to-stage 02.8
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.80 --to-stage 02.80
 ```
 
 Execution requires successful Stage 01/02 statuses. Missing template or candidate
-PNG files fail through normal IO without fallback. Restarting 02.8 clears its output
+PNG files fail through normal IO without fallback. Restarting 02.80 clears its output
 and every later stage, even for this single-stage interval; earlier restarts also
-clear it. Stage 01, Stage 02 and Stage 02.5 artifacts remain unchanged. Review
-continues to show original objects. Stage 02.81 consumes only filtered JSON by default; 02.9 and 03 consume its full page outputs
+clear it. Stage 01, Stage 02 and Stage 02.50 artifacts remain unchanged. Review
+continues to show original objects. Stage 02.81 consumes only filtered JSON by default; 02.90 and 03 consume its full page outputs
 and use original Stage 01 PNGs for retained crops. Existing downstream successes
-need explicit regeneration starting at 02.8 to represent this filtering.
-Preserve edited Stage 02.9 bundles outside cleanup before restarting; regeneration
+need explicit regeneration starting at 02.80 to represent this filtering.
+Preserve edited Stage 02.90 bundles outside cleanup before restarting; regeneration
 rebuilds links/assets and removes stale assets. The bundled resource survives
 attempt cleanup.
 
-An absent optional 02.4, 02.41, 02.42 or 02.43 status skips that layer; failed/running status blocks
+An absent optional 02.40, 02.41, 02.42 or 02.43 status skips that layer; failed/running status blocks
 execution. Filtering writes full retained pages. Its omitted pages are never
-filled from 02, 02.4, 02.41, 02.42 or 02.43, including default Stage 02.81 consumption.
+filled from 02, 02.40, 02.41, 02.42 or 02.43, including default Stage 02.81 consumption.

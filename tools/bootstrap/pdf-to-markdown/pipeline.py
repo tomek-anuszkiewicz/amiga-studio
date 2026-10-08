@@ -46,9 +46,9 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("page_*_segments.json", "page conversion JSON files"),
     },
     {
-        "id": "02.4", "dir": "02.4_reclassify_callouts", "script": "reclassify_callouts.py",
+        "id": "02.40", "dir": "02.40_reclassify_callouts", "script": "reclassify_callouts.py",
         "desc": "Recover advisory ranges from source text and original-page vision",
-        "targets": ["02.4_reclassify_callouts"],
+        "targets": ["02.40_reclassify_callouts"],
         "inspect": ("page_*_segments.json", "sparse callout replacement pages"),
     },
     {
@@ -88,15 +88,15 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("page_*_segments.json", "sparse reordered pages"),
     },
     {
-        "id": "02.5", "dir": "02.5_page_conversion_review", "script": "render_review.py",
+        "id": "02.50", "dir": "02.50_page_conversion_review", "script": "render_review.py",
         "desc": "Review independent page objects without textual geometry",
-        "targets": ["02.5_page_conversion_review"],
+        "targets": ["02.50_page_conversion_review"],
         "inspect": ("page_*_review.png", "page conversion review PNGs"),
     },
     {
-        "id": "02.8", "dir": "02.8_filter_page_content", "script": "filter_page_content.py",
+        "id": "02.80", "dir": "02.80_filter_page_content", "script": "filter_page_content.py",
         "desc": "Remove page furniture, pre-TOC content and list/index pages",
-        "targets": ["02.8_filter_page_content"],
+        "targets": ["02.80_filter_page_content"],
         "inspect": ("page_*_segments.json", "filtered page conversion JSON files"),
     },
     {
@@ -112,9 +112,9 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("*_review.png", "table review PNGs"),
     },
     {
-        "id": "02.9", "dir": "02.9_emit_page_markdown", "script": "emit_page_markdown.py",
+        "id": "02.90", "dir": "02.90_emit_page_markdown", "script": "emit_page_markdown.py",
         "desc": "Assemble unchanged page Markdown and exact original-PNG crops",
-        "targets": ["02.9_emit_page_markdown"],
+        "targets": ["02.90_emit_page_markdown"],
         "inspect": ("document.md", "selected-page Markdown"),
     },
     {
@@ -178,12 +178,12 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
 # Execution order and artifact dependencies are deliberately separate.
 for index, stage in enumerate(STAGE_REGISTRY):
     stage["inputs"] = {
-        "02": ["01"], "02.4": ["01", "02"], "02.41": ["01", "02"], "02.42": ["01", "02"],
+        "02": ["01"], "02.40": ["01", "02"], "02.41": ["01", "02"], "02.42": ["01", "02"],
         "02.43": ["01", "02"], "02.44": ["01", "02"], "02.45": ["01", "02"],
         "02.46": ["01", "02"],
-        "02.5": ["01", "02"], "02.8": ["01", "02"],
-        "02.81": ["01", "02.8"], "02.82": ["01", "02.81"],
-        "02.9": ["01", "02.81"], "03": ["01", "02.81"],
+        "02.50": ["01", "02"], "02.80": ["01", "02"],
+        "02.81": ["01", "02.80"], "02.82": ["01", "02.81"],
+        "02.90": ["01", "02.81"], "03": ["01", "02.81"],
     }.get(stage["id"], [STAGE_REGISTRY[index-1]["id"]] if index else [])
 
 
@@ -274,7 +274,7 @@ def run_stage(
     ]
 
     # Stage-specific standard parameter injection
-    if stage_num in {"00", "02.9"}:
+    if stage_num in {"00", "02.90"}:
         cmd.extend(["--pdf", str(pdf_path)])
     elif stage_num == "01":
         prepared_pdf = prepared_pdf_path(pdf_path)
@@ -284,7 +284,7 @@ def run_stage(
     elif stage_num == "14" and output_dir:
         cmd.extend(["--output-dir", str(output_dir)])
 
-    if page_ranges is not None and stage_num in {"00", "01", "02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.5", "02.8", "02.81", "02.82"}:
+    if page_ranges is not None and stage_num in {"00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.50", "02.80", "02.81", "02.82"}:
         cmd.extend(["--page-ranges", page_ranges])
 
     if verbose:
@@ -522,9 +522,9 @@ def main():
     if start <= resolve_stage_idx("02.81") <= end:
         config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
             "02.81_transform_page_tables", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
-    if start <= resolve_stage_idx("02.4") <= end:
+    if start <= resolve_stage_idx("02.40") <= end:
         config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
-            "02.4_reclassify_callouts", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
+            "02.40_reclassify_callouts", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
     if start <= resolve_stage_idx("02.41") <= end:
         config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
             TABLE_SPLIT_STAGE, {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})

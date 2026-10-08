@@ -1,14 +1,14 @@
-# Stage 02.5: Independent Page Conversion Review
+# Stage 02.50: Independent Page Conversion Review
 
-Consume resolved Stage 02/02.4/02.41/02.42/02.43/02.44/02.45/02.46 JSON and the exact Stage 01 PNG. Completed sparse
-02.4, 02.41, 02.42, 02.43, 02.44, 02.45 and 02.46 overrides replace same-name pages in that order; absent optional
-status skips that layer, while failed/running status blocks execution. Save `02.5_page_conversion_review/page_NNNN_review.png` at original
+Consume resolved Stage 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 JSON and the exact Stage 01 PNG. Completed sparse
+02.40, 02.41, 02.42, 02.43, 02.44, 02.45 and 02.46 overrides replace same-name pages in that order; absent optional
+status skips that layer, while failed/running status blocks execution. Save `02.50_page_conversion_review/page_NNNN_review.png` at original
 page height and twice its width, with a blank equal-width right panel.
 
 Read only physical pages selected by this invocation's `--page-ranges`;
 omission reads all available predecessor pages, regardless of legacy `input.pages`.
-The pipeline forwards the parameter even when restarting directly at 02.5. Resolve sparse
-02.4/02.41/02.42/02.43/02.44/02.45/02.46 overrides within that selection before rendering.
+The pipeline forwards the parameter even when restarting directly at 02.50. Resolve sparse
+02.40/02.41/02.42/02.43/02.44/02.45/02.46 overrides within that selection before rendering.
 
 Each displayed type has a fixed distinct color for its containing 2-pixel frame,
 straight leader and label, independent of page and object order. Labels show
@@ -44,13 +44,13 @@ and combined continuation.
 It also records `hidden_source_ordinals`. These are review-only records; Stage 02
 JSONs and downstream conversion content remain untouched. The low-level
 `draw_review_image` draws exactly the objects supplied by its caller, without
-grouping or suppression, and is shared with 02.4 inference, which supplies every original request object.
+grouping or suppression, and is shared with 02.40 inference, which supplies every original request object.
 The shared renderer supports explicit frame-ID legends and colors independent of roles.
 
 No inference, segmentation correction, sorting or line rerouting occurs. The
 worker performs no completeness, dimension, frame or label validation; drawing
 and image-library errors propagate normally.
 
-Use the [orchestrator](../../README.md) with `--from-stage 02.5 --to-stage 02.5`
+Use the [orchestrator](../../README.md) with `--from-stage 02.50 --to-stage 02.50`
 after Stage 01/02. Restart 02 invalidates this review and downstream stream artifacts.
-Restart 02.5 clears this review and every later stage, including 02.8, 02.81, 02.82, 02.9 and 03, even for a review-only interval. Start the next run at 02.8 to retain this review while building the required filtered/table outputs. Stages 02.9 and 03 consume 02.81 directly; cleanup follows execution order. Review PNGs are deterministic; user assessment remains separate.
+Restart 02.50 clears this review and every later stage, including 02.80, 02.81, 02.82, 02.90 and 03, even for a review-only interval. Start the next run at 02.80 to retain this review while building the required filtered/table outputs. Stages 02.90 and 03 consume 02.81 directly; cleanup follows execution order. Review PNGs are deterministic; user assessment remains separate.

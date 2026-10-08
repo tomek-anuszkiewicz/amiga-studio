@@ -22,20 +22,20 @@ Prose/code and other textual children receive complete `md_text` during this
 stage. Tables and graphics retain deferred content processing. Graphic outcomes
 carry `image_only: true`: Stage 03 copies the flag into metadata and crops exact
 original pixels and Stage 04 preserves them as independent objects. Later
-chapter stages retain their raster assets. Stage 02.9 also exports their
+chapter stages retain their raster assets. Stage 02.90 also exports their
 original-PNG crop through the existing graphic path.
 
 Only changed pages receive complete-page overrides. Resolution is
-`02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45`; this worker reads only predecessors. Absent
+`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45`; this worker reads only predecessors. Absent
 optional status skips that layer, completed status enables overrides, and
-running/failed status blocks direct consumers. Review 02.5 and filtering 02.8
-use the shared resolver; 02.81 sees only remaining tables after 02.8.
+running/failed status blocks direct consumers. Review 02.50 and filtering 02.80
+use the shared resolver; 02.81 sees only remaining tables after 02.80.
 
 Restarting 02.42 clears this stage and every later stage, preserving predecessors
 and compatible cache. Use the pipeline for execution/status/cleanup:
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "39,40,62,63,94,144" --from-stage 02.42 --to-stage 02.5
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "39,40,62,63,94,144" --from-stage 02.42 --to-stage 02.50
 ```
 
 No local geometry/schema or conversion-quality gate is introduced. Successful

@@ -25,12 +25,12 @@ the last associated block exactly once, without reinference or appended group te
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 03
 ```
 
-Completed Stage 01/02.81 statuses are required even when reviews or 02.9 have not
+Completed Stage 01/02.81 statuses are required even when reviews or 02.90 have not
 run. Restart cleanup follows execution order. Existing streams require explicit
 regeneration through 02.81 to adopt table conversion. Success establishes execution,
 not transcription fidelity or RAG ingestion behavior.
 
-Stage 02.4 replacement `source_segment_ids` and `replacement_stage` are carried
+Stage 02.40 replacement `source_segment_ids` and `replacement_stage` are carried
 in node metadata alongside unchanged callout roles and text. The stream contains
 replacement objects once; consumed predecessor objects are not reintroduced.
 

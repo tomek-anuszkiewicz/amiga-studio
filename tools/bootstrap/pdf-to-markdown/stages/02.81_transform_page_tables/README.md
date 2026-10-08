@@ -1,6 +1,6 @@
 # Stage 02.81: Transform Page Tables
 
-Read completed Stage 02.8 page JSONs and Stage 01 original PNGs. Only `table`
+Read completed Stage 02.80 page JSONs and Stage 01 original PNGs. Only `table`
 objects are transcribed. Preserve full pages, identities, geometry, classifications,
 continuation flags and reading order. Save exact unpadded original-resolution crops
 once in `assets/<segment_id>.png`, referenced by stage-relative `table_source_asset`.
@@ -33,7 +33,7 @@ unconverted tables retain their visible raster. A conservative local HTML heuris
 warns about regular grids without effective merges or complex cell content, including
 cache results; it does not change markup, retry inference or certify fidelity.
 
-Stage 02.8 is the fixed predecessor and must have completed successfully.
+Stage 02.80 is the fixed predecessor and must have completed successfully.
 Missing filtered pages never fall back to Stage 02.
 
 ```powershell
@@ -43,8 +43,8 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<W
 Use a named attempt and only the fragment selected by the user. Do not rewrite
 an existing attempt's model settings or continue beyond the requested end stage.
 See [review](../02.82_table_conversion_review/README.md),
-[page export](../02.9_emit_page_markdown/README.md) and
+[page export](../02.90_emit_page_markdown/README.md) and
 [conversion contract](../../../reference-conversion-contract.md).
 
-Stage 02.8 input remains authoritative, including page omissions.
+Stage 02.80 input remains authoritative, including page omissions.
 Table groups and companions are inferred from its corrected objects here.

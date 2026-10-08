@@ -5,6 +5,15 @@ base. Work follows the [developer-led conversion workflow](../reference-conversi
 change the converter, run only a fragment selected and requested by the user, and
 let the user assess the output. Offline tests check execution mechanics, not content quality.
 
+Fractional stage IDs use two digits after the dot so directory sorting follows
+execution order: `02.40`, `02.41` through `02.46`, `02.50`, `02.80`, `02.81`,
+`02.82`, `02.90`. CLI selectors, configuration keys and artifact directories use
+these names. Saved attempts are not migrated automatically. To reuse an older
+attempt, rename its `02.4`, `02.5`, `02.8` and `02.9` stage directories to the
+corresponding two-digit names, update those stage IDs in `stage_status.json`, and
+update the `02.4_reclassify_callouts` key in its `config.yaml`. Otherwise start a
+new named attempt. Historical diary entries and stable task IDs retain their names.
+
 ## Run an attempt
 
 Install shared dependencies with `python -m pip install -r tools/bootstrap/conversion/requirements.txt`
@@ -31,7 +40,7 @@ The existing attempt's `config.yaml` takes precedence over `--config`; the argum
 initializes only a missing configuration. Supply `--pdf` for every conversion or
 restart; the source path is never persisted. Status inspection does not require it.
 Rendering uses fixed 300 DPI PNGs, inference runs with concurrency 1 and a
-180-second request timeout. Stage 02.81 always consumes completed Stage 02.8.
+180-second request timeout. Stage 02.81 always consumes completed Stage 02.80.
 OCR uses fixed English (`eng`) language data with automatic discovery, including
 `TESSDATA_PREFIX`. Existing attempt configurations retire the former input, render,
 table predecessor, OCR, timeout and concurrency fields on the next pipeline write;
@@ -45,7 +54,7 @@ errors stop execution normally. No older-stage inputs or alternative models are 
 
 ## Stage data and execution
 
-Execution order is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
+Execution order is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.90 -> 03`, then 04-14.
 Each worker reads the predecessor's own directory and writes its own results:
 
 | Stage | Input and result |
@@ -53,18 +62,18 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [00](stages/00_text_layer/README.md) | Source PDF -> full-source sibling OCR PDF; compatible OCR recovery stays in the attempt |
 | [01](stages/01_preprocess/README.md) | Prepared PDF -> physical-page PNGs and positioned text JSON |
 | [02](stages/02_page_conversion/README.md) | Stage 01 -> ordered logical objects, Markdown and pixel boxes |
-| [02.4](stages/02.4_reclassify_callouts/README.md) | Stage 01/02 -> vision-assisted advisory range replacements on changed pages only |
-| [02.41](stages/02.41_split_tables/README.md) | Stage 01 and resolved 02/02.4 -> vision-assisted splits of grouped tables, changed pages only |
-| [02.42](stages/02.42_reclassify_tables/README.md) | Stage 01 and resolved 02/02.4/02.41 -> table representation decisions and textual replacements, changed pages only |
-| [02.43](stages/02.43_reclassify_code_blocks/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42 -> code blocks retained, transcribed as prose or marked as tables, changed pages only |
+| [02.40](stages/02.40_reclassify_callouts/README.md) | Stage 01/02 -> vision-assisted advisory range replacements on changed pages only |
+| [02.41](stages/02.41_split_tables/README.md) | Stage 01 and resolved 02/02.40 -> vision-assisted splits of grouped tables, changed pages only |
+| [02.42](stages/02.42_reclassify_tables/README.md) | Stage 01 and resolved 02/02.40/02.41 -> table representation decisions and textual replacements, changed pages only |
+| [02.43](stages/02.43_reclassify_code_blocks/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42 -> code blocks retained, transcribed as prose or marked as tables, changed pages only |
 | [02.44](stages/02.44_detect_image_rotation/README.md) | Stage 01 and resolved predecessors through 02.43 -> clockwise graphic rotation metadata, changed pages only |
 | [02.45](stages/02.45_reformat_code_block/README.md) | Stage 01 and resolved predecessors through 02.44 -> existing code blocks reformatted with consistent structural indentation, changed pages only |
 | [02.46](stages/02.46_review_reading_order/README.md) | Stage 01 and resolved predecessors through 02.45 -> whole-page reading-order assessment for suspicious pairs, changed pages only |
-| [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42/02.43/02.44/02.45/02.46 -> review frames and ordered labels |
-| [02.8](stages/02.8_filter_page_content/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42/02.43/02.44/02.45/02.46 -> retained objects after source-content and fixed NXP-logo exclusions |
-| [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.8 -> table markup, saved crops and inferred HTML group text |
+| [02.50](stages/02.50_page_conversion_review/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 -> review frames and ordered labels |
+| [02.80](stages/02.80_filter_page_content/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 -> retained objects after source-content and fixed NXP-logo exclusions |
+| [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> table markup, saved crops and inferred HTML group text |
 | [02.82](stages/02.82_table_conversion_review/README.md) | Stage 01/02.81 -> side-by-side table review PNGs, no inference |
-| [02.9](stages/02.9_emit_page_markdown/README.md) | Stage 01/02.81 -> `document.md`, converted tables and required raster assets |
+| [02.90](stages/02.90_emit_page_markdown/README.md) | Stage 01/02.81 -> `document.md`, converted tables and required raster assets |
 | [03](stages/03_build_raw_stream/README.md) | Stage 02.81 objects and Stage 01 geometry -> raw stream and initial assets |
 | [04](stages/04_stream_reduction/README.md) | Raw stream -> reduced stream |
 | [05](stages/05_chapter_partition/README.md) | Reduced stream -> self-contained chapters |
@@ -94,16 +103,16 @@ Omission means all available pages, regardless of a previous run or legacy confi
 | 00 | Deliberate exception: prepare or reuse the full-source shared OCR PDF |
 | 01 | Extract only selected physical pages from the prepared PDF |
 | 02 | Select Stage 01 files before inference |
-| 02.4 | Select Stage 02 files before collecting keywords and requesting advisory recovery |
-| 02.41 | Select resolved Stage 02/02.4 pages before requesting per-table vision splits |
-| 02.42 | Select resolved Stage 02/02.4/02.41 pages before requesting per-table representation decisions |
-| 02.43 | Select resolved Stage 02/02.4/02.41/02.42 pages before requesting per-code-block representation decisions |
+| 02.40 | Select Stage 02 files before collecting keywords and requesting advisory recovery |
+| 02.41 | Select resolved Stage 02/02.40 pages before requesting per-table vision splits |
+| 02.42 | Select resolved Stage 02/02.40/02.41 pages before requesting per-table representation decisions |
+| 02.43 | Select resolved Stage 02/02.40/02.41/02.42 pages before requesting per-code-block representation decisions |
 | 02.44 | Select resolved predecessors through 02.43 before requesting per-graphic rotation decisions |
 | 02.45 | Select resolved predecessors through 02.44 before one formatting request per existing code block |
 | 02.46 | Select resolved predecessors through 02.45 before geometry detection and one whole-page order request per suspicious page |
-| 02.5 | Select resolved Stage 02/02.4/02.41/02.42/02.43/02.44/02.45/02.46 pages before review rendering |
-| 02.8 | Select resolved pages before TOC-boundary detection and content exclusions |
-| 02.81 | Select pages from the completed 02.8 predecessor before table inference |
+| 02.50 | Select resolved Stage 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 pages before review rendering |
+| 02.80 | Select resolved pages before TOC-boundary detection and content exclusions |
+| 02.81 | Select pages from the completed 02.80 predecessor before table inference |
 | 02.82 | Select Stage 02.81 pages before rendering table comparisons |
 
 Keep this rule when changing or adding page workers: use the shared page-file
@@ -112,14 +121,14 @@ JSON/PNGs, collecting document context or issuing model requests. Filtered-out p
 remain absent; selection never recovers them from an earlier predecessor.
 Focused restart regressions live in `tests/test_pdf_review_selection.py`.
 
-Stage 02.9 is a separate page-artifact export. Stage 03 assembles the retained
+Stage 02.90 is a separate page-artifact export. Stage 03 assembles the retained
 Stage 02.81 input into a stream; stream workers do not apply a second physical-page
 filter. Establish the intended page subset in the page stages before stream creation.
 Restart cleanup still clears the entire selected stage and every later stage,
 regardless of the page selection; this is not an incremental single-page update.
 
 Stage 02 request schemas guide model output. Stage 02.41 replaces grouped table objects with model-provided individual boxes.
-Stage 02.4 interprets explicit edit
+Stage 02.40 interprets explicit edit
 ranges and retains ambiguous proposals; this does not certify text fidelity.
 The PDF path does not locally enforce
 schemas, geometry, identifiers, response types or text content. Review images and
@@ -131,8 +140,8 @@ Select the full pipeline by omitting the interval, a range with start/end, or on
 stage with matching boundaries. Deterministic and inference stages use the same routing:
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02.5
-python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.9 --to-stage 02.9
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02.50
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.90 --to-stage 02.90
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 06 --to-stage 09
 ```
 
@@ -140,25 +149,25 @@ Stages 06-09 run automatically, including their inference calls. All real conver
 use `pipeline.py` so they receive status, metrics, cleanup and publication handling.
 Stage 02.81 transcribes exact table crops and separately infers complete HTML group
 text. Stage 02.82 reviews saved results with a local browser and no model calls.
-Stage 02.9 is a separate intermediate export; it and Stage 03 read Stage 02.81
+Stage 02.90 is a separate intermediate export; it and Stage 03 read Stage 02.81
 objects directly, using Stage 01 geometry and original PNGs. HTML tables publish
 collapsed literal-text and original-image companions after their source groups.
 Markdown tables need no published crop. Tables retain their separate converted
 fragments through stream reduction, continuation detection and Stage 07.
-Existing attempt settings are retained; missing 02.4/02.41/02.42/02.43/02.44/02.45/02.46/02.81 model settings are added
+Existing attempt settings are retained; missing 02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.81 model settings are added
 only when their stage is selected. Review backend setup is in the Stage 02.82 README.
-Stage 02.5 uses resolved complete page input for type-colored review annotations,
+Stage 02.50 uses resolved complete page input for type-colored review annotations,
 consolidates unobstructed consecutive prose, and hides header/footer/thumb-index
-annotations without removing source content. Stage 02.8 owns all source-content removal; Stage 04 retains
+annotations without removing source content. Stage 02.80 owns all source-content removal; Stage 04 retains
 graphics union and prose seam processing.
 
-Stage 02.8 applies the user's deliberate source-fidelity exception: remove
+Stage 02.80 applies the user's deliberate source-fidelity exception: remove
 headers/footers, all objects before the first selected-input `toc_heading`, and
 entire pages containing a list-of-tables, list-of-figures or index object/heading.
 After those rules, standalone upper-left `graphic` objects matching the bundled
 NXP raster are excluded using original Stage 01 PNGs. Fixed geometry, foreground
 aspect and RGB gates must all pass, without configuration. See
-[Stage 02.8](stages/02.8_filter_page_content/README.md) for thresholds and evidence
+[Stage 02.80](stages/02.80_filter_page_content/README.md) for thresholds and evidence
 limits. Stage 01/02 completion is required.
 The boundary and page triggers come from resolved page objects and exact types.
 A TOC heading on an excluded page still defines the boundary. Without a TOC heading,
@@ -166,16 +175,16 @@ skip pre-TOC removal. Retain the actual TOC subject to whole-page exclusions.
 Surviving fields, IDs, text and geometry remain unchanged; empty pages are omitted
 and an empty filtered result is valid. Generated YAML metadata remains unchanged.
 
-Stage 02.4 sends one complete original Stage 01 PNG per candidate-bearing page
+Stage 02.40 sends one complete original Stage 01 PNG per candidate-bearing page
 with frozen source texts and stable segment IDs to recover advisory ranges. It
-writes sparse complete-page overrides without modifying Stage 02. Review 02.5 and filtering 02.8
+writes sparse complete-page overrides without modifying Stage 02. Review 02.50 and filtering 02.80
 enumerate Stage 02 pages and select completed
-same-name overrides. Absent 02.4 status uses Stage 02; running/failed status blocks
+same-name overrides. Absent 02.40 status uses Stage 02; running/failed status blocks
 direct consumers. Filtering output remains authoritative for default 02.81 input:
-omitted pages are never restored. See the [02.4 contract](stages/02.4_reclassify_callouts/README.md)
+omitted pages are never restored. See the [02.40 contract](stages/02.40_reclassify_callouts/README.md)
 for the replacement-only response and contributor provenance. Only changed page
 JSONs are written; counts and retained-range errors go to the console. To deliberately
-skip 02.4, finish at 02 and restart at 02.41 or 02.5 with no current 02.4 status.
+skip 02.40, finish at 02 and restart at 02.41 or 02.50 with no current 02.40 status.
 
 Stage 02.41 sends one complete unmodified Stage 01 PNG per existing table with
 its JSON/bbox and frozen page context. A singleton response retains the original;
@@ -185,9 +194,9 @@ table to continue another, including a table beside it; independent tables recei
 false. Singleton responses retain the predecessor object unchanged.
 Transcription remains deferred to 02.81. Only changed complete-page overrides
 are saved. The shared resolver applies completed sparse layers in order
-`02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46` for review 02.5 and filtering 02.8; absent optional status
+`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46` for review 02.50 and filtering 02.80; absent optional status
 means skipped, while running/failed status blocks direct consumers. Stage 02.41
-reads only predecessor layers. Restarting it preserves 01/02/02.4 and clears
+reads only predecessor layers. Restarting it preserves 01/02/02.40 and clears
 every later stage. See the [02.41 contract](stages/02.41_split_tables/README.md).
 
 Stage 02.42 reviews resolved tables with complete original pages. Different cell
@@ -212,7 +221,7 @@ page JSON, ordinals/IDs/boxes, all flagged pairs, the original Stage 01 PNG and 
 fresh labeled diagnostic copy at original detail. The model may retain the order.
 Only a complete permutation of existing IDs can be applied, moving original
 objects without renumbering or changing any field or page metadata. Only changed
-pages receive sparse overrides. Review 02.5 and filtering 02.8 resolve through
+pages receive sparse overrides. Review 02.50 and filtering 02.80 resolve through
 02.46; later table groups, exports and streams keep that array sequence.
 Absent optional status skips the layer; failed/running status blocks consumers.
 Restart removes 02.46 and later artifacts while retaining predecessors and cache.
@@ -246,10 +255,10 @@ deleting their outputs. The end stage limits execution, not cleanup. Missing suc
 external predecessors are rejected before cleanup using `STAGE_REGISTRY.inputs` and
 `stage_status.json`. No completed stage is automatically skipped. Advancing the start
 stage retains earlier results; changing code or input files does not recertify them.
-Restart 02.8 clears its filtered objects and every later result even when ending at
-02.8. Existing 02.9/03 exports require explicit regeneration through 02.81 to
+Restart 02.80 clears its filtered objects and every later result even when ending at
+02.80. Existing 02.90/03 exports require explicit regeneration through 02.81 to
 represent table conversion; restart 02.82 preserves 02.81 and clears later stages; implementation does not mutate saved attempt artifacts.
-Preserve edited Stage 02.9 bundles outside cleanup before restarting. Regeneration
+Preserve edited Stage 02.90 bundles outside cleanup before restarting. Regeneration
 rebuilds image links/assets and removes obsolete assets; the bundled NXP resource
 survives attempt cleanup.
 

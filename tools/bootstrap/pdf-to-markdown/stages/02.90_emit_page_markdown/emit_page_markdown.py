@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage 02.9: retained page Markdown with exact original-PNG raster crops."""
+"""Stage 02.90: retained page Markdown with exact original-PNG raster crops."""
 
 import argparse
 from pathlib import Path
@@ -24,7 +24,7 @@ def emit_page_markdown(workspace, pdf_path):
     crops_by_page = {}
     for entry, segment in crops:
         crops_by_page.setdefault(entry["page_id"], []).append(segment)
-    output = workspace / "02.9_emit_page_markdown"
+    output = workspace / "02.90_emit_page_markdown"
     with tempfile.TemporaryDirectory(prefix=".02.9-", dir=workspace) as temporary:
         temporary = Path(temporary)
         bundle = temporary / "bundle"
@@ -50,7 +50,7 @@ def emit_page_markdown(workspace, pdf_path):
                         with image.crop(tuple(segment["bbox"])) as crop:
                             crop.save(assets / f"{segment['segment_id']}.png", format="PNG")
             except Exception as error:
-                raise ValueError(f"Stage 02.9 {context}: crop write failed: {error}") from error
+                raise ValueError(f"Stage 02.90 {context}: crop write failed: {error}") from error
         (bundle / "document.md").write_text(document_markdown(pages, source), encoding="utf-8", newline="\n")
         # Keep any previous bundle until the candidate has been written. Moving
         # it into the temporary directory also removes all stale assets on success.
@@ -67,7 +67,7 @@ def emit_page_markdown(workspace, pdf_path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 02.9: page Markdown and original-PNG crops")
+    parser = argparse.ArgumentParser(description="Stage 02.90: page Markdown and original-PNG crops")
     parser.add_argument("--pdf", type=Path, required=True)
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)

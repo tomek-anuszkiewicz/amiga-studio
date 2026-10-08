@@ -26,12 +26,12 @@ schema, semantic, geometry or page-identity validation.
 Standard JSON serialization preserves decoded Markdown without pre-escaping.
 
 Use the [orchestrator](../../README.md); do not run workers for real conversions.
-Stage 02.5 reviews these objects. Stage 03 reads them directly to build the
+Stage 02.50 reviews these objects. Stage 03 reads them directly to build the
 downstream stream; review PNGs are not stream inputs.
 Reading order follows visible source rows. A short block beside and visually
 above most of a multiline heading precedes that heading, even when their box
 top edges nearly align. Subject association does not promote the heading ahead
-of that block. Regenerate 02/02.5 to apply this rule to saved results.
+of that block. Regenerate 02/02.50 to apply this rule to saved results.
 Aligned register assignments and input/output parameter blocks are `code_block`,
 including their shared labels and wrapped descriptions, regardless of source font.
 Column alignment alone does not establish a `table`.
@@ -50,7 +50,7 @@ positions and field descriptions remain `table`, including drawn brackets or
 leader lines connecting bits to descriptions. Cell borders are not required.
 First exclude character-built layouts classified as `code_block`. The remaining
 table rule takes precedence over graphic and drawing-sheet grouping; the complete
-table bounds include those lines and descriptions. Regenerate 02/02.5 to apply it.
+table bounds include those lines and descriptions. Regenerate 02/02.50 to apply it.
 
 Complete technical drawing sheets are one `graphic`, including integrated
 titles or introductory descriptions, views, dimensions, notes and technical
@@ -58,7 +58,7 @@ tables such as connection/pin tables. Shared drawing layout, orientation and
 subject can establish membership without leader lines. Separate document
 captions, narrative and independent tables remain separate; page headers and
 footers stay outside the drawing. This grouping precedes table/caption
-classification. Regenerate 02/02.5 to apply it to existing results.
+classification. Regenerate 02/02.50 to apply it to existing results.
 
 The [prompt](prompt.md) defines source roles, including footnote, table_legend,
 index and dedicated table/figure listing headings and entries. Separate document captions stay
@@ -66,9 +66,9 @@ separate from source explanations and generated asset descriptions remain deferr
 
 `cover` identifies a complete front or back book cover as one object, including
 its artwork, logos and source-visible title and publication text. Its box bounds
-the whole cover; `heading_level` is null and `continuation` is false. Stage 02.5
+the whole cover; `heading_level` is null and `continuation` is false. Stage 02.50
 displays its label and frame through the same generic object renderer. Regenerate
-02/02.5 to classify existing cover pages; saved objects are not relabeled in place.
+02/02.50 to classify existing cover pages; saved objects are not relabeled in place.
 
 `table_legend` is source text below a table explaining symbols, notation or
 abbreviations used in it. A LEGEND, NOTES or DESCRIPTION title alone does not
@@ -78,15 +78,15 @@ Determine complete object boundaries before classification. A marker-referenced
 footnote retains its continuation lines and paragraphs, including symbol or
 abbreviation definitions. Only an independent source block is a table legend.
 Existing artifacts with the former classification require regeneration through
-02/02.5 rather than relabeling their saved JSON.
+02/02.50 rather than relabeling their saved JSON.
 
 Explanatory text boxes connected to diagram artwork by arrows, leader lines,
 shared borders or other meaningful geometry belong inside one complete `graphic`.
 This grouping also covers connected marker-referenced text. Separate explanations
 remain prose or footnotes according to their role; proximity and decorative borders
-alone do not make text part of a graphic. Regenerate 02/02.5 to apply this grouping.
+alone do not make text part of a graphic. Regenerate 02/02.50 to apply this grouping.
 
-The earlier crop-only contract allowed null boxes on text. Such 02/02.5 artifacts
+The earlier crop-only contract allowed null boxes on text. Such 02/02.50 artifacts
 require regeneration for the current all-object review; no boxes are synthesized
 from OCR or inserted into existing saved JSON.
 
@@ -94,10 +94,10 @@ Existing Stage 02 objects with nonempty `md_text` for `graphic`, `table` or `cov
 require regeneration from 02; do not clear saved content in place. Validation
 rejects such responses before caching and rejects incompatible stored artifacts.
 
-Stage 02 pages remain frozen when Stage 02.4 proposes advisory range replacements.
+Stage 02 pages remain frozen when Stage 02.40 proposes advisory range replacements.
 The optional recovery stage writes complete-page sparse overrides separately;
 review, filtering and direct Stage 02 table input use the shared completed-layer
-resolver. See [Stage 02.4](../02.4_reclassify_callouts/README.md).
+resolver. See [Stage 02.40](../02.40_reclassify_callouts/README.md).
 
 Stage [02.44](../02.44_detect_image_rotation/README.md) adds optional `rotation`
 metadata only to resolved graphics. It records the correction in clockwise degrees
