@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conversion.config import load_config as parse_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json, prepared_pdf_path
 from common.pdf_selection import selected_pages
-from common.pdf_page_conversion import page_override_layers, TABLE_SPLIT_STAGE, TABLE_RECLASSIFY_STAGE, CODE_RECLASSIFY_STAGE, IMAGE_ROTATION_STAGE, CODE_REFORMAT_STAGE, READING_ORDER_STAGE, GRAPHIC_RECLASSIFY_STAGE
+from common.pdf_page_conversion import page_override_layers, TABLE_SPLIT_STAGE, TABLE_RECLASSIFY_STAGE, CODE_RECLASSIFY_STAGE, IMAGE_ROTATION_STAGE, CODE_REFORMAT_STAGE, READING_ORDER_STAGE, GRAPHIC_RECLASSIFY_STAGE, ROW_ORDER_STAGE
 from conversion.publication import book_directory, check_destination, publish_output
 
 STAGE_REGISTRY: List[Dict[str, Any]] = [
@@ -92,6 +92,12 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "desc": "Extract independent descriptive text from graphics using original-page vision",
         "targets": [GRAPHIC_RECLASSIFY_STAGE],
         "inspect": ("page_*_segments.json", "sparse graphic reclassification pages"),
+    },
+    {
+        "id": "02.48", "dir": ROW_ORDER_STAGE, "script": "order_page_rows.py",
+        "desc": "Deterministically order original objects within anchored page rows",
+        "targets": [ROW_ORDER_STAGE],
+        "inspect": ("page_*_segments.json", "sparse row-ordered pages"),
     },
     {
         "id": "02.50", "dir": "02.50_page_conversion_review", "script": "render_review.py",
@@ -193,6 +199,7 @@ for index, stage in enumerate(STAGE_REGISTRY):
         "02": ["01"], "02.40": ["01", "02"], "02.41": ["01", "02"], "02.42": ["01", "02"],
         "02.43": ["01", "02"], "02.44": ["01", "02"], "02.45": ["01", "02"],
         "02.46": ["01", "02"], "02.47": ["01", "02"],
+        "02.48": ["02"],
         "02.50": ["01", "02"], "02.80": ["01", "02"],
         "02.81": ["01", "02.80"], "02.82": ["01", "02.81"], "02.83": ["01", "02.82"],
         "02.90": ["01", "02.82"], "03": ["01", "02.82"],
@@ -296,7 +303,7 @@ def run_stage(
     elif stage_num == "14" and output_dir:
         cmd.extend(["--output-dir", str(output_dir)])
 
-    if page_ranges is not None and stage_num in {"00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.47", "02.50", "02.80", "02.81", "02.82", "02.83"}:
+    if page_ranges is not None and stage_num in {"00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.47", "02.48", "02.50", "02.80", "02.81", "02.82", "02.83"}:
         cmd.extend(["--page-ranges", page_ranges])
 
     if verbose:

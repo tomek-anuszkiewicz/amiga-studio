@@ -6,7 +6,7 @@ change the converter, run only a fragment selected and requested by the user, an
 let the user assess the output. Offline tests check execution mechanics, not content quality.
 
 Fractional stage IDs use two digits after the dot so directory sorting follows
-execution order: `02.40`, `02.41` through `02.46`, `02.50`, `02.80`, `02.81`,
+execution order: `02.40`, `02.41` through `02.48`, `02.50`, `02.80`, `02.81`,
 `02.82`, `02.83`, `02.90`. CLI selectors, configuration keys and artifact directories use
 these names. Saved attempts are not migrated automatically. To reuse an older
 attempt, rename its `02.4`, `02.5`, `02.8` and `02.9` stage directories to the
@@ -62,7 +62,7 @@ errors stop execution normally. No older-stage inputs or alternative models are 
 
 ## Stage data and execution
 
-Execution order is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.83 -> 02.90 -> 03`, then 04-14.
+Execution order is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47 -> 02.48 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.83 -> 02.90 -> 03`, then 04-14.
 Each worker reads the predecessor's own directory and writes its own results:
 
 | Stage | Input and result |
@@ -78,8 +78,9 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [02.45](stages/02.45_reformat_code_block/README.md) | Stage 01 and resolved predecessors through 02.44 -> existing code blocks reformatted with consistent structural indentation, changed pages only |
 | [02.46](stages/02.46_review_reading_order/README.md) | Stage 01 and resolved predecessors through 02.45 -> whole-page reading-order assessment for suspicious pairs, changed pages only |
 | [02.47](stages/02.47_reclassify_graphics/README.md) | Stage 01 and resolved predecessors through 02.46 -> graphics retained or split into illustration and descriptive prose, changed pages only |
-| [02.50](stages/02.50_page_conversion_review/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47 -> review frames and ordered labels |
-| [02.80](stages/02.80_filter_page_content/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47 -> retained objects after source-content and fixed NXP-logo exclusions |
+| [02.48](stages/02.48_order_page_rows/README.md) | Resolved predecessors through 02.47 -> deterministic ordering within anchored top-coordinate groups, changed pages only |
+| [02.50](stages/02.50_page_conversion_review/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47/02.48 -> review frames and ordered labels |
+| [02.80](stages/02.80_filter_page_content/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47/02.48 -> retained objects after source-content and fixed NXP-logo exclusions |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> table markup, saved crops and inferred HTML group text |
 | [02.82](stages/02.82_remove_empty_table_rows/README.md) | Stage 01/02.81 -> remove empty Markdown/HTML table rows, preserve saved crops |
 | [02.83](stages/02.83_table_conversion_review/README.md) | Stage 01/02.82 -> side-by-side table review PNGs, no inference |
@@ -121,7 +122,8 @@ Omission means all available pages, regardless of a previous run or legacy confi
 | 02.45 | Select resolved predecessors through 02.44 before one formatting request per existing code block |
 | 02.46 | Select resolved predecessors through 02.45 before geometry detection and one whole-page order request per suspicious page |
 | 02.47 | Extract clearly separate descriptive prose from resolved graphics |
-| 02.50 | Select resolved Stage 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47 pages before review rendering |
+| 02.48 | Select resolved predecessors through 02.47 before deterministic row ordering; JSON only |
+| 02.50 | Select resolved Stage 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47/02.48 pages before review rendering |
 | 02.80 | Select resolved pages before TOC-boundary detection and content exclusions |
 | 02.81 | Select pages from the completed 02.80 predecessor before table inference |
 | 02.83 | Select Stage 02.81 pages before rendering table comparisons |
@@ -205,7 +207,7 @@ table to continue another, including a table beside it; independent tables recei
 false. Singleton responses retain the predecessor object unchanged.
 Transcription remains deferred to 02.81. Only changed complete-page overrides
 are saved. The shared resolver applies completed sparse layers in order
-`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47` for review 02.50 and filtering 02.80; absent optional status
+`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47 -> 02.48` for review 02.50 and filtering 02.80; absent optional status
 means skipped, while running/failed status blocks direct consumers. Stage 02.41
 reads only predecessor layers. Restarting it preserves 01/02/02.40 and clears
 every later stage. See the [02.41 contract](stages/02.41_split_tables/README.md).
@@ -255,6 +257,17 @@ Whole-target table reclassification is no longer performed. Sparse overrides
 feed review/filtering; restart clears 02.47 and later artifacts only.
 See [Stage 02.47](stages/02.47_reclassify_graphics/README.md). The current user-selected trial covers pages 21 and 35.
 
+Stage 02.48 deterministically groups all resolved object types by original-PNG
+`bbox[1]`. Each group has a fixed smallest-top anchor and includes tops at most
+7 pixels greater than it; neighboring gaps do not chain groups. Within each multi-object
+group, ascending Y order with stable ties fills only that group's original array
+positions. IDs, object fields, page metadata and unrelated slots remain unchanged.
+The worker reads JSON only, writes complete-page overrides only for changed pages,
+and reports multi-object group and changed-page counts without retained diagnostics.
+Review/filtering resolve the layer after 02.47. Absent status skips it; failed/running
+status blocks consumers. Restart removes 02.48 and later artifacts, including stale
+overrides when the rerun makes no change, while preserving predecessors/cache.
+No model, prompt or inference settings are added. See [Stage 02.48](stages/02.48_order_page_rows/README.md).
 
 Stage 02.45 reformats each resolved `code_block` using its existing Markdown and
 frozen full-page JSON, without attaching an image. One request per block

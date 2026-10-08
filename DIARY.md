@@ -695,3 +695,33 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture 19/19 passed
   - untouched-entry preservation and chronological-order assertions passed
   - scoped whitespace check passed
+---
+
+### [2026-10-08 18:22 CET] — PDF-ORDER-2.48: Implement deterministic ordering within page rows
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add JSON-only Stage 02.48 after 02.47 with anchored inclusive 7-pixel top-coordinate grouping for every object type
+  - sort each group by ascending Y with stable ties in its original occupied slots, preserving IDs, original objects and resolved page metadata
+  - integrate sparse resolution, registry, page selection, inspection and restart cleanup without inference settings
+  - update stage and consumer documentation and retained restart expectations
+  - close PDF-ORDER-2.48 and remove its execution plan in the closing workflow
+- **Architectural Rationale & Trade-Offs**:
+  - Implement the plan's literal Y axis because no X clarification was received
+  - preserve sparse predecessor resolution and downstream array order
+  - shared artifact IO keeps existing compact-object semantics
+  - page 81 remains an unresolved user quality observation and left-to-right ordering is not implied by Y
+- **Verification & Test Results**:
+  - Eight disposable geometry examples passed: arbitrary group size, inclusive 7-pixel boundary, 8-pixel exclusion, fixed anchors without chaining, stable ties, unrelated slots, object preservation and idempotence
+  - synthetic orchestrator checks passed for JSON-only selected-page processing, resolved 02.47 input, metadata preservation, zero model calls, incomplete-status blocking and restart removing an obsolete override on a no-change rerun
+  - the first disposable check invocation used incorrect config-loader arguments and was corrected before passing
+  - PDF conversion Codex 35 tests passed
+  - PDF review selection 9 tests passed
+  - quick pre-flight passed
+  - architecture rules 19 tests passed
+  - Graphify incremental AST refresh completed
+  - new documentation links resolve
+  - no book conversion, live inference or emulator domain changes
