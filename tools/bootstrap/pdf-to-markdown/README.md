@@ -237,8 +237,9 @@ pages receive sparse overrides. Review 02.50 and filtering 02.80 resolve through
 Absent optional status skips the layer; failed/running status blocks consumers.
 Restart removes 02.46 and later artifacts while retaining predecessors and cache.
 Existing model/effort settings remain; only missing values use gpt-6.1-sol/medium.
-Diagnostics retain all suspect pairs and before/after IDs separately from original
-images and published content. The detector misses vertically disjoint inversions
+The labeled request copy is temporary and removed after the request, including
+on failure; no diagnostics directory or order reports are persisted. Console
+output records suspect pairs and before/after IDs. The detector misses vertically disjoint inversions
 and other layouts; legitimate column flow may be flagged for model assessment.
 See [Stage 02.46](stages/02.46_review_reading_order/README.md).
 

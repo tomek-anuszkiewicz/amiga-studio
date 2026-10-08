@@ -4439,3 +4439,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - equivalence audit verified approved field deletions and unchanged PNG bytes
   - no conversion or model calls performed
   - emulator domain tests not run because executable code is unchanged
+---
+
+### [2026-10-08 17:36 CET] — PDF-ORDER-2.46: Stop retaining reading-order diagnostics
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_pdf_review_selection.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove persisted per-page reading-order reports
+  - keep labeled request images in temporary .agent/tmp directories and clean them on success or failure
+  - retain console evidence and changed-page overrides
+  - document downstream independence from diagnostics
+- **Architectural Rationale & Trade-Offs**:
+  - Request images are needed only during inference
+  - later stages consume segment overrides rather than diagnostics
+- **Verification & Test Results**:
+  - Regression reproduced retained images on the original code for success and request failure, then passed after repair
+  - PDF review selection 9 tests passed
+  - PDF conversion Codex 35 tests passed
+  - quick pre-flight passed
+  - architecture rules 19 tests passed. No user-fragment conversion or live model requests run.

@@ -25,6 +25,35 @@ def stage_module(directory, script):
 
 
 class ReviewSelectionTests(unittest.TestCase):
+    def test_reading_order_does_not_retain_request_artifacts(self):
+        stage = stage_module("02.46_review_reading_order", "review_reading_order")
+        page_path = self.workspace / "02_page_conversion/page_0064_segments.json"
+        page = {"page": 64, "segments": [
+            {"segment_id": "right", "type": "prose", "bbox": [6, 0, 10, 10]},
+            {"segment_id": "left", "type": "prose", "bbox": [0, 0, 4, 10]}]}
+        page_path.write_text(json.dumps(page))
+        for fail in (False, True):
+            with self.subTest(request_failure=fail), patch.object(stage, "CodexClient") as client:
+                images = []
+
+                def respond(*args, image_path, **kwargs):
+                    images.extend(image_path)
+                    self.assertTrue(all(path.is_file() for path in images))
+                    if fail:
+                        raise RuntimeError("Request failed")
+                    return {"ordered_segment_ids": ["right", "left"]}
+
+                client.return_value.generate_json.side_effect = respond
+                if fail:
+                    with self.assertRaisesRegex(RuntimeError, "Request failed"):
+                        stage.review_reading_order(self.workspace, {}, pages=[64])
+                else:
+                    stage.review_reading_order(self.workspace, {}, pages=[64])
+                self.assertTrue(images[0].is_file())
+                self.assertFalse(images[1].exists())
+                self.assertFalse((self.workspace / stage.READING_ORDER_STAGE / "diagnostics").exists())
+                client.return_value.close.assert_called_once()
+
     def test_graphic_rotation_labels_omit_zero_and_use_degrees(self):
         stage = stage_module("02.50_page_conversion_review", "render_review")
         segments = [{"type": "graphic", "bbox": [0, 0, 10, 10], **rotation}

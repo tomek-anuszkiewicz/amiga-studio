@@ -22,10 +22,12 @@ field, including text, type, bbox, continuation, heading level, rotation and
 lineage. Preserve page metadata. Changed array order alone produces a sparse
 complete-page `page_NNNN_segments.json`; retained order produces no override.
 
-`diagnostics/page_NNNN_input.png` retains the annotated request image;
-`diagnostics/page_NNNN_order.json` records suspicious pairs and before/after IDs.
-Diagnostics stay separate from source pixels and published content. A requesting
-diagnostic is not successful stage execution; consult `stage_status.json`.
+The annotated request image exists only in a temporary directory under
+`.agent/tmp/` and is removed after the request, including on failure. No
+`diagnostics` directory or per-page order reports are created. Later stages
+consume only changed-page overrides; old diagnostics are not required.
+Console output records suspicious pairs and before/after IDs; consult
+`stage_status.json` for execution status.
 Worker output and pipeline metrics record live requests and cache hits. Cache
 identity includes exact ordered JSON, pairs, both images, prompt/schema and model
 settings through the existing shared client.

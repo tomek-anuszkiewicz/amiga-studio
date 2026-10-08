@@ -5,6 +5,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
+import tempfile
 
 from PIL import Image
 
@@ -50,8 +51,7 @@ def reordered_objects(objects, ordered_ids):
 def review_reading_order(workspace, config, pages=None):
     paths = list(resolved_page_files(workspace, pages, before_stage="02.46"))
     output = workspace / READING_ORDER_STAGE
-    diagnostics = output / "diagnostics"
-    diagnostics.mkdir(parents=True, exist_ok=True)
+    output.mkdir(parents=True, exist_ok=True)
     prompt = Path(__file__).with_name("prompt.md").read_text(encoding="utf-8")
     requested = changed_pages = 0
     codex = None
@@ -62,40 +62,38 @@ def review_reading_order(workspace, config, pages=None):
             before = [obj["segment_id"] for obj in objects]
             pairs = suspicious_pairs(objects)
             page_id = path.stem.removesuffix("_segments")
-            report = {"page": page["page"], "suspicious_pairs": pairs,
-                      "before_segment_ids": before, "after_segment_ids": before,
-                      "requested": bool(pairs), "status": "not_suspicious"}
+            after = before
             if pairs:
                 source = workspace / "01_preprocess" / f"{page_id}.png"
-                annotated = diagnostics / f"{page_id}_input.png"
                 # Fresh labels correspond one-to-one to the frozen resolved array.
                 annotations = [{**obj, "source_ordinals": [index + 1]}
                                for index, obj in enumerate(objects)]
-                with Image.open(source) as image:
-                    width, height = image.size
-                    raster = {"display_to_pixels": [1, 0, 0, 1, 0, 0],
-                              "pixel_width": width, "pixel_height": height}
-                    draw_review_image(image, {"raster": raster}, annotations,
-                                      include_segment_ids=True).save(annotated)
-                report["status"] = "requesting"
-                write_json(diagnostics / f"{page_id}_order.json", report)
                 if codex is None:
                     codex = CodexClient(config, stage=READING_ORDER_STAGE, images=True)
                 request = prompt + "\n\nFrozen resolved page and order evidence:\n" + json.dumps(
                     {"page_json": page, "current_order": [
                         {"ordinal": index + 1, "segment_id": obj["segment_id"], "bbox": obj["bbox"]}
                         for index, obj in enumerate(objects)], "suspicious_pairs": pairs}, ensure_ascii=False)
-                response = codex.generate_json(request, schema=RESPONSE,
-                                               image_path=[source, annotated])
+                scratch = Path(__file__).resolve().parents[5] / ".agent" / "tmp"
+                scratch.mkdir(parents=True, exist_ok=True)
+                with tempfile.TemporaryDirectory(prefix="pdf-reading-order-", dir=scratch) as temporary:
+                    annotated = Path(temporary) / f"{page_id}_input.png"
+                    with Image.open(source) as image:
+                        width, height = image.size
+                        raster = {"display_to_pixels": [1, 0, 0, 1, 0, 0],
+                                  "pixel_width": width, "pixel_height": height}
+                        draw_review_image(image, {"raster": raster}, annotations,
+                                          include_segment_ids=True).save(annotated)
+                    response = codex.generate_json(request, schema=RESPONSE,
+                                                   image_path=[source, annotated])
                 segments = reordered_objects(objects, response["ordered_segment_ids"])
                 requested += 1
-                report.update(after_segment_ids=response["ordered_segment_ids"], status="success")
+                after = response["ordered_segment_ids"]
                 if segments != objects:
                     write_json(output / path.name, {**page, "segments": segments})
                     changed_pages += 1
-            write_json(diagnostics / f"{page_id}_order.json", report)
             print(f"[reading-order] {page_id}: pairs={pairs}; "
-                  f"before={before}; after={report['after_segment_ids']}", flush=True)
+                  f"before={before}; after={after}", flush=True)
         print(f"[reading-order] input pages={len(paths)}; reviewed pages={requested}; "
               f"changed pages={changed_pages}; requests={codex.call_count if codex else 0}; "
               f"cache hits={codex.cached_call_count if codex else 0}")
