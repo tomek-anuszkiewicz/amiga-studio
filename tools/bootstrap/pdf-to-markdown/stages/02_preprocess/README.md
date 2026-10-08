@@ -1,44 +1,15 @@
 # Stage 02: Positioned Text and PNGs
 
-Stage 02 deterministically renders and extracts text from the separate, prepared
-[Stage 01 PDF](../01_text_layer/README.md). It performs no OCR and needs no model
-selection. PDF-library and filesystem failures stop execution; preprocessing never falls back to the original PDF.
+Read the prepared [Stage 01 PDF](../01_text_layer/README.md) and write one
+`02_preprocess/page_XXXX.png` and `page_XXXX.json` for each selected physical page,
+including blank pages. Render at 300 DPI; no OCR or model request is made.
 
-For each selected physical page it writes `02_preprocess/page_XXXX.png` and
-`page_XXXX.json`, including legitimate blank pages. `XXXX` remains the physical
-1-based source page number; `source_index` is zero-based in the original source.
-`prepared_index` equals `source_index`: the sibling prepared PDF contains every
-source page in the original order. Stage 02 applies the current `--page-ranges`;
-page workers through 05 also apply it when reading their own predecessors.
-JSON contains schema
-version, stable page ID, dimensions, rotation, MediaBox,
-CropBox, `prepared`/`none` text provenance, extraction-based page classification
-and ordered text blocks with
-IDs, text, `bbox` and `bbox_norm`. Only text blocks enter this collection; the
-worker does not claim word-level geometry or reconstruct semantic reading order.
-OCR text is extracted from the reopened PDF, never copied from cached model JSON.
+JSON records the source page number, page geometry, actual PNG dimensions,
+extracted text blocks and the transform between text and raster coordinates.
+Text boxes use PDF points in the displayed-page frame; later object boxes use
+original-PNG pixels. Text is extracted from the prepared PDF, with provenance
+`prepared` or `none`. Block geometry is not word-level geometry.
 
-Bounding boxes use PDF points, top-left origin, x right/y down, `[x0,y0,x1,y1]`
-in the displayed-page frame. `geometry.extraction_to_display` records rotation
-from PyMuPDF's crop-relative, unrotated extraction frame; `pdf_to_extraction`
-records its PDF transformation. `raster.display_to_pixels` records the actual
-render transform, raster origin and outward floor/ceil pixel bounds. Actual PNG
-dimensions are persisted; exported coordinates are not rounded. Existing extraction clipping is retained
-without rectangle bounds, structure or text-content validation.
-
-Stage 02 publishes only page PNG/JSON files. Downstream stages enumerate known
-filenames in numeric physical-page order and read them directly. No coverage,
-pair-presence, identity, geometry, dimensions or PDF-text comparison checks run.
-Execution status and metrics belong to `stage_status.json`.
-
-Run preparation and preprocessing together for a new workspace:
-
-```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config tools/bootstrap/pdf-to-markdown/config.yaml --page-ranges "1-5,7" --from-stage 01 --to-stage 02
-```
-
-For an attempt with successful Stage 01, restart with `--from-stage 02 --to-stage 02`.
-Omitting the source argument retains its configured path. Omitting `--page-ranges`
-selects all pages; an explicit selection applies to this run only and can reuse
-the full-source sibling PDF without repeating OCR. Legacy `input.pages` is ignored.
-Legacy attempts use the separate migration utility described in the [converter README](../../README.md).
+Run through the [pipeline](../../README.md) with `--from-stage 02 --to-stage 02`
+after successful Stage 01, supplying the original `--pdf` and intended
+`--page-ranges`. Omitting the range selects all pages.

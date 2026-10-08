@@ -1,97 +1,18 @@
-# Stage 03: Independent Page Conversion
+# Stage 03: Page Objects and Markdown
 
-Read Stage 02 original-resolution PNGs and their complete text JSON.
-The model excludes scan artifacts and incidental fragments from adjacent pages,
-including their associated text. Image-edge contact or incompleteness alone does
-not justify exclusion: intended-page content and uncertain ownership are preserved.
-The model defines logical objects independently of OCR block boundaries, returns
-reading order and converts textual objects into `md_text` without supplied Markdown
-formatting recipes. For `graphic`, `table` and `cover`, `md_text` must be the empty
-string: internal transcription and content reconstruction are deferred to later
-stages using the original image crop. Classification and complete bounds remain
-required, including internal labels and connected explanatory text. The isolated
-authenticated Codex request uses original image detail and its explicit
-`03_page_conversion` model/effort configuration.
+For each selected Stage 02 page, send its original-resolution PNG and matching
+text JSON to Codex. The [prompt](prompt.md) defines grouping, classification,
+reading order and transcription; the [request schema](../../common/pdf_page_conversion.py)
+guides the returned JSON.
 
-Output: `03_page_conversion/page_NNNN_segments.json`, recording `page`,
-`image_width`, `image_height` and ordered `segments`. Each segment has its
-post-parse deterministic `segment_id`, `type`, `heading_level`, `md_text` and `bbox`.
-Every object has a nonempty box: integer original-PNG pixels, top-left origin,
-`[x0,y0,x1,y1]`, exclusive upper bounds. The model bounds complete logical objects,
-including text, captions, legends and page furniture. No raw_text is emitted.
-Text boxes support graphical review; later Markdown assembly may ignore them.
-Table/graphic boxes can also define crops. No OCR geometry is substituted.
-Request schemas guide the model; responses and saved artifacts receive no local
-schema, semantic, geometry or page-identity validation.
-Standard JSON serialization preserves decoded Markdown without pre-escaping.
+Write `03_page_conversion/page_XXXX_segments.json` with ordered logical objects,
+their types, `md_text` and integer pixel boxes `[x0,y0,x1,y1]`. Boxes use the
+original PNG's top-left origin and exclusive upper bounds. Assign page-scoped
+`segment_id` values in returned order. Saved objects omit empty/default fields.
 
-Use the [orchestrator](../../README.md); do not run workers for real conversions.
-Stage 04 filters these objects; Stage 05 converts retained tables.
-Separate book processing will generate chapter Markdown from the prepared data.
+Table and graphic transcription is deferred; Stage 05 transcribes retained
+tables. [Stage 04](../04_filter_page_content/README.md) filters the saved objects.
+Changing the prompt does not rewrite existing results.
 
-Reading order follows visible source rows. A short block beside and visually
-above most of a multiline heading precedes that heading, even when their box
-top edges nearly align. Subject association does not promote the heading ahead
-of that block. Regenerate 03 to apply this rule to saved results.
-Aligned register assignments and input/output parameter blocks are `code_block`,
-including their shared labels and wrapped descriptions, regardless of source font.
-Column alignment alone does not establish a `table`.
-Independent diagrams that visibly look like ASCII art or character-based
-drawings are also `code_block`, including character-built timing waveforms.
-Transcribe them into fenced `text` blocks with their characters, line breaks,
-spaces and alignment preserved. Drawn lines and shapes remain `graphic`;
-the possibility of later ASCII conversion does not change their source type.
-Character-built timing and bit-field layouts retain integrated aligned values,
-labels and explanations in the same code block. This recognition precedes
-register-table classification and drawing-sheet grouping. Column headings,
-repeated offsets, bit numbers and "Table" captions do not override it.
-
-Register-map and bit-assignment tables with repeated address/offset rows, bit
-positions and field descriptions remain `table`, including drawn brackets or
-leader lines connecting bits to descriptions. Cell borders are not required.
-First exclude character-built layouts classified as `code_block`. The remaining
-table rule takes precedence over graphic and drawing-sheet grouping; the complete
-table bounds include those lines and descriptions. Regenerate 03 to apply it.
-
-Complete technical drawing sheets are one `graphic`, including integrated
-titles or introductory descriptions, views, dimensions, notes and technical
-tables such as connection/pin tables. Shared drawing layout, orientation and
-subject can establish membership without leader lines. Separate document
-captions, narrative and independent tables remain separate; page headers and
-footers stay outside the drawing. This grouping precedes table/caption
-classification. Regenerate 03 to apply it to existing results.
-
-The [prompt](prompt.md) defines source roles, including footnote, table_legend,
-index and dedicated table/figure listing headings and entries. Separate document captions stay
-separate from source explanations and generated asset descriptions remain deferred.
-
-`cover` identifies a complete front or back book cover as one object, including
-its artwork, logos and source-visible title and publication text. Its box bounds
-the whole cover; `heading_level` is null and `continuation` is false. Its source
-crop belongs to later book generation. Regenerate
-03 to classify existing cover pages; saved objects are not relabeled in place.
-
-`table_legend` is source text below a table explaining symbols, notation or
-abbreviations used in it. A LEGEND, NOTES or DESCRIPTION title alone does not
-establish that role. General table explanations are prose; source table numbers
-and titles are captions; individually referenced notes remain footnotes.
-Determine complete object boundaries before classification. A marker-referenced
-footnote retains its continuation lines and paragraphs, including symbol or
-abbreviation definitions. Only an independent source block is a table legend.
-Existing artifacts with the former classification require regeneration through
-02 rather than relabeling their saved JSON.
-
-Explanatory text boxes connected to diagram artwork by arrows, leader lines,
-shared borders or other meaningful geometry belong inside one complete `graphic`.
-This grouping also covers connected marker-referenced text. Separate explanations
-remain prose or footnotes according to their role; proximity and decorative borders
-alone do not make text part of a graphic. Regenerate 03 to apply this grouping.
-
-The earlier crop-only contract allowed null boxes on text. Such 02 artifacts
-require regeneration for the current all-object geometry; no boxes are synthesized
-from OCR or inserted into existing saved JSON.
-
-Existing Stage 03 objects with nonempty `md_text` for `graphic`, `table` or `cover`
-require regeneration from 02; do not clear saved content in place. Ordinary parsing and IO failures stop execution; there is no local response validation.
-
-Stage 04 reads these saved objects directly; no sparse override layers apply.
+Run through the [pipeline](../../README.md) with `--from-stage 03 --to-stage 03`
+after successful Stage 02. Use the attempt's configured model and effort.

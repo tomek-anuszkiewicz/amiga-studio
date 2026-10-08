@@ -1179,3 +1179,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify refresh completes
   - existing workspaces and caches are not migrated and newly numbered inference stages use new cache keys
   - no live conversion performed
+---
+
+### [2026-10-08 22:48 CET] — Simplify PDF preparation README documentation
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+  - `tools/bootstrap/pdf-to-markdown/stages/*/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Reduce six READMEs from 378 to 156 lines
+  - keep current five-stage inputs, outputs, invocation, selection and restart behavior
+  - replace duplicated classification and historical implementation details with prompt/contract links
+  - correct outdated claims about persisted source paths and source-free restarts
+- **Architectural Rationale & Trade-Offs**:
+  - Match documentation to the reduced preparation pipeline and keep operational instructions easy to find
+- **Verification & Test Results**:
+  - All local README links resolve
+  - CLI help matches documented options
+  - quick preflight and all 19 architecture tests pass
+  - git diff --check passes
+  - no code changes or conversion runs
