@@ -18,11 +18,72 @@ from conversion import load_config
 from conversion.config import PDF_STAGES
 import yaml
 from common.pdf_artifacts import read_json, write_json
+from common.pdf_cache import page_json_prompts
+from conversion import CodexClient
+from conversion.cache import ResponseCache, identity
+from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class PdfArtifactIdentityTests(unittest.TestCase):
+    def test_compact_cache_prompt_preserves_source_and_meaningful_fields(self):
+        obj = {"type": "graphic", "bbox": [1, 2, 3, 4], "segment_id": "g",
+               "continuation": False, "heading_level": None, "md_text": "",
+               "rotation": 0, "source_segment_ids": ["s"],
+               "replacement_stage": "02.44", "image_only": True,
+               "metadata": {"rotation": 0, "other": "retained"}}
+        meaningful = {**obj, "rotation": 90.5, "md_text": "Text", "heading_level": 2,
+                      "continuation": True, "metadata": {"rotation": 15}}
+        value = {"segments": [obj, meaningful, {**obj, "md_text": None}],
+                 "blocks": [{"type": 0, "bbox": [0, 0, 1, 1], "text": "OCR"}]}
+        before = json.dumps(value, ensure_ascii=False)
+        prompt, alias = page_json_prompts("Prefix\n", value, "\nSuffix")
+        self.assertEqual(prompt, "Prefix\n" + before + "\nSuffix")
+        self.assertEqual(json.dumps(value, ensure_ascii=False), before)
+        compact = json.loads(alias[len("Prefix\n"):-len("\nSuffix")])
+        self.assertEqual(compact["segments"][0], {
+            "type": "graphic", "bbox": [1, 2, 3, 4], "segment_id": "g",
+            "metadata": {"other": "retained"}})
+        self.assertEqual(compact["segments"][2], compact["segments"][0])
+        self.assertEqual(compact["blocks"], value["blocks"])
+        for key in ("rotation", "md_text", "heading_level", "continuation", "metadata"):
+            self.assertEqual(compact["segments"][1][key], meaningful[key])
+
+    def test_live_and_historical_results_seed_compact_cache_without_changing_response(self):
+        stage = "02.44_detect_image_rotation"
+        config = {"llm": {"stages": {stage: {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}}}}
+        schema = {"type": "object"}
+        prompt, alias = page_json_prompts("Frozen page:\n", {"segments": [
+            {"type": "graphic", "bbox": [1, 2, 3, 4], "rotation": 0}]})
+        result = {"status": "completed", "text": '{"rotation": 0}', "usage": {"inputTokens": 12}}
+        for historical in (False, True):
+            with self.subTest(historical=historical), tempfile.TemporaryDirectory() as directory:
+                cache = ResponseCache(directory)
+                transport = Mock()
+                transport.run.return_value = result
+                with CodexClient(config, stage=stage, cache=cache, transport=transport) as client:
+                    old_key = identity(client.selected, prompt, [], schema)
+                    new_key = identity(client.selected, alias, [], schema)
+                    if historical:
+                        cache.save(old_key, result)
+                    self.assertEqual(client.generate_json(prompt, schema=schema, cache_prompt=alias),
+                                     {"rotation": 0})
+                    self.assertEqual(transport.run.call_count, 0 if historical else 1)
+                    if not historical:
+                        self.assertEqual(transport.run.call_args.args[1], prompt)
+                    for key in (old_key, new_key):
+                        entry = cache.load(key)
+                        self.assertEqual(entry["text"], result["text"])
+                        self.assertEqual(entry["usage"], result["usage"])
+                    # Future compact requests replay without model calls.
+                    self.assertEqual(client.generate_json(alias, schema=schema), {"rotation": 0})
+                    self.assertEqual(transport.run.call_count, 0 if historical else 1)
+                    # An independently generated compact response must survive.
+                    cache.save(new_key, {**result, "text": '{"rotation": 90}'})
+                    client.generate_json(prompt, schema=schema, cache_prompt=alias)
+                    self.assertEqual(cache.load(new_key)["text"], '{"rotation": 90}')
+
     def test_read_preserves_extracted_text_prompt_data(self):
         value = {"blocks": [{"type": 0, "bbox": [1, 2, 3, 4], "text": "Source"}]}
         with tempfile.TemporaryDirectory() as directory:

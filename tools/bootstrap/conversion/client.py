@@ -35,7 +35,7 @@ class CodexClient:
             self.close()
             raise
 
-    def _generate(self, prompt, images=(), schema=None, validator=None):
+    def _generate(self, prompt, images=(), schema=None, validator=None, cache_prompt=None):
         if not self.pdf:
             self.transport.validate(self.selected, images=bool(images))
         request = identity(self.selected, prompt, images, schema)
@@ -73,6 +73,10 @@ class CodexClient:
                 raise
             self.cache.save(request, result)
             cached = False
+        if cache_prompt is not None and cache_prompt != prompt:
+            alias = {**request, "prompt": cache_prompt}
+            if self.cache.load(alias) is None:
+                self.cache.save(alias, result)
         self._record({"stage": self.selected.stage, "model": self.selected.model,
                              "reasoning_effort": self.selected.reasoning_effort, "cached": cached,
                              "usage": result.get("usage"), "duration_seconds": result.get("duration_seconds"),
@@ -90,10 +94,10 @@ class CodexClient:
         images = image_path if isinstance(image_path, (list, tuple)) else [image_path]
         return self._generate(prompt, images, validator=validator)
 
-    def generate_json(self, prompt, *, schema, image_path=None, validator=None):
+    def generate_json(self, prompt, *, schema, image_path=None, validator=None, cache_prompt=None):
         images = [] if image_path is None else (image_path if isinstance(image_path, (list, tuple)) else [image_path])
         checked = (lambda text: validator(json.loads(text))) if validator is not None else None
-        return json.loads(self._generate(prompt, images, schema, checked))
+        return json.loads(self._generate(prompt, images, schema, checked, cache_prompt))
 
     def close(self):
         self.transport.close()

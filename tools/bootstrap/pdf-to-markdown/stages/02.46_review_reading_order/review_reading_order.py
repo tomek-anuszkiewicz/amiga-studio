@@ -2,7 +2,6 @@
 """Stage 02.46: review suspicious side-by-side order on complete pages."""
 
 import argparse
-import json
 from pathlib import Path
 import sys
 
@@ -12,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
+from common.pdf_cache import page_json_prompts
 from common.pdf_artifacts import read_json, write_json
 from common.pdf_frames import draw_review_image
 from common.pdf_page_conversion import resolved_page_files, READING_ORDER_STAGE
@@ -81,11 +81,11 @@ def review_reading_order(workspace, config, pages=None):
                 write_json(diagnostics / f"{page_id}_order.json", report)
                 if codex is None:
                     codex = CodexClient(config, stage=READING_ORDER_STAGE, images=True)
-                request = prompt + "\n\nFrozen resolved page and order evidence:\n" + json.dumps(
+                request, cache_prompt = page_json_prompts(prompt + "\n\nFrozen resolved page and order evidence:\n",
                     {"page_json": page, "current_order": [
                         {"ordinal": index + 1, "segment_id": obj["segment_id"], "bbox": obj["bbox"]}
-                        for index, obj in enumerate(objects)], "suspicious_pairs": pairs}, ensure_ascii=False)
-                response = codex.generate_json(request, schema=RESPONSE,
+                        for index, obj in enumerate(objects)], "suspicious_pairs": pairs})
+                response = codex.generate_json(request, schema=RESPONSE, cache_prompt=cache_prompt,
                                                image_path=[source, annotated])
                 segments = reordered_objects(objects, response["ordered_segment_ids"])
                 requested += 1

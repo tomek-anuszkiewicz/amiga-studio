@@ -2,7 +2,6 @@
 """Stage 02.40: vision-assisted advisory recovery with sparse page overrides."""
 
 import argparse
-import json
 from pathlib import Path
 import sys
 from PIL import Image
@@ -11,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
+from common.pdf_cache import page_json_prompts
 from common.pdf_artifacts import read_json, write_json, page_files
 from common.pdf_page_conversion import CALLOUT_STAGE
 from common.pdf_callouts import RESPONSE, advisory_keywords, request_objects, apply_replacements
@@ -44,10 +44,10 @@ def reclassify_callouts(workspace, config, pages=None):
                 context = {key: value for key, value in page.items() if key != "segments"}
                 context.update(image_width=width, image_height=height,
                                objects=objects, candidates=candidates)
-                request = prompt + "\n\nFrozen source page:\n" + json.dumps(context, ensure_ascii=False)
+                request, cache_prompt = page_json_prompts(prompt + "\n\nFrozen source page:\n", context)
                 if codex is None:
                     codex = CodexClient(config, stage=CALLOUT_STAGE, images=True)
-                response = codex.generate_json(request, schema=RESPONSE, image_path=source)
+                response = codex.generate_json(request, schema=RESPONSE, cache_prompt=cache_prompt, image_path=source)
                 corrected, edit_reports = apply_replacements(page, objects, response)
                 for report in edit_reports:
                     if report["status"] == "retained":

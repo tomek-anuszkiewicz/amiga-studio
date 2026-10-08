@@ -2,7 +2,6 @@
 """Stage 02.41: identify independent tables inside existing table objects."""
 
 import argparse
-import json
 from pathlib import Path
 import sys
 from PIL import Image
@@ -11,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
+from common.pdf_cache import page_json_prompts
 from common.pdf_artifacts import read_json, write_json
 from common.pdf_page_conversion import resolved_page_files, TABLE_SPLIT_STAGE, SEGMENT
 from common.pdf_schemas import object_schema, STRING
@@ -68,9 +68,9 @@ def split_tables(workspace, config, pages=None):
                 if codex is None:
                     codex = CodexClient(config, stage=TABLE_SPLIT_STAGE, images=True)
                 for target in candidates:
-                    request = prompt + "\n\nFrozen source page and target table:\n" + json.dumps(
-                        {**context, "target_table": target}, ensure_ascii=False)
-                    response = codex.generate_json(request, schema=RESPONSE, image_path=source)
+                    request, cache_prompt = page_json_prompts(prompt + "\n\nFrozen source page and target table:\n",
+                        {**context, "target_table": target})
+                    response = codex.generate_json(request, schema=RESPONSE, cache_prompt=cache_prompt, image_path=source)
                     tables = table_replacements(target, response["tables"], reserved_ids)
                     replacements[target["segment_id"]] = tables
                     requested += 1

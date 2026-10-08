@@ -4311,3 +4311,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - user quality assessment remains pending. Quick pre-flight passed
   - architecture tests passed 19/19
   - scoped diff check passed. No full-book conversion or new quality tests.
+---
+
+### [2026-10-08 16:51 CEST] — PDF-CACHE-ALIAS: Seed compact JSON request keys alongside historical identities
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/client.py`
+  - `tools/bootstrap/pdf-to-markdown/common/pdf_cache.py`
+  - `PDF Stages 02 and 02.40-02.47`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Keep original inference prompts and artifact serialization
+  - save completed results under an additional compact-input request identity on live calls and historical cache hits
+  - omit default object fields and retired lineage/replacement/image_only metadata only in the alias prompt
+  - preserve existing compact-key responses
+  - document cache migration behavior
+- **Architectural Rationale & Trade-Offs**:
+  - Prepare future compact artifact requests to reuse historical model responses without changing current stage inputs or outputs
+  - aliases retain stage/model/effort/schema/images and exact prompt formatting
+- **Verification & Test Results**:
+  - PDF execution/cache suite passed 34 tests
+  - shared conversion suite passed 21 tests
+  - callout geometry passed one test
+  - review selection passed eight tests
+  - quick pre-flight passed
+  - architecture suite passed 19 tests
+  - Graphify incremental update completed
+  - diff whitespace check passed
+  - no real fragment conversion or bulk cache migration run

@@ -2,7 +2,6 @@
 """Stage 02.45: reformat existing code blocks using resolved page JSON."""
 
 import argparse
-import json
 from pathlib import Path
 import sys
 
@@ -10,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
 from conversion.config import load_config, PDF_STAGES
+from common.pdf_cache import page_json_prompts
 from common.pdf_artifacts import read_json, write_json
 from common.pdf_page_conversion import resolved_page_files, CODE_REFORMAT_STAGE
 from common.pdf_schemas import object_schema, STRING
@@ -37,9 +37,9 @@ def reformat_code_block(workspace, config, pages=None):
                     codex = CodexClient(config, stage=CODE_REFORMAT_STAGE)
                 for target in candidates:
                     identity = target["segment_id"]
-                    request = prompt + "\n\nFrozen resolved page JSON and target code block:\n" + json.dumps(
-                        {"page_json": page, "target_code_block": target}, ensure_ascii=False)
-                    response = codex.generate_json(request, schema=RESPONSE)
+                    request, cache_prompt = page_json_prompts(prompt + "\n\nFrozen resolved page JSON and target code block:\n",
+                        {"page_json": page, "target_code_block": target})
+                    response = codex.generate_json(request, schema=RESPONSE, cache_prompt=cache_prompt)
                     replacements[identity] = {
                         **target, "md_text": response["md_text"],
                         "source_segment_ids": target.get("source_segment_ids", [identity]),

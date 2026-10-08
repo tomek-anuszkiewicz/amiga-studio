@@ -299,6 +299,16 @@ Use `--cache-dir` to override the shared `.cache/codex` request cache. PDF reque
 retain completion/authentication/transport handling and JSON parsing, with no local
 configuration/catalog checks, schema enforcement or validator callbacks. HTML keeps its existing validations.
 
+Stage 02 and refinement stages 02.40–02.47 also save successful responses under
+an additional key built from a compact copy of their input JSON, including on
+historical cache hits. The copy omits zero rotation (also in object metadata),
+false continuation, null heading level, empty/null Markdown text, source segment
+lineage, replacement stage and `image_only`. Meaningful values and field order
+remain. Inference still receives the historical full JSON; responses and saved
+stage artifacts remain unchanged. Existing compact-key responses are preserved.
+This prepares cache reuse for a later artifact simplification with the same prompt,
+schema, model/effort and images; it does not perform that simplification now.
+
 Final output remains in `<WORKSPACE>/14_link_toc/`. `--publish` requires completion
 through Stage 14 and copies Markdown/assets to the empty or absent sibling book
 directory without `-tmp`. Destination protection remains enforced before execution
