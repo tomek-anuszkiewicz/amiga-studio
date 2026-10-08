@@ -797,3 +797,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - English-language scans passed
   - All new relative documentation links resolve
   - No live proofreading or book conversion was run
+---
+
+### [2026-10-08 20:14 CEST] — BOOK-RECIPE-PROOFREAD-2: Refine chapter inputs and HTML formatting
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Use Markdown-linked images only when proofreading requires inspection
+  - Remove supplied-source and frontmatter instructions plus crop and rotation metadata references
+  - Allow inline-code emphasis for technical terms
+  - Remove run-in heading formatting and add HTML code math and escaping rules
+  - Align README usage with the prompt
+- **Architectural Rationale & Trade-Offs**:
+  - Follow the user-defined chapter-only agent workflow and preserve the generator-owned layout
+  - Respect different inline syntax in raw HTML
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture rules 19 tests passed
+  - English-language scans and relative links passed
+  - Whitespace check passed
+  - No live proofreading run
