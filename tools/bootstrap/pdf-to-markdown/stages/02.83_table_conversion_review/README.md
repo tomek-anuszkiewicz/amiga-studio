@@ -8,9 +8,9 @@ The Source panel shows original Stage 01 pixels for the table's recorded source
 group, using the persistent Stage 02.82 table crop at its original location. The
 Converted panel uses the same group assembly as page and stream export. It renders
 GFM and HTML tables, including cell spans, associated blocks in source order and
-the saved literal RAG text. For both Markdown and HTML tables, the textual
-companion and original-image companion are expanded in the review DOM. Both are
-collapsed in exported documents. Labels identify the physical page, segment ID and format.
+the saved literal RAG text for HTML tables. The original-image companion is
+expanded for both Markdown and HTML; the RAG companion is expanded only for HTML.
+These sections are collapsed in exported documents. Labels identify the physical page, segment ID and format.
 Unconverted tables show their retained raster with an explicit Unconverted label.
 
 During Markdown-to-HTML rendering, escape inline tags other than supported text

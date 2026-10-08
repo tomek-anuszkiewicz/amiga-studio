@@ -4107,3 +4107,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - git diff --check passed
   - no source fragment conversion run
   - old attempts require rerun from 02.81
+---
+
+### [2026-10-08 03:51 CET] — PDF-MARKDOWN-NO-RAG-1: Keep RAG companions exclusive to HTML
+- **Affected Subsystems**:
+  - `Shared table rendering`
+  - `Stage 02.81`
+  - `review and export documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Stop generating Markdown table RAG text
+  - emit RAG sections only for HTML
+  - retain expanded source-image review and collapsed source-image export for both formats
+  - ignore legacy Markdown RAG values while rendering
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the user's corrected scope while preserving source-image companions for Markdown and HTML
+- **Verification & Test Results**:
+  - Review and selection tests 7/7 passed
+  - offline export verified images for both formats and RAG only for HTML including absent and legacy Markdown RAG fields
+  - quick pre-flight passed
+  - architecture suite 19/19 passed
+  - Graphify AST refresh completed
+  - git diff --check passed
+  - no source fragment conversion run

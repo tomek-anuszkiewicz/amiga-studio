@@ -18,8 +18,9 @@ Copy saved Stage 02.82 crops for Markdown/HTML companions and unconverted tables
 `assets/asset_<node_id>.png`. Both converted formats publish their saved source crop. Graphics, covers and
 code blocks still use the existing Stage 01 cropper with padding and neighbor limits.
 Asset paths move forward with stage bundles. Final Stage 11 uses the same group
-assembly as page export and review, appending both collapsed companions after
-the last associated block exactly once, without reinference or appended group text.
+assembly as page export and review, appending the collapsed image companion for
+both formats and the RAG companion only for HTML after the last associated block,
+without reinference or appended group text.
 
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 03

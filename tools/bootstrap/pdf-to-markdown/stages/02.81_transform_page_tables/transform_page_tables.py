@@ -45,9 +45,9 @@ def transform_tables(workspace, config, pages=None):
                         table["table_source_asset"] = crop_path.relative_to(output).as_posix()
                         result = codex.generate_json(prompt, schema=RESPONSE, image_path=crop_path)
                         table["table_format"] = result["format"]
-                        if result["format"] != "unconverted":
-                            table["md_text"] = result["md_text"]
                         if converted(table):
+                            table["md_text"] = result["md_text"]
+                        if result["format"] == "html":
                             group = [{"segment_id": s["segment_id"], "type": s["type"],
                                       "md_text": s["md_text"]} for s in groups[table["segment_id"]]]
                             request = group_prompt + "\n\nSource-ordered group:\n" + json.dumps({
@@ -59,7 +59,7 @@ def transform_tables(workspace, config, pages=None):
                             if not companion["rag_text"].strip():
                                 raise ValueError(f"Empty table companion for {table['segment_id']}")
                             table["table_rag_text"] = companion["rag_text"]
-                            if result["format"] == "html" and simple_html(table["md_text"]):
+                            if simple_html(table["md_text"]):
                                 print(f"WARNING: {table['segment_id']} (physical page {page['page']}): "
                                       "HTML table has no merged cells and simple cell content; "
                                       "Markdown should be sufficient. Review format choice.")

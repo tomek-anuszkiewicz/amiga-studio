@@ -360,7 +360,7 @@ Unconverted retains original content; technical errors fail normally.
 Collect adjacent captions above and mixed caption/footnote/table_legend runs below,
 stopping at unrelated content or another table. Preserve ordered group IDs and
 warn about repeated types, captions on both sides and ambiguous shared ownership.
-Markdown and HTML tables require a separate crop/markup/source-ordered-group inference saving
+HTML tables require a separate crop/markup/source-ordered-group inference saving
 complete nonempty `table_rag_text`. Preserve all values and relationships without
 summarization. A conservative local simple-HTML warning changes no result.
 
@@ -376,16 +376,16 @@ without fallback. Restart 02.82 preserves transcription and clears its successor
 Stage 02.83 produces a labeled Source/Converted PNG per table from completed
 01/02.82 artifacts without inference or export dependency. Shared group assembly
 renders GFM/HTML with a local Playwright browser, complete source context, expanded
-literal RAG text and the original-image companion for both formats. Full-width/full-height
+literal RAG text only for HTML and the original-image companion for both formats. Full-width/full-height
 capture preserves long content; temporary HTML is separate from final PNGs.
 Rendering success does not certify source fidelity. The user selects and assesses
 real fragments; ingestion of details/code-block content remains deferred.
 
 Stage 02.90 and Stage 03 consume completed 02.82 directly, independently of review.
 02.90 emits one `document.md` with minimal filename-derived YAML/title and assets.
-Converted tables retain source positions; Markdown and HTML tables append a collapsed literal
-`Table text for RAG` companion after the last group block, then a collapsed
-`Original table image` section. Associated blocks remain visible once in source order.
+Converted tables retain source positions; HTML tables append a collapsed literal
+`Table text for RAG` companion after the last group block. Both Markdown and HTML
+append a collapsed `Original table image` section. Associated blocks remain visible once in source order.
 The renderer wraps saved text without additions or reinference. Markdown/HTML/unconverted tables copy saved 02.82 crops, never recrop.
 Graphics/covers continue to crop exact Stage 01 pixels for page export. A temporary
 bundle replaces old output and removes obsolete assets after successful writes.
@@ -398,9 +398,9 @@ nor reconverted/erased by 07. Unconverted tables retain the legacy path. Final 1
 uses shared group placement and copies referenced original-image assets without
 companion duplication. Later processing does not automatically rewrite saved RAG text.
 
-Existing Markdown table artifacts without `table_rag_text` require explicit
-regeneration from 02.81 before review or export. Neither stage fabricates missing
-group text or falls back to another representation.
+Markdown tables generate and emit no RAG companion; any saved legacy
+`table_rag_text` is ignored for that format. HTML still requires its saved group
+text. Neither review nor export fabricates missing HTML group text.
 
 Restart clears the selected stage and every later stage in execution order, even
 when stopping at that stage. Restart 02.81 preserves predecessors and rebuilds

@@ -8,9 +8,10 @@ Serializes chapter streams into standalone Markdown files formatted as `<output_
 4. Synchronizes visual assets and RAG sidecars into `<output_dir>/assets/`.
 
 Stage 02.81 converted table fragments remain independently visible even when their
-source continuation flag is true. For both Markdown and HTML tables, shared group assembly appends one collapsed
-`Table text for RAG` section using saved literal `table_rag_text`, then one collapsed
-`Original table image` section after the last associated source block. Captions,
+source continuation flag is true. Shared group assembly appends one collapsed
+`Table text for RAG` section using saved literal `table_rag_text` only for HTML,
+then one collapsed `Original table image` section for both Markdown and HTML
+after the last associated source block. Captions,
 footnotes and legends retain their visible source order. Copy the referenced original
 crop from the carried assets bundle; do not reinfer or duplicate companion text.
 

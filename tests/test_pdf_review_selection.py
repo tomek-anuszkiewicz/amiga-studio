@@ -81,16 +81,14 @@ class ReviewSelectionTests(unittest.TestCase):
         self.table_pages("02.80_filter_page_content")
         with patch.object(stage, "CodexClient") as client:
             transport = client.return_value.__enter__.return_value
-            transport.generate_json.side_effect = [
-                {"format": "markdown", "md_text": "| Name | Value |\n| --- | --- |\n| A | 1 |"},
-                {"rag_text": "Name A has value 1."},
-            ]
+            transport.generate_json.return_value = {
+                "format": "markdown", "md_text": "| Name | Value |\n| --- | --- |\n| A | 1 |"}
             stage.transform_tables(self.workspace, {"input": {"pages": [63]}}, pages=[64])
-        self.assertEqual(transport.generate_json.call_count, 2)
+        self.assertEqual(transport.generate_json.call_count, 1)
         output = self.workspace / stage.STAGE
         self.assertEqual([p.name for p in output.glob("*_segments.json")], ["page_0064_segments.json"])
         page = json.loads((output / "page_0064_segments.json").read_text())
-        self.assertEqual(page["segments"][0]["table_rag_text"], "Name A has value 1.")
+        self.assertNotIn("table_rag_text", page["segments"][0])
 
     def test_table_review_renders_only_selected_page(self):
         stage = stage_module("02.83_table_conversion_review", "render_table_review")
@@ -126,10 +124,11 @@ class ReviewSelectionTests(unittest.TestCase):
         self.assertIn("<label>", converted.get_text())
         self.assertIsNone(converted.find("data"))
         details = converted.find_all("details")
-        self.assertEqual(len(details), 2)
+        self.assertEqual(len(details), 1)
         self.assertTrue(all("open" in item.attrs for item in details))
-        self.assertEqual(details[0].find("code").get_text().strip(), table["table_rag_text"])
-        self.assertTrue(details[1].find("img")["src"].startswith("data:image/png;base64,"))
+        self.assertEqual(details[0].find("summary").get_text(), "Original table image")
+        self.assertNotIn(table["table_rag_text"], converted.get_text())
+        self.assertTrue(details[0].find("img")["src"].startswith("data:image/png;base64,"))
 
     def test_callout_requests_only_selected_page(self):
         stage = stage_module("02.40_reclassify_callouts", "reclassify_callouts")

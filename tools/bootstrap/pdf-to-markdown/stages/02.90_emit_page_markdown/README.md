@@ -5,10 +5,11 @@ Stage 02.82 full page JSONs and Stage 01 original PNGs. Preserve physical-page
 and segment-array order, unchanged textual Markdown, captions, notes and legends.
 Minimal YAML and a heading use the source filename stem. Empty input remains valid.
 
-Converted tables emit `md_text` at their original position. Markdown and HTML tables append
+Converted tables emit `md_text` at their original position. HTML tables append
 one collapsed `Table text for RAG` section containing the saved complete group text
-in a literal fenced text block after the last associated block, followed by a
-collapsed `Original table image` section. Associated source blocks remain visible
+in a literal fenced text block after the last associated block. Both Markdown
+and HTML append a collapsed `Original table image` section. Markdown tables
+generate and emit no RAG companion. Associated source blocks remain visible
 once in their original positions. Both converted formats publish their saved
 source crop. Unconverted tables retain their visible raster.
 

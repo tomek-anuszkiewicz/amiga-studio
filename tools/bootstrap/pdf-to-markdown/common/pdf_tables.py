@@ -104,11 +104,13 @@ def simple_html(markup):
 
 
 def companions(table, asset_reference):
-    text = table["table_rag_text"]
-    fence = "`" * max(3, max((len(m[0]) + 1 for m in re.finditer(r"`+", text)), default=3))
-    return ("<details>\n<summary>Table text for RAG</summary>\n\n"
-            f"{fence}text\n{text}\n{fence}\n\n</details>\n\n"
-            "<details>\n<summary>Original table image</summary>\n\n"
+    rag = ""
+    if table.get("table_format") == "html":
+        text = table["table_rag_text"]
+        fence = "`" * max(3, max((len(m[0]) + 1 for m in re.finditer(r"`+", text)), default=3))
+        rag = ("<details>\n<summary>Table text for RAG</summary>\n\n"
+               f"{fence}text\n{text}\n{fence}\n\n</details>\n\n")
+    return (rag + "<details>\n<summary>Original table image</summary>\n\n"
             f"![Original table {table['segment_id']}]({asset_reference})\n\n</details>")
 
 

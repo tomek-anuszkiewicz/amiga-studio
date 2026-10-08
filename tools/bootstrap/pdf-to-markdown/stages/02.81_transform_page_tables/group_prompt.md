@@ -1,4 +1,4 @@
-You receive a source table image, its Markdown or HTML transcription and associated caption,
+You receive a source table image, its HTML transcription and associated caption,
 footnote and table_legend blocks in their original reading order.
 
 Prepare a faithful plain-text version of this complete group for RAG retrieval.
