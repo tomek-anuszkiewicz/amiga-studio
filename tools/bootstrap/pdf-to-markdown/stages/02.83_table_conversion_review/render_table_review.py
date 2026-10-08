@@ -6,6 +6,7 @@ import base64
 from html import escape
 from io import BytesIO
 from pathlib import Path
+import re
 import sys
 import tempfile
 
@@ -34,6 +35,19 @@ pre { white-space: pre; background: #f3f5f7; padding: 16px; width: max-content; 
 details { margin: 16px 0; } summary { cursor: pointer; } img { max-width: 1000px; height: auto; }
 """
 
+INLINE_FORMATTING = frozenset({"a", "b", "br", "code", "del", "em", "i", "img", "ins",
+                              "kbd", "mark", "s", "samp", "small", "span", "strong",
+                              "sub", "sup", "u", "var"})
+
+
+def render_inline_html(tokens, index, options, env):
+    """Keep intentional inline formatting; display source placeholders literally."""
+    content = tokens[index].content
+    tag = re.match(r"</?([A-Za-z][A-Za-z0-9-]*)\b", content)
+    if tag and tag[1].lower() in INLINE_FORMATTING:
+        return content
+    return escape(content, quote=False)
+
 
 def png_uri(image):
     with BytesIO() as data:
@@ -58,6 +72,7 @@ def comparison_html(workspace, entry, page, table):
             source_uri = png_uri(context)
     markdown = ordered_markdown(group, segment_markdown, lambda _: table_uri)
     renderer = MarkdownIt("commonmark", {"html": True}).enable("table")
+    renderer.renderer.rules["html_inline"] = render_inline_html
     dom = BeautifulSoup(renderer.render(markdown), "html.parser")
     for img in dom.find_all("img"):
         if str(img.get("src", "")).startswith("assets/"):

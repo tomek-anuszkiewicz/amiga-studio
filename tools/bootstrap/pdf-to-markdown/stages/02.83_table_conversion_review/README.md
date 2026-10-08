@@ -13,6 +13,12 @@ DOM; the following original-image companion remains collapsed. Both are collapse
 in exported documents. Labels identify the physical page, segment ID and format.
 Unconverted tables show their retained raster with an explicit Unconverted label.
 
+During Markdown-to-HTML rendering, escape inline tags other than supported text
+formatting so operand placeholders such as `#<data>` remain visible. Preserve
+inline formatting such as `<sub>`/`<sup>`, existing entities and code spans. Raw
+HTML table blocks and generated details companions remain HTML. This affects the
+review DOM only; saved JSON and exported Markdown are not rewritten.
+
 Rendering uses `markdown-it-py` and Playwright with an installed Microsoft Edge
 headless backend (`table_review.browser_channel: msedge`). Install shared Python
 requirements. Select `chrome` for installed Chrome, or `chromium` after

@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from PIL import Image
+from bs4 import BeautifulSoup
 
 ROOT = Path(__file__).resolve().parents[1]
 PDF = ROOT / "tools/bootstrap/pdf-to-markdown"
@@ -98,6 +99,26 @@ class ReviewSelectionTests(unittest.TestCase):
         self.assertEqual(comparison.call_args.args[2]["page"], 64)
         self.assertEqual(page.screenshot.call_count, 1)
         self.assertEqual(Path(page.screenshot.call_args.kwargs["path"]).name, "page_0064_table_review.png")
+
+    def test_table_review_preserves_literal_angle_brackets_and_inline_formatting(self):
+        stage = stage_module("02.83_table_conversion_review", "render_table_review")
+        assets = self.workspace / stage.STAGE / "assets"
+        assets.mkdir(parents=True)
+        Image.new("RGB", (10, 10), "white").save(assets / "table.png")
+        table = {"segment_id": "table", "type": "table", "table_format": "markdown",
+                 "table_source_asset": "assets/table.png", "table_group_segment_ids": ["table"],
+                 "bbox": [0, 0, 10, 10], "md_text": (
+                     "| Operand | Mode |\n| --- | --- |\n"
+                     "| #<data> | (d<sub>16</sub>,PC) |\n"
+                     "| `#<data>` | &lt;label&gt; |\n")}
+        document = stage.comparison_html(self.workspace, {"png_file": "01_preprocess/page_0064.png"},
+                                         {"page": 64, "segments": [table]}, table)
+        converted = BeautifulSoup(document, "html.parser").select_one(".converted")
+        self.assertIn("#<data>", converted.find("td").get_text())
+        self.assertEqual(converted.find("sub").get_text(), "16")
+        self.assertEqual(converted.find("code").get_text(), "#<data>")
+        self.assertIn("<label>", converted.get_text())
+        self.assertIsNone(converted.find("data"))
 
     def test_callout_requests_only_selected_page(self):
         stage = stage_module("02.40_reclassify_callouts", "reclassify_callouts")

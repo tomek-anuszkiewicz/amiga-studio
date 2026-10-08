@@ -4059,3 +4059,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify AST refresh completed
   - git diff --check passed
   - no source fragment conversion or milestone gate run
+---
+
+### [2026-10-08 03:42 CET] — PDF-REVIEW-ESCAPING-1: Preserve literal inline placeholders in table review
+- **Affected Subsystems**:
+  - `Stage 02.83 Markdown-to-HTML rendering`
+  - `review regression tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Escape inline HTML tokens outside supported text formatting so angle-bracket operands remain visible
+  - retain subscript formatting entities code spans and raw HTML blocks
+  - regenerate the existing selected 19-page attempt through Stage 02.83 only
+- **Architectural Rationale & Trade-Offs**:
+  - The saved JSON retained #<data> but browser interpretation hid the data tag in the converted panel
+  - repair presentation without modifying source artifacts
+- **Verification & Test Results**:
+  - Regression reproduced the original failure then passed
+  - review tests 7/7 passed
+  - quick pre-flight passed
+  - architecture tests 19/19 passed
+  - 24 review PNGs regenerated without inference
+  - inspected reported page 54 PNG and confirmed visible #<data> and retained subscripts
+  - Graphify AST refresh completed
+  - git diff --check passed
+  - exported Markdown remains unchanged
