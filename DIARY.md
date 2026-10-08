@@ -843,3 +843,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19 tests
   - Graphify incremental refresh completed
   - no source fragment or full-book conversion requested or run
+---
+
+### [2026-10-08 20:52 CET] — Add draft table and image description prompts
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Add separate prompts for describing prepared table and image groups
+  - document supplied details sections with names, notes, legends and Markdown or HTML tables
+  - return descriptions for insertion without altering source content
+- **Architectural Rationale & Trade-Offs**:
+  - Use user-defined grouping as context for preliminary description prompts rather than rediscovering associations
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture suite passed 19 tests
+  - prompt and README references reviewed
+  - no model requests, fragment conversions or automatic insertion implemented

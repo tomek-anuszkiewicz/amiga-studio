@@ -11,3 +11,12 @@ The instruction combines source-faithful OCR correction with limited Markdown fo
 This draft preserves chapter Markdown structure and filenames during explicitly
 requested proofreading and formatting. Its prompts are self-contained.
 Further scope reduction follows user review.
+
+## Table and image descriptions
+
+Two initial prompts support separately requested descriptions:
+
+- [Table description](prompts/describe-tables.md) explains table entries, values and relationships, including merged HTML cells.
+- [Image description](prompts/describe-images.md) explains the inspected image's components, labels and visual relationships.
+
+Supply one already identified group in a `<details>` section: its name or caption, associated notes and legend, and the Markdown/HTML table or image reference. The prompts use this grouping directly. They return an English Markdown description for insertion into the same section while preserving the source material. Image processing requires access to the actual image. These are prompt drafts for manual agent use; automatic execution and insertion are not implemented.
