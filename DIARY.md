@@ -3929,3 +3929,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify AST refresh passed
   - no other pages publication or milestone gate ran
   - plan remains active pending user assessment
+---
+
+### [2026-10-08 02:26 CET] — PDF-ORDER-2.46: Close reading-order review task at user request
+- **Affected Subsystems**:
+  - `PDF bootstrap reading-order review`
+  - `execution-plan lifecycle`
+- **What Was Changed (The Concrete Reality)**:
+  - Record explicit user-directed closure of PDF-ORDER-2.46
+  - remove its active execution plan
+  - retain implementation from commit 62eb5cc and the page-82 attempt artifacts
+- **Architectural Rationale & Trade-Offs**:
+  - Delivered scope includes bounded right-before-left detection whole-page original/labeled vision complete ID permutation mapping sparse overrides resolver selection restart configuration and documentation
+  - detector misses vertically disjoint inversions and can flag legitimate columns
+  - user requested closure without further samples or expanded detection
+- **Verification & Test Results**:
+  - Closure quick pre-flight passed
+  - closure architecture suite 19/19 passed
+  - implementation verification retained from 62eb5cc: selection 6/6 PDF execution/config/restart 30/30 shared config/cache/transport 21/21 and Graphify AST refresh
+  - page 82 stages 02.46 and 02.5 succeeded with one live request zero cache hits and order 002 001 003-013 preserving every object field and page metadata
+  - no new conversion publication or milestone gate ran
+  - closure does not certify other pages or exhaustive reading-order correctness
