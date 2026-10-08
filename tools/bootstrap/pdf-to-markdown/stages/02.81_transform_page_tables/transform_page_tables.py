@@ -6,6 +6,7 @@ from copy import deepcopy
 from pathlib import Path
 import sys
 import tempfile
+from time import perf_counter
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
@@ -36,9 +37,13 @@ def transform_tables(workspace, config, pages=None):
                                            pages=pages):
             tables = [s for s in page["segments"] if s["type"] == "table"]
             if tables:
+                print(f"[tables] {entry['page_id']}: {len(tables)} tables", flush=True)
                 original = deepcopy(page)
                 with Image.open(workspace / entry["png_file"]) as image:
-                    for table in tables:
+                    for index, table in enumerate(tables, 1):
+                        label = f"{table['segment_id']} ({index}/{len(tables)})"
+                        print(f"[table] {label}: transcribing...", flush=True)
+                        started = perf_counter()
                         crop_path = Path(temporary) / f"{table['segment_id']}.png"
                         with image.crop(tuple(table["bbox"])) as crop:
                             crop.save(crop_path)
@@ -49,10 +54,17 @@ def transform_tables(workspace, config, pages=None):
                         if converted(table):
                             table["md_text"] = result["md_text"]
                         counts[result["format"]] += 1
+                        print(f"[table] {label}: {result['format']} in "
+                              f"{perf_counter() - started:.2f}s", flush=True)
                 if page != original:
                     write_json(output / f"{entry['page_id']}_segments.json", page)
                     saved_pages += 1
-    print(f"[tables] {counts}; changed pages saved: {saved_pages}; JSON: {output}")
+                    print(f"[tables] {entry['page_id']}: changed page saved", flush=True)
+                else:
+                    print(f"[tables] {entry['page_id']}: unchanged; no file saved", flush=True)
+            else:
+                print(f"[tables] {entry['page_id']}: no tables; skipped", flush=True)
+    print(f"[tables] {counts}; changed pages saved: {saved_pages}; JSON: {output}", flush=True)
 
 
 def main():

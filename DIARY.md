@@ -1087,3 +1087,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - all 19 architecture tests pass
   - git diff --check passes
   - no live book rerun requested or performed
+---
+
+### [2026-10-08 22:34 CET] — Show live PDF table transcription progress
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.81_transform_page_tables`
+  - `tools/bootstrap/pdf-to-markdown/pipeline.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Flush table request start and completion messages immediately with segment identity, page-local position, format and elapsed time
+  - log changed, unchanged and table-free pages
+  - flush stage banners before starting workers
+- **Architectural Rationale & Trade-Offs**:
+  - Make long table inference visible in the console instead of waiting for the final stage summary
+- **Verification & Test Results**:
+  - 31 existing PDF tests pass and exercise progress output
+  - quick preflight passes
+  - 19 architecture tests pass
+  - Graphify update completes
+  - no live book rerun performed

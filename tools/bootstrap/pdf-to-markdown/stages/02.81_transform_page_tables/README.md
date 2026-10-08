@@ -11,6 +11,9 @@ Pages without tables and unchanged table pages remain solely in Stage 02.80.
 The orchestrator records this invocation's page range in the 02.81 status entry;
 Stage 02.90 overlays the saved replacements on that selected filtered dataset.
 An empty output directory is valid and does not remove unchanged pages from export.
+Console progress is flushed immediately: each table logs its identity, position
+within the page, request start, returned format and elapsed time. Each page logs
+whether it was saved, unchanged or skipped because it contains no tables.
 
 The [prompt](prompt.md) uses Markdown where possible and HTML with `rowspan` and
 `colspan` for merged cells. An `unconverted` result preserves the original content
