@@ -4293,3 +4293,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick pre-flight and 19 architecture tests passed
   - Graphify update and whitespace checks completed
   - No fragment conversion, existing JSON rewrite, cache mutation, publishing or indexing performed
+---
+
+### [2026-10-08 16:06 CET] — PDF-GRAPHIC-2: Preserve coordinated subfigure descriptions
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.47_reclassify_graphics`
+  - `bootstrap conversion documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Restrict graphic text extraction to independent field explanations or explanatory notes
+  - preserve coordinated subfigure descriptions when partial extraction breaks visual consistency
+  - synchronize stage and developer documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Whitespace or placement below a drawing does not establish that a description is independent of a multi-part illustration
+- **Verification & Test Results**:
+  - Selected physical pages 21 and 35 ran through stages 02.47 and 02.50 in workspace/graphics-fields-21-35 using copied successful predecessors and existing attempt settings: two live model calls, page 21 retained intact, page 35 split into graphic and explanatory prose
+  - review PNGs inspected
+  - user quality assessment remains pending. Quick pre-flight passed
+  - architecture tests passed 19/19
+  - scoped diff check passed. No full-book conversion or new quality tests.

@@ -309,15 +309,17 @@ images and published content. The detector misses vertically disjoint inversions
 and other layouts; legitimate column flow may be flagged for model assessment.
 See [Stage 02.46](pdf-to-markdown/stages/02.46_review_reading_order/README.md).
 
-Stage 02.47 asks whether a resolved graphic contains clearly separate descriptive
-text, using the complete original PNG, frozen JSON and target bbox. It retains
+Stage 02.47 asks whether a resolved graphic contains clearly separate field
+explanations or explanatory notes, using the complete original PNG, frozen JSON and target bbox. It retains
 the source or splits it into graphic/prose children with their own tight boxes
 and source order. Labels and text graphically connected to the illustration
-remain inside the graphic; a separate description may still concern the drawing.
+remain inside the graphic. Coordinated subfigure descriptions also remain inside
+when extracting only some would break the figure's visual consistency; placement
+below a drawing alone does not establish independence.
 Shared replacement handling assigns stable child IDs; prose drops rotation.
 Whole-target table reclassification is no longer performed. Sparse overrides
 feed review/filtering; restart clears 02.47 and later artifacts only.
-See [Stage 02.47](pdf-to-markdown/stages/02.47_reclassify_graphics/README.md). The current user-selected trial is page 35.
+See [Stage 02.47](pdf-to-markdown/stages/02.47_reclassify_graphics/README.md). The current user-selected trial covers pages 21 and 35.
 
 
 Stage 02.50 reads resolved Stage 02 JSON and the exact Stage 01 PNG.
