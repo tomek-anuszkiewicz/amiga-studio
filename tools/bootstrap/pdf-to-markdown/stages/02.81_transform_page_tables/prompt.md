@@ -3,6 +3,9 @@ table if possible; otherwise use an HTML table. Do not add or omit content.
 If any cell spans multiple rows or columns, use an HTML table with the appropriate
 `rowspan` and `colspan` attributes. Preserve all merged cells; do not flatten them
 into a Markdown table.
+Return table markup only, without added descriptions, source-image links or
+`<details>` sections. Captions, notes and legends supplied as separate objects
+remain outside this conversion.
 If the table cannot be transcribed, return "unconverted".
 
 Return only a JSON object with these fields:

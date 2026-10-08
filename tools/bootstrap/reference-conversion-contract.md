@@ -225,34 +225,24 @@ Transcribe each table from its exact unpadded pixel crop using the minimal table
 prompt, existing Codex transport/cache, original detail and explicit model/effort.
 Tables with merged cells must use HTML with the appropriate `rowspan` and `colspan`
 attributes, preserving row and column spans rather than flattening them into Markdown.
-Save all crops in 02.81 assets and `table_source_asset`, including Markdown and
-unconverted results. Preserve full pages and all source fields/order. Converted
-markup occupies `md_text`, with `table_format` recording markdown/html/unconverted.
-Unconverted retains original content; technical errors fail normally.
+Stage 02.81 makes one transcription request per table, replacing only `md_text`
+and recording `table_format`. Preserve all other source objects and their order,
+including separate captions, notes and legends. An unconverted result preserves
+original content and raster behavior. Crops are temporary request inputs and are
+removed after execution; no persistent table source assets, group assignments,
+RAG inference or descriptions are produced. Retired companion fields are omitted
+from converted output. Technical errors stop execution normally.
 
-Collect adjacent captions above and mixed caption/footnote/table_legend runs below,
-stopping at unrelated content or another table. Preserve ordered group IDs and
-warn about repeated types, captions on both sides and ambiguous shared ownership.
-HTML tables require a separate crop/markup/source-ordered-group inference saving
-complete nonempty `table_rag_text`. Preserve all values and relationships without
-summarization. A conservative local simple-HTML warning changes no result.
-
-Stage 02.90 consumes completed Stage 01/02.81 directly.
-02.90 emits one `document.md` with minimal filename-derived YAML/title and assets.
-Converted tables retain source positions; HTML tables append a collapsed literal
-`Table text for RAG` companion after the last group block. Both Markdown and HTML
-append a collapsed `Original table image` section. Associated blocks remain visible once in source order.
-The renderer wraps saved text without additions or reinference. Markdown/HTML/unconverted tables copy saved 02.81 crops, never recrop.
-Graphics/covers continue to crop exact Stage 01 pixels for page export. A temporary
-bundle replaces old output and removes obsolete assets after successful writes.
-
-Markdown tables generate and emit no RAG companion; any saved legacy
-`table_rag_text` is ignored for that format. HTML still requires its saved group
-text. Export never fabricates missing HTML group text.
+Stage 02.90 consumes completed Stage 01/02.81 directly and emits one `document.md`
+with minimal filename-derived YAML/title. Converted table Markdown or HTML stays
+at its original position, with no `<details>` or image/text companions. Unconverted
+tables, graphics and covers crop exact Stage 01 pixels. A temporary bundle replaces
+old output and removes obsolete assets after successful writes. Grouping and
+descriptions belong to separately requested book processing.
 
 Restart clears the selected stage and every later stage in execution order, even
 when stopping at that stage. Restart 02.81 preserves predecessors and rebuilds
-persistent crops and clears export. Stage 02.81 requires completed 01/02.80;
+table markup and clears export. Stage 02.81 requires completed 01/02.80;
 Stage 02.90 requires completed 01/02.81. No automatic continuation or completed-stage
 skipping occurs. Existing exports require explicit regeneration from 02.90 using
 the intended 02.81 dataset. Implementation does not mutate old attempts.

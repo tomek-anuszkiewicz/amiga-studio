@@ -83,13 +83,25 @@ class ReviewSelectionTests(unittest.TestCase):
         with patch.object(stage, "CodexClient") as client:
             transport = client.return_value.__enter__.return_value
             transport.generate_json.return_value = {
-                "format": "markdown", "md_text": "| Name | Value |\n| --- | --- |\n| A | 1 |"}
+                "format": "html", "md_text": '<table><tr><td colspan="2">A</td></tr></table>'}
             stage.transform_tables(self.workspace, {"input": {"pages": [63]}}, pages=[64])
         self.assertEqual(transport.generate_json.call_count, 1)
         output = self.workspace / stage.STAGE
         self.assertEqual([p.name for p in output.glob("*_segments.json")], ["page_0064_segments.json"])
         page = json.loads((output / "page_0064_segments.json").read_text())
-        self.assertNotIn("table_rag_text", page["segments"][0])
+        table = page["segments"][0]
+        self.assertEqual(table["md_text"], transport.generate_json.return_value["md_text"])
+        self.assertEqual(table["table_format"], "html")
+        for key in ("table_rag_text", "table_group_segment_ids", "table_source_asset"):
+            self.assertNotIn(key, table)
+        self.assertFalse((output / "assets").exists())
+        self.assertFalse(list(self.workspace.glob(".02.81-*")))
+        from common.pdf_page_markdown import document_markdown, crop_objects
+        pages = [({"page_id": "page_0064"}, page)]
+        markdown = document_markdown(pages, {"name": "fixture.pdf"})
+        self.assertIn(table["md_text"], markdown)
+        self.assertNotIn("<details>", markdown)
+        self.assertEqual(list(crop_objects(pages)), [])
 
 
 if __name__ == "__main__":

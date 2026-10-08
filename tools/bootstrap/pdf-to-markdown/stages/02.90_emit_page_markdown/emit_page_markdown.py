@@ -5,7 +5,6 @@ import argparse
 from pathlib import Path
 import sys
 import tempfile
-import shutil
 
 from PIL import Image
 
@@ -32,13 +31,7 @@ def emit_page_markdown(workspace, pdf_path):
         assets.mkdir(parents=True)
         # Open each original PNG once; no point conversion, padding or resizing.
         for entry, value in pages:
-            page_crops = []
-            for segment in crops_by_page.get(entry["page_id"], []):
-                if segment["type"] == "table":
-                    shutil.copy2(workspace / STAGE / segment["table_source_asset"],
-                                 assets / f"{segment['segment_id']}.png")
-                else:
-                    page_crops.append(segment)
+            page_crops = crops_by_page.get(entry["page_id"], [])
             if not page_crops:
                 continue
             context = entry["page_id"]

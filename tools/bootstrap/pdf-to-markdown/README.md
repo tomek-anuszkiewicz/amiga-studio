@@ -38,14 +38,17 @@ Each stage reads explicitly named predecessors and writes its own results.
 | [01](stages/01_preprocess/README.md) | Prepared PDF -> positioned text JSON and physical-page PNGs |
 | [02](stages/02_page_conversion/README.md) | Stage 01 -> ordered logical objects, Markdown and pixel boxes |
 | [02.80](stages/02.80_filter_page_content/README.md) | Stage 01/02 -> filtered objects and fixed NXP-logo exclusion |
-| [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> table markup, saved crops and HTML group text |
+| [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> table markup |
 | [02.90](stages/02.90_emit_page_markdown/README.md) | Stage 01/02.81 -> `document.md` and required raster assets |
 
 Filtering reads Stage 02 directly, without reclassification overrides.
 Table conversion reads only Stage 02.80; omitted pages never fall back to Stage 02.
-Export reads Stage 02.81 directly and copies its saved table crops. Converted
-Markdown and HTML tables retain original-image companions; HTML alone includes
-saved RAG text. Empty rows are preserved as produced by table conversion.
+Export reads Stage 02.81 directly and emits converted table markup at its source
+position, without `<details>`, RAG text or source-image companions. Stage 02.81
+uses temporary crops for transcription only. Separate captions, notes and legends
+remain unchanged; grouping and descriptions belong to later book processing.
+Empty rows are preserved as produced by table conversion. Unconverted tables
+retain a raster fallback cropped from Stage 01.
 Graphics and covers crop exact Stage 01 pixels. The emitter replaces its bundle
 after successful writes and removes obsolete assets.
 

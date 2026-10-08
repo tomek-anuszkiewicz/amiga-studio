@@ -859,3 +859,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19 tests
   - prompt and README references reviewed
   - no model requests, fragment conversions or automatic insertion implemented
+---
+
+### [2026-10-08 20:55 CET] — Limit Stage 02.81 to table markup replacement
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `tests/test_pdf_review_selection.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Use one transcription request per table and temporary crops
+  - remove table group inference, RAG text, persistent source companions and their prompt
+  - emit converted table markup directly in Stage 02.90
+  - crop only raster fallbacks
+  - update documentation and the existing HTML selection regression
+- **Architectural Rationale & Trade-Offs**:
+  - User restricted Stage 02.81 to replacing a table with Markdown or HTML
+  - grouping and descriptions belong to later book processing
+- **Verification & Test Results**:
+  - 58 converter/publication tests and 3 selection tests passed
+  - HTML regression confirmed one request, preserved markup, no companion fields or persistent request assets and no details in page export
+  - quick preflight passed
+  - 19 architecture tests passed
+  - Graphify refreshed
+  - no source fragment conversion requested or run

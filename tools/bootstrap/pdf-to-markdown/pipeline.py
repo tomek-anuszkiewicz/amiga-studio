@@ -52,7 +52,7 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
     },
     {
         "id": "02.81", "dir": "02.81_transform_page_tables", "script": "transform_page_tables.py",
-        "desc": "Transcribe page table crops and save source crops and HTML group text",
+        "desc": "Replace table content with Markdown or HTML",
         "targets": ["02.81_transform_page_tables"],
         "inspect": ("page_*_segments.json", "transcribed table page JSON files"),
     },

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from .pdf_page_conversion import DEFERRED_TEXT_TYPES
-from .pdf_tables import converted, ordered_markdown
+from .pdf_tables import converted
 
 
 def segment_markdown(segment):
@@ -18,7 +18,7 @@ def crop_objects(pages):
     """Retain the physical-page and segment-array order."""
     for entry, value in pages:
         for segment in value["segments"]:
-            if segment["type"] in DEFERRED_TEXT_TYPES:
+            if segment["type"] in DEFERRED_TEXT_TYPES and not converted(segment):
                 yield entry, segment
 
 
@@ -27,6 +27,6 @@ def document_markdown(pages, source):
     title = Path(source["name"]).stem
     parts = [f"---\ntitle: {json.dumps(title, ensure_ascii=False)}\n---\n\n# {title}"]
     for entry, value in pages:
-        parts.append(ordered_markdown(value["segments"], segment_markdown,
-                                     lambda s: f"assets/{s['segment_id']}.png"))
+        parts.extend(content for segment in value["segments"]
+                     if (content := segment_markdown(segment)))
     return "\n\n".join(parts) + "\n"

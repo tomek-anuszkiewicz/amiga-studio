@@ -1,54 +1,32 @@
 # Stage 02.81: Transform Page Tables
 
-Read completed Stage 02.80 page JSONs and Stage 01 original PNGs. Only `table`
-objects are transcribed. Preserve full pages, identities, geometry, classifications,
-continuation flags and reading order. Save exact unpadded original-resolution crops
-once in `assets/<segment_id>.png`, referenced by stage-relative `table_source_asset`.
-All outcomes retain their crops. Restart through the orchestrator rebuilds the stage
-and clears all later outputs while preserving predecessors and request cache.
+Read completed Stage 02.80 page JSONs and Stage 01 original PNGs. For each `table`,
+make one Codex request using its exact unpadded pixel crop. Replace only the
+table's `md_text` with the returned Markdown or HTML and record `table_format`.
+Preserve identity, geometry, classification, continuation, object order and all
+other source objects, including separate captions, notes and legends.
 
-One Codex request per crop returns `format` (`markdown`, `html`, `unconverted`)
-and `md_text`. Converted tables retain `type: table`, with markup in `md_text`
-and the result in `table_format`. Unconverted tables retain original content and
-raster behavior. Transport, authentication and JSON parsing failures stop the stage.
-The minimal [table prompt](prompt.md) uses configured `gpt-6.1-sol`, medium effort,
-original image detail, ChatGPT authentication and the shared request cache.
-Tables with cells spanning multiple rows or columns must use HTML with `rowspan`
-and `colspan`, preserving the merged cells rather than flattening them into Markdown.
+The [prompt](prompt.md) uses Markdown where possible and HTML with `rowspan` and
+`colspan` for merged cells. An `unconverted` result preserves the original content
+and raster fallback. Transport, authentication and JSON parsing failures stop the stage.
+The configured model/effort, original image detail, ChatGPT authentication and
+shared request cache remain in use.
 
-Collect adjacent captions above the table and the adjacent mixed run of captions,
-footnotes and table legends below it. Stop at unrelated content or another table;
-do not join pages. Record source-ordered `table_group_segment_ids`. Warn about
-repeated associated types, captions on both sides and ambiguous shared ownership.
-Keep every source block once in the visible document, including anomalous blocks.
+Crops are temporary request inputs and are removed after execution. No persistent
+source crops, group assignments, descriptions, RAG text or `<details>` companions
+are generated. Retired table companion fields are omitted from converted output.
+Stage 02.90 emits the saved table markup directly, without a companion image.
+Description and grouping work belongs to separately requested book processing.
 
-HTML results require a separate [group inference](group_prompt.md) with the original
-crop, converted table markup and all associated texts in source order. Save its complete nonempty
-text in `table_rag_text` before completing. Markdown and unconverted results skip it.
-Changed group inputs change the cache identity. Export reuses this text,
-without reinference, summarization or appended copies of associated blocks.
-
-After the last group block, HTML export adds a collapsed `Table text for RAG`
-details section with a literal fenced text block. Both Markdown and HTML append
-a collapsed `Original table image` section referencing the bundled crop. Both formats publish their saved crop;
-unconverted tables retain their visible raster. A conservative local HTML heuristic
-warns about regular grids without effective merges or complex cell content, including
-cache results; it does not change markup, retry inference or certify fidelity.
-
-Stage 02.80 is the fixed predecessor and must have completed successfully.
-Missing filtered pages never fall back to Stage 02.
+Stage 02.80 is the fixed predecessor; missing filtered pages never fall back to
+Stage 02. Restart through the orchestrator clears this stage and later outputs,
+preserving predecessors and request cache.
 
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.81 --to-stage 02.81
 ```
 
-Use a named attempt and only the fragment selected by the user. Do not rewrite
-an existing attempt's model settings or continue beyond the requested end stage.
-Completed output feeds [page export](../02.90_emit_page_markdown/README.md) directly.
-See the [conversion contract](../../../reference-conversion-contract.md).
-
-Stage 02.80 input remains authoritative, including page omissions.
-Table groups and companions are inferred from its retained objects here.
-
-Markdown tables require no `table_rag_text`; any saved legacy value is ignored
-when rendering companions.
+Use a named attempt and only the fragment selected by the user. Existing saved
+outputs require explicit regeneration to adopt this change. See
+[page export](../02.90_emit_page_markdown/README.md) and the
+[conversion contract](../../../reference-conversion-contract.md).
