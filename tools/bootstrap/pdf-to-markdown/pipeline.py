@@ -77,7 +77,7 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
     },
     {
         "id": "02.45", "dir": CODE_REFORMAT_STAGE, "script": "reformat_code_block.py",
-        "desc": "Reformat code blocks and indentation using original-page vision",
+        "desc": "Reformat code blocks and indentation using resolved page JSON",
         "targets": [CODE_REFORMAT_STAGE],
         "inspect": ("page_*_segments.json", "sparse reformatted code pages"),
     },

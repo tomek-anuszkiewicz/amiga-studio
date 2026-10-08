@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage 02.45: reformat existing code blocks using original-page vision."""
+"""Stage 02.45: reformat existing code blocks using resolved page JSON."""
 
 import argparse
 import json
@@ -33,14 +33,13 @@ def reformat_code_block(workspace, config, pages=None):
             page_id = path.stem.removesuffix("_segments")
             replacements = {}
             if candidates:
-                source = workspace / "01_preprocess" / f"{page_id}.png"
                 if codex is None:
-                    codex = CodexClient(config, stage=CODE_REFORMAT_STAGE, images=True)
+                    codex = CodexClient(config, stage=CODE_REFORMAT_STAGE)
                 for target in candidates:
                     identity = target["segment_id"]
                     request = prompt + "\n\nFrozen resolved page JSON and target code block:\n" + json.dumps(
                         {"page_json": page, "target_code_block": target}, ensure_ascii=False)
-                    response = codex.generate_json(request, schema=RESPONSE, image_path=source)
+                    response = codex.generate_json(request, schema=RESPONSE)
                     replacements[identity] = {
                         **target, "md_text": response["md_text"],
                         "source_segment_ids": target.get("source_segment_ids", [identity]),

@@ -102,9 +102,10 @@ Pages without code blocks make no model requests. Shared optional-status, page
 selection and restart rules apply. See [Stage 02.43](pdf-to-markdown/stages/02.43_reclassify_code_blocks/README.md).
 
 Stage 02.45 reformats each resolved `code_block` with one request per block,
-using the frozen page JSON, target ID/Markdown and complete original Stage 01
-PNG at original detail. Return fenced `md_text`, paying particular attention to
-indentation, nesting, spaces and tabs. Preserve tokens, comments, values, line
+using only the frozen page JSON and target ID/Markdown, without a page image.
+Return fenced `md_text` with structural indentation: four spaces per nesting
+level, consistent brace alignment and indentation tabs normalized to spaces.
+Existing source indentation is input to improve, not a formatting reference. Preserve tokens, comments, values, line
 order and existing fence language. Do not classify prose, change object types,
 correct code, split/merge blocks or reconstruct code across pages. Preserve IDs,
 geometry, continuation, source fields and lineage; record formatting with a

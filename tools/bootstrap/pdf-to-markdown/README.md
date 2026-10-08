@@ -58,7 +58,7 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [02.42](stages/02.42_reclassify_tables/README.md) | Stage 01 and resolved 02/02.4/02.41 -> table representation decisions and textual replacements, changed pages only |
 | [02.43](stages/02.43_reclassify_code_blocks/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42 -> code blocks retained, transcribed as prose or marked as tables, changed pages only |
 | [02.44](stages/02.44_detect_image_rotation/README.md) | Stage 01 and resolved predecessors through 02.43 -> clockwise graphic rotation metadata, changed pages only |
-| [02.45](stages/02.45_reformat_code_block/README.md) | Stage 01 and resolved predecessors through 02.44 -> existing code blocks reformatted with source-faithful indentation, changed pages only |
+| [02.45](stages/02.45_reformat_code_block/README.md) | Stage 01 and resolved predecessors through 02.44 -> existing code blocks reformatted with consistent structural indentation, changed pages only |
 | [02.5](stages/02.5_page_conversion_review/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42/02.43/02.44/02.45 -> review frames and ordered labels |
 | [02.8](stages/02.8_filter_page_content/README.md) | Stage 01 and resolved 02/02.4/02.41/02.42/02.43/02.44/02.45 -> retained objects after source-content and fixed NXP-logo exclusions |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.8 -> table markup, saved crops and inferred HTML group text |
@@ -207,12 +207,13 @@ without code blocks make no requests. Sparse overrides layer after 02.42 for
 review/filtering; restart and selection follow the shared optional-stage rules.
 See the [02.43 contract](stages/02.43_reclassify_code_blocks/README.md).
 
-Stage 02.45 reformats each resolved `code_block` using its existing Markdown,
-frozen full-page JSON and complete original Stage 01 PNG. One request per block
-focuses on indentation, nesting, spaces and tabs while preserving tokens,
-comments, values, line order and fence language. Types and geometry remain
-unchanged. Reformatted blocks carry source lineage and a stage marker so Stage
-03 initializes rendered Markdown and Stage 09 does not format them again.
+Stage 02.45 reformats each resolved `code_block` using its existing Markdown and
+frozen full-page JSON, without attaching an image. One request per block
+normalizes structural indentation with four spaces per level, consistent brace
+alignment and indentation tabs converted to spaces. Tokens, comments, values,
+line order, literal whitespace and fence language remain unchanged. Reformatted
+blocks carry source lineage and a stage marker so Stage 03 initializes rendered
+Markdown and Stage 09 does not format them again.
 See the [02.45 contract](stages/02.45_reformat_code_block/README.md).
 
 Stage 02.44 records numeric clockwise correction degrees on resolved graphics,

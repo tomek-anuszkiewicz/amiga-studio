@@ -3863,3 +3863,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick pre-flight and architecture 19/19 passed
   - Graphify AST refreshed. No additional source fragment or milestone checks
   - user assessment pending and renamed plan remains active.
+---
+
+### [2026-10-08 02:15 CET] — PDF-CODE-2.45: Normalize code indentation from JSON only
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.45_reformat_code_block`
+  - `tools/bootstrap/pdf-to-markdown/pipeline.py`
+  - `tools/bootstrap/reference-conversion-contract.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove Stage 02.45 image attachment and vision flag
+  - use frozen page and target JSON only
+  - normalize four-space structural nesting, brace alignment and indentation tabs instead of reproducing source layout
+  - update prompt, pipeline description, documentation and active plan
+- **Architectural Rationale & Trade-Offs**:
+  - The image-backed request preserved the source listing indentation
+  - user requested a JSON-only formatting attempt based on code structure
+- **Verification & Test Results**:
+  - Page 131 stages 02.45-02.5 completed in stage-02.45-json-code-format-review: 3 live requests, 0 cache hits. Only page_0131_seg_006 text changed: braces align with if and body has four-space indentation
+  - seg_004/008 text unchanged. Saved override, review PNG/JSON and resolved Markdown. Confirmed zero image attachments in all request identities, whitespace-only selected code changes and unchanged source fields/non-code objects. Passed 30 PDF, 6 selection, 21 shared conversion checks, quick pre-flight and architecture 19/19. Graphify refreshed. No additional pages or milestone checks
+  - user output assessment pending.

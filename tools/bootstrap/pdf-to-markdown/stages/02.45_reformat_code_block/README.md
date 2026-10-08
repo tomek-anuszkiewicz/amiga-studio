@@ -2,14 +2,15 @@
 
 Reformat each resolved `code_block` in selected physical pages, using one request
 per block. Send the complete frozen resolved page JSON, the target object with
-its ID/bbox/Markdown and the complete unmodified Stage 01 PNG at original detail.
+its ID/bbox/Markdown. Requests contain JSON only, without a page image.
 Pages without code blocks make no requests. Missing model/effort settings default
 to `gpt-6.1-sol` / `medium`; explicit 02.45 execution transfers saved settings from
 the earlier stage name when present and preserves settings under the new key.
 
-Return only fenced `md_text`. Focus on indentation, nesting, leading spaces,
-tabs and alignment. Preserve meaningful existing tabs; an image cannot establish
-original tab counts, so use consistent spaces for otherwise visible alignment.
+Return only fenced `md_text`. Normalize indentation from the code structure,
+using four spaces per nesting level, consistent brace alignment and an additional
+indent for statements inside each block. Normalize indentation tabs to spaces;
+existing source indentation is input to improve, not a formatting reference.
 Preserve tokens, comments, values, line order, literal whitespace and existing
 fence language. No code correction, completion, execution, classification,
 splitting, merging or cross-page reconstruction occurs. Other objects are
@@ -27,7 +28,7 @@ resolve `02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45`. Absent option
 status skips a layer; failed/running status blocks consumers. Selection precedes
 candidate collection. Restart clears 02.45 and later outputs while preserving
 predecessors and compatible request cache. Identity covers the new stage,
-model/effort, prompt, schema, frozen page/target JSON and original image bytes.
+model/effort, prompt, schema and frozen page/target JSON; no image is attached.
 Earlier stage-name outputs are not reused; regenerate existing attempts from
 02.45. Filtering/table transformation carry formatted text to export and stream.
 
