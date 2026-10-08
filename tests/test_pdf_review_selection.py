@@ -104,28 +104,7 @@ class ReviewSelectionTests(unittest.TestCase):
             stage.transform_tables(self.workspace, {})
         self.assertEqual([p.name for p in (self.workspace / stage.STAGE).glob("*_segments.json")],
                          ["page_0063_segments.json"])
-        (self.workspace / "stage_status.json").write_text(json.dumps({
-            "02.81": {"status": "success", "page_ranges": None}}))
-        emitter = stage_module("02.90_emit_page_markdown", "emit_page_markdown")
-        emitter.emit_page_markdown(self.workspace, Path("fixture.pdf"))
-        markdown = (self.workspace / "02.90_emit_page_markdown/document.md").read_text()
-        self.assertIn("| B |", markdown)
-        self.assertIn("Keep me", markdown)
-        self.assertIn("page_0064_table.png", markdown)
 
-    def test_export_keeps_unchanged_selected_pages_with_sparse_tables(self):
-        stage = stage_module("02.90_emit_page_markdown", "emit_page_markdown")
-        self.table_pages("02.80_filter_page_content")
-        for page, text in ((63, "Excluded page"), (64, "Unchanged selected page")):
-            path = self.workspace / f"02.80_filter_page_content/page_{page:04d}_segments.json"
-            path.write_text(json.dumps({"page": page, "segments": [{"type": "prose", "md_text": text}]}))
-        (self.workspace / "02.81_transform_page_tables").mkdir()
-        (self.workspace / "stage_status.json").write_text(json.dumps({
-            "02.81": {"status": "success", "page_ranges": "64"}}))
-        stage.emit_page_markdown(self.workspace, Path("fixture.pdf"))
-        markdown = (self.workspace / "02.90_emit_page_markdown/document.md").read_text()
-        self.assertIn("Unchanged selected page", markdown)
-        self.assertNotIn("Excluded page", markdown)
 
     def test_table_conversion_requests_only_selected_page(self):
         stage = stage_module("02.81_transform_page_tables", "transform_page_tables")
@@ -146,12 +125,6 @@ class ReviewSelectionTests(unittest.TestCase):
             self.assertNotIn(key, table)
         self.assertFalse((output / "assets").exists())
         self.assertFalse(list(self.workspace.glob(".02.81-*")))
-        from common.pdf_page_markdown import document_markdown, crop_objects
-        pages = [({"page_id": "page_0064"}, page)]
-        markdown = document_markdown(pages, {"name": "fixture.pdf"})
-        self.assertIn(table["md_text"], markdown)
-        self.assertNotIn("<details>", markdown)
-        self.assertEqual(list(crop_objects(pages)), [])
 
 
 if __name__ == "__main__":

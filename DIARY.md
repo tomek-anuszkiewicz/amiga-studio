@@ -1105,3 +1105,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - 19 architecture tests pass
   - Graphify update completes
   - no live book rerun performed
+---
+
+### [2026-10-08 22:38 CET] — Remove PDF page Markdown export stage
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `tools/bootstrap/book-to-markdown`
+  - `tests`
+  - `docs/developers.md`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove Stage 02.90 and unused page Markdown/crop emitter and overlay loader
+  - end PDF preparation at 02.81
+  - remove PDF publication option and reject bootstrap PDF publication before downloads
+  - update tests, documentation and book recipe plan for direct JSON/image handoff
+- **Architectural Rationale & Trade-Offs**:
+  - Prepare source objects and transcribed tables for separate chapter generation rather than emitting an intermediate page-ordered Markdown document
+- **Verification & Test Results**:
+  - 42 relevant PDF, publication and bootstrap tests pass
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - PDF CLI help confirms publication removal
+  - bootstrap PDF publication rejects before download as expected
+  - Graphify refresh completes
+  - existing workspace exports are preserved
+  - book generator remains unimplemented

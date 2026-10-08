@@ -26,8 +26,8 @@ schema, semantic, geometry or page-identity validation.
 Standard JSON serialization preserves decoded Markdown without pre-escaping.
 
 Use the [orchestrator](../../README.md); do not run workers for real conversions.
-Stage 02.80 filters these objects; Stage 02.81 converts retained tables and
-Stage 02.90 exports the resulting page Markdown.
+Stage 02.80 filters these objects; Stage 02.81 converts retained tables.
+Separate book processing will generate chapter Markdown from the prepared data.
 
 Reading order follows visible source rows. A short block beside and visually
 above most of a multiline heading precedes that heading, even when their box
@@ -67,8 +67,8 @@ separate from source explanations and generated asset descriptions remain deferr
 
 `cover` identifies a complete front or back book cover as one object, including
 its artwork, logos and source-visible title and publication text. Its box bounds
-the whole cover; `heading_level` is null and `continuation` is false. Stage 02.90
-exports its source crop. Regenerate
+the whole cover; `heading_level` is null and `continuation` is false. Its source
+crop belongs to later book generation. Regenerate
 02 to classify existing cover pages; saved objects are not relabeled in place.
 
 `table_legend` is source text below a table explaining symbols, notation or

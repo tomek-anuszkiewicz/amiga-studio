@@ -244,7 +244,7 @@ class PdfRestartTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.workspace = Path(self.tmp.name) / "workspace"
         self.workspace.mkdir()
-        self.output = self.workspace / "02.90_emit_page_markdown"
+        self.output = self.workspace / "02.81_transform_page_tables"
         self.config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml", known_stages=PDF_STAGES, required_stages=PDF_STAGES)
         self.pdf = Path(self.tmp.name) / "sample.pdf"
         self.pdf.write_bytes(b"Worker fixture")
@@ -274,6 +274,9 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual(self.pipeline.resolve_stage_idx("02"), self.stage_idx("02"))
         self.assertEqual(self.pipeline.resolve_stage_idx("2.80"), self.stage_idx("02.80"))
         self.assertIsNone(self.pipeline.resolve_stage_idx("02k"))
+        self.assertIsNone(self.pipeline.resolve_stage_idx("02.90"))
+        self.assertIsNone(self.pipeline.resolve_stage_idx("2.9"))
+        self.assertEqual(self.pipeline.STAGE_REGISTRY[-1]["id"], "02.81")
         self.assertEqual(self.pipeline.resolve_stage_idx("02.80"), self.stage_idx("02.80"))
         before = read_json(self.workspace / "stage_status.json")["02"]
         def worker(stage, *args):
@@ -295,12 +298,12 @@ class PdfRestartTests(unittest.TestCase):
         self.output.rmdir()
         state_path = self.workspace / "stage_status.json"
         state = json.loads(state_path.read_text())
-        del state["02.90"]
+        del state["02.81"]
         state_path.write_text(json.dumps(state))
         executed = []
 
         def worker(stage, *args):
-            self.assertFalse(self.output.exists(), "Stage 02.90 directory must wait for Stage 02.90 execution")
+            self.assertFalse(self.output.exists(), "Table output must wait for Stage 02.81 execution")
             executed.append(stage["id"])
             self.write_artifacts(stage)
             return True
@@ -324,7 +327,7 @@ class PdfRestartTests(unittest.TestCase):
 
     def test_restart_tables_clears_dependents_and_preserves_prior_outputs(self):
         before = (self.workspace / "02.80_filter_page_content/artifact.json").read_bytes()
-        other_output = Path(self.tmp.name) / "other-workspace/02.90_emit_page_markdown/accepted.md"
+        other_output = Path(self.tmp.name) / "other-workspace/02.81_transform_page_tables/accepted.md"
         other_output.parent.mkdir(parents=True)
         other_output.write_text("Independent conversion")
         def worker(stage, *args):
@@ -367,25 +370,15 @@ class PdfRestartTests(unittest.TestCase):
                                   lambda *args: self.fail("Worker must not run"))
         state = read_json(self.workspace / "stage_status.json")
         self.assertNotIn("02.81", state)
-        self.assertNotIn("02.90", state)
         self.assertIn("02.80", state)
 
     def test_reset_tables_does_not_delete_preserved_assets(self):
         asset = self.workspace / "02.80_filter_page_content/assets/source.png.txt"
         asset.parent.mkdir()
         asset.write_text("Preserved source evidence")
-        self.pipeline.clean_downstream_stages(self.workspace, self.output, self.stage_idx("02.81"), self.workspace / "stage_status.json")
+        self.pipeline.clean_downstream_stages(self.workspace, self.stage_idx("02.81"), self.workspace / "stage_status.json")
         self.assertTrue(asset.exists())
 
-    def test_output_defaults_to_selected_workspace_even_with_pdf(self):
-        source_note = self.pdf.parent / "existing.md"
-        source_note.write_text("Source directory must remain intact")
-        def worker(stage, *args):
-            self.assertEqual(args[3], self.output)
-            self.write_artifacts(stage)
-            return True
-        self.run_pipeline(["--pdf", str(self.pdf), "--from-stage", "02.81", "--to-stage", "02.81"], worker)
-        self.assertEqual(source_note.read_text(), "Source directory must remain intact")
 
     def test_missing_retained_artifact_does_not_block_restart(self):
         (self.workspace / "02.80_filter_page_content/artifact.json").unlink()
@@ -439,13 +432,13 @@ class PdfConfigurationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             workspace = root / "workspace"
-            output = workspace / "02.90_emit_page_markdown"
+            output = workspace / "02.81_transform_page_tables"
             output.mkdir(parents=True)
             sentinel = output / "accepted.md"
             sentinel.write_text("Accepted output")
             result = subprocess.run([sys.executable, str(ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py"),
                                      "--config", str(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml"),
-                                     "--workspace", str(workspace), "--from-stage", "02.90", "--to-stage", "02.90"], capture_output=True, text=True)
+                                     "--workspace", str(workspace), "--pdf", str(root / "source.pdf"), "--from-stage", "02.81", "--to-stage", "02.81"], capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertTrue(sentinel.is_file())
 
@@ -463,7 +456,7 @@ class StageCompletionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
             args = (stage, ROOT / "tools/bootstrap/pdf-to-markdown", workspace,
-                    None, None, workspace / "config.yaml")
+                    None, workspace / "config.yaml")
             with patch.object(pipeline.subprocess, "run") as run:
                 self.assertTrue(pipeline.run_stage(*args, page_ranges="64"))
                 command = run.call_args.args[0]
@@ -479,7 +472,7 @@ class StageCompletionTests(unittest.TestCase):
             workspace = Path(directory)
             stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "02.81")
             (workspace / "02.80_filter_page_content/assets").mkdir(parents=True)
-            args = (stage, ROOT / "tools/bootstrap/pdf-to-markdown", workspace, None, None, workspace / "config.yaml")
+            args = (stage, ROOT / "tools/bootstrap/pdf-to-markdown", workspace, None, workspace / "config.yaml")
             with patch.object(pipeline.subprocess, "run", side_effect=subprocess.CalledProcessError(1, "worker")):
                 self.assertFalse(pipeline.run_stage(*args))
             self.assertEqual(read_json(workspace / "stage_status.json")["02.81"]["status"], "failed")

@@ -215,22 +215,24 @@ Provisions original PDF scans, OEM technical manuals, and archival web articles 
 
 Each book's downloads go into `Obsidian/Amiga/Reference/<Document_Name>-tmp/`
 (or `<Destination>/<Document_Name>-tmp/` with a custom destination). Conversion
-keeps its `workspace/` there. `-Markdown` leaves final results in that workspace:
-`02.90_emit_page_markdown/` for PDF and `html_to_markdown/` for HTML. Add `-Publish` to copy
-finished Markdown and assets to the sibling `<Document_Name>/` directory without
-the suffix. The destination must be absent or empty; existing files, hidden entries
-and links cause an error before downloads or conversion. The converter checks again
-before publishing and never replaces an occupied directory. Existing downloads in
-unsuffixed directories are not moved or
-reused automatically; the `-tmp` directories remain available for inspection and
-resuming conversion. Neither pipeline accepts `--output-dir` or automatically
-mirrors HTML into `Reference`. Direct CLI publication uses the boolean `--publish`
-and derives the book destination from its enclosing `<Document_Name>-tmp/` directory.
+keeps its `workspace/` there. `-Markdown` prepares PDF page images, text and
+objects through Stage 02.81; final PDF chapter generation belongs to the planned
+`book-to-markdown` program. HTML conversion emits Markdown in `html_to_markdown/`.
+For HTML, add `-Publish` to copy finished Markdown and assets to the sibling
+`<Document_Name>/` directory without the suffix. Selected PDFs with `-Publish`
+are rejected before downloading. The HTML destination must be absent or empty;
+the converter rechecks before publishing and never replaces occupied directories.
+Existing unsuffixed downloads are not moved or reused automatically. Staging
+directories remain available for inspection and restarting preparation.
+Neither pipeline accepts `--output-dir`. Only HTML supports direct `--publish`;
+it derives the destination from the enclosing `<Document_Name>-tmp/` directory.
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Documentation
-# Convert locally, then optionally publish to an empty book directory:
-.\tools\bootstrap\bootstrap.ps1 -Documentation -Markdown -Publish
+# Prepare PDF data and convert HTML locally:
+.\tools\bootstrap\bootstrap.ps1 -Documentation -Markdown
+# Publish a selected HTML source to an empty book directory:
+.\tools\bootstrap\bootstrap_documentation.ps1 -Undocumented -Markdown -Publish
 ```
 
 <a id="multi-page-web-crawling-engine"></a>
@@ -244,14 +246,14 @@ For multi-page web publications, the bootstrapper incorporates an autonomous cra
 
 The bootstrap converters prepare the initial reference knowledge base from raw scans and downloaded HTML. Each program has a Python CLI; later project work consumes the generated Markdown and assets. HTML and PDF use the shared pinned Codex SDK with ChatGPT authentication and explicit stage model/effort settings. Development follows the [developer-led workflow](../tools/bootstrap/reference-conversion-contract.md#development-workflow): change the converter, run the fragment selected and requested by the user, and let the user assess the generated content. Automatic tests follow the [bootstrap converter scope](../.agents/rules/unit-testing-policy.md#bootstrap-converter-scope); no separate coverage or quality campaign is scheduled. Install the shared dependencies with `python -m pip install -r tools/bootstrap/conversion/requirements.txt` and sign in using `codex login`. API-key mode is rejected by the Codex client. The dispatcher is [`bootstrap_documentation.ps1`](../tools/bootstrap/bootstrap_documentation.ps1); source fidelity is defined in the [conversion contract](../tools/bootstrap/reference-conversion-contract.md).
 
-PDF conversion starts with [Stage 00](../tools/bootstrap/pdf-to-markdown/stages/00_text_layer/README.md), which uses local Tesseract through PyMuPDF to publish a full-document `<source stem>-ocr.pdf` beside the source while preserving native text and visuals. An existing sibling prepared PDF skips OCR and PDF writing regardless of the attempt selection. [Stage 01](../tools/bootstrap/pdf-to-markdown/stages/01_preprocess/README.md) deterministically reads that PDF and persists positioned text JSON/PNG pairs with physical page identities. A new workspace can run `--from-stage 00 --to-stage 01`; restart at 01 retains successful Stage 00 status and the configured source path. Legacy workspaces need explicit restart at 00 with the original PDF. Stage 00 always prepares all pages; `--page-ranges` limits page workers from 01 through 02.81 for the current invocation only. Omitting it selects all available pages; selection is not stored in config. Stage 02.90 exports the completed Stage 02.81 dataset. Selected fragment results do not certify conversion of the remaining pages.
+PDF conversion starts with [Stage 00](../tools/bootstrap/pdf-to-markdown/stages/00_text_layer/README.md), which uses local Tesseract through PyMuPDF to publish a full-document `<source stem>-ocr.pdf` beside the source while preserving native text and visuals. An existing sibling prepared PDF skips OCR and PDF writing regardless of the attempt selection. [Stage 01](../tools/bootstrap/pdf-to-markdown/stages/01_preprocess/README.md) deterministically reads that PDF and persists positioned text JSON/PNG pairs with physical page identities. A new workspace can run `--from-stage 00 --to-stage 01`; restart at 01 retains successful Stage 00 status and the configured source path. Legacy workspaces need explicit restart at 00 with the original PDF. Stage 00 always prepares all pages; `--page-ranges` limits page workers from 01 through 02.81 for the current invocation only. Omitting it selects all available pages; selection is not stored in config. PDF preparation ends at Stage 02.81; book generation consumes the prepared JSON and image dataset. Selected fragment results do not certify conversion of the remaining pages.
 
 1. **PDF Scans to Markdown ([`pdf-to-markdown`](../tools/bootstrap/pdf-to-markdown/README.md)):**
    - Prepares a separate native/OCR PDF and matching positioned-text JSON/PNG pairs.
    - Stage 02 uses Codex text and original-detail image input to group page objects and produce Markdown text, types and pixel boxes.
    - Stage 02.80 deterministically removes only headers/footers. Stage 02 classifies recurring margin logos as header/footer content; filtering performs no image matching. Covers, contents, indexes and lists of tables or illustrations remain for later manual classification and removal, including older saved objects with dedicated types. Stage 01/02 completion is required. See the [stage contract](../tools/bootstrap/pdf-to-markdown/stages/02.80_filter_page_content/README.md) for thresholds and evidence limits. These are the user's deliberate source-fidelity exceptions. Preserve edited exports outside cleanup before restarting at 02.80. Surviving fields and geometry remain unchanged, and empty output is permitted.
    - [Stage 02.81](../tools/bootstrap/pdf-to-markdown/stages/02.81_transform_page_tables/README.md) replaces table content with Markdown or HTML using one request per temporary original-image crop. It saves only changed table pages and records its invocation's page range in `stage_status.json`. Captions, notes and legends remain unchanged; no grouping, RAG text or companions are generated. Stage 02.80 is its fixed predecessor.
-   - Stage 02.90 emits one retained-page `document.md` from completed 01/02.80/02.81, overlaying changed table pages on the selected filtered dataset. Unchanged selected pages remain in the export. Table markup has no `<details>` or source-image companions. Unconverted tables, graphics and covers use exact original PNG crops. Rebuilding removes obsolete assets.
+   - [Book-to-Markdown](../tools/bootstrap/book-to-markdown/README.md) is the planned chapter generator. Its input is Stage 01 images/text and selected Stage 02.80 page objects with Stage 02.81 replacements. Chapter Markdown, raster crops, grouping and descriptions belong to that separate program; its generator is not implemented yet.
 
 2. **Web Crawls to Markdown ([`html-to-markdown`](../tools/bootstrap/html-to-markdown/README.md)):**
    - Converts downloaded multi-page HTML hierarchies (e.g. Kuba Winnicki's *Achtung! Amiga*).

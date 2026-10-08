@@ -9,8 +9,8 @@ other source objects, including separate captions, notes and legends.
 Save a full page JSON only when a table transformation changes that page's data.
 Pages without tables and unchanged table pages remain solely in Stage 02.80.
 The orchestrator records this invocation's page range in the 02.81 status entry;
-Stage 02.90 overlays the saved replacements on that selected filtered dataset.
-An empty output directory is valid and does not remove unchanged pages from export.
+Future book processing overlays the saved replacements on that selected filtered
+dataset. An empty output directory is valid; unchanged pages remain in Stage 02.80.
 Console progress is flushed immediately: each table logs its identity, position
 within the page, request start, returned format and elapsed time. Each page logs
 whether it was saved, unchanged or skipped because it contains no tables.
@@ -24,8 +24,8 @@ shared request cache remain in use.
 Crops are temporary request inputs and are removed after execution. No persistent
 source crops, group assignments, descriptions, RAG text or `<details>` companions
 are generated. Retired table companion fields are omitted from converted output.
-Stage 02.90 emits the saved table markup directly, without a companion image.
-Description and grouping work belongs to separately requested book processing.
+Markdown generation, description and grouping work belongs to separately
+requested book processing.
 
 Stage 02.80 is the fixed predecessor; missing filtered pages never fall back to
 Stage 02. Restart through the orchestrator clears this stage and later outputs,
@@ -37,5 +37,5 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<W
 
 Use a named attempt and only the fragment selected by the user. Existing saved
 outputs require explicit regeneration to adopt this change. See
-[page export](../02.90_emit_page_markdown/README.md) and the
+[book processing](../../../book-to-markdown/README.md) and the
 [conversion contract](../../../reference-conversion-contract.md).

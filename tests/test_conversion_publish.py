@@ -3,8 +3,6 @@
 from pathlib import Path
 import contextlib
 import importlib.util
-import json
-import yaml
 import io
 import subprocess
 import sys
@@ -21,7 +19,7 @@ class PublicationTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        self.output = self.root / "Book-tmp/workspace/02.90_emit_page_markdown"
+        self.output = self.root / "Book-tmp/workspace/html_to_markdown"
         self.output.mkdir(parents=True)
         (self.output / "Chapter.md").write_text("# Chapter\n", encoding="utf-8")
         (self.output / "assets").mkdir()
@@ -87,21 +85,17 @@ class PublicationTests(unittest.TestCase):
         spec.loader.exec_module(pipeline)
         return root, pipeline
 
-    def test_both_pipelines_reject_occupied_book_before_inference_or_cleanup(self):
+    def test_html_pipeline_rejects_occupied_book_before_inference_or_cleanup(self):
         self.book.mkdir()
         sentinel = self.book / "original.md"
         sentinel.write_text("original", encoding="utf-8")
-        for kind in ("pdf", "html"):
+        for kind in ("html",):
             root, pipeline = self.load_pipeline(kind)
             argv = ["pipeline.py", "--publish", "--config", str(root / f"tools/bootstrap/{kind}-to-markdown/config.yaml")]
-            if kind == "pdf":
-                argv += ["--workspace", str(self.output.parent)]
-                client_name = "run_stage"
-            else:
-                source = self.root / "Book-tmp/source.html"
-                source.write_text("<p>Source</p>", encoding="utf-8")
-                argv += ["--input", str(source)]
-                client_name = "CodexClient"
+            source = self.root / "Book-tmp/source.html"
+            source.write_text("<p>Source</p>", encoding="utf-8")
+            argv += ["--input", str(source)]
+            client_name = "CodexClient"
             with patch.object(sys, "argv", argv), patch.object(pipeline, client_name) as client:
                 with self.assertRaises(FileExistsError):
                     pipeline.main()
@@ -121,22 +115,6 @@ class PublicationTests(unittest.TestCase):
                     pipeline.main()
                 self.assertEqual(error.exception.code, 2)
 
-    def test_explicit_pdf_final_stage_publishes_regenerated_output(self):
-        root, pipeline = self.load_pipeline("pdf")
-        (self.output.parent / "config.yaml").write_text(yaml.safe_dump({
-            "input": {"source_pdf": "../../source.pdf", "pages": None}}))
-        (self.output.parent / "stage_status.json").write_text(json.dumps({"01": {"status": "success"}, "02.81": {"status": "success"}}))
-        argv = ["pipeline.py", "--pdf", str(self.root / "source.pdf"), "--workspace", str(self.output.parent), "--from-stage", "02.90", "--publish",
-                "--config", str(root / "tools/bootstrap/pdf-to-markdown/config.yaml")]
-        def worker(stage, *args):
-            self.assertEqual(stage["id"], "02.90")
-            self.assertFalse((self.output / "Chapter.md").exists())
-            self.output.mkdir(parents=True)
-            (self.output / "Chapter.md").write_text("# Regenerated chapter\n", encoding="utf-8")
-            return True
-        with patch.object(sys, "argv", argv), patch.object(pipeline, "run_stage", side_effect=worker):
-            pipeline.main()
-        self.assertEqual((self.book / "Chapter.md").read_text(encoding="utf-8"), "# Regenerated chapter\n")
 
     def test_html_keeps_local_output_until_publish_without_parent_mirror(self):
         root, pipeline = self.load_pipeline("html")

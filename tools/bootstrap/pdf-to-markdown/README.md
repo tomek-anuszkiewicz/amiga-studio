@@ -29,7 +29,7 @@ without local validation; ordinary YAML, JSON, image/PDF and filesystem errors s
 
 ## Stage data and execution
 
-The execution sequence is `00 -> 01 -> 02 -> 02.80 -> 02.81 -> 02.90`.
+The execution sequence is `00 -> 01 -> 02 -> 02.80 -> 02.81`.
 Each stage reads explicitly named predecessors and writes its own results.
 
 | Stage | Input and result |
@@ -39,19 +39,15 @@ Each stage reads explicitly named predecessors and writes its own results.
 | [02](stages/02_page_conversion/README.md) | Stage 01 -> ordered logical objects, Markdown and pixel boxes |
 | [02.80](stages/02.80_filter_page_content/README.md) | Stage 01/02 -> objects with headers and footers removed |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> changed table pages only |
-| [02.90](stages/02.90_emit_page_markdown/README.md) | Stage 01/02.80 plus 02.81 replacements -> `document.md` and required raster assets |
 
 Filtering reads Stage 02 directly, without reclassification overrides.
 Table conversion reads only Stage 02.80; omitted pages never fall back to Stage 02.
-Stage 02.81 saves only pages changed by table processing. Export overlays these
-pages on the selected Stage 02.80 dataset and emits converted markup at its source
-position, without `<details>`, RAG text or source-image companions. Stage 02.81
-uses temporary crops for transcription only. Separate captions, notes and legends
-remain unchanged; grouping and descriptions belong to later book processing.
-Empty rows are preserved as produced by table conversion. Unconverted tables
-retain a raster fallback cropped from Stage 01.
-Graphics and covers crop exact Stage 01 pixels. The emitter replaces its bundle
-after successful writes and removes obsolete assets.
+Stage 02.81 saves only pages changed by table processing and uses temporary crops
+for transcription only. Separate captions, notes and legends remain unchanged.
+The prepared dataset consists of Stage 01 PNG/text pairs, Stage 02.80 filtered
+pages and Stage 02.81 replacements. Book generation, image crops, grouping and
+descriptions belong to [book-to-markdown](../book-to-markdown/README.md), whose
+generator is not implemented yet. No final Markdown bundle is emitted here.
 
 ### Physical-page selection
 
@@ -60,11 +56,11 @@ Stage 00 always prepares or reuses the complete source PDF. Stages 01, 02, 02.80
 and 02.81 apply the selection while enumerating their input, including direct
 restarts with all-page predecessors. Omission means all available input pages;
 selection is not stored in config. The 02.81 status entry records its invocation's
-page range so Stage 02.90 retains unchanged selected pages without including
-unselected predecessor pages. Select the intended fragment when running 02.81.
+page range for the prepared-data handoff. Future book processing must overlay
+changed pages on the selected filtered dataset, retaining unchanged selected pages.
 Page files are ordered numerically, without coverage or PNG/JSON pairing checks.
 
-## Restart, status and publication
+## Restart and status
 
 Starting a stage invalidates it and every later active stage before deleting
 outputs. The end stage limits execution, not cleanup. Successful external
@@ -90,7 +86,6 @@ Saved page objects omit zero rotation, false continuation, null heading levels
 and empty Markdown. Source lineage, replacement stage and `image_only` are not
 persisted. Consumers apply missing-field defaults without modifying prompt data.
 
-Final output is `<WORKSPACE>/02.90_emit_page_markdown/`. `--publish` requires
-completion through 02.90 and copies its Markdown/assets to the absent or empty
-sibling book directory without `-tmp`. Destination protection is checked before
-execution and publication. Independent attempts retain their own outputs.
+Preparation ends at `<WORKSPACE>/02.81_transform_page_tables/`; unchanged pages
+remain in `02.80_filter_page_content/`. The PDF CLI has no `--publish` option.
+Historical export directories remain untouched and are not consumed by preparation.

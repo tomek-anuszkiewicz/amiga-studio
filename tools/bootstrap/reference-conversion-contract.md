@@ -28,8 +28,8 @@ All page workers from 01 through 02.81 apply the current invocation's
 omission means all available predecessor pages. Stage 00 prepares or reuses the
 full-source OCR PDF. Stage 02.80 reads Stage 02 directly, and Stage 02.81 reads
 only filtered objects. Stage 02.81 saves only changed table pages and records its
-invocation's page range in stage_status.json. Stage 02.90 overlays those pages on
-the selected Stage 02.80 dataset, retaining unchanged selected pages.
+invocation's page range in stage_status.json for separate book processing, which
+must overlay changed pages on selected Stage 02.80 input and retain unchanged pages.
 See the [pipeline selection contract](pdf-to-markdown/README.md#physical-page-selection).
 
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.
@@ -96,7 +96,7 @@ pages, correct classifications/geometry, matching Markdown or complete assets.
 
 Full runs, intervals and individual deterministic/inference stages use
 `--from-stage`/`--to-stage`; matching boundaries select one stage.
-The execution sequence is `00 -> 01 -> 02 -> 02.80 -> 02.81 -> 02.90`.
+The execution sequence is `00 -> 01 -> 02 -> 02.80 -> 02.81`.
 
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
@@ -215,31 +215,24 @@ from converted output. Technical errors stop execution normally.
 Stage 02.81 saves a full page JSON only when table processing changes its data;
 pages without tables and unchanged pages remain in Stage 02.80. An empty 02.81
 directory is valid. Its status entry records page_ranges (null means all input
-pages), so a later export reconstructs the selected dataset without a page registry.
-
-Stage 02.90 consumes completed Stage 01/02.80/02.81 and emits one `document.md`
-by overlaying changed 02.81 pages on selected 02.80 pages. Historical 02.81 statuses
-without page_ranges retain their full saved dataset. The document has
-minimal filename-derived YAML/title. Converted table Markdown or HTML stays
-at its original position, with no `<details>` or image/text companions. Unconverted
-tables, graphics and covers crop exact Stage 01 pixels. A temporary bundle replaces
-old output and removes obsolete assets after successful writes. Grouping and
-descriptions belong to separately requested book processing.
+pages), so later book processing can reconstruct the selected prepared dataset.
+PDF preparation emits no final Markdown bundle or persistent graphic crops.
+Chapter generation, raster assets, grouping and descriptions belong to the
+separate planned [book-to-markdown](book-to-markdown/README.md) program.
 
 Restart clears the selected stage and every later stage in execution order, even
 when stopping at that stage. Restart 02.81 preserves predecessors and rebuilds
-table markup and clears export. Stage 02.81 requires completed 01/02.80;
-Stage 02.90 requires completed 01/02.80/02.81. No automatic continuation or completed-stage
-skipping occurs. Existing exports require explicit regeneration from 02.90 using
-the intended 02.81 dataset. Implementation does not mutate old attempts.
-Preserve edited exports outside cleanup before restart.
+table markup. Stage 02.81 requires completed 01/02.80.
+No automatic continuation or completed-stage skipping occurs. Historical export
+directories remain untouched and are not consumed by preparation.
 The request cache survives attempt cleanup.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
-in the source book's `workspace/html_to_markdown/`; final PDF output stays in `workspace/02.90_emit_page_markdown/`.
-`--publish` publishes the completed Stage 02.90 bundle.
+in the source book's `workspace/html_to_markdown/`; PDF preparation ends at 02.81.
+Only HTML conversion supports `--publish`.
 Bootstrap downloads sources into `<book>-tmp/`; `-Markdown` only converts locally.
-Its separate `-Publish` switch passes the boolean `--publish` to the converter,
+Its separate `-Publish` switch supports HTML and rejects selected PDFs before
+download. For HTML it passes the boolean `--publish` to the converter,
 which copies completed Markdown and assets to the sibling `<book>/` directory.
 Publication requires the staging suffix and an absent or empty destination.
 Bootstrap checks every selected destination before downloading; converters check
@@ -247,7 +240,7 @@ before execution and again after preparing the publication copy. A directory ren
 publishes the prepared copy without overwriting an occupied directory. Source files,
 working state and metrics are retained. HTML no longer creates an automatic parent mirror.
 
-HTML and PDF share Codex transport, cache and publication. HTML retains strict
+HTML and PDF share Codex transport and cache. HTML retains strict
 configuration and local response validation; PDF configuration is parsed directly.
 Existing files alone do not establish successful predecessor execution.
 

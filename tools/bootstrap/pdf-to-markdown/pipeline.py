@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-pipeline.py: Master CLI Orchestrator for PDF-to-Markdown page preparation and export.
+pipeline.py: Master CLI orchestrator for PDF page preparation and table transcription.
 """
 
 import argparse
@@ -19,7 +19,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conversion.config import load_config as parse_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json, prepared_pdf_path
 from common.pdf_selection import selected_pages
-from conversion.publication import book_directory, check_destination, publish_output
 
 STAGE_REGISTRY: List[Dict[str, Any]] = [
     {
@@ -56,19 +55,13 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "targets": ["02.81_transform_page_tables"],
         "inspect": ("page_*_segments.json", "transcribed table page JSON files"),
     },
-    {
-        "id": "02.90", "dir": "02.90_emit_page_markdown", "script": "emit_page_markdown.py",
-        "desc": "Assemble unchanged page Markdown and exact original-PNG crops",
-        "targets": ["02.90_emit_page_markdown"],
-        "inspect": ("document.md", "selected-page Markdown"),
-    },
 ]
 
 # Each stage reads explicitly named predecessor artifacts.
 for stage in STAGE_REGISTRY:
     stage["inputs"] = {
         "00": [], "01": ["00"], "02": ["01"], "02.80": ["01", "02"],
-        "02.81": ["01", "02.80"], "02.90": ["01", "02.80", "02.81"],
+        "02.81": ["01", "02.80"],
     }[stage["id"]]
 
 
@@ -128,7 +121,6 @@ def run_stage(
     skill_dir: Path,
     workspace_dir: Path,
     pdf_path: Optional[Path],
-    output_dir: Optional[Path],
     config_path: Path,
     verbose: bool = False,
     page_ranges: Optional[str] = None,
@@ -150,7 +142,7 @@ def run_stage(
     ]
 
     # Stage-specific standard parameter injection
-    if stage_num in {"00", "02.90"}:
+    if stage_num == "00":
         cmd.extend(["--pdf", str(pdf_path)])
     elif stage_num == "01":
         prepared_pdf = prepared_pdf_path(pdf_path)
@@ -244,7 +236,7 @@ def run_stage(
         return False
 
 
-def print_pipeline_status(workspace_dir: Path, output_dir: Optional[Path]):
+def print_pipeline_status(workspace_dir: Path):
     print("\n==================================================")
     print("         PDF-to-Markdown Pipeline Status          ")
     print("==================================================")
@@ -262,10 +254,6 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Optional[Path]):
                 print(f"[*] {dir_name:<30}: OK ({file_path.stat().st_size} B)")
             else:
                 print(f"[*] {dir_name:<30}: Missing")
-
-    if output_dir:
-        md_count = len(list(output_dir.glob("*.md"))) if output_dir.exists() else 0
-        print(f"[*] Final Workspace Output        : {md_count} files in {output_dir.name}/")
 
     status_file = workspace_dir / "stage_status.json"
     if status_file.exists():
@@ -297,7 +285,7 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Optional[Path]):
     print("==================================================\n")
 
 
-def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], start_idx: int, status_file: Path):
+def clean_downstream_stages(workspace_dir: Path, start_idx: int, status_file: Path):
     def remove_directory(path, anchor):
         resolved, root = path.resolve(), anchor.resolve()
         if resolved == root or not resolved.is_relative_to(root):
@@ -314,28 +302,21 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], sta
         (workspace_dir / s["dir"] / ".metrics.json").unlink(missing_ok=True)
         (workspace_dir / f".stage_{s_id}_metrics.json").unlink(missing_ok=True)
         for target in s["targets"]:
-            if target == "__OUTPUT_DIR__":
-                if output_dir and output_dir.exists():
-                    for f in output_dir.glob("*.md"):
-                        f.unlink(missing_ok=True)
-                    if (output_dir / "assets").exists():
-                        remove_directory(output_dir / "assets", output_dir)
-            else:
-                p = workspace_dir / target
-                if p.is_dir():
-                    if s_id == "00":
-                        # Partial OCR results are reusable only after Stage 00
-                        # checks source/image/procedure/configuration identities.
-                        for child in p.iterdir():
-                            if child.name != "recovery":
-                                if child.is_dir():
-                                    remove_directory(child, workspace_dir)
-                                else:
-                                    child.unlink()
-                    else:
-                        remove_directory(p, workspace_dir)
-                elif p.is_file():
-                    p.unlink(missing_ok=True)
+            p = workspace_dir / target
+            if p.is_dir():
+                if s_id == "00":
+                    # Partial OCR results are reusable only after Stage 00
+                    # checks source/image/procedure/configuration identities.
+                    for child in p.iterdir():
+                        if child.name != "recovery":
+                            if child.is_dir():
+                                remove_directory(child, workspace_dir)
+                            else:
+                                child.unlink()
+                else:
+                    remove_directory(p, workspace_dir)
+            elif p.is_file():
+                p.unlink(missing_ok=True)
 
 
 def invalidate_status(status_file, stages):
@@ -345,10 +326,9 @@ def invalidate_status(status_file, stages):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="PDF-to-Markdown Pipeline Orchestrator (page preparation and export)")
+    parser = argparse.ArgumentParser(description="PDF preparation pipeline (page objects and table transcription)")
     parser.add_argument("--pdf", type=Path, help="Source PDF or directory containing one source PDF")
     parser.add_argument("--workspace", type=Path)
-    parser.add_argument("--publish", action="store_true", help="Copy finished Markdown/assets into the empty sibling book directory without -tmp")
     parser.add_argument("--config", type=Path, required=True, help="Initialize config.yaml only when the attempt has none")
     parser.add_argument("--cache-dir", type=Path, help="Codex cache directory for worker subprocesses")
     parser.add_argument("--from-stage", help="Start stage (default: 00); clears this stage and all later results")
@@ -363,14 +343,8 @@ def main():
         pdf, = (path for path in pdf.glob("*.pdf") if not path.stem.lower().endswith("-ocr")
                 and not path.name.lower().endswith(".candidate.pdf"))
     workspace = args.workspace.resolve() if args.workspace else ((pdf.parent / "workspace") if pdf else Path.cwd() / "workspace")
-    output = workspace / "02.90_emit_page_markdown"
-    destination = book_directory(workspace) if args.publish else None
-    if destination is not None:
-        check_destination(destination)
-        if args.status:
-            raise ValueError("Publishing requires completed conversion")
     if args.status:
-        print_pipeline_status(workspace, output)
+        print_pipeline_status(workspace)
         return
     if pdf is None:
         parser.error("--pdf is required for conversion and restart")
@@ -378,8 +352,6 @@ def main():
     end = resolve_stage_idx(args.to_stage) if args.to_stage else len(STAGE_REGISTRY) - 1
     if start is None or end is None or start > end:
         raise ValueError("Invalid stage interval")
-    if args.publish and end != len(STAGE_REGISTRY) - 1:
-        raise ValueError("Publishing requires completion through Stage 02.90")
 
     config_path = workspace / "config.yaml"
     config_source = config_path if config_path.exists() else args.config.resolve()
@@ -416,16 +388,13 @@ def main():
         os.environ["CONVERSION_CACHE_DIR"] = str(args.cache_dir.resolve())
     # Persist invalidation before any cleanup can fail or be interrupted.
     invalidate_status(status_file, invalid)
-    clean_downstream_stages(workspace, output, start, status_file)
+    clean_downstream_stages(workspace, start, status_file)
     page_ranges = ",".join(map(str, pages)) if pages is not None else None
     print(f"[*] PDF source: {pdf.name}; selected pages: {pages}; stages: {[stage['id'] for stage in selected]}")
     for stage in selected:
-        if not run_stage(stage, skill_dir, workspace, pdf, output, config_path, args.verbose, page_ranges):
+        if not run_stage(stage, skill_dir, workspace, pdf, config_path, args.verbose, page_ranges):
             raise RuntimeError(f"Pipeline halted at Stage {stage['id']}")
     print("[+] Selected PDF pipeline stages completed.")
-    if destination is not None:
-        publish_output(output, destination)
-        print(f"[+] Published reference book: {destination}")
 
 
 if __name__ == "__main__":

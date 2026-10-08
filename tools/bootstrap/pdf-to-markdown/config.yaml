@@ -1,6 +1,5 @@
 # Global configuration for the modular PDF-to-Markdown pipeline
-# Stage 02.90 is deterministic: fixed document.md/assets output and exact pixel
-# crops. It has no model/effort selection or configurable geometry adjustment.
+# Preparation ends at Stage 02.81; book generation is a separate program.
 
 llm:
   stages:

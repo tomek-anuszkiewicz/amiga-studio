@@ -2,6 +2,13 @@
 
 This directory starts the planned deterministic chapter generator. It will consume prepared data from [PDF-to-Markdown](../pdf-to-markdown/README.md) and authored JSON recipes. The generator is not implemented yet.
 
+PDF preparation ends at Stage 02.81. The intended handoff uses Stage 01 original
+page PNGs and positioned text, Stage 02.80 filtered page objects and Stage 02.81
+changed page objects. The 02.81 status entry records its selected page range;
+overlay replacements on those selected 02.80 pages and retain unchanged pages.
+The generator will emit chapter Markdown and crop graphic assets directly from
+this prepared data. No intermediate page-ordered Markdown export is required.
+
 ## Element vocabulary
 
 The initial [element list](elements.md) records source roles used in book authoring. Notes and legends use generic `note` and `legend` types; authored groups associate them with tables or images, and notes may also stand independently in the text. Image elements retain the existing `graphic` identifier. Grouping is authored separately from PDF table transcription.

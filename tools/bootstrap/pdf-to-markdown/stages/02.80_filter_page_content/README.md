@@ -31,5 +31,5 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<W
 Execution requires successful Stage 01/02 statuses. Restarting 02.80 clears its output
 and every later stage, even for this single-stage interval; earlier restarts also
 clear it. Stage 01 and Stage 02 artifacts remain unchanged. Stage 02.81 consumes
-only the filtered JSONs; Stage 02.90 exports the completed Stage 02.81 dataset.
+only the filtered JSONs. The prepared dataset is input for separate book processing.
 Missing filtered pages never fall back to Stage 02.
