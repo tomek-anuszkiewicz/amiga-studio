@@ -1270,3 +1270,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight passes
   - all 19 architecture tests pass
   - documentation-only change with no downloads or conversion runs
+---
+
+### [2026-10-08 22:57 CET] — Centralize book catalog ignore rules
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books`
+- **What Was Changed (The Concrete Reality)**:
+  - Move Test Book PDF and workspace ignore patterns to books/.gitignore
+  - remove the redundant Test Book .gitignore
+- **Architectural Rationale & Trade-Offs**:
+  - Apply one shared ignore policy to local book source files and conversion workspaces
+- **Verification & Test Results**:
+  - git check-ignore confirms Test Book PDF, workspace artifact and reference source PDF remain ignored
+  - git diff --check passes
+  - quick preflight passes
+  - all 19 architecture tests pass

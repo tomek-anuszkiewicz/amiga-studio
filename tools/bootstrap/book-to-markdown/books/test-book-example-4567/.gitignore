@@ -1,3 +1,0 @@
-# Preserve local source PDFs and conversion workspaces outside Git history.
-*.pdf
-workspace/

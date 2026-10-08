@@ -1,2 +1,3 @@
-# Keep local reference PDFs outside Git history.
-source.pdf
+# Keep local reference PDFs and conversion workspaces outside Git history.
+*.pdf
+workspace/
