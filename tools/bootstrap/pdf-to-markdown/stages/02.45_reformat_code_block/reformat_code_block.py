@@ -42,8 +42,6 @@ def reformat_code_block(workspace, config, pages=None):
                     response = codex.generate_json(request, schema=RESPONSE)
                     replacements[identity] = {
                         **target, "md_text": response["md_text"],
-                        "source_segment_ids": target.get("source_segment_ids", [identity]),
-                        "replacement_stage": CODE_REFORMAT_STAGE,
                     }
                     requested += 1
                     print(f"[code-reformat] {page_id}/{identity}: "

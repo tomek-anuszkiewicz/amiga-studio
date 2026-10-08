@@ -36,7 +36,7 @@ overlaps and read-only anchors retain source ranges with concise console message
 Responses contain only replacements using stable source segment IDs, without
 attachment decisions. Each replacement includes its own tight pixel box inferred
 from the original image, separating label, body and retained remainder geometry.
-The program preserves those boxes directly; IDs and lineage derive from contributors.
+The program preserves those boxes directly; IDs derive from contributors. Saved segments omit source-lineage and replacement-stage metadata.
 No framed companions, response dumps or decision reports are created.
 The prompt excludes numbered/symbol-marked footnotes, table/figure legends and
 explanatory lists. Distinct NOTE labels introducing their own advisory paragraphs
@@ -57,8 +57,8 @@ Review 02.50 and filtering 02.80 share the sparse
 resolver. Completed overrides are eligible, absent optional status means skipped,
 and running/failed 02.40 blocks direct consumers. Filtering omissions remain final.
 Restart clears the stage and all later artifacts, preserving 01/02 and cache.
-Table groups/companions are created at 02.81 from corrected objects; Stage 03
-carries lineage in node metadata, and Stage 09 assembles native callouts, including
+Table groups/companions are created at 02.81 from corrected objects;
+Stage 09 assembles native callouts, including
 decorated leading labels. The model supplies faithful text; successful execution
 does not certify recovery quality. See [Stage 02.40](pdf-to-markdown/stages/02.40_reclassify_callouts/README.md).
 
@@ -81,7 +81,7 @@ including white and shaded cells, force `graphic` even if HTML could represent
 the table. Otherwise retain genuine tables, reclassify unsuitable drawings,
 transcribe prose/code, or split independent elements into source-ordered existing
 types. Singleton replacements retain bbox/continuation; children receive stable
-IDs and lineage. Only changed pages receive complete-page overrides, layered as
+IDs. Only changed pages receive complete-page overrides, layered as
 `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46`; the worker reads only predecessors. Shared optional
 status and selection rules apply. Graphics carry `image_only` through Stage 03,
 receive exact original-pixel crops and remain independent raster images through
@@ -95,8 +95,7 @@ transcribes ordinary prose, or marks a faithful table representation with empty
 text for 02.81. Parameter name/value or name/meaning descriptions, including
 aligned INPUT/OUTPUT register descriptions, use prose with all labels and
 qualifications preserved; alignment alone does not make them tables.
-Replacements preserve identity, bbox, continuation and order,
-with lineage; only changed pages receive overrides. The shared resolver layers
+Replacements preserve identity, bbox, continuation and order; only changed pages receive overrides. The shared resolver layers
 02.43 after 02.42 for 02.50/02.80, while this worker reads only predecessors.
 Pages without code blocks make no model requests. Shared optional-status, page
 selection and restart rules apply. See [Stage 02.43](pdf-to-markdown/stages/02.43_reclassify_code_blocks/README.md).
@@ -108,11 +107,11 @@ level, consistent brace alignment and indentation tabs normalized to spaces.
 Existing source indentation is input to improve, not a formatting reference. Preserve tokens, comments, values, line
 order and existing fence language. Do not classify prose, change object types,
 correct code, split/merge blocks or reconstruct code across pages. Preserve IDs,
-geometry, continuation, source fields and lineage; record formatting with a
-replacement-stage marker, even when text was already formatted. Save changed
+geometry, continuation and source fields. Saved segments omit source-lineage
+and replacement-stage metadata. Save changed
 complete pages only. Read predecessors through 02.44; review/filtering resolve
-02.45. Shared status, selection, cache and restart rules apply. Stage 03 marks
-formatted code already rendered so Stage 09 retains fences and indentation.
+02.45. Shared status, selection, cache and restart rules apply. The existing Stage 03/09 marker-based behavior is outside this change and
+requires a separate update to reuse formatted code without the removed marker.
 Existing attempts require explicit regeneration from 02.45; earlier artifacts
 remain unchanged. Explicit 02.45 execution transfers existing saved model/effort
 settings to the renamed configuration key, initializing only missing settings.
@@ -266,7 +265,7 @@ Stage 02.44 assesses only resolved `graphic` objects, including reclassified
 tables, with one read-only request per image and complete original-detail Stage 01
 PNG input. It adds numeric `rotation`: the correction clockwise from current PNG
 orientation in `[0, 360)`, including fractional values. Missing means no recorded
-decision; zero explicitly records no correction. Preserve source fields and lineage,
+decision; zero explicitly records no correction. Preserve source fields,
 record the replacement stage, and write complete-page overrides only when changed.
 The resolver chain is `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46`;
 absent optional status skips a layer and failed/running status blocks consumers.

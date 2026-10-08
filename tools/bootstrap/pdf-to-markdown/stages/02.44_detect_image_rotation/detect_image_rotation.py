@@ -50,8 +50,6 @@ def detect_image_rotation(workspace, config, pages=None):
                     if "rotation" not in target or target["rotation"] != rotation:
                         replacements[target["segment_id"]] = {
                             **target, "rotation": rotation,
-                            "source_segment_ids": target.get("source_segment_ids", [target["segment_id"]]),
-                            "replacement_stage": IMAGE_ROTATION_STAGE,
                         }
                     requested += 1
                     print(f"[image-rotation] {page_id}/{target['segment_id']}: {rotation} deg CW", flush=True)

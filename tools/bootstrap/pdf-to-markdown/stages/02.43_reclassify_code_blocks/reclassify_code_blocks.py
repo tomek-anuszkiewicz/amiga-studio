@@ -55,8 +55,6 @@ def reclassify_code_blocks(workspace, config, pages=None):
                             **target, "type": action,
                             "md_text": response["md_text"] if action == "prose" else "",
                             "heading_level": None,
-                            "source_segment_ids": [target["segment_id"]],
-                            "replacement_stage": CODE_RECLASSIFY_STAGE,
                         }
                     requested += 1
                     print(f"[code-reclassify] {page_id}/{target['segment_id']}: {action}", flush=True)

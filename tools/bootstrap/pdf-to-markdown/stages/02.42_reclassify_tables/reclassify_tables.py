@@ -39,9 +39,7 @@ def table_replacements(source, response, reserved_ids):
                 suffix += 1
             identity = f"{identity}_part_{suffix}"
         reserved_ids.add(identity)
-        replacement = {**source, **child, "segment_id": identity,
-                       "source_segment_ids": [source["segment_id"]],
-                       "replacement_stage": TABLE_RECLASSIFY_STAGE}
+        replacement = {**source, **child, "segment_id": identity}
         if len(children) == 1:
             replacement.update(bbox=list(source["bbox"]), continuation=source["continuation"])
         if child["type"] == "graphic":

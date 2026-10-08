@@ -37,9 +37,7 @@ def table_replacements(source, tables, reserved_ids):
                 suffix += 1
             identity = f"{identity}_table_{suffix}"
         reserved_ids.add(identity)
-        replacements.append({**source, **table, "segment_id": identity,
-                             "source_segment_ids": [source["segment_id"]],
-                             "replacement_stage": TABLE_SPLIT_STAGE})
+        replacements.append({**source, **table, "segment_id": identity})
     return replacements
 
 

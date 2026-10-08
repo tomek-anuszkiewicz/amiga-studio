@@ -2,7 +2,6 @@
 
 import re
 from .pdf_schemas import object_schema, STRING, BBOX
-from .pdf_page_conversion import CALLOUT_STAGE
 
 CANDIDATE_TYPES = {"prose", "code_block", "chapter", "heading", "toc_heading",
                    "index_heading", "list_of_tables_heading", "list_of_figures_heading",
@@ -127,9 +126,7 @@ def apply_replacements(page, objects, response):
                     "md_text": replacement["md_text"],
                     "bbox": replacement["bbox"],
                     "heading_level": first.get("heading_level") if kind == first["type"] and kind not in {"callout", "callout_text"} else None,
-                    "continuation": any(item.get("continuation", False) for item in contributors),
-                    "source_segment_ids": [item["segment_id"] for item in contributors],
-                    "replacement_stage": CALLOUT_STAGE})
+                    "continuation": any(item.get("continuation", False) for item in contributors)})
             result.extend(produced)
             report.update(status="applied", replacement_segments=produced,
                           consumed_segment_ids=[page["segments"][i]["segment_id"] for i in report["indices"]])

@@ -15,8 +15,8 @@ could represent them. White and shaded cells count as different backgrounds.
 of complete segment objects. A singleton preserves the original bbox and
 continuation flag. Split children use model-provided tight boxes and continuation
 flags in source reading order. The first child retains the source ID; later IDs
-use collision-free `_part_N` suffixes. Replacements record `source_segment_ids`
-and `replacement_stage`; all surrounding objects remain unchanged.
+use collision-free `_part_N` suffixes. Saved replacements omit source-lineage
+and replacement-stage metadata; all surrounding objects remain unchanged.
 
 Prose/code and other textual children receive complete `md_text` during this
 stage. Tables and graphics retain deferred content processing. Graphic outcomes

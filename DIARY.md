@@ -4129,3 +4129,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify AST refresh completed
   - git diff --check passed
   - no source fragment conversion run
+---
+
+### [2026-10-08 14:48 CET] — PDF-SEGMENT-METADATA-1: Remove persisted replacement metadata
+- **Affected Subsystems**:
+  - `Stage 02.40 through 02.45`
+  - `converter documentation and callout regression`
+- **What Was Changed (The Concrete Reality)**:
+  - Stop adding source_segment_ids and replacement_stage to saved segments
+  - retain source IDs in Stage 02.40 replacement responses
+  - remove both fields from 157 existing example page JSON files without inference
+  - leave Stage 03 and 09 unchanged at user direction
+- **Architectural Rationale & Trade-Offs**:
+  - Complete-page overrides already represent applied changes
+  - existing Stage 03 code formatting marker consumption remains deferred
+  - example artifacts remain in the user's existing worktree changes outside this code commit
+- **Verification & Test Results**:
+  - Callout regression 1/1 passed
+  - PDF technical tests 30/30 passed
+  - quick pre-flight passed
+  - architecture tests 19/19 passed
+  - Graphify AST refresh completed
+  - git diff --check passed
+  - no fragment conversion run
