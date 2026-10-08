@@ -4036,3 +4036,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture tests 19/19 passed
   - git diff --check passed
   - no fragment conversion requested or run
+---
+
+### [2026-10-08 03:32 CET] — PDF-EMPTY-ROWS-1: Add Stage 02.82 table cleanup
+- **Affected Subsystems**:
+  - `PDF converter registry and workers`
+  - `table handoff`
+  - `converter documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Add deterministic Stage 02.82 removing empty Markdown and HTML table rows
+  - retain Markdown headers and occupied rowspan rows and adjust affected spans
+  - copy table crops and preserve predecessor JSON
+  - route review export and stream through completed Stage 02.82
+- **Architectural Rationale & Trade-Offs**:
+  - Remove empty table rows after transcription and before review or publication without another inference request
+- **Verification & Test Results**:
+  - PDF execution and restart tests 30/30 passed
+  - page selection tests 6/6 passed
+  - targeted offline cleanup and handoff checks passed
+  - quick pre-flight passed
+  - architecture tests 19/19 passed
+  - Graphify AST refresh completed
+  - git diff --check passed
+  - no source fragment conversion or milestone gate run

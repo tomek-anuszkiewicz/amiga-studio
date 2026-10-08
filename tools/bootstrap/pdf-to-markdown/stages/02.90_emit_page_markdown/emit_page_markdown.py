@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
 from common.pdf_page_conversion import read_conversion
 from common.pdf_page_markdown import crop_objects, document_markdown
-from common.pdf_tables import STAGE
+from common.pdf_tables import CLEANED_STAGE as STAGE
 
 
 def emit_page_markdown(workspace, pdf_path):

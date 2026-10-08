@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
 from common.pdf_page_conversion import read_conversion
 from common.pdf_page_markdown import segment_markdown
-from common.pdf_tables import STAGE, ordered_markdown
+from common.pdf_tables import CLEANED_STAGE as STAGE, ordered_markdown
 from common.pdf_selection import selected_pages
 
 CSS = """

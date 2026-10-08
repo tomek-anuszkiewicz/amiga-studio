@@ -367,7 +367,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual((self.workspace / "04_stream_reduction/artifact.json").read_bytes(), before)
         self.assertEqual(other_output.read_text(), "Independent conversion")
         state = read_json(self.workspace / "stage_status.json")
-        self.assertEqual(list(state), ["00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.50", "02.80", "02.81", "02.83", "02.90", "03", "04", "05"])
+        self.assertEqual(list(state), ["00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.50", "02.80", "02.81", "02.82", "02.83", "02.90", "03", "04", "05"])
 
 
     def test_explicit_restart_rebuilds_missing_output_and_later_stages(self):
@@ -476,7 +476,7 @@ class PdfConfigurationTests(unittest.TestCase):
             with patch.object(worker, "read_conversion", return_value=[(entry, objects)]) as validate, \
                  patch.object(worker, "extract_assets_for_nodes", side_effect=lambda root, nodes, **kwargs: nodes):
                 worker.build_raw_stream(workspace, {})
-            validate.assert_called_once_with(workspace, "02.81_transform_page_tables")
+            validate.assert_called_once_with(workspace, "02.82_remove_empty_table_rows")
             nodes = json.loads((workspace / "03_build_raw_stream/raw_stream.json").read_text())
             self.assertEqual([n["md_text"] for n in nodes],
                              ["## Continued", "*Source note*", objects["segments"][2]["md_text"]])

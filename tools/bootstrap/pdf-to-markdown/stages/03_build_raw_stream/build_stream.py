@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 stages/03_build_raw_stream/build_stream.py:
-Assemble Stage 02.81 objects into the downstream stream in reading order.
+Assemble Stage 02.82 objects into the downstream stream in reading order.
 """
 
 import argparse
@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from common.pdf_runtime import RENDER_DPI
 from common.pdf_page_conversion import read_conversion, CODE_REFORMAT_STAGE
-from common.pdf_tables import STAGE, FIELDS, ASSOCIATED, converted
+from common.pdf_tables import CLEANED_STAGE as STAGE, FIELDS, ASSOCIATED, converted
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from extract_initial_assets import extract_assets_for_nodes
@@ -64,7 +64,7 @@ def build_raw_stream(workspace_dir: Path, config: dict):
         if node["type"] == "cover":
             node["rendered_markdown"] = f"![Cover](assets/{Path(node['png_path']).name})"
     (output / "raw_stream.json").write_text(json.dumps(nodes, indent=2), encoding="utf-8")
-    print(f"[+] Stage 03 complete: {len(nodes)} nodes from Stage 02.81 objects")
+    print(f"[+] Stage 03 complete: {len(nodes)} nodes from Stage 02.82 objects")
 
 
 def main():

@@ -50,7 +50,7 @@ Stage 00 deliberately prepares or reuses the full-source shared OCR PDF.
 Apply selection before context collection, TOC-boundary detection,
 inference or review rendering. Stage 02.81 respects it for either configured
 predecessor, without recovering pages removed by filtering. Stage 03 creates the
-stream from retained 02.81 input; stream workers do not refilter physical pages.
+stream from retained 02.82 input; stream workers do not refilter physical pages.
 The [pipeline selection contract](pdf-to-markdown/README.md#physical-page-selection-through-stage-0282)
 records the per-stage behavior and maintenance rule. Restart cleanup remains global.
 Review 02.50 and filtering 02.80 share the sparse
@@ -189,7 +189,7 @@ Full runs, intervals and individual deterministic/inference stages use
 processes automatically with its inference calls and no manual task files.
 The normal pipeline has no legacy reader.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.50 -> 02.80 -> 02.81 -> 02.83 -> 02.90 -> 03`, then `04 -> 05 -> 09 -> 10 -> 11 -> 14`.
+The execution sequence is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.83 -> 02.90 -> 03`, then `04 -> 05 -> 09 -> 10 -> 11 -> 14`.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.
@@ -273,7 +273,7 @@ absent optional status skips a layer and failed/running status blocks consumers.
 Selection precedes candidates; pages without graphics make no requests. Existing
 model settings survive and missing settings default to `gpt-6.1-sol` / `medium`.
 Restart clears this and later stages, retaining predecessors/cache.
-Filtering 02.80 and transformations/review 02.81/02.83 preserve graphic metadata;
+Filtering 02.80 and transformations/cleanup/review 02.81/02.82/02.83 preserve graphic metadata;
 03 carries the angle on nodes and in metadata. Review 02.50 displays saved angles
 without rotating boxes or pixels. Exported asset rotation remains deferred.
 Stage 02 does not require rotation in inference responses or other object types.
@@ -364,28 +364,37 @@ HTML tables require a separate crop/HTML/source-ordered-group inference saving
 complete nonempty `table_rag_text`. Preserve all values and relationships without
 summarization. A conservative local simple-HTML warning changes no result.
 
+Stage 02.82 deterministically removes rows whose cells are all empty from
+converted Markdown and HTML tables. It consumes completed 01/02.81, writes full
+selected page JSONs and copies persistent table crops into
+`02.82_remove_empty_table_rows/`. Markdown headers and separator rows remain.
+HTML rows occupied by nonempty rowspan cells remain; removal adjusts other
+rowspans. Non-table objects, unconverted tables and group companions remain
+unchanged. Review 02.83, export 02.90 and stream 03 require completed 02.82,
+without fallback. Restart 02.82 preserves transcription and clears its successors.
+
 Stage 02.83 produces a labeled Source/Converted PNG per table from completed
-01/02.81 artifacts without inference or export dependency. Shared group assembly
+01/02.82 artifacts without inference or export dependency. Shared group assembly
 renders GFM/HTML with a local Playwright browser, complete source context, expanded
 literal RAG text and a collapsed original-image companion. Full-width/full-height
 capture preserves long content; temporary HTML is separate from final PNGs.
 Rendering success does not certify source fidelity. The user selects and assesses
 real fragments; ingestion of details/code-block content remains deferred.
 
-Stage 02.90 and Stage 03 consume completed 02.81 directly, independently of review.
+Stage 02.90 and Stage 03 consume completed 02.82 directly, independently of review.
 02.90 emits one `document.md` with minimal filename-derived YAML/title and assets.
 Converted tables retain source positions; HTML tables append a collapsed literal
 `Table text for RAG` companion after the last group block, then a collapsed
 `Original table image` section. Associated blocks remain visible once in source order.
 The renderer wraps saved text without additions or reinference. Markdown tables
-need no exported crop; HTML/unconverted tables copy saved 02.81 crops, never recrop.
+need no exported crop; HTML/unconverted tables copy saved 02.82 crops, never recrop.
 Graphics/covers continue to crop exact Stage 01 pixels for page export. A temporary
 bundle replaces old output and removes obsolete assets after successful writes.
 
 Stage 03 preserves source fields and geometry, maps `md_text` to `raw_text`, initializes
 converted `rendered_markdown`, and carries all table fields through the stream.
 Its existing padded cropper still handles graphics/covers/code; table assets are
-copied from 02.81. Converted fragments are neither unified by 04 nor joined by 06,
+copied from 02.82. Converted fragments are neither unified by 04 nor joined by 06,
 nor reconverted/erased by 07. Unconverted tables retain the legacy path. Final 11
 uses shared group placement and copies referenced original-image assets without
 companion duplication. Later processing does not automatically rewrite saved RAG text.
@@ -393,9 +402,9 @@ companion duplication. Later processing does not automatically rewrite saved RAG
 Restart clears the selected stage and every later stage in execution order, even
 when stopping at that stage. Restart 02.81 preserves predecessors and rebuilds
 persistent crops; restart 02.83 preserves conversion and rebuilds reviews. Required
-completed dependencies are 01 plus the selected predecessor for 02.81, and 01/02.81
+completed dependencies are 01 plus the selected predecessor for 02.81, and 01/02.82
 for 02.83, 02.90 and 03. No automatic continuation or completed-stage skipping occurs.
-Existing exports/streams require explicit regeneration through 02.81; implementation
+Existing exports/streams require explicit regeneration through 02.82; implementation
 does not mutate old attempts. Preserve edited exports outside cleanup before restart.
 The bundled NXP resource and request cache survive attempt cleanup.
 

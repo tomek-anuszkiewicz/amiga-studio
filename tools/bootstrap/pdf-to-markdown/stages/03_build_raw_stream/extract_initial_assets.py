@@ -2,7 +2,7 @@
 """
 stages/03_build_raw_stream/extract_initial_assets.py:
 For visual nodes:
-1. Copies required persistent table crops from Stage 02.81; Markdown tables need none.
+1. Copies required persistent table crops from Stage 02.82; Markdown tables need none.
    Crops other visual assets from Stage 01 with existing typographic padding.
 2. Annotates the node with visual file paths in raw_stream.json.
 Raw text remains in each node's raw_text field; no separate text dumps are written.
@@ -14,7 +14,7 @@ import shutil
 from pathlib import Path
 from PIL import Image
 from common.pdf_runtime import RENDER_DPI
-from common.pdf_tables import STAGE
+from common.pdf_tables import CLEANED_STAGE as STAGE
 
 
 def extract_assets_for_nodes(

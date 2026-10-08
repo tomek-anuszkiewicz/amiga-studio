@@ -7,7 +7,7 @@ let the user assess the output. Offline tests check execution mechanics, not con
 
 Fractional stage IDs use two digits after the dot so directory sorting follows
 execution order: `02.40`, `02.41` through `02.46`, `02.50`, `02.80`, `02.81`,
-`02.83`, `02.90`. CLI selectors, configuration keys and artifact directories use
+`02.82`, `02.83`, `02.90`. CLI selectors, configuration keys and artifact directories use
 these names. Saved attempts are not migrated automatically. To reuse an older
 attempt, rename its `02.4`, `02.5`, `02.8` and `02.9` stage directories to the
 corresponding two-digit names, update those stage IDs in `stage_status.json`, and
@@ -18,7 +18,9 @@ Table conversion review is now Stage `02.83` (formerly `02.82`). Existing attemp
 retain their saved names. To reuse a saved review, rename its
 `02.82_table_conversion_review` directory to `02.83_table_conversion_review` and
 change its `stage_status.json` key from `02.82` to `02.83`, or regenerate review
-with `--from-stage 02.83 --to-stage 02.83` using completed Stage 01/02.81 inputs.
+with `--from-stage 02.83 --to-stage 02.83` using completed Stage 01/02.82 inputs.
+Stage 02.82 now removes empty table rows;
+run it before regenerating review, page export or the raw stream.
 
 ## Run an attempt
 
@@ -60,7 +62,7 @@ errors stop execution normally. No older-stage inputs or alternative models are 
 
 ## Stage data and execution
 
-Execution order is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.50 -> 02.80 -> 02.81 -> 02.83 -> 02.90 -> 03`, then 04-14.
+Execution order is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.83 -> 02.90 -> 03`, then 04-14.
 Each worker reads the predecessor's own directory and writes its own results:
 
 | Stage | Input and result |
@@ -78,9 +80,10 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [02.50](stages/02.50_page_conversion_review/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 -> review frames and ordered labels |
 | [02.80](stages/02.80_filter_page_content/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 -> retained objects after source-content and fixed NXP-logo exclusions |
 | [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> table markup, saved crops and inferred HTML group text |
-| [02.83](stages/02.83_table_conversion_review/README.md) | Stage 01/02.81 -> side-by-side table review PNGs, no inference |
-| [02.90](stages/02.90_emit_page_markdown/README.md) | Stage 01/02.81 -> `document.md`, converted tables and required raster assets |
-| [03](stages/03_build_raw_stream/README.md) | Stage 02.81 objects and Stage 01 geometry -> raw stream and initial assets |
+| [02.82](stages/02.82_remove_empty_table_rows/README.md) | Stage 01/02.81 -> remove empty Markdown/HTML table rows, preserve saved crops |
+| [02.83](stages/02.83_table_conversion_review/README.md) | Stage 01/02.82 -> side-by-side table review PNGs, no inference |
+| [02.90](stages/02.90_emit_page_markdown/README.md) | Stage 01/02.82 -> `document.md`, converted tables and required raster assets |
+| [03](stages/03_build_raw_stream/README.md) | Stage 02.82 objects and Stage 01 geometry -> raw stream and initial assets |
 | [04](stages/04_stream_reduction/README.md) | Raw stream -> reduced stream |
 | [05](stages/05_chapter_partition/README.md) | Reduced stream -> self-contained chapters |
 | [09](stages/09_transform_prose/README.md) | Stage 05 -> formatted prose/code/TOC |

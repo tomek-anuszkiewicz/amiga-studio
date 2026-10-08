@@ -1,6 +1,6 @@
 # Stage 03: Build Raw Stream
 
-Consume completed Stage 02.81 page objects and Stage 01 page geometry. Preserve
+Consume completed Stage 02.82 page objects and Stage 01 page geometry. Preserve
 physical-page/segment order, identities, types, heading levels, continuation flags,
 `md_text` and integer `bbox_pixels`. There is no fallback to earlier JSON or review
 PNG input. Empty input produces an empty stream and assets directory.
@@ -14,7 +14,7 @@ Carry `table_format`, `table_rag_text`, `table_group_segment_ids` and
 `table_source_asset` unchanged. Stage 04 keeps converted table fragments separate,
 Later chapter stages retain their existing markup and source-image companions.
 
-Copy saved Stage 02.81 crops for HTML companions and unconverted tables into
+Copy saved Stage 02.82 crops for HTML companions and unconverted tables into
 `assets/asset_<node_id>.png`; Markdown tables publish no crop. Graphics, covers and
 code blocks still use the existing Stage 01 cropper with padding and neighbor limits.
 Asset paths move forward with stage bundles. Final Stage 11 uses the same group
@@ -25,9 +25,9 @@ the last associated block exactly once, without reinference or appended group te
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 03
 ```
 
-Completed Stage 01/02.81 statuses are required even when reviews or 02.90 have not
+Completed Stage 01/02.82 statuses are required even when reviews or 02.90 have not
 run. Restart cleanup follows execution order. Existing streams require explicit
-regeneration through 02.81 to adopt table conversion. Success establishes execution,
+regeneration through 02.82 to adopt table conversion. Success establishes execution,
 not transcription fidelity or RAG ingestion behavior.
 
 Stage 02.40 replacement `source_segment_ids` and `replacement_stage` are carried

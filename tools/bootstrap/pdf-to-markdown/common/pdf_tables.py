@@ -5,6 +5,7 @@ from html.parser import HTMLParser
 from bs4 import BeautifulSoup
 
 STAGE = "02.81_transform_page_tables"
+CLEANED_STAGE = "02.82_remove_empty_table_rows"
 ASSOCIATED = {"caption", "footnote", "table_legend"}
 FIELDS = ("table_format", "table_rag_text", "table_group_segment_ids", "table_source_asset")
 

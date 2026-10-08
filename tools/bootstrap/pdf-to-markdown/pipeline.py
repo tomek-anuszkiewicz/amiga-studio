@@ -106,6 +106,12 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("page_*_segments.json", "transcribed table page JSON files"),
     },
     {
+        "id": "02.82", "dir": "02.82_remove_empty_table_rows", "script": "remove_empty_table_rows.py",
+        "desc": "Remove empty rows from converted Markdown and HTML tables",
+        "targets": ["02.82_remove_empty_table_rows"],
+        "inspect": ("page_*_segments.json", "cleaned table page JSON files"),
+    },
+    {
         "id": "02.83", "dir": "02.83_table_conversion_review", "script": "render_table_review.py",
         "desc": "Render side-by-side source and converted table groups",
         "targets": ["02.83_table_conversion_review"],
@@ -182,8 +188,8 @@ for index, stage in enumerate(STAGE_REGISTRY):
         "02.43": ["01", "02"], "02.44": ["01", "02"], "02.45": ["01", "02"],
         "02.46": ["01", "02"],
         "02.50": ["01", "02"], "02.80": ["01", "02"],
-        "02.81": ["01", "02.80"], "02.83": ["01", "02.81"],
-        "02.90": ["01", "02.81"], "03": ["01", "02.81"],
+        "02.81": ["01", "02.80"], "02.82": ["01", "02.81"], "02.83": ["01", "02.82"],
+        "02.90": ["01", "02.82"], "03": ["01", "02.82"],
     }.get(stage["id"], [STAGE_REGISTRY[index-1]["id"]] if index else [])
 
 
@@ -284,7 +290,7 @@ def run_stage(
     elif stage_num == "14" and output_dir:
         cmd.extend(["--output-dir", str(output_dir)])
 
-    if page_ranges is not None and stage_num in {"00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.50", "02.80", "02.81", "02.83"}:
+    if page_ranges is not None and stage_num in {"00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.50", "02.80", "02.81", "02.82", "02.83"}:
         cmd.extend(["--page-ranges", page_ranges])
 
     if verbose:

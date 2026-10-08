@@ -1,11 +1,11 @@
 # Stage 02.83: Table Conversion Review
 
-Deterministic review of completed Stage 01 and 02.81 artifacts, without inference
+Deterministic review of completed Stage 01 and 02.82 artifacts, without inference
 or Stage 02.90 output. Produce one `<segment_id>_review.png` per table, in physical
 page and source order, and report paths and counts by HTML/Markdown/unconverted.
 
 The Source panel shows original Stage 01 pixels for the table's recorded source
-group, using the persistent Stage 02.81 table crop at its original location. The
+group, using the persistent Stage 02.82 table crop at its original location. The
 Converted panel uses the same group assembly as page and stream export. It renders
 GFM and HTML tables, including cell spans, associated blocks in source order and
 the saved literal RAG text. Only the textual companion is expanded in the review
@@ -30,9 +30,9 @@ are never modified. Review disables page scripts and remote HTTP requests.
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.83 --to-stage 02.83
 ```
 
-Restart clears 02.83 and all later results, preserving 01/02/02.80/02.81. Review
+Restart clears 02.83 and all later results, preserving 01/02/02.80/02.81/02.82. Review
 PNGs are neither document assets nor conversion inputs: 02.90 and 03 require
-completed 02.81 directly. A stop at 02.83 does not export or build the stream.
+completed 02.82 directly. A stop at 02.83 does not export or build the stream.
 Use compatible existing artifacts for a user-requested review-only run; do not
 repeat inference or choose extra fragments. Rendering success proves production
 of the comparison; the user assesses source fidelity. RAG ingestion of details
