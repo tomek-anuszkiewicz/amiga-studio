@@ -2,7 +2,8 @@
 
 ## Status and observed problem
 
-Planned; implementation and the Stage 02.46 fragment run have not started.
+Implementation delivered; physical-page-82 fragment completed successfully.
+Awaiting user assessment; keep this plan active until the user accepts or closes it.
 Add `02.46_review_reading_order` after 02.45 and before review 02.5.
 Detect suspicious ordering from resolved object bounding boxes, then ask the
 model to assess the complete page and return its intended reading order.
@@ -135,3 +136,26 @@ test is appropriate only for a concrete reorder/permutation defect discovered
 within this task; no conversion-quality matrix or crop tests. Commit the delivered
 implementation, documentation and DIARY.md entry together. Keep this plan active
 until user assessment and closure under the execution-plan lifecycle.
+
+## Delivered evidence (2026-10-08)
+
+- Implemented the bounded pair detector, whole-page request with original/labeled
+  images, complete-permutation application and sparse page overrides.
+- Registered 02.46 in execution/dependencies, optional resolution, selection,
+  cleanup and inference configuration. Review/filtering resolve the new layer;
+  existing downstream consumers retain array order without ID/geometry sorting.
+- Attempt: `workspace/stage-02.46-reading-order-review/` under the selected book.
+  Copied only page-82 artifacts from the completed 02.43 selected-fragment attempt
+  and retained its real predecessor status records/config. Optional 02.42, 02.44
+  and 02.45 were absent and skipped normally; no predecessor inference was needed.
+- One suspicious pair: current ordinals 1/2 (`page_0082_seg_001` before
+  `page_0082_seg_002`). Model returned 002, 001, 003 through 013, changing only order.
+- Actual status: 02.46 success (one live request, zero cache hits); 02.5 success
+  (no inference). Corrected JSON, fresh input annotations, order diagnostics and
+  review PNG/JSON are retained. See the attempt `REVIEW.md` for exact output links.
+- Verification: retained selection tests 6/6, PDF execution/config/restart tests
+  30/30, shared configuration/cache/transport tests 21/21; quick pre-flight passed;
+  architecture suite 19/19; Graphify AST refresh passed. Object fields and page
+  metadata were compared with the resolved predecessor and preserved exactly.
+- No other pages, full-book conversion, publication or milestone gate ran.
+  Successful execution does not establish semantic acceptance of the order.

@@ -34,7 +34,7 @@ def frame_box(segment, raster):
             max(0, min(width-1, right)), max(0, min(height-1, bottom)))
 
 
-def draw_review_image(image, page_data, segments, *, include_continuation=False):
+def draw_review_image(image, page_data, segments, *, include_continuation=False, include_segment_ids=False):
     width, height = image.size
     canvas = Image.new("RGB", (width*2, height), "white")
     canvas.paste(image.convert("RGB"), (0, 0))
@@ -53,6 +53,8 @@ def draw_review_image(image, page_data, segments, *, include_continuation=False)
         ordinals = segment.get("source_ordinals", [index+1])
         ordinal_label = str(ordinals[0]) if len(ordinals) == 1 else f"{ordinals[0]}-{ordinals[-1]}"
         label = f"{ordinal_label}. {kind}"
+        if include_segment_ids:
+            label += f" | {segment['segment_id']}"
         if level is not None:
             label += f" | heading_level: {level}"
         if "rotation" in segment:

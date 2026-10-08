@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conversion.config import load_config as parse_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json, prepared_pdf_path
 from common.pdf_selection import selected_pages
-from common.pdf_page_conversion import page_override_layers, TABLE_SPLIT_STAGE, TABLE_RECLASSIFY_STAGE, CODE_RECLASSIFY_STAGE, IMAGE_ROTATION_STAGE, CODE_REFORMAT_STAGE
+from common.pdf_page_conversion import page_override_layers, TABLE_SPLIT_STAGE, TABLE_RECLASSIFY_STAGE, CODE_RECLASSIFY_STAGE, IMAGE_ROTATION_STAGE, CODE_REFORMAT_STAGE, READING_ORDER_STAGE
 from conversion.publication import book_directory, check_destination, publish_output
 
 STAGE_REGISTRY: List[Dict[str, Any]] = [
@@ -80,6 +80,12 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "desc": "Reformat code blocks and indentation using resolved page JSON",
         "targets": [CODE_REFORMAT_STAGE],
         "inspect": ("page_*_segments.json", "sparse reformatted code pages"),
+    },
+    {
+        "id": "02.46", "dir": READING_ORDER_STAGE, "script": "review_reading_order.py",
+        "desc": "Review suspicious page reading order using complete original-page vision",
+        "targets": [READING_ORDER_STAGE],
+        "inspect": ("page_*_segments.json", "sparse reordered pages"),
     },
     {
         "id": "02.5", "dir": "02.5_page_conversion_review", "script": "render_review.py",
@@ -214,6 +220,7 @@ for index, stage in enumerate(STAGE_REGISTRY):
     stage["inputs"] = {
         "02": ["01"], "02.4": ["01", "02"], "02.41": ["01", "02"], "02.42": ["01", "02"],
         "02.43": ["01", "02"], "02.44": ["01", "02"], "02.45": ["01", "02"],
+        "02.46": ["01", "02"],
         "02.5": ["01", "02"], "02.8": ["01", "02"],
         "02.81": ["01", "02.8"], "02.82": ["01", "02.81"],
         "02.9": ["01", "02.81"], "03": ["01", "02.81"],
@@ -317,7 +324,7 @@ def run_stage(
     elif stage_num == "14" and output_dir:
         cmd.extend(["--output-dir", str(output_dir)])
 
-    if page_ranges is not None and stage_num in {"00", "01", "02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.45", "02.5", "02.8", "02.81", "02.82"}:
+    if page_ranges is not None and stage_num in {"00", "01", "02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.5", "02.8", "02.81", "02.82"}:
         cmd.extend(["--page-ranges", page_ranges])
 
     if verbose:
@@ -574,6 +581,10 @@ def main():
         stages = config.setdefault("llm", {}).setdefault("stages", {})
         previous = stages.pop("02.45_recover_code_from_prose", {})
         pair = stages.setdefault(CODE_REFORMAT_STAGE, previous)
+        pair.setdefault("model", "gpt-6.1-sol")
+        pair.setdefault("reasoning_effort", "medium")
+    if start <= resolve_stage_idx("02.46") <= end:
+        pair = config.setdefault("llm", {}).setdefault("stages", {}).setdefault(READING_ORDER_STAGE, {})
         pair.setdefault("model", "gpt-6.1-sol")
         pair.setdefault("reasoning_effort", "medium")
     # Retire former settings from existing attempt configurations.
