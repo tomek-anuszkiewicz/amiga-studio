@@ -1,10 +1,7 @@
 # Stage 02.80: Filter Page Content
 
 Enumerate `02_page_conversion/page_*_segments.json` in numeric physical-page order,
-selecting same-name completed sparse 02.40/02.41/02.42/02.43/02.44/02.45/02.46/02.47 overrides in that order through the shared resolver
-and preserve each page's segment-array order. Write retained page objects with
-the same filenames to `02.80_filter_page_content/`. This deterministic stage
-makes no model requests and needs no inference configuration entry.
+reading Stage 02 directly.
 
 Apply the user's requested source-fidelity exception:
 
@@ -58,14 +55,6 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<W
 Execution requires successful Stage 01/02 statuses. Missing template or candidate
 PNG files fail through normal IO without fallback. Restarting 02.80 clears its output
 and every later stage, even for this single-stage interval; earlier restarts also
-clear it. Stage 01, Stage 02 and Stage 02.50 artifacts remain unchanged. Review
-continues to show original objects. Stage 02.81 consumes only filtered JSON by default; 02.82 removes empty table rows from its full page outputs; 02.90 and 03 consume 02.82
-and use original Stage 01 PNGs for retained crops. Existing downstream successes
-need explicit regeneration starting at 02.80 to represent this filtering.
-Preserve edited Stage 02.90 bundles outside cleanup before restarting; regeneration
-rebuilds links/assets and removes stale assets. The bundled resource survives
-attempt cleanup.
-
-An absent optional 02.40, 02.41, 02.42 or 02.43 status skips that layer; failed/running status blocks
-execution. Filtering writes full retained pages. Its omitted pages are never
-filled from 02, 02.40, 02.41, 02.42 or 02.43, including default Stage 02.81 consumption.
+clear it. Stage 01 and Stage 02 artifacts remain unchanged. Stage 02.81 consumes
+only the filtered JSONs; Stage 02.90 exports the completed Stage 02.81 dataset.
+Missing filtered pages never fall back to Stage 02.

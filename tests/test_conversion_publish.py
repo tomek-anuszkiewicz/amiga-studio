@@ -21,7 +21,7 @@ class PublicationTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        self.output = self.root / "Book-tmp/workspace/14_link_toc"
+        self.output = self.root / "Book-tmp/workspace/02.90_emit_page_markdown"
         self.output.mkdir(parents=True)
         (self.output / "Chapter.md").write_text("# Chapter\n", encoding="utf-8")
         (self.output / "assets").mkdir()
@@ -125,11 +125,11 @@ class PublicationTests(unittest.TestCase):
         root, pipeline = self.load_pipeline("pdf")
         (self.output.parent / "config.yaml").write_text(yaml.safe_dump({
             "input": {"source_pdf": "../../source.pdf", "pages": None}}))
-        (self.output.parent / "stage_status.json").write_text(json.dumps({"13": {"status": "success"}}))
-        argv = ["pipeline.py", "--pdf", str(self.root / "source.pdf"), "--workspace", str(self.output.parent), "--from-stage", "14", "--publish",
+        (self.output.parent / "stage_status.json").write_text(json.dumps({"01": {"status": "success"}, "02.81": {"status": "success"}}))
+        argv = ["pipeline.py", "--pdf", str(self.root / "source.pdf"), "--workspace", str(self.output.parent), "--from-stage", "02.90", "--publish",
                 "--config", str(root / "tools/bootstrap/pdf-to-markdown/config.yaml")]
         def worker(stage, *args):
-            self.assertEqual(stage["id"], "14")
+            self.assertEqual(stage["id"], "02.90")
             self.assertFalse((self.output / "Chapter.md").exists())
             self.output.mkdir(parents=True)
             (self.output / "Chapter.md").write_text("# Regenerated chapter\n", encoding="utf-8")

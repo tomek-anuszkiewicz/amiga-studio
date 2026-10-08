@@ -5,14 +5,7 @@ from pathlib import Path
 import math
 import yaml
 
-PDF_STAGES = frozenset((
-    "02_page_conversion", "02.40_reclassify_callouts", "02.41_split_tables", "02.42_reclassify_tables",
-    "02.43_reclassify_code_blocks",
-    "02.44_detect_image_rotation", "02.45_reformat_code_block",
-    "02.46_review_reading_order", "02.47_reclassify_graphics",
-    "02.81_transform_page_tables", "04_stream_reduction",
-    "09_transform_prose", "10_proofread_stream",
-))
+PDF_STAGES = frozenset(("02_page_conversion", "02.81_transform_page_tables"))
 HTML_STAGES = frozenset(("html_to_markdown",))
 
 

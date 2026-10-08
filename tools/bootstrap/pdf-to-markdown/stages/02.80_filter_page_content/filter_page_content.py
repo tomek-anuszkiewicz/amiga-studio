@@ -10,7 +10,7 @@ from PIL import Image, ImageChops, ImageStat
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion.config import load_config, PDF_STAGES
-from common.pdf_page_conversion import resolved_page_files
+from common.pdf_artifacts import page_files
 from common.pdf_selection import selected_pages
 from common.pdf_artifacts import read_json, write_json
 
@@ -74,7 +74,7 @@ def filter_page_content(workspace, pages=None):
         template_size = image.size
         reference = trim_nxp_margins(image.convert("RGB"))
     pages = [(path, read_json(path)) for path in
-             resolved_page_files(workspace, pages)]
+             page_files(workspace / "02_page_conversion", "page_*_segments.json", pages)]
     # Inspect original objects: even an excluded page can define the boundary.
     boundary = next(((page_index, segment_index)
                      for page_index, (_, value) in enumerate(pages)

@@ -817,3 +817,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - English-language scans and relative links passed
   - Whitespace check passed
   - No live proofreading run
+---
+
+### [2026-10-08 20:47 CET] — Remove obsolete PDF conversion stages
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/book-to-markdown`
+  - `tests`
+  - `docs/developers.md`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove stages 02.40-02.50, 02.82, 02.83, 03, 04, 05, 09, 10, 11 and 14 with their prompts, helpers and obsolete tests
+  - use explicit 02 to 02.80 to 02.81 to 02.90 handoffs
+  - publish the final page export
+  - update configuration, dependencies and documentation
+- **Architectural Rationale & Trade-Offs**:
+  - User requested pipeline simplification and explicitly included dependent stage 04
+  - retain the initial preparation, filtering, table conversion and page export path
+- **Verification & Test Results**:
+  - 58 converter and publication tests passed
+  - 3 page selection tests passed
+  - synthetic Stage 02.81 to 02.90 export copied the saved table asset and retained its source companion
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - Graphify incremental refresh completed
+  - no source fragment or full-book conversion requested or run

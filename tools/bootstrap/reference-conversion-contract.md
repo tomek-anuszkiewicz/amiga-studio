@@ -25,97 +25,12 @@ It also removes standalone upper-left NXP `graphic` objects matching a bundled
 raster after fixed geometry/aspect/RGB gates on original Stage 01 PNGs. No logo
 configuration is added. These exceptions affect source content only; generated
 YAML metadata remains.
-Review Stage 02.50 uses complete resolved page objects for presentation decisions;
-its annotation suppression and prose grouping do not remove source content.
-
-Stage 02.40 recovers advisory callouts using frozen Stage 02 text and one complete
-original Stage 01 image at original detail per candidate-bearing page. Keyword hits
-trigger one joint vision request per page; model proposals explicitly consume contiguous
-text ranges and return complete label/body and residual objects. Ambiguous IDs,
-overlaps and read-only anchors retain source ranges with concise console messages.
-Responses contain only replacements using stable source segment IDs, without
-attachment decisions. Each replacement includes its own tight pixel box inferred
-from the original image, separating label, body and retained remainder geometry.
-The program preserves those boxes directly; IDs derive from contributors. Contributor IDs are consumed only from the response; saved segments omit replacement metadata.
-No framed companions, response dumps or decision reports are created.
-The prompt excludes numbered/symbol-marked footnotes, table/figure legends and
-explanatory lists. Distinct NOTE labels introducing their own advisory paragraphs
-remain eligible even when they discuss a nearby table, image or figure.
-Only changed pages receive complete-page overrides; predecessors remain intact.
-All page workers from 01 through 02.83 filter their input by the current invocation's
-`--page-ranges`, forwarded by the pipeline even on a later-stage restart. Selection
-is not persisted in config; omission means all available predecessor pages.
-Legacy `input.pages` is ignored and removed on the next pipeline config write.
-Stage 00 deliberately prepares or reuses the full-source shared OCR PDF.
-Apply selection before context collection, TOC-boundary detection,
-inference or review rendering. Stage 02.81 respects it for either configured
-predecessor, without recovering pages removed by filtering. Stage 03 creates the
-stream from retained 02.82 input; stream workers do not refilter physical pages.
-The [pipeline selection contract](pdf-to-markdown/README.md#physical-page-selection-through-stage-0282)
-records the per-stage behavior and maintenance rule. Restart cleanup remains global.
-Review 02.50 and filtering 02.80 share the sparse
-resolver. Completed overrides are eligible, absent optional status means skipped,
-and running/failed 02.40 blocks direct consumers. Filtering omissions remain final.
-Restart clears the stage and all later artifacts, preserving 01/02 and cache.
-Table groups/companions are created at 02.81 from corrected objects;
-Stage 09 assembles native callouts, including
-decorated leading labels. The model supplies faithful text; successful execution
-does not certify recovery quality. See [Stage 02.40](pdf-to-markdown/stages/02.40_reclassify_callouts/README.md).
-
-Stage 02.41 reviews each existing table using its JSON/bbox, frozen page context
-and the complete unmodified Stage 01 image. A singleton response retains the
-original; multiple table objects replace it with separate model-provided boxes
-and model-provided continuation flags. For every split table, the prompt asks for
-true when the model judges it to continue another table, including an adjacent
-table on the same page; independent tables receive false. A singleton
-retains its predecessor flag along with the unchanged source object.
-Transcription stays deferred to 02.81. Completed sparse overrides layer as
-`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47` for review/filtering, with absent optional status meaning
-skipped and failed/running status blocking direct consumers. Stage 02.41 reads
-only predecessors. No generic local geometry/schema or quality gate is added.
-See [Stage 02.41](pdf-to-markdown/stages/02.41_split_tables/README.md).
-
-Stage 02.42 reviews resolved table objects with their JSON/bbox, frozen full-page
-context and the complete unmodified Stage 01 PNG. Different cell backgrounds,
-including white and shaded cells, force `graphic` even if HTML could represent
-the table. Otherwise retain genuine tables, reclassify unsuitable drawings,
-transcribe prose/code, or split independent elements into source-ordered existing
-types. Singleton replacements retain bbox/continuation; children receive stable
-IDs. Only changed pages receive complete-page overrides, layered as
-`02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47`; the worker reads only predecessors. Shared optional
-status and selection rules apply. Graphics follow the standard Stage 03 crop
-path with bounded padding and may merge in Stage 04 when vision confirms a
-unified diagram. Later chapter stages retain raster assets. Existing sidecar
-processing remains. Review 02.50/filtering 02.80 resolve the
-new layer; 02.81 receives only remaining tables. Restart clears 02.42 and every
-later stage. See [Stage 02.42](pdf-to-markdown/stages/02.42_reclassify_tables/README.md).
-
-Stage 02.43 reviews only existing code blocks with their JSON/bbox, frozen page
-context and the complete original Stage 01 PNG. It retains genuine code,
-transcribes ordinary prose, or marks a faithful table representation with empty
-text for 02.81. Parameter name/value or name/meaning descriptions, including
-aligned INPUT/OUTPUT register descriptions, use prose with all labels and
-qualifications preserved; alignment alone does not make them tables.
-Replacements preserve identity, bbox, continuation and order; only changed pages receive overrides. The shared resolver layers
-02.43 after 02.42 for 02.50/02.80, while this worker reads only predecessors.
-Pages without code blocks make no model requests. Shared optional-status, page
-selection and restart rules apply. See [Stage 02.43](pdf-to-markdown/stages/02.43_reclassify_code_blocks/README.md).
-
-Stage 02.45 reformats each resolved `code_block` with one request per block,
-using only the frozen page JSON and target ID/Markdown, without a page image.
-Return fenced `md_text` with structural indentation: four spaces per nesting
-level, consistent brace alignment and indentation tabs normalized to spaces.
-Existing source indentation is input to improve, not a formatting reference. Preserve tokens, comments, values, line
-order and existing fence language. Do not classify prose, change object types,
-correct code, split/merge blocks or reconstruct code across pages. Preserve IDs,
-geometry, meaningful continuation and source fields. No replacement metadata is persisted. Save changed
-complete pages only. Read predecessors through 02.44; review/filtering resolve
-02.45. Shared status, selection, cache and restart rules apply. Stage 03 marks formatted code already rendered so Stage 09 retains its fences
-and indentation.
-Existing attempts require explicit regeneration from 02.45; earlier artifacts
-remain unchanged. Explicit 02.45 execution transfers existing saved model/effort
-settings to the renamed configuration key, initializing only missing settings.
-See [Stage 02.45](pdf-to-markdown/stages/02.45_reformat_code_block/README.md).
+All page workers from 01 through 02.81 apply the current invocation's
+`--page-ranges` before reading inputs. Selection is not persisted in config;
+omission means all available predecessor pages. Stage 00 prepares or reuses the
+full-source OCR PDF. Stage 02.80 reads Stage 02 directly, and Stage 02.81 reads
+only filtered objects. Stage 02.90 exports the completed Stage 02.81 dataset.
+See the [pipeline selection contract](pdf-to-markdown/README.md#physical-page-selection).
 
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.
 
@@ -167,10 +82,6 @@ Actual failure records failed. There is no automatic completed-stage skipping.
 
 Each stage reads known files from its predecessor's own directory and writes its
 own outputs. Page filenames are ordered numerically without coverage or pair gates.
-Stage 05 chapter JSON contains `index`, `slug`, `title`, `target_md_file` and `nodes`;
-06-09 preserve metadata, 10 writes corrected metadata and nodes, and 11 reads those
-files directly. Index plus slug distinguishes the preface and TOC at index zero.
-Prior outputs remain unchanged; filename collision and frontmatter behavior remain.
 Normal execution uses no conversion state, manifest, snapshot or chapter registry.
 
 The PDF path removes local input/configuration/response checks, page/block/segment
@@ -184,11 +95,9 @@ destination protection remain. Success means completed execution, not complete
 pages, correct classifications/geometry, matching Markdown or complete assets.
 
 Full runs, intervals and individual deterministic/inference stages use
-`--from-stage`/`--to-stage`; matching boundaries select one stage. Stage 09
-processes automatically with its inference calls and no manual task files.
-The normal pipeline has no legacy reader.
+`--from-stage`/`--to-stage`; matching boundaries select one stage.
+The execution sequence is `00 -> 01 -> 02 -> 02.80 -> 02.81 -> 02.90`.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47 -> 02.50 -> 02.80 -> 02.81 -> 02.82 -> 02.83 -> 02.90 -> 03`, then `04 -> 05 -> 09 -> 10 -> 11 -> 14`.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.
@@ -202,8 +111,7 @@ compacts recognized page/stream objects without mutating inputs or injecting
 missing defaults. Numeric Stage 01 OCR blocks remain unchanged. Consumers apply
 missing-field defaults locally, preserving compact JSON in inference prompts.
 Source lineage, replacement-stage metadata and `image_only` are no longer
-produced or propagated. Stage 02.40 still uses contributor IDs in its response
-contract to apply replacements, but does not persist them. Nonzero rotation,
+produced or propagated. Nonzero rotation,
 true continuation, actual heading levels, text, geometry and order remain.
 The cache has been prepared with compact-input keys; requests now use those keys
 directly and the temporary dual-key writer is removed. Existing files are
@@ -223,7 +131,7 @@ including Continued, Concluded or a later sheet/part number. It keeps its normal
 type (for example `toc_heading`, `list_of_figures_heading` or `caption`) and its
 complete source name. Other objects, including bodies beneath these titles,
 have `continuation: false`. Stage 02 no longer accepts `caption_continuation`;
-old objects without this boolean require 02/02.50 regeneration, not in-place
+old objects without this boolean require 02 regeneration, not in-place
 migration.
 Every object has a nonempty integer pixel
 rectangle `[x0,y0,x1,y1]` with exclusive upper bounds. The model bounds complete
@@ -231,7 +139,7 @@ logical objects, including textual ones, independently of OCR blocks. Text boxes
 serve review; downstream consumers may ignore them. Table/graphic boxes may also
 serve cropping. A complete front or back book cover is one `cover` object,
 including its artwork, logos and source-visible publication text, with null
-`heading_level` and false `continuation`. Existing cover pages require 02/02.50
+`heading_level` and false `continuation`. Existing cover pages require 02
 regeneration to apply that classification; saved objects are not relabeled.
 Previous text objects with null boxes require 02 regeneration. The eight additional
 classifications distinguish footnotes, source table legends, index and listing
@@ -240,7 +148,7 @@ headings/entries.
 notation or abbreviations, including an appropriately placed NOTES/DESCRIPTION
 block with that role. General explanations are prose, table numbers/titles are
 captions and individually referenced notes are footnotes. The former broader
-classification is not accepted by the new schema; regenerate affected 02/02.50
+classification is not accepted by the new schema; regenerate affected 02
 artifacts without modifying saved source classifications in place.
 Determine complete object boundaries before classification: a marker-referenced
 footnote includes its continuation lines and paragraphs, even when they define
@@ -257,14 +165,14 @@ register-map and bit-assignment tables as `table` when repeated
 address/offset rows organize bit positions and field descriptions. Drawn brackets
 or leader lines connecting bits to descriptions stay inside the complete table;
 they do not make it a graphic, and cell borders are not required. This rule takes
-precedence over graphic and drawing-sheet grouping. Regenerate 02/02.50 to apply it.
+precedence over graphic and drawing-sheet grouping. Regenerate 02 to apply it.
 
 Stage 02 groups a complete technical drawing sheet as one `graphic`, including
 integrated identification text, introductory descriptions, views, dimensions,
 notes and technical tables. Shared drawing layout, orientation and subject may
 establish membership without leader lines. This grouping precedes individual
 table/caption classification; independent document content and running page
-headers/footers remain separate. Regenerate 02/02.50 to apply it to saved results.
+headers/footers remain separate. Regenerate 02 to apply it to saved results.
 
 Stage 02 classifies independent diagrams that visibly look like ASCII art or
 character-based drawings as `code_block`, preserving characters, line breaks,
@@ -274,70 +182,7 @@ spaces and alignment in fenced `text` blocks. Drawn lines and shapes remain
 Stage 02 orders objects by visible source rows. A short block beside and visually
 above most of a multiline heading precedes that heading even when their box top
 edges nearly align. Semantic association does not move headings ahead of earlier
-source content. Regenerate 02/02.50 to apply this ordering to saved results.
-
-Stage 02.44 assesses only resolved `graphic` objects, including reclassified
-tables, with one read-only request per image and complete original-detail Stage 01
-PNG input. It adds numeric `rotation`: the correction clockwise from current PNG
-orientation in `[0, 360)`, including fractional values. Missing means zero
-correction; zero is omitted on save. Preserve source fields and write complete-page
-overrides only when changed, without replacement metadata.
-The resolver chain is `02 -> 02.40 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.47`;
-absent optional status skips a layer and failed/running status blocks consumers.
-Selection precedes candidates; pages without graphics make no requests. Existing
-model settings survive and missing settings default to `gpt-6.1-sol` / `medium`.
-Restart clears this and later stages, retaining predecessors/cache.
-Filtering 02.80 and transformations/cleanup/review 02.81/02.82/02.83 preserve graphic metadata;
-03 carries the angle on nodes and in metadata. Review 02.50 displays saved angles
-without rotating boxes or pixels. Exported asset rotation remains deferred.
-Stage 02 does not require rotation in inference responses or other object types.
-See [Stage 02.44](pdf-to-markdown/stages/02.44_detect_image_rotation/README.md).
-
-Stage 02.46 detects right-before-left object pairs with overlapping vertical
-intervals in the frozen resolved array. Geometry selects suspicious pages; it
-does not sort objects. One request per selected suspicious page sends complete
-page JSON, ordinals/IDs/boxes, all flagged pairs, the original Stage 01 PNG and a
-fresh labeled diagnostic copy at original detail. The model may retain the order.
-Only a complete permutation of existing IDs can be applied, moving original
-objects without renumbering or changing any field or page metadata. Only changed
-pages receive sparse overrides. Review 02.50 and filtering 02.80 resolve through
-02.46; later table groups, exports and streams keep that array sequence.
-Absent optional status skips the layer; failed/running status blocks consumers.
-Restart removes 02.46 and later artifacts while retaining predecessors and cache.
-Existing model/effort settings remain; only missing values use gpt-6.1-sol/medium.
-The labeled request copy is temporary and removed after the request, including
-on failure; no diagnostics directory or order reports are persisted. Console
-output records suspect pairs and before/after IDs. The detector misses vertically disjoint inversions
-and other layouts; legitimate column flow may be flagged for model assessment.
-See [Stage 02.46](pdf-to-markdown/stages/02.46_review_reading_order/README.md).
-
-Stage 02.47 asks whether a resolved graphic contains clearly separate field
-explanations or explanatory notes, using the complete original PNG, frozen JSON and target bbox. It retains
-the source or splits it into graphic/prose children with their own tight boxes
-and source order. Labels and text graphically connected to the illustration
-remain inside the graphic. Coordinated subfigure descriptions also remain inside
-when extracting only some would break the figure's visual consistency; placement
-below a drawing alone does not establish independence.
-Shared replacement handling assigns stable child IDs; prose drops rotation.
-Whole-target table reclassification is no longer performed. Sparse overrides
-feed review/filtering; restart clears 02.47 and later artifacts only.
-See [Stage 02.47](pdf-to-markdown/stages/02.47_reclassify_graphics/README.md). The current user-selected trial covers pages 21 and 35.
-
-
-Stage 02.50 reads resolved Stage 02 JSON and the exact Stage 01 PNG.
-Its `02.50_page_conversion_review/page_NNNN_review.png` preserves resolution and adds
-an equal-width blank right panel. Displayed roles use stable distinct type colors
-for containing 2-pixel frames, straight leaders and source-ordered labels.
-Consecutive prose shares an enclosing annotation when no other source object's
-rectangle overlaps the proposed union; there are no alignment or spacing thresholds.
-All other displayed roles remain separate. Complete source objects, including
-hidden headers, footers and thumb-index tabs, block inappropriate grouping.
-Those three roles receive no annotations and retain their original pixels.
-Labels show contributing source ordinals and optional heading levels, with
-`continuation: true` if any member has the flag. Review JSON sidecars retain
-source ordinals and available IDs. The [Stage 02.50 README](pdf-to-markdown/stages/02.50_page_conversion_review/README.md)
-defines the source-order and union-obstacle rule. No OCR geometry is synthesized;
-the review stage changes no source JSON or downstream content and calls no model.
+source content. Regenerate 02 to apply this ordering to saved results.
 
 Stage 02.80 reads Stage 02 JSON in numeric physical-page and segment-array order.
 It determines the first `toc_heading` and page exclusions from original objects,
@@ -352,7 +197,7 @@ page identities, dimensions and every surviving object's fields, IDs, text,
 geometry and order without renumbering. Omit empty pages; an empty output is valid.
 Report page/object counts and boundary presence through worker output, with no
 model calls, inference configuration, manifest or runtime artifact/schema checks.
-Original Stage 01, 02 and 02.50 artifacts remain unchanged.
+Original Stage 01 and 02 artifacts remain unchanged.
 
 After existing removals, Stage 02.80 compares only surviving standalone `graphic`
 objects against its required module-relative [NXP raster](pdf-to-markdown/stages/02.80_filter_page_content/resources/nxp.png).
@@ -392,56 +237,31 @@ HTML tables require a separate crop/markup/source-ordered-group inference saving
 complete nonempty `table_rag_text`. Preserve all values and relationships without
 summarization. A conservative local simple-HTML warning changes no result.
 
-Stage 02.82 deterministically removes rows whose cells are all empty from
-converted Markdown and HTML tables. It consumes completed 01/02.81, writes full
-selected page JSONs and copies persistent table crops into
-`02.82_remove_empty_table_rows/`. Markdown headers and separator rows remain.
-HTML rows occupied by nonempty rowspan cells remain; removal adjusts other
-rowspans. Non-table objects, unconverted tables and group companions remain
-unchanged. Review 02.83, export 02.90 and stream 03 require completed 02.82,
-without fallback. Restart 02.82 preserves transcription and clears its successors.
-
-Stage 02.83 produces a labeled Source/Converted PNG per table from completed
-01/02.82 artifacts without inference or export dependency. Shared group assembly
-renders GFM/HTML with a local Playwright browser, complete source context, expanded
-literal RAG text only for HTML and the original-image companion for both formats. Full-width/full-height
-capture preserves long content; temporary HTML is separate from final PNGs.
-Rendering success does not certify source fidelity. The user selects and assesses
-real fragments; ingestion of details/code-block content remains deferred.
-
-Stage 02.90 and Stage 03 consume completed 02.82 directly, independently of review.
+Stage 02.90 consumes completed Stage 01/02.81 directly.
 02.90 emits one `document.md` with minimal filename-derived YAML/title and assets.
 Converted tables retain source positions; HTML tables append a collapsed literal
 `Table text for RAG` companion after the last group block. Both Markdown and HTML
 append a collapsed `Original table image` section. Associated blocks remain visible once in source order.
-The renderer wraps saved text without additions or reinference. Markdown/HTML/unconverted tables copy saved 02.82 crops, never recrop.
+The renderer wraps saved text without additions or reinference. Markdown/HTML/unconverted tables copy saved 02.81 crops, never recrop.
 Graphics/covers continue to crop exact Stage 01 pixels for page export. A temporary
 bundle replaces old output and removes obsolete assets after successful writes.
 
-Stage 03 preserves source fields and geometry, maps `md_text` to `raw_text`, initializes
-converted `rendered_markdown`, and carries all table fields through the stream.
-Its existing padded cropper still handles graphics/covers/code; table assets are
-copied from 02.82. Converted fragments are neither unified by 04 nor joined by 06,
-nor reconverted/erased by 07. Unconverted tables retain the legacy path. Final 11
-uses shared group placement and copies referenced original-image assets without
-companion duplication. Later processing does not automatically rewrite saved RAG text.
-
 Markdown tables generate and emit no RAG companion; any saved legacy
 `table_rag_text` is ignored for that format. HTML still requires its saved group
-text. Neither review nor export fabricates missing HTML group text.
+text. Export never fabricates missing HTML group text.
 
 Restart clears the selected stage and every later stage in execution order, even
 when stopping at that stage. Restart 02.81 preserves predecessors and rebuilds
-persistent crops; restart 02.83 preserves conversion and rebuilds reviews. Required
-completed dependencies are 01 plus the selected predecessor for 02.81, and 01/02.82
-for 02.83, 02.90 and 03. No automatic continuation or completed-stage skipping occurs.
-Existing exports/streams require explicit regeneration through 02.82; implementation
-does not mutate old attempts. Preserve edited exports outside cleanup before restart.
+persistent crops and clears export. Stage 02.81 requires completed 01/02.80;
+Stage 02.90 requires completed 01/02.81. No automatic continuation or completed-stage
+skipping occurs. Existing exports require explicit regeneration from 02.90 using
+the intended 02.81 dataset. Implementation does not mutate old attempts.
+Preserve edited exports outside cleanup before restart.
 The bundled NXP resource and request cache survive attempt cleanup.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
-in the source book's `workspace/html_to_markdown/`; final PDF output stays in `workspace/14_link_toc/`.
-Stage 02.90 is a separate intermediate export; `--publish` does not publish its bundle.
+in the source book's `workspace/html_to_markdown/`; final PDF output stays in `workspace/02.90_emit_page_markdown/`.
+`--publish` publishes the completed Stage 02.90 bundle.
 Bootstrap downloads sources into `<book>-tmp/`; `-Markdown` only converts locally.
 Its separate `-Publish` switch passes the boolean `--publish` to the converter,
 which copies completed Markdown and assets to the sibling `<book>/` directory.

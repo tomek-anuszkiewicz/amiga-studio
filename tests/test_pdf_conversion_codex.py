@@ -27,33 +27,6 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class PdfArtifactIdentityTests(unittest.TestCase):
-    def test_table_split_retains_compact_cache_field_positions(self):
-        spec = importlib.util.spec_from_file_location(
-            "split_tables_cache", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.41_split_tables/split_tables.py")
-        worker = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(worker)
-        source = {"type": "table", "continuation": False, "heading_level": None,
-                  "md_text": "", "bbox": [1, 2, 30, 40], "segment_id": "s1"}
-        children = [
-            {"type": "table", "continuation": True, "heading_level": None,
-             "md_text": "", "bbox": [1, 2, 10, 20]},
-            {"type": "table", "continuation": False, "heading_level": None,
-             "md_text": "", "bbox": [11, 21, 30, 40]},
-        ]
-        actual = worker.table_replacements(compact_objects(source), children, {"s1"})
-        expected = [compact_objects({**source, **child, "segment_id": identity})
-                    for child, identity in zip(children, ("s1", "s1_table_2"))]
-        self.assertEqual(json.dumps(compact_objects(actual), ensure_ascii=False),
-                         json.dumps(expected, ensure_ascii=False))
-        # Reclassification may also turn omitted text into meaningful content.
-        from common.pdf_segment_replacements import segment_replacements
-        child = {**children[0], "type": "prose", "md_text": "Explanation"}
-        reclassified = segment_replacements(compact_objects(source),
-            {"action": "replace", "replacements": [child]}, {"s1"})
-        historical = {**source, **child, "segment_id": "s1",
-                      "bbox": source["bbox"], "continuation": source["continuation"]}
-        self.assertEqual(json.dumps(compact_objects(reclassified), ensure_ascii=False),
-                         json.dumps([compact_objects(historical)], ensure_ascii=False))
 
     def test_compact_artifacts_preserve_source_and_meaningful_fields(self):
         obj = {"type": "graphic", "bbox": [1, 2, 3, 4], "segment_id": "g",
@@ -77,7 +50,7 @@ class PdfArtifactIdentityTests(unittest.TestCase):
             self.assertEqual(compact["segments"][1][key], meaningful[key])
 
     def test_compact_artifact_prompt_replays_preloaded_cache(self):
-        stage = "02.44_detect_image_rotation"
+        stage = "02_page_conversion"
         config = {"llm": {"stages": {stage: {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}}}}
         schema = {"type": "object"}
         # This identity is the compact alias prepared before artifact migration.
@@ -131,96 +104,6 @@ class PdfNxpGeometryTests(unittest.TestCase):
         segment = {"type": "graphic", "bbox": [30, 37, 288, 131]}
         page = {"image_width": 3300, "image_height": 2550}
         self.assertTrue(stage.nxp_geometry_matches(segment, page, (257, 94)))
-
-
-class PdfReviewContinuationTests(unittest.TestCase):
-    def test_callout_assembly_does_not_repeat_batched_body_nodes(self):
-        spec = importlib.util.spec_from_file_location(
-            "format_prose", ROOT / "tools/bootstrap/pdf-to-markdown/stages/09_transform_prose/format_prose.py")
-        prose = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(prose)
-        nodes = [
-            {"type": "callout", "raw_text": "**WARNING**"},
-            {"type": "callout_text", "raw_text": "First paragraph.",
-             "rendered_markdown": "First paragraph.\n\nSecond paragraph."},
-            {"type": "callout_text", "raw_text": "Second paragraph.",
-             "rendered_markdown": "", "continuation_status": "continuation"},
-        ]
-        self.assertEqual(prose.assemble_callouts(nodes), 1)
-        self.assertEqual(nodes[0]["rendered_markdown"].count("Second paragraph."), 1)
-        self.assertTrue(nodes[0]["rendered_markdown"].startswith("> [!WARNING]"))
-        self.assertEqual([node["rendered_markdown"] for node in nodes[1:]], ["", ""])
-        standalone = [
-            {"type": "callout_text", "raw_text": "**WARNING:** First paragraph.",
-             "rendered_markdown": "**WARNING:** First paragraph.\n\nSecond paragraph."},
-            {"type": "callout_text", "raw_text": "Second paragraph.",
-             "rendered_markdown": "", "continuation_status": "continuation"},
-        ]
-        self.assertEqual(prose.assemble_callouts(standalone), 1)
-        self.assertTrue(standalone[0]["rendered_markdown"].startswith("> [!WARNING]"))
-        self.assertEqual(standalone[1]["rendered_markdown"], "")
-
-    def test_02_5_groups_prose_by_union_obstacles_only(self):
-        spec = importlib.util.spec_from_file_location(
-            "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.50_page_conversion_review/render_review.py")
-        renderer = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(renderer)
-        # Empty union space permits joining regardless of alignment or distance.
-        segments = [{"type": "prose", "bbox": box} for box in
-                    [[10, 100, 150, 140], [180, 300, 400, 350], [20, 600, 80, 700]]]
-        annotations = renderer.review_annotations(segments)
-        self.assertEqual([item["source_ordinals"] for item in annotations], [[1, 2, 3]])
-        self.assertEqual(annotations[0]["bbox"], [10, 100, 400, 700])
-        # A blocker ends the current run; the next prose can start a new run.
-        hidden = {"type": "header", "bbox": [160, 200, 170, 220]}
-        blocked = renderer.review_annotations(segments + [hidden])
-        self.assertEqual([item["source_ordinals"] for item in blocked], [[1], [2, 3]])
-
-    def test_02_5_joins_same_column_prose_with_short_paragraphs(self):
-        spec = importlib.util.spec_from_file_location(
-            "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.50_page_conversion_review/render_review.py")
-        renderer = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(renderer)
-        # Page 31: introduction and STATE 0-6 share a left-aligned flow, while
-        # paragraph lengths and heights vary and some gaps exceed a line height.
-        boxes = [[289, 1374, 1457, 1416], [290, 1438, 1896, 1525],
-                 [290, 1571, 1768, 1613], [290, 1654, 1800, 1700],
-                 [290, 1745, 1902, 1831], [290, 1874, 1908, 2193],
-                 [292, 2243, 1211, 2286], [292, 2330, 1211, 2372]]
-        segments = [{"type": "prose", "bbox": box, "segment_id": f"prose_{i}",
-                     "continuation": i == 7, "md_text": f"Paragraph {i}."}
-                    for i, box in enumerate(boxes)]
-        before = json.dumps(segments)
-        annotations = renderer.review_annotations(segments)
-        self.assertEqual(len(annotations), 1)
-        self.assertEqual(annotations[0]["bbox"], [289, 1374, 1908, 2372])
-        self.assertEqual(annotations[0]["source_ordinals"], list(range(1, 9)))
-        self.assertEqual(annotations[0]["source_ids"], [f"prose_{i}" for i in range(8)])
-        self.assertTrue(annotations[0]["continuation"])
-        self.assertEqual(json.dumps(segments), before)
-        # A hidden object elsewhere in source order still blocks the union.
-        hidden = {"type": "thumb_index", "bbox": [500, 1540, 600, 1560]}
-        blocked = renderer.review_annotations(segments + [hidden])
-        self.assertEqual([item["source_ordinals"] for item in blocked], [[1, 2], list(range(3, 9))])
-
-    def test_02_5_labels_show_only_true_continuation(self):
-        from PIL import Image, ImageDraw
-        spec = importlib.util.spec_from_file_location(
-            "page_conversion_review", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02.50_page_conversion_review/render_review.py")
-        renderer = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(renderer)
-        segments = [
-            {"type": "caption", "heading_level": None, "continuation": True,
-             "bbox": [10, 10, 100, 40]},
-            {"type": "heading", "heading_level": 2, "continuation": False,
-             "bbox": [10, 50, 100, 80]},
-        ]
-        with patch.object(ImageDraw.ImageDraw, "text") as draw_text:
-            renderer.review_image(Image.new("RGB", (1200, 1600)), {"segments": segments})
-        self.assertEqual([call.args[1] for call in draw_text.call_args_list], [
-            "1. caption | continuation: true",
-            "2. heading | heading_level: 2",
-        ])
 
 
 class PdfOcrValidationTests(unittest.TestCase):
@@ -373,7 +256,7 @@ class PdfRestartTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.workspace = Path(self.tmp.name) / "workspace"
         self.workspace.mkdir()
-        self.output = self.workspace / "14_link_toc"
+        self.output = self.workspace / "02.90_emit_page_markdown"
         self.config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml", known_stages=PDF_STAGES, required_stages=PDF_STAGES)
         self.pdf = Path(self.tmp.name) / "sample.pdf"
         self.pdf.write_bytes(b"Worker fixture")
@@ -399,92 +282,92 @@ class PdfRestartTests(unittest.TestCase):
         with patch.object(sys, "argv", argv), patch.object(self.pipeline, "run_stage", side_effect=worker):
             self.pipeline.main()
 
-    def test_named_review_stage_restarts_by_registry_order(self):
+    def test_filter_stage_restarts_by_registry_order(self):
         self.assertEqual(self.pipeline.resolve_stage_idx("02"), self.stage_idx("02"))
-        self.assertEqual(self.pipeline.resolve_stage_idx("2.50"), self.stage_idx("02.50"))
+        self.assertEqual(self.pipeline.resolve_stage_idx("2.80"), self.stage_idx("02.80"))
         self.assertIsNone(self.pipeline.resolve_stage_idx("02k"))
-        self.assertEqual(self.pipeline.resolve_stage_idx("02.50"), self.stage_idx("02.50"))
+        self.assertEqual(self.pipeline.resolve_stage_idx("02.80"), self.stage_idx("02.80"))
         before = read_json(self.workspace / "stage_status.json")["02"]
         def worker(stage, *args):
-            self.assertEqual(stage["id"], "02.50")
+            self.assertEqual(stage["id"], "02.80")
             retained = read_json(self.workspace / "stage_status.json")
-            self.assertEqual(set(retained), {"00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.47"})
-            for later in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.50"):]:
+            self.assertEqual(set(retained), {"00", "01", "02"})
+            for later in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.80"):]:
                 self.assertFalse((self.workspace / later["dir"]).exists())
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "02.50", "--to-stage", "02.50"], worker)
+        self.run_pipeline(["--from-stage", "02.80", "--to-stage", "02.80"], worker)
         after = read_json(self.workspace / "stage_status.json")
         self.assertEqual(after["02"], before)
-        self.assertEqual(after["02.50"]["status"], "success")
-        self.assertNotIn("03", after)
+        self.assertEqual(after["02.80"]["status"], "success")
+        self.assertNotIn("02.81", after)
 
     def test_partial_page_conversion_does_not_create_final_output(self):
         (self.output / "artifact.json").unlink()
         self.output.rmdir()
         state_path = self.workspace / "stage_status.json"
         state = json.loads(state_path.read_text())
-        del state["14"]
+        del state["02.90"]
         state_path.write_text(json.dumps(state))
         executed = []
 
         def worker(stage, *args):
-            self.assertFalse(self.output.exists(), "Stage 14 directory must wait for Stage 14 execution")
+            self.assertFalse(self.output.exists(), "Stage 02.90 directory must wait for Stage 02.90 execution")
             executed.append(stage["id"])
             self.write_artifacts(stage)
             return True
 
-        self.run_pipeline(["--from-stage", "02", "--to-stage", "02.50"], worker)
-        self.assertEqual(executed, ["02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.47", "02.50"])
+        self.run_pipeline(["--from-stage", "02", "--to-stage", "02.80"], worker)
+        self.assertEqual(executed, ["02", "02.80"])
         self.assertFalse(self.output.exists())
 
     def test_missing_input_of_later_selected_branch_rejects_before_cleanup(self):
         state_path = self.workspace / "stage_status.json"
         state = json.loads(state_path.read_text())
         del state["02"]
-        for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.50"):]:
+        for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.80"):]:
             state.pop(stage["id"], None)
         state_path.write_text(json.dumps(state))
-        before = (self.workspace / "02.50_page_conversion_review/artifact.json").read_bytes()
-        with self.assertRaisesRegex(ValueError, "Stage 02.50"):
-            self.run_pipeline(["--from-stage", "02.50", "--to-stage", "02.50"],
+        before = (self.workspace / "02.80_filter_page_content/artifact.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "Stage 02.80"):
+            self.run_pipeline(["--from-stage", "02.80", "--to-stage", "02.80"],
                               lambda *args: self.fail("Worker must not run before all external inputs validate"))
-        self.assertEqual((self.workspace / "02.50_page_conversion_review/artifact.json").read_bytes(), before)
+        self.assertEqual((self.workspace / "02.80_filter_page_content/artifact.json").read_bytes(), before)
 
-    def test_restart_five_clears_dependents_and_preserves_prior_outputs(self):
-        before = (self.workspace / "04_stream_reduction/artifact.json").read_bytes()
-        other_output = Path(self.tmp.name) / "other-workspace/14_link_toc/accepted.md"
+    def test_restart_tables_clears_dependents_and_preserves_prior_outputs(self):
+        before = (self.workspace / "02.80_filter_page_content/artifact.json").read_bytes()
+        other_output = Path(self.tmp.name) / "other-workspace/02.90_emit_page_markdown/accepted.md"
         other_output.parent.mkdir(parents=True)
         other_output.write_text("Independent conversion")
         def worker(stage, *args):
-            self.assertEqual(stage["id"], "05")
-            for dependent in self.pipeline.STAGE_REGISTRY[self.stage_idx("05"):]:
+            self.assertEqual(stage["id"], "02.81")
+            for dependent in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.81"):]:
                 self.assertFalse((self.workspace / dependent["dir"]).exists())
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "5", "--to-stage", "5"], worker)
-        self.assertEqual((self.workspace / "04_stream_reduction/artifact.json").read_bytes(), before)
+        self.run_pipeline(["--from-stage", "02.81", "--to-stage", "02.81"], worker)
+        self.assertEqual((self.workspace / "02.80_filter_page_content/artifact.json").read_bytes(), before)
         self.assertEqual(other_output.read_text(), "Independent conversion")
         state = read_json(self.workspace / "stage_status.json")
-        self.assertEqual(list(state), ["00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.47", "02.50", "02.80", "02.81", "02.82", "02.83", "02.90", "03", "04", "05"])
+        self.assertEqual(list(state), ["00", "01", "02", "02.80", "02.81"])
 
 
     def test_explicit_restart_rebuilds_missing_output_and_later_stages(self):
-        (self.workspace / "05_chapter_partition/artifact.json").unlink()
+        (self.workspace / "02.81_transform_page_tables/artifact.json").unlink()
         executed = []
         def worker(stage, *args):
             executed.append(stage["id"])
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "05"], worker)
-        self.assertEqual(executed, [stage["id"] for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("05"):]])
+        self.run_pipeline(["--from-stage", "02.81"], worker)
+        self.assertEqual(executed, [stage["id"] for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.81"):]])
 
     def test_explicit_page_range_is_run_scoped(self):
         def worker(stage, *args):
             self.assertEqual(args[-1], "6,7,8,9,10")
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "5", "--to-stage", "5", "--page-ranges", "6-10"],
+        self.run_pipeline(["--from-stage", "02.81", "--to-stage", "02.81", "--page-ranges", "6-10"],
                           worker)
         config = yaml.safe_load((self.workspace / "config.yaml").read_text())
         self.assertNotIn("input", config)
@@ -492,18 +375,18 @@ class PdfRestartTests(unittest.TestCase):
     def test_interrupted_cleanup_has_already_invalidated_completion(self):
         with patch.object(self.pipeline, "clean_downstream_stages", side_effect=OSError("Interrupted cleanup")):
             with self.assertRaisesRegex(OSError, "Interrupted cleanup"):
-                self.run_pipeline(["--from-stage", "5", "--to-stage", "5"],
+                self.run_pipeline(["--from-stage", "02.81", "--to-stage", "02.81"],
                                   lambda *args: self.fail("Worker must not run"))
         state = read_json(self.workspace / "stage_status.json")
-        self.assertNotIn("05", state)
-        self.assertNotIn("14", state)
-        self.assertIn("04", state)
+        self.assertNotIn("02.81", state)
+        self.assertNotIn("02.90", state)
+        self.assertIn("02.80", state)
 
-    def test_reset_prose_does_not_delete_preserved_assets(self):
-        asset = self.workspace / "04_stream_reduction/assets/source.png.txt"
+    def test_reset_tables_does_not_delete_preserved_assets(self):
+        asset = self.workspace / "02.80_filter_page_content/assets/source.png.txt"
         asset.parent.mkdir()
         asset.write_text("Preserved source evidence")
-        self.pipeline.clean_downstream_stages(self.workspace, self.output, self.stage_idx("09"), self.workspace / "stage_status.json")
+        self.pipeline.clean_downstream_stages(self.workspace, self.output, self.stage_idx("02.81"), self.workspace / "stage_status.json")
         self.assertTrue(asset.exists())
 
     def test_output_defaults_to_selected_workspace_even_with_pdf(self):
@@ -513,18 +396,18 @@ class PdfRestartTests(unittest.TestCase):
             self.assertEqual(args[3], self.output)
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--pdf", str(self.pdf), "--from-stage", "5", "--to-stage", "5"], worker)
+        self.run_pipeline(["--pdf", str(self.pdf), "--from-stage", "02.81", "--to-stage", "02.81"], worker)
         self.assertEqual(source_note.read_text(), "Source directory must remain intact")
 
     def test_missing_retained_artifact_does_not_block_restart(self):
-        (self.workspace / "03_build_raw_stream/artifact.json").unlink()
+        (self.workspace / "02.80_filter_page_content/artifact.json").unlink()
         executed = []
         def worker(stage, *args):
             executed.append(stage["id"])
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "5", "--to-stage", "5"], worker)
-        self.assertEqual(executed, ["05"])
+        self.run_pipeline(["--from-stage", "02.81", "--to-stage", "02.81"], worker)
+        self.assertEqual(executed, ["02.81"])
 
     def test_omitted_page_range_ignores_previous_config_selection(self):
         (self.workspace / "01_preprocess/artifact.json").unlink()
@@ -548,56 +431,13 @@ class PdfRestartTests(unittest.TestCase):
         self.assertTrue((self.output / "artifact.json").exists())
 
     def test_individual_stage_uses_matching_interval(self):
-        self.run_pipeline(["--from-stage", "02.50", "--to-stage", "02.50"],
+        self.run_pipeline(["--from-stage", "02.80", "--to-stage", "02.80"],
                           lambda stage, *args: self.write_artifacts(stage) or True)
-        self.assertEqual(set(read_json(self.workspace / "stage_status.json")), {"00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.47", "02.50"})
+        self.assertEqual(set(read_json(self.workspace / "stage_status.json")), {"00", "01", "02", "02.80"})
         self.assertFalse(self.output.exists())
 
 
 class PdfConfigurationTests(unittest.TestCase):
-    def test_raw_stream_consumes_page_objects_in_json_order(self):
-        script = ROOT / "tools/bootstrap/pdf-to-markdown/stages/03_build_raw_stream/build_stream.py"
-        spec = importlib.util.spec_from_file_location("raw_stream_worker", script)
-        worker = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(worker)
-        entry = {"page": 7, "width": 200, "height": 400}
-        objects = {"image_width": 600, "image_height": 1200, "segments": [
-            {"segment_id": "page_0007_seg_001", "type": "heading", "heading_level": 2,
-             "continuation": True, "md_text": "## Continued", "bbox": [30, 900, 300, 990]},
-            {"segment_id": "page_0007_seg_002", "type": "footnote",
-             "md_text": "*Source note*", "bbox": [60, 120, 360, 240]},
-            {"segment_id": "page_0007_seg_003", "type": "code_block",
-             "md_text": "```\nlabel:\n    move.w #$0001,d0\n```",
-             "bbox": [60, 300, 360, 420]},
-        ]}
-        with tempfile.TemporaryDirectory() as directory:
-            workspace = Path(directory)
-            with patch.object(worker, "read_conversion", return_value=[(entry, objects)]) as validate, \
-                 patch.object(worker, "extract_assets_for_nodes", side_effect=lambda root, nodes, **kwargs: nodes):
-                worker.build_raw_stream(workspace, {})
-            validate.assert_called_once_with(workspace, "02.82_remove_empty_table_rows")
-            nodes = json.loads((workspace / "03_build_raw_stream/raw_stream.json").read_text())
-            self.assertEqual([n["md_text"] for n in nodes],
-                             ["## Continued", "*Source note*", objects["segments"][2]["md_text"]])
-            self.assertEqual(nodes[0]["raw_text"], "## Continued")
-            self.assertEqual(nodes[0]["bbox"], [10, 300, 100, 330])
-            self.assertEqual(nodes[0]["bbox_pixels"], objects["segments"][0]["bbox"])
-            self.assertTrue(nodes[0]["continuation"])
-            self.assertEqual(nodes[1]["type"], "footnote")
-            self.assertEqual(nodes[2]["rendered_markdown"], objects["segments"][2]["md_text"])
-            self.assertEqual(nodes[2]["raw_text"], nodes[2]["rendered_markdown"])
-
-    def test_raw_stream_read_failure_does_not_write_output(self):
-        script = ROOT / "tools/bootstrap/pdf-to-markdown/stages/03_build_raw_stream/build_stream.py"
-        spec = importlib.util.spec_from_file_location("raw_stream_worker", script)
-        worker = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(worker)
-        with tempfile.TemporaryDirectory() as directory:
-            workspace = Path(directory)
-            with patch.object(worker, "read_conversion", side_effect=OSError("Unreadable Stage 02")):
-                with self.assertRaisesRegex(OSError, "Unreadable Stage 02"):
-                    worker.build_raw_stream(workspace, {})
-            self.assertEqual(list(workspace.iterdir()), [])
 
 
     def test_all_inference_stage_pairs_are_explicit(self):
@@ -611,13 +451,13 @@ class PdfConfigurationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             workspace = root / "workspace"
-            output = workspace / "14_link_toc"
+            output = workspace / "02.90_emit_page_markdown"
             output.mkdir(parents=True)
             sentinel = output / "accepted.md"
             sentinel.write_text("Accepted output")
             result = subprocess.run([sys.executable, str(ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py"),
                                      "--config", str(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml"),
-                                     "--workspace", str(workspace), "--from-stage", "14", "--to-stage", "14"], capture_output=True, text=True)
+                                     "--workspace", str(workspace), "--from-stage", "02.90", "--to-stage", "02.90"], capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertTrue(sentinel.is_file())
 
@@ -631,7 +471,7 @@ class StageCompletionTests(unittest.TestCase):
 
     def test_page_worker_receives_only_current_cli_range(self):
         pipeline = self.load("selection_pipeline", "pipeline.py")
-        stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "02.40")
+        stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "02.80")
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
             args = (stage, ROOT / "tools/bootstrap/pdf-to-markdown", workspace,
@@ -643,72 +483,21 @@ class StageCompletionTests(unittest.TestCase):
                 self.assertTrue(pipeline.run_stage(*args))
                 self.assertNotIn("--page-ranges", run.call_args.args[0])
 
-    def test_worker_and_asset_copy_failures_record_failed_execution(self):
+    def test_worker_failures_record_failed_execution(self):
         pipeline = self.load("execution_pipeline", "pipeline.py")
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
-            stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "05")
-            (workspace / "04_stream_reduction/assets").mkdir(parents=True)
+            stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "02.81")
+            (workspace / "02.80_filter_page_content/assets").mkdir(parents=True)
             args = (stage, ROOT / "tools/bootstrap/pdf-to-markdown", workspace, None, None, workspace / "config.yaml")
             with patch.object(pipeline.subprocess, "run", side_effect=subprocess.CalledProcessError(1, "worker")):
                 self.assertFalse(pipeline.run_stage(*args))
-            self.assertEqual(read_json(workspace / "stage_status.json")["05"]["status"], "failed")
-            with patch.object(pipeline.subprocess, "run"), patch.object(pipeline.shutil, "copytree", side_effect=OSError("copy failed")):
+            self.assertEqual(read_json(workspace / "stage_status.json")["02.81"]["status"], "failed")
+            with patch.object(pipeline.subprocess, "run", side_effect=OSError("worker launch failed")):
                 self.assertFalse(pipeline.run_stage(*args))
-            status = read_json(workspace / "stage_status.json")["05"]
+            status = read_json(workspace / "stage_status.json")["02.81"]
             self.assertEqual(status["status"], "failed")
-            self.assertIn("copy failed", status["details"])
-
-    def test_automatic_chapter_workers_preserve_metadata_and_prior_outputs(self):
-        from unittest.mock import MagicMock
-        stages = [
-            ("09_transform_prose", "format_prose.py", "process_prose"),
-        ]
-        with tempfile.TemporaryDirectory() as directory:
-            workspace = Path(directory)
-            config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml", known_stages=PDF_STAGES)
-            predecessor = workspace / "05_chapter_partition"
-            predecessor.mkdir()
-            for slug in ("preface", "toc"):
-                chapter = {"index": 0, "slug": slug, "title": slug.title(), "target_md_file": f"00 - {slug}.md",
-                           "nodes": [{"node_id": "node_00001", "page": 1, "type": "table", "raw_text": "First rows"},
-                                     {"node_id": "node_00002", "page": 2, "type": "table", "raw_text": "Later rows"},
-                                     {"node_id": "node_00003", "page": 2, "type": "graphic", "raw_text": "Diagram", "png_path": "figure.png"},
-                                     {"node_id": "node_00004", "page": 2, "type": "prose", "raw_text": "Source text"}]}
-                write_json(predecessor / f"00_{slug}.json", chapter)
-            for stage, script, function in stages:
-                worker = self.load(stage, f"stages/{stage}/{script}")
-                before = {path.name: path.read_bytes() for path in predecessor.glob("*.json")}
-                fake = MagicMock()
-                fake.selected.model = "offline-fixture"
-                fake.generate_text.return_value = "Formatted text"
-                fake.generate_vision.return_value = "Diagram description"
-                with patch.object(worker, "CodexClient") as client:
-                    client.return_value.__enter__.return_value = fake
-                    getattr(worker, function)(workspace, config)
-                output = workspace / stage
-                for filename, value in before.items():
-                    self.assertEqual((predecessor / filename).read_bytes(), value)
-                    previous, current = json.loads(value), read_json(output / filename)
-                    self.assertEqual({key: current[key] for key in ("index", "slug", "title", "target_md_file")},
-                                     {key: previous[key] for key in ("index", "slug", "title", "target_md_file")})
-                self.assertEqual(fake.generate_text.call_count, 2)
-                predecessor = output
-            proofreader = self.load("chapter_proofreader", "stages/10_proofread_stream/proofread_stream.py")
-            before = {path.name: path.read_bytes() for path in predecessor.glob("*.json")}
-            fake.generate_text.return_value = "Shared title"
-            with patch.object(proofreader, "CodexClient") as client:
-                client.return_value.__enter__.return_value = fake
-                proofreader.process_proofread_stream(workspace, predecessor, workspace / "10_proofread_stream", config)
-            for filename, value in before.items():
-                self.assertEqual((predecessor / filename).read_bytes(), value)
-            preface = read_json(workspace / "10_proofread_stream/00_preface.json")
-            toc = read_json(workspace / "10_proofread_stream/00_toc.json")
-            self.assertEqual(preface["title"], "Shared title")
-            self.assertNotEqual(preface["target_md_file"], toc["target_md_file"])
-            emitter = self.load("chapter_emitter", "stages/11_emit_markdown/emit_markdown.py")
-            emitter.emit_markdown(workspace, workspace / "11_emit_markdown", config)
-            self.assertEqual(len(list((workspace / "11_emit_markdown").glob("*.md"))), 2)
+            self.assertIn("worker launch failed", status["details"])
 
 
 if __name__ == "__main__":

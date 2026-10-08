@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-pipeline.py: Master CLI Orchestrator for PDF-to-Markdown Stages 00-14.
+pipeline.py: Master CLI Orchestrator for PDF-to-Markdown page preparation and export.
 """
 
 import argparse
@@ -19,7 +19,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conversion.config import load_config as parse_config, PDF_STAGES
 from common.pdf_artifacts import read_json, write_json, prepared_pdf_path
 from common.pdf_selection import selected_pages
-from common.pdf_page_conversion import page_override_layers, TABLE_SPLIT_STAGE, TABLE_RECLASSIFY_STAGE, CODE_RECLASSIFY_STAGE, IMAGE_ROTATION_STAGE, CODE_REFORMAT_STAGE, READING_ORDER_STAGE, GRAPHIC_RECLASSIFY_STAGE
 from conversion.publication import book_directory, check_destination, publish_output
 
 STAGE_REGISTRY: List[Dict[str, Any]] = [
@@ -46,60 +45,6 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("page_*_segments.json", "page conversion JSON files"),
     },
     {
-        "id": "02.40", "dir": "02.40_reclassify_callouts", "script": "reclassify_callouts.py",
-        "desc": "Recover advisory ranges from source text and original-page vision",
-        "targets": ["02.40_reclassify_callouts"],
-        "inspect": ("page_*_segments.json", "sparse callout replacement pages"),
-    },
-    {
-        "id": "02.41", "dir": TABLE_SPLIT_STAGE, "script": "split_tables.py",
-        "desc": "Split grouped table objects using original-page vision",
-        "targets": [TABLE_SPLIT_STAGE],
-        "inspect": ("page_*_segments.json", "sparse table split pages"),
-    },
-    {
-        "id": "02.42", "dir": TABLE_RECLASSIFY_STAGE, "script": "reclassify_tables.py",
-        "desc": "Reclassify table regions using original-page vision",
-        "targets": [TABLE_RECLASSIFY_STAGE],
-        "inspect": ("page_*_segments.json", "sparse table reclassification pages"),
-    },
-    {
-        "id": "02.43", "dir": CODE_RECLASSIFY_STAGE, "script": "reclassify_code_blocks.py",
-        "desc": "Reclassify code blocks as prose or tables using original-page vision",
-        "targets": [CODE_RECLASSIFY_STAGE],
-        "inspect": ("page_*_segments.json", "sparse code block reclassification pages"),
-    },
-    {
-        "id": "02.44", "dir": IMAGE_ROTATION_STAGE, "script": "detect_image_rotation.py",
-        "desc": "Record clockwise rotation corrections for resolved graphics",
-        "targets": [IMAGE_ROTATION_STAGE],
-        "inspect": ("page_*_segments.json", "sparse image rotation pages"),
-    },
-    {
-        "id": "02.45", "dir": CODE_REFORMAT_STAGE, "script": "reformat_code_block.py",
-        "desc": "Reformat code blocks and indentation using resolved page JSON",
-        "targets": [CODE_REFORMAT_STAGE],
-        "inspect": ("page_*_segments.json", "sparse reformatted code pages"),
-    },
-    {
-        "id": "02.46", "dir": READING_ORDER_STAGE, "script": "review_reading_order.py",
-        "desc": "Review suspicious page reading order using complete original-page vision",
-        "targets": [READING_ORDER_STAGE],
-        "inspect": ("page_*_segments.json", "sparse reordered pages"),
-    },
-    {
-        "id": "02.47", "dir": GRAPHIC_RECLASSIFY_STAGE, "script": "reclassify_graphics.py",
-        "desc": "Extract independent descriptive text from graphics using original-page vision",
-        "targets": [GRAPHIC_RECLASSIFY_STAGE],
-        "inspect": ("page_*_segments.json", "sparse graphic reclassification pages"),
-    },
-    {
-        "id": "02.50", "dir": "02.50_page_conversion_review", "script": "render_review.py",
-        "desc": "Review independent page objects without textual geometry",
-        "targets": ["02.50_page_conversion_review"],
-        "inspect": ("page_*_review.png", "page conversion review PNGs"),
-    },
-    {
         "id": "02.80", "dir": "02.80_filter_page_content", "script": "filter_page_content.py",
         "desc": "Remove page furniture, pre-TOC content and list/index pages",
         "targets": ["02.80_filter_page_content"],
@@ -112,107 +57,23 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "inspect": ("page_*_segments.json", "transcribed table page JSON files"),
     },
     {
-        "id": "02.82", "dir": "02.82_remove_empty_table_rows", "script": "remove_empty_table_rows.py",
-        "desc": "Remove empty rows from converted Markdown and HTML tables",
-        "targets": ["02.82_remove_empty_table_rows"],
-        "inspect": ("page_*_segments.json", "cleaned table page JSON files"),
-    },
-    {
-        "id": "02.83", "dir": "02.83_table_conversion_review", "script": "render_table_review.py",
-        "desc": "Render side-by-side source and converted table groups",
-        "targets": ["02.83_table_conversion_review"],
-        "inspect": ("*_review.png", "table review PNGs"),
-    },
-    {
         "id": "02.90", "dir": "02.90_emit_page_markdown", "script": "emit_page_markdown.py",
         "desc": "Assemble unchanged page Markdown and exact original-PNG crops",
         "targets": ["02.90_emit_page_markdown"],
         "inspect": ("document.md", "selected-page Markdown"),
     },
-    {
-        "id": "03",
-        "dir": "03_build_raw_stream",
-        "script": "build_stream.py",
-        "desc": "Build raw stream & extract initial assets",
-        "targets": ["03_build_raw_stream"],
-        "inspect": ("raw_stream.json", "stream file"),
-    },
-    {
-        "id": "04",
-        "dir": "04_stream_reduction",
-        "script": "reduce_stream.py",
-        "desc": "Normalize stream: weld prose & de-hyphenate",
-        "targets": ["04_stream_reduction"],
-        "inspect": ("reduced_stream.json", "stream file"),
-    },
-    {
-        "id": "05",
-        "dir": "05_chapter_partition",
-        "script": "partition_chapters.py",
-        "desc": "Partition stream into numbered sections",
-        "targets": ["05_chapter_partition"],
-        "inspect": ("*.json", "chapter stream files"),
-    },
-    {
-        "id": "09",
-        "dir": "09_transform_prose",
-        "script": "format_prose.py",
-        "desc": "Format prose/code and tag TOC with TOC34534",
-        "targets": ["09_transform_prose"],
-        "inspect": ("*.json", "chapter stream files"),
-    },
-    {
-        "id": "10",
-        "dir": "10_proofread_stream",
-        "script": "proofread_stream.py",
-        "desc": "Proofread chapter titles and nodes with LLM",
-        "targets": ["10_proofread_stream"],
-        "inspect": ("*.json", "chapter stream files"),
-    },
-    {
-        "id": "11",
-        "dir": "11_emit_markdown",
-        "script": "emit_markdown.py",
-        "desc": "Emit per-section Markdown files (suppressing toc_heading)",
-        "targets": ["11_emit_markdown"],
-        "inspect": ("*.md", "Markdown files"),
-    },
-    {
-        "id": "14",
-        "dir": "14_link_toc",
-        "script": "link_toc.py",
-        "desc": "Fuzzy header matching & TOC wikilink conversion",
-        "targets": ["14_link_toc", "__OUTPUT_DIR__"],
-        "inspect": ("*.md", "Markdown files"),
-    },
 ]
 
-# Execution order and artifact dependencies are deliberately separate.
-for index, stage in enumerate(STAGE_REGISTRY):
+# Each stage reads explicitly named predecessor artifacts.
+for stage in STAGE_REGISTRY:
     stage["inputs"] = {
-        "02": ["01"], "02.40": ["01", "02"], "02.41": ["01", "02"], "02.42": ["01", "02"],
-        "02.43": ["01", "02"], "02.44": ["01", "02"], "02.45": ["01", "02"],
-        "02.46": ["01", "02"], "02.47": ["01", "02"],
-        "02.50": ["01", "02"], "02.80": ["01", "02"],
-        "02.81": ["01", "02.80"], "02.82": ["01", "02.81"], "02.83": ["01", "02.82"],
-        "02.90": ["01", "02.82"], "03": ["01", "02.82"],
-    }.get(stage["id"], [STAGE_REGISTRY[index-1]["id"]] if index else [])
+        "00": [], "01": ["00"], "02": ["01"], "02.80": ["01", "02"],
+        "02.81": ["01", "02.80"], "02.90": ["01", "02.81"],
+    }[stage["id"]]
 
 
 def invalidated_stages(start_idx):
     return {stage["id"] for stage in STAGE_REGISTRY[start_idx:]}
-
-
-def require_optional_page_inputs(stage, statuses, selected_ids, invalid):
-    """Check retained optional input only on branches reading Stage 02 directly."""
-    if "02" not in stage["inputs"]:
-        return
-    for stage_id, _ in page_override_layers(before_stage=stage["id"]):
-        if stage_id in selected_ids or stage_id in invalid:
-            continue
-        entry = statuses.get(stage_id)
-        if entry is not None and entry.get("status") != "success":
-            raise ValueError(f"Incomplete Stage {stage_id} blocks Stage {stage['id']}")
 
 
 def update_status(
@@ -291,12 +152,7 @@ def run_stage(
     elif stage_num == "01":
         prepared_pdf = prepared_pdf_path(pdf_path)
         cmd.extend(["--pdf", str(prepared_pdf)])
-    elif stage_num == "11":
-        cmd.extend(["--output-dir", str(workspace_dir / "11_emit_markdown")])
-    elif stage_num == "14" and output_dir:
-        cmd.extend(["--output-dir", str(output_dir)])
-
-    if page_ranges is not None and stage_num in {"00", "01", "02", "02.40", "02.41", "02.42", "02.43", "02.44", "02.45", "02.46", "02.47", "02.50", "02.80", "02.81", "02.82", "02.83"}:
+    if page_ranges is not None and stage_num in {"00", "01", "02", "02.80", "02.81"}:
         cmd.extend(["--page-ranges", page_ranges])
 
     if verbose:
@@ -335,7 +191,6 @@ def run_stage(
     start_time = time.time()
     try:
         subprocess.run(cmd, env=env, check=True)
-        carry_stage_assets(stage_info, workspace_dir)
         duration = round(time.time() - start_time, 2)
         m = read_and_clean_metrics()
         update_status(
@@ -483,16 +338,8 @@ def invalidate_status(status_file, stages):
         write_json(status_file, {key: value for key, value in data.items() if key not in stages})
 
 
-def carry_stage_assets(stage, workspace):
-    if stage["id"] in ("05", "06", "09"):
-        previous = next(item for item in STAGE_REGISTRY if item["id"] == stage["inputs"][0])
-        assets = workspace / previous["dir"] / "assets"
-        if assets.is_dir():
-            shutil.copytree(assets, workspace / stage["dir"] / "assets", dirs_exist_ok=True)
-
-
 def main():
-    parser = argparse.ArgumentParser(description="PDF-to-Markdown Pipeline Orchestrator (Stages 00-14)")
+    parser = argparse.ArgumentParser(description="PDF-to-Markdown Pipeline Orchestrator (page preparation and export)")
     parser.add_argument("--pdf", type=Path, help="Source PDF or directory containing one source PDF")
     parser.add_argument("--workspace", type=Path)
     parser.add_argument("--publish", action="store_true", help="Copy finished Markdown/assets into the empty sibling book directory without -tmp")
@@ -510,7 +357,7 @@ def main():
         pdf, = (path for path in pdf.glob("*.pdf") if not path.stem.lower().endswith("-ocr")
                 and not path.name.lower().endswith(".candidate.pdf"))
     workspace = args.workspace.resolve() if args.workspace else ((pdf.parent / "workspace") if pdf else Path.cwd() / "workspace")
-    output = workspace / "14_link_toc"
+    output = workspace / "02.90_emit_page_markdown"
     destination = book_directory(workspace) if args.publish else None
     if destination is not None:
         check_destination(destination)
@@ -526,7 +373,7 @@ def main():
     if start is None or end is None or start > end:
         raise ValueError("Invalid stage interval")
     if args.publish and end != len(STAGE_REGISTRY) - 1:
-        raise ValueError("Publishing requires completion through Stage 14")
+        raise ValueError("Publishing requires completion through Stage 02.90")
 
     config_path = workspace / "config.yaml"
     config_source = config_path if config_path.exists() else args.config.resolve()
@@ -534,35 +381,6 @@ def main():
     if start <= resolve_stage_idx("02.81") <= end:
         config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
             "02.81_transform_page_tables", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
-    if start <= resolve_stage_idx("02.40") <= end:
-        config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
-            "02.40_reclassify_callouts", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
-    if start <= resolve_stage_idx("02.41") <= end:
-        config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
-            TABLE_SPLIT_STAGE, {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
-    if start <= resolve_stage_idx("02.42") <= end:
-        config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
-            TABLE_RECLASSIFY_STAGE, {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
-    if start <= resolve_stage_idx("02.43") <= end:
-        config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
-            CODE_RECLASSIFY_STAGE, {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
-    if start <= resolve_stage_idx("02.44") <= end:
-        config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
-            IMAGE_ROTATION_STAGE, {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
-    if start <= resolve_stage_idx("02.45") <= end:
-        stages = config.setdefault("llm", {}).setdefault("stages", {})
-        previous = stages.pop("02.45_recover_code_from_prose", {})
-        pair = stages.setdefault(CODE_REFORMAT_STAGE, previous)
-        pair.setdefault("model", "gpt-6.1-sol")
-        pair.setdefault("reasoning_effort", "medium")
-    if start <= resolve_stage_idx("02.46") <= end:
-        pair = config.setdefault("llm", {}).setdefault("stages", {}).setdefault(READING_ORDER_STAGE, {})
-        pair.setdefault("model", "gpt-6.1-sol")
-        pair.setdefault("reasoning_effort", "medium")
-    if start <= resolve_stage_idx("02.47") <= end:
-        pair = config.setdefault("llm", {}).setdefault("stages", {}).setdefault(GRAPHIC_RECLASSIFY_STAGE, {})
-        pair.setdefault("model", "gpt-6.1-sol")
-        pair.setdefault("reasoning_effort", "medium")
     # Retire former settings from existing attempt configurations.
     for key in ("input", "render", "table_conversion", "ocr"):
         config.pop(key, None)
@@ -577,7 +395,6 @@ def main():
     invalid = invalidated_stages(start)
     retained_ids = {key for key, entry in statuses.items() if key not in invalid and entry.get("status") == "success"}
     for stage in selected:
-        require_optional_page_inputs(stage, statuses, selected_ids, invalid)
         for input_id in stage["inputs"]:
             if input_id not in selected_ids and input_id not in retained_ids:
                 raise ValueError(f"Missing successful predecessor Stage {input_id} for Stage {stage['id']}")

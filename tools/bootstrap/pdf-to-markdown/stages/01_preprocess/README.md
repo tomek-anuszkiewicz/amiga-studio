@@ -9,7 +9,7 @@ For each selected physical page it writes `01_preprocess/page_XXXX.png` and
 1-based source page number; `source_index` is zero-based in the original source.
 `prepared_index` equals `source_index`: the sibling prepared PDF contains every
 source page in the original order. Stage 01 applies the current `--page-ranges`;
-page workers through 02.83 also apply it when reading their own predecessors.
+page workers through 02.81 also apply it when reading their own predecessors.
 JSON contains schema
 version, stable page ID, dimensions, rotation, MediaBox,
 CropBox, `prepared`/`none` text provenance, extraction-based page classification

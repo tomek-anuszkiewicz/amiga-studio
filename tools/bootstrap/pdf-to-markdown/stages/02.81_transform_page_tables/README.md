@@ -25,7 +25,7 @@ Keep every source block once in the visible document, including anomalous blocks
 HTML results require a separate [group inference](group_prompt.md) with the original
 crop, converted table markup and all associated texts in source order. Save its complete nonempty
 text in `table_rag_text` before completing. Markdown and unconverted results skip it.
-Changed group inputs change the cache identity. Export and review reuse this text,
+Changed group inputs change the cache identity. Export reuses this text,
 without reinference, summarization or appended copies of associated blocks.
 
 After the last group block, HTML export adds a collapsed `Table text for RAG`
@@ -44,13 +44,11 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<W
 
 Use a named attempt and only the fragment selected by the user. Do not rewrite
 an existing attempt's model settings or continue beyond the requested end stage.
-Run [empty-row removal 02.82](../02.82_remove_empty_table_rows/README.md) before downstream consumers.
-See [review](../02.83_table_conversion_review/README.md),
-[page export](../02.90_emit_page_markdown/README.md) and
-[conversion contract](../../../reference-conversion-contract.md).
+Completed output feeds [page export](../02.90_emit_page_markdown/README.md) directly.
+See the [conversion contract](../../../reference-conversion-contract.md).
 
 Stage 02.80 input remains authoritative, including page omissions.
-Table groups and companions are inferred from its corrected objects here.
+Table groups and companions are inferred from its retained objects here.
 
 Markdown tables require no `table_rag_text`; any saved legacy value is ignored
 when rendering companions.

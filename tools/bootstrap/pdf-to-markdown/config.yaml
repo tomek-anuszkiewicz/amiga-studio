@@ -2,25 +2,7 @@
 # Stage 02.90 is deterministic: fixed document.md/assets output and exact pixel
 # crops. It has no model/effort selection or configurable geometry adjustment.
 
-table_review:
-  browser_channel: "msedge"  # Or "chrome" / installed Playwright "chromium".
-
 llm:
   stages:
     02_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    02.40_reclassify_callouts: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    02.41_split_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    02.42_reclassify_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    02.43_reclassify_code_blocks: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    02.44_detect_image_rotation: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    02.45_reformat_code_block: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    02.46_review_reading_order: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    02.47_reclassify_graphics: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     02.81_transform_page_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    04_stream_reduction: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    09_transform_prose: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    10_proofread_stream: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-
-markers:
-  toc_start: "<!-- TOC34534 -->"
-  toc_end: "<!-- /TOC34534 -->"
