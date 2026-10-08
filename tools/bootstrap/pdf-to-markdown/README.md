@@ -12,14 +12,18 @@ and authenticate with `codex login`. Run from the repository root:
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --pdf "<PDF_DIRECTORY>/source.pdf" `
-  --workspace "<PDF_DIRECTORY>/workspace/attempt-01" `
-  --config tools/bootstrap/pdf-to-markdown/config.yaml `
   --page-ranges "2-3" --from-stage 01 --to-stage 05
 ```
 
-Use a named workspace for each independent attempt. Supply the original `--pdf`
-on every run. The attempt's existing `config.yaml` takes precedence; `--config`
-initializes a missing file. It selects model/effort for Stages 03 and 05.
+Without `--workspace`, the program creates and uses `<PDF_DIRECTORY>/workspace/`.
+This directory, named `workspace`, is the default for subsequent development.
+Pass `--workspace` only when a separate attempt directory is needed. For status
+without `--pdf` or `--workspace`, the default is `workspace/` in the current directory.
+
+Supply the original `--pdf` on every conversion or restart. If the workspace has
+no `config.yaml`, the program copies `tools/bootstrap/pdf-to-markdown/config.yaml`
+there automatically. An existing workspace config is preserved without rewriting.
+Edit that local file to select model/effort for Stages 03 and 05.
 Inference uses ChatGPT authentication, original-detail images, concurrency 1
 and a 180-second request timeout. Rendering uses 300 DPI.
 
@@ -57,11 +61,12 @@ Attempts using the previous stage numbering require a new named workspace.
 `stage_status.json` records execution and request metrics. Inspect it with:
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --status
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF_DIRECTORY>/source.pdf" --status
 ```
 
-The shared response cache defaults to `tools/bootstrap/book-to-markdown/books/.cache/codex`;
-`--cache-dir` overrides it. Stage IDs participate in cache identity.
+PDF worker responses use the fixed shared cache at
+`tools/bootstrap/book-to-markdown/books/.cache/codex`. Stage IDs participate in
+cache identity. The pipeline has no `--config`, `--cache-dir` or `--verbose` options.
 
 Follow the [developer-led workflow](../reference-conversion-contract.md#development-workflow):
 run the selected fragment and inspect its content. A successful stage confirms

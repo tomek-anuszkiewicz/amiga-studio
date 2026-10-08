@@ -611,7 +611,6 @@ function Convert-ToMarkdown {
     $Success = $false
     if ($Item.Type -eq "SingleFile" -and $Item.TargetFile -like "*.pdf") {
         $PdfScript = Join-Path $RepoRoot "tools\bootstrap\pdf-to-markdown\pipeline.py"
-        $PdfConfig = Join-Path $RepoRoot "tools\bootstrap\pdf-to-markdown\config.yaml"
         $PdfSource = Join-Path $SourceDir $Item.TargetFile
         $Workspace = Join-Path $SourceDir "workspace"
 
@@ -623,8 +622,7 @@ function Convert-ToMarkdown {
         $cmdArgs = @(
             $PdfScript,
             "--pdf", $PdfSource,
-            "--workspace", $Workspace,
-            "--config", $PdfConfig
+            "--workspace", $Workspace
         )
         try {
             & python $cmdArgs

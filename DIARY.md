@@ -1335,3 +1335,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - scoped diff check passes
   - no old Reference/.cache paths remain in bootstrap code or Markdown
   - no live conversion or cache content changes
+---
+
+### [2026-10-08 23:08 CET] — Simplify PDF pipeline workspace and configuration options
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Document and use the default workspace directory beside the source PDF
+  - copy bundled config.yaml only when workspace config is missing and preserve existing bytes
+  - remove pipeline config, cache-dir and verbose options
+  - force PDF workers to the shared cache
+  - update bootstrap invocation and existing regression checks
+- **Architectural Rationale & Trade-Offs**:
+  - Use stable development defaults and local attempt configuration without redundant CLI parameters or configuration rewrites
+- **Verification & Test Results**:
+  - 26 PDF tests and 21 shared conversion tests pass including default workspace creation, initial config copy and existing-config preservation
+  - removed CLI flags reject before execution
+  - CLI help matches README
+  - bootstrap PowerShell syntax passes
+  - quick preflight and all 19 architecture tests pass
+  - Graphify refresh completes
+  - scoped diff check passes
+  - no live book conversion performed

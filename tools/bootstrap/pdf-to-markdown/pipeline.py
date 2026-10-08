@@ -12,11 +12,10 @@ import sys
 import time
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common.pdf_config import load_config as parse_config
+from conversion.cache import DEFAULT_CACHE
 from common.pdf_artifacts import read_json, write_json, prepared_pdf_path
 from common.pdf_selection import selected_pages
 
@@ -122,7 +121,6 @@ def run_stage(
     workspace_dir: Path,
     pdf_path: Optional[Path],
     config_path: Path,
-    verbose: bool = False,
     page_ranges: Optional[str] = None,
 ) -> bool:
     stage_num = stage_info["id"]
@@ -150,9 +148,6 @@ def run_stage(
     if page_ranges is not None and stage_num in {"01", "02", "03", "04", "05"}:
         cmd.extend(["--page-ranges", page_ranges])
 
-    if verbose:
-        print(f"[CMD] {' '.join(cmd)}")
-
     status_file = workspace_dir / "stage_status.json"
     stage_dir = workspace_dir / stage_dir_name
     stage_dir.mkdir(parents=True, exist_ok=True)
@@ -166,6 +161,7 @@ def run_stage(
         pass
 
     env = os.environ.copy()
+    env["CONVERSION_CACHE_DIR"] = str(DEFAULT_CACHE)
     env["LLM_STAGE_METRICS_FILE"] = str(stage_metrics_file)
 
     def read_and_clean_metrics() -> dict:
@@ -328,13 +324,10 @@ def invalidate_status(status_file, stages):
 def main():
     parser = argparse.ArgumentParser(description="PDF preparation pipeline (page objects and table transcription)")
     parser.add_argument("--pdf", type=Path, help="Source PDF or directory containing one source PDF")
-    parser.add_argument("--workspace", type=Path)
-    parser.add_argument("--config", type=Path, required=True, help="Initialize config.yaml only when the attempt has none")
-    parser.add_argument("--cache-dir", type=Path, help="Codex cache directory for worker subprocesses")
+    parser.add_argument("--workspace", type=Path, help="Attempt directory (default: workspace beside the source PDF)")
     parser.add_argument("--from-stage", help="Start stage (default: 01); clears this stage and all later results")
     parser.add_argument("--to-stage", help="Last stage to execute; does not limit cleanup")
     parser.add_argument("--page-ranges", help="Physical 1-based pages for this run only; omitted selects all available pages")
-    parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--status", action="store_true")
     args = parser.parse_args()
     skill_dir = Path(__file__).resolve().parent
@@ -354,16 +347,6 @@ def main():
         raise ValueError("Invalid stage interval")
 
     config_path = workspace / "config.yaml"
-    config_source = config_path if config_path.exists() else args.config.resolve()
-    config = parse_config(config_source)
-    if start <= resolve_stage_idx("05") <= end:
-        config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
-            "05_transform_page_tables", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
-    # Retire former settings from existing attempt configurations.
-    for key in ("input", "render", "table_conversion", "ocr"):
-        config.pop(key, None)
-    for key in ("timeout_seconds", "concurrency"):
-        config.get("llm", {}).pop(key, None)
     pages = selected_pages(args.page_ranges)
 
     status_file = workspace / "stage_status.json"
@@ -380,21 +363,15 @@ def main():
                 raise ValueError(f"Missing successful predecessor Stage {input_id} for Stage {stage['id']}")
 
     workspace.mkdir(parents=True, exist_ok=True)
-    candidate = config_path.with_suffix(".yaml.tmp")
-    try:
-        candidate.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=True), encoding="utf-8")
-        candidate.replace(config_path)
-    finally:
-        candidate.unlink(missing_ok=True)
-    if args.cache_dir:
-        os.environ["CONVERSION_CACHE_DIR"] = str(args.cache_dir.resolve())
+    if not config_path.exists():
+        shutil.copyfile(skill_dir / "config.yaml", config_path)
     # Persist invalidation before any cleanup can fail or be interrupted.
     invalidate_status(status_file, invalid)
     clean_downstream_stages(workspace, start, status_file)
     page_ranges = ",".join(map(str, pages)) if pages is not None else None
     print(f"[*] PDF source: {pdf.name}; selected pages: {pages}; stages: {[stage['id'] for stage in selected]}")
     for stage in selected:
-        if not run_stage(stage, skill_dir, workspace, pdf, config_path, args.verbose, page_ranges):
+        if not run_stage(stage, skill_dir, workspace, pdf, config_path, page_ranges):
             raise RuntimeError(f"Pipeline halted at Stage {stage['id']}")
     print("[+] Selected PDF pipeline stages completed.")
 

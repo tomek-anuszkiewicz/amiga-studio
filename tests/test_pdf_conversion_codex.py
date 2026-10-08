@@ -102,13 +102,14 @@ class PdfOcrValidationTests(unittest.TestCase):
                 for number in range(1, 4):
                     document.new_page(width=200, height=200).insert_text((20, 40), f"Page {number}")
                 document.save(source)
-            command = [sys.executable, str(ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py"),
-                       "--config", str(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")]
-            first, second = book / "workspace/first", book / "workspace/second"
-            result = subprocess.run(command + ["--pdf", str(book), "--workspace", str(first),
+            command = [sys.executable, str(ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py")]
+            first, second = book / "workspace", book / "workspace/second"
+            result = subprocess.run(command + ["--pdf", str(book),
                                     "--page-ranges", "1-2", "--from-stage", "01", "--to-stage", "02"],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual((first / "config.yaml").read_bytes(),
+                             (ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml").read_bytes())
             prepared = book / "source-ocr.pdf"
             before, mtime = prepared.read_bytes(), prepared.stat().st_mtime_ns
             result = subprocess.run(command + ["--pdf", str(book), "--workspace", str(second),
@@ -259,7 +260,7 @@ class PdfRestartTests(unittest.TestCase):
         return next(index for index, stage in enumerate(self.pipeline.STAGE_REGISTRY) if stage["id"] == stage_id)
 
     def run_pipeline(self, flags, worker, *, page_ranges="5-10"):
-        argv = ["pipeline.py", "--pdf", str(self.pdf), "--workspace", str(self.workspace), "--config", str(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")]
+        argv = ["pipeline.py", "--pdf", str(self.pdf), "--workspace", str(self.workspace)]
         if page_ranges:
             argv.extend(["--page-ranges", page_ranges])
         argv.extend(flags)
@@ -364,14 +365,14 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual(executed, [stage["id"] for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("05"):]])
 
     def test_explicit_page_range_is_run_scoped(self):
+        original_config = (self.workspace / "config.yaml").read_bytes()
         def worker(stage, *args):
             self.assertEqual(args[-1], "6,7,8,9,10")
             self.write_artifacts(stage)
             return True
         self.run_pipeline(["--from-stage", "05", "--to-stage", "05", "--page-ranges", "6-10"],
                           worker)
-        config = yaml.safe_load((self.workspace / "config.yaml").read_text())
-        self.assertNotIn("input", config)
+        self.assertEqual((self.workspace / "config.yaml").read_bytes(), original_config)
 
     def test_interrupted_cleanup_has_already_invalidated_completion(self):
         with patch.object(self.pipeline, "clean_downstream_stages", side_effect=OSError("Interrupted cleanup")):
@@ -401,6 +402,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual(executed, ["05"])
 
     def test_omitted_page_range_ignores_previous_config_selection(self):
+        original_config = (self.workspace / "config.yaml").read_bytes()
         (self.workspace / "02_preprocess/artifact.json").unlink()
         pdf = Path(self.tmp.name) / "sample.pdf"
         executed = []
@@ -413,7 +415,7 @@ class PdfRestartTests(unittest.TestCase):
         self.run_pipeline(["--from-stage", "02", "--pdf", str(pdf)], worker, page_ranges=None)
         self.assertEqual(executed[0], "02")
         state = read_json(self.workspace / "stage_status.json")
-        self.assertNotIn("input", yaml.safe_load((self.workspace / "config.yaml").read_text()))
+        self.assertEqual((self.workspace / "config.yaml").read_bytes(), original_config)
 
     def test_resume_option_is_rejected_without_cleanup(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
@@ -445,7 +447,6 @@ class PdfConfigurationTests(unittest.TestCase):
             sentinel = output / "accepted.md"
             sentinel.write_text("Accepted output")
             result = subprocess.run([sys.executable, str(ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py"),
-                                     "--config", str(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml"),
                                      "--workspace", str(workspace), "--pdf", str(root / "source.pdf"), "--from-stage", "05", "--to-stage", "05"], capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertTrue(sentinel.is_file())

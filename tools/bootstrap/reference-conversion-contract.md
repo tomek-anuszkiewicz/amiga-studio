@@ -62,16 +62,22 @@ remain separate from execution status. Existing cached prompts are not rewritten
 
 ## Implementation and pending scope
 
-For agent-run PDF conversions, treat the source PDF directory's `workspace/` as a container for named attempt directories, never as an attempt workspace itself, even when it is empty. Create a named child from the first attempt, such as `<PDF_DIRECTORY>/workspace/page-64-attempt-01/`, and always pass that child explicitly with `--workspace`. Use a new child for each independent attempt; continue or explicitly restart the same attempt in its existing child. The CLI currently defaults to `<PDF_DIRECTORY>/workspace/` when `--pdf` is supplied without `--workspace`, so agents must override that default. The original PDF stays outside the attempt workspace. Bootstrap downloads PDFs into `<book>-tmp/`; agent-run attempts belong under `<book>-tmp/workspace/<attempt>/`. A locally supplied PDF in `<book>/` uses `<book>/workspace/<attempt>/`.
+PDF conversions use `<PDF_DIRECTORY>/workspace/` by default; this directory,
+named `workspace`, is used for subsequent development. The program creates it
+when conversion starts. Pass `--workspace` for a separate independent attempt,
+or continue/restart the default workspace. The original PDF stays outside it.
+Status without `--pdf` or `--workspace` uses the current directory's `workspace/`.
 
 Source selection belongs solely to `--pdf`, required for every conversion and
 restart. The path is never persisted. Page ranges apply only to the current run,
 and omission selects all available pages. Existing workspace config takes
-precedence; `--config` initializes only a missing config. Rendering uses fixed
-300 DPI PNGs, inference concurrency 1 and a 180-second request timeout. The next
-pipeline config write retires the former input, render, table predecessor, OCR,
-timeout and concurrency fields while retaining model settings. No historical
-source-selection comparison runs.
+precedence and is preserved without rewriting. A missing config is copied from
+`pdf-to-markdown/config.yaml`; there is no pipeline `--config` option. PDF workers
+use the fixed shared `book-to-markdown/books/.cache/codex` response cache, without
+a pipeline `--cache-dir` override. Rendering uses fixed 300 DPI PNGs, inference
+concurrency 1 and a 180-second request timeout. Legacy config selection fields
+do not control source or page selection. No historical source-selection
+comparison runs.
 
 `stage_status.json` is the only completion/metrics record, written atomically with
 running/success/failed states. Predecessor routing checks successful statuses using
