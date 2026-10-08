@@ -1231,3 +1231,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight passes
   - all 19 architecture tests pass
   - no downloads performed
+---
+
+### [2026-10-08 22:54 CET] — Copy Test Book into the book catalog and verify reconstruction
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books/test-book-example-4567`
+- **What Was Changed (The Concrete Reality)**:
+  - Copy the complete local Test Book directory including its conversion workspace
+  - name the catalog directory and PDFs with lowercase hyphen-separated names matching existing books
+  - adapt the copied tracker source paths and matrix book identifiers to the books catalog
+  - reconstruct a separate 160-page PDF using the tracker mapping
+  - ignore local PDFs and workspace
+  - omit source.json
+- **Architectural Rationale & Trade-Offs**:
+  - Use catalog book identifiers and exact source hashes to reproduce the existing test selection while retaining the original directory and conversion provenance
+- **Verification & Test Results**:
+  - All 160 reconstructed pages match source pages and the original PDF in decoded streams, media boxes, rotation and RGB renders at 72 DPI
+  - inspected six-page visual preview
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - original directory preserved
+  - no inference or downloads performed
