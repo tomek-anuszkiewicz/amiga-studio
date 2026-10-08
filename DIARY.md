@@ -3904,3 +3904,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - zero-image request identities, whitespace-only selected code changes and unchanged source fields verified
   - Graphify refreshed. Closure quick pre-flight and architecture 19/19 passed. No new conversion run, full-book conversion, additional source categories, milestone gate or broad quality certification
   - these limits remain unchanged.
+---
+
+### [2026-10-08 02:25 CET] — PDF-ORDER-2.46: Review suspicious page reading order
+- **Affected Subsystems**:
+  - `PDF bootstrap pipeline`
+  - `optional page resolver`
+  - `review frames and stage configuration`
+- **What Was Changed (The Concrete Reality)**:
+  - Add bounded geometry detection and one whole-page model order assessment per suspicious selected page
+  - apply only complete ID permutations while preserving original objects and metadata
+  - register optional 02.46 resolution selection dependencies restart cleanup and defaults
+  - document stage and retain page-82 result for user assessment
+- **Architectural Rationale & Trade-Offs**:
+  - Geometry selects suspicions without sorting
+  - source order drives downstream groups and exports
+  - retain immutable predecessors and attempt-local settings
+  - the detector deliberately excludes vertically disjoint inversions
+- **Verification & Test Results**:
+  - Page 82: 02.46 and 02.5 succeeded with one live request and zero cache hits
+  - order changed from 001 002 003-013 to 002 001 003-013 with every object field and page metadata unchanged
+  - selection 6/6 PDF execution/config/restart 30/30 shared config/cache/transport 21/21 passed
+  - quick pre-flight and architecture 19/19 passed
+  - Graphify AST refresh passed
+  - no other pages publication or milestone gate ran
+  - plan remains active pending user assessment
