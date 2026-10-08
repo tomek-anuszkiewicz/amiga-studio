@@ -1198,3 +1198,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight and all 19 architecture tests pass
   - git diff --check passes
   - no code changes or conversion runs
+---
+
+### [2026-10-08 22:49 CET] — Initialize book source hash catalog
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books`
+- **What Was Changed (The Concrete Reality)**:
+  - Create four named book directories and 14 source variant directories using 12-character SHA-256 prefixes
+  - store the full source SHA-256 in each source.json
+  - leave PDFs in the existing local audit workspace
+- **Architectural Rationale & Trade-Offs**:
+  - Establish the requested minimal book and variant structure without copying source content or implementing recipe generation
+- **Verification & Test Results**:
+  - All 14 source hashes match existing local PDFs
+  - 14 JSON files and directory prefixes validated
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - no downloads or PDF copies performed
