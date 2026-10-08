@@ -1,7 +1,7 @@
 # Global configuration for the modular PDF-to-Markdown pipeline
-# Preparation ends at Stage 02.81; book generation is a separate program.
+# Preparation ends at Stage 05; book generation is a separate program.
 
 llm:
   stages:
-    02_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    02.81_transform_page_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    03_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    05_transform_page_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

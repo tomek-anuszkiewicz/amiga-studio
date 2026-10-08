@@ -1,6 +1,6 @@
 """Table conversion identity and format recognition."""
 
-STAGE = "02.81_transform_page_tables"
+STAGE = "05_transform_page_tables"
 
 
 def converted(segment):

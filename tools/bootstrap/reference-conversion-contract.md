@@ -18,18 +18,18 @@ Do not schedule additional sample conversions, a full-book/full-crawl run, quali
 
 Preserve technical meaning, reading order, prose, footnotes, captions, labels, code, hexadecimal values, mathematics and tables. Formatting can change; conversion must not summarize, invent facts or silently omit material. Use source metadata only, omitting unknown publication details. Mark unreadable material rather than reconstructing it without evidence.
 
-PDF Stage 02.80 applies the user's deliberate source-fidelity exception: remove
+PDF Stage 04 applies the user's deliberate source-fidelity exception: remove
 headers/footers. Covers, contents, indexes and lists of tables or illustrations
 remain for later manual classification and removal, even in older saved objects.
-The Stage 02 prompt classifies recurring margin logos as header/footer content;
-Stage 02.80 performs no image matching. Generated YAML metadata remains.
-All page workers from 01 through 02.81 apply the current invocation's
+The Stage 03 prompt classifies recurring margin logos as header/footer content;
+Stage 04 performs no image matching. Generated YAML metadata remains.
+All page workers from 02 through 05 apply the current invocation's
 `--page-ranges` before reading inputs. Selection is not persisted in config;
-omission means all available predecessor pages. Stage 00 prepares or reuses the
-full-source OCR PDF. Stage 02.80 reads Stage 02 directly, and Stage 02.81 reads
-only filtered objects. Stage 02.81 saves only changed table pages and records its
+omission means all available predecessor pages. Stage 01 prepares or reuses the
+full-source OCR PDF. Stage 04 reads Stage 03 directly, and Stage 05 reads
+only filtered objects. Stage 05 saves only changed table pages and records its
 invocation's page range in stage_status.json for separate book processing, which
-must overlay changed pages on selected Stage 02.80 input and retain unchanged pages.
+must overlay changed pages on selected Stage 04 input and retain unchanged pages.
 See the [pipeline selection contract](pdf-to-markdown/README.md#physical-page-selection).
 
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.
@@ -40,7 +40,7 @@ Crop coordinates refer to the original rendered image: integer pixels, top-left 
 
 Markdown begins with valid YAML frontmatter and a document heading. TOC entries must resolve to actual headings. Asset paths must resolve; check rendered output and source fidelity before bulk use. Parser checks cannot certify visual or semantic completeness.
 
-Stage 02 has a user-requested exception to the Markdown formatting recipes above.
+Stage 03 has a user-requested exception to the Markdown formatting recipes above.
 Its effective request asks for textual objects' Markdown conversion in `md_text`,
 with layout, classification, fidelity and JSON constraints. It supplies no Markdown
 style recipes, formatting examples or hints. The shared transport's base/developer
@@ -56,7 +56,7 @@ Run each request in a fresh isolated thread with explicit conversion instruction
 The Codex cache is separate from legacy Gemini data. Its identity includes engine, stage, model, effort, pinned runtime, contract version, execution instructions, prompt, ordered image bytes, image detail and output schema. Completed cached outputs are reusable; partial, interrupted, empty or unparseable JSON outputs are not. Cache reuse retains authenticated runtime handling; HTML also validates selected capabilities and response content. Record calls, cache hits, elapsed time and available token usage; cached usage describes the original request, not new consumption.
 
 Prepared-PDF hashes are not stored in page JSON or OCR
-recovery metadata. Stage 02 receives page data without a document-wide hash, so
+recovery metadata. Stage 03 receives page data without a document-wide hash, so
 rewriting the prepared PDF alone does not change the page request. PDF completion and metrics live only in `stage_status.json`; request-cache records
 remain separate from execution status. Existing cached prompts are not rewritten.
 
@@ -96,19 +96,19 @@ pages, correct classifications/geometry, matching Markdown or complete assets.
 
 Full runs, intervals and individual deterministic/inference stages use
 `--from-stage`/`--to-stage`; matching boundaries select one stage.
-The execution sequence is `00 -> 01 -> 02 -> 02.80 -> 02.81`.
+The execution sequence is `01 -> 02 -> 03 -> 04 -> 05`.
 
-Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
+Stage 03 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.
-The former segmentation and review stages have been removed. Stage 02 reads Stage 01 PNG/text JSON files directly and defines independent logical objects in model array order, with
-`md_text` and no `raw_text`. `02_page_conversion/page_NNNN_segments.json` records
+The former segmentation and review stages have been removed. Stage 03 reads Stage 02 PNG/text JSON files directly and defines independent logical objects in model array order, with
+`md_text` and no `raw_text`. `03_page_conversion/page_NNNN_segments.json` records
 physical page identity, original PNG dimensions, deterministic page-scoped IDs,
 classifications, heading levels and explicit boolean `continuation`.
 Saved objects omit `continuation: false`, `heading_level: null`, empty/null
 `md_text` and zero rotation, including zero in object metadata. Artifact IO
 compacts recognized page/stream objects without mutating inputs or injecting
-missing defaults. Numeric Stage 01 OCR blocks remain unchanged. Consumers apply
+missing defaults. Numeric Stage 02 OCR blocks remain unchanged. Consumers apply
 missing-field defaults locally, preserving compact JSON in inference prompts.
 Source lineage, replacement-stage metadata and `image_only` are no longer
 produced or propagated. Nonzero rotation,
@@ -120,7 +120,7 @@ compacted in memory on read, with no bulk workspace rewrite. For `graphic`,
 Cache reuse still requires matching prompt instructions, schema, image bytes and
 model/runtime settings.
 
-Stage 02 only identifies, classifies and bounds these objects; internal text,
+Stage 03 only identifies, classifies and bounds these objects; internal text,
 table reconstruction and graphic/cover content processing are deferred to later
 stages using original image crops. Complete bounds still include internal labels
 and connected explanatory text. This is request guidance; local code does not reject nonempty content. Existing objects with nonempty content
@@ -130,7 +130,7 @@ source-visible name explicitly indicates continuation from the previous page,
 including Continued, Concluded or a later sheet/part number. It keeps its normal
 type (for example `toc_heading`, `list_of_figures_heading` or `caption`) and its
 complete source name. Other objects, including bodies beneath these titles,
-have `continuation: false`. Stage 02 no longer accepts `caption_continuation`;
+have `continuation: false`. Stage 03 no longer accepts `caption_continuation`;
 old objects without this boolean require 02 regeneration, not in-place
 migration.
 Every object has a nonempty integer pixel
@@ -154,57 +154,57 @@ Determine complete object boundaries before classification: a marker-referenced
 footnote includes its continuation lines and paragraphs, even when they define
 symbols or abbreviations. A table legend must be an independent source block.
 
-Stage 02 first recognizes character-built timing and bit-field layouts as
+Stage 03 first recognizes character-built timing and bit-field layouts as
 `code_block`, including integrated aligned values, labels and explanations.
 Column headings, repeated offsets, bit numbers and "Table" captions do not
 override this source-representation rule. It precedes register-table recognition
 and drawing-sheet grouping; meaningful character geometry is preserved as text.
 
-After excluding these character-built layouts, Stage 02 preserves genuine
+After excluding these character-built layouts, Stage 03 preserves genuine
 register-map and bit-assignment tables as `table` when repeated
 address/offset rows organize bit positions and field descriptions. Drawn brackets
 or leader lines connecting bits to descriptions stay inside the complete table;
 they do not make it a graphic, and cell borders are not required. This rule takes
-precedence over graphic and drawing-sheet grouping. Regenerate 02 to apply it.
+precedence over graphic and drawing-sheet grouping. Regenerate 03 to apply it.
 
-Stage 02 groups a complete technical drawing sheet as one `graphic`, including
+Stage 03 groups a complete technical drawing sheet as one `graphic`, including
 integrated identification text, introductory descriptions, views, dimensions,
 notes and technical tables. Shared drawing layout, orientation and subject may
 establish membership without leader lines. This grouping precedes individual
 table/caption classification; independent document content and running page
-headers/footers remain separate. Regenerate 02 to apply it to saved results.
+headers/footers remain separate. Regenerate 03 to apply it to saved results.
 
-Stage 02 classifies independent diagrams that visibly look like ASCII art or
+Stage 03 classifies independent diagrams that visibly look like ASCII art or
 character-based drawings as `code_block`, preserving characters, line breaks,
 spaces and alignment in fenced `text` blocks. Drawn lines and shapes remain
 `graphic`, even when later ASCII conversion is possible.
 
-Stage 02 orders objects by visible source rows. A short block beside and visually
+Stage 03 orders objects by visible source rows. A short block beside and visually
 above most of a multiline heading precedes that heading even when their box top
 edges nearly align. Semantic association does not move headings ahead of earlier
-source content. Regenerate 02 to apply this ordering to saved results.
+source content. Regenerate 03 to apply this ordering to saved results.
 
-Stage 02.80 reads Stage 02 JSON in numeric physical-page and segment-array order.
+Stage 04 reads Stage 03 JSON in numeric physical-page and segment-array order.
 It removes all `header`/`footer` objects by exact type. No TOC boundary or
 whole-page document-role exclusions apply, including to older saved objects;
 those decisions belong to the later manual editor. Never inspect unselected PDF
 pages or infer these roles from text, geometry or continuation flags.
-`02.80_filter_page_content/` retains filenames,
+`04_filter_page_content/` retains filenames,
 page identities, dimensions and every surviving object's fields, IDs, text,
 geometry and order without renumbering. Omit empty pages; an empty output is valid.
 Report page/object counts and the number of pages emptied by filtering, with no
 model calls, inference configuration, manifest or runtime artifact/schema checks.
-Original Stage 01 and 02 artifacts remain unchanged.
+Original Stage 02 and 03 artifacts remain unchanged.
 
-Stage 02.81 consumes completed 02.80 full page JSONs and original Stage 01 PNGs.
-Stage 02.80 is the fixed predecessor; filtering cannot be bypassed.
-Never recover removed filtered pages from Stage 02.
+Stage 05 consumes completed 04 full page JSONs and original Stage 02 PNGs.
+Stage 04 is the fixed predecessor; filtering cannot be bypassed.
+Never recover removed filtered pages from Stage 03.
 
 Transcribe each table from its exact unpadded pixel crop using the minimal table
 prompt, existing Codex transport/cache, original detail and explicit model/effort.
 Tables with merged cells must use HTML with the appropriate `rowspan` and `colspan`
 attributes, preserving row and column spans rather than flattening them into Markdown.
-Stage 02.81 makes one transcription request per table, replacing only `md_text`
+Stage 05 makes one transcription request per table, replacing only `md_text`
 and recording `table_format`. Preserve all other source objects and their order,
 including separate captions, notes and legends. An unconverted result preserves
 original content and raster behavior. Crops are temporary request inputs and are
@@ -212,8 +212,8 @@ removed after execution; no persistent table source assets, group assignments,
 RAG inference or descriptions are produced. Retired companion fields are omitted
 from converted output. Technical errors stop execution normally.
 
-Stage 02.81 saves a full page JSON only when table processing changes its data;
-pages without tables and unchanged pages remain in Stage 02.80. An empty 02.81
+Stage 05 saves a full page JSON only when table processing changes its data;
+pages without tables and unchanged pages remain in Stage 04. An empty 05
 directory is valid. Its status entry records page_ranges (null means all input
 pages), so later book processing can reconstruct the selected prepared dataset.
 PDF preparation emits no final Markdown bundle or persistent graphic crops.
@@ -221,14 +221,14 @@ Chapter generation, raster assets, grouping and descriptions belong to the
 separate planned [book-to-markdown](book-to-markdown/README.md) program.
 
 Restart clears the selected stage and every later stage in execution order, even
-when stopping at that stage. Restart 02.81 preserves predecessors and rebuilds
-table markup. Stage 02.81 requires completed 01/02.80.
+when stopping at that stage. Restart 05 preserves predecessors and rebuilds
+table markup. Stage 05 requires completed 02/04.
 No automatic continuation or completed-stage skipping occurs. Historical export
 directories remain untouched and are not consumed by preparation.
 The request cache survives attempt cleanup.
 
 The top-level HTML and PDF pipelines have no `--output-dir` option. HTML output stays
-in the source book's `workspace/html_to_markdown/`; PDF preparation ends at 02.81.
+in the source book's `workspace/html_to_markdown/`; PDF preparation ends at 05.
 Only HTML conversion supports `--publish`.
 Bootstrap downloads sources into `<book>-tmp/`; `-Markdown` only converts locally.
 Its separate `-Publish` switch supports HTML and rejects selected PDFs before
@@ -252,51 +252,51 @@ configuration/model validation, text requests and publication live in
 parsing remains necessary IO. Each converter's requirements file includes the
 shared SDK/YAML dependencies and its own document-processing dependencies.
 
-PDF Stage 00 publishes a separate prepared `<source stem>-ocr.pdf` beside the
+PDF Stage 01 publishes a separate prepared `<source stem>-ocr.pdf` beside the
 source, containing every source page in original order. If that file already
-exists, Stage 00 skips OCR and PDF writing. File existence controls reuse, including when source or
+exists, Stage 01 skips OCR and PDF writing. File existence controls reuse, including when source or
 configuration changes; explicit removal of the shared file requests new OCR.
 `page` and zero-based `source_index` retain original source identity;
 zero-based `prepared_index` equals `source_index` in the full prepared PDF.
-Stage 01 reads only this PDF using that mapping, applies the attempt page selection
+Stage 02 reads only this PDF using that mapping, applies the attempt page selection
 and persists positioned text JSON with matching PNGs. Its provenance is `prepared`
 or `none`; a reused PDF does not establish native versus OCR origin. Native spans
 are preserved regardless of length. Textless source
 pages use local Tesseract through PyMuPDF with fixed English (`eng`) language
-data, discovered automatically or through `TESSDATA_PREFIX`. Stage 00 has
+data, discovered automatically or through `TESSDATA_PREFIX`. Stage 01 has
 no Codex model selection, prompt or model request. Later inference stages retain
 the shared Codex transport.
 
-Stage 00 retains Tesseract's original OCR PDF and overlays its text operators and
+Stage 01 retains Tesseract's original OCR PDF and overlays its text operators and
 font resources at their original scale, preserving glyph positions and spacing.
 It does not normalize, round or clamp OCR coordinates, reconstruct lines or fit
 text to boxes. The OCR raster becomes transparent so the original page graphics
 remain visible. Page rotation maps the displayed frame without resizing the text.
-Stage 00 trusts PyMuPDF to store the OCR text: it does not compare
+Stage 01 trusts PyMuPDF to store the OCR text: it does not compare
 reopened OCR line counts, text or positions with the recognition result.
-Stage 00 saves the output without reopening or validating it, comparing renders,
+Stage 01 saves the output without reopening or validating it, comparing renders,
 checking geometry or retained streams, or rereading the source after saving. A page
 with no recognized lines receives no text overlay; this does not confirm that it
-contains no text. Tesseract can miss text. Stage 01 classifies pages from the
+contains no text. Tesseract can miss text. Stage 02 classifies pages from the
 prepared PDF spans, using `pure_graphic` when none are extractable and recording
 `inferred_from_prepared_spans` evidence. No margin filter or size-based schematic
-omission is applied. Stage 00 covers all source pages; a selected downstream
+omission is applied. Stage 01 covers all source pages; a selected downstream
 fragment never certifies conversion of unselected pages.
 
-Stage 00 retains compatible OCR recovery records.
-Stage 01 owns per-page positioned text JSON extraction from the prepared PDF;
-Stage 00 does not duplicate those reads in separate inspection JSON. Recovery
+Stage 01 retains compatible OCR recovery records.
+Stage 02 owns per-page positioned text JSON extraction from the prepared PDF;
+Stage 01 does not duplicate those reads in separate inspection JSON. Recovery
 retains each unmodified OCR PDF and JSON identity/hash metadata. Its identity
 includes rendered image bytes, procedure, geometry, source selection,
 language-data hashes, raw PDF format and the PyMuPDF version. Legacy normalized
 JSON and Codex recovery are incompatible and regenerated. OCR artifacts are opened to insert their text; there is no separate OCR-artifact
-validation pass. Recovery matches request identity without checking saved hashes. The user assesses the prepared PDF; Stage 01 consumes its
+validation pass. Recovery matches request identity without checking saved hashes. The user assesses the prepared PDF; Stage 02 consumes its
 actual extractable text. Native text is unchanged.
 Restart cleanup never removes the sibling prepared PDF.
-Restart at 01 retains completed Stage 00; legacy workspaces require explicit
-regeneration from 00 with the original PDF after backend, name or prepared-page
+Restart at 02 retains completed Stage 01; legacy workspaces require explicit
+regeneration from 01 with the original PDF after backend, name or prepared-page
 layout changes. Legacy compact workspace PDFs are not promoted to the shared
-full-document path; restart at 00 with the original source.
+full-document path; restart at 01 with the original source.
 
 The user closed PDF-TEXT-1.1 on 2026-10-06 using the page-64 fragment evidence,
 without requesting additional source-category runs. Native-copy, mixed,

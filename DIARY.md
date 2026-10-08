@@ -1157,3 +1157,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - both CLI help commands load
   - Graphify refresh completes
   - no live conversion or dependency installation performed
+---
+
+### [2026-10-08 22:46 CET] — Renumber PDF preparation stages consecutively
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/book-to-markdown`
+  - `tests`
+  - `docs/developers.md`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Renumber OCR, preprocessing, page conversion, filtering and table transcription as 01 through 05
+  - rename stage directories and propagate IDs through predecessor routing, configuration, status, consumers, CLI examples, tests and book handoff documentation
+  - reject prior numbering before cleanup
+- **Architectural Rationale & Trade-Offs**:
+  - Keep stage order and directory names consistent without fractional identifiers or reinterpreting older attempt status records
+- **Verification & Test Results**:
+  - 64 conversion, PDF, publication and bootstrap tests pass, including legacy-attempt preservation
+  - quick preflight and 19 architecture tests pass
+  - local converter Markdown links resolve
+  - Graphify refresh completes
+  - existing workspaces and caches are not migrated and newly numbered inference stages use new cache keys
+  - no live conversion performed

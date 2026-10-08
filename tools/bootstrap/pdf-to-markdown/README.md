@@ -16,7 +16,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --pdf "<PDF_DIRECTORY>/source.pdf" `
   --workspace "<PDF_DIRECTORY>/workspace/attempt-01" `
   --config tools/bootstrap/pdf-to-markdown/config.yaml `
-  --page-ranges "1-5,7" --from-stage 00 --to-stage 01
+  --page-ranges "1-5,7" --from-stage 01 --to-stage 02
 ```
 
 Agent-run conversions use a named child of the source directory's `workspace/`
@@ -32,33 +32,37 @@ HTML configuration, model-catalog checks and publication are owned by HTML suppo
 
 ## Stage data and execution
 
-The execution sequence is `00 -> 01 -> 02 -> 02.80 -> 02.81`.
+The execution sequence is `01 -> 02 -> 03 -> 04 -> 05`.
 Each stage reads explicitly named predecessors and writes its own results.
+Stage directories retain descriptive suffixes. Attempts using the previous
+numbering require a new named workspace; saved status IDs and inference settings
+are not migrated. The shared sibling OCR PDF can still be reused. Stage identities
+are part of request-cache keys, so newly numbered inference stages use new keys.
 
 | Stage | Input and result |
 | --- | --- |
-| [00](stages/00_text_layer/README.md) | Source PDF -> shared full-source sibling OCR PDF and reusable recovery records |
-| [01](stages/01_preprocess/README.md) | Prepared PDF -> positioned text JSON and physical-page PNGs |
-| [02](stages/02_page_conversion/README.md) | Stage 01 -> ordered logical objects, Markdown and pixel boxes |
-| [02.80](stages/02.80_filter_page_content/README.md) | Stage 01/02 -> objects with headers and footers removed |
-| [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> changed table pages only |
+| [01](stages/01_text_layer/README.md) | Source PDF -> shared full-source sibling OCR PDF and reusable recovery records |
+| [02](stages/02_preprocess/README.md) | Prepared PDF -> positioned text JSON and physical-page PNGs |
+| [03](stages/03_page_conversion/README.md) | Stage 02 -> ordered logical objects, Markdown and pixel boxes |
+| [04](stages/04_filter_page_content/README.md) | Stage 02/03 -> objects with headers and footers removed |
+| [05](stages/05_transform_page_tables/README.md) | Stage 02/04 -> changed table pages only |
 
-Filtering reads Stage 02 directly, without reclassification overrides.
-Table conversion reads only Stage 02.80; omitted pages never fall back to Stage 02.
-Stage 02.81 saves only pages changed by table processing and uses temporary crops
+Filtering reads Stage 03 directly, without reclassification overrides.
+Table conversion reads only Stage 04; omitted pages never fall back to Stage 03.
+Stage 05 saves only pages changed by table processing and uses temporary crops
 for transcription only. Separate captions, notes and legends remain unchanged.
-The prepared dataset consists of Stage 01 PNG/text pairs, Stage 02.80 filtered
-pages and Stage 02.81 replacements. Book generation, image crops, grouping and
+The prepared dataset consists of Stage 02 PNG/text pairs, Stage 04 filtered
+pages and Stage 05 replacements. Book generation, image crops, grouping and
 descriptions belong to [book-to-markdown](../book-to-markdown/README.md), whose
 generator is not implemented yet. No final Markdown bundle is emitted here.
 
 ### Physical-page selection
 
 `--page-ranges` selects physical 1-based pages for this invocation only.
-Stage 00 always prepares or reuses the complete source PDF. Stages 01, 02, 02.80
-and 02.81 apply the selection while enumerating their input, including direct
+Stage 01 always prepares or reuses the complete source PDF. Stages 02, 03, 04
+and 05 apply the selection while enumerating their input, including direct
 restarts with all-page predecessors. Omission means all available input pages;
-selection is not stored in config. The 02.81 status entry records its invocation's
+selection is not stored in config. The 05 status entry records its invocation's
 page range for the prepared-data handoff. Future book processing must overlay
 changed pages on the selected filtered dataset, retaining unchanged selected pages.
 Page files are ordered numerically, without coverage or PNG/JSON pairing checks.
@@ -89,6 +93,6 @@ Saved page objects omit zero rotation, false continuation, null heading levels
 and empty Markdown. Source lineage, replacement stage and `image_only` are not
 persisted. Consumers apply missing-field defaults without modifying prompt data.
 
-Preparation ends at `<WORKSPACE>/02.81_transform_page_tables/`; unchanged pages
-remain in `02.80_filter_page_content/`. The PDF CLI has no `--publish` option.
+Preparation ends at `<WORKSPACE>/05_transform_page_tables/`; unchanged pages
+remain in `04_filter_page_content/`. The PDF CLI has no `--publish` option.
 Historical export directories remain untouched and are not consumed by preparation.

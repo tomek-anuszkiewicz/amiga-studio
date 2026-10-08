@@ -1,6 +1,6 @@
 # Book Element Types
 
-This initial vocabulary describes the source elements distinguished during book recipe authoring. It starts from the [Stage 02 classification prompt](../pdf-to-markdown/stages/02_page_conversion/prompt.md) and uses generic `note` and `legend` roles. Their association with a table, image or passage belongs to authored grouping. It is a book-authoring draft; the PDF Stage 02 response schema remains unchanged.
+This initial vocabulary describes the source elements distinguished during book recipe authoring. It starts from the [Stage 03 classification prompt](../pdf-to-markdown/stages/03_page_conversion/prompt.md) and uses generic `note` and `legend` roles. Their association with a table, image or passage belongs to authored grouping. It is a book-authoring draft; the PDF Stage 03 response schema remains unchanged.
 
 | Type | Meaning |
 | --- | --- |
@@ -41,7 +41,7 @@ An authored table or image group can associate its `table` or `graphic` with a `
 
 Use `note` for source notes and qualifications, and `legend` for definitions needed to interpret notation. A NOTES or LEGEND label alone does not determine the role. General narrative remains `prose`, and a table's or graphic's formal name remains `caption`. Text integrated into the artwork stays inside the `graphic`; these roles describe separate source blocks, not a requirement to extract labels from an image.
 
-Prepared groups provide the source context for the [image description prompt](prompts/describe-images.md). Generated descriptions are additions to those source elements, not source notes or legends. Table descriptions follow the [table description prompt](prompts/describe-tables.md). PDF Stage 02.81 continues to replace table markup only; grouping and descriptions are separate book-processing work.
+Prepared groups provide the source context for the [image description prompt](prompts/describe-images.md). Generated descriptions are additions to those source elements, not source notes or legends. Table descriptions follow the [table description prompt](prompts/describe-tables.md). PDF Stage 05 continues to replace table markup only; grouping and descriptions are separate book-processing work.
 
 ## Heading hierarchy
 

@@ -22,37 +22,37 @@ from common.pdf_selection import selected_pages
 
 STAGE_REGISTRY: List[Dict[str, Any]] = [
     {
-        "id": "00",
-        "dir": "00_text_layer",
+        "id": "01",
+        "dir": "01_text_layer",
         "script": "prepare_text_layer.py",
         "desc": "Prepare a shared full-source OCR PDF, or reuse the existing file",
-        "targets": ["00_text_layer"],
+        "targets": ["01_text_layer"],
         "inspect": ("recovery/*.json", "OCR recovery records"),
     },
     {
-        "id": "01",
-        "dir": "01_preprocess",
+        "id": "02",
+        "dir": "02_preprocess",
         "script": "preprocess.py",
         "desc": "Extract positioned text and matching PNGs from the prepared PDF",
-        "targets": ["01_preprocess"],
+        "targets": ["02_preprocess"],
         "inspect": ("*.png", "rendered PNGs"),
     },
     {
-        "id": "02", "dir": "02_page_conversion", "script": "convert_page.py",
+        "id": "03", "dir": "03_page_conversion", "script": "convert_page.py",
         "desc": "Independently group page objects and convert their text to Markdown",
-        "targets": ["02_page_conversion"],
+        "targets": ["03_page_conversion"],
         "inspect": ("page_*_segments.json", "page conversion JSON files"),
     },
     {
-        "id": "02.80", "dir": "02.80_filter_page_content", "script": "filter_page_content.py",
+        "id": "04", "dir": "04_filter_page_content", "script": "filter_page_content.py",
         "desc": "Remove objects classified as headers or footers",
-        "targets": ["02.80_filter_page_content"],
+        "targets": ["04_filter_page_content"],
         "inspect": ("page_*_segments.json", "filtered page conversion JSON files"),
     },
     {
-        "id": "02.81", "dir": "02.81_transform_page_tables", "script": "transform_page_tables.py",
+        "id": "05", "dir": "05_transform_page_tables", "script": "transform_page_tables.py",
         "desc": "Replace table content with Markdown or HTML",
-        "targets": ["02.81_transform_page_tables"],
+        "targets": ["05_transform_page_tables"],
         "inspect": ("page_*_segments.json", "transcribed table page JSON files"),
     },
 ]
@@ -60,8 +60,8 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
 # Each stage reads explicitly named predecessor artifacts.
 for stage in STAGE_REGISTRY:
     stage["inputs"] = {
-        "00": [], "01": ["00"], "02": ["01"], "02.80": ["01", "02"],
-        "02.81": ["01", "02.80"],
+        "01": [], "02": ["01"], "03": ["02"], "04": ["02", "03"],
+        "05": ["02", "04"],
     }[stage["id"]]
 
 
@@ -85,7 +85,7 @@ def update_status(
         data = read_json(status_file)
     entry = data.setdefault(stage_num, {})
     entry["status"] = status
-    if stage_num == "02.81":
+    if stage_num == "05":
         entry["page_ranges"] = page_ranges
     if details or "details" not in entry:
         entry["details"] = details
@@ -142,12 +142,12 @@ def run_stage(
     ]
 
     # Stage-specific standard parameter injection
-    if stage_num == "00":
+    if stage_num == "01":
         cmd.extend(["--pdf", str(pdf_path)])
-    elif stage_num == "01":
+    elif stage_num == "02":
         prepared_pdf = prepared_pdf_path(pdf_path)
         cmd.extend(["--pdf", str(prepared_pdf)])
-    if page_ranges is not None and stage_num in {"00", "01", "02", "02.80", "02.81"}:
+    if page_ranges is not None and stage_num in {"01", "02", "03", "04", "05"}:
         cmd.extend(["--page-ranges", page_ranges])
 
     if verbose:
@@ -304,8 +304,8 @@ def clean_downstream_stages(workspace_dir: Path, start_idx: int, status_file: Pa
         for target in s["targets"]:
             p = workspace_dir / target
             if p.is_dir():
-                if s_id == "00":
-                    # Partial OCR results are reusable only after Stage 00
+                if s_id == "01":
+                    # Partial OCR results are reusable only after Stage 01
                     # checks source/image/procedure/configuration identities.
                     for child in p.iterdir():
                         if child.name != "recovery":
@@ -331,7 +331,7 @@ def main():
     parser.add_argument("--workspace", type=Path)
     parser.add_argument("--config", type=Path, required=True, help="Initialize config.yaml only when the attempt has none")
     parser.add_argument("--cache-dir", type=Path, help="Codex cache directory for worker subprocesses")
-    parser.add_argument("--from-stage", help="Start stage (default: 00); clears this stage and all later results")
+    parser.add_argument("--from-stage", help="Start stage (default: 01); clears this stage and all later results")
     parser.add_argument("--to-stage", help="Last stage to execute; does not limit cleanup")
     parser.add_argument("--page-ranges", help="Physical 1-based pages for this run only; omitted selects all available pages")
     parser.add_argument("--verbose", action="store_true")
@@ -356,9 +356,9 @@ def main():
     config_path = workspace / "config.yaml"
     config_source = config_path if config_path.exists() else args.config.resolve()
     config = parse_config(config_source)
-    if start <= resolve_stage_idx("02.81") <= end:
+    if start <= resolve_stage_idx("05") <= end:
         config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
-            "02.81_transform_page_tables", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
+            "05_transform_page_tables", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
     # Retire former settings from existing attempt configurations.
     for key in ("input", "render", "table_conversion", "ocr"):
         config.pop(key, None)
@@ -368,6 +368,8 @@ def main():
 
     status_file = workspace / "stage_status.json"
     statuses = read_json(status_file) if status_file.exists() else {}
+    if any(stage_id in statuses for stage_id in ("00", "02.80", "02.81")):
+        raise ValueError("This attempt uses the previous stage numbering; start a new named workspace")
     selected = STAGE_REGISTRY[start:end + 1]
     selected_ids = {stage["id"] for stage in selected}
     invalid = invalidated_stages(start)

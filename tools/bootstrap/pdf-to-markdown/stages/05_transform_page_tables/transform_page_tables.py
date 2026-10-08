@@ -26,12 +26,12 @@ RESPONSE = object_schema({"format": {"type": "string", "enum": ["markdown", "htm
 def transform_tables(workspace, config, pages=None):
     directory = Path(__file__).parent
     prompt = (directory / "prompt.md").read_text(encoding="utf-8")
-    input_dir = "02.80_filter_page_content"
+    input_dir = "04_filter_page_content"
     output = workspace / STAGE
     output.mkdir(parents=True, exist_ok=True)
     counts = dict.fromkeys(("markdown", "html", "unconverted"), 0)
     saved_pages = 0
-    with tempfile.TemporaryDirectory(prefix=".02.81-", dir=workspace) as temporary, \
+    with tempfile.TemporaryDirectory(prefix=".05-", dir=workspace) as temporary, \
             CodexClient(config, stage=STAGE) as codex:
         for entry, page in read_conversion(workspace, input_dir,
                                            pages=pages):
@@ -68,7 +68,7 @@ def transform_tables(workspace, config, pages=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 02.81: transcribe page tables")
+    parser = argparse.ArgumentParser(description="Stage 05: transcribe page tables")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--page-ranges")

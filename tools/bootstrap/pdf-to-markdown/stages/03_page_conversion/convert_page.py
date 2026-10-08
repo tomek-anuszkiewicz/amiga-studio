@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage 02: independent logical objects and per-object Markdown."""
+"""Stage 03: independent logical objects and per-object Markdown."""
 
 import argparse
 import json
@@ -17,10 +17,10 @@ from common.pdf_selection import selected_pages
 
 def convert_pages(workspace, config, pages=None):
     prompt = Path(__file__).with_name("prompt.md").read_text(encoding="utf-8")
-    output = workspace / "02_page_conversion"
+    output = workspace / "03_page_conversion"
     output.mkdir(parents=True, exist_ok=True)
-    with CodexClient(config, stage="02_page_conversion") as codex:
-        for path in page_files(workspace / "01_preprocess", "page_*.json",
+    with CodexClient(config, stage="03_page_conversion") as codex:
+        for path in page_files(workspace / "02_preprocess", "page_*.json",
                                pages):
             data = read_json(path)
             entry = data
@@ -39,7 +39,7 @@ def convert_pages(workspace, config, pages=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 02: independent page conversion")
+    parser = argparse.ArgumentParser(description="Stage 03: independent page conversion")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--page-ranges")

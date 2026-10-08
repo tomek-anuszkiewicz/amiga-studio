@@ -49,7 +49,7 @@ class PdfArtifactIdentityTests(unittest.TestCase):
             self.assertEqual(compact["segments"][1][key], meaningful[key])
 
     def test_compact_artifact_prompt_replays_preloaded_cache(self):
-        stage = "02_page_conversion"
+        stage = "03_page_conversion"
         config = {"llm": {"stages": {stage: {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}}}}
         schema = {"type": "object"}
         # This identity is the compact alias prepared before artifact migration.
@@ -106,30 +106,30 @@ class PdfOcrValidationTests(unittest.TestCase):
                        "--config", str(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")]
             first, second = book / "workspace/first", book / "workspace/second"
             result = subprocess.run(command + ["--pdf", str(book), "--workspace", str(first),
-                                    "--page-ranges", "1-2", "--from-stage", "00", "--to-stage", "01"],
+                                    "--page-ranges", "1-2", "--from-stage", "01", "--to-stage", "02"],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             prepared = book / "source-ocr.pdf"
             before, mtime = prepared.read_bytes(), prepared.stat().st_mtime_ns
             result = subprocess.run(command + ["--pdf", str(book), "--workspace", str(second),
-                                    "--page-ranges", "2-3", "--from-stage", "00", "--to-stage", "01"],
+                                    "--page-ranges", "2-3", "--from-stage", "01", "--to-stage", "02"],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("[skip] Stage 00", result.stdout)
-            result = subprocess.run(command + ["--pdf", str(source), "--workspace", str(second), "--from-stage", "01", "--to-stage", "01"],
+            self.assertIn("[skip] Stage 01", result.stdout)
+            result = subprocess.run(command + ["--pdf", str(source), "--workspace", str(second), "--from-stage", "02", "--to-stage", "02"],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertEqual(prepared.read_bytes(), before)
             self.assertEqual(prepared.stat().st_mtime_ns, mtime)
-            self.assertEqual(sorted(p.name for p in (second / "01_preprocess").glob("*.png")),
+            self.assertEqual(sorted(p.name for p in (second / "02_preprocess").glob("*.png")),
                              ["page_0001.png", "page_0002.png", "page_0003.png"])
             for suffix in ("json", "png"):
-                self.assertEqual((first / f"01_preprocess/page_0002.{suffix}").read_bytes(),
-                                 (second / f"01_preprocess/page_0002.{suffix}").read_bytes())
+                self.assertEqual((first / f"02_preprocess/page_0002.{suffix}").read_bytes(),
+                                 (second / f"02_preprocess/page_0002.{suffix}").read_bytes())
 
     def test_full_document_ocr_includes_textless_pages_outside_fragment(self):
         spec = importlib.util.spec_from_file_location(
-            "prepare_ocr_fragment", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
+            "prepare_ocr_fragment", ROOT / "tools/bootstrap/pdf-to-markdown/stages/01_text_layer/prepare_text_layer.py")
         stage = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(stage)
         config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")
@@ -159,8 +159,8 @@ class PdfOcrValidationTests(unittest.TestCase):
             spec.loader.exec_module(module)
             return module
 
-        stage = load_stage("prepare_fragment", "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
-        preprocess = load_stage("preprocess_fragment", "tools/bootstrap/pdf-to-markdown/stages/01_preprocess/preprocess.py")
+        stage = load_stage("prepare_fragment", "tools/bootstrap/pdf-to-markdown/stages/01_text_layer/prepare_text_layer.py")
+        preprocess = load_stage("preprocess_fragment", "tools/bootstrap/pdf-to-markdown/stages/02_preprocess/preprocess.py")
         config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")
         with tempfile.TemporaryDirectory() as directory:
             source, workspace = Path(directory) / "source.pdf", Path(directory) / "workspace"
@@ -171,7 +171,7 @@ class PdfOcrValidationTests(unittest.TestCase):
                 document.save(source)
             original_hash = stage.file_hash(source)
             with patch.object(stage, "tesseract_ocr", side_effect=AssertionError("Native pages must not use OCR")), \
-                    patch.object(pymupdf.Page, "get_pixmap", side_effect=AssertionError("Stage 00 must not render native pages for validation")):
+                    patch.object(pymupdf.Page, "get_pixmap", side_effect=AssertionError("Stage 01 must not render native pages for validation")):
                 prepared_path = stage.prepare_text_layer(source, workspace, config, "2,5")
             prepared = prepared_path
             with pymupdf.open(prepared) as document:
@@ -180,7 +180,7 @@ class PdfOcrValidationTests(unittest.TestCase):
                                  [f"Source page {number}" for number in range(1, 6)])
             self.assertEqual(stage.file_hash(source), original_hash)
             preprocess.preprocess_pdf(prepared, workspace, dpi=72, page_ranges="2,5")
-            page_data = json.loads((workspace / "01_preprocess/page_0005.json").read_text())
+            page_data = json.loads((workspace / "02_preprocess/page_0005.json").read_text())
             self.assertNotIn("pdf_sha256", page_data)
             self.assertEqual(page_data["source_index"], 4)
             self.assertEqual(page_data["prepared_index"], 4)
@@ -193,12 +193,12 @@ class PdfOcrValidationTests(unittest.TestCase):
             self.assertEqual(prepared.stat().st_mtime_ns, original_mtime)
             preprocess.preprocess_pdf(prepared, other, dpi=72, page_ranges="1-2")
             for suffix in ("json", "png"):
-                self.assertEqual((workspace / f"01_preprocess/page_0002.{suffix}").read_bytes(),
-                                 (other / f"01_preprocess/page_0002.{suffix}").read_bytes())
+                self.assertEqual((workspace / f"02_preprocess/page_0002.{suffix}").read_bytes(),
+                                 (other / f"02_preprocess/page_0002.{suffix}").read_bytes())
 
     def test_raw_ocr_pdf_overlay_preserves_fractional_text_and_spacing(self):
         spec = importlib.util.spec_from_file_location(
-            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
+            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/01_text_layer/prepare_text_layer.py")
         stage = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(stage)
         with pymupdf.open() as ocr, pymupdf.open() as target:
@@ -213,7 +213,7 @@ class PdfOcrValidationTests(unittest.TestCase):
 
     def test_failed_ocr_pdf_publishes_no_recovery_or_output(self):
         spec = importlib.util.spec_from_file_location(
-            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
+            "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/01_text_layer/prepare_text_layer.py")
         stage = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(stage)
         config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")
@@ -226,8 +226,8 @@ class PdfOcrValidationTests(unittest.TestCase):
                     patch.object(stage, "tesseract_ocr", return_value=b"invalid PDF"):
                 with self.assertRaises(pymupdf.FileDataError):
                     stage.prepare_text_layer(source, workspace, config)
-            self.assertFalse((workspace / "00_text_layer/recovery/page_0001.json").exists())
-            self.assertFalse((workspace / "00_text_layer/recovery/page_0001.pdf").exists())
+            self.assertFalse((workspace / "01_text_layer/recovery/page_0001.json").exists())
+            self.assertFalse((workspace / "01_text_layer/recovery/page_0001.pdf").exists())
             self.assertFalse(source.with_stem("source-ocr").exists())
 
 
@@ -240,7 +240,7 @@ class PdfRestartTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.workspace = Path(self.tmp.name) / "workspace"
         self.workspace.mkdir()
-        self.output = self.workspace / "02.81_transform_page_tables"
+        self.output = self.workspace / "05_transform_page_tables"
         self.config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")
         self.pdf = Path(self.tmp.name) / "sample.pdf"
         self.pdf.write_bytes(b"Worker fixture")
@@ -267,94 +267,108 @@ class PdfRestartTests(unittest.TestCase):
             self.pipeline.main()
 
     def test_filter_stage_restarts_by_registry_order(self):
-        self.assertEqual(self.pipeline.resolve_stage_idx("02"), self.stage_idx("02"))
-        self.assertEqual(self.pipeline.resolve_stage_idx("2.80"), self.stage_idx("02.80"))
+        self.assertEqual(self.pipeline.resolve_stage_idx("03"), self.stage_idx("03"))
+        self.assertEqual(self.pipeline.resolve_stage_idx("4"), self.stage_idx("04"))
+        self.assertIsNone(self.pipeline.resolve_stage_idx("00"))
+        self.assertIsNone(self.pipeline.resolve_stage_idx("02.80"))
         self.assertIsNone(self.pipeline.resolve_stage_idx("02k"))
         self.assertIsNone(self.pipeline.resolve_stage_idx("02.90"))
         self.assertIsNone(self.pipeline.resolve_stage_idx("2.9"))
-        self.assertEqual(self.pipeline.STAGE_REGISTRY[-1]["id"], "02.81")
-        self.assertEqual(self.pipeline.resolve_stage_idx("02.80"), self.stage_idx("02.80"))
-        before = read_json(self.workspace / "stage_status.json")["02"]
+        self.assertEqual(self.pipeline.STAGE_REGISTRY[-1]["id"], "05")
+        self.assertEqual(self.pipeline.resolve_stage_idx("04"), self.stage_idx("04"))
+        before = read_json(self.workspace / "stage_status.json")["03"]
         def worker(stage, *args):
-            self.assertEqual(stage["id"], "02.80")
+            self.assertEqual(stage["id"], "04")
             retained = read_json(self.workspace / "stage_status.json")
-            self.assertEqual(set(retained), {"00", "01", "02"})
-            for later in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.80"):]:
+            self.assertEqual(set(retained), {"01", "02", "03"})
+            for later in self.pipeline.STAGE_REGISTRY[self.stage_idx("04"):]:
                 self.assertFalse((self.workspace / later["dir"]).exists())
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "02.80", "--to-stage", "02.80"], worker)
+        self.run_pipeline(["--from-stage", "04", "--to-stage", "04"], worker)
         after = read_json(self.workspace / "stage_status.json")
-        self.assertEqual(after["02"], before)
-        self.assertEqual(after["02.80"]["status"], "success")
-        self.assertNotIn("02.81", after)
+        self.assertEqual(after["03"], before)
+        self.assertEqual(after["04"]["status"], "success")
+        self.assertNotIn("05", after)
+
+    def test_previous_numbering_is_rejected_before_cleanup(self):
+        state_path = self.workspace / "stage_status.json"
+        state = read_json(state_path)
+        state["00"] = {"status": "success"}
+        write_json(state_path, state)
+        before = state_path.read_bytes()
+        with self.assertRaisesRegex(ValueError, "previous stage numbering"):
+            self.run_pipeline(["--from-stage", "01"],
+                              lambda *args: self.fail("Legacy attempts must not launch workers"))
+        self.assertEqual(state_path.read_bytes(), before)
+        self.assertTrue((self.output / "artifact.json").exists())
 
     def test_partial_page_conversion_does_not_create_final_output(self):
         (self.output / "artifact.json").unlink()
         self.output.rmdir()
         state_path = self.workspace / "stage_status.json"
         state = json.loads(state_path.read_text())
-        del state["02.81"]
+        del state["05"]
         state_path.write_text(json.dumps(state))
         executed = []
 
         def worker(stage, *args):
-            self.assertFalse(self.output.exists(), "Table output must wait for Stage 02.81 execution")
+            self.assertFalse(self.output.exists(), "Table output must wait for Stage 05 execution")
             executed.append(stage["id"])
             self.write_artifacts(stage)
             return True
 
-        self.run_pipeline(["--from-stage", "02", "--to-stage", "02.80"], worker)
-        self.assertEqual(executed, ["02", "02.80"])
+        self.run_pipeline(["--from-stage", "03", "--to-stage", "04"], worker)
+        self.assertEqual(executed, ["03", "04"])
         self.assertFalse(self.output.exists())
 
     def test_missing_input_of_later_selected_branch_rejects_before_cleanup(self):
         state_path = self.workspace / "stage_status.json"
         state = json.loads(state_path.read_text())
-        del state["02"]
-        for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.80"):]:
+        del state["03"]
+        for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("04"):]:
             state.pop(stage["id"], None)
         state_path.write_text(json.dumps(state))
-        before = (self.workspace / "02.80_filter_page_content/artifact.json").read_bytes()
-        with self.assertRaisesRegex(ValueError, "Stage 02.80"):
-            self.run_pipeline(["--from-stage", "02.80", "--to-stage", "02.80"],
+        before = (self.workspace / "04_filter_page_content/artifact.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "Stage 04"):
+            self.run_pipeline(["--from-stage", "04", "--to-stage", "04"],
                               lambda *args: self.fail("Worker must not run before all external inputs validate"))
-        self.assertEqual((self.workspace / "02.80_filter_page_content/artifact.json").read_bytes(), before)
+        self.assertEqual((self.workspace / "04_filter_page_content/artifact.json").read_bytes(), before)
 
     def test_restart_tables_clears_dependents_and_preserves_prior_outputs(self):
-        before = (self.workspace / "02.80_filter_page_content/artifact.json").read_bytes()
-        other_output = Path(self.tmp.name) / "other-workspace/02.81_transform_page_tables/accepted.md"
+        before = (self.workspace / "04_filter_page_content/artifact.json").read_bytes()
+        other_output = Path(self.tmp.name) / "other-workspace/05_transform_page_tables/accepted.md"
         other_output.parent.mkdir(parents=True)
         other_output.write_text("Independent conversion")
         def worker(stage, *args):
-            self.assertEqual(stage["id"], "02.81")
-            for dependent in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.81"):]:
+            self.assertEqual(stage["id"], "05")
+            for dependent in self.pipeline.STAGE_REGISTRY[self.stage_idx("05"):]:
                 self.assertFalse((self.workspace / dependent["dir"]).exists())
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "02.81", "--to-stage", "02.81"], worker)
-        self.assertEqual((self.workspace / "02.80_filter_page_content/artifact.json").read_bytes(), before)
+        self.run_pipeline(["--from-stage", "05", "--to-stage", "05"], worker)
+        self.assertEqual((self.workspace / "04_filter_page_content/artifact.json").read_bytes(), before)
         self.assertEqual(other_output.read_text(), "Independent conversion")
         state = read_json(self.workspace / "stage_status.json")
-        self.assertEqual(list(state), ["00", "01", "02", "02.80", "02.81"])
+        self.assertEqual(list(state), ["01", "02", "03", "04", "05"])
 
 
     def test_explicit_restart_rebuilds_missing_output_and_later_stages(self):
-        (self.workspace / "02.81_transform_page_tables/artifact.json").unlink()
+        (self.workspace / "05_transform_page_tables/artifact.json").unlink()
         executed = []
         def worker(stage, *args):
             executed.append(stage["id"])
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "02.81"], worker)
-        self.assertEqual(executed, [stage["id"] for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.81"):]])
+        self.run_pipeline(["--from-stage", "05"], worker)
+        self.assertEqual(executed, [stage["id"] for stage in self.pipeline.STAGE_REGISTRY[self.stage_idx("05"):]])
 
     def test_explicit_page_range_is_run_scoped(self):
         def worker(stage, *args):
             self.assertEqual(args[-1], "6,7,8,9,10")
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "02.81", "--to-stage", "02.81", "--page-ranges", "6-10"],
+        self.run_pipeline(["--from-stage", "05", "--to-stage", "05", "--page-ranges", "6-10"],
                           worker)
         config = yaml.safe_load((self.workspace / "config.yaml").read_text())
         self.assertNotIn("input", config)
@@ -362,42 +376,42 @@ class PdfRestartTests(unittest.TestCase):
     def test_interrupted_cleanup_has_already_invalidated_completion(self):
         with patch.object(self.pipeline, "clean_downstream_stages", side_effect=OSError("Interrupted cleanup")):
             with self.assertRaisesRegex(OSError, "Interrupted cleanup"):
-                self.run_pipeline(["--from-stage", "02.81", "--to-stage", "02.81"],
+                self.run_pipeline(["--from-stage", "05", "--to-stage", "05"],
                                   lambda *args: self.fail("Worker must not run"))
         state = read_json(self.workspace / "stage_status.json")
-        self.assertNotIn("02.81", state)
-        self.assertIn("02.80", state)
+        self.assertNotIn("05", state)
+        self.assertIn("04", state)
 
     def test_reset_tables_does_not_delete_preserved_assets(self):
-        asset = self.workspace / "02.80_filter_page_content/assets/source.png.txt"
+        asset = self.workspace / "04_filter_page_content/assets/source.png.txt"
         asset.parent.mkdir()
         asset.write_text("Preserved source evidence")
-        self.pipeline.clean_downstream_stages(self.workspace, self.stage_idx("02.81"), self.workspace / "stage_status.json")
+        self.pipeline.clean_downstream_stages(self.workspace, self.stage_idx("05"), self.workspace / "stage_status.json")
         self.assertTrue(asset.exists())
 
 
     def test_missing_retained_artifact_does_not_block_restart(self):
-        (self.workspace / "02.80_filter_page_content/artifact.json").unlink()
+        (self.workspace / "04_filter_page_content/artifact.json").unlink()
         executed = []
         def worker(stage, *args):
             executed.append(stage["id"])
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "02.81", "--to-stage", "02.81"], worker)
-        self.assertEqual(executed, ["02.81"])
+        self.run_pipeline(["--from-stage", "05", "--to-stage", "05"], worker)
+        self.assertEqual(executed, ["05"])
 
     def test_omitted_page_range_ignores_previous_config_selection(self):
-        (self.workspace / "01_preprocess/artifact.json").unlink()
+        (self.workspace / "02_preprocess/artifact.json").unlink()
         pdf = Path(self.tmp.name) / "sample.pdf"
         executed = []
         def worker(stage, *args):
             executed.append(stage["id"])
-            if stage["id"] == "01":
+            if stage["id"] == "02":
                 self.assertIsNone(args[-1])
             self.write_artifacts(stage)
             return True
-        self.run_pipeline(["--from-stage", "01", "--pdf", str(pdf)], worker, page_ranges=None)
-        self.assertEqual(executed[0], "01")
+        self.run_pipeline(["--from-stage", "02", "--pdf", str(pdf)], worker, page_ranges=None)
+        self.assertEqual(executed[0], "02")
         state = read_json(self.workspace / "stage_status.json")
         self.assertNotIn("input", yaml.safe_load((self.workspace / "config.yaml").read_text()))
 
@@ -408,9 +422,9 @@ class PdfRestartTests(unittest.TestCase):
         self.assertTrue((self.output / "artifact.json").exists())
 
     def test_individual_stage_uses_matching_interval(self):
-        self.run_pipeline(["--from-stage", "02.80", "--to-stage", "02.80"],
+        self.run_pipeline(["--from-stage", "04", "--to-stage", "04"],
                           lambda stage, *args: self.write_artifacts(stage) or True)
-        self.assertEqual(set(read_json(self.workspace / "stage_status.json")), {"00", "01", "02", "02.80"})
+        self.assertEqual(set(read_json(self.workspace / "stage_status.json")), {"01", "02", "03", "04"})
         self.assertFalse(self.output.exists())
 
 
@@ -419,20 +433,20 @@ class PdfConfigurationTests(unittest.TestCase):
 
     def test_all_inference_stage_pairs_are_explicit(self):
         config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")
-        self.assertEqual(set(config["llm"]["stages"]), {"02_page_conversion", "02.81_transform_page_tables"})
+        self.assertEqual(set(config["llm"]["stages"]), {"03_page_conversion", "05_transform_page_tables"})
 
 
     def test_missing_predecessor_does_not_clear_downstream(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             workspace = root / "workspace"
-            output = workspace / "02.81_transform_page_tables"
+            output = workspace / "05_transform_page_tables"
             output.mkdir(parents=True)
             sentinel = output / "accepted.md"
             sentinel.write_text("Accepted output")
             result = subprocess.run([sys.executable, str(ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py"),
                                      "--config", str(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml"),
-                                     "--workspace", str(workspace), "--pdf", str(root / "source.pdf"), "--from-stage", "02.81", "--to-stage", "02.81"], capture_output=True, text=True)
+                                     "--workspace", str(workspace), "--pdf", str(root / "source.pdf"), "--from-stage", "05", "--to-stage", "05"], capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertTrue(sentinel.is_file())
 
@@ -446,7 +460,7 @@ class StageCompletionTests(unittest.TestCase):
 
     def test_page_worker_receives_only_current_cli_range(self):
         pipeline = self.load("selection_pipeline", "pipeline.py")
-        stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "02.81")
+        stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "05")
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
             args = (stage, ROOT / "tools/bootstrap/pdf-to-markdown", workspace,
@@ -455,24 +469,24 @@ class StageCompletionTests(unittest.TestCase):
                 self.assertTrue(pipeline.run_stage(*args, page_ranges="64"))
                 command = run.call_args.args[0]
                 self.assertEqual(command[command.index("--page-ranges") + 1], "64")
-                self.assertEqual(read_json(workspace / "stage_status.json")["02.81"]["page_ranges"], "64")
+                self.assertEqual(read_json(workspace / "stage_status.json")["05"]["page_ranges"], "64")
                 self.assertTrue(pipeline.run_stage(*args))
                 self.assertNotIn("--page-ranges", run.call_args.args[0])
-                self.assertIsNone(read_json(workspace / "stage_status.json")["02.81"]["page_ranges"])
+                self.assertIsNone(read_json(workspace / "stage_status.json")["05"]["page_ranges"])
 
     def test_worker_failures_record_failed_execution(self):
         pipeline = self.load("execution_pipeline", "pipeline.py")
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
-            stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "02.81")
-            (workspace / "02.80_filter_page_content/assets").mkdir(parents=True)
+            stage = next(item for item in pipeline.STAGE_REGISTRY if item["id"] == "05")
+            (workspace / "04_filter_page_content/assets").mkdir(parents=True)
             args = (stage, ROOT / "tools/bootstrap/pdf-to-markdown", workspace, None, workspace / "config.yaml")
             with patch.object(pipeline.subprocess, "run", side_effect=subprocess.CalledProcessError(1, "worker")):
                 self.assertFalse(pipeline.run_stage(*args))
-            self.assertEqual(read_json(workspace / "stage_status.json")["02.81"]["status"], "failed")
+            self.assertEqual(read_json(workspace / "stage_status.json")["05"]["status"], "failed")
             with patch.object(pipeline.subprocess, "run", side_effect=OSError("worker launch failed")):
                 self.assertFalse(pipeline.run_stage(*args))
-            status = read_json(workspace / "stage_status.json")["02.81"]
+            status = read_json(workspace / "stage_status.json")["05"]
             self.assertEqual(status["status"], "failed")
             self.assertIn("worker launch failed", status["details"])
 

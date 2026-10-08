@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage 02.80: apply requested source-content exclusions to page objects."""
+"""Stage 04: apply requested source-content exclusions to page objects."""
 
 import argparse
 from pathlib import Path
@@ -15,8 +15,8 @@ from common.pdf_artifacts import read_json, write_json
 
 def filter_page_content(workspace, pages=None):
     pages = [(path, read_json(path)) for path in
-             page_files(workspace / "02_page_conversion", "page_*_segments.json", pages)]
-    output = workspace / "02.80_filter_page_content"
+             page_files(workspace / "03_page_conversion", "page_*_segments.json", pages)]
+    output = workspace / "04_filter_page_content"
     output.mkdir(parents=True, exist_ok=True)
     input_objects = sum(len(value["segments"]) for _, value in pages)
     output_pages = output_objects = 0
@@ -34,7 +34,7 @@ def filter_page_content(workspace, pages=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 02.80: filter page content")
+    parser = argparse.ArgumentParser(description="Stage 04: filter page content")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--page-ranges")

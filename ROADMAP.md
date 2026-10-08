@@ -12,11 +12,11 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
   - **Gate:** Review the selected fragment against the source and compare accepted output, correction effort, elapsed time and cost with the Codex baseline. Choose a model and integration approach from measured evidence before full-book conversion; report Codex weekly usage separately from GPU cost and raw token counts.
 
 - **1.2: PNG-to-Markdown and Crops with OCR Text JSON**
-  - Request a source fragment and assess Stage 02 objects, decoded `md_text`, classifications, source-page geometry and Stage 02.81 table transcription (task `PDF-INDEPENDENT-02D-02M`). Chapter Markdown and asset review belong to the separate book generator. User assessment remains pending.
+  - Request a source fragment and assess Stage 03 objects, decoded `md_text`, classifications, source-page geometry and Stage 05 table transcription (task `PDF-INDEPENDENT-02D-02M`). Chapter Markdown and asset review belong to the separate book generator. User assessment remains pending.
   - **Gate:** User-selected fragments establish source fidelity and reading order for those pages; technical JSON/lineage checks do not establish conversion quality. Verify explicit page export, input identity and retained artifacts before later crop review and bulk conversion.
 
 - **1.3: Iterative Table and Image Crop Review**
-  - Add `02b_reclip` between Stage 02 and page export. Review each rectangle on the full source-page PNG; apply corrections, regenerate the crop and annotated page, and review again until acceptance or an iteration limit requiring manual review.
+  - Add `02b_reclip` between Stage 03 and page export. Review each rectangle on the full source-page PNG; apply corrections, regenerate the crop and annotated page, and review again until acceptance or an iteration limit requiring manual review.
   - Persist stable segment IDs, verdicts, coordinate revisions, previews, and accepted crops for resumption. Page export must consume finalized reclip output, preserve accepted geometry, and reject stale or unresolved results.
   - **Gate:** Samples cover immediate acceptance, correction/review/acceptance, iteration-limit handoff, and resumption; saved artifacts prove review and downstream use without silent recropping.
 

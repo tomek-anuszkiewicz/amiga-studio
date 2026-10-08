@@ -51,7 +51,7 @@ def insert_ocr_pdf(page, ocr):
 
 def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
     pdf_path, workspace = Path(pdf_path).resolve(), Path(workspace).resolve()
-    stage_dir = workspace / "00_text_layer"
+    stage_dir = workspace / "01_text_layer"
     source = {"name": pdf_path.name}
     dpi = RENDER_DPI
     with pymupdf.open(pdf_path) as document:
@@ -59,7 +59,7 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
         stage_dir.mkdir(parents=True, exist_ok=True)
         output = prepared_pdf_path(pdf_path)
         if output.is_file():
-            print(f"[skip] Stage 00: {output.name} already exists; no OCR or PDF rewrite")
+            print(f"[skip] Stage 01: {output.name} already exists; no OCR or PDF rewrite")
             return output
         candidate = output.with_suffix(".candidate.pdf")
         candidate.unlink(missing_ok=True)
@@ -118,12 +118,12 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
             raise
         finally:
             (stage_dir / ".request.png").unlink(missing_ok=True)
-    print(f"[+] Stage 00 published {output.name}; source pages: {pages}")
+    print(f"[+] Stage 01 published {output.name}; source pages: {pages}")
     return output
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 00: prepare a full-source OCR PDF unless it already exists")
+    parser = argparse.ArgumentParser(description="Stage 01: prepare a full-source OCR PDF unless it already exists")
     parser.add_argument("--pdf", type=Path, required=True)
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)

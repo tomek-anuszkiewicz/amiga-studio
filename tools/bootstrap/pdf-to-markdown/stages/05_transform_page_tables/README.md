@@ -1,16 +1,16 @@
-# Stage 02.81: Transform Page Tables
+# Stage 05: Transform Page Tables
 
-Read completed Stage 02.80 page JSONs and Stage 01 original PNGs. For each `table`,
+Read completed Stage 04 page JSONs and Stage 02 original PNGs. For each `table`,
 make one Codex request using its exact unpadded pixel crop. Replace only the
 table's `md_text` with the returned Markdown or HTML and record `table_format`.
 Preserve identity, geometry, classification, continuation, object order and all
 other source objects, including separate captions, notes and legends.
 
 Save a full page JSON only when a table transformation changes that page's data.
-Pages without tables and unchanged table pages remain solely in Stage 02.80.
-The orchestrator records this invocation's page range in the 02.81 status entry;
+Pages without tables and unchanged table pages remain solely in Stage 04.
+The orchestrator records this invocation's page range in the 05 status entry;
 Future book processing overlays the saved replacements on that selected filtered
-dataset. An empty output directory is valid; unchanged pages remain in Stage 02.80.
+dataset. An empty output directory is valid; unchanged pages remain in Stage 04.
 Console progress is flushed immediately: each table logs its identity, position
 within the page, request start, returned format and elapsed time. Each page logs
 whether it was saved, unchanged or skipped because it contains no tables.
@@ -27,12 +27,12 @@ are generated. Retired table companion fields are omitted from converted output.
 Markdown generation, description and grouping work belongs to separately
 requested book processing.
 
-Stage 02.80 is the fixed predecessor; missing filtered pages never fall back to
-Stage 02. Restart through the orchestrator clears this stage and later outputs,
+Stage 04 is the fixed predecessor; missing filtered pages never fall back to
+Stage 03. Restart through the orchestrator clears this stage and later outputs,
 preserving predecessors and request cache.
 
 ```powershell
-python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02.81 --to-stage 02.81
+python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 05 --to-stage 05
 ```
 
 Use a named attempt and only the fragment selected by the user. Existing saved

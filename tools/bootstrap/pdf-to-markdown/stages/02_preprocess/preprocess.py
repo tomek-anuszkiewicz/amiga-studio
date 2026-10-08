@@ -16,7 +16,7 @@ from common.pdf_selection import parse_page_ranges
 
 
 def preprocess_pdf(pdf_path, workspace_dir, dpi=RENDER_DPI, page_ranges=None):
-    directory = Path(workspace_dir) / "01_preprocess"
+    directory = Path(workspace_dir) / "02_preprocess"
     directory.mkdir(parents=True, exist_ok=True)
     for old in directory.glob("page_*.*"):
         old.unlink()
@@ -38,11 +38,11 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=RENDER_DPI, page_ranges=None):
                     **prepared_text_metadata(blocks)}
             write_json(directory / f"{page_id}.json", data)
             print(f"[extract] {page_id}: {len(blocks)} text blocks from {Path(pdf_path).name}")
-    print("[+] Stage 01 published page PNGs and text JSON; no OCR execution")
+    print("[+] Stage 02 published page PNGs and text JSON; no OCR execution")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 01: deterministic prepared-PDF preprocessing")
+    parser = argparse.ArgumentParser(description="Stage 02: deterministic prepared-PDF preprocessing")
     parser.add_argument("--pdf", type=Path, required=True, help="Full-source prepared PDF")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)

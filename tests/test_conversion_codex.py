@@ -167,7 +167,7 @@ class ClientTests(unittest.TestCase):
                 elif changed_field in ("model", "reasoning_effort"):
                     changed["llm"]["stages"][stage][changed_field] = "other-model" if changed_field == "model" else "high"
                 elif changed_field == "stage":
-                    stage = "02_page_conversion"
+                    stage = "03_page_conversion"
                     changed["llm"]["stages"] = {stage: changed["llm"]["stages"]["html_to_markdown"]}
                 elif changed_field == "schema":
                     schema["additionalProperties"] = False
@@ -274,10 +274,10 @@ class ClientTests(unittest.TestCase):
         self.assertFalse(self.cache.directory.exists())
 
     def test_pdf_json_uses_request_schema_without_local_enforcement(self):
-        pdf_config = {"llm": {"extra": True, "stages": {"02_page_conversion": {"model": "fixture", "reasoning_effort": "medium", "extra": "retained"}}}}
+        pdf_config = {"llm": {"extra": True, "stages": {"03_page_conversion": {"model": "fixture", "reasoning_effort": "medium", "extra": "retained"}}}}
         transport = FakeTransport(text='{"segments": "unvalidated"}')
         transport.validate = lambda *args, **kwargs: self.fail("PDF model configuration must not be locally validated")
-        with CodexClient(pdf_config, stage="02_page_conversion", transport=transport, cache=self.cache) as client:
+        with CodexClient(pdf_config, stage="03_page_conversion", transport=transport, cache=self.cache) as client:
             result = client.generate_json("PDF", schema={"type": "object", "required": ["missing"]})
             self.assertEqual(result, {"segments": "unvalidated"})
             client.generate_json("PDF", schema={"type": "object", "required": ["missing"]})
@@ -359,9 +359,9 @@ class TransportTests(unittest.TestCase):
         self.assertTrue(all(p["sandbox"] == "read-only" and p["ephemeral"] for p in wire.threads))
         self.assertEqual(wire.turns[0][1][1]["detail"], "original")
         self.assertEqual(wire.turns[0][2]["effort"], "medium")
-        pdf_config = {"llm": {"stages": {"02_page_conversion": {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}}}}
+        pdf_config = {"llm": {"stages": {"03_page_conversion": {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}}}}
         transport.models = []
-        CodexTransport.run(transport, selection(pdf_config, "02_page_conversion"), "PDF without catalog precheck")
+        CodexTransport.run(transport, selection(pdf_config, "03_page_conversion"), "PDF without catalog precheck")
         self.assertEqual(len(wire.threads), 3)
 
     def test_timeout_closes_transport_and_rejects_completion(self):
