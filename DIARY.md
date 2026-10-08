@@ -979,3 +979,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Diff reviewed
   - quick preflight passed
   - architecture suite passed 19 tests
+---
+
+### [2026-10-08 21:09 CEST] — Align page conversion prompt with the current book element vocabulary
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion/prompt.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace chapter with heading plus level and optional number
+  - distinguish code_block from preformatted_text
+  - replace table_legend with generic note and legend roles
+  - set dedicated listing headings to level one
+- **Architectural Rationale & Trade-Offs**:
+  - User explicitly selected prompt-only alignment
+  - the unchanged PDF response schema still uses older types and heading_level and remains incompatible with the revised prompt
+  - schema and downstream migration are outside this task
+- **Verification & Test Results**:
+  - Prompt vocabulary matches all 24 catalog types
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - no fragment conversion requested or run
+  - vocabulary-check command corrected for shell quoting and to exclude the separate heading-example table before passing
