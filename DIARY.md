@@ -1360,3 +1360,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify refresh completes
   - scoped diff check passes
   - no live book conversion performed
+---
+
+### [2026-10-08 23:10 CET] — Rename default PDF workspace directory
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tools/bootstrap/book-to-markdown/books/.gitignore`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Use pdf-to-markdown instead of workspace as the default attempt directory beside the source PDF and for status in the current directory
+  - update bootstrap invocation, documentation, existing default-workspace regression and catalog ignore rules
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the user-selected workspace directory name consistently
+- **Verification & Test Results**:
+  - 26 PDF tests pass
+  - quick preflight and all 19 architecture tests pass
+  - new catalog workspace is ignored by Git
+  - scoped diff check passes
+  - Graphify refresh completes
+  - existing workspace directories are not moved

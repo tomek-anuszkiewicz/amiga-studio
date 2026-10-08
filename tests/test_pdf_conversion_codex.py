@@ -103,7 +103,7 @@ class PdfOcrValidationTests(unittest.TestCase):
                     document.new_page(width=200, height=200).insert_text((20, 40), f"Page {number}")
                 document.save(source)
             command = [sys.executable, str(ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py")]
-            first, second = book / "workspace", book / "workspace/second"
+            first, second = book / "pdf-to-markdown", book / "workspace/second"
             result = subprocess.run(command + ["--pdf", str(book),
                                     "--page-ranges", "1-2", "--from-stage", "01", "--to-stage", "02"],
                                     capture_output=True, text=True)

@@ -62,11 +62,11 @@ remain separate from execution status. Existing cached prompts are not rewritten
 
 ## Implementation and pending scope
 
-PDF conversions use `<PDF_DIRECTORY>/workspace/` by default; this directory,
-named `workspace`, is used for subsequent development. The program creates it
+PDF conversions use `<PDF_DIRECTORY>/pdf-to-markdown/` by default; this directory,
+named `pdf-to-markdown`, is used for subsequent development. The program creates it
 when conversion starts. Pass `--workspace` for a separate independent attempt,
 or continue/restart the default workspace. The original PDF stays outside it.
-Status without `--pdf` or `--workspace` uses the current directory's `workspace/`.
+Status without `--pdf` or `--workspace` uses the current directory's `pdf-to-markdown/`.
 
 Source selection belongs solely to `--pdf`, required for every conversion and
 restart. The path is never persisted. Page ranges apply only to the current run,

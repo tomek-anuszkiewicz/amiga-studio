@@ -1,4 +1,5 @@
 # Keep local reference PDFs, conversion workspaces and caches outside Git history.
 *.pdf
 workspace/
+pdf-to-markdown/
 .cache/

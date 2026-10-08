@@ -324,7 +324,7 @@ def invalidate_status(status_file, stages):
 def main():
     parser = argparse.ArgumentParser(description="PDF preparation pipeline (page objects and table transcription)")
     parser.add_argument("--pdf", type=Path, help="Source PDF or directory containing one source PDF")
-    parser.add_argument("--workspace", type=Path, help="Attempt directory (default: workspace beside the source PDF)")
+    parser.add_argument("--workspace", type=Path, help="Attempt directory (default: pdf-to-markdown beside the source PDF)")
     parser.add_argument("--from-stage", help="Start stage (default: 01); clears this stage and all later results")
     parser.add_argument("--to-stage", help="Last stage to execute; does not limit cleanup")
     parser.add_argument("--page-ranges", help="Physical 1-based pages for this run only; omitted selects all available pages")
@@ -335,7 +335,7 @@ def main():
     if pdf and pdf.is_dir():
         pdf, = (path for path in pdf.glob("*.pdf") if not path.stem.lower().endswith("-ocr")
                 and not path.name.lower().endswith(".candidate.pdf"))
-    workspace = args.workspace.resolve() if args.workspace else ((pdf.parent / "workspace") if pdf else Path.cwd() / "workspace")
+    workspace = args.workspace.resolve() if args.workspace else ((pdf.parent / "pdf-to-markdown") if pdf else Path.cwd() / "pdf-to-markdown")
     if args.status:
         print_pipeline_status(workspace)
         return

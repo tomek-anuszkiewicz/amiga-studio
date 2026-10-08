@@ -612,7 +612,7 @@ function Convert-ToMarkdown {
     if ($Item.Type -eq "SingleFile" -and $Item.TargetFile -like "*.pdf") {
         $PdfScript = Join-Path $RepoRoot "tools\bootstrap\pdf-to-markdown\pipeline.py"
         $PdfSource = Join-Path $SourceDir $Item.TargetFile
-        $Workspace = Join-Path $SourceDir "workspace"
+        $Workspace = Join-Path $SourceDir "pdf-to-markdown"
 
         if (-not (Test-Path $PdfSource)) {
             Write-Error "PDF source not found: $PdfSource"

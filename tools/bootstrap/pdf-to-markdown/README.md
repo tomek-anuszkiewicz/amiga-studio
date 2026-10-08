@@ -15,10 +15,10 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --page-ranges "2-3" --from-stage 01 --to-stage 05
 ```
 
-Without `--workspace`, the program creates and uses `<PDF_DIRECTORY>/workspace/`.
-This directory, named `workspace`, is the default for subsequent development.
+Without `--workspace`, the program creates and uses `<PDF_DIRECTORY>/pdf-to-markdown/`.
+This directory, named `pdf-to-markdown`, is the default for subsequent development.
 Pass `--workspace` only when a separate attempt directory is needed. For status
-without `--pdf` or `--workspace`, the default is `workspace/` in the current directory.
+without `--pdf` or `--workspace`, the default is `pdf-to-markdown/` in the current directory.
 
 Supply the original `--pdf` on every conversion or restart. If the workspace has
 no `config.yaml`, the program copies `tools/bootstrap/pdf-to-markdown/config.yaml`
