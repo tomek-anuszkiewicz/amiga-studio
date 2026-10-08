@@ -70,8 +70,8 @@ operation IDs (`pdf_page_to_objects`, `pdf_table_to_markup`), independent of sta
 names and numbering. Prompts, inputs, model settings and response schemas still
 participate in the key. The pipeline has no `--config`, `--cache-dir` or `--verbose` options.
 
-Follow the [developer-led workflow](../reference-conversion-contract.md#development-workflow):
-run the selected fragment and inspect its content. A successful stage confirms
-execution, not transcription quality. PDF responses are parsed without local
+Agent development guidance is in the [bootstrap instructions](../AGENTS.md#converter-development).
+A successful stage confirms execution, not transcription quality.
+PDF responses are parsed without local
 schema enforcement; source-fidelity details belong to the
 [conversion contract](../reference-conversion-contract.md).

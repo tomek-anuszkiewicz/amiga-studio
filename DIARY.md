@@ -1488,3 +1488,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - all 19 architecture tests passed
   - diff check passed
   - no conversion run
+---
+
+### [2026-10-09 00:54 CET] — Move bootstrap agent workflows from program READMEs
+- **Affected Subsystems**:
+  - `tools/bootstrap/AGENTS.md`
+  - `tools/bootstrap/book-to-markdown/README.md`
+  - `tools/bootstrap/html-to-markdown/README.md`
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Review all eight bootstrap READMEs
+  - move development iteration, source acquisition and manual chapter handling guidance into local AGENTS.md
+  - replace moved passages with contextual links
+  - retain program usage, catalog metadata and conversion contracts
+- **Architectural Rationale & Trade-Offs**:
+  - Make agent procedures discoverable in scoped instructions while keeping program documentation focused on usage and artifact behavior
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - all 19 architecture tests passed
+  - 29 local links and anchors resolve after excluding code examples
+  - no references to the renamed heading found in tools, rules, docs or roadmap
+  - diff check passed
+  - no conversion run

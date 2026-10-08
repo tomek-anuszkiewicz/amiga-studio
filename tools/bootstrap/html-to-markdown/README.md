@@ -9,7 +9,7 @@ configuration/model checks, validated text requests and protected publication.
 The shared conversion layer owns authentication, request execution, completion
 handling, response caching and metrics.
 
-For development, follow the [developer-led workflow](../reference-conversion-contract.md#development-workflow): make the requested change, convert the fragment selected by the user when requested, and let the user assess the output. Automatic tests follow the [bootstrap converter scope](../../../.agents/rules/unit-testing-policy.md#bootstrap-converter-scope).
+Agent development guidance is in the [bootstrap instructions](../AGENTS.md#converter-development).
 
 ## Quick Start
 
@@ -47,7 +47,7 @@ for a disposable pilot cache. The baseline is `gpt-6.1-sol` / `medium`, concurre
 Invalid configuration, authentication and inference failures stop conversion; no PDF
 configuration or DOM result substitutes for Codex.
 
-The shared client caches only completed, validated responses under `tools/bootstrap/book-to-markdown/books/.cache/codex` and writes `.conversion-metrics.json` beside the output. Cached usage belongs to the original request. See the [conversion contract](../reference-conversion-contract.md) for source fidelity and transport boundaries; development runs use the fragment requested by the user.
+The shared client caches only completed, validated responses under `tools/bootstrap/book-to-markdown/books/.cache/codex` and writes `.conversion-metrics.json` beside the output. Cached usage belongs to the original request. See the [conversion contract](../reference-conversion-contract.md) for source fidelity and transport boundaries.
 
 Optional page rendering requires Chrome, Chromium, or Edge and PyMuPDF. Image crop extraction requires Pillow. See the operational workflow below for these tools and link validation.
 
