@@ -1300,3 +1300,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - git diff --check passes
   - quick preflight passes
   - all 19 architecture tests pass
+---
+
+### [2026-10-08 22:59 CET] — Ignore relocated book source cache
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books/.gitignore`
+- **What Was Changed (The Concrete Reality)**:
+  - Ignore the relocated books/.cache directory through the shared book catalog ignore file
+- **Architectural Rationale & Trade-Offs**:
+  - Keep local cache artifacts outside Git history at their new location
+- **Verification & Test Results**:
+  - git check-ignore confirms books/.cache is ignored
+  - scoped git diff --check passes
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - existing user deletions are left unstaged
