@@ -4460,3 +4460,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PDF conversion Codex 35 tests passed
   - quick pre-flight passed
   - architecture rules 19 tests passed. No user-fragment conversion or live model requests run.
+---
+
+### [2026-10-08 17:55 CET] — PDF-TESTBOOK-REVIEW: Record remaining refinement and review artifacts
+- **Affected Subsystems**:
+  - `Test Book example-4567 pages-all artifacts`
+- **What Was Changed (The Concrete Reality)**:
+  - Record remaining refinement outputs and compact split-table artifacts
+  - complete the 02.4 to 02.40 and 02.5 to 02.50 artifact migrations
+  - include updated review PNGs, stage configuration and recorded stage status
+- **Architectural Rationale & Trade-Offs**:
+  - The user reviewed image differences, recorded observations separately and explicitly authorized committing all current changes
+  - retain the temporary comparison folder with 46 differing image pairs outside Git
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite passed 19 tests
+  - all 131 staged JSON files parsed successfully
+  - staged whitespace check passed
+  - temporary review folder retains 92 PNG files
+  - no conversion or model calls performed
+  - emulator domain tests not run because executable code is unchanged
