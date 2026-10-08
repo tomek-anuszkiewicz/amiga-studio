@@ -1252,3 +1252,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - all 19 architecture tests pass
   - original directory preserved
   - no inference or downloads performed
+---
+
+### [2026-10-08 22:56 CET] — Document author-managed book PDF acquisition
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Document manual titles and catalog directory names
+  - describe online acquisition, full SHA-256 verification and placement as source.pdf in the hash variant directory
+  - distinguish author preparation from ordinary chapter generation
+  - link the Test Book reconstruction tracker
+- **Architectural Rationale & Trade-Offs**:
+  - Make local source preparation reproducible using accepted source identities and the existing catalog convention
+- **Verification & Test Results**:
+  - All local README links resolve
+  - git diff --check passes
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - documentation-only change with no downloads or conversion runs
