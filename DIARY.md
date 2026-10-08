@@ -3999,3 +3999,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - git diff --check passed
   - Graphify AST refresh completed
   - no fragment conversion or milestone gate requested or run
+---
+
+### [2026-10-08 03:25 CET] — PDF-TABLE-SPANS-1: Require HTML for merged table cells
+- **Affected Subsystems**:
+  - `PDF Stage 02.81 prompt and documentation`
+  - `reference conversion contract`
+- **What Was Changed (The Concrete Reality)**:
+  - Require HTML with appropriate rowspan and colspan attributes whenever a table contains cells spanning rows or columns
+  - preserve merged cells rather than flattening them into Markdown
+- **Architectural Rationale & Trade-Offs**:
+  - The user observed that the physical page 19 table lost its merged-cell representation in Markdown
+  - make the existing source-fidelity requirement explicit in the table inference prompt
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture suite 19/19 passed
+  - git diff --check passed
+  - prompt-only change with no new conversion or content-quality verification
+  - existing attempt artifacts remain unchanged

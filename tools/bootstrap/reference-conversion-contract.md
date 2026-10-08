@@ -350,6 +350,8 @@ Never recover removed filtered pages from Stage 02.
 
 Transcribe each table from its exact unpadded pixel crop using the minimal table
 prompt, existing Codex transport/cache, original detail and explicit model/effort.
+Tables with merged cells must use HTML with the appropriate `rowspan` and `colspan`
+attributes, preserving row and column spans rather than flattening them into Markdown.
 Save all crops in 02.81 assets and `table_source_asset`, including Markdown and
 unconverted results. Preserve full pages and all source fields/order. Converted
 markup occupies `md_text`, with `table_format` recording markdown/html/unconverted.

@@ -13,6 +13,8 @@ and the result in `table_format`. Unconverted tables retain original content and
 raster behavior. Transport, authentication and JSON parsing failures stop the stage.
 The minimal [table prompt](prompt.md) uses configured `gpt-6.1-sol`, medium effort,
 original image detail, ChatGPT authentication and the shared request cache.
+Tables with cells spanning multiple rows or columns must use HTML with `rowspan`
+and `colspan`, preserving the merged cells rather than flattening them into Markdown.
 
 Collect adjacent captions above the table and the adjacent mixed run of captions,
 footnotes and table legends below it. Stop at unrelated content or another table;
