@@ -14,9 +14,6 @@ source continuation flag is true. Shared group assembly appends one collapsed
 footnotes and legends retain their visible source order. Copy the referenced original
 crop from the carried assets bundle; do not reinfer or duplicate companion text.
 
-> [!NOTE]
-> Publication-grade YAML frontmatter (Obsidian properties: `title`, `book`, `chapter`, `tags`) is generated downstream in Stage 12 (`12_generate_properties`).
-
 ## Inputs
 - `workspace/10_proofread_stream/{index:02d}_{slug}.json`: Self-contained chapter metadata and nodes from Stage 10.
 - `workspace/10_proofread_stream/assets/`: Visual crops (`.svg`, `.png`) and text sidecars (`.txt`).

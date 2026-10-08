@@ -17,13 +17,8 @@ llm:
     02.46_review_reading_order: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     02.81_transform_page_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     04_stream_reduction: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    06_detect_continuations: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    07_transform_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    08_transform_graphics: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     09_transform_prose: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     10_proofread_stream: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    12_generate_properties: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    13_refine_first_chapter_name: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
 
 markers:
   toc_start: "<!-- TOC34534 -->"

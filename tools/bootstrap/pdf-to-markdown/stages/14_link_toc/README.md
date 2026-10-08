@@ -10,7 +10,7 @@ Dedicated cross-document wikilink resolution worker:
 5. Completely strips the temporary `<!-- TOC34534 -->` and `<!-- /TOC34534 -->` delimiters upon completion.
 
 ## Inputs
-- `<workspace>/13_refine_first_chapter_name/*.md`: Markdown documents with refined canonical opening file.
+- `<workspace>/11_emit_markdown/*.md`: Markdown documents emitted by Stage 11.
 
 ## Outputs
 - `<output_dir>/*.md`: Finalized Markdown documents with active cross-file wikilinks and zero leftover marker tags.

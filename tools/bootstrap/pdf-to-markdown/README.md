@@ -68,23 +68,19 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [03](stages/03_build_raw_stream/README.md) | Stage 02.81 objects and Stage 01 geometry -> raw stream and initial assets |
 | [04](stages/04_stream_reduction/README.md) | Raw stream -> reduced stream |
 | [05](stages/05_chapter_partition/README.md) | Reduced stream -> self-contained chapters |
-| [06](stages/06_detect_continuations/README.md) | Stage 05 -> continuation metadata |
-| [07](stages/07_transform_tables/README.md) | Stage 06 -> formatted tables |
-| [08](stages/08_transform_graphics/README.md) | Stage 07 -> transformed graphics |
-| [09](stages/09_transform_prose/README.md) | Stage 08 -> formatted prose/code/TOC |
+| [09](stages/09_transform_prose/README.md) | Stage 05 -> formatted prose/code/TOC |
 | [10](stages/10_proofread_stream/README.md) | Stage 09 -> corrected chapter titles, slugs, filenames and nodes |
 | [11](stages/11_emit_markdown/README.md) | Stage 10 -> Markdown bodies and referenced assets |
-| [12](stages/12_generate_properties/README.md) | Stage 11 -> Obsidian frontmatter |
-| [13](stages/13_refine_first_chapter_name/README.md) | Stage 12 -> opening-section names and links |
-| [14](stages/14_link_toc/README.md) | Stage 13 -> final TOC links |
+| [14](stages/14_link_toc/README.md) | Stage 11 -> final TOC links |
 
 Page files are enumerated in physical-page numeric order, without coverage or
 PNG/JSON pairing checks. Actual chapter JSON carries `index`, `slug`, `title`,
-`target_md_file` and `nodes`. Stages 06-09 preserve metadata; Stage 10 writes corrected
+`target_md_file` and `nodes`. Stage 09 preserves metadata; Stage 10 writes corrected
 metadata with nodes in its own directory. Stage 11 uses those files directly.
 The identity is index plus slug: both preface and TOC can use index zero.
-Prior-stage files remain unchanged. Filename collision handling and Stage 12
-frontmatter processing remain in place.
+Prior-stage files remain unchanged. Filename collision handling remains in place.
+The chapter branch runs `03 -> 04 -> 05 -> 09 -> 10 -> 11 -> 14`; stage IDs
+retain their original numbers.
 
 ### Physical-page selection through Stage 02.82
 

@@ -400,11 +400,11 @@ class PdfRestartTests(unittest.TestCase):
         self.assertNotIn("14", state)
         self.assertIn("04", state)
 
-    def test_reset_graphics_does_not_delete_preserved_assets(self):
+    def test_reset_prose_does_not_delete_preserved_assets(self):
         asset = self.workspace / "04_stream_reduction/assets/source.png.txt"
         asset.parent.mkdir()
         asset.write_text("Preserved source evidence")
-        self.pipeline.clean_downstream_stages(self.workspace, self.output, self.stage_idx("08"), self.workspace / "stage_status.json")
+        self.pipeline.clean_downstream_stages(self.workspace, self.output, self.stage_idx("09"), self.workspace / "stage_status.json")
         self.assertTrue(asset.exists())
 
     def test_output_defaults_to_selected_workspace_even_with_pdf(self):
@@ -563,9 +563,6 @@ class StageCompletionTests(unittest.TestCase):
     def test_automatic_chapter_workers_preserve_metadata_and_prior_outputs(self):
         from unittest.mock import MagicMock
         stages = [
-            ("06_detect_continuations", "detect_continuations.py", "process_chapter_continuations"),
-            ("07_transform_tables", "transform_tables.py", "process_tables"),
-            ("08_transform_graphics", "transform_graphics.py", "process_graphics"),
             ("09_transform_prose", "format_prose.py", "process_prose"),
         ]
         with tempfile.TemporaryDirectory() as directory:
@@ -587,7 +584,6 @@ class StageCompletionTests(unittest.TestCase):
                 fake.selected.model = "offline-fixture"
                 fake.generate_text.return_value = "Formatted text"
                 fake.generate_vision.return_value = "Diagram description"
-                fake.generate_json.return_value = {"is_continuation": True, "type": "schematic", "caption": None}
                 with patch.object(worker, "CodexClient") as client:
                     client.return_value.__enter__.return_value = fake
                     getattr(worker, function)(workspace, config)
@@ -597,12 +593,7 @@ class StageCompletionTests(unittest.TestCase):
                     previous, current = json.loads(value), read_json(output / filename)
                     self.assertEqual({key: current[key] for key in ("index", "slug", "title", "target_md_file")},
                                      {key: previous[key] for key in ("index", "slug", "title", "target_md_file")})
-                if stage.startswith("09"):
-                    self.assertEqual(fake.generate_text.call_count, 2)
-                elif stage.startswith("06") or stage.startswith("08"):
-                    self.assertEqual(fake.generate_json.call_count, 2)
-                else:
-                    self.assertEqual(fake.generate_text.call_count, 2)
+                self.assertEqual(fake.generate_text.call_count, 2)
                 predecessor = output
             proofreader = self.load("chapter_proofreader", "stages/10_proofread_stream/proofread_stream.py")
             before = {path.name: path.read_bytes() for path in predecessor.glob("*.json")}

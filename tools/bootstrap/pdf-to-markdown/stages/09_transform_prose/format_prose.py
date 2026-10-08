@@ -137,7 +137,7 @@ def assemble_callouts(nodes: list) -> int:
 
 
 def process_prose(workspace_dir: Path, config: dict):
-    input_dir = workspace_dir / "08_transform_graphics"
+    input_dir = workspace_dir / "05_chapter_partition"
 
     out_dir = workspace_dir / "09_transform_prose"
     out_dir.mkdir(parents=True, exist_ok=True)

@@ -165,7 +165,7 @@ class ClientTests(unittest.TestCase):
                 elif changed_field in ("model", "reasoning_effort"):
                     changed["llm"]["stages"][stage][changed_field] = "other-model" if changed_field == "model" else "high"
                 elif changed_field == "stage":
-                    stage = "07_transform_tables"
+                    stage = "09_transform_prose"
                     changed["llm"]["stages"] = {stage: changed["llm"]["stages"]["html_to_markdown"]}
                 elif changed_field == "schema":
                     schema["additionalProperties"] = False

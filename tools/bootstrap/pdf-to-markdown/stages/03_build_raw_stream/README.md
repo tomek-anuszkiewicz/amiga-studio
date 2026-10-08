@@ -12,7 +12,7 @@ its fenced transcription and indentation without another Stage 09 request.
 Source captions, footnotes and legends also retain their Markdown for final assembly.
 Carry `table_format`, `table_rag_text`, `table_group_segment_ids` and
 `table_source_asset` unchanged. Stage 04 keeps converted table fragments separate,
-Stage 06 does not join them and Stage 07 does not reconvert or hide them.
+Later chapter stages retain their existing markup and source-image companions.
 
 Copy saved Stage 02.81 crops for HTML companions and unconverted tables into
 `assets/asset_<node_id>.png`; Markdown tables publish no crop. Graphics, covers and

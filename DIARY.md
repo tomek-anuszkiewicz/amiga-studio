@@ -3950,3 +3950,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - page 82 stages 02.46 and 02.5 succeeded with one live request zero cache hits and order 002 001 003-013 preserving every object field and page metadata
   - no new conversion publication or milestone gate ran
   - closure does not certify other pages or exhaustive reading-order correctness
+---
+
+### [2026-10-08 02:38 CET] — Remove obsolete PDF conversion stages
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion/config.py`
+  - `tests`
+  - `docs/developers.md`
+  - `reference example configuration`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove stages 06, 07, 08, 12 and 13 with their workers and prompts
+  - connect Stage 09 to Stage 05 and Stage 14 to Stage 11
+  - remove inference selections and obsolete test branches
+  - update stage contracts and documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Simplify the converter at the user's request while retaining existing stage IDs and valid predecessor asset flow
+- **Verification & Test Results**:
+  - PDF offline tests: 30 passed
+  - Codex conversion tests: 21 passed
+  - pre_flight.py --quick passed
+  - architecture tests: 19 passed
+  - git diff --check passed
+  - Graphify incremental code refresh completed
+  - no source fragment conversion requested or run

@@ -365,7 +365,7 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, 
 def main():
     parser = argparse.ArgumentParser(description="Stage 14: Fuzzy cross-document Table of Contents linker")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
-    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/13_refine_first_chapter_name)")
+    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/11_emit_markdown)")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/14_link_toc)")
     parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
 
@@ -377,7 +377,7 @@ def main():
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    input_dir = Path(args.input_dir) if args.input_dir else workspace_dir / "13_refine_first_chapter_name"
+    input_dir = Path(args.input_dir) if args.input_dir else workspace_dir / "11_emit_markdown"
 
     output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "14_link_toc")
 

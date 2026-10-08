@@ -185,11 +185,11 @@ destination protection remain. Success means completed execution, not complete
 pages, correct classifications/geometry, matching Markdown or complete assets.
 
 Full runs, intervals and individual deterministic/inference stages use
-`--from-stage`/`--to-stage`; matching boundaries select one stage. Stages 06-09
-process automatically with their inference calls and no manual task files.
+`--from-stage`/`--to-stage`; matching boundaries select one stage. Stage 09
+processes automatically with its inference calls and no manual task files.
 The normal pipeline has no legacy reader.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
+The execution sequence is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.46 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then `04 -> 05 -> 09 -> 10 -> 11 -> 14`.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.

@@ -21,9 +21,8 @@ and `replacement_stage`; all surrounding objects remain unchanged.
 Prose/code and other textual children receive complete `md_text` during this
 stage. Tables and graphics retain deferred content processing. Graphic outcomes
 carry `image_only: true`: Stage 03 copies the flag into metadata and crops exact
-original pixels, Stage 04 preserves them as independent objects, and Stage 08
-keeps their raster rather than reconverting them into Mermaid or ASCII. Existing
-graphic sidecar processing remains available. Stage 02.9 also exports their
+original pixels and Stage 04 preserves them as independent objects. Later
+chapter stages retain their raster assets. Stage 02.9 also exports their
 original-PNG crop through the existing graphic path.
 
 Only changed pages receive complete-page overrides. Resolution is
