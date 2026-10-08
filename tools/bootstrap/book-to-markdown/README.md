@@ -43,11 +43,22 @@ Book IDs use lowercase names separated by hyphens. The hash suffix identifies
 the exact PDF variant, and `source.json` stores its full hash. Source PDFs remain
 local and are ignored by Git; the catalog metadata is tracked.
 
-The composite Test Book lives separately in `books/test-book-example-4567/`
-and does not need `source.json`. Its
-[page tracker](books/test-book-example-4567/test_pages_tracker.md) records the
-four source variants, their full hashes and the 160-page assembly order. Use
-that mapping to reconstruct the test PDF locally after obtaining those sources.
+The same convention applies to every book, including the composite Test Book:
+
+```text
+books/<book-id>/<first-12-characters-of-sha256>/
+  source.pdf          # local original PDF
+  source.json         # tracked full SHA-256
+  pdf-to-markdown/    # local default preparation workspace, created on first run
+```
+
+The Test Book variant is `books/test-book-example-4567/1cea0b35ee62/`, with full
+SHA-256 `1cea0b35ee622aec0e4c728a170edb6b9324a1baab1f14fe8c67a7f7f2fc45c0`.
+Its [page tracker](books/test-book-example-4567/1cea0b35ee62/test_pages_tracker.md)
+lives beside `source.pdf` and records the four source variants, their full hashes
+and the 160-page assembly order. Use that mapping to reconstruct the test PDF
+locally after obtaining those sources. The prefix names the variant directory;
+verify the full hash before reusing it. Future book preparation uses this layout.
 
 ## Element vocabulary
 

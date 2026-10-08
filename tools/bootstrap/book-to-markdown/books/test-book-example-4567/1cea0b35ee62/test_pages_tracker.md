@@ -1,26 +1,26 @@
 # Test Book Page Tracker & Pipeline Objectives
 
-**Document:** `test-book-example-4567.pdf`\
+**Document:** `source.pdf`\
 **Total Pages:** 160\
 **Source Documents:**\
-- `../m68000-users-manual-rev8/e41cbe7e14dc/source.pdf` (Pages 1–2, 4–9, 12–19, 23–24, 26–29, 32–33, 35–36, 39, 41, 44, 47, 59, 62, 70, 96, 112, 115, 208) [37 pages]\
-- `../m68000-programmers-reference-manual/06e4864b78da/source.pdf` (Pages 13, 16, 22, 23, 29, 32, 42, 46, 65, 80, 97, 104, 105, 106–111, 112, 338, 597–598, 603, 632, 639) [26 pages]\
-- `../amiga-a500-a2000-technical-reference-manual/adc8d1eecb72/source.pdf` (Pages 5, 7, 13–15, 20, 21, 29–31, 42–45, 109, 110, 113, 124, 126, 131, 135, 138, 139, 151–152, 155, 178, 184, 201, 202, 205, 207, 211, 228, 233, 235, 237, 247, 248) [39 pages]\
-- `../amiga-hardware-reference-manual-2nd-edition/69bbdd2f8cfc/source.pdf` (Pages 26, 28, 35, 37, 42, 43, 57, 58, 71, 84, 88, 90, 109, 124, 136, 145, 151, 153, 155, 156, 159, 171, 176, 183, 186, 187, 191, 201, 203, 204, 206, 208, 210, 229, 234, 241, 256, 257, 267, 270, 271, 277, 279, 293, 301, 302, 303, 308, 312, 320, 321, 336, 346, 356, 362, 368, 369, 391) [58 pages]\
+- `../../m68000-users-manual-rev8/e41cbe7e14dc/source.pdf` (Pages 1–2, 4–9, 12–19, 23–24, 26–29, 32–33, 35–36, 39, 41, 44, 47, 59, 62, 70, 96, 112, 115, 208) [37 pages]\
+- `../../m68000-programmers-reference-manual/06e4864b78da/source.pdf` (Pages 13, 16, 22, 23, 29, 32, 42, 46, 65, 80, 97, 104, 105, 106–111, 112, 338, 597–598, 603, 632, 639) [26 pages]\
+- `../../amiga-a500-a2000-technical-reference-manual/adc8d1eecb72/source.pdf` (Pages 5, 7, 13–15, 20, 21, 29–31, 42–45, 109, 110, 113, 124, 126, 131, 135, 138, 139, 151–152, 155, 178, 184, 201, 202, 205, 207, 211, 228, 233, 235, 237, 247, 248) [39 pages]\
+- `../../amiga-hardware-reference-manual-2nd-edition/69bbdd2f8cfc/source.pdf` (Pages 26, 28, 35, 37, 42, 43, 57, 58, 71, 84, 88, 90, 109, 124, 136, 145, 151, 153, 155, 156, 159, 171, 176, 183, 186, 187, 191, 201, 203, 204, 206, 208, 210, 229, 234, 241, 256, 257, 267, 270, 271, 277, 279, 293, 301, 302, 303, 308, 312, 320, 321, 336, 346, 356, 362, 368, 369, 391) [58 pages]\
 **Status:** Assembled, optimized, and ready for pipeline verification.
 
 ### Local Reconstruction and Source Identification
 
 This tracker records page selection, technical facts, and test expectations. It does not contain the source pages or grant permission to use or redistribute the manuals. Reconstruct the test PDF locally from source copies you are authorized to process; keep the PDFs and converted book content outside Git.
 
-Use the **Complete 160-Page Mapping Matrix** as the assembly order. Both `Test Page` and `Source PDF Page` are **1-based PDF page numbers**; `Printed Book Folio` is descriptive and must not be used as a PDF index. Resolve each source path relative to this tracker and verify its SHA-256 below, then append its selected pages in ascending `Test Page` order. The matrix uses book directory names from `books`; the source table selects the exact hash variant. No `source.json` is required for this test book. Older scenario page references do not override the current matrix.
+Use the **Complete 160-Page Mapping Matrix** as the assembly order. Both `Test Page` and `Source PDF Page` are **1-based PDF page numbers**; `Printed Book Folio` is descriptive and must not be used as a PDF index. Resolve each source path relative to this tracker and verify its SHA-256 below, then append its selected pages in ascending `Test Page` order. The matrix uses book directory names from `books`; the source table selects the exact hash variant. The Test Book follows the same hash-variant convention: `source.json` records the full SHA-256 of its local `source.pdf`. Older scenario page references do not override the current matrix.
 
 | Source PDF Path (relative to this tracker) | Total PDF Pages | SHA-256 |
 | --- | ---: | --- |
-| `../m68000-users-manual-rev8/e41cbe7e14dc/source.pdf` | 216 | `e41cbe7e14dc7cb853f1185adb1dcd7043d2a2a3f43cdc909e0f6c146007a8e5` |
-| `../m68000-programmers-reference-manual/06e4864b78da/source.pdf` | 646 | `06e4864b78da0e815054cead9326b7ec9914661f240fd39a455f2061ff47c4e8` |
-| `../amiga-a500-a2000-technical-reference-manual/adc8d1eecb72/source.pdf` | 308 | `adc8d1eecb727f2cb7e524192722e7e2cfe90bc91c1139b0a7a2d7efe3af2379` |
-| `../amiga-hardware-reference-manual-2nd-edition/69bbdd2f8cfc/source.pdf` | 405 | `69bbdd2f8cfc3c0b337fa662445e75dbbae39c113654a666964c68a26234a86a` |
+| `../../m68000-users-manual-rev8/e41cbe7e14dc/source.pdf` | 216 | `e41cbe7e14dc7cb853f1185adb1dcd7043d2a2a3f43cdc909e0f6c146007a8e5` |
+| `../../m68000-programmers-reference-manual/06e4864b78da/source.pdf` | 646 | `06e4864b78da0e815054cead9326b7ec9914661f240fd39a455f2061ff47c4e8` |
+| `../../amiga-a500-a2000-technical-reference-manual/adc8d1eecb72/source.pdf` | 308 | `adc8d1eecb727f2cb7e524192722e7e2cfe90bc91c1139b0a7a2d7efe3af2379` |
+| `../../amiga-hardware-reference-manual-2nd-edition/69bbdd2f8cfc/source.pdf` | 405 | `69bbdd2f8cfc3c0b337fa662445e75dbbae39c113654a666964c68a26234a86a` |
 
 On 2026-10-05, all 160 matrix entries matched the local test PDF's decoded page content streams and media boxes against these sources. This verifies page selection and order, not byte-identical output files or complete rendering equivalence; PDF writer settings and metadata can differ.
 
@@ -158,7 +158,7 @@ This composite test book isolates specific structural patterns and edge cases fr
 ### Source Manual Breakdown
 Test pages in this composite test book are sourced from four reference manuals:
 - **Source Manual 1:** `m68000-users-manual-rev8`
-  - **Source PDF Path:** `../m68000-users-manual-rev8/e41cbe7e14dc/source.pdf` (Total 216 pages)
+  - **Source PDF Path:** `../../m68000-users-manual-rev8/e41cbe7e14dc/source.pdf` (Total 216 pages)
   - **Test Pages:** 1–37 (37 pages)
   - **Section Distribution Across Test Book:**
     - **Front Matter (Cover, Quick Ref, Title, Form, TOC, Lists):** Test Pages 1–14 (Source PDF Pages 1, 2, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17 | Folios: Cover, Quick Ref, `iii`, `iv`, `v`, `vi`, `vii`, `viii`, `xi`, `xii`, `xiii`, `xiv`, `xv`, `xvi`)
@@ -171,7 +171,7 @@ Test pages in this composite test book are sourced from four reference manuals:
     - **Section 7 (Instruction Execution Times):** Test Page 36 (Source PDF Page 115 | Folio: `7-2`)
     - **Index (Subject Index):** Test Page 37 (Source PDF Page 208 | Folio: `INDEX-1`)
 - **Source Manual 2:** `m68000-programmers-reference-manual`
-  - **Source PDF Path:** `../m68000-programmers-reference-manual/06e4864b78da/source.pdf` (Total 646 pages)
+  - **Source PDF Path:** `../../m68000-programmers-reference-manual/06e4864b78da/source.pdf` (Total 646 pages)
   - **Test Pages:** 38–63 (26 pages)
   - **Section Distribution Across Test Book:**
     - **Section 1 (Architectural Summary):** Test Pages 38–43 (Source PDF Pages 13, 16, 22, 23, 29, 32 | Folios: `1-2`, `1-5`, `1-11`, `1-12`, `1-18`, `1-21`)
@@ -182,7 +182,7 @@ Test pages in this composite test book are sourced from four reference manuals:
     - **Appendix A (Instruction Set Summary):** Test Pages 59–61 (Source PDF Pages 597, 598, 603 | Folios: `A-1`, `A-2`, `A-7`)
     - **Appendix B (Exception Stack Frames):** Test Pages 62–63 (Source PDF Pages 632, 639 | Folios: `B-5`, `B-12`)
 - **Source Manual 3:** `amiga-a500-a2000-technical-reference-manual`
-  - **Source PDF Path:** `../amiga-a500-a2000-technical-reference-manual/adc8d1eecb72/source.pdf` (Total 308 pages)
+  - **Source PDF Path:** `../../amiga-a500-a2000-technical-reference-manual/adc8d1eecb72/source.pdf` (Total 308 pages)
   - **Test Pages:** 64–102 (39 pages)
   - **Section Distribution Across Test Book:**
     - **Section 1 (Introduction & System Overview):** Test Pages 64–68 (Source PDF Pages 5, 7, 13, 14, 15 | Folios: `2`, `4`, `10`, `11`, `12`)
@@ -193,7 +193,7 @@ Test pages in this composite test book are sourced from four reference manuals:
     - **Section 7 (Hardware Equations & Motherboard Jumpers):** Test Pages 97–98 (Source PDF Pages 228, 233 | Folios: `228`, `233`)
     - **Appendix E (Hardware Schematics & Connector Pinouts):** Test Pages 99–102 (Source PDF Pages 235, 237, 247, 248 | Folios: `235`, `237`, `247`, `248`)
 - **Source Manual 4:** `amiga-hardware-reference-manual-2nd-edition`
-  - **Source PDF Path:** `../amiga-hardware-reference-manual-2nd-edition/69bbdd2f8cfc/source.pdf` (Total 405 pages)
+  - **Source PDF Path:** `../../amiga-hardware-reference-manual-2nd-edition/69bbdd2f8cfc/source.pdf` (Total 405 pages)
   - **Test Pages:** 103–160 (58 pages)
   - **Section Distribution Across Test Book:**
     - **Section 1 (Introduction):** Test Pages 103–104 (Source PDF Pages 26, 28 | Folios: `8`, `10`)

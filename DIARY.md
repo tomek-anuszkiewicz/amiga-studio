@@ -1381,3 +1381,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - scoped diff check passes
   - Graphify refresh completes
   - existing workspace directories are not moved
+---
+
+### [2026-10-08 23:14 CET] — Apply hash-variant layout to the Test Book
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books/test-book-example-4567`
+  - `tools/bootstrap/book-to-markdown/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Calculate the Test Book original SHA-256 and move its current contents into variant 1cea0b35ee62
+  - rename the original PDF to source.pdf and add source.json with its full hash
+  - adjust tracker source paths for the additional directory depth
+  - document one hash-variant convention for all books and their default preparation workspace
+- **Architectural Rationale & Trade-Offs**:
+  - Treat the composite Test Book like other catalog books so subsequent preparation and recipe work use a consistent source identity and layout
+- **Verification & Test Results**:
+  - Moved PDF SHA-256 matches metadata
+  - tracker source paths and all local README links resolve
+  - source PDF remains ignored
+  - quick preflight and all 19 architecture tests pass
+  - scoped diff check passes
+  - no conversion or downloads performed
