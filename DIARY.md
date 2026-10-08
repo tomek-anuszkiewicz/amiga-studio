@@ -419,37 +419,15 @@ Every repository commit must include a new Section 10 entry for the changes it r
 
 ---
 
-### [2026-09-16 12:00 CEST] — Milestone Digest: Multimodal Reference Ingestion & 14-Stage PDF-to-Markdown Pipeline
-- **Timestamp & Context**: 2026-09-15 to 2026-09-16 — Building the publication-grade technical manual ingestion and conversion pipeline.
-- **Affected Subsystems**: `.agents/skills/pdf-to-markdown/`, `tools/pdf/`, `Obsidian/Amiga/Reference/`.
-- **What Was Changed (The Concrete Reality)**:
-  - Architected and built the complete 14-stage stream-based technical PDF conversion pipeline driven by LLM multimodal capabilities.
-  - Integrated Gemini Vision OCR with integer millirange normalized bounding boxes (`box_2d`), producing clean layout geometry.
-  - Designed automated 3-way graphic triage: distinguishing technical schematics/block diagrams (processed into sidecar text descriptions), photos/illustrations, and register bitfield diagrams (transcribed into pure ASCII art / GFM tables).
-  - Built prioritized HTML table reconstruction with multi-cell row/colspan merging and automated multi-block table of contents (TOC) extraction.
-  - Established strict fail-fast error handling, single-pass page triage, and stage-workspace directory isolation.
-- **Architectural Rationale & Trade-Offs**:
-  - *Stream-Based 14-Stage Architecture:* Breaking document conversion into discrete stages (extract -> triage -> OCR -> tables -> proofread -> Markdown) prevents context window exhaustion and enables resume/recovery at stage boundaries.
-  - *ASCII Art for Registers over Bitmaps:* Converting hardware register layouts to text ASCII art makes them directly queryable by RAG and readable in terminal/IDE editors.
-- **Verification & Invariants**:
-  - Validated on 20 representative HRM and Amiga reference pages with 100% table and diagram fidelity.
-
----
-
-### [2026-09-16 23:59 CEST] — Milestone Digest: RAG Knowledge Base, Diagram Sidecars & Attractor Elimination
-- **Timestamp & Context**: 2026-09-16 — Offline knowledge retrieval, technical diagram processing, and codebase cleanup.
-- **Affected Subsystems**: `tools/amiga-rag-mcp-server/`, `tools/harness/rag_qdrant.py`, `.agents/rules/amiga-rag.md`, `.agents/rules/asset-descriptions.md`, `.agents/rules/structural-root-cause.md`.
-- **What Was Changed (The Concrete Reality)**:
-  - Integrated local vector-based RAG knowledge base indexing hardware documentation, chip schematics, and Obsidian design notes into a local Qdrant collection (`amiga`).
-  - Implemented offline diagram sidecar pipeline (`<image>.txt`), producing Git-tracked technical descriptions for custom chip schematics and block diagrams.
-  - Codified the Structural Root-Cause Resolution rule, strictly prohibiting surface-level coordinate nudges or ad-hoc regex patches in favor of upstream data lifecycle and timing fixes.
-  - Codified Practitioner Voice & Tone guidelines, purging academic buzzwords in favor of concrete systems engineering terminology.
-- **Architectural Rationale & Trade-Offs**:
-  - *Local Vector Search:* Eliminates reliance on cloud APIs and enables rapid, targeted retrieval of complex Amiga hardware register timings without manual page scanning.
-  - *Sidecar Markdown Representation:* Storing visual circuit schematics as searchable text sidecars allows text-based agents and search indexes to reason about physical pinouts and bus topology directly.
-- **Verification & Invariants**:
-  - Offline CLI retrieval tests via `rag_qdrant`.
-  - Sidecar validation in `audit_docs_quality.py`.
+### [2026-09-16 23:59 CEST] — Historical Digest: Reference Conversion and Searchable Hardware Knowledge
+- **Timestamp & Context**: 2026-09-15 to 2026-09-16. Conversion infrastructure was followed by diagram descriptions and local retrieval.
+- **Affected Subsystems**: Historical PDF converter, reference vault, Qdrant/RAG tooling and agent rules.
+- **What Was Changed**:
+  - Built the original 14-stage multimodal pipeline with Gemini OCR, normalized bounds, graphic triage, HTML table spans and TOC extraction. Stage workspaces supported bounded context, fail-fast execution and recovery.
+  - Added searchable diagram sidecars and hardware/design indexing. Schematics retained textual descriptions; register layouts used ASCII/GFM representations for retrieval.
+  - Established root-cause resolution and practitioner documentation rules alongside the ingestion workflow.
+- **Architectural Rationale & Trade-Offs**: Prepare technical sources once, preserve their relationships in text and retrieve focused hardware context. Staged conversion separates model requests and recovery; sidecars expose visual circuit information to text search. Later converter and RAG changes are recorded at their own dates.
+- **Verification & Invariants**: The historical log reported validation on 20 reference pages with 100% table/diagram fidelity, offline CLI retrieval checks and sidecar validation. This preserves the original sample claim, not acceptance evidence for later converters or all books.
 
 ---
 
@@ -487,42 +465,15 @@ Every repository commit must include a new Section 10 entry for the changes it r
 
 ---
 
-### [2026-09-19 23:59 CEST] — Milestone Digest: Tripartite Quality Audits, Crate Renaming (m68000 -> cpu), and Compiler Lints Baseline
-- **Timestamp & Context**: 2026-09-19 — Rigorous quality assurance framework, naming alignment, and zero-warning compilation baseline.
-- **Affected Subsystems**: Workspace `Cargo.toml`, `crates/cpu` (formerly `m68000`), `tools/harness`, `.agents/rules/`, `.agents/skills/`.
-- **What Was Changed (The Concrete Reality)**:
-  - Renamed crate `m68000` to `cpu` and unified named crate root (`cpu.rs`), standardizing 3-tier re-export hierarchy across all workspace crates.
-  - Established Tripartite Quality Auditing framework (`audit-code-quality`, `audit-hardware-quality`, `audit-docs-quality`), covering 27 distinct architectural and hardware pillars.
-  - Institutionalized self-documenting boolean logic, short-circuit preservation, and method naming conventions (`get_` omission, `is_`/`has_` boolean prefixes).
-  - Consolidated CPU prefetch queue into single `u16` (`CpuState.prefetch`) with explicit 2-word pipeline dynamics.
-  - Configured workspace-wide strict compiler baseline (`warnings = "deny"` in `Cargo.toml`) and curated Clippy lints balancing Rust safety with Amiga silicon requirements.
-- **Architectural Rationale & Trade-Offs**:
-  - *Automated Architecture Verification:* Turning architectural guidelines into executable Python and Rust tests guarantees long-term maintainability and prevents architectural regression across agent sessions.
-  - *Zero-Warning Compilation:* Catching dead code, unused mutability, and unhandled branches at compiler time ensures absolute cleanliness in the emulation codebase.
-- **Verification & Invariants**:
-  - All 23 workspace crates compile cleanly with zero compiler warnings and zero Clippy errors.
-  - 10/10 pillars in `audit_docs_quality.py`, 7/7 pillars in `audit_code_quality.py`, and 5/5 pillars in `audit_hardware_quality.py` passing.
-
----
-
-### [2026-09-21 23:59 CEST] — Milestone Digest: Strict Compilation Policy, CPU Semantic Parity & Scope Discipline
-- **Timestamp & Context**: 2026-09-20 to 2026-09-21 — Compiler hardening, M68000 CPU architectural cleanup, semantic parity audit, and governance rule codification.
-- **Affected Subsystems**: `Cargo.toml`, `crates/cpu`, `Obsidian/Amiga/Design/`, `.agents/rules/`, `ROADMAP.md`.
-- **What Was Changed (The Concrete Reality)**:
-  - Enforced strict zero-warning compilation policy (`warnings = "deny"` under `[workspace.lints.rust]`) across all workspace targets.
-  - Eliminated artificial OOP getter/setter encapsulation and raw public field restrictions on plain-old-data (POD) structs, standardizing on idiomatic Rust accessors (`d_long`/`set_d_long`, slice views, `is_`/`has_` boolean prefixes).
-  - Executed bidirectional semantic parity audit for M68000 CPU specifications, eliminating ghost features, clarifying Fast RAM `TAS` erratum, and consolidating platform quirks into `Platform Quirks and Invariants Catalog.md`.
-  - Streamlined `Cpu::restore_state` and stack pointer mechanics (canonical `a_long(7)` dispatch, invariant `usp`/`ssp` fields).
-  - Codified the Strict Scope Discipline rule (`strict-scope-discipline.md`) to enforce task containment, prevent unsolicited refactoring, and require structured delivered vs suggested reporting.
-  - Restructured `ROADMAP.md` into an executable nested hierarchy with explicit verification gates and zero retention of completed items.
-- **Architectural Rationale & Trade-Offs**:
-  - *Zero-Warning Guarantee:* Denying warnings at the compiler level ensures dead code, unused mutability, or open-bus anomalies fail the build immediately rather than accumulating as technical debt.
-  - *Idiomatic Systems Rust over OOP Boilerplate:* Amiga hardware registers, coordinates, and ALU states are transparent hardware structures; mechanical OOP accessors added syntactic noise without providing domain invariants.
-  - *Bidirectional Parity:* Ensuring living design specs perfectly match active code prevents agent hallucinations and spec drift.
-- **Verification & Invariants**:
-  - 100% clean build with 0 warnings and 0 Clippy lints across all workspace crates.
-  - 21/21 architecture rules passed in `test_architecture_rules`.
-  - Full SingleStepTests test suite passing across all 68000 instructions.
+### [2026-09-21 23:59 CEST] — Historical Digest: Executable Quality Rules and CPU Specification Alignment
+- **Timestamp & Context**: 2026-09-19 to 2026-09-21. Quality/compiler foundations were followed by CPU cleanup and bidirectional specification review.
+- **Affected Subsystems**: Workspace configuration, CPU, harness audits, design specifications, agent rules and roadmap.
+- **What Was Changed**:
+  - Renamed m68000 to cpu, standardized crate roots/re-exports and established code, hardware and documentation audits. Workspace warnings became errors; selected Clippy checks, boolean naming and short-circuit conventions formed the compiler baseline.
+  - Consolidated prefetch storage to one u16 with explicit two-word pipeline dynamics. Replaced mechanical OOP accessors with register/slice operations and clarified restore/stack handling through a_long(7), usp and ssp.
+  - Reviewed CPU specifications against code, removed ghost features, clarified Fast RAM TAS behavior and consolidated platform quirks. Scope discipline and a pending-only roadmap made implementation boundaries explicit.
+- **Architectural Rationale & Trade-Offs**: Compile-time and executable checks catch structural violations; hardware registers remain transparent data rather than acquiring accessor boilerplate. Semantic review complements mechanical checks by explaining actual CPU behavior and boundaries.
+- **Verification & Invariants**: Historical records reported all 23 crates warning/Clippy-clean; documentation/code/hardware audit pillars passed 10/10, 7/7 and 5/5. The later review reported architecture 21/21 and full SingleStepTests passing. These are dated results; subsequent regressions and verification limits remain in later entries.
 
 ---
 
@@ -562,176 +513,33 @@ Every repository commit must include a new Section 10 entry for the changes it r
 
 ---
 
-### [2026-09-29 01:50 CEST] — Historical Section 10 Compaction into 10 Architectural Milestone Digests
-- **Affected Subsystems**:
-  - `DIARY.md` (Section 10 synthesized per `.agents/skills/compact-diary/SKILL.md`)
-  - `.agents/rules/diary-maintenance.md`, `.agents/rules/roadmap-maintenance.md`, `.agents/skills/compact-diary/SKILL.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Audited and compacted 340+ historical chronological entries in Section 10 (September 12–22, 2026) spanning over 8,500 lines into 10 high-signal Architectural Milestone Digests covering all major project phases:
-    1. Disassembler Extraction, Memory Banking & Core Machine Setup (2026-09-12)
-    2. Language Guardrails, HRM Alignment & vAmigaTS Verification Harness (2026-09-14)
-    3. Custom Chipset Silicon Calibration & Phase 1 vAmigaTS Verification (2026-09-15)
-    4. Multimodal Reference Ingestion & 14-Stage PDF-to-Markdown Pipeline (2026-09-16)
-    5. RAG Knowledge Base, Diagram Sidecars & Attractor Elimination (2026-09-16)
-    6. Tooling Ergonomics, Zero-Junction Invariant & Full Worktree Storage Isolation (2026-09-17)
-    7. MemoryBus Streamlining, Agnus DMA Mastership & Decoupled State Serialization (2026-09-18)
-    8. Tripartite Quality Audits, Crate Renaming (m68000 -> cpu), and Compiler Lints Baseline (2026-09-19)
-    9. Strict Compilation Policy, CPU Semantic Parity & Scope Discipline (2026-09-21)
-    10. RAG Tooling Reform, CLI Single Source of Truth & Documentation Scoping (2026-09-22)
-  - Purged obsolete raw micro-diffs, transient command traces, and uncompacted historical duplication while permanently preserving every major subsystem accomplishment, architectural dilemma, and verification result.
-  - Retained the active September 29 roadmap milestone entry (Step 1.4: MachineLoop Architecture Review) in full granular detail.
-  - Updated diary maintenance rules and skills to formally allow compaction upon completing minor roadmap points or when Section 10 exceeds operational size thresholds.
-  - Reduced `DIARY.md` from 8,995 lines (930 KB) down to ~620 lines (~75 KB) with zero loss of architectural wisdom or hardware rationale.
-- **Architectural Rationale & Trade-Offs**:
-  - Eliminates prompt bloat and token exhaustion while permanently safeguarding core design dilemmas, hardware silicon discoveries, and human-AI collaboration dynamics.
-- **Verification & Invariants**:
-  - `python tools/harness/pre_flight.py --quick` passed cleanly.
-  - `cargo test -p test_runner --test test_architecture_rules` passed (20/20).
+### [2026-09-29 01:50 CEST] — Historical Diary Compaction
+- **Affected Subsystems**: DIARY.md and diary/roadmap maintenance guidance.
+- **What Was Changed**: Consolidated more than 340 September 12-22 entries into ten digests at the time, reducing roughly 8,995 lines/930 KB to 620 lines/75 KB. Retained the then-active MachineLoop review and established milestone compaction guidance.
+- **Architectural Rationale & Trade-Offs**: Preserve decisions and historical verification while leaving transient micro-diffs in Git. Later compaction may combine related digests without changing event order.
+- **Verification & Invariants**: Historical quick pre-flight and architecture 20/20 passed.
+
 ---
 
-### [2026-10-05 21:33 CEST] — Simplify agent guidance and clarify per-commit diary logging
-- **Affected Subsystems**:
-  - `.agents/rules`
-  - `.agents/skills`
-  - `.codex/agents`
-  - `tools/harness`
-  - `tools/bootstrap/pdf-to-markdown`
-  - `crates/test_runner/tests`
-  - `documentation`
-- **What Was Changed (The Concrete Reality)**:
-  - Consolidated scope and root-cause rules while preserving the isolated special-case prohibition
-  - clarified logging on every commit and compaction at milestone completion
-  - reduced common instructions and made domain guidance selective
-  - aligned checkpoint names, Markdown links, inlining examples, verification tiers, and converter stage commands
-  - removed forced source/test file coupling and assertion quotas
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve emulator invariants while reducing duplicated instructions and resolving contradictory procedures
-  - keep the previously reported documentation-audit remediation outside this task
-- **Verification & Test Results**:
-  - Quick pre-flight passed
-  - architecture suite passed 20 tests
-  - Python harness suite passed 32 tests
-  - agent TOML syntax and Python compilation passed
-  - Graphify code graph refreshed
-  - full documentation audit still reports 9 deferred findings after the merged prime-directives rule was removed
-  - no emulator production source changed
+### [2026-10-05 21:57 CEST] — Historical Digest: Agent Guidance and Procedure Consolidation
+- **Timestamp & Context**: 2026-10-05, 21:33 to 21:57. One sequence of instruction and tooling cleanup.
+- **Affected Subsystems**: Agent rules/skills, AGENTS.md, RAG adapter, harness checks and developer documentation.
+- **What Was Changed**:
+  - Shortened shared guidance, clarified per-commit logging and milestone compaction, aligned checkpoints/links and removed forced source/test coupling and assertion quotas.
+  - Bounded RAG retrieval through source selection, read-only metadata and the canonical CLI/MCP adapter; delegated indexing to its existing skill and removed the retired search stub.
+  - Condensed clean-break refactoring around complete internal migrations and explicit compatibility decisions, then separated concise policy rules from skill-owned procedures/examples. Retained 27 rules and mandatory Graphify navigation while removing its redundant redirect.
+- **Architectural Rationale & Trade-Offs**: Reduce duplicated instruction context while preserving hardware/golden-reference invariants, scope control and external/saved-data contracts. Keep obligations in rules, procedures in skills and mechanical coverage bounded to what checks observe.
+- **Verification & Invariants**: Historical quick gates passed throughout; architecture passed 20 tests initially and 19 after fixture changes. RAG tests passed 9 and the native MCP launch regression passed; harness fixtures grew from 32 to 41 passing tests. Selected governance/link/size audits passed, including 66 new links, TOML parsing and Python compilation. Earlier full-documentation audits still reported 9 then 8 findings; selected audit success did not close them. No emulator runtime source changed or full domain verification ran.
+
 ---
 
-### [2026-10-05 21:34 CEST] — Clarify RAG context retrieval and MCP search guidance
-- **Affected Subsystems**:
-  - `.agents/rules/amiga-rag.md`
-  - `tools/amiga-rag-mcp-server`
-- **What Was Changed (The Concrete Reality)**:
-  - Shortened retrieval guidance and delegated indexing to the existing skill
-  - documented source selection, bounded results, and read-only behavior in MCP metadata
-- **Architectural Rationale & Trade-Offs**:
-  - Use a concise rule and tool metadata for focused context retrieval without adding a redundant search skill
-- **Verification & Test Results**:
-  - Quick pre-flight passed
-  - architecture suite passed 20 tests
-  - RAG adapter suite passed 9 tests
-  - Codex MCP launch regression passed
-  - published search metadata verified
-  - Graphify update found no topology changes
----
+### [2026-10-05 22:14 CEST] — Historical Digest: Roadmap Scope and Priority Consolidation
+- **Timestamp & Context**: 2026-10-05, 22:11 to 22:14. Backlog restructuring followed by narrowing the regeneration experiment.
+- **Affected Subsystems**: ROADMAP.md, roadmap rules/skill and review procedure.
+- **What Was Changed**: Prioritized manual conversion/ingestion, test orientation/profiling and chipset reconstruction; removed historical summaries and duplicate methodology while retaining deferred harness/eval capabilities. Limited Step 10 to the selected isolated documentation-to-code regeneration experiment, preserving its unit/integration gate.
+- **Architectural Rationale & Trade-Offs**: Keep pending work readable without losing source-fidelity requirements or acceptance gates. Surfaced the proposed chipset reset's conflict with timing/quirks invariants; restructuring neither authorizes that deviation nor completes implementation milestones.
+- **Verification & Invariants**: Historical quick and architecture checks passed (19/19); governance/MCP/discovery regressions passed 19 tests and documentation audit reported zero issues. Skill, language, numbering and local-link checks passed; the final backlog held 11 steps and 40 tasks. No regeneration experiment, subsystem semantic-parity review or milestone completion was performed.
 
-### [2026-10-05 21:37 CEST] — Shorten clean-break refactoring guidance
-- **Affected Subsystems**:
-  - `.agents/rules/clean-break-refactoring.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Condensed the rule from 66 lines to 8
-  - retained complete internal API migration and explicit opt-in for compatibility
-  - clarified external contracts and saved-data impact
-- **Architectural Rationale & Trade-Offs**:
-  - Make the refactoring policy concise while preventing unsolicited legacy interfaces
-- **Verification & Test Results**:
-  - Quick pre-flight passed
-  - architecture suite passed 20 tests
----
-
-### [2026-10-05 21:48 CEST] — Remove retired project-side RAG search stub
-- **Affected Subsystems**:
-  - `tools/harness`
-- **What Was Changed (The Concrete Reality)**:
-  - Deleted the retired rag_search.py command that only printed MCP migration guidance and exited with failure
-- **Architectural Rationale & Trade-Offs**:
-  - No tracked callers reference the retired script. Supported retrieval remains available through the Amiga RAG MCP adapter and canonical CLI
-- **Verification & Test Results**:
-  - Quick pre-flight passed
-  - Architecture suite passed 20 tests
-  - Full documentation audit reports 8 remaining findings: 7 direct-reference findings and 1 unregistered diary rule
----
-
-### [2026-10-05 21:57 CET] — Separate agent policy from execution procedures
-- **Affected Subsystems**:
-  - `.agents/rules`
-  - `.agents/skills`
-  - `AGENTS.md`
-  - `docs`
-  - `tools/harness`
-  - `tests`
-  - `crates/test_runner/tests`
-- **What Was Changed (The Concrete Reality)**:
-  - Retain 27 concise rules and remove only the Graphify redirect
-  - Move naming, layout, cohesion and inlining examples into five references owned by existing skills
-  - Keep mandatory Graphify navigation in AGENTS.md while removing redundant skill routing
-  - Preserve the parallel auditor simplification and reconcile companion classifications, workflow commands and regression fixtures
-- **Architectural Rationale & Trade-Offs**:
-  - Keep obligations and exceptions in rules
-  - execution in skills
-  - and deterministic checks bounded to their observed coverage. Preserve existing hardware and golden-reference policy without emulator runtime changes.
-- **Verification & Test Results**:
-  - Quick pre-flight passed
-  - Architecture suite passed 19 tests
-  - Python fixture suite passed 41 tests
-  - Selected size, skill, locality, companion and workflow audits reported zero issues
-  - Verified 66 new local links and the unchanged Graphify skill
-  - Refreshed the AST graph. Full emulator domain suites were not run because runtime code was unchanged.
----
-
-### [2026-10-05 22:11 CEST] — Consolidate the active roadmap and maintenance procedure
-- **Affected Subsystems**:
-  - `ROADMAP.md`
-  - `.agents/rules/roadmap-maintenance.md`
-  - `.agents/skills/roadmap-maintenance`
-  - `.agents/skills/code-review`
-- **What Was Changed (The Concrete Reality)**:
-  - Group manual conversion and ingestion first, test orientation and profiling second, and chipset reconstruction third
-  - remove historical baseline and duplicated methodology while preserving pending extensions
-  - consolidate conversion requirements and remap remaining task references
-  - retain missing harness architecture and eval work after checking native Codex and MCP evidence
-  - surface the reset proposal's timing and quirks conflict before implementation
-  - align the roadmap rule and skills with a backlog-only document
-- **Architectural Rationale & Trade-Offs**:
-  - Make immediate work readable without discarding artifact validation, source fidelity, manual handoffs, or deferred capabilities
-  - keep policy in rules and execution procedure in skills
-  - this reorganization does not certify or complete any planned subsystem milestone
-- **Verification & Test Results**:
-  - Quick pre-flight passed
-  - architecture suite passed 19 tests
-  - governance, MCP contract, and live Codex discovery regressions passed 19 tests total
-  - documentation audit passed with zero issues
-  - both changed skills validated, using Python UTF-8 mode after a Windows decoding failure on the existing code-review file
-  - language and diff checks passed
-  - numbering and local-link check passed for 11 steps, 44 tasks, 7 sub-suites, and 20 links
-  - full subsystem milestone and semantic-parity gates were not run because no implementation milestone was completed
----
-
-### [2026-10-05 22:14 CEST] — Limit roadmap Step 10 to subsystem regeneration
-- **Affected Subsystems**:
-  - `ROADMAP.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Remove the four unselected Step 10 tasks
-  - retain the isolated documentation-to-code regeneration experiment as 10.1 and rename the workstream
-- **Architectural Rationale & Trade-Offs**:
-  - Keep only the experiment selected by the user
-  - preserving its isolated-checkout scope and unit/integration acceptance gate
-- **Verification & Test Results**:
-  - Quick pre-flight passed
-  - architecture tests passed 19 of 19
-  - roadmap verification passed for 11 steps and 40 tasks with valid numbering, references and 20 local links
-  - language and diff checks passed
-  - no regeneration experiment or subsystem milestone was executed
 ---
 
 ### [2026-10-05 22:27 CEST] — Remove redundant document-processing agent roles
@@ -865,18 +673,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - no converter implementation or model calls or conversion runs
 ---
 
-### [2026-10-08 18:19 CEST] — Compact book-reconstruction experiment history
+### [2026-10-08 18:19 CEST] — Book-Reconstruction Diary Compaction
+- **Affected Subsystems**: DIARY.md.
+- **What Was Changed**: Replaced 176 converter/TestBook entries with four historical/progress digests, preserving unrelated history and active PDF-ORDER-2.48.
+- **Architectural Rationale & Trade-Offs**: Keep durable decisions and evidence limits while omitting repeated experiments; conversion work remains ongoing.
+- **Verification & Invariants**: Quick pre-flight, architecture 19/19, preservation and whitespace checks passed. Full-file language scan retained two existing findings; staged additions passed. No conversion or milestone acceptance ran.
+
+---
+---
+
+### [2026-10-08 18:22 CEST] — Consolidate related historical diary entries
 - **Affected Subsystems**:
   - `DIARY.md`
 - **What Was Changed (The Concrete Reality)**:
-  - Replace 176 converter and TestBook entries with four concise historical/progress digests
-  - preserve emulator history and unrelated entries verbatim and retain active PDF-ORDER-2.48
+  - Merge eleven adjacent entries into four chronological digests
+  - shorten two compaction records
 - **Architectural Rationale & Trade-Offs**:
-  - User-requested historical compaction removes repeated stage and prompt iteration details while preserving durable decisions and verification limits
-  - the ongoing conversion work is not declared complete
+  - Group related engineering decisions rather than minor task numbers while retaining date ranges and historical verification limits
 - **Verification & Test Results**:
   - Quick pre-flight passed
-  - architecture suite passed 19/19
-  - preservation assertions and diff whitespace check passed
-  - full-file language scan reported two existing occurrences in unchanged history
-  - no conversion or milestone acceptance run
+  - architecture 19/19 passed
+  - untouched-entry preservation and chronological-order assertions passed
+  - scoped whitespace check passed
