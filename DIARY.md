@@ -1215,3 +1215,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick preflight passes
   - all 19 architecture tests pass
   - no downloads or PDF copies performed
+---
+
+### [2026-10-08 22:50 CET] — Populate local book variant PDFs
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books`
+- **What Was Changed (The Concrete Reality)**:
+  - Copy each of the 14 audited PDF variants into its catalog directory as source.pdf
+  - add a catalog-local ignore rule to keep reference PDFs outside Git history
+- **Architectural Rationale & Trade-Offs**:
+  - Keep each local source beside its SHA-256 metadata while committing only catalog configuration and the acquisition record
+- **Verification & Test Results**:
+  - All 14 original and copied PDFs match their source.json SHA-256
+  - PDFs remain ignored by Git
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - no downloads performed
