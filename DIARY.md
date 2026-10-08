@@ -1510,3 +1510,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - no references to the renamed heading found in tools, rules, docs or roadmap
   - diff check passed
   - no conversion run
+---
+
+### [2026-10-09 00:56 CET] — Require commits at roadmap completion or user request
+- **Affected Subsystems**:
+  - `AGENTS.md`
+  - `.agents/rules/git-commits.md`
+  - `.agents/rules/roadmap-maintenance.md`
+  - `.agents/rules/structural-root-cause.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace per-task automatic commits with mandatory minor roadmap point and major milestone completion commits
+  - leave other commit timing to explicit user requests
+  - align roadmap closure and execution-plan retention
+- **Architectural Rationale & Trade-Offs**:
+  - Reduce repeated commit overhead during iterative work while retaining validated roadmap checkpoints and atomic commits
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - all 19 architecture tests passed
+  - scoped diff check passed
+  - obsolete per-task commit wording absent from shared instructions

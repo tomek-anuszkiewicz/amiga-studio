@@ -6,7 +6,7 @@ Read these shared rules before task work; linked files require explicit reads:
 - [Scoped changes and root-cause resolution](.agents/rules/structural-root-cause.md): Stay within the requested task, reuse definitions, and fix mechanisms.
 - [Specification compliance](.agents/rules/spec-compliance.md): Surface conflicts with design specifications and never silently change golden references.
 - [Path privacy](.agents/rules/no-external-paths.md): Keep committed paths portable.
-- [Atomic commits](.agents/rules/git-commits.md): Validate and commit each discrete task with a corresponding diary entry.
+- [Commit policy](.agents/rules/git-commits.md): Required commit points, user-controlled timing, validation, and diary entries.
 
 Answer in the user's language; repository content and commits are English. Read [language-policy.md](.agents/rules/language-policy.md) for language checks, [audio-transcription.md](.agents/rules/audio-transcription.md) when audio is supplied, and [model-reasoning-advisory.md](.agents/rules/model-reasoning-advisory.md) when reasoning-effort advice is relevant. Do not guess unavailable model metadata.
 
@@ -47,7 +47,7 @@ Codex discovers skill names and descriptions in `.agents/skills/` and reads full
 
 ## Verification and Completion
 
-Every discrete task is validated and committed atomically in English. **Every commit includes a new DIARY.md Section 10 entry.** At minor roadmap points or milestones, compact settled entries and synchronize affected design specifications and the remaining roadmap.
+Commits are mandatory when closing a minor roadmap point or major milestone. Otherwise, commit when the user explicitly requests it. Commits are atomic and written in English. **Every commit includes a new DIARY.md Section 10 entry.** At minor roadmap points or milestones, compact settled entries and synchronize affected design specifications and the remaining roadmap.
 
 Per-commit commands:
 ```powershell
