@@ -79,7 +79,7 @@ def comparison_html(workspace, entry, page, table):
             img["src"] = table_uri
     for details in dom.find_all("details"):
         summary = details.find("summary")
-        if summary and summary.get_text() == "Table text for RAG":
+        if summary and summary.get_text() in {"Table text for RAG", "Original table image"}:
             details["open"] = ""
     label = escape(f"Physical page {page['page']} | {table['segment_id']} | "
                    + {"html": "HTML", "markdown": "Markdown", "unconverted": "Unconverted"}[table["table_format"]])

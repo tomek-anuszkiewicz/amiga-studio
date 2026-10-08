@@ -2,7 +2,7 @@
 """
 stages/03_build_raw_stream/extract_initial_assets.py:
 For visual nodes:
-1. Copies required persistent table crops from Stage 02.82; Markdown tables need none.
+1. Copies persistent table crops from Stage 02.82 for both Markdown and HTML tables.
    Crops other visual assets from Stage 01 with existing typographic padding.
 2. Annotates the node with visual file paths in raw_stream.json.
 Raw text remains in each node's raw_text field; no separate text dumps are written.
@@ -35,7 +35,7 @@ def extract_assets_for_nodes(
     pages_dir = workspace_dir / "01_preprocess"
     assets_dir.mkdir(parents=True, exist_ok=True)
     for node in nodes:
-        if node.get("table_source_asset") and node.get("table_format") != "markdown":
+        if node.get("table_source_asset"):
             filename = f"asset_{node['node_id']}.png"
             shutil.copy2(workspace_dir / STAGE / node["table_source_asset"], assets_dir / filename)
             node["png_path"] = f"{rel_prefix}/{filename}"

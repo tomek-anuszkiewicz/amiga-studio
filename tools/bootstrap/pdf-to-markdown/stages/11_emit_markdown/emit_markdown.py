@@ -42,7 +42,7 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
             rendered = node.get("rendered_markdown") or ""
             for match in re.finditer(r"asset_node_\d+\.[a-zA-Z0-9]+", rendered):
                 referenced_assets.add(match.group(0))
-            if node.get("table_format") == "html":
+            if converted(node):
                 referenced_assets.add(Path(node["png_path"]).name)
 
     # 1. Synchronize assets from latest stage (only active, referenced assets)

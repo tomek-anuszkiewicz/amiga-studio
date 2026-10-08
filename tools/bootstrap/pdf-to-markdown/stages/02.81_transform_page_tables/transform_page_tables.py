@@ -14,7 +14,7 @@ from conversion.config import load_config, PDF_STAGES
 from common.pdf_artifacts import write_json
 from common.pdf_page_conversion import read_conversion
 from common.pdf_schemas import object_schema, STRING
-from common.pdf_tables import STAGE, collect_groups, simple_html
+from common.pdf_tables import STAGE, collect_groups, converted, simple_html
 from common.pdf_selection import selected_pages
 
 RESPONSE = object_schema({"format": {"type": "string", "enum": ["markdown", "html", "unconverted"]},
@@ -47,7 +47,7 @@ def transform_tables(workspace, config, pages=None):
                         table["table_format"] = result["format"]
                         if result["format"] != "unconverted":
                             table["md_text"] = result["md_text"]
-                        if result["format"] == "html":
+                        if converted(table):
                             group = [{"segment_id": s["segment_id"], "type": s["type"],
                                       "md_text": s["md_text"]} for s in groups[table["segment_id"]]]
                             request = group_prompt + "\n\nSource-ordered group:\n" + json.dumps({
@@ -57,9 +57,9 @@ def transform_tables(workspace, config, pages=None):
                                 "segments": group}, ensure_ascii=False)
                             companion = codex.generate_json(request, schema=COMPANION, image_path=crop_path)
                             if not companion["rag_text"].strip():
-                                raise ValueError(f"Empty HTML companion for {table['segment_id']}")
+                                raise ValueError(f"Empty table companion for {table['segment_id']}")
                             table["table_rag_text"] = companion["rag_text"]
-                            if simple_html(table["md_text"]):
+                            if result["format"] == "html" and simple_html(table["md_text"]):
                                 print(f"WARNING: {table['segment_id']} (physical page {page['page']}): "
                                       "HTML table has no merged cells and simple cell content; "
                                       "Markdown should be sufficient. Review format choice.")

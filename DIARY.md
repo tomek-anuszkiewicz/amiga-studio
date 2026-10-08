@@ -4082,3 +4082,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify AST refresh completed
   - git diff --check passed
   - exported Markdown remains unchanged
+---
+
+### [2026-10-08 03:49 CET] — PDF-TABLE-COMPANIONS-1: Publish source images and RAG text for both table formats
+- **Affected Subsystems**:
+  - `Stages 02.81 02.83 02.90 03 and 11`
+  - `shared table companions`
+- **What Was Changed (The Concrete Reality)**:
+  - Generate saved group RAG text for Markdown as well as HTML tables
+  - append both companions after each converted source group
+  - expand image and RAG sections in review while keeping exports collapsed
+  - carry and publish Markdown source crops through page and chapter export
+  - document regeneration of older Markdown artifacts
+- **Architectural Rationale & Trade-Offs**:
+  - Use the same saved source-image and complete-group-text contract for both converted formats without downstream reinference or missing asset links
+- **Verification & Test Results**:
+  - Existing review regression reproduced missing Markdown companions then passed
+  - review and selection tests 7/7 passed
+  - PDF execution and restart tests 30/30 passed
+  - offline Stage 02.90 export verified both saved texts and byte-identical source crops
+  - quick pre-flight passed
+  - architecture tests 19/19 passed
+  - Graphify AST refresh completed
+  - git diff --check passed
+  - no source fragment conversion run
+  - old attempts require rerun from 02.81

@@ -10,7 +10,7 @@ empty rows, preserving column spans.
 
 Write full selected page JSONs and copy saved table crops into
 `02.82_remove_empty_table_rows/`. Preserve other objects, source geometry, group
-metadata, HTML RAG companions and unconverted tables. Stage 02.81 artifacts stay
+metadata, Markdown/HTML RAG companions and unconverted tables. Stage 02.81 artifacts stay
 unchanged. The invocation's `--page-ranges` selects physical pages.
 
 ```powershell

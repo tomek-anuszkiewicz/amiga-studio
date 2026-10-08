@@ -79,7 +79,7 @@ Each worker reads the predecessor's own directory and writes its own results:
 | [02.46](stages/02.46_review_reading_order/README.md) | Stage 01 and resolved predecessors through 02.45 -> whole-page reading-order assessment for suspicious pairs, changed pages only |
 | [02.50](stages/02.50_page_conversion_review/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 -> review frames and ordered labels |
 | [02.80](stages/02.80_filter_page_content/README.md) | Stage 01 and resolved 02/02.40/02.41/02.42/02.43/02.44/02.45/02.46 -> retained objects after source-content and fixed NXP-logo exclusions |
-| [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> table markup, saved crops and inferred HTML group text |
+| [02.81](stages/02.81_transform_page_tables/README.md) | Stage 01/02.80 -> table markup, saved crops and inferred Markdown/HTML group text |
 | [02.82](stages/02.82_remove_empty_table_rows/README.md) | Stage 01/02.81 -> remove empty Markdown/HTML table rows, preserve saved crops |
 | [02.83](stages/02.83_table_conversion_review/README.md) | Stage 01/02.82 -> side-by-side table review PNGs, no inference |
 | [02.90](stages/02.90_emit_page_markdown/README.md) | Stage 01/02.82 -> `document.md`, converted tables and required raster assets |

@@ -18,7 +18,7 @@ def crop_objects(pages):
     """Retain the physical-page and segment-array order."""
     for entry, value in pages:
         for segment in value["segments"]:
-            if segment["type"] in DEFERRED_TEXT_TYPES and segment.get("table_format") != "markdown":
+            if segment["type"] in DEFERRED_TEXT_TYPES:
                 yield entry, segment
 
 

@@ -113,11 +113,11 @@ def companions(table, asset_reference):
 
 
 def ordered_markdown(segments, render, asset_reference):
-    """Emit source blocks once, then each saved HTML companion after its group."""
+    """Emit source blocks once, then each converted table's saved companions."""
     after = {}
     positions = {s["segment_id"]: i for i, s in enumerate(segments) if s.get("segment_id")}
     for table in segments:
-        if table.get("table_format") != "html":
+        if not converted(table):
             continue
         ids = table["table_group_segment_ids"]
         last = max(positions[s] for s in ids)

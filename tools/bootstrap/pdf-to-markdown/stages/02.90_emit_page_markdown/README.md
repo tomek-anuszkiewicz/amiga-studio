@@ -5,12 +5,12 @@ Stage 02.82 full page JSONs and Stage 01 original PNGs. Preserve physical-page
 and segment-array order, unchanged textual Markdown, captions, notes and legends.
 Minimal YAML and a heading use the source filename stem. Empty input remains valid.
 
-Converted tables emit `md_text` at their original position. HTML tables append
+Converted tables emit `md_text` at their original position. Markdown and HTML tables append
 one collapsed `Table text for RAG` section containing the saved complete group text
 in a literal fenced text block after the last associated block, followed by a
 collapsed `Original table image` section. Associated source blocks remain visible
-once in their original positions. Markdown tables have neither companion nor
-published crop. Unconverted tables retain their visible raster.
+once in their original positions. Both converted formats publish their saved
+source crop. Unconverted tables retain their visible raster.
 
 Copy required table crops from Stage 02.82 `table_source_asset`; never recrop them.
 Graphics and covers still use exact integer Stage 01 pixel boxes, without padding

@@ -14,11 +14,11 @@ Carry `table_format`, `table_rag_text`, `table_group_segment_ids` and
 `table_source_asset` unchanged. Stage 04 keeps converted table fragments separate,
 Later chapter stages retain their existing markup and source-image companions.
 
-Copy saved Stage 02.82 crops for HTML companions and unconverted tables into
-`assets/asset_<node_id>.png`; Markdown tables publish no crop. Graphics, covers and
+Copy saved Stage 02.82 crops for Markdown/HTML companions and unconverted tables into
+`assets/asset_<node_id>.png`. Both converted formats publish their saved source crop. Graphics, covers and
 code blocks still use the existing Stage 01 cropper with padding and neighbor limits.
 Asset paths move forward with stage bundles. Final Stage 11 uses the same group
-assembly as page export and review, appending both collapsed HTML companions after
+assembly as page export and review, appending both collapsed companions after
 the last associated block exactly once, without reinference or appended group text.
 
 ```powershell

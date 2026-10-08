@@ -81,11 +81,16 @@ class ReviewSelectionTests(unittest.TestCase):
         self.table_pages("02.80_filter_page_content")
         with patch.object(stage, "CodexClient") as client:
             transport = client.return_value.__enter__.return_value
-            transport.generate_json.return_value = {"format": "unconverted", "md_text": "source"}
+            transport.generate_json.side_effect = [
+                {"format": "markdown", "md_text": "| Name | Value |\n| --- | --- |\n| A | 1 |"},
+                {"rag_text": "Name A has value 1."},
+            ]
             stage.transform_tables(self.workspace, {"input": {"pages": [63]}}, pages=[64])
-        self.assertEqual(transport.generate_json.call_count, 1)
+        self.assertEqual(transport.generate_json.call_count, 2)
         output = self.workspace / stage.STAGE
         self.assertEqual([p.name for p in output.glob("*_segments.json")], ["page_0064_segments.json"])
+        page = json.loads((output / "page_0064_segments.json").read_text())
+        self.assertEqual(page["segments"][0]["table_rag_text"], "Name A has value 1.")
 
     def test_table_review_renders_only_selected_page(self):
         stage = stage_module("02.83_table_conversion_review", "render_table_review")
@@ -106,6 +111,7 @@ class ReviewSelectionTests(unittest.TestCase):
         assets.mkdir(parents=True)
         Image.new("RGB", (10, 10), "white").save(assets / "table.png")
         table = {"segment_id": "table", "type": "table", "table_format": "markdown",
+                 "table_rag_text": "Operand #<data> uses mode 111.",
                  "table_source_asset": "assets/table.png", "table_group_segment_ids": ["table"],
                  "bbox": [0, 0, 10, 10], "md_text": (
                      "| Operand | Mode |\n| --- | --- |\n"
@@ -119,6 +125,11 @@ class ReviewSelectionTests(unittest.TestCase):
         self.assertEqual(converted.find("code").get_text(), "#<data>")
         self.assertIn("<label>", converted.get_text())
         self.assertIsNone(converted.find("data"))
+        details = converted.find_all("details")
+        self.assertEqual(len(details), 2)
+        self.assertTrue(all("open" in item.attrs for item in details))
+        self.assertEqual(details[0].find("code").get_text().strip(), table["table_rag_text"])
+        self.assertTrue(details[1].find("img")["src"].startswith("data:image/png;base64,"))
 
     def test_callout_requests_only_selected_page(self):
         stage = stage_module("02.40_reclassify_callouts", "reclassify_callouts")

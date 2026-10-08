@@ -1,10 +1,10 @@
-You receive a source table image, its HTML transcription and associated caption,
+You receive a source table image, its Markdown or HTML transcription and associated caption,
 footnote and table_legend blocks in their original reading order.
 
 Prepare a faithful plain-text version of this complete group for RAG retrieval.
 It will appear inside a text code block in a collapsed HTML details section.
 Preserve the supplied order, including the table's position among the blocks.
-You may choose the plain-text representation that preserves the HTML table's
+You may choose the plain-text representation that preserves the table's
 meaning. Prefer literal Markdown where adequate; use explicit textual relationships
 when merged cells or other structure cannot be represented by a Markdown grid.
 Preserve all values, symbols, qualifiers, relationships and associated block content.

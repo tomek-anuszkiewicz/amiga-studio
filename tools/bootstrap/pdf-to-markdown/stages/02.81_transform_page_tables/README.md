@@ -22,15 +22,15 @@ do not join pages. Record source-ordered `table_group_segment_ids`. Warn about
 repeated associated types, captions on both sides and ambiguous shared ownership.
 Keep every source block once in the visible document, including anomalous blocks.
 
-HTML results require a separate [group inference](group_prompt.md) with the original
-crop, HTML and all associated texts in source order. Save its complete nonempty
-text in `table_rag_text` before completing. Markdown/unconverted results skip it.
+Markdown and HTML results require a separate [group inference](group_prompt.md) with the original
+crop, converted table markup and all associated texts in source order. Save its complete nonempty
+text in `table_rag_text` before completing. Only unconverted results skip it.
 Changed group inputs change the cache identity. Export and review reuse this text,
 without reinference, summarization or appended copies of associated blocks.
 
-After the last group block, HTML export adds a collapsed `Table text for RAG`
+After the last group block, Markdown and HTML export add a collapsed `Table text for RAG`
 details section with a literal fenced text block, then a collapsed `Original table
-image` section referencing the bundled crop. Markdown tables publish no crop;
+image` section referencing the bundled crop. Both formats publish their saved crop;
 unconverted tables retain their visible raster. A conservative local HTML heuristic
 warns about regular grids without effective merges or complex cell content, including
 cache results; it does not change markup, retry inference or certify fidelity.
@@ -51,3 +51,7 @@ See [review](../02.83_table_conversion_review/README.md),
 
 Stage 02.80 input remains authoritative, including page omissions.
 Table groups and companions are inferred from its corrected objects here.
+
+Existing attempts whose Markdown tables lack `table_rag_text` require explicit
+regeneration from 02.81 before review or export; downstream stages do not invent
+missing companions.
