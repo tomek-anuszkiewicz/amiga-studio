@@ -2,13 +2,34 @@
 
 ## Status and scope
 
-Planned; implementation and fragment conversion have not run.
+Implemented and technically verified; selected output assessment remains pending.
 Add Stage `02.45`, directory `02.45_recover_code_from_prose`, after `02.44`
 and before review `02.5`. For each selected page containing resolved `prose`
 objects, send the page JSON to the LLM and ask whether any prose is actually
 source code. Reclassify identified code as `code_block` and restore indentation.
 The user-selected implementation test is physical page **131** of Test Book
-example-4567. This task records the plan only.
+example-4567. Keep this plan active until the user assesses the output.
+
+## Delivery evidence
+
+- Registered worker, prompt, configuration, optional override layer, execution
+  order, dependency/selection forwarding and restart cleanup.
+- Stage 03 initializes recovered code as rendered Markdown so Stage 09 preserves
+  its fenced transcription and indentation rather than requesting it again.
+- Named attempt: `workspace/stage-02.45-prose-code-review` under the selected book.
+  Reused page-131 artifacts and actual successful status records through 02.41;
+  prepared missing 02.42-02.44 for page 131 only (four live requests, zero cache hits).
+- Pipeline 02.45 through 02.5 completed: seven eligible prose objects, one live
+  request, zero cache hits, no qualifying code and no changed segment IDs.
+  Existing code IDs are `page_0131_seg_004`, `page_0131_seg_006`, `page_0131_seg_008`.
+  No sparse 02.45 page override was written. Review PNG/JSON are in
+  `02.5_page_conversion_review/`; attempt-root `page_0131.md` contains resolved
+  saved text, excluding deferred table/graphic transcription.
+- Existing configuration/cache/restart and selection suites passed (30 PDF,
+  6 selection, 21 shared transport/configuration checks); quick pre-flight and
+  architecture gates passed (19 architecture tests). Graphify AST refresh ran.
+- Transcription and indentation quality remain for user assessment; no additional
+  source pages, full-book conversion or milestone verification ran.
 
 Stage 02.43 reviews existing code blocks; this stage reviews existing prose.
 Use the existing object types and optional page-override mechanism.

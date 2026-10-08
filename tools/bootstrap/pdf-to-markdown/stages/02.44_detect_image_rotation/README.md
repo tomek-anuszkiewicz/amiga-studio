@@ -20,7 +20,7 @@ Only changed pages receive complete-page sparse overrides in
 Preserve IDs, types, boxes, text, continuation, dimensions and order. Existing
 source IDs survive, and `replacement_stage` records this contribution.
 
-The shared resolver applies `02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44`
+The shared resolver applies `02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45`
 for review 02.5 and filtering 02.8. This worker resolves only predecessors.
 Absent optional status skips a layer; failed/running status blocks consumers.
 Restart clears 02.44 and later artifacts while retaining predecessors and cache.

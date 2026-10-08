@@ -70,7 +70,7 @@ true when the model judges it to continue another table, including an adjacent
 table on the same page; independent tables receive false. A singleton
 retains its predecessor flag along with the unchanged source object.
 Transcription stays deferred to 02.81. Completed sparse overrides layer as
-`02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44` for review/filtering, with absent optional status meaning
+`02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45` for review/filtering, with absent optional status meaning
 skipped and failed/running status blocking direct consumers. Stage 02.41 reads
 only predecessors. No generic local geometry/schema or quality gate is added.
 See [Stage 02.41](pdf-to-markdown/stages/02.41_split_tables/README.md).
@@ -82,7 +82,7 @@ the table. Otherwise retain genuine tables, reclassify unsuitable drawings,
 transcribe prose/code, or split independent elements into source-ordered existing
 types. Singleton replacements retain bbox/continuation; children receive stable
 IDs and lineage. Only changed pages receive complete-page overrides, layered as
-`02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44`; the worker reads only predecessors. Shared optional
+`02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45`; the worker reads only predecessors. Shared optional
 status and selection rules apply. Graphics carry `image_only` through Stage 03,
 receive exact original-pixel crops and remain independent raster images through
 04/08. Existing sidecar processing remains. Review 02.5/filtering 02.8 resolve the
@@ -100,6 +100,18 @@ with lineage; only changed pages receive overrides. The shared resolver layers
 02.43 after 02.42 for 02.5/02.8, while this worker reads only predecessors.
 Pages without code blocks make no model requests. Shared optional-status, page
 selection and restart rules apply. See [Stage 02.43](pdf-to-markdown/stages/02.43_reclassify_code_blocks/README.md).
+
+Stage 02.45 reviews resolved prose with one request per candidate-bearing page,
+using complete frozen page JSON, eligible IDs and the complete original Stage 01
+PNG at original detail. Return only ID/fenced-Markdown replacements, or an empty
+array. Recover actual source code and indentation without correcting, completing
+or rewriting tokens, comments, values or order. Aligned parameter/register
+descriptions remain prose. Preserve IDs, geometry, continuation, source fields
+and lineage; save changed complete pages only. The worker reads predecessors
+through 02.44; review/filtering resolve the additional 02.45 layer. Shared status,
+selection, cache and restart rules apply. Stage 03 marks recovered code already
+rendered so later formatting retains its fences and indentation. No code is
+executed or reconstructed across pages. See [Stage 02.45](pdf-to-markdown/stages/02.45_recover_code_from_prose/README.md).
 
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.
 
@@ -172,7 +184,7 @@ Full runs, intervals and individual deterministic/inference stages use
 process automatically with their inference calls and no manual task files.
 The normal pipeline has no legacy reader.
 
-The execution sequence is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
+The execution sequence is `00 -> 01 -> 02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45 -> 02.5 -> 02.8 -> 02.81 -> 02.82 -> 02.9 -> 03`, then 04-14.
 Stage 02 excludes scan artifacts and incidental fragments of adjacent pages,
 including associated text. Edge contact or incompleteness alone does not justify
 omission; intended-page content and uncertain ownership are preserved.
@@ -251,7 +263,7 @@ PNG input. It adds numeric `rotation`: the correction clockwise from current PNG
 orientation in `[0, 360)`, including fractional values. Missing means no recorded
 decision; zero explicitly records no correction. Preserve source fields and lineage,
 record the replacement stage, and write complete-page overrides only when changed.
-The resolver chain is `02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44`;
+The resolver chain is `02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45`;
 absent optional status skips a layer and failed/running status blocks consumers.
 Selection precedes candidates; pages without graphics make no requests. Existing
 model settings survive and missing settings default to `gpt-6.1-sol` / `medium`.

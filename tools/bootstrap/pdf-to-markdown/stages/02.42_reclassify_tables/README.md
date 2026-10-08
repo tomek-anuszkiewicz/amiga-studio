@@ -27,7 +27,7 @@ graphic sidecar processing remains available. Stage 02.9 also exports their
 original-PNG crop through the existing graphic path.
 
 Only changed pages receive complete-page overrides. Resolution is
-`02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44`; this worker reads only predecessors. Absent
+`02 -> 02.4 -> 02.41 -> 02.42 -> 02.43 -> 02.44 -> 02.45`; this worker reads only predecessors. Absent
 optional status skips that layer, completed status enables overrides, and
 running/failed status blocks direct consumers. Review 02.5 and filtering 02.8
 use the shared resolver; 02.81 sees only remaining tables after 02.8.

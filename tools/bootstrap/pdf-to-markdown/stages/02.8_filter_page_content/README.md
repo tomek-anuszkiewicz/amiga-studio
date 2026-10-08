@@ -1,7 +1,7 @@
 # Stage 02.8: Filter Page Content
 
 Enumerate `02_page_conversion/page_*_segments.json` in numeric physical-page order,
-selecting same-name completed sparse 02.4/02.41/02.42/02.43/02.44 overrides in that order through the shared resolver
+selecting same-name completed sparse 02.4/02.41/02.42/02.43/02.44/02.45 overrides in that order through the shared resolver
 and preserve each page's segment-array order. Write retained page objects with
 the same filenames to `02.8_filter_page_content/`. This deterministic stage
 makes no model requests and needs no inference configuration entry.

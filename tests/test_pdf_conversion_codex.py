@@ -309,7 +309,7 @@ class PdfRestartTests(unittest.TestCase):
         def worker(stage, *args):
             self.assertEqual(stage["id"], "02.5")
             retained = read_json(self.workspace / "stage_status.json")
-            self.assertEqual(set(retained), {"00", "01", "02", "02.4", "02.41", "02.42", "02.43", "02.44"})
+            self.assertEqual(set(retained), {"00", "01", "02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.45"})
             for later in self.pipeline.STAGE_REGISTRY[self.stage_idx("02.5"):]:
                 self.assertFalse((self.workspace / later["dir"]).exists())
             self.write_artifacts(stage)
@@ -336,7 +336,7 @@ class PdfRestartTests(unittest.TestCase):
             return True
 
         self.run_pipeline(["--from-stage", "02", "--to-stage", "02.5"], worker)
-        self.assertEqual(executed, ["02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.5"])
+        self.assertEqual(executed, ["02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.45", "02.5"])
         self.assertFalse(self.output.exists())
 
     def test_missing_input_of_later_selected_branch_rejects_before_cleanup(self):
@@ -367,7 +367,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual((self.workspace / "04_stream_reduction/artifact.json").read_bytes(), before)
         self.assertEqual(other_output.read_text(), "Independent conversion")
         state = read_json(self.workspace / "stage_status.json")
-        self.assertEqual(list(state), ["00", "01", "02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.5", "02.8", "02.81", "02.82", "02.9", "03", "04", "05"])
+        self.assertEqual(list(state), ["00", "01", "02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.45", "02.5", "02.8", "02.81", "02.82", "02.9", "03", "04", "05"])
 
 
     def test_explicit_restart_rebuilds_missing_output_and_later_stages(self):
@@ -451,7 +451,7 @@ class PdfRestartTests(unittest.TestCase):
     def test_individual_stage_uses_matching_interval(self):
         self.run_pipeline(["--from-stage", "02.5", "--to-stage", "02.5"],
                           lambda stage, *args: self.write_artifacts(stage) or True)
-        self.assertEqual(set(read_json(self.workspace / "stage_status.json")), {"00", "01", "02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.5"})
+        self.assertEqual(set(read_json(self.workspace / "stage_status.json")), {"00", "01", "02", "02.4", "02.41", "02.42", "02.43", "02.44", "02.45", "02.5"})
         self.assertFalse(self.output.exists())
 
 
@@ -467,6 +467,9 @@ class PdfConfigurationTests(unittest.TestCase):
              "continuation": True, "md_text": "## Continued", "bbox": [30, 900, 300, 990]},
             {"segment_id": "page_0007_seg_002", "type": "footnote", "heading_level": None,
              "continuation": False, "md_text": "*Source note*", "bbox": [60, 120, 360, 240]},
+            {"segment_id": "page_0007_seg_003", "type": "code_block", "heading_level": None,
+             "continuation": False, "md_text": "```\nlabel:\n    move.w #$0001,d0\n```",
+             "bbox": [60, 300, 360, 420], "replacement_stage": "02.45_recover_code_from_prose"},
         ]}
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
@@ -475,12 +478,15 @@ class PdfConfigurationTests(unittest.TestCase):
                 worker.build_raw_stream(workspace, {})
             validate.assert_called_once_with(workspace, "02.81_transform_page_tables")
             nodes = json.loads((workspace / "03_build_raw_stream/raw_stream.json").read_text())
-            self.assertEqual([n["md_text"] for n in nodes], ["## Continued", "*Source note*"])
+            self.assertEqual([n["md_text"] for n in nodes],
+                             ["## Continued", "*Source note*", objects["segments"][2]["md_text"]])
             self.assertEqual(nodes[0]["raw_text"], "## Continued")
             self.assertEqual(nodes[0]["bbox"], [10, 300, 100, 330])
             self.assertEqual(nodes[0]["bbox_pixels"], objects["segments"][0]["bbox"])
             self.assertTrue(nodes[0]["continuation"])
             self.assertEqual(nodes[1]["type"], "footnote")
+            self.assertEqual(nodes[2]["rendered_markdown"], objects["segments"][2]["md_text"])
+            self.assertEqual(nodes[2]["raw_text"], nodes[2]["rendered_markdown"])
 
     def test_raw_stream_read_failure_does_not_write_output(self):
         script = ROOT / "tools/bootstrap/pdf-to-markdown/stages/03_build_raw_stream/build_stream.py"
