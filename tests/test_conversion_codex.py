@@ -13,9 +13,15 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools/bootstrap"))
-from conversion import CodexClient, load_config
+sys.path.insert(0, str(ROOT / "tools/bootstrap/html-to-markdown"))
+sys.path.insert(0, str(ROOT / "tools/bootstrap/pdf-to-markdown"))
+from conversion import CodexClient
+from support.client import HtmlClient
+from support.config import load_config, validate_config, HTML_STAGES
+from support.transport import HtmlTransport
+from common.pdf_config import load_config as load_pdf_config
 from conversion.cache import ResponseCache, digest, identity
-from conversion.config import selection, validate_config, HTML_STAGES
+from conversion.config import selection
 from conversion.transport import CodexTransport
 
 spec = importlib.util.spec_from_file_location("html_pipeline", ROOT / "tools/bootstrap/html-to-markdown/pipeline.py")
@@ -81,14 +87,13 @@ class ConfigTests(unittest.TestCase):
                 validate_config(value_config, HTML_STAGES, HTML_STAGES)
 
     def test_pdf_configuration_is_parsed_without_html_validation(self):
-        from conversion.config import PDF_STAGES
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "config.yaml"
             path.write_text("render: {dpi: 72}\nllm: {}\nllm: {extra: retained}\n")
-            self.assertEqual(load_config(path, known_stages=PDF_STAGES)["llm"], {"extra": "retained"})
+            self.assertEqual(load_pdf_config(path)["llm"], {"extra": "retained"})
 
     def test_runtime_capability_validation(self):
-        transport = CodexTransport.__new__(CodexTransport)
+        transport = HtmlTransport.__new__(HtmlTransport)
         transport.models = [{"model": "gpt-6.1-sol", "supportedReasoningEfforts": [{"reasoningEffort": "medium"}], "inputModalities": ["text"]}]
         selected = selection(config(), "html_to_markdown")
         transport.validate(selected)
@@ -108,15 +113,13 @@ class ClientTests(unittest.TestCase):
         self.cache = ResponseCache(Path(self.tmp.name) / "codex")
 
     def client(self, transport):
-        return CodexClient(config(), stage="html_to_markdown", transport=transport, cache=self.cache)
+        return HtmlClient(config(), transport=transport, cache=self.cache)
 
-    def test_text_vision_json_share_bound_selection(self):
+    def test_json_requests_share_bound_selection(self):
         transport = FakeTransport()
-        client = self.client(transport)
-        client.generate_text("text")
+        client = CodexClient(config(), stage="html_to_markdown", transport=transport, cache=self.cache)
         image = Path(self.tmp.name) / "image.png"
         image.write_bytes(b"sample")
-        client.generate_vision("vision", [image])
         transport.text = '{"signal":"CCK"}'
         schema = {"type": "object", "required": ["signal"], "properties": {"signal": {"type": "string"}}}
         self.assertEqual(client.generate_json("json", schema=schema), {"signal": "CCK"})
@@ -129,18 +132,17 @@ class ClientTests(unittest.TestCase):
         schema = {"type": "object", "properties": {"signal": {"type": "string"}}, "required": ["signal"]}
         for method, arguments, response in (
             ("generate_text", {}, "Saved text"),
-            ("generate_vision", {"image_path": image}, "Saved image response"),
             ("generate_json", {"schema": schema, "image_path": image}, '{"signal":"CCK"}'),
         ):
             with self.subTest(method=method):
                 cache_directory = Path(self.tmp.name) / method
                 transport = FakeTransport(text=response)
-                with CodexClient(config(), stage="html_to_markdown", transport=transport,
+                with HtmlClient(config(), stage="html_to_markdown", transport=transport,
                                  cache=ResponseCache(cache_directory)) as first:
                     expected = getattr(first, method)("sample", **arguments)
                     self.assertEqual((first.call_count, first.cached_call_count), (1, 0))
                 unused = FakeTransport(error=RuntimeError("Cache replay must not call the model"))
-                with CodexClient(config(), stage="html_to_markdown", transport=unused,
+                with HtmlClient(config(), stage="html_to_markdown", transport=unused,
                                  cache=ResponseCache(cache_directory)) as replay:
                     self.assertEqual(getattr(replay, method)("sample", **arguments), expected)
                     self.assertEqual((replay.call_count, replay.cached_call_count), (0, 1))
@@ -206,10 +208,10 @@ class ClientTests(unittest.TestCase):
                 self.assertEqual(len(transport.calls), 1)
                 self.assertEqual(self.cache.load(request)["text"], "Fresh response")
 
-    def test_cached_json_is_validated_before_reuse_without_model_calls(self):
+    def test_cached_json_is_parsed_before_reuse_without_model_calls(self):
         schema = {"type": "object", "properties": {"signal": {"type": "string"}}, "required": ["signal"]}
         request = identity(selection(config(), "html_to_markdown"), "sample", [], schema)
-        for response in ('{"signal":12}', "truncated {", ""):
+        for response in ("truncated {", ""):
             with self.subTest(response=response):
                 self.cache.save(request, {"status": "completed", "text": response})
                 transport = FakeTransport()
@@ -224,15 +226,15 @@ class ClientTests(unittest.TestCase):
         environment_directory = Path(self.tmp.name) / "environment-cache"
         explicit_directory = Path(self.tmp.name) / "explicit-cache"
         with patch.dict(os.environ, {"CONVERSION_CACHE_DIR": str(environment_directory)}):
-            with CodexClient(config(), stage="html_to_markdown", transport=FakeTransport(text="Environment response")) as client:
+            with HtmlClient(config(), transport=FakeTransport(text="Environment response")) as client:
                 self.assertEqual(client.generate_text("sample"), "Environment response")
                 self.assertEqual(client.cache.directory, environment_directory)
-            with CodexClient(config(), stage="html_to_markdown", transport=FakeTransport(text="Explicit response"),
+            with HtmlClient(config(), transport=FakeTransport(text="Explicit response"),
                              cache=ResponseCache(explicit_directory)) as client:
                 self.assertEqual(client.generate_text("sample"), "Explicit response")
                 self.assertEqual(client.cache.directory, explicit_directory)
             unused = FakeTransport(error=RuntimeError("Environment cache replay must not call the model"))
-            with CodexClient(config(), stage="html_to_markdown", transport=unused) as replay:
+            with HtmlClient(config(), transport=unused) as replay:
                 self.assertEqual(replay.generate_text("sample"), "Environment response")
                 self.assertEqual((replay.call_count, replay.cached_call_count), (0, 1))
             self.assertEqual(unused.calls, [])
@@ -258,14 +260,9 @@ class ClientTests(unittest.TestCase):
 
     def test_failed_interrupted_empty_and_invalid_json_never_cached(self):
         for transport in (FakeTransport(status="failed"), FakeTransport(status="interrupted"), FakeTransport(text=""),
-                          FakeTransport(text="truncated {"), FakeTransport(text='{"signal":12}')):
+                          FakeTransport(text="truncated {")):
             with self.subTest(text=transport.text, status=transport.status), self.assertRaises(Exception):
                 self.client(transport).generate_json("schema", schema={"type":"object", "properties":{"signal":{"type":"string"}}, "required":["signal"]})
-        def reject_signal(value):
-            raise ValueError("Rejected signal")
-        with self.assertRaisesRegex(ValueError, "Rejected signal"):
-            self.client(FakeTransport(text='{"signal":"invalid"}')).generate_json(
-                "invalid signal", schema={"type": "object"}, validator=reject_signal)
         self.assertFalse(self.cache.directory.exists())
 
     def test_auth_quota_timeout_propagate_without_retries(self):
@@ -281,8 +278,7 @@ class ClientTests(unittest.TestCase):
         transport = FakeTransport(text='{"segments": "unvalidated"}')
         transport.validate = lambda *args, **kwargs: self.fail("PDF model configuration must not be locally validated")
         with CodexClient(pdf_config, stage="02_page_conversion", transport=transport, cache=self.cache) as client:
-            result = client.generate_json("PDF", schema={"type": "object", "required": ["missing"]},
-                                          validator=lambda value: self.fail("PDF callback must not execute"))
+            result = client.generate_json("PDF", schema={"type": "object", "required": ["missing"]})
             self.assertEqual(result, {"segments": "unvalidated"})
             client.generate_json("PDF", schema={"type": "object", "required": ["missing"]})
             self.assertEqual(len(transport.calls), 1)
@@ -347,7 +343,7 @@ class WireClient:
 
 class TransportTests(unittest.TestCase):
     def transport(self, wire):
-        transport = CodexTransport.__new__(CodexTransport)
+        transport = HtmlTransport.__new__(HtmlTransport)
         transport._client = wire
         transport._directory = SimpleNamespace(name="isolated-cwd")
         transport.models = [{"model":"gpt-6.1-sol", "supportedReasoningEfforts":[{"reasoningEffort":"medium"}], "inputModalities":["text","image"]}]
@@ -365,7 +361,7 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(wire.turns[0][2]["effort"], "medium")
         pdf_config = {"llm": {"stages": {"02_page_conversion": {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}}}}
         transport.models = []
-        transport.run(selection(pdf_config, "02_page_conversion"), "PDF without catalog precheck")
+        CodexTransport.run(transport, selection(pdf_config, "02_page_conversion"), "PDF without catalog precheck")
         self.assertEqual(len(wire.threads), 3)
 
     def test_timeout_closes_transport_and_rejects_completion(self):

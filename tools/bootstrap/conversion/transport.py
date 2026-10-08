@@ -5,7 +5,6 @@ from pathlib import Path
 import tempfile
 import threading
 import time
-from .config import PDF_STAGES
 
 SDK_VERSION = "0.160.1"
 BASE_INSTRUCTIONS = (
@@ -28,7 +27,7 @@ class CodexTransport:
     def __init__(self):
         from openai_codex import CodexConfig
         from openai_codex.client import CodexClient
-        from openai_codex.generated.v2_all import ConfigReadResponse, ModelListResponse
+        from openai_codex.generated.v2_all import ConfigReadResponse
 
         if version("openai-codex") != SDK_VERSION or version("openai-codex-cli-bin") != SDK_VERSION:
             raise RuntimeError(f"Install conversion requirements: SDK/runtime must be {SDK_VERSION}")
@@ -59,33 +58,11 @@ class CodexTransport:
             account = self._client.account_read().account
             if account is None or type(account.root).__name__ != "ChatgptAccount":
                 raise RuntimeError("Conversion requires Codex ChatGPT sign-in; API-key mode is not supported")
-            self.models = []
-            cursor = None
-            while True:
-                response = self._client.request("model/list", {"cursor": cursor}, response_model=ModelListResponse)
-                data = response.model_dump(mode="json", by_alias=True)
-                self.models.extend(data["data"])
-                cursor = data["nextCursor"]
-                if not cursor:
-                    break
         except BaseException:
             self.close()
             raise
 
-    def validate(self, selected, *, images=False):
-        model = next((m for m in self.models if m["model"] == selected.model), None)
-        if model is None:
-            raise ValueError(f"Model not in runtime catalog: {selected.model}")
-        efforts = {e["reasoningEffort"] for e in model["supportedReasoningEfforts"]}
-        if selected.reasoning_effort not in efforts:
-            raise ValueError(f"Unsupported effort for {selected.model}: {selected.reasoning_effort}")
-        required = {"text", "image"} if images else {"text"}
-        if not required.issubset(model["inputModalities"]):
-            raise ValueError(f"{selected.stage}: missing input capabilities {required}")
-
     def run(self, selected, prompt, *, images=(), schema=None, timeout=180):
-        if selected.stage not in PDF_STAGES:
-            self.validate(selected, images=bool(images))
         started = time.monotonic()
         expired = threading.Event()
 

@@ -7,7 +7,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from conversion.config import load_config, PDF_STAGES
+from common.pdf_config import load_config
 from common.pdf_artifacts import page_files
 from common.pdf_selection import selected_pages
 from common.pdf_artifacts import read_json, write_json
@@ -39,7 +39,7 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--page-ranges")
     args = parser.parse_args()
-    load_config(args.config, known_stages=PDF_STAGES, required_stages=())
+    load_config(args.config)
     filter_page_content(args.workspace.resolve(), pages=selected_pages(args.page_ranges))
 
 

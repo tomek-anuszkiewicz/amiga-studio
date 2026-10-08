@@ -7,7 +7,7 @@ and let the user assess content. Technical checks do not certify conversion qual
 
 ## Run an attempt
 
-Install shared dependencies with `python -m pip install -r tools/bootstrap/conversion/requirements.txt`
+Install dependencies with `python -m pip install -r tools/bootstrap/pdf-to-markdown/requirements.txt`
 and authenticate with `codex login`. Inference uses the pinned Codex transport,
 ChatGPT authentication, isolated requests and original-detail images.
 
@@ -26,6 +26,9 @@ The attempt's existing `config.yaml` takes precedence; `--config` initializes a
 missing file. Existing model settings remain. Rendering uses fixed 300 DPI PNGs,
 inference concurrency 1 and a 180-second request timeout. Configuration is parsed
 without local validation; ordinary YAML, JSON, image/PDF and filesystem errors stop execution.
+PDF configuration parsing lives in [common/pdf_config.py](common/pdf_config.py).
+Shared conversion code supplies transport, completion handling, cache and metrics;
+HTML configuration, model-catalog checks and publication are owned by HTML support.
 
 ## Stage data and execution
 

@@ -33,9 +33,11 @@ SKILL_DIR = Path(__file__).resolve().parent
 
 # Share the transport with PDF workers; support execution from any directory.
 sys.path.insert(0, str(SKILL_DIR.parent))
-from conversion import CodexClient, load_config
+sys.path.insert(0, str(SKILL_DIR))
+from support.client import HtmlClient
+from support.config import load_config
 from conversion.cache import ResponseCache
-from conversion.publication import book_directory, check_destination, publish_output
+from support.publication import book_directory, check_destination, publish_output
 
 
 def run_command(cmd: List[str], check: bool = True) -> bool:
@@ -193,7 +195,7 @@ def validate_markdown(content: str):
         raise ValueError("Conversion requires a document heading")
 
 
-def convert_with_llm(html_content: str, document_title: str, prompt_file: Path, client: CodexClient) -> str:
+def convert_with_llm(html_content: str, document_title: str, prompt_file: Path, client: HtmlClient) -> str:
     """Transcribe HTML with the selected Codex stage; failures propagate."""
     base_prompt = prompt_file.read_text(encoding="utf-8")
     prompt = (
@@ -207,7 +209,7 @@ def convert_with_llm(html_content: str, document_title: str, prompt_file: Path, 
     return result
 
 
-def convert_single_html(input_file: Path, output_dir: Path, doc_title: str, client: CodexClient) -> Path:
+def convert_single_html(input_file: Path, output_dir: Path, doc_title: str, client: HtmlClient) -> Path:
     print(f"[*] Processing single HTML article: {input_file.name}")
     raw_html = input_file.read_text(encoding="utf-8", errors="replace")
     soup = BeautifulSoup(raw_html, "html.parser") if BeautifulSoup else None
@@ -237,7 +239,7 @@ def convert_single_html(input_file: Path, output_dir: Path, doc_title: str, clie
     return out_file
 
 
-def convert_crawl_directory(input_dir: Path, output_dir: Path, doc_title: str, client: CodexClient) -> Path:
+def convert_crawl_directory(input_dir: Path, output_dir: Path, doc_title: str, client: HtmlClient) -> Path:
     print(f"[*] Processing multi-page HTML crawl in: {input_dir.name}")
     title = doc_title or input_dir.name
     out_file = output_dir / f"{title}.md"
@@ -328,7 +330,7 @@ def main():
         check_destination(destination)
     config = load_config(args.config)
     cache = ResponseCache(args.cache_dir) if args.cache_dir else None
-    with CodexClient(config, stage="html_to_markdown", cache=cache) as client:
+    with HtmlClient(config, stage="html_to_markdown", cache=cache) as client:
         output_dir.mkdir(parents=True, exist_ok=True)
         doc_name = args.document_name or source_dir.name.removesuffix("-tmp")
         for previous in output_dir.glob("*.md"):

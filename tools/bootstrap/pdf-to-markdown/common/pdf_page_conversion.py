@@ -7,7 +7,6 @@ TYPES = ["cover", "header", "footer", "toc_heading", "toc", "thumb_index", "chap
          "callout", "callout_text", "prose", "code_block", "table", "graphic", "caption",
          "footnote", "table_legend", "index_heading", "index",
          "list_of_tables_heading", "list_of_tables", "list_of_figures_heading", "list_of_figures"]
-DEFERRED_TEXT_TYPES = {"graphic", "table", "cover"}
 SEGMENT = object_schema({
     "type": {"type": "string", "enum": TYPES},
     "continuation": BOOL,

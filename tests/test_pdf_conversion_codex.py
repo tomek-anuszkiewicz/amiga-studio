@@ -14,8 +14,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap/pdf-to-markdown"))
-from conversion import load_config
-from conversion.config import PDF_STAGES
+from common.pdf_config import load_config
 import yaml
 from common.pdf_artifacts import read_json, write_json
 from common.pdf_artifacts import compact_objects
@@ -133,8 +132,7 @@ class PdfOcrValidationTests(unittest.TestCase):
             "prepare_ocr_fragment", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
         stage = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(stage)
-        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
-                             known_stages=PDF_STAGES, required_stages=())
+        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")
         with tempfile.TemporaryDirectory() as directory, pymupdf.open() as ocr:
             source, workspace = Path(directory) / "source.pdf", Path(directory) / "workspace"
             ocr.new_page(width=200, height=200).insert_text((20, 40), "Recovered text", render_mode=3)
@@ -163,8 +161,7 @@ class PdfOcrValidationTests(unittest.TestCase):
 
         stage = load_stage("prepare_fragment", "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
         preprocess = load_stage("preprocess_fragment", "tools/bootstrap/pdf-to-markdown/stages/01_preprocess/preprocess.py")
-        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
-                             known_stages=PDF_STAGES, required_stages=())
+        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")
         with tempfile.TemporaryDirectory() as directory:
             source, workspace = Path(directory) / "source.pdf", Path(directory) / "workspace"
             with pymupdf.open() as document:
@@ -219,8 +216,7 @@ class PdfOcrValidationTests(unittest.TestCase):
             "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/00_text_layer/prepare_text_layer.py")
         stage = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(stage)
-        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml",
-                             known_stages=PDF_STAGES, required_stages=())
+        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")
         with tempfile.TemporaryDirectory() as directory:
             source, workspace = Path(directory) / "source.pdf", Path(directory) / "workspace"
             with pymupdf.open() as document:
@@ -245,7 +241,7 @@ class PdfRestartTests(unittest.TestCase):
         self.workspace = Path(self.tmp.name) / "workspace"
         self.workspace.mkdir()
         self.output = self.workspace / "02.81_transform_page_tables"
-        self.config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml", known_stages=PDF_STAGES, required_stages=PDF_STAGES)
+        self.config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")
         self.pdf = Path(self.tmp.name) / "sample.pdf"
         self.pdf.write_bytes(b"Worker fixture")
         self.config["input"] = {"source_pdf": "../sample.pdf", "pages": list(range(5, 11))}
@@ -422,10 +418,8 @@ class PdfConfigurationTests(unittest.TestCase):
 
 
     def test_all_inference_stage_pairs_are_explicit(self):
-        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml", known_stages=PDF_STAGES, required_stages=PDF_STAGES)
-        self.assertEqual(set(config["llm"]["stages"]), PDF_STAGES)
-        self.assertNotIn("00_text_layer", PDF_STAGES)
-        self.assertNotIn("01_preprocess", PDF_STAGES)
+        config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")
+        self.assertEqual(set(config["llm"]["stages"]), {"02_page_conversion", "02.81_transform_page_tables"})
 
 
     def test_missing_predecessor_does_not_clear_downstream(self):

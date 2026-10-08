@@ -1131,3 +1131,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify refresh completes
   - existing workspace exports are preserved
   - book generator remains unimplemented
+---
+
+### [2026-10-08 22:42 CET] — Separate HTML-only conversion elements from PDF infrastructure
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/pdf-to-markdown/common`
+  - `tools/bootstrap/html-to-markdown/support`
+  - `converter entry points and requirements`
+  - `tests`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Move HTML YAML loader, config validation, model catalog checks, text requests and publication into HTML support
+  - keep generic Codex execution, completion, cache identity and metrics shared
+  - move direct PDF config parsing into PDF common
+  - remove unused vision method, JSON schema enforcement branch, stage catalog and PDF constants
+  - split document dependencies by converter and remove unused jsonschema
+- **Architectural Rationale & Trade-Offs**:
+  - Determine ownership by individual functions, methods and constants rather than moving mixed modules wholesale
+  - preserve strict HTML configuration/Markdown checks and unvalidated PDF schema guidance
+- **Verification & Test Results**:
+  - Audited 50 top-level definitions and reviewed client/transport methods
+  - 63 existing conversion, PDF, publication and bootstrap tests pass
+  - quick preflight and all 19 architecture tests pass
+  - both CLI help commands load
+  - Graphify refresh completes
+  - no live conversion or dependency installation performed

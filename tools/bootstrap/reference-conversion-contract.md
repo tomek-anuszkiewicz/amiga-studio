@@ -244,6 +244,14 @@ HTML and PDF share Codex transport and cache. HTML retains strict
 configuration and local response validation; PDF configuration is parsed directly.
 Existing files alone do not establish successful predecessor execution.
 
+`conversion/` owns shared model/effort selection, authentication, request execution,
+completion handling, response-cache identity and metrics. HTML-only YAML loading,
+configuration/model validation, text requests and publication live in
+`html-to-markdown/support/`. Direct PDF YAML parsing lives in
+`pdf-to-markdown/common/pdf_config.py`; schemas remain request guidance and JSON
+parsing remains necessary IO. Each converter's requirements file includes the
+shared SDK/YAML dependencies and its own document-processing dependencies.
+
 PDF Stage 00 publishes a separate prepared `<source stem>-ocr.pdf` beside the
 source, containing every source page in original order. If that file already
 exists, Stage 00 skips OCR and PDF writing. File existence controls reuse, including when source or

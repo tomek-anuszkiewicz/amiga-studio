@@ -16,7 +16,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from conversion.config import load_config as parse_config, PDF_STAGES
+from common.pdf_config import load_config as parse_config
 from common.pdf_artifacts import read_json, write_json, prepared_pdf_path
 from common.pdf_selection import selected_pages
 
@@ -355,7 +355,7 @@ def main():
 
     config_path = workspace / "config.yaml"
     config_source = config_path if config_path.exists() else args.config.resolve()
-    config = parse_config(config_source, known_stages=PDF_STAGES, required_stages=())
+    config = parse_config(config_source)
     if start <= resolve_stage_idx("02.81") <= end:
         config.setdefault("llm", {}).setdefault("stages", {}).setdefault(
             "02.81_transform_page_tables", {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})

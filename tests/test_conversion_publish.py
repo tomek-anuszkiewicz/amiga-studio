@@ -11,7 +11,8 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap"))
-from conversion.publication import book_directory, check_destination, publish_output
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap/html-to-markdown"))
+from support.publication import book_directory, check_destination, publish_output
 
 
 class PublicationTests(unittest.TestCase):
@@ -64,7 +65,7 @@ class PublicationTests(unittest.TestCase):
             (self.book / "original.md").write_text("original", encoding="utf-8")
             return original_copy(source, destination)
 
-        with patch("conversion.publication.shutil.copy2", side_effect=concurrent_write):
+        with patch("support.publication.shutil.copy2", side_effect=concurrent_write):
             with self.assertRaises(FileExistsError):
                 publish_output(self.output, self.book)
         self.assertEqual((self.book / "original.md").read_text(encoding="utf-8"), "original")
@@ -72,7 +73,7 @@ class PublicationTests(unittest.TestCase):
 
     def test_copy_failure_leaves_empty_destination_and_source_intact(self):
         self.book.mkdir()
-        with patch("conversion.publication.shutil.copy2", side_effect=OSError("copy failed")):
+        with patch("support.publication.shutil.copy2", side_effect=OSError("copy failed")):
             with self.assertRaises(OSError):
                 publish_output(self.output, self.book)
         self.assertEqual(list(self.book.iterdir()), [])
@@ -95,7 +96,7 @@ class PublicationTests(unittest.TestCase):
             source = self.root / "Book-tmp/source.html"
             source.write_text("<p>Source</p>", encoding="utf-8")
             argv += ["--input", str(source)]
-            client_name = "CodexClient"
+            client_name = "HtmlClient"
             with patch.object(sys, "argv", argv), patch.object(pipeline, client_name) as client:
                 with self.assertRaises(FileExistsError):
                     pipeline.main()
@@ -123,7 +124,7 @@ class PublicationTests(unittest.TestCase):
         (crawl / "index.html").write_text("<p>Source</p>", encoding="utf-8")
         argv = ["pipeline.py", "--input", str(crawl),
                 "--config", str(root / "tools/bootstrap/html-to-markdown/config.yaml")]
-        with patch.object(pipeline, "CodexClient") as client_type, patch.object(pipeline, "extract_assets"):
+        with patch.object(pipeline, "HtmlClient") as client_type, patch.object(pipeline, "extract_assets"):
             client = client_type.return_value.__enter__.return_value
             client.generate_text.return_value = "---\ntitle: Book\n---\n# Book\n"
             client.call_count, client.cached_call_count, client.metrics = 1, 0, []

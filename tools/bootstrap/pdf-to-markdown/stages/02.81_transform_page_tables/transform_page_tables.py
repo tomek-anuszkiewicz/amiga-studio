@@ -12,7 +12,7 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
-from conversion.config import load_config, PDF_STAGES
+from common.pdf_config import load_config
 from common.pdf_artifacts import write_json
 from common.pdf_page_conversion import read_conversion
 from common.pdf_schemas import object_schema, STRING
@@ -32,7 +32,7 @@ def transform_tables(workspace, config, pages=None):
     counts = dict.fromkeys(("markdown", "html", "unconverted"), 0)
     saved_pages = 0
     with tempfile.TemporaryDirectory(prefix=".02.81-", dir=workspace) as temporary, \
-            CodexClient(config, stage=STAGE, images=True) as codex:
+            CodexClient(config, stage=STAGE) as codex:
         for entry, page in read_conversion(workspace, input_dir,
                                            pages=pages):
             tables = [s for s in page["segments"] if s["type"] == "table"]
@@ -73,7 +73,7 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--page-ranges")
     args = parser.parse_args()
-    transform_tables(args.workspace.resolve(), load_config(args.config, known_stages=PDF_STAGES),
+    transform_tables(args.workspace.resolve(), load_config(args.config),
                      pages=selected_pages(args.page_ranges))
 
 

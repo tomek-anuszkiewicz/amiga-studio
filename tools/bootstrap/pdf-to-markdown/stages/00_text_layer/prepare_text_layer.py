@@ -10,7 +10,7 @@ import pymupdf
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from common.pdf_runtime import RENDER_DPI
-from conversion.config import load_config, PDF_STAGES
+from common.pdf_config import load_config
 from common.pdf_artifacts import write_json, read_json, prepared_pdf_path
 from common.pdf_geometry import page_geometry, text_blocks
 
@@ -129,7 +129,7 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--page-ranges")
     args = parser.parse_args()
-    config = load_config(args.config, known_stages=PDF_STAGES, required_stages=())
+    config = load_config(args.config)
     prepare_text_layer(args.pdf, args.workspace, config, args.page_ranges)
 
 

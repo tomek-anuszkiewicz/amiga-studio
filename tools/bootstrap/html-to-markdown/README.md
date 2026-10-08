@@ -4,6 +4,11 @@ This Python command-line program converts HTML documents (Microsoft Word exports
 
 `pipeline.py` orchestrates file processing and calls Codex through the shared [conversion client](../conversion/client.py). LLM transcription results are not guaranteed to be deterministic. Conversion instructions live in [`references/llm-transcription-prompt.md`](references/llm-transcription-prompt.md).
 
+HTML-owned [support](support/__init__.py) implements strict YAML loading,
+configuration/model checks, validated text requests and protected publication.
+The shared conversion layer owns authentication, request execution, completion
+handling, response caching and metrics.
+
 For development, follow the [developer-led workflow](../reference-conversion-contract.md#development-workflow): make the requested change, convert the fragment selected by the user when requested, and let the user assess the output. Automatic tests follow the [bootstrap converter scope](../../../.agents/rules/unit-testing-policy.md#bootstrap-converter-scope).
 
 ## Quick Start
@@ -11,7 +16,7 @@ For development, follow the [developer-led workflow](../reference-conversion-con
 Install the pinned SDK/runtime and dependencies, then sign in to Codex with ChatGPT. API-key mode is rejected:
 
 ```powershell
-python -m pip install -r tools/bootstrap/conversion/requirements.txt
+python -m pip install -r tools/bootstrap/html-to-markdown/requirements.txt
 codex login
 ```
 
