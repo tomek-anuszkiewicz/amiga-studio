@@ -133,9 +133,27 @@ class TestSelection(unittest.TestCase):
                 self.assertEqual(execute.call_count, 0 if plan else 3 if mode == "--commit" else 2)
 
     def test_cli_rejects_unknown_or_conflicting_modes(self):
-        for args in (("--commit", "--quick"), ("--commit", "--milestone"), ()):
+        for args in (("--commit", "--quick"), ("--commit", "--milestone"), ("--plan",)):
             result = subprocess.run([sys.executable, str(ROOT / "tools/harness/verify.py"), *args], capture_output=True)
             self.assertEqual(result.returncode, 2)
+
+    def test_no_arguments_show_instructions_without_running_verification(self):
+        import contextlib
+        import io
+        output = io.StringIO()
+        with (
+            patch.object(VERIFY, "collect_changes") as collect,
+            patch.object(VERIFY, "snapshot") as snapshot,
+            patch.object(VERIFY, "quality_gates") as gates,
+            patch.object(VERIFY, "execute_test") as execute,
+            contextlib.redirect_stdout(output),
+        ):
+            self.assertEqual(VERIFY.main([]), 0)
+        for operation in (collect, snapshot, gates, execute):
+            operation.assert_not_called()
+        for text in ("--commit", "--milestone", "--verify-dma", "--verify-singlestep",
+                     "--plan", "staged, unstaged or new", "without\n    executing"):
+            self.assertIn(text, output.getvalue())
 
     def test_vamiga_printed_failure_is_not_a_successful_gate(self):
         command = ["cargo", "run"]

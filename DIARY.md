@@ -2294,3 +2294,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify updated
   - full commit verification ran without staging: quality gates and ordinary crate tests passed, existing test_benchmark_trace, test_vamiga_copper, test_vamiga_harness and PDF publication contract failures remain. Trace tests rewrote tracked reference outputs, causing snapshot rejection
   - generated traces preserved under ignored diagnostics and original references restored. Milestone execution not run.
+---
+
+### [2026-10-09 20:17 CEST] — VERIFY-06: Show verification instructions without arguments
+- **Affected Subsystems**:
+  - `Verification CLI`
+  - `testing documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Print detailed help and exit successfully when no arguments are provided
+  - Explain commit and milestone sets, conditional CPU-suite selection, explicit selectors and plan-only behavior
+  - Preserve invalid argument errors and add a regression proving help performs no verification
+- **Architectural Rationale & Trade-Offs**:
+  - Expose the available verification sets and their selection rules directly at the command entry point.
+- **Verification & Test Results**:
+  - 13 verifier regression tests passed
+  - manual no-argument and help output checked
+  - documentation links and governance passed
+  - Graphify updated
+  - full commit verification retains existing trace, Copper, capture matcher and PDF publication failures plus snapshot rejection from generated traces. Generated reference traces restored without changing goldens. Milestone execution not run.

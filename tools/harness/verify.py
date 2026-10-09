@@ -201,13 +201,50 @@ def execute_test(name, command, overrides):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""Verification sets:
+  --commit
+    Formatting, Clippy, architecture rules, API-reference scanning and per-commit
+    hardware/code audits; all ordinary crate tests, standard harness tests and
+    Python tool contracts.
+    Also selects Cartesian DMA and full SingleStepTests when their relevant
+    CPU, shared contract or test-harness paths change (staged, unstaged or new).
+    Each CPU suite has its own change triggers; unrelated changes select neither.
+
+  --milestone
+    Additional hardware/code audits, documentation/governance and staged English
+    checks; chipset throughput comparison and all runnable vAmigaTS captures.
+    A separate set: it does not include --commit or automatically select CPU suites.
+    To close a milestone, run both --commit and --milestone.
+
+  --verify-dma / --verify-singlestep
+    Explicitly run Cartesian DMA / full SingleStepTests regardless of changes.
+    These sets may run alone, together, or alongside --commit or --milestone.
+
+  --plan
+    Show the selected checks, test commands and environment overrides without
+    executing checks or tests. Combine it with a verification set.
+
+All sets run on the current working tree; no staging or pending changes required.
+The verifier does not create a Git commit.
+
+Examples:
+  python tools/harness/verify.py --commit
+  python tools/harness/verify.py --milestone
+  python tools/harness/verify.py --commit --plan
+  python tools/harness/verify.py --verify-dma --verify-singlestep
+""")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--commit", action="store_true", help="Run all standard tests; select DMA/SingleStep from working-tree changes")
     mode.add_argument("--milestone", action="store_true", help="Run only milestone audits, chipset throughput and full vAmiga captures")
     parser.add_argument("--verify-dma", action="store_true", help="Run the Cartesian DMA set, alone or alongside a completion profile")
     parser.add_argument("--verify-singlestep", action="store_true", help="Run the full SingleStepTests set, alone or alongside a completion profile")
     parser.add_argument("--plan", action="store_true", help="Print selected commands without executing checks")
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv:
+        parser.print_help()
+        return 0
     args = parser.parse_args(argv)
     if not any((args.commit, args.milestone, args.verify_dma, args.verify_singlestep)):
         parser.error("Select --commit, --milestone, --verify-dma or --verify-singlestep")

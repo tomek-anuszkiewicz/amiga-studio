@@ -4,6 +4,8 @@ This document describes verification against CPU vectors, integration scenarios,
 
 ## Completion verification
 
+Run `python tools/harness/verify.py` without arguments (or with `--help`) to display the verification sets, automatic CPU-suite selection rules, plan behavior and command examples. This prints instructions and exits successfully without running verification.
+
 Verification runs on the current working tree and does not require staging or pending changes. For milestone closure run both separate sets, once each:
 
 ```powershell
