@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "tooling"
 status: "active"
 created: 2026-09-17
-updated: 2026-09-22
+updated: 2026-10-09
 related: ["[Rust Guidelines.md](Rust%20Guidelines.md)", "[Testing Strategy and Quality Assurance.md](Testing%20Strategy%20and%20Quality%20Assurance.md)", "[General Architecture.md](General%20Architecture.md)"]
 ---
 
@@ -189,7 +189,7 @@ Before committing any modifications to PowerShell scripts:
    ```
 4. **Pre-Flight Quality Gate:**
    ```powershell
-   python tools/harness/pre_flight.py
+   python tools/harness/verify.py --commit
    ```
 
 ---

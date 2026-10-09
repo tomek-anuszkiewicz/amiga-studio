@@ -87,7 +87,7 @@ When invoked without a narrower scope, run:
 
 ```powershell
 python tools/harness/audit_docs_quality.py --all
-python tools/harness/pre_flight.py
+python tools/harness/verify.py --commit
 ```
 
 Only after both checks succeed, use [`$index-amiga-rag`](../index-amiga-rag/SKILL.md)
@@ -148,5 +148,5 @@ Report observed results; mark checks that were not run instead of copying the ex
 - **Semantic Documentation-to-Code:** [PASS | <count> discrepancies] (registers, memory map, crate topology, signals, quirks)
 - **Workflow Invariants:** [PASS | <count> issues] (diary structure/timestamps, roadmap file/checkboxes)
 - **Manual Review:** <inspected scope and unresolved questions; mark unrun reviews>
-- **Verification:** `pre_flight.py` (PASS), `test_architecture_rules` (PASS)
+- **Verification:** `verify.py` (PASS), `test_architecture_rules` (PASS)
 ```

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Amiga 500 Emulator: Test Tier Runner CLI
+Amiga 500 Emulator: Diagnostic Test Tier Runner CLI
+Completion uses verify.py --commit / --milestone, which owns change-based selection.
 Runs unit, integration, and CPU/bus verification; whole-machine captures form the separate fourth tier:
   - Tier 1 (--unit): Fast, isolated unit tests (< 2s).
   - Tier 2 (--integration): Multi-crate integration & headless UI interaction tests.
@@ -123,7 +124,7 @@ def run_tier1_unit(quiet=False):
 
     total_elapsed = time.time() - total_start
     print(
-        f"[PASS] Tier 1 Unit Tests: 23 crates + 7 test_runner unit suites ({total_elapsed:.2f}s)"
+        f"[PASS] Tier 1 Unit Tests: 21 crates + 7 test_runner unit suites ({total_elapsed:.2f}s)"
     )
     return True, total_elapsed
 

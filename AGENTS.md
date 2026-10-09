@@ -51,12 +51,11 @@ Every discrete task is validated and committed atomically in English. **Every co
 
 Per-commit commands:
 ```powershell
-python tools/harness/pre_flight.py --quick
-cargo test -p test_runner --test test_architecture_rules -- --quiet
+python tools/harness/verify.py --commit
 ```
-The architecture suite is separate from the quick gate. Run relevant domain tests as well. CPU changes require full SingleStepTests (`SINGLESTEP_FULL=1`); CPU/bus changes require `test_dma_cartesian`. Use targeted filters during development, then run the required full domain verification before completion.
+The verifier owns quality gates and change-dependent test selection, including architecture, crate integration, full SingleStepTests and Cartesian DMA for their actual test environments, and Python tool contracts. Stage the complete intended snapshot before verification; tracked unstaged or untracked files are rejected. Use `--plan` to inspect selected commands. Targeted manual tests remain available during development; do not duplicate completion commands outside the verifier.
 
-Milestone completion requires `python tools/harness/pre_flight.py --milestone`, [semantic parity review](.agents/skills/audit-semantic-parity/SKILL.md) of modified subsystems, design synchronization and checkpoint updates, diary compaction, and pruning completed roadmap steps. Do not claim unrun checks passed. **Prohibition of Blind Golden Hash Modifications:** Never silently change golden hashes or cycle references; follow the conflict and approval procedure in specification-compliance rules.
+Milestone completion requires `python tools/harness/verify.py --milestone`, [semantic parity review](.agents/skills/audit-semantic-parity/SKILL.md) of modified subsystems, design synchronization and checkpoint updates, diary compaction, and pruning completed roadmap steps. Do not claim unrun checks passed. **Prohibition of Blind Golden Hash Modifications:** Never silently change golden hashes or cycle references; follow the conflict and approval procedure in specification-compliance rules.
 
 ## Authoritative References
 

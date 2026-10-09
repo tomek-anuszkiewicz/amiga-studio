@@ -72,8 +72,7 @@ If crate dependencies were added or altered in any `Cargo.toml`:
 ### Step 6: Validate Links & Graph Integrity
 Verify YAML frontmatter properties and ensure zero broken links:
 ```powershell
-python tools/harness/pre_flight.py
-cargo test -p test_runner --test test_architecture_rules -- --quiet
+python tools/harness/verify.py --commit
 ```
 
 ### Step 7: Stamp the Git Checkpoint & Commit Atomically

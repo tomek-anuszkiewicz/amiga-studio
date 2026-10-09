@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Amiga 500 Emulator: Pre-Flight Gate & Output Compression Checker
-Runs all 4 mandatory architectural quality gates and returns a condensed,
-zero-noise summary on success. Dumps diagnostics strictly on failure.
+Amiga 500 change-aware commit and milestone verification.
 """
 
+import argparse
 import os
 import sys
 import subprocess
 import time
+from verify_selection import collect_changes, select_tests, snapshot
 from pathlib import Path
 
 # Ensure UTF-8 output on Windows consoles
@@ -22,7 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 AGENTS_MD_PATH = REPO_ROOT / "AGENTS.md"
 MAX_AGENTS_MD_BYTES = 14000
 
-def run_cmd(cmd, cwd=REPO_ROOT):
+def run_cmd(cmd, cwd=REPO_ROOT, env=None):
     start = time.time()
     res = subprocess.run(
         cmd,
@@ -31,7 +31,7 @@ def run_cmd(cmd, cwd=REPO_ROOT):
         stderr=subprocess.PIPE,
         text=True,
         encoding="utf-8",
-        errors="replace"
+        errors="replace", env=env
     )
     elapsed = time.time() - start
     return res.returncode, res.stdout, res.stderr, elapsed
@@ -67,7 +67,7 @@ def check_api_coverage():
     if code != 0:
         output = stdout.strip() or stderr.strip()
         return False, f"API coverage audit failed:\n{output}", elapsed
-    return True, "100% peripheral/utility public APIs tested", elapsed
+    return True, "Public API name references checked (not execution coverage)", elapsed
 
 def check_clippy_invariants():
     cmd = ["cargo", "clippy", "--workspace", "--all-targets"]
@@ -147,58 +147,105 @@ def check_docs_quality():
         return False, f"Docs quality audit failed:\n{output}", elapsed
     return True, "Configured documentation and workflow checks passed", elapsed
 
-def main():
-    quick_mode = "--quick" in sys.argv
-    milestone_mode = "--milestone" in sys.argv
 
-    if milestone_mode:
-        print(">> Running Minor Roadmap Point Milestone Quality Gates...")
-        gates = [
-            ("Formatting", check_formatting),
-            ("AGENTS.md Ceiling", check_agents_md),
-            ("API Coverage", check_api_coverage),
-            ("Clippy Invariants", check_clippy_invariants),
-            ("Architecture Rules", check_architecture_rules),
-            ("Hardware Quality (Per-Commit: Pillars 1 & 2)", check_hardware_quality_per_commit),
-            ("Code Quality (Per-Commit: Pillars 1 & 2)", check_code_quality_per_commit),
-            ("Hardware Quality (Milestone: Pillars 3-5)", check_hardware_quality_milestone),
-            ("Code Quality (Milestone: Pillars 3 & 4)", check_code_quality_milestone),
-            ("Docs Quality & Governance (10 Pillars)", check_docs_quality),
+def quality_gates(milestone):
+    gates = [
+        ("Formatting", check_formatting),
+        ("AGENTS.md Ceiling", check_agents_md),
+        ("API References", check_api_coverage),
+        ("Clippy Invariants", check_clippy_invariants),
+        ("Architecture Rules", check_architecture_rules),
+        ("Hardware Quality", check_hardware_quality_per_commit),
+        ("Code Quality", check_code_quality_per_commit),
+    ]
+    if milestone:
+        gates.extend([
+            ("Hardware Quality (Milestone)", check_hardware_quality_milestone),
+            ("Code Quality (Milestone)", check_code_quality_milestone),
+            ("Docs Quality & Governance", check_docs_quality),
             ("Strict English Policy", check_polish_language),
-        ]
-    else:
-        print(f">> Running {'Quick ' if quick_mode else ''}Per-Commit Quality Gates...")
-        gates = [
-            ("Formatting", check_formatting),
-            ("AGENTS.md Ceiling", check_agents_md),
-            ("API Coverage", check_api_coverage),
-            ("Clippy Invariants", check_clippy_invariants),
-            ("Hardware Quality (Pillars 1 & 2)", check_hardware_quality_per_commit),
-            ("Code Quality (Pillars 1 & 2)", check_code_quality_per_commit),
-        ]
-        if not quick_mode:
-            gates.append(("Architecture Rules", check_architecture_rules))
-        
-    failed = []
+        ])
+    return gates
+
+
+def execute_test(name, command, overrides):
+    if "test_singlestep" in command or "test_dma_cartesian" in command:
+        if not any((REPO_ROOT / "ref_src/SingleStepTests-680x0/68000/v1").glob("*.json")):
+            return False, "Silicon vectors missing; provision external sources before verification", 0
+    if any("test_vamiga_" in arg or arg == "test_chipset_benchmark" for arg in command) or name in (
+        "All runnable vAmigaTS captures", "Chipset throughput"
+    ):
+        root = REPO_ROOT / "ref_src/vAmigaTS"
+        if not any(root.rglob("*.adf")) or not any(root.rglob("*.raw")):
+            return False, "vAmigaTS assets missing; skipped fixtures cannot satisfy verification", 0
+    env = os.environ.copy()
+    env.update(overrides)
+    code, stdout, stderr, elapsed = run_cmd(command, env=env)
+    detail = "passed"
+    # vAmiga CLI currently prints failures without setting a failing process exit code.
+    # Require a nonempty, complete summary instead of trusting that exit code.
+    if name == "All runnable vAmigaTS captures":
+        import re
+        def field(label):
+            match = re.search(r"^" + re.escape(label) + r"\s*(\d+)", stdout, re.MULTILINE)
+            return int(match.group(1)) if match else None
+        executed = field("Executed:")
+        active = field("Active Baseline:")
+        failed = field("Failed / Regressed:")
+        if not executed or executed != active or failed != 0:
+            code = 1
+            detail = "missing/incomplete vAmiga summary or pixel failures"
+    if code:
+        return False, f"{detail}\n{stdout}\n{stderr}", elapsed
+    return True, detail, elapsed
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--commit", action="store_true", help="Verify staged changes and affected test environments")
+    mode.add_argument("--milestone", action="store_true", help="Verify all test environments and milestone quality gates")
+    parser.add_argument("--plan", action="store_true", help="Print selected commands without executing checks")
+    args = parser.parse_args(argv)
+    selected_mode = "milestone" if args.milestone else "commit"
+    try:
+        changes = collect_changes(REPO_ROOT, selected_mode)
+        before = snapshot(REPO_ROOT)
+        commands = select_tests(REPO_ROOT, changes, selected_mode)
+    except (RuntimeError, OSError, ValueError) as error:
+        print(f"[FAIL] Cannot select verification: {error}", file=sys.stderr)
+        return 1
+    gates = quality_gates(args.milestone)
+    print(f"Verification mode: {selected_mode}; staged paths: {len(changes)}", flush=True)
+    for name, _ in gates:
+        print(f"  Quality: {name}")
+    for name, command, overrides in commands:
+        print(f"  Tests: {name}\n    {' '.join(command)}")
+        if overrides:
+            print(f"    Environment: {overrides}")
+    if args.plan:
+        return 0
     results = []
-    
-    for name, fn in gates:
-        ok, detail, elapsed = fn()
-        if ok:
-            results.append(f"  [PASS] {name}: {detail} ({elapsed:.2f}s)")
-        else:
-            results.append(f"  [FAIL] {name}: {detail}")
-            failed.append(name)
-            
-    print("\n" + "\n".join(results) + "\n")
-    
-    if failed:
-        print(f"[FAIL] Quality Gates FAILED on {len(failed)} gate(s): {', '.join(failed)}")
-        sys.exit(1)
-    else:
-        mode_label = "Milestone" if milestone_mode else "Per-Commit"
-        print(f"[OK] All {mode_label} Quality Gates PASSED cleanly!")
-        sys.exit(0)
+    for name, check in gates:
+        print(f"[RUN] {name}", flush=True)
+        ok, detail, elapsed = check()
+        results.append(ok)
+        print(f"[{'PASS' if ok else 'FAIL'}] {name} ({elapsed:.2f}s): {detail}", flush=True)
+    for name, command, overrides in commands:
+        print(f"[RUN] {name}", flush=True)
+        ok, detail, elapsed = execute_test(name, command, overrides)
+        results.append(ok)
+        print(f"[{'PASS' if ok else 'FAIL'}] {name} ({elapsed:.2f}s): {detail}", flush=True)
+    try:
+        unchanged = before == snapshot(REPO_ROOT)
+    except RuntimeError:
+        unchanged = False
+    if not unchanged:
+        print("[FAIL] Source or index changed during verification. Stage and verify again.")
+        results.append(False)
+    print(f"[{'PASS' if all(results) else 'FAIL'}] {selected_mode} verification")
+    return 0 if all(results) else 1
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

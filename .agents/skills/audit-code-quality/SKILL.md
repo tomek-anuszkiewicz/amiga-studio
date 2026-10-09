@@ -54,7 +54,7 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 - **Disallowed Abstractions & Concurrency:** Blocked via `clippy::disallowed_types` (`Rc`, `RefCell`, `Arc`, `Mutex`, `RwLock`, `mpsc::Sender`, `mpsc::Receiver`) and `clippy::disallowed_methods` (`std::thread::spawn`).
 - **Borrow Views over Containers:** Functions inspecting buffers or sequences must accept borrowed slices (`&[T]`, `&mut [T]`) rather than concrete heap containers (`&Vec<T>`, `&mut Vec<T>`), and accept `&str` instead of `&String`. Enforced via `clippy::ptr_arg = "deny"`.
 - **Constructor & Derives Discipline:** Enforced via `clippy::new_without_default = "deny"`, `clippy::new_ret_no_self = "deny"`, `clippy::expl_impl_clone_on_copy = "deny"`, and `missing_debug_implementations = "warn"`.
-- **Verification Gate:** Enforced on every build via `cargo clippy --workspace --all-targets` and `check_clippy_invariants()` in `tools/harness/pre_flight.py`.
+- **Verification Gate:** Enforced on every build via `cargo clippy --workspace --all-targets` and `check_clippy_invariants()` in `tools/harness/verify.py`.
 
 ### Pillar 6: Automated Architecture Guardrails
 - **Method Inlining Guidelines:** Verified via `test_inlining_guidelines_compliance` in `test_architecture_rules.rs`.
@@ -74,7 +74,7 @@ workspace Clippy, and pre-flight gate in that order:
 ```powershell
 python tools/harness/audit_code_quality.py --all
 cargo clippy --workspace --all-targets
-python tools/harness/pre_flight.py
+python tools/harness/verify.py --commit
 ```
 
 Use the targeted commands in Section 3 for a requested crate or audit dimension.
@@ -127,7 +127,7 @@ For each symbol reported under `[TEST-ONLY ZOMBIES]`:
 1. Delete confirmed dead symbols in `crates/<crate>/src/`.
 2. Delete orphaned test assertions/functions in `crates/<crate>/tests/`.
 3. Run `cargo check --workspace` to verify zero unbroken callers remain.
-4. Run `python tools/harness/pre_flight.py` to confirm workspace compiles cleanly.
+4. Run `python tools/harness/verify.py --commit` to confirm workspace compiles cleanly.
 
 
 ## 5. The Verbal Double-Check (Self-Audit & Heuristic Verification)
@@ -153,5 +153,5 @@ Report observed results and counts; mark checks that were not run instead of cop
 - **Workspace Clippy & Compiler Lints:** [PASS | <count> violations]
 - **Architecture Rules (`test_architecture_rules`):** [PASS | <passed>/<total> tests passed]
 - **Verbal Double-Check Conscience Review:** [CONFIRMED - 5/5 heuristics verified]
-- **Verification:** `pre_flight.py` (PASS), `cargo clippy` (PASS)
+- **Verification:** `verify.py` (PASS), `cargo clippy` (PASS)
 ```

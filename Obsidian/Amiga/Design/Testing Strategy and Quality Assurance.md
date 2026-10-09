@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-10-05
+updated: 2026-10-09
 related: ["[General Architecture.md](General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 ---
 
@@ -16,6 +16,10 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[CPU SingleSt
 > Project-wide engineering constraints, Rust coding guidelines, and constitutional rules are defined in [AGENTS.md](../../../AGENTS.md) and [.agents/rules/unit-testing-policy.md](../../../.agents/rules/unit-testing-policy.md).
 
 ---
+
+## Completion entry point
+
+Completion uses [verify.py](../../../tools/harness/verify.py) with `--commit` for staged changes or `--milestone` for all environments. The [selection implementation](../../../tools/harness/verify_selection.py) owns change-dependent commands; [developer testing documentation](../../../docs/testing.md#completion-verification) describes snapshot requirements and the environment map. Crate tests follow reverse workspace dependencies. Synthetic SingleStep/DMA suites have separate triggers because they use TestMemoryBus rather than the production machine. Manual tier commands below are diagnostic entry points, not additional completion obligations.
 
 ## 1. Architectural Purpose & Testing Pyramid
 
@@ -136,7 +140,7 @@ If the answer to **any** question is **YES**, authoring a Tier 2 integration tes
   - **Tom Harte SingleStepTests ([`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs))**: 45,565 valid opcodes tested cycle-by-cycle against physical silicon captures (see [CPU SingleStepTests.md](CPU%20SingleStepTests.md)).
   - **Cartesian DMA Contention ([`crates/test_runner/tests/test_dma_cartesian.rs`](../../../crates/test_runner/tests/test_dma_cartesian.rs))**: Full $2^k \times 2^M$ permutation sweep verifying cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity.
   - **Opcode Micro-Benchmarks ([`crates/test_runner/tests/test_benchmark_*.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs))**: Cycle throughput vs golden baseline hashes (see [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)).
-  - **Automated Architecture Rules ([`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs))**: 20 automated guardrail tests verifying zero unwraps, file size limits, macro prohibitions, test naming, and 1:1 test parity.
+  - **Automated Architecture Rules ([`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs))**: 19 automated guardrail tests verifying zero unwraps, file size limits, macro prohibitions, test naming, and 1:1 test parity.
 
 ---
 
@@ -246,7 +250,7 @@ When building, extending, or refactoring any part of the emulator, execute tests
 | **L2** | **Multi-Crate Integration** | `cargo test -p machine_loop` | 100% pass; 4-question checklist satisfied |
 | **L3** | **Silicon Ground Truth** | `cargo test -p test_runner --test test_singlestep` | Physical silicon opcode match; Cartesian cycle invariance |
 | **L4** | **vAmigaTS Visual Harness** | `target/release/test_runner.exe vamiga --category <cat>` | 4-iteration cascading protocol; RGB24 pixel exact |
-| **L5** | **Architecture Cleanup** | `git diff` review & `python tools/harness/pre_flight.py` | Zero ad-hoc `if` patches; 100% physical hardware model |
+| **L5** | **Architecture Cleanup** | `git diff` review & `python tools/harness/verify.py --commit` | Zero ad-hoc `if` patches; 100% physical hardware model |
 
 ---
 
@@ -276,9 +280,9 @@ When building, extending, or refactoring any part of the emulator, execute tests
 | Tool / Script | Purpose | Enforcement Layer |
 | :--- | :--- | :--- |
 | [`tools/harness/run_tests.py`](../../../tools/harness/run_tests.py) | CLI runner for Tier 1 (`--unit`), Tier 2 (`--integration`), and Tier 3 (`--harness`). | Developer workflow & CI |
-| [`tools/harness/pre_flight.py`](../../../tools/harness/pre_flight.py) | Master pre-commit quality checker (Formatting, AGENTS.md size, API Coverage, Architecture rules). | Explicit agent/developer command & CI |
+| [`tools/harness/verify.py`](../../../tools/harness/verify.py) | Canonical commit/milestone quality gate and change-aware test selector. | Explicit agent/developer command & CI |
 | [`tools/harness/audit_api_coverage.py`](../../../tools/harness/audit_api_coverage.py) | Statically verifies that public functions (`pub fn`) are referenced and tested in unit/integration suites. | Pre-flight gate (`--strict`) |
-| [`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs) | 20 automated tests validating architectural rules, test naming, and multi-module parity. | `cargo test` & pre-flight gate |
+| [`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs) | 19 automated tests validating architectural rules, test naming, and multi-module parity. | `cargo test` & pre-flight gate |
 | [`$test-runner`](../../../.agents/skills/test-runner/SKILL.md) | Standardized execution runner across tiers, writing snapshots to `.test_results/` and diffing regressions. | Codex skill |
 | [`$integration-test-sprint`](../../../.agents/skills/integration-test-sprint/SKILL.md) | Orchestrates the 4-iteration cascading verification sweep and failure cluster triage. | Codex skill |
 | [`$synthesize-test-fixes`](../../../.agents/skills/synthesize-test-fixes/SKILL.md) | Audits recent test patches, builds the 3-column diagnostic matrix, and synthesizes root causes into upstream crates. | Codex skill |

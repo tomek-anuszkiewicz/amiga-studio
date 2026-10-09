@@ -215,6 +215,6 @@ Validated documentation is indexed through [index-amiga-rag](../.agents/skills/i
 
 The Amiga RAG stdio adapter is declared in [`.codex/config.toml`](../.codex/config.toml). Project configuration requires a trusted project in Codex. MCP connectivity and Graphify runtime repairs are separate from format conversion.
 
-Every commit includes its own DIARY.md Section 10 entry; at minor roadmap points or milestones, compact settled entries into milestone digests. Run validation commands explicitly, including `python tools/harness/pre_flight.py --quick` and the separate architecture test. Language checks support file paths or `python tools/harness/check_polish.py --staged` for staged additions. Do not install or use lifecycle, code, or Git hooks.
+Every commit includes its own DIARY.md Section 10 entry; at minor roadmap points or milestones, compact settled entries into milestone digests. Run validation commands explicitly, using `python tools/harness/verify.py --commit` or `--milestone`; the verifier includes architecture checks and selects test suites from changed components. Language checks support file paths or `python tools/harness/check_polish.py --staged` for staged additions. Do not install or use lifecycle, code, or Git hooks.
 
 Format references: [Codex agents](https://learn.chatgpt.com/docs/agent-configuration/subagents), [project instructions](https://learn.chatgpt.com/docs/agent-configuration/agents-md), and [configuration](https://learn.chatgpt.com/docs/config-file/config-reference).

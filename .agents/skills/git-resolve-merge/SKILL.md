@@ -63,8 +63,7 @@ For each conflicted file:
 Never finalize a merge commit without running the full repository verification gate:
 ```powershell
 cargo fmt --all -- --check
-python tools/harness/pre_flight.py --quick
-cargo test -p test_runner --test test_architecture_rules
+python tools/harness/verify.py --commit
 cargo test --workspace --exclude test_runner
 ```
 

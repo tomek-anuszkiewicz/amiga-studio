@@ -2183,3 +2183,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick preflight passed
   - architecture rules passed (19 tests)
   - documentation-only change, no conversion requested or run
+---
+
+### [2026-10-09 18:34 CEST] — VERIFY-01: Centralize change-aware completion verification
+- **Affected Subsystems**:
+  - `tools/harness`
+  - `tests`
+  - `agent governance`
+  - `testing documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace pre_flight.py with verify.py --commit and --milestone
+  - Select real-component crate tests through reverse workspace dependencies and route synthetic CPU suites separately
+  - Route Python contracts by their tool environment and reject incomplete staging or changing snapshots
+  - Centralize completion instructions while retaining focused diagnostic commands
+- **Architectural Rationale & Trade-Offs**:
+  - Completion commands must be selected mechanically from the actual test environment rather than agent judgement
+  - Milestone includes all test suites plus chipset throughput and runnable vAmiga capture comparison without rewriting goldens
+- **Verification & Test Results**:
+  - Nine verifier regression tests passed
+  - Vault links and script governance passed
+  - Existing PDF publication test fails in unchanged code with expected 16 versus actual 1
+  - Commit verification passed including 19 architecture tests and five affected Python fixture suites
+  - Milestone selection plan inspected; full milestone not run

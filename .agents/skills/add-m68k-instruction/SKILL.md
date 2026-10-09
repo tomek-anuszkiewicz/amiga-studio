@@ -472,7 +472,8 @@ cargo test -p test_runner --test test_architecture_rules
 > [!IMPORTANT]
 > The automated test `test_inlining_guidelines_compliance` automatically validates that all leaf ALU functions have `#[inline(always)]`, all cold exception/trap triggers have `#[inline(never)]`, and CCR mutators have `#[inline(always)]`. If an inlining attribute is missing or misconfigured, `test_architecture_rules` will fail immediately.
 
-Before completing any CPU change, run the full, exhaustive SingleStepTests without limits:
+Before completing a CPU change, stage the intended snapshot and run:
 ```powershell
-$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
+python tools/harness/verify.py --commit
 ```
+The verifier owns full SingleStepTests and Cartesian DMA selection; targeted commands above remain diagnostic tools.

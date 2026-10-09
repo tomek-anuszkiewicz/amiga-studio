@@ -61,7 +61,7 @@ When invoked as `$audit-hardware-quality` without a narrower scope, run:
 
 ```powershell
 python tools/harness/audit_hardware_quality.py --all
-python tools/harness/pre_flight.py
+python tools/harness/verify.py --commit
 ```
 
 Remediate confirmed violations through the motherboard and memory bus: remove
@@ -102,5 +102,5 @@ Report observed results; mark checks that were not run instead of copying the ex
 - **Color Clock (CCK) Stepping:** [PASS | <count> violations]
 - **Silicon Quirks & Memory Architecture:** [PASS | <count> violations] (open bus $FF, dual staging addr1/addr2)
 - **Whole-Machine Loop Tier 2 Integration:** [PASS | <count> missing suites]
-- **Verification:** `pre_flight.py` (PASS)
+- **Verification:** `verify.py` (PASS)
 ```

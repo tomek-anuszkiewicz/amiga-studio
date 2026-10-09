@@ -457,7 +457,8 @@ def check_script_locality_and_governance():
     skills_dir = REPO_ROOT / ".agents" / "skills"
 
     UNIVERSAL_HARNESS_SCRIPTS = {
-        "pre_flight.py",
+        "verify.py",
+        "verify_selection.py",
         "run_tests.py",
         "check_polish.py",
         "audit_api_coverage.py",

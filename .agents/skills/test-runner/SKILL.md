@@ -5,7 +5,7 @@ description: Execute test suites across tiers, snapshot results to disk, and tra
 
 # Recipe: Test Runner & Regression Tracker
 
-This skill standardizes test execution across the 4 testing tiers, persists execution snapshots into `.test_results/`, and automatically computes regression diffs (🔴 newly failing tests vs 🟢 newly passing tests).
+This skill standardizes test execution across the 4 testing tiers, persists execution snapshots into `tests/singlestep/`, and automatically computes regression diffs (🔴 newly failing tests vs 🟢 newly passing tests).
 
 ---
 
@@ -32,13 +32,13 @@ Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
    python -m unittest discover -s tests -p <fixture_file.py> -q
    ```
 3. Repair the demonstrated mechanism, rerun the focused case, and retain its regression protection.
-4. Run adjacent domain tests and the per-commit gates. Before completing CPU changes, run full silicon vectors; CPU/bus changes also require full Cartesian DMA verification:
+4. Stage the complete intended snapshot and run the completion verifier:
    ```powershell
-   $env:SINGLESTEP_FULL = "1"
-   cargo test -p test_runner --test test_singlestep -- --quiet
-   cargo test -p test_runner --test test_dma_cartesian -- --quiet
+   python tools/harness/verify.py --commit
    ```
-   GUI interaction regressions use `cargo test -p gui --test test_interactions`.
+   The verifier selects required suites from changed components and their test environments.
+   Use `--milestone` for stage completion and `--plan` to inspect the selection without running it.
+   Individual suite commands below are for development and diagnosis, not alternative completion gates.
 
 ## Background Checks and Result Collection
 
@@ -47,12 +47,12 @@ Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
 - Parallelize independent checks; Cargo commands sharing a target directory may serialize. Do not edit the validated source snapshot while a check runs.
 - Keep successful output concise with a single quiet-flag placement, preserving exit codes and failure diagnostics. Report checks not run separately from passing results.
 
-## 2. Directory Structure for Snapshots (`.test_results/`)
+## 2. Directory Structure for Snapshots (`tests/singlestep/`)
 
 Test executions maintain rotating state to detect regressions across runs:
-- `.test_results/latest/<suite_name>.json`: Machine-readable results of the most recent run.
-- `.test_results/previous/<suite_name>.json`: Results from the previous baseline for differential comparison.
-- `.test_results/summary.json`: Global repository-wide pass/fail matrix, totals, and percentages.
+- `tests/singlestep/latest/<suite_name>.json`: Machine-readable results of the most recent run.
+- `tests/singlestep/previous/<suite_name>.json`: Results from the previous baseline for differential comparison.
+- `tests/singlestep/summary.json`: Global repository-wide pass/fail matrix, totals, and percentages.
 
 ---
 
