@@ -30,7 +30,7 @@ def preprocess_pdf(pdf_path, workspace_dir, dpi=None, page_ranges=None):
             pixmap = page.get_pixmap(dpi=dpi)
             raster = raster_transform(page, pixmap, dpi)
             pixmap.save(directory / f"{page_id}.png")
-            blocks = text_blocks(page)
+            blocks = text_blocks(page, character_geometry=True)
             data = {"schema_version": SCHEMA_VERSION, "page_id": page_id, "page": number,
                     "source_index": number - 1, "prepared_index": number - 1,
                     "geometry": geometry,

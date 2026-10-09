@@ -15,14 +15,27 @@ def page_geometry(page):
             "pdf_to_extraction": list(page.transformation_matrix)}
 
 
-def text_blocks(page):
+def text_blocks(page, *, character_geometry=False):
     """Inspect actual text spans, excluding image blocks; retain extraction order."""
     blocks = []
     flags = pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES
-    for block in page.get_text("dict", flags=flags, sort=False)["blocks"]:
+    kind = "rawdict" if character_geometry else "dict"
+    for block in page.get_text(kind, flags=flags, sort=False)["blocks"]:
         if block["type"] != 0:
             continue
-        lines = ["".join(span["text"] for span in line["spans"]) for line in block["lines"]]
+        lines, char_bboxes = [], []
+        for line in block["lines"]:
+            if character_geometry:
+                chars = [char for span in line["spans"] for char in span["chars"]]
+                lines.append("".join(char["c"] for char in chars))
+                for char in chars:
+                    char_bboxes.extend([list(pymupdf.Rect(char["bbox"]) * page.rotation_matrix)]
+                                       * len(char["c"]))
+                # Extraction adds a newline after each line; keep it with its last character.
+                end_box = chars[-1]["bbox"] if chars else line["bbox"]
+                char_bboxes.append(list(pymupdf.Rect(end_box) * page.rotation_matrix))
+            else:
+                lines.append("".join(span["text"] for span in line["spans"]))
         text = "\n".join(lines)
         if not text.strip():
             continue
@@ -32,6 +45,8 @@ def text_blocks(page):
         blocks.append({"block_id": block["number"], "type": 0, "text": text + "\n", "bbox": box,
                        "bbox_norm": [box[0] / page.rect.width, box[1] / page.rect.height,
                                      box[2] / page.rect.width, box[3] / page.rect.height]})
+        if character_geometry:
+            blocks[-1]["char_bboxes"] = char_bboxes
     return blocks
 
 

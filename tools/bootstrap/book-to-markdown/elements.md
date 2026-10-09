@@ -62,7 +62,8 @@ Unnumbered titles still have a level and omit `number`. Preserve appendix identi
 ## Editable review model
 
 Each version has its own `book.json` with ordered `chapters` and
-`toc: {enabled: true, depth: 2}`. A chapter has `id`, `title`, `markdown_file`
+`toc: {depth: 2}`. The generated TOC is mandatory; depth may be 1, 2 or 3.
+A chapter has `id`, `title`, `markdown_file`
 and ordered `elements`. Title and safe filename are derived from its first
 heading only when the chapter is created; subsequent edits do not rename files.
 
@@ -77,8 +78,10 @@ Legacy `chapter` and `table_legend` classifications remain until explicitly
 edited; `chapter` participates in heading rendering without rewriting inference
 artifacts or substituting source text.
 
-`rendered.json` records the exact completed model, `render_regions` containing
-`{image, bbox}` in local PNG pixels, chapter strips, TOC link hit regions,
-asset hashes, input fingerprint, render settings and revision. Authored input
-has no derived geometry or schema-version field. See the [review workflow](README.md#local-bitmap-review)
+`rendered.json` records the exact completed model, chapter HTML documents,
+asset hashes, input fingerprint, preparation settings and revision. Each
+`render.chapters` entry contains its chapter `id`, cache `key` and bundle-relative
+`document` path. Display geometry is measured from the viewer's live DOM by
+stable element ID; no PNG `render_regions` or TOC hit rectangles are generated.
+Authored input has no derived geometry or schema-version field. See the [review workflow](README.md#local-html-review)
 for the queue and whole-version acceptance contract.

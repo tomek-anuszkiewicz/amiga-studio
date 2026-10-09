@@ -45,12 +45,16 @@ class ReviewSelectionTests(unittest.TestCase):
         for path in (self.workspace / "02_preprocess").glob("*.json"):
             value = json.loads(path.read_text())
             value["raster"] = {"pixel_width": 10, "pixel_height": 10}
+            value["blocks"] = [{"block_id": 0, "text": "A\n", "bbox": [0, 0, 10, 10],
+                                "char_bboxes": [[0, 0, 10, 10], [0, 0, 10, 10]]}]
             path.write_text(json.dumps(value))
         with patch.object(stage, "CodexClient") as client:
             transport = client.return_value.__enter__.return_value
             transport.generate_json.return_value = {"page": 64, "segments": []}
             stage.convert_pages(self.workspace, {"input": {"pages": [63]}}, pages=[64])
         self.assertEqual(transport.generate_json.call_count, 1)
+        self.assertNotIn('char_bboxes', transport.generate_json.call_args.args[0])
+        self.assertIn('char_bboxes', (self.workspace / '02_preprocess/page_0064.json').read_text())
         self.assertEqual(transport.generate_json.call_args.kwargs["image_path"].name, "page_0064.png")
         self.assertEqual([p.name for p in (self.workspace / "03_page_conversion").glob("*_segments.json")
                           if json.loads(p.read_text())["segments"] == []], ["page_0064_segments.json"])

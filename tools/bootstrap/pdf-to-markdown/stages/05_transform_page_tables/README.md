@@ -3,6 +3,10 @@
 Read selected Stage 04 page JSONs and original Stage 02 PNGs. For each `table`,
 make one Codex request using its exact, unpadded pixel crop and the
 [table prompt](prompt.md). Replace table `md_text` and record `table_format`.
+The transcription includes all text visible inside the crop, preserving reading
+order and inline formatting. Column labels, including bit-position numbers above
+the grid border, remain in aligned table header cells. Shared headings and
+independent surrounding text remain separate blocks within the same `md_text` value.
 Use Markdown for simple tables and HTML with `rowspan`/`colspan` for merged cells.
 An `unconverted` result retains the original table content.
 

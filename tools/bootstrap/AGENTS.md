@@ -10,6 +10,12 @@ This focus remains active until the user changes it. When that happens, revise o
 
 ## Converter development
 
+For book import, recipe generation and reconstruction, read the local
+[book instructions](book-to-markdown/AGENTS.md). PDF text/graphics are the source;
+`book.json` stores the reconstruction decisions, rather than references to complete
+converted Markdown segments. Fix the generating code when the recipe is wrong;
+do not substitute manual repairs to generated book data.
+
 Follow the [developer-led workflow](reference-conversion-contract.md#development-workflow): make the requested code, configuration or prompt change, convert the user-selected fragment only when requested, and let the user assess the output. Automatic tests follow the [bootstrap converter scope](../../.agents/rules/unit-testing-policy.md#bootstrap-converter-scope). Report technical execution separately from conversion quality.
 
 ## Preparing the book source collection
@@ -22,6 +28,19 @@ Source collection is an authoring prerequisite, not part of the ordinary user's 
 4. Copy the matching PDF to `book-to-markdown/books/<book-id>/<first-12-characters-of-sha256>/source.pdf` and verify the copied file's full SHA-256 again.
 
 For Test Book reconstruction, use the page tracker linked from the catalog to preserve its source mapping and assembly order, then verify the full resulting hash.
+
+## Review server during development
+
+Use the [review server controller](book-to-markdown/README.md#background-server-on-windows)
+to run the local browser review server in the background and inspect its PID,
+HTTP status and logs. After changing review Python code, restart the running
+server and check `/` and `/api/status` before reporting the change ready for review.
+After viewer HTML/CSS/JavaScript changes, reload the browser; no Python restart
+is required. Changes to the renderer's `review/document.css` require a restart
+because the renderer snapshots that stylesheet at startup. Working book data is
+detected by the existing render queue.
+If the server was stopped, start it when the requested work includes browser
+review. Report HTTP availability separately from pending rendering or render errors.
 
 ## Manual chapter processing
 

@@ -23,6 +23,9 @@ def convert_pages(workspace, config, pages=None):
         for path in page_files(workspace / "02_preprocess", "page_*.json",
                                pages):
             data = read_json(path)
+            # Character rectangles belong to deterministic book import, not the model request.
+            for block in data["blocks"]:
+                block.pop("char_bboxes", None)
             entry = data
             page_id = path.stem
             request = (prompt + "\n\nSource data (complete extracted-text JSON):\n"

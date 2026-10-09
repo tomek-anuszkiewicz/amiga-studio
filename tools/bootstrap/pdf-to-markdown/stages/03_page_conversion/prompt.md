@@ -72,6 +72,19 @@ graphic, leave md_text empty: transcription and descriptions are deferred to
 later processing. For all other types, convert source text to Markdown in
 md_text. Do not generate asset links or descriptions.
 
+Preserve source paragraph boundaries. Within a compact explanatory block,
+keep a lead-in and its following conditions or definitions together, separating
+their logical lines with a single newline, not a blank line. Do not turn each
+sentence or indented continuation into a separate paragraph. Use blank lines
+only for actual paragraph breaks or where Markdown block syntax requires them.
+
+For code_block, use a fenced code block with the appropriate language tag, or
+text when the language is unclear. For preformatted_text, use a fenced text
+block so Markdown preserves spaces and line breaks. A descriptive label may
+wrap across source lines beside several listing lines: keep the complete label
+together before the fenced block, outside it, rather than pairing each label
+fragment with a listing line. Preserve the listing's own line breaks and tokens.
+
 For heading, set level to an integer from 1 through 6. Include number only when
 the source provides it, as a string such as "1.2" or "A.1"; preserve it in the
 title as well. For other types, set level to null and omit number.

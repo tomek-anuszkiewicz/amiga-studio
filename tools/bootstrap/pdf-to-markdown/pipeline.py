@@ -6,6 +6,7 @@ pipeline.py: Master CLI for PDF page preparation, table transcription and graphi
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -89,8 +90,7 @@ def update_status(
         data = read_json(status_file)
     entry = data.setdefault(stage_num, {})
     entry["status"] = status
-    if stage_num in {"05", "06"}:
-        entry["page_ranges"] = page_ranges
+    entry["page_ranges"] = page_ranges if stage_num != "01" else None
     if details or "details" not in entry:
         entry["details"] = details
     if duration_seconds is not None or "duration_seconds" not in entry:
@@ -279,7 +279,8 @@ def print_pipeline_status(workspace_dir: Path):
                         cached = st.get("llm_cached_calls", 0)
                         total_calls += calls
                         total_cached += cached
-                        print(f"Stage {num} ({s['dir']:<28}): {status:<8} | Time: {dur_str:>8} | Codex calls: {calls:>4} | Cache: {cached:>4}")
+                        scope = st.get("page_ranges") or "all"
+                        print(f"Stage {num} ({s['dir']:<28}): {status:<8} | Time: {dur_str:>8} | Codex calls: {calls:>4} | Cache: {cached:>4} | Last run pages: {scope}")
                 print(f"Total Measured Time: {total_duration:.2f}s | Total LLM API Calls: {total_calls} | Total Cache Hits: {total_cached}")
                 print("--------------------------------------------------")
         except Exception:
@@ -288,7 +289,7 @@ def print_pipeline_status(workspace_dir: Path):
     print("==================================================\n")
 
 
-def clean_downstream_stages(workspace_dir: Path, start_idx: int, status_file: Path):
+def clean_downstream_stages(workspace_dir: Path, start_idx: int, status_file: Path, pages=None):
     def remove_directory(path, anchor):
         resolved, root = path.resolve(), anchor.resolve()
         if resolved == root or not resolved.is_relative_to(root):
@@ -297,7 +298,9 @@ def clean_downstream_stages(workspace_dir: Path, start_idx: int, status_file: Pa
 
     stages_to_clean = invalidated_stages(start_idx)
     invalidate_status(status_file, stages_to_clean)
-    print(f"[*] Invalidation: Wiping Stage {STAGE_REGISTRY[start_idx]['id']} and all later stages...")
+    selected = set(pages) if pages is not None else None
+    scope = "all pages" if selected is None else f"pages {pages} (Stage 01 remains document-wide)"
+    print(f"[*] Invalidation: Clearing {scope} from Stage {STAGE_REGISTRY[start_idx]['id']} and all later stages...")
     for s in STAGE_REGISTRY:
         if s["id"] not in stages_to_clean:
             continue
@@ -306,6 +309,14 @@ def clean_downstream_stages(workspace_dir: Path, start_idx: int, status_file: Pa
         (workspace_dir / f".stage_{s_id}_metrics.json").unlink(missing_ok=True)
         for target in s["targets"]:
             p = workspace_dir / target
+            if selected is not None and s_id != "01":
+                for path in p.rglob("page_*"):
+                    match = re.match(r"page_(\d+)[_.]", path.name)
+                    if match and int(match[1]) in selected and path.is_file():
+                        if not path.resolve().is_relative_to(workspace_dir.resolve()):
+                            raise ValueError("Cleanup file escapes its conversion workspace/output")
+                        path.unlink()
+                continue
             if p.is_dir():
                 remove_directory(p, workspace_dir)
             elif p.is_file():
@@ -324,7 +335,7 @@ def main():
     parser.add_argument("--workspace", type=Path, help="Attempt directory (default: pdf-to-markdown beside the source PDF)")
     parser.add_argument("--from-stage", help="Start stage (default: 01); clears this stage and all later results")
     parser.add_argument("--to-stage", help="Last stage to execute; does not limit cleanup")
-    parser.add_argument("--page-ranges", help="Physical 1-based pages for this run only; omitted selects all available pages")
+    parser.add_argument("--page-ranges", help="Physical 1-based pages to clear and process; omitted clears all pages (Stage 01 is always document-wide)")
     parser.add_argument("--status", action="store_true")
     args = parser.parse_args()
     skill_dir = Path(__file__).resolve().parent
@@ -364,7 +375,7 @@ def main():
         shutil.copyfile(skill_dir / "config.yaml", config_path)
     # Persist invalidation before any cleanup can fail or be interrupted.
     invalidate_status(status_file, invalid)
-    clean_downstream_stages(workspace, start, status_file)
+    clean_downstream_stages(workspace, start, status_file, pages=pages)
     page_ranges = ",".join(map(str, pages)) if pages is not None else None
     print(f"[*] PDF source: {pdf.name}; selected pages: {pages}; stages: {[stage['id'] for stage in selected]}")
     for stage in selected:

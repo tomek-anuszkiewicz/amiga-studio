@@ -11,12 +11,12 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "pdf-to-markdown"))
 from common.pdf_artifacts import read_json
 from common.pdf_page_conversion import read_conversion
-from common.pdf_selection import selected_pages
+from .markdown import PARSER, preserve_line_breaks
+from .text_recipe import (MARKDOWN_REFERENCE, REFERENCE, escape_literal,
+                          compile_markdown_template, region_blocks, resolve_template)
 
 HEADING_TYPES = {"heading", "chapter", "toc_heading", "index_heading",
                  "list_of_tables_heading", "list_of_figures_heading"}
-TEST_BOOK_HIDDEN = {f"page_{page:04d}_seg_{segment:03d}"
-                    for page in (7, 8, 9) for segment in (1, 2)}
 
 
 def json_bytes(value):
@@ -30,6 +30,14 @@ def digest(data):
 
 def write_json(path, value):
     """Replace a single file only after its complete contents are written."""
+    if path.name == "book.json":
+        value = deepcopy(value)
+        for element in elements(value):
+            element.pop("resolved_md_text", None)
+        for chapter in value["chapters"]:
+            chapter.pop("resolved_title", None)
+            chapter.pop("resolved_markdown_file", None)
+        value = {"toc": value["toc"], **{k: v for k, v in value.items() if k != "toc"}}
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
     temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n",
@@ -45,14 +53,16 @@ def confined(root, relative):
 
 
 def heading_text(element):
-    return re.sub(r"^#{1,6}[ \t]*", "", element.get("md_text", "")).strip()
+    return re.sub(r"^#{1,6}[ \t]*", "", element.get("resolved_md_text", element.get("md_text", ""))).strip()
 
 
 def set_heading_level(element, level):
     if element["type"] not in HEADING_TYPES or type(level) is not int or not 1 <= level <= 6:
         raise ValueError("Expected a heading and an integer level from 1 to 6")
     element["heading_level"] = level
-    element["md_text"] = "#" * level + " " + heading_text(element)
+    element["md_text"] = "#" * level + " " + re.sub(r"^#{1,6}[ \t]*", "", element.get("md_text", "")).strip()
+    if "resolved_md_text" in element:
+        element["resolved_md_text"] = "#" * level + " " + re.sub(r"^#{1,6}[ \t]*", "", element["resolved_md_text"])
 
 
 def new_chapter(elements, chapter_id, existing_files=()):
@@ -68,10 +78,12 @@ def new_chapter(elements, chapter_id, existing_files=()):
     filename = stem + ".md"
     if filename.casefold() in {f.casefold() for f in existing_files} or filename == "table-of-contents.md":
         filename = f"{stem}-{chapter_id}.md"
-    return {"id": chapter_id, "title": title, "markdown_file": filename, "elements": elements}
+    title_template = re.sub(r"^#{1,6}[ \t]*", "", heading["md_text"]).strip() if heading else escape_literal(title)
+    return {"id": chapter_id, "title": title_template, "resolved_title": title,
+            "markdown_file": filename, "elements": elements}
 
 
-def import_book(root, hide_test_toc=False):
+def import_book(root, previous=None):
     """Use full Stage 05 page replacements; never consult Stage 03."""
     working = root / "working"
     if (working / "book.json").exists() or (root / "accepted").exists():
@@ -81,24 +93,32 @@ def import_book(root, hide_test_toc=False):
     for stage in ("02", "04", "05", "06"):
         if status.get(stage, {}).get("status") != "success":
             raise ValueError(f"Preparation stage {stage} is not successful")
-    pages = selected_pages(status["05"].get("page_ranges"))
+    visibility = {e['id']: e.get('visible', True) for c in previous['chapters']
+                  for e in c['elements']} if previous else {}
     elements = []
     assets = working / "assets"
     assets.mkdir(parents=True, exist_ok=True)
-    for entry, baseline in read_conversion(workspace, "04_filter_page_content", pages=pages):
+    for entry, baseline in read_conversion(workspace, "04_filter_page_content"):
         replacement = workspace / "05_transform_page_tables" / f"{entry['page_id']}_segments.json"
         page = read_json(replacement) if replacement.exists() else baseline
+        text_page = read_json(workspace / '02_preprocess' / f"{entry['page_id']}.json")
         for segment in page["segments"]:
             if segment["type"] == "thumb_index":
                 continue
             element = {"id": segment["segment_id"], "type": segment["type"],
-                       "visible": not (hide_test_toc and segment["segment_id"] in TEST_BOOK_HIDDEN),
+                       "visible": visibility.get(segment['segment_id'], True),
                        "pdf_regions": [{"page": page["page"], "bbox": deepcopy(segment["bbox"])}]}
             for field in ("md_text", "heading_level", "table_format"):
                 if segment.get(field) is not None:
                     element[field] = segment[field]
             if element["type"] in HEADING_TYPES:
                 set_heading_level(element, element.get("heading_level", 1))
+            if "md_text" in element:
+                # Conversion supplies formatting; source text comes from PDF ranges.
+                prefix = "#" * element["heading_level"] + " " if element["type"] in HEADING_TYPES else ""
+                template = prefix + compile_markdown_template(
+                    page['page'], region_blocks(text_page, segment['bbox']), segment['md_text'])
+                element.update(md_text=template, resolved_md_text=prefix + segment['md_text'])
             if element["type"] == "graphic":
                 name = f"{element['id']}.png"
                 shutil.copy2(workspace / "06_extract_crops" / "assets" / name, assets / name)
@@ -108,8 +128,8 @@ def import_book(root, hide_test_toc=False):
     destination.mkdir(parents=True, exist_ok=True)
     for image in sorted((workspace / "02_preprocess").glob("page_*.png")):
         shutil.copy2(image, destination / image.name)
-    book = {"chapters": [new_chapter(elements, "chapter-001")],
-            "toc": {"enabled": True, "depth": 2}}
+    book = {"toc": deepcopy(previous['toc']) if previous else {"depth": 2},
+            "chapters": [new_chapter(elements, "chapter-001")]}
     write_json(working / "book.json", book)
     return book
 
@@ -119,8 +139,17 @@ def elements(book):
         yield from chapter["elements"]
 
 
+def authored_element(element):
+    """Return element properties without resolved text or legacy render geometry."""
+    return {k: v for k, v in element.items() if k not in {"resolved_md_text", "render_regions"}}
+
+
+def chapter_value(chapter, field):
+    return chapter.get("resolved_" + field, chapter[field])
+
+
 def asset_names(element):
-    names = set(re.findall(r"assets/[^\s)\"'<>]+", element.get("md_text", "")))
+    names = set(re.findall(r"assets/[^\s)\"'<>]+", element.get("resolved_md_text", element.get("md_text", ""))))
     if element.get("asset"):
         names.add(element["asset"])
     return names
@@ -130,15 +159,37 @@ def load_input(working):
     """Read an immutable model and asset byte snapshot, with a content revision."""
     raw = (working / "book.json").read_bytes()
     book = json.loads(raw)
+    templates = [element.get("md_text", "") for element in elements(book)]
+    templates += [chapter[field] for chapter in book["chapters"] for field in ("title", "markdown_file")]
+    referenced_pages = {int(match[1]) for template in templates for match in REFERENCE.finditer(template)}
+    text_pages = {}
+    for page in sorted(referenced_pages):
+        blocks = read_json(working.parent / "pdf-to-markdown" / "02_preprocess" / f"page_{page:04d}.json")["blocks"]
+        text_pages[page] = blocks
+    prepared = {}
+    converted_pages = {(match[1], int(match[2])) for template in templates
+                       for match in MARKDOWN_REFERENCE.finditer(template)}
+    for stage, page in sorted(converted_pages):
+        directory = '04_filter_page_content' if stage == '04' else '05_transform_page_tables'
+        data = read_json(working.parent / 'pdf-to-markdown' / directory / f'page_{page:04d}_segments.json')
+        for segment in data['segments']:
+            prepared[(stage, page, segment['segment_id'])] = segment.get('md_text', '')
+    for element in elements(book):
+        if "md_text" in element:
+            element["resolved_md_text"] = resolve_template(element["md_text"], text_pages, prepared)
     ids, filenames, chapters = set(), {"table-of-contents.md"}, set()
     assets = {}
-    if type(book["toc"]["enabled"]) is not bool or type(book["toc"]["depth"]) is not int or book["toc"]["depth"] not in (1, 2, 3):
+    # Older authored books may carry the retired visibility option. TOC is mandatory.
+    book["toc"].pop("enabled", None)
+    if type(book["toc"]["depth"]) is not int or book["toc"]["depth"] not in (1, 2, 3):
         raise ValueError("TOC depth must be 1, 2 or 3")
     for chapter in book["chapters"]:
+        for field in ("title", "markdown_file"):
+            chapter["resolved_" + field] = resolve_template(chapter[field], text_pages, prepared)
         if chapter["id"] in chapters:
             raise ValueError("Duplicate chapter ID")
         chapters.add(chapter["id"])
-        filename = chapter["markdown_file"]
+        filename = chapter_value(chapter, "markdown_file")
         if Path(filename).name != filename or not filename.endswith(".md") or filename.casefold() in filenames:
             raise ValueError("Chapter Markdown filenames must be unique bundle-local .md files")
         filenames.add(filename.casefold())
@@ -165,29 +216,27 @@ def element_markdown(element):
     if element.get("asset"):
         return f"![{element['id']}]({element['asset']})"
     if element["type"] in HEADING_TYPES:
-        return "#" * element["heading_level"] + " " + heading_text(element)
-    text = element.get("md_text", "")
-    if element["type"] in {"code_block", "preformatted_text"} and not re.match(r"^\s{0,3}(`{3,}|~{3,})", text):
+        text = element.get("resolved_md_text", element.get("md_text", ""))
+        return preserve_line_breaks("#" * element["heading_level"] + " " + re.sub(r"^#{1,6}[ \t]*", "", text))
+    text = element.get("resolved_md_text", element.get("md_text", ""))
+    if element["type"] in {"code_block", "preformatted_text"} and not any(
+            token.type == 'fence' for token in PARSER.parse(text)):
         fence = "`" * max(3, max((len(run) + 1 for run in re.findall(r"`+", text)), default=3))
         return f"{fence}text\n{text}\n{fence}"
-    return text
+    return preserve_line_breaks(text)
 
 
 def toc_entries(book):
-    if not book["toc"]["enabled"]:
-        return []
     return [(chapter, e) for chapter in book["chapters"] for e in chapter["elements"]
             if e.get("visible", True) and e["type"] in HEADING_TYPES
             and e["heading_level"] <= book["toc"]["depth"]]
 
 
 def toc_markdown(book):
-    if not book["toc"]["enabled"]:
-        return ""
     lines = ["# Table of Contents", ""]
     for chapter, e in toc_entries(book):
         title = " ".join(heading_text(e).split()).replace("[", r"\[").replace("]", r"\]")
-        lines.append("  " * (e["heading_level"] - 1) + f"- [{title}]({chapter['markdown_file']}#element-{e['id']})")
+        lines.append("  " * (e["heading_level"] - 1) + f"- [{title}]({chapter_value(chapter, 'markdown_file')}#element-{e['id']})")
     return "\n".join(lines) + "\n"
 
 
@@ -195,12 +244,12 @@ def export_markdown(book, destination):
     for chapter in book["chapters"]:
         parts = [f'<a id="element-{e["id"]}"></a>\n\n{element_markdown(e)}'
                  for e in chapter["elements"] if e.get("visible", True)]
-        confined(destination, chapter["markdown_file"]).write_text("\n\n".join(parts) + "\n", encoding="utf-8")
+        confined(destination, chapter_value(chapter, "markdown_file")).write_text("\n\n".join(parts) + "\n", encoding="utf-8")
     (destination / "table-of-contents.md").write_text(toc_markdown(book), encoding="utf-8")
 
 
 def changes(accepted, working):
-    """Compare authored values and placement, excluding derived raster geometry."""
+    """Compare authored values and placement, excluding legacy derived geometry."""
     common = {e["id"] for e in elements(accepted)} & {e["id"] for e in elements(working)}
     common_chapters = {c["id"] for c in accepted["chapters"]} & {c["id"] for c in working["chapters"]}
     def indexed(snapshot):
@@ -211,7 +260,8 @@ def changes(accepted, working):
             for e in chapter["elements"]:
                 data = {k: v for k, v in e.items() if k != "render_regions"}
                 result[e["id"]] = (chapter["id"], position, data,
-                                   chapter_position, chapter["title"], chapter["markdown_file"])
+                                   chapter_position, chapter["title"], chapter["markdown_file"],
+                                   chapter_value(chapter, "title"), chapter_value(chapter, "markdown_file"))
                 if e["id"] in common:
                     position += 1
             if chapter["id"] in common_chapters:
@@ -221,10 +271,10 @@ def changes(accepted, working):
     old_hashes = accepted.get("asset_hashes", {})
     new_hashes = working.get("asset_hashes", {})
     result = []
-    if accepted["toc"] != working["toc"]:
+    if accepted["toc"]["depth"] != working["toc"]["depth"]:
         result.append({"id": "generated-toc", "kind": "changed",
-                       "accepted": "visible" if accepted["toc"]["enabled"] else "hidden",
-                       "working": "visible" if working["toc"]["enabled"] else "hidden"})
+                       "accepted": {"depth": accepted["toc"]["depth"]},
+                       "working": {"depth": working["toc"]["depth"]}})
     order = list(new)
     # Keep removed elements near their surviving successor in the old order.
     old_order = list(old)

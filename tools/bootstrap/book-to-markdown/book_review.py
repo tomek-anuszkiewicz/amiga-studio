@@ -13,14 +13,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("import", "render", "export", "serve"))
     parser.add_argument("--book", type=Path, required=True)
-    parser.add_argument("--hide-test-toc", action="store_true", help="Explicitly hide Test Book source TOC on pages 7–9")
-    parser.add_argument("--width", type=int, default=1200)
+    parser.add_argument("--width", type=int, default=1200, help="Preparation viewport width; HTML view wraps to its panel")
     parser.add_argument("--channel", default="msedge", help="Playwright channel; empty selects bundled Chromium")
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     root = args.book.resolve()
     if args.command == "import":
-        book = import_book(root, args.hide_test_toc)
+        book = import_book(root)
         export_markdown(book, root / "working")
         print(f"Imported {sum(len(c['elements']) for c in book['chapters'])} elements")
     elif args.command == "render":

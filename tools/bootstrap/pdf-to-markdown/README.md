@@ -56,14 +56,22 @@ process only selected input pages. Omission selects all available pages.
 
 Use `--from-stage` and `--to-stage` to run an interval; equal values run one stage.
 Starting a stage clears its results and all later stage results, even when
-`--to-stage` stops earlier. Retained predecessors must have successful statuses.
+`--to-stage` stops earlier. With `--page-ranges`, Stages 02–06 clear only files
+for the selected pages, including Stage 06 graphic crops; other pages remain.
+Without a range, these stage directories are cleared completely. Stage 01 always
+clears its whole workspace directory, while preserving the sibling OCR PDF.
+Retained predecessors must have successful statuses.
 Completed stages are not automatically skipped.
 
 The sibling OCR PDF and request cache survive restart. An existing OCR PDF is
 reused by file existence; remove it explicitly when new OCR is required.
 Attempts using the previous stage numbering require a new named workspace.
 
-`stage_status.json` records execution and request metrics. Inspect it with:
+`stage_status.json` records the last invocation's execution, page range and request
+metrics, not accumulated page coverage. Restart invalidates the selected stage
+and all later completion statuses before cleanup, including partial restarts.
+Book import reads all retained Stage 04 pages with Stage 05 replacements rather
+than restricting the book to the last invocation's range. Inspect status with:
 
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF_DIRECTORY>/source.pdf" --status

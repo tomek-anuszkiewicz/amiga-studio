@@ -1,16 +1,23 @@
 # Book-to-Markdown
 
 This directory implements a deterministic book importer, Markdown/TOC generator
-and local bitmap review application. It consumes existing prepared data from
+and local HTML review application. It consumes existing prepared data from
 [PDF-to-Markdown](../pdf-to-markdown/README.md); review makes no model calls.
 
 PDF preparation ends at Stage 06. The intended handoff uses Stage 02 original
 page PNGs and positioned text, Stage 04 filtered page objects and Stage 05
-changed page objects. The 05 status entry records its selected page range;
-overlay replacements on those selected 04 pages and retain unchanged pages.
+changed page objects. The 05 status entry records its last invocation's page range;
+import all retained 04 pages, overlay available 05 replacements and retain unchanged
+pages. A partial PDF refresh preserves the rest of the prepared page collection.
 Stage 06 extracts graphic assets to `06_extract_crops/assets/<segment_id>.png`.
 The generator emits chapter Markdown and copies these prepared assets.
 No intermediate page-ordered Markdown export is required.
+
+The [published recipe design](recipe-reconstruction.md) records the intended
+bootstrap path from an exact source PDF to reconstructed Markdown. New imports
+store PDF text references in `book.json`; loading,
+rendering and acceptance resolve them against Stage 02 positioned text. Automatic
+source acquisition and reconstruction directly from a PDF remain pending.
 
 ## Source catalog and variant layout
 
@@ -55,7 +62,7 @@ The dedicated contents, index, table-list and figure-list heading types retain t
 
 `code_block` represents source code and similar listings. `preformatted_text` preserves original character layout for ASCII art, dumps and other aligned text, rendered in a fenced `text` block.
 
-## Local bitmap review
+## Local HTML review
 
 Install the Python packages and local KaTeX assets from the repository root:
 
@@ -66,30 +73,40 @@ npm install --prefix tools/bootstrap/book-to-markdown --ignore-scripts
 
 The default renderer uses installed Microsoft Edge (`--channel msedge`). For
 bundled Chromium, run `python -m playwright install chromium` and pass
-`--channel ""`. The screenshot implementation uses Chromium's DevTools protocol;
-Firefox and WebKit are not supported. Rendering and review use local resources.
+`--channel ""`. This browser prepares and validates local KaTeX output; it no
+longer captures Markdown screenshots. The review browser displays the resulting
+HTML directly. Preparation and review use local resources.
 
 Use the existing Test Book variant; the import command refuses to overwrite an
 authored model or Accepted bundle:
 
 ```powershell
 $Book = "tools/bootstrap/book-to-markdown/books/test-book-example-4567/1cea0b35ee62"
-python tools/bootstrap/book-to-markdown/book_review.py import --book $Book --hide-test-toc
+python tools/bootstrap/book-to-markdown/book_review.py import --book $Book
 python tools/bootstrap/book-to-markdown/book_review.py render --book $Book
 python tools/bootstrap/book-to-markdown/book_review.py serve --book $Book
 ```
 
 Open `http://127.0.0.1:8765`. `serve` also renders when necessary, so the separate
 `render` command is optional. Run only one renderer/server for a book at a time.
-Stop with Ctrl+C. `--port` changes the local server port; `--width` changes bitmap
-width from its 1200-pixel default and invalidates render caches. Panel scaling
-uses the existing geometry and does not rerender.
+Stop with Ctrl+C. `--port` changes the local server port; `--width` sets the
+preparation browser viewport (default 1200 pixels), not the displayed document
+width. Accepted and Working text wraps to the actual panel width. Window resizing
+does not regenerate HTML or source images.
 
-The import reads successful preparation statuses, selects Stage 04 pages using
-the Stage 05 recorded range, and uses entire Stage 05 replacements where present.
-Stage 03 is never consulted. Thumb indexes are omitted. The explicit
-`--hide-test-toc` option hides only segments 001/002 on physical pages 7, 8 and 9;
-lists of figures/tables remain. One draft chapter preserves the surviving source
+Drag the divider between PDF and Accepted to set a fixed PDF column width.
+The initial width is 600 pixels, with a 240-pixel minimum; focusing the divider
+also permits adjustment with the left/right arrow keys. The chosen width is
+stored locally in the browser and restored on reload for the same server address
+and port. Accepted and Working share the remaining space, with a 240-pixel minimum
+each; narrower windows scroll the complete three-column layout horizontally.
+These layout changes do not modify the book or request server rendering.
+
+The import reads successful preparation statuses, reads all retained Stage 04 pages,
+and uses entire Stage 05 replacements where present.
+Stage 03 is never consulted. Thumb indexes are omitted. All imported elements
+start visible, including source contents and lists of figures/tables.
+One draft chapter preserves the surviving source
 order. Stage 02 PNGs are copied byte-for-byte and Stage 06 supplies graphic assets.
 
 `source-ocr.pdf` is the primary prepared PDF by filename convention; `source.pdf`
@@ -100,50 +117,145 @@ book model. The review displays the original Stage 02 physical page PNGs under
 ```text
 working/ or accepted/
   book.json                 # authored chapter/element model and TOC options
-  rendered.json             # last complete model plus bitmap geometry
+  rendered.json             # last complete model plus chapter HTML manifest
   <chapter-name>.md         # complete export
   table-of-contents.md
   assets/
-  renders/<revision>/       # immutable strips and source-asset snapshot
+  renders/<revision>/       # immutable chapter HTML, document.css and asset snapshot
 ```
 
-Working also keeps `renders/.cache/`. Old revisions remain local so an existing
-viewer can finish loading its Working images. No automatic cache cleanup or
-acceptance history is implemented. Outputs are ignored by Git.
+Unchanged chapter HTML is reused from the previous completed revision. Old
+Working revisions remain local so an existing viewer can finish loading them.
+Old bitmap revisions/cache may remain from earlier runs but are no longer used.
+No automatic cleanup or acceptance history is implemented. Outputs are ignored
+by Git. Existing imported books are refreshed without rerunning PDF preparation
+or changing their authored models.
 
 ### Editing and publication
 
+Every `md_text` is a PDF text template using the syntax below.
+Chapter `title` and `markdown_file` use the same syntax: they can contain plain
+text, PDF references, or both. Resolution happens before chapter labels, export
+filenames and TOC links are generated. The resolved filename must be a unique,
+bundle-local `.md` filename; references do not bypass filename checks. The authored
+JSON retains templates, while snapshots carry derived `resolved_title` and
+`resolved_markdown_file` values for presentation and export. The initial imported
+chapter title references its first heading; its output filename is an identifier.
+New imports keep conversion Markdown/HTML structure as literal recipe syntax,
+replacing matching source text with `{{text page=3 block=1 chars=0:6}}` references.
+Stage 05 replacements supply their whole page; unchanged pages use Stage 04.
+Positioned Stage 02 blocks intersecting the element region supply candidate text.
+Exact matching can reorder source selections, such as a wrapped label beside an
+assembly listing. Fences, their language tags and HTML tags/attributes remain
+literal structure. Unmatched transcription/corrections remain explicit literals;
+matching equal characters does not certify semantic attribution of repeated text.
+Loading a new recipe resolves PDF ranges without consulting converted page Markdown.
+Existing authored books using `{{markdown stage=05 page=3 segment=page_0003_seg_001}}`
+remain readable; they are not silently rewritten. Regeneration is a separate request.
+Chapter titles retain the imported heading's recipe.
+
+`{{text page=3 block=1 chars=0:6}}` selects Unicode characters from a Stage 02
+block, with a zero-based start and exclusive end. Ordered references can combine
+blocks; intervening literal text retains Markdown formatting and corrections.
+Escape literal backslashes as `\\`, opening braces as `\{` and closing braces as
+`\}` in the decoded template (JSON requires its own additional escaping).
+Resolution is single-pass: braces or template-looking text fetched from the PDF
+remain ordinary content and are never executed. Rendered Markdown receives the
+original characters, without extra escapes that would break math or code.
+For preview and export, paragraph soft breaks become explicit Markdown hard
+breaks so source lines remain visible in ordinary Markdown viewers. This
+presentation formatting does not change templates or resolved source text;
+headings, lists, tables, code, math and raw HTML retain their Markdown structure.
+
+Source identity is recorded once in `source.json`; the pinned preparation process
+recreates the PDF text layer. Loading reads only Stage 02 pages named by the
+references and checks block existence and character bounds. It does not hash
+page text or duplicate source metadata in the book. Markdown references load
+the named Stage 04/05 page and segment. PDF geometry locates an element in the
+source pane; import does not concatenate intersecting PDF blocks to replace its
+converted text. Both reference types resolve in one pass, including source text
+that contains braces. A missing referenced segment is an error. PDF range
+templates remain supported for authored selections; loading them does not
+require character geometry. Authored literals can still be added manually to a
+template, but import does not insert transcription literals.
+`resolved_md_text` is derived preview/snapshot data,
+never persisted in authored `book.json`. All text uses the same template syntax;
+there is no separate plain-Markdown compatibility format.
+
 Edit `working/book.json` externally for text, type, order, visibility, source
 regions, chapter organization or TOC options. Preserve logical IDs for ordinary
-edits. Use `heading_level` consistently with the leading heading hashes. `toc`
-defaults to enabled and depth 2, and supports actual heading depths 1, 2 and 3.
+edits. Hide front matter, source contents or other unwanted elements manually
+with `visible: false`, and decide where the authored book begins and ends.
+The generated TOC is built automatically from visible headings; it does not
+require hiding the source contents. Use `heading_level` consistently with the leading heading hashes. `toc`
+is mandatory, defaults to depth 2, and supports actual heading depths 1, 2 and 3.
+The retired `toc.enabled` property in older books is ignored on load.
 Chapter titles do not add duplicate TOC entries. Links use stable element-ID
 anchors; generated TOC content has no invented source regions.
 
-Working headings expose levels 1–6 when clicked. The command checks the current
-authored fingerprint and heading identity, then saves the level and leading
-hashes together. A stale command reports an error. Accepted remains read-only.
-The toolbar also enables/disables the generated TOC and selects depth 1, 2 or 3
-through the same revision-aware save and rendering queue.
+Click an element to select it, then use **Element actions**, right-click, or
+Enter/Shift+F10 on a focused element to open its menu. Working elements (also
+selected through PDF) expose **Hide Element** or **Unhide Element**; headings also expose levels
+1 through 6 through **Heading level**. Accepted remains read-only.
+**Hide Page** is available from element menus in all three panels, including
+Accepted, and from the PDF page background. It hides every Working element
+mapped to the contextual PDF page in one revision-aware `/api/hide-page` command;
+Accepted stays unchanged. On PDF the clicked page determines the context. In
+Markdown the selected element's source regions and relative click position
+identify the page, using the same proportional mapping as scroll synchronization.
+An element spanning multiple pages is hidden as a whole. The action is disabled
+without a PDF source page or when that page has no visible Working elements.
+
+**Show hidden elements** is a client-only view option for both versions and PDF
+source overlays: hidden content has a violet tint and dotted overlay. It does
+not change `visible`, property tooltips, Markdown exports, the generated TOC or
+acceptance. Original PDF page pixels remain intact. A PDF page is hidden when no visible Working element maps to it,
+including pages without any mapped elements. **Show hidden elements** reveals
+all pages again for source inspection. Page visibility follows Working even before acceptance, without a
+separate saved page property. Hidden content is prepared
+in review HTML so the checkbox requires no server request.
+
+Visibility commands use `/api/visibility` with an element ID, boolean `visible`
+and expected authored revision. Like TOC (`/api/toc`) and heading edits
+(`/api/heading`), they save Working, queue rendering and notify clients through
+SSE; the viewer replaces complete revisions after fetching status and HTML.
+Stale commands report an error. The heading command saves the level and leading
+hashes together. The toolbar selects generated TOC depth 1, 2 or 3.
+**Discard** in a Working element's menu (also accessible through PDF) restores
+that element's text and properties from Accepted through `/api/discard-element`.
+It preserves its current position and all other Working edits. It is enabled
+only for changed properties on an element present in both versions; the command
+checks the Working and Accepted revisions. It does not restore asset file bytes
+or chapter organization. **Discard Changes** still restores the complete bundle.
+`/api/accept` copies the newest complete Working bundle to Accepted.
 
 A separate rendering thread polls only authored JSON and referenced asset bytes.
 It finishes its immutable input snapshot before reading the newest pending
 state. Every affected chapter is regenerated as complete HTML using
 `markdown-it-py` with tables/raw HTML and parsed math nodes rendered by local
-KaTeX. It waits for images/fonts/math, measures complete chapter geometry and
-captures full-width strips with shared rounded boundaries and local overlay
-bounds. Content, properties, referenced asset bytes, settings and local geometry
-form cache keys; source bbox changes alone do not invalidate bitmaps.
+KaTeX. It waits for local images/fonts/math and saves complete, inert HTML
+fragments. Content, properties, referenced asset bytes and preparation settings
+form chapter cache keys; source bbox changes alone do not regenerate HTML.
 Unfenced code/preformatted objects become fenced exports without changing their
-authored text. Wide preformatted blocks and tables scale to fit the fixed bitmap.
+authored text. The viewer isolates each chapter in Shadow DOM, loads its immutable
+stylesheet and assets, and prepares both versions before replacing the displayed
+views. Text is selectable/copyable; native links and details remain interactive.
+Text wraps and images fit the current panel width. Wide tables retain their text
+size and overflow into one horizontal scrollbar at the bottom of each Accepted
+or Working panel, shared across its chapters. Preformatted blocks scroll
+horizontally to preserve code/ASCII whitespace. Element bounds are read from the
+current DOM, not persisted as PNG coordinates. Resizing updates browser layout
+and logical scroll synchronization without measuring or scaling every table.
 Changing render settings refreshes Accepted from its own authored model, without
 accepting Working edits, so both columns use the same presentation settings.
 
 The server publishes only complete snapshots and announces changes using SSE.
 Pending edits and parse/render errors retain the previous complete view; the
 error is visible. Reconnection reloads the latest complete snapshot. Derived
-outputs do not schedule rendering. PNG URLs include the revision so geometry
-cannot be mixed with an earlier image under the same address.
+outputs do not schedule rendering. HTML, CSS and asset URLs include the revision
+so a completed view never reads graphics from a later authored edit. Failure to
+load a complete HTML view retains the previous displayed version and disables
+acceptance in that viewer.
 
 The first successful current rendering initializes Accepted with the identical
 bundle. Later changes require **Accept Working**. Acceptance is enabled only
@@ -154,8 +266,18 @@ lock. Failed preparation leaves Accepted untouched; failed final rename restores
 its backup. Startup recovers an interrupted rename. Obsolete files disappear
 with the old bundle. This action does not commit, publish or upload anything.
 
+**Discard Changes** restores the entire Working bundle from the current Accepted
+version through `/api/discard`: authored data, referenced assets, chapter HTML,
+Markdown and TOC exports. It is available for a complete current Working revision
+that differs from Accepted. The command checks both revisions and prepares the
+replacement before swapping directories, with rollback and startup recovery.
+Previous immutable Working render directories remain available to existing
+clients. Accepted is unchanged; the viewer refreshes through the same SSE/status
+flow, and both columns show the accepted content. This discards all unaccepted
+edits rather than undoing just the last action.
+
 Working Markdown exports are generated on import/explicit `render` and first
-initialization. Interactive cycles update PNGs/snapshot without rewriting all
+initialization. Interactive cycles update HTML/snapshot without rewriting all
 exports. Refresh a complete current Working export with:
 
 ```powershell
@@ -164,10 +286,27 @@ python tools/bootstrap/book-to-markdown/book_review.py export --book $Book
 
 ### Navigation and limits
 
-All three columns contain bitmap images. Offscreen images load lazily with
-reserved heights. Hover/selection matches exact IDs; Copy ID copies that identity.
+PDF contains original physical page bitmaps, loaded lazily with reserved heights.
+Accepted and Working contain direct HTML with stable element-ID containers.
+Changed elements have a 5-pixel orange vertical marker in the left margin of
+both columns, spanning the element's height without shifting the content.
+Hover/selection matches exact IDs; Copy ID copies that identity. Selecting text
+does not open the heading menu. Document styling is isolated from the toolbar.
+Hovering or focusing an element opens an Accepted/Working configuration table,
+with changed properties highlighted and a short change summary. TOC includes
+its depth; other elements include visibility (`true`/`false`), type, heading level,
+number, table format and text preview as applicable. Changed rows have an
+orange-yellow background. Long values are abbreviated, while
+comparison uses the complete values. This replaces the selection strip below
+the toolbar. The toolbar counts changed elements, using `1 change` for one;
+pending rendering and errors appear there instead of the count.
 The chapter selector, shared Accepted/Working collapse state and Previous/Next
-Change controls navigate logical content. Hidden/removed/added elements show
+Change controls navigate logical content. Change navigation stops at the first
+and last change instead of wrapping; the corresponding buttons are disabled,
+and both are disabled when there are no changes. Navigation scrolls all panels:
+when the changed element is hidden or absent in a panel, that panel uses its
+following visible common element, or a preceding one if none follows. The selected
+change remains selected and the hidden-content checkbox is unchanged. Hidden/removed/added elements show
 explicit side status, without invented counterpart highlights.
 
 Manual scrolling transfers leadership. A reference line at 25% of the viewport
@@ -175,15 +314,54 @@ maps relative element progress to counterpart heights. PDF mapping uses ordered
 source regions, skips disconnected gaps and can move backwards or across text
 columns. Pointer horizontal position disambiguates PDF columns, preferring
 visible Working bindings. Follower scroll events do not acquire leadership.
-Refresh retains the latest logical position, selection and collapsed chapters.
-TOC link hit regions navigate real target headings; scrolling the TOC alone does
+Refresh waits for mounted document styles and applies element/page visibility
+before restoring the logical reading position. Menu focus does not scroll the
+panels. If the reading anchor is hidden, restoration uses the next visible
+common element, or a preceding element if no following counterpart remains;
+followers use that same restored identity. Selection and collapsed chapters
+remain unchanged.
+Native TOC links navigate real target headings; scrolling the TOC alone does
 not invent a PDF binding.
 
-This first release has heading-level editing only. Type/text/split/merge GUI
-operations, adjustable column widths, zoom and acceptance undo are deferred.
+The GUI supports heading-level and visibility editing. Type/text/split/merge GUI
+operations, independent Accepted/Working width adjustment, zoom and acceptance
+undo are deferred.
 Unconverted empty table/cover content remains in the model and PDF column;
 the importer does not infer replacement text or invent raster crops. Technical
 execution and checks do not certify source transcription or visual quality.
+
+### Background server on Windows
+
+The foreground `python ... serve` command occupies its terminal until Ctrl+C.
+Use [review-server.ps1](review-server.ps1) from the repository root to start a
+hidden background process and return control of the console:
+
+```powershell
+./tools/bootstrap/book-to-markdown/review-server.ps1 start
+./tools/bootstrap/book-to-markdown/review-server.ps1 status
+./tools/bootstrap/book-to-markdown/review-server.ps1 restart
+./tools/bootstrap/book-to-markdown/review-server.ps1 stop
+```
+
+The default book is the Test Book variant above, on port 8765. Pass `-Book`
+and `-Port` to select another book and port. PID identity and stdout/stderr logs
+live in `.agent/tmp/book-review/<port>/`. Each start replaces the logs. The
+controller checks process identity before stopping it and refuses to start over
+an occupied port. Stop a foreground server with Ctrl+C before switching to the
+controller. Status reports HTTP availability, pending rendering and review errors
+separately; an HTTP response does not establish that rendering has completed.
+
+The server continues after the launching command returns or its console closes;
+it is not an automatically started Windows service and does not survive reboot.
+`stop` and `restart` terminate the managed Python process and its renderer children. Wait for rendering
+and edits to complete before using them.
+
+After review Python code changes, restart the server and check `/` and
+`/api/status`. Changes to `review/document.css` also require a restart because
+the renderer reads it at startup. Viewer HTML, `viewer.css` and JavaScript are
+read on HTTP requests: reload the browser after editing them. Working book data
+changes are detected by the existing render queue without a process restart.
+Reload an open viewer after restarting the server.
 
 ## Chapter proofreading
 

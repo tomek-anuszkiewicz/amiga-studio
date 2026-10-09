@@ -10,7 +10,10 @@ JSON records the source page number, page geometry, actual PNG dimensions,
 extracted text blocks and the transform between text and raster coordinates.
 Text boxes use PDF points in the displayed-page frame; later object boxes use
 original-PNG pixels. Text is extracted from the prepared PDF, with provenance
-`prepared` or `none`. Block geometry is not word-level geometry.
+`prepared` or `none`. Each block also stores `char_bboxes`, one displayed-page
+rectangle per Unicode character in `text`. Extracted newlines use the preceding
+line's last character rectangle, so region selection retains line breaks.
+Block IDs and text remain identical to extraction without character geometry.
 
 Run through the [pipeline](../../README.md) with `--from-stage 02 --to-stage 02`
 after successful Stage 01, supplying the original `--pdf` and intended

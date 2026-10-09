@@ -27,9 +27,10 @@ All page workers from 02 through 06 apply the current invocation's
 `--page-ranges` before reading inputs. Selection is not persisted in config;
 omission means all available predecessor pages. Stage 01 prepares or reuses the
 full-source OCR PDF. Stage 04 reads Stage 03 directly, and Stage 05 reads
-only filtered objects. Stage 05 saves only changed table pages and records its
-invocation's page range in stage_status.json for separate book processing, which
-must overlay changed pages on selected Stage 04 input and retain unchanged pages.
+only filtered objects. Stage 05 saves only changed table pages. stage_status.json
+records each stage's last invocation range, not accumulated coverage. Separate
+book processing overlays retained changed pages on all available Stage 04 input
+and retains unchanged pages.
 Stage 06 uses that same overlay to crop every `graphic` from the original Stage 02
 PNG into `06_extract_crops/assets/<segment_id>.png`, without modifying page JSON.
 See the [pipeline selection contract](pdf-to-markdown/README.md#physical-page-selection).
@@ -44,10 +45,12 @@ Markdown begins with valid YAML frontmatter and a document heading. TOC entries 
 
 Stage 03 has a user-requested exception to the Markdown formatting recipes above.
 Its effective request asks for textual objects' Markdown conversion in `md_text`,
-with layout, classification, fidelity and JSON constraints. It supplies no Markdown
-style recipes, formatting examples or hints. The shared transport's base/developer
-instructions contain no such recipes; repository instructions are disabled and this
-contract is not injected into the request. Existing stage instructions remain unchanged.
+with layout, classification, fidelity and JSON constraints. Its Markdown style
+guidance is limited to source paragraph boundaries, single newlines within
+compact explanatory blocks, fenced code/preformatted blocks and keeping wrapped
+descriptive labels together outside listings. The shared transport's base/developer
+instructions contain no style recipes; repository instructions are disabled and
+this contract is not injected into the request.
 
 ## Codex boundary
 
@@ -212,6 +215,8 @@ Transcribe each table from its exact unpadded pixel crop using the minimal table
 prompt, existing Codex transport/cache, original detail and explicit model/effort.
 Tables with merged cells must use HTML with the appropriate `rowspan` and `colspan`
 attributes, preserving row and column spans rather than flattening them into Markdown.
+Aligned column labels and bit-position numbers belong in table header cells even
+when printed outside the grid border; independent surrounding text remains separate.
 Stage 05 makes one transcription request per table, replacing only `md_text`
 and recording `table_format`. Preserve all other source objects and their order,
 including separate captions, notes and legends. An unconverted result preserves
@@ -222,14 +227,20 @@ from converted output. Technical errors stop execution normally.
 
 Stage 05 saves a full page JSON only when table processing changes its data;
 pages without tables and unchanged pages remain in Stage 04. An empty 05
-directory is valid. Its status entry records page_ranges (null means all input
-pages), so later book processing can reconstruct the selected prepared dataset.
+directory is valid. Its status entry records the last invocation's page_ranges
+(null means all input pages). Book processing imports all retained Stage 04 pages
+with available Stage 05 replacements, independent of the last refresh range.
 PDF preparation emits no final Markdown bundle or persistent graphic crops.
 Chapter generation, raster assets, grouping and descriptions belong to the
 separate planned [book-to-markdown](book-to-markdown/README.md) program.
 
 Restart clears the selected stage and every later stage in execution order, even
-when stopping at that stage. Restart 05 preserves predecessors and rebuilds
+when stopping at that stage. With a page range, Stages 02–06 remove only selected
+page files and graphic crops, preserving other pages. Without a range, they clear
+their complete directories. Stage 01 always clears its whole workspace directory.
+Completion statuses are invalidated before cleanup even for partial restarts;
+execution status describes the last invocation, not coverage of retained files.
+Restart 05 preserves predecessors and rebuilds
 table markup. Stage 05 requires completed 02/04.
 No automatic continuation or completed-stage skipping occurs. Historical export
 directories remain untouched and are not consumed by preparation.

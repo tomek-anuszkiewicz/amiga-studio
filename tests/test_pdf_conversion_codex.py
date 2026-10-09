@@ -258,7 +258,7 @@ class PdfRestartTests(unittest.TestCase):
     def stage_idx(self, stage_id):
         return next(index for index, stage in enumerate(self.pipeline.STAGE_REGISTRY) if stage["id"] == stage_id)
 
-    def run_pipeline(self, flags, worker, *, page_ranges="5-10"):
+    def run_pipeline(self, flags, worker, *, page_ranges=None):
         argv = ["pipeline.py", "--pdf", str(self.pdf), "--workspace", str(self.workspace)]
         if page_ranges:
             argv.extend(["--page-ranges", page_ranges])
@@ -303,6 +303,51 @@ class PdfRestartTests(unittest.TestCase):
                               lambda *args: self.fail("Legacy attempts must not launch workers"))
         self.assertEqual(state_path.read_bytes(), before)
         self.assertTrue((self.output / "artifact.json").exists())
+
+    def test_range_restart_preserves_other_pages_and_removes_selected_dependents(self):
+        files = []
+        for stage in self.pipeline.STAGE_REGISTRY[1:]:
+            directory = self.workspace / stage["dir"]
+            for page in (50, 51, 58, 59):
+                names = ([f"page_{page:04d}.json", f"page_{page:04d}.png"]
+                         if stage["id"] == "02" else
+                         [f"page_{page:04d}_segments.json"])
+                if stage["id"] == "06":
+                    names = [f"assets/page_{page:04d}_seg_001.png",
+                             f"assets/page_{page:04d}_seg_002.png"]
+                for name in names:
+                    path = directory / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(b"Original page output")
+                    files.append((page, path))
+        predecessor = self.workspace / "01_text_layer/artifact.json"
+        before = predecessor.read_bytes()
+
+        def worker(stage, *args):
+            self.assertEqual(stage["id"], "02")
+            self.assertEqual(args[-1], "51,52,53,54,55,56,57,58")
+            for page, path in files:
+                if 51 <= page <= 58:
+                    self.assertFalse(path.exists(), str(path))
+                else:
+                    self.assertEqual(path.read_bytes(), b"Original page output")
+            self.assertEqual(predecessor.read_bytes(), before)
+            self.write_artifacts(stage)
+            return True
+
+        self.run_pipeline(["--from-stage", "02", "--to-stage", "02"],
+                          worker, page_ranges="51-58")
+
+    def test_stage01_cleanup_is_document_wide_even_with_page_range(self):
+        def worker(stage, *args):
+            self.assertEqual(stage["id"], "01")
+            self.assertFalse((self.workspace / "01_text_layer").exists())
+            self.assertTrue((self.workspace / "02_preprocess/artifact.json").exists())
+            self.write_artifacts(stage)
+            return True
+
+        self.run_pipeline(["--from-stage", "01", "--to-stage", "01"],
+                          worker, page_ranges="51-58")
 
     def test_partial_page_conversion_does_not_create_final_output(self):
         (self.output / "artifact.json").unlink()

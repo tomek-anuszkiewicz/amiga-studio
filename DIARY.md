@@ -1599,3 +1599,34 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - prior configuration override and OCR parameter forwarding checks passed
   - Graphify incremental refresh completed
   - no source-book conversion or milestone completion claimed
+---
+
+### [2026-10-10 00:21 CEST] — Add source-text recipes and HTML book review
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tools/bootstrap/AGENTS.md`
+  - `docs/developers.md`
+  - `tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace bitmap review with responsive chapter HTML and KaTeX rendering
+  - reconstruct authored text from PDF block and character-range templates while preserving Markdown structure and legacy references
+  - add character geometry to Stage 02 without sending it to inference
+  - support visibility edits, page hiding, element and bundle discard, comparison hints and logical scroll anchors
+  - preserve accepted snapshots during render recovery
+  - retain unselected page artifacts during partial pipeline restarts and report last-run scope
+  - refine source paragraph and table transcription prompts
+  - document reconstruction limits and add a Windows review-server controller
+- **Architectural Rationale & Trade-Offs**:
+  - Keep source-backed reconstruction and editorial review coherent across preparation, authored templates and complete accepted bundles
+  - standalone reconstruction and automatic source acquisition remain pending
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture suite passed 19 tests
+  - book review and recipe suites passed 31 tests, including Edge browser interaction cases
+  - PDF conversion, selection and OCR suites passed 34 tests
+  - JavaScript and PowerShell syntax checks passed
+  - Graphify incremental refresh completed
+  - diff check passed
+  - no source-book conversion or milestone completion claimed

@@ -1,9 +1,144 @@
 "use strict";
 const panes = Object.fromEntries(["pdf", "accepted", "working"].map(id => [id, document.getElementById(id)]));
 let state = null, selected = null, hovered = null, leader = "working", changeIndex = -1;
-let pointerX = 0, headingCommand = null, loading = false, requested = false;
+let pointerX = 0, headingCommand = null, loading = false, requested = false, resizing = false;
 const collapsed = new Set(), suppressed = new Map();
 let nodes = {pdf: [], accepted: [], working: []};
+let lastLogical = null, publishing = false;
+
+
+const showHidden = document.getElementById("show-hidden");
+const actionsButton = document.getElementById("element-actions");
+const elementMenu = document.getElementById("element-menu");
+const visibilityButton = document.getElementById("menu-visibility");
+const hidePageButton = document.getElementById("menu-hide-page");
+const headingButton = document.getElementById("menu-heading");
+const discardElementButton = document.getElementById("menu-discard");
+let selectedPane="working", selectedPage=null, menuCommand=null, pageCommand=null, menuReturnFocus=null, menuScrollPosition={};
+function closeMenu(restoreFocus=false) {
+  const wasOpen=!elementMenu.hidden;
+  elementMenu.hidden=true; actionsButton.setAttribute("aria-expanded","false");
+  if(restoreFocus && wasOpen && menuReturnFocus?.isConnected) menuReturnFocus.focus({preventScroll:true});
+}
+function openMenu(x,y) {
+  if((!selected && selectedPage === null) || !state) return;
+  hideHint(); menuReturnFocus=document.activeElement;
+  menuScrollPosition=Object.fromEntries(Object.entries(panes).map(([name,pane])=>[name,pane.scrollTop]));
+  const element=elementIndex(state.working).get(selected)?.element;
+  const editable=selectedPane !== "accepted" && element && !state.pending && !loading;
+  menuCommand=element ? {id:element.id,expected_revision:state.authored_revision,
+    accepted_revision:state.accepted?.revision,visible:element.visible === false} : null;
+  visibilityButton.hidden=!element; visibilityButton.disabled=!editable;
+  visibilityButton.textContent=element?.visible === false ? "Unhide Element" : "Hide Element";
+  pageCommand={page:selectedPage,expected_revision:state.authored_revision};
+  hidePageButton.disabled=selectedPage === null || state.pending || loading ||
+    ![...elementIndex(state.working).values()].some(({element})=>element.visible !== false &&
+      element.pdf_regions.some(region=>region.page === selectedPage));
+  hidePageButton.title=selectedPage === null ? "This element has no PDF source page" :
+    `Hide all Working elements from PDF page ${selectedPage}`;
+  document.getElementById("menu-copy").disabled=!selected || selected === "generated-toc";
+  headingButton.hidden=!element || !state.heading_types.includes(element.type);
+  headingButton.disabled=!editable;
+  discardElementButton.hidden=!element;
+  discardElementButton.disabled=!editable || !state.discardable_elements?.includes(element.id);
+  discardElementButton.title="Restore this element's text and properties from Accepted";
+  elementMenu.hidden=false; actionsButton.setAttribute("aria-expanded","true");
+  const rect=elementMenu.getBoundingClientRect();
+  elementMenu.style.left=`${Math.max(8,Math.min(x,innerWidth-rect.width-8))}px`;
+  elementMenu.style.top=`${Math.max(8,Math.min(y,innerHeight-rect.height-8))}px`;
+  elementMenu.querySelector("button:not([hidden]):not(:disabled)")?.focus({preventScroll:true});
+}
+actionsButton.onclick=()=>{
+  if(!elementMenu.hidden){closeMenu(true);return;}
+  const rect=actionsButton.getBoundingClientRect();openMenu(rect.left,rect.bottom+4);
+};
+document.addEventListener("pointerdown",event=>{
+  if(!event.composedPath().includes(elementMenu) && !event.composedPath().includes(actionsButton))closeMenu();
+});
+elementMenu.addEventListener("keydown",event=>{
+  const buttons=[...elementMenu.querySelectorAll("button:not([hidden]):not(:disabled)")];
+  const index=buttons.indexOf(document.activeElement);
+  if(["ArrowDown","ArrowUp","Home","End"].includes(event.key)) {
+    event.preventDefault();
+    const next=event.key === "Home" ? 0 : event.key === "End" ? buttons.length-1 :
+      (index+(event.key === "ArrowDown" ? 1 : -1)+buttons.length)%buttons.length;
+    buttons[next]?.focus();
+  } else if(event.key === "Tab") closeMenu();
+});
+document.addEventListener("keydown",event=>{if(event.key === "Escape")closeMenu(true);});
+visibilityButton.onclick=async()=>{
+  const command=menuCommand;closeMenu(true);
+  try{await post("/api/visibility",command);await refresh();}
+  catch(error){await refresh();showError(error.message);}
+};
+hidePageButton.onclick=async()=>{
+  const command=pageCommand;closeMenu(true);
+  try{await post("/api/hide-page",command);await refresh();}
+  catch(error){await refresh();showError(error.message);}
+};
+discardElementButton.onclick=async()=>{
+  const command=menuCommand;closeMenu(true);
+  try{await post("/api/discard-element",command);await refresh();}
+  catch(error){await refresh();showError(error.message);}
+};
+headingButton.onclick=()=>{
+  const element=elementIndex(state.working).get(menuCommand.id)?.element;
+  closeMenu(true);if(element)editHeading(element);
+};
+document.getElementById("menu-copy").onclick=async()=>{
+  closeMenu(true);try{await navigator.clipboard.writeText(selected);}catch(error){showError(error.message);}
+};
+showHidden.onchange=()=>{
+  const logical=anchor(leader);closeMenu();hideHint();hovered=null;highlight();
+  if(logical)position(leader,logical);sync(leader);
+};
+
+const pdfSplitter = document.getElementById("pdf-splitter");
+const pdfWidthKey = "book-review.pdf-width";
+const minimumPdfWidth = 240;
+let pdfWidth = 600, pdfDrag = null;
+try {
+  const saved = Number(localStorage.getItem(pdfWidthKey));
+  if (Number.isFinite(saved) && saved >= minimumPdfWidth) pdfWidth = saved;
+} catch (_) { /* The layout remains usable when browser storage is unavailable. */ }
+function setPdfWidth(width) {
+  pdfWidth = Math.max(minimumPdfWidth, Math.round(width));
+  document.documentElement.style.setProperty("--pdf-width", `${pdfWidth}px`);
+  pdfSplitter.setAttribute("aria-valuemin", minimumPdfWidth);
+  pdfSplitter.setAttribute("aria-valuenow", pdfWidth);
+  pdfSplitter.setAttribute("aria-valuetext", `${pdfWidth} pixels`);
+}
+function savePdfWidth() {
+  try { localStorage.setItem(pdfWidthKey, String(pdfWidth)); }
+  catch (_) { /* Keep the selected width for this session. */ }
+}
+setPdfWidth(pdfWidth);
+pdfSplitter.addEventListener("pointerdown", event => {
+  if (event.button !== 0 || pdfDrag) return;
+  pdfDrag = {pointerId: event.pointerId, x: event.clientX, width: pdfWidth};
+  pdfSplitter.setPointerCapture(event.pointerId);
+  document.body.classList.add("resizing-pdf");
+  event.preventDefault();
+});
+pdfSplitter.addEventListener("pointermove", event => {
+  if (pdfDrag?.pointerId !== event.pointerId) return;
+  setPdfWidth(pdfDrag.width + event.clientX - pdfDrag.x);
+});
+function finishPdfDrag(event) {
+  if (pdfDrag?.pointerId !== event.pointerId) return;
+  pdfDrag = null;
+  document.body.classList.remove("resizing-pdf");
+  savePdfWidth();
+}
+for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+  pdfSplitter.addEventListener(type, finishPdfDrag);
+}
+pdfSplitter.addEventListener("keydown", event => {
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+  setPdfWidth(pdfWidth + (event.key === "ArrowRight" ? 10 : -10));
+  savePdfWidth();
+  event.preventDefault();
+});
 
 function elementIndex(snapshot) {
   const result = new Map();
@@ -27,62 +162,161 @@ function imageHolder(image, width, height, className) {
 function overlay(holder, id, bbox, width, height, pane, source = null) {
   if (height <= 0) return;
   const node = document.createElement("div"); node.className = "overlay";
-  node.dataset.id = id; node.title = id;
+  node.dataset.id = id;
   boxStyle(node,bbox,width,height); holder.append(node);
   nodes[pane].push({id, node, source});
-  node.addEventListener("pointerenter", () => { hovered = id; highlight(); });
-  node.addEventListener("pointerleave", () => { hovered = null; highlight(); });
+  bindElement(node,id,pane);
+}
+function elementPage(node, id, pane, y) {
+  if(pane === "pdf") return Number(node.closest(".page").dataset.page);
+  const element=elementIndex(state?.[pane]).get(id)?.element;
+  const regions=element?.pdf_regions || [];
+  if(!regions.length)return null;
+  const rect=node.getBoundingClientRect();
+  const progress=Math.max(0,Math.min(1,(y-rect.top)/Math.max(1,rect.height)));
+  const heights=regions.map(region=>Math.max(0,region.bbox[3]-region.bbox[1]));
+  let distance=progress*heights.reduce((a,b)=>a+b,0);
+  for(let i=0;i<regions.length;i++) {
+    if(distance<=heights[i])return regions[i].page;
+    distance-=heights[i];
+  }
+  return regions[regions.length-1].page;
+}
+function bindElement(node, id, pane) {
+  node.dataset.id = id; node.tabIndex = 0;
+  node.addEventListener("pointerenter", event => { hovered = id; highlight(); showHint(id,event.clientX,event.clientY); });
+  node.addEventListener("pointerleave", () => { hovered = null; highlight(); hideHint(); });
+  node.addEventListener("focus", () => {
+    const rect=node.getBoundingClientRect(); showHint(id,rect.left,rect.top);
+  });
+  node.addEventListener("blur", hideHint);
+  node.addEventListener("contextmenu", event => {
+    event.preventDefault(); event.stopPropagation();
+    selected=id; selectedPane=pane; selectedPage=elementPage(node,id,pane,event.clientY); highlight(); openMenu(event.clientX,event.clientY);
+  });
+  node.addEventListener("keydown", event => {
+    if (event.target !== node) return;
+    if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10") || event.key === "Enter") {
+      event.preventDefault(); event.stopPropagation(); selected=id; selectedPane=pane; highlight();
+      const rect=node.getBoundingClientRect(); selectedPage=elementPage(node,id,pane,rect.top); openMenu(rect.left,rect.top);
+    }
+  });
   node.addEventListener("click", event => {
-    event.stopPropagation(); selected = id; highlight(); selectionText();
-    const entry = elementIndex(state?.working).get(id);
-    if (pane === "working" && entry && state.heading_types.includes(entry.element.type)) editHeading(entry.element);
+    if (event.target.closest("a,summary,button,input,select,textarea")) return;
+    // A drag selection copies ordinary document text without opening an edit menu.
+    if (!getSelection().isCollapsed) return;
+    event.stopPropagation(); selected = id; highlight(); hideHint();
+    selectedPane = pane; selectedPage=elementPage(node,id,pane,event.clientY); closeMenu();
   });
 }
-function buildMarkdown(version) {
-  const pane = panes[version], snapshot = state[version], index = elementIndex(snapshot);
-  const fragment = document.createDocumentFragment();
+async function buildMarkdown(version, snapshot) {
+  const index = elementIndex(snapshot), entries = [];
+  const stage = document.createElement("div"); stage.className = "render-stage";
+  stage.style.width = `${panes[version].clientWidth}px`;
+  document.body.append(stage);
+  const ready = [], styles = [];
+  const waitFor = promise => {
+    // A later chapter fetch may still be pending when an earlier asset fails.
+    promise.catch(()=>{}); ready.push(promise);
+  };
+  try {
   for (const layout of snapshot?.render?.chapters || []) {
+    if (!layout.document) throw new Error("Preparing the HTML presentation; waiting for a completed revision");
+    const response = await fetch(`/files/${version}/${layout.document}`);
+    if (!response.ok) throw new Error(`Cannot load ${version} chapter ${layout.id}`);
+    const markup = await response.text();
     const chapter = snapshot.chapters.find(c => c.id === layout.id);
     const section = document.createElement("div"); section.dataset.chapter = layout.id;
     const content = document.createElement("div"); content.className = "chapter-content";
     if (chapter) {
       const toggle = document.createElement("button"); toggle.className = "chapter-toggle";
-      toggle.textContent = `${collapsed.has(layout.id) ? "▸" : "▾"} ${chapter.title}`;
+      toggle.textContent = `${collapsed.has(layout.id) ? "▸" : "▾"} ${chapter.resolved_title ?? chapter.title}`;
       toggle.addEventListener("click", () => {
         if (collapsed.has(layout.id)) collapsed.delete(layout.id); else collapsed.add(layout.id);
         applyCollapse(layout.id); sync(leader);
       });
-      section.append(toggle); content.hidden = collapsed.has(layout.id);
+      section.append(toggle);
     }
-    for (const strip of layout.strips) {
-      if (!strip.image || strip.height <= 0) continue;
-      const holder = imageHolder(`/files/${version}/${strip.image}`,strip.width,strip.height,"strip");
-      holder.dataset.id = strip.id;
-      if (index.has(strip.id)) overlay(holder,strip.id,strip.bbox,strip.width,strip.height,version);
-      else if (strip.id === "generated-toc") nodes[version].push({id: strip.id, node: holder, source: null});
-      for (const link of strip.links) {
-        const hit = document.createElement("a"); hit.className = "toc-link";
-        hit.href = `#${link.target}`; hit.title = `Go to ${link.target}`;
-        boxStyle(hit,link.bbox,strip.width,strip.height);
-        hit.addEventListener("click", event => {event.preventDefault(); navigate(link.target,version);});
-        holder.append(hit);
+    // Shadow DOM isolates book typography/tables from the application's controls.
+    const shadow = content.attachShadow({mode:"open"});
+    for (const url of [new URL("document.css", response.url).href, "/katex/katex.min.css"]) {
+      const link = document.createElement("link"); link.rel = "stylesheet"; link.href = url;
+      waitFor(new Promise((resolve,reject) => {
+        link.onload = resolve; link.onerror = () => reject(new Error(`Cannot load document styles: ${url}`));
+      }));
+      styles.push(link);shadow.append(link);
+    }
+    const documentRoot = document.createElement("div"); documentRoot.className = "document";
+    documentRoot.innerHTML = markup;
+    for (const image of documentRoot.querySelectorAll("img")) {
+      image.src = new URL(image.getAttribute("src"),response.url).href;
+      waitFor(image.decode());
+    }
+    for (const node of documentRoot.querySelectorAll("[data-element]")) {
+      const id = node.dataset.element;
+      if (index.has(id) || id === "generated-toc") {
+        bindElement(node,id,version); entries.push({id,node,source:null,element:index.get(id)?.element});
       }
-      content.append(holder);
     }
-    section.append(content); fragment.append(section);
+    for (const link of documentRoot.querySelectorAll("a[href]")) {
+      const href = link.getAttribute("href"), hash = href.split("#")[1];
+      const target = link.dataset.target || (hash?.startsWith("element-") ? hash.slice(8) : null);
+      if (target && index.has(target)) {
+        link.addEventListener("click",event => {event.preventDefault();navigate(target,version);});
+      } else if (href.startsWith("#")) {
+        link.addEventListener("click",event => {
+          event.preventDefault();
+          const targetNode = shadow.getElementById(href.slice(1));
+          targetNode?.scrollIntoView({block:"center"});
+        });
+      } else {
+        link.href = new URL(href,response.url).href; link.target = "_blank"; link.rel = "noopener";
+      }
+    }
+    documentRoot.addEventListener("toggle",()=>{
+      if(!panes[version].contains(content))return;
+      leader=version;sync(version);
+    },true);
+    shadow.append(documentRoot);
+    section.append(content); stage.append(section);
   }
-  pane.replaceChildren(fragment);
+  await Promise.all(ready);
+  await document.fonts.ready;
+  return {stage,entries,styles};
+  } catch(error) {stage.remove();throw error;}
 }
 function buildPdf() {
   const fragment = document.createDocumentFragment();
   const mappings = [];
+  const visibleWorkingPages = new Set();
+  for (const {element} of elementIndex(state.working).values()) {
+    for (const region of element.pdf_regions) {
+      if(element.visible !== false) visibleWorkingPages.add(region.page);
+    }
+  }
   for (const version of ["working","accepted"]) for (const {element} of elementIndex(state[version]).values()) {
     element.pdf_regions.forEach((region,i) => mappings.push({element,region,i,version}));
   }
-  mappings.sort((a,b) => Number(a.element.visible === false)-Number(b.element.visible === false));
+  mappings.sort((a,b) => Number(a.version !== "working")-Number(b.version !== "working"));
   for (const page of state.pdf_pages) {
     const holder = imageHolder(`/files/${page.image}`,page.width,page.height,"page");
     holder.dataset.page = page.page;
+    holder.tabIndex=0;
+    const pageMenu=(x,y)=>{
+      selected=null;hovered=null;selectedPane="pdf";selectedPage=page.page;
+      highlight();openMenu(x,y);
+    };
+    holder.addEventListener("contextmenu",event=>{
+      event.preventDefault();pageMenu(event.clientX,event.clientY);
+    });
+    holder.addEventListener("keydown",event=>{
+      if(event.target!==holder)return;
+      if(event.key === "ContextMenu" || (event.shiftKey && event.key === "F10") || event.key === "Enter") {
+        event.preventDefault();const rect=holder.getBoundingClientRect();pageMenu(rect.left,rect.top);
+      }
+    });
+    holder.dataset.allHidden = String(!visibleWorkingPages.has(page.page));
+    holder.hidden=holder.dataset.allHidden === "true" && !showHidden.checked;
     const seen = new Set();
     for (const item of mappings.filter(m => m.region.page === page.page)) {
       const key = `${item.element.id}:${JSON.stringify(item.region.bbox)}`;
@@ -99,7 +333,7 @@ function applyCollapse(id) {
       if (section.dataset.chapter !== id || id === "toc") continue;
       section.querySelector(".chapter-content").hidden = collapsed.has(id);
       const chapter = state[version]?.chapters.find(c => c.id === id);
-      section.querySelector("button").textContent = `${collapsed.has(id) ? "▸" : "▾"} ${chapter.title}`;
+      section.querySelector("button").textContent = `${collapsed.has(id) ? "▸" : "▾"} ${chapter.resolved_title ?? chapter.title}`;
     }
   }
 }
@@ -110,35 +344,80 @@ function expand(id) {
   }
 }
 function visibleNodes(pane, id = null) {
-  return nodes[pane].filter(entry => (!id || entry.id === id) && entry.node.getClientRects().length);
+  return nodes[pane].filter(entry => (!id || entry.id === id) && entry.node.getClientRects().length && getComputedStyle(entry.node).visibility !== "hidden");
 }
 function highlight() {
   const changed = new Set((state?.changes || []).map(c => c.id));
   for (const entries of Object.values(nodes)) for (const entry of entries) {
-    if(entry.source) entry.node.style.visibility=entry.source.element.visible === false && entry.id !== selected ? "hidden" : "visible";
+    const hidden=(entry.source?.element || entry.element)?.visible === false;
+    entry.node.classList.toggle("hidden-element",hidden);
+    if(entry.source) entry.node.style.visibility=hidden && !showHidden.checked ? "hidden" : "visible";
+    else entry.node.hidden=hidden && !showHidden.checked;
     entry.node.classList.toggle("selected",entry.id === selected);
     entry.node.classList.toggle("hover",entry.id === hovered);
     entry.node.classList.toggle("changed",changed.has(entry.id));
   }
-  document.getElementById("copy").disabled = !selected || selected === "generated-toc";
-}
-function selectionText() {
-  if (!selected) return;
-  if(selected === "generated-toc") {
-    document.getElementById("selection").textContent=`Generated Table of Contents · accepted: ${state.accepted?.toc.enabled ? "visible" : "hidden"} · working: ${state.working?.toc.enabled ? "visible" : "hidden"}`;
-    return;
+  for (const page of panes.pdf.querySelectorAll(".page")) {
+    page.hidden=page.dataset.allHidden === "true" && !showHidden.checked;
   }
-  const statuses = ["accepted","working"].map(version => {
-    const entry = elementIndex(state[version]).get(selected);
-    return `${version}: ${!entry ? "missing" : entry.element.visible === false ? "hidden" : entry.element.type}`;
-  });
-  document.getElementById("selection").textContent = `${selected} · ${statuses.join(" · ")}`;
+  document.getElementById("copy").disabled = !selected || selected === "generated-toc";
+  actionsButton.disabled = !selected && selectedPage === null;
+  updateChangeNavigation();
 }
+const hint = document.getElementById("element-hint");
+function hideHint() { hint.hidden=true; }
+function hintConfiguration(id,version) {
+  const snapshot=state?.[version];
+  if(!snapshot) return {};
+  if(id === "generated-toc") return {Visible:true,Depth:snapshot.toc.depth};
+  const entry=elementIndex(snapshot).get(id);
+  if(!entry) return {};
+  const {element}=entry;
+  const values={Visible:element.visible !== false,Type:element.type};
+  const labels={heading_level:"Heading level",number:"Number",md_text:"Text (preview)",
+    table_format:"Table format"};
+  for(const [key,label] of Object.entries(labels)) {
+    if(element[key] !== undefined) values[label]=key === "md_text" ?
+      element.resolved_md_text ?? element[key] : element[key];
+  }
+  return values;
+}
+function showHint(id,x,y) {
+  if (!elementMenu.hidden) return;
+  const before=hintConfiguration(id,"accepted"), after=hintConfiguration(id,"working");
+  hint.replaceChildren();
+  const title=document.createElement("strong");
+  title.textContent=id === "generated-toc" ? "Generated Table of Contents" : id;
+  const summary=document.createElement("div");
+  const fields=[...new Set([...Object.keys(before),...Object.keys(after)])];
+  const different=key=>JSON.stringify(before[key])!==JSON.stringify(after[key]);
+  const changed=fields.filter(different);
+  summary.textContent=changed.length ? `Changed: ${changed.join(", ")}` :
+    state?.changes.some(change=>change.id===id) ? "Content or placement changed" : "No changes";
+  const table=document.createElement("table");
+  const head=table.createTHead().insertRow();
+  for(const label of ["Property","Accepted","Working"]) {
+    const cell=document.createElement("th");cell.scope="col";cell.textContent=label;head.append(cell);
+  }
+  const body=table.createTBody();
+  const display=value=>value===undefined ? "—" : typeof value==="object" ? JSON.stringify(value) : String(value);
+  for(const key of fields) {
+    const row=body.insertRow();row.classList.toggle("changed",different(key));
+    for(const value of [key,before[key],after[key]]) {
+      const text=display(value);row.insertCell().textContent=text.length>180 ? `${text.slice(0,177)}…` : text;
+    }
+  }
+  hint.append(title,summary,table);hint.hidden=false;
+  const rect=hint.getBoundingClientRect();
+  hint.style.left=`${Math.max(12,Math.min(x+16,innerWidth-rect.width-12))}px`;
+  hint.style.top=`${Math.max(12,Math.min(y+16,innerHeight-rect.height-12))}px`;
+}
+document.addEventListener("keydown",event=>{if(event.key === "Escape")hideHint();});
 function anchor(pane) {
   const viewport = panes[pane].getBoundingClientRect(), line = viewport.top + .25*panes[pane].clientHeight;
   let candidates = visibleNodes(pane);
   if (pane === "pdf") {
-    candidates = candidates.filter(e => e.source.element.visible !== false);
+    candidates = candidates.filter(e => showHidden.checked || e.source.element.visible !== false);
     const horizontal = candidates.filter(e => {const r=e.node.getBoundingClientRect();return pointerX >= r.left && pointerX <= r.right;});
     if (horizontal.length) candidates = horizontal;
   }
@@ -164,12 +443,10 @@ function position(pane, logical, fallback = true) {
   if (!counterparts.length && fallback) {
     const snapshot = state[leader] || state.working;
     const order = logical.order || [...elementIndex(snapshot).keys()], index=order.indexOf(logical.id);
-    for(let delta=1;delta<order.length && !counterparts.length;delta++) {
-      for(const candidate of [order[index-delta],order[index+delta]]) {
-        // Scroll fallback requires an actual common logical identity.
-        if(candidate && elementIndex(state.working).has(candidate) && elementIndex(state.accepted).has(candidate)) {
-          counterparts=visibleNodes(pane,candidate); if(counterparts.length) {progress=0;break;}
-        }
+    for(const candidate of [...order.slice(index+1),...order.slice(0,index).reverse()]) {
+      // Prefer the following content when the reading anchor was hidden.
+      if(candidate && elementIndex(state.working).has(candidate) && elementIndex(state.accepted).has(candidate)) {
+        counterparts=visibleNodes(pane,candidate); if(counterparts.length) {progress=0;break;}
       }
     }
   }
@@ -191,18 +468,27 @@ function position(pane, logical, fallback = true) {
   const top=panes[pane].scrollTop+rect.top-viewport.top+local*rect.height-.25*panes[pane].clientHeight;
   const target=Math.max(0,Math.min(top,panes[pane].scrollHeight-panes[pane].clientHeight));
   if(Math.abs(panes[pane].scrollTop-target)>.5) {suppressed.set(pane,target);panes[pane].scrollTop=target;}
+  return {id:entry.id,progress,order:logical.order};
 }
 function sync(pane) {
   const logical=anchor(pane);
+  if(pane===leader)lastLogical=logical;
   for(const follower of Object.keys(panes)) if(follower!==pane) position(follower,logical);
 }
 function navigate(id, preferred="working") {
-  expand(id); selected=id; highlight();selectionText();
+  selectedPane=preferred;selectedPage=(elementIndex(state[preferred]).get(id) || elementIndex(state.accepted).get(id))?.element.pdf_regions[0]?.page ?? null;closeMenu();
+  expand(id); selected=id; highlight();hideHint();
   leader=visibleNodes(preferred,id).length ? preferred : visibleNodes("accepted",id).length ? "accepted" : "pdf";
-  for(const pane of Object.keys(panes)) position(pane,{id,progress:0},false);
+  const snapshot=elementIndex(state.working).has(id) ? state.working : state.accepted;
+  const logical={id,progress:0,order:[...elementIndex(snapshot).keys()]};
+  for(const pane of Object.keys(panes)) position(pane,logical);
+  lastLogical=logical;
 }
 async function post(url, command) {
   const response=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(command)});
+  if(response.status === 404) {
+    throw new Error(`Server does not support ${url}. Restart Book Review server and reload this page.`);
+  }
   const result=await response.json(); if(!response.ok) throw new Error(result.error);
   return result;
 }
@@ -223,32 +509,64 @@ async function refresh() {
       const response=await fetch("/api/status"); if(!response.ok) throw new Error("Cannot load review state");
       const next=await response.json();
       const changed=!state || next.working?.revision!==state.working?.revision || next.accepted?.revision!==state.accepted?.revision;
-      // Capture after the request, so a scroll while awaiting it is retained.
-      const logical=state ? anchor(leader) : null;
-      state=next;
+      let prepared = [];
       if(changed) {
-        nodes={pdf:[],accepted:[],working:[]};buildMarkdown("accepted");buildMarkdown("working");buildPdf();
+        document.getElementById("accept").disabled=true;
+        document.getElementById("discard").disabled=true;
+        document.getElementById("status").textContent="Loading HTML presentation…";
+        try {
+          // Prepare both views before changing either displayed revision.
+          for(const version of ["accepted","working"]) prepared.push(await buildMarkdown(version,next[version]));
+          const logical=state ? anchor(leader) : null;
+          publishing=true;
+          state=next; nodes={pdf:[],accepted:prepared[0].entries,working:prepared[1].entries};
+          for(const [index,version] of ["accepted","working"].entries()) {
+            panes[version].replaceChildren(...prepared[index].stage.children);
+            for(const id of collapsed) applyCollapse(id);
+          }
+          // Moving Shadow DOM between containers reloads linked stylesheets.
+          // Restore geometry only after the mounted documents have their styles.
+          await Promise.all(prepared.flatMap(item=>item.styles).map(link=>link.sheet ? Promise.resolve() :
+            new Promise((resolve,reject)=>{
+              link.addEventListener("load",resolve,{once:true});
+              link.addEventListener("error",()=>reject(new Error(`Cannot load document styles: ${link.href}`)),{once:true});
+            })));
+          await document.fonts.ready;
+          buildPdf();
+          highlight();
+          if(logical) {
+            const restored=position(leader,logical) || logical;
+            lastLogical=restored;
+            for(const follower of Object.keys(panes)) if(follower!==leader)position(follower,restored);
+          }
+          else lastLogical=anchor(leader);
+        } finally {publishing=false;for(const item of prepared) item.stage.remove();}
         const chapter=document.getElementById("chapter"), old=chapter.value;chapter.replaceChildren(new Option("Choose…",""));
         const known=new Set();
         for(const snapshot of [state.working,state.accepted]) for(const c of snapshot?.chapters || []) {
-          if(!known.has(c.id)){known.add(c.id);chapter.append(new Option(c.title,c.id));}
+          if(!known.has(c.id)){known.add(c.id);chapter.append(new Option(c.resolved_title ?? c.title,c.id));}
         }
         chapter.value=old;
-        if(logical) {position(leader,logical);sync(leader);}
-      }
+      } else state=next;
       document.getElementById("accept").disabled=!state.can_accept;
-      document.getElementById("toc-enabled").checked=state.working?.toc.enabled ?? true;
+      document.getElementById("discard").disabled=!state.can_discard;
       document.getElementById("toc-depth").value=state.working?.toc.depth ?? 2;
       const status=document.getElementById("status");status.classList.toggle("error",Boolean(state.error));
-      status.textContent=state.error || (state.pending ? "Rendering pending…" : `${state.changes.length} changes · Ready`);
-      highlight();selectionText();
+      status.textContent=state.error || (state.pending ? "Rendering pending…" : `${state.changes.length} ${state.changes.length===1 ? "change" : "changes"}`);
+      closeMenu();highlight();hideHint();
     }
   } catch(error) {showError(error.message);} finally {loading=false;}
 }
 for(const [name,pane] of Object.entries(panes)) {
   pane.addEventListener("pointermove",event=>{pointerX=event.clientX;});
-  for(const type of ["wheel","touchstart","pointerdown","keydown"]) pane.addEventListener(type,()=>{leader=name;suppressed.delete(name);},{passive:true});
+  for(const type of ["wheel","touchstart","pointerdown","keydown"]) pane.addEventListener(type,()=>{
+    leader=name;suppressed.delete(name);if(state)lastLogical=anchor(name);
+  },{passive:true});
   pane.addEventListener("scroll",()=>{
+    if(publishing)return;
+    // A scroll queued before opening the menu must not close that new menu.
+    if(elementMenu.hidden || pane.scrollTop !== menuScrollPosition[name])closeMenu();
+    hideHint();
     if(suppressed.has(name) && Math.abs(pane.scrollTop-suppressed.get(name))<1) {suppressed.delete(name);return;}
     suppressed.delete(name);leader=name;sync(name);
   },{passive:true});
@@ -257,27 +575,54 @@ document.getElementById("chapter").addEventListener("change",event=>{
   const chapter=state.working?.chapters.find(c=>c.id===event.target.value) || state.accepted?.chapters.find(c=>c.id===event.target.value);
   if(chapter) {collapsed.delete(chapter.id);applyCollapse(chapter.id);const e=chapter.elements.find(e=>e.visible!==false);if(e)navigate(e.id);}
 });
+function updateChangeNavigation() {
+  const changes=state?.changes || [];
+  changeIndex=changes.findIndex(change=>change.id===selected);
+  document.getElementById("previous").disabled=changeIndex<=0;
+  document.getElementById("next").disabled=!changes.length || changeIndex>=changes.length-1;
+}
 function nextChange(delta) {
-  if(!state?.changes.length)return;
-  changeIndex=(changeIndex+delta+state.changes.length)%state.changes.length;
-  navigate(state.changes[changeIndex].id);
+  const index=changeIndex+delta;
+  if(!state?.changes.length || index<0 || index>=state.changes.length)return;
+  navigate(state.changes[index].id);
 }
 document.getElementById("previous").onclick=()=>nextChange(-1);
 document.getElementById("next").onclick=()=>nextChange(1);
 document.getElementById("copy").onclick=async()=>{try{await navigator.clipboard.writeText(selected);}catch(error){showError(error.message);}};
 async function saveToc() {
-  try {await post("/api/toc",{enabled:document.getElementById("toc-enabled").checked,
-    depth:Number(document.getElementById("toc-depth").value),expected_revision:state.authored_revision});await refresh();}
+  try {await post("/api/toc",{depth:Number(document.getElementById("toc-depth").value),
+    expected_revision:state.authored_revision});await refresh();}
   catch(error){showError(error.message);}
 }
-document.getElementById("toc-enabled").onchange=saveToc;
 document.getElementById("toc-depth").onchange=saveToc;
 document.getElementById("accept").onclick=async()=>{try{await post("/api/accept",{revision:state.working.revision});await refresh();}catch(error){showError(error.message);}};
+document.getElementById("discard").onclick=async()=>{
+  const command={expected_revision:state.authored_revision,accepted_revision:state.accepted.revision};
+  document.getElementById("discard").disabled=true;
+  closeMenu();hideHint();document.getElementById("heading-dialog").close();
+  try{await post("/api/discard",command);await refresh();}
+  catch(error){await refresh();showError(error.message);}
+};
 document.getElementById("save-heading").onclick=async()=>{
   try{await post("/api/heading",{...headingCommand,level:Number(document.getElementById("level").value)});document.getElementById("heading-dialog").close();await refresh();}
   catch(error){showError(error.message);document.getElementById("heading-dialog").close();await refresh();showError(error.message);}
 };
 const events=new EventSource("/api/events");events.onmessage=refresh;events.onopen=refresh;
 events.onerror=()=>showError("Connection interrupted; reconnecting…");
-new ResizeObserver(()=>{if(state)sync(leader);}).observe(document.querySelector("main"));
+const sizes=new Map();
+const resizeObserver=new ResizeObserver(entries=>{
+  let changed=false;
+  for(const entry of entries) {
+    const size=`${entry.contentRect.width}:${entry.contentRect.height}`;
+    if(sizes.get(entry.target)!==size) {sizes.set(entry.target,size);changed=true;}
+  }
+  if(!state || !changed || resizing || publishing)return;
+  resizing=true;
+  requestAnimationFrame(()=>{
+    const logical=lastLogical || anchor(leader);
+    if(logical)position(leader,logical);
+    sync(leader);resizing=false;
+  });
+});
+for(const pane of Object.values(panes))resizeObserver.observe(pane);
 refresh();

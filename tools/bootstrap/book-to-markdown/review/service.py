@@ -6,15 +6,22 @@ import json
 import mimetypes
 from pathlib import Path
 import shutil
+import sys
 import threading
 from urllib.parse import unquote, urlparse
 import uuid
 
 from PIL import Image
 
-from .model import (HEADING_TYPES, changes, confined, elements, export_markdown, json_bytes,
+from .model import (HEADING_TYPES, authored_element, changes, confined, elements, export_markdown, json_bytes,
                     load_input, set_heading_level, write_json)
-from .render import HERE, Renderer
+from .render import HERE, KATEX, Renderer
+
+
+def log(message):
+    """Console encoding must not turn a recoverable render error into a dead queue."""
+    encoding = sys.stdout.encoding or "utf-8"
+    print(message.encode(encoding, errors="backslashreplace").decode(encoding), flush=True)
 
 
 def read_snapshot(directory):
@@ -26,51 +33,55 @@ def render_accepted(root, renderer):
     """Update presentation settings from Accepted's own authored model."""
     accepted = root / "accepted"
     previous = read_snapshot(accepted)
-    if not previous or previous["settings"] == renderer.settings:
+    if not previous:
         return previous
-    shared_cache = root / "working" / "renders" / ".cache"
-    if shared_cache.exists():
-        shutil.copytree(shared_cache, accepted / "renders" / ".cache", dirs_exist_ok=True)
     book, assets, fingerprint = load_input(accepted)
+    if previous["settings"] == renderer.settings and previous["input_fingerprint"] == fingerprint:
+        return previous
     snapshot = renderer.render(accepted, book, assets, fingerprint, previous)
     export_markdown(book, accepted)
     write_json(accepted / "rendered.json", snapshot)
-    shutil.copytree(accepted / "renders" / ".cache", shared_cache, dirs_exist_ok=True)
-    print(f"[accepted presentation] {snapshot['metrics']}", flush=True)
+    log(f"[accepted presentation] {snapshot['metrics']}")
     return snapshot
 
 
-def replace_accepted(root, snapshot):
-    """Prepare before touching Accepted; roll back a failed final rename."""
-    prepared = root / f".accepted-prepare-{uuid.uuid4().hex}"
-    backup = root / ".accepted-backup"
-    accepted = root / "accepted"
-    working = root / "working"
+def replace_bundle(root, snapshot, source_name, target_name, expected_working):
+    """Prepare a coherent bundle before replacement; roll back a failed rename."""
+    prepared = root / f".{target_name}-prepare-{uuid.uuid4().hex}"
+    backup = root / f".{target_name}-backup"
+    target = root / target_name
+    source = root / source_name
     prepared.mkdir()
     try:
-        book = {k: deepcopy(snapshot[k]) for k in ("chapters", "toc")}
+        book = {k: deepcopy(snapshot[k]) for k in ("toc", "chapters")}
         for e in elements(book):
             e.pop("render_regions", None)
         write_json(prepared / "book.json", book)
         write_json(prepared / "rendered.json", snapshot)
         export_markdown(book, prepared)
         revision = snapshot["revision"]
-        shutil.copytree(working / "renders" / revision, prepared / "renders" / revision)
-        source_assets = working / "renders" / revision / "assets"
+        shutil.copytree(source / "renders" / revision, prepared / "renders" / revision)
+        source_assets = source / "renders" / revision / "assets"
         if source_assets.exists():
             shutil.copytree(source_assets, prepared / "assets")
-        # External edits during preparation must not be implicitly accepted.
-        if load_input(working)[2] != snapshot["input_fingerprint"]:
-            raise ValueError("Working changed during acceptance; wait for the next render")
+        if target_name == "working":
+            # Existing clients may still be loading an older immutable Working view.
+            for old in (target / "renders").iterdir():
+                if old.is_dir() and not (prepared / "renders" / old.name).exists():
+                    shutil.copytree(old, prepared / "renders" / old.name)
+        if load_input(source)[2] != snapshot["input_fingerprint"]:
+            raise ValueError("Source changed during bundle preparation; reload and retry")
+        if load_input(root / "working")[2] != expected_working:
+            raise ValueError("Working changed during bundle preparation; reload and retry")
         if backup.exists():
-            raise RuntimeError("Previous acceptance recovery is required before replacing Accepted")
-        if accepted.exists():
-            accepted.rename(backup)
+            raise RuntimeError("Previous bundle recovery is required before replacement")
+        if target.exists():
+            target.rename(backup)
         try:
-            prepared.rename(accepted)
+            prepared.rename(target)
         except BaseException:
             if backup.exists():
-                backup.rename(accepted)
+                backup.rename(target)
             raise
     finally:
         if prepared.exists():
@@ -80,7 +91,11 @@ def replace_accepted(root, snapshot):
             shutil.rmtree(backup)
         except OSError as error:
             # The replacement is already committed; report cleanup separately.
-            print(f"[accepted backup cleanup] {error}", flush=True)
+            log(f"[{target_name} backup cleanup] {error}")
+
+
+def replace_accepted(root, snapshot):
+    replace_bundle(root, snapshot, "working", "accepted", snapshot["input_fingerprint"])
 
 
 class ReviewState:
@@ -90,14 +105,15 @@ class ReviewState:
         self.lock = threading.RLock()
         self.condition = threading.Condition(self.lock)
         self.stopping = threading.Event()
+        for version in ("working", "accepted"):
+            backup, target = root / f".{version}-backup", root / version
+            if backup.exists():
+                if target.exists():
+                    shutil.rmtree(backup)
+                else:
+                    backup.rename(target)
         self.working = read_snapshot(root / "working")
-        backup, accepted = root / ".accepted-backup", root / "accepted"
-        if backup.exists():
-            if accepted.exists():
-                shutil.rmtree(backup)
-            else:
-                backup.rename(accepted)
-        self.accepted = read_snapshot(accepted)
+        self.accepted = read_snapshot(root / "accepted")
         self.error, self.pending, self.sequence = None, True, 0
         self.failed_fingerprint = None
         self.pdf_pages = []
@@ -119,10 +135,17 @@ class ReviewState:
             except Exception as error:
                 authored, current, input_error = None, False, str(error)
             diff = changes(self.accepted, self.working) if self.accepted and self.working else []
+            accepted_elements = {e["id"]: authored_element(e) for e in elements(self.accepted)} if self.accepted else {}
+            discardable_elements = [e["id"] for e in elements(self.working)
+                                    if e["id"] in accepted_elements
+                                    and authored_element(e) != accepted_elements[e["id"]]] if self.working else []
             return {"sequence": self.sequence, "working": self.working, "accepted": self.accepted,
                     "authored_revision": authored, "pending": self.pending or not current,
                     "error": input_error or self.error,
                     "can_accept": current and not self.pending and not self.error,
+                    "can_discard": bool(current and not self.pending and not self.error
+                                        and self.accepted and authored != self.accepted["input_fingerprint"]),
+                    "discardable_elements": discardable_elements,
                     "changes": diff, "pdf_pages": self.pdf_pages, "heading_types": sorted(HEADING_TYPES)}
 
     def render_loop(self):
@@ -130,10 +153,14 @@ class ReviewState:
         try:
             renderer = Renderer(self.width, self.channel)
             refreshed_accepted = render_accepted(self.root, renderer)
+            # Startup presentation refresh must not overwrite later acceptance.
+            with self.lock:
+                if refreshed_accepted:
+                    self.accepted = refreshed_accepted
             while not self.stopping.is_set():
                 try:
-                    book, assets, fingerprint = load_input(self.root / "working")
                     with self.lock:
+                        book, assets, fingerprint = load_input(self.root / "working")
                         previous = self.working
                         needs_render = (not previous or previous["input_fingerprint"] != fingerprint
                                         or previous["settings"] != renderer.settings)
@@ -142,8 +169,6 @@ class ReviewState:
                                 self.pending = False
                                 self.error = None
                                 self.failed_fingerprint = None
-                                if refreshed_accepted:
-                                    self.accepted = refreshed_accepted
                                 self.announce()
                             continue_render = False
                         else:
@@ -155,8 +180,6 @@ class ReviewState:
                         with self.lock:
                             write_json(self.root / "working" / "rendered.json", snapshot)
                             self.working = snapshot
-                            if refreshed_accepted:
-                                self.accepted = refreshed_accepted
                             self.pending = load_input(self.root / "working")[2] != fingerprint
                             if self.accepted is None and not self.pending:
                                 replace_accepted(self.root, snapshot)
@@ -164,14 +187,14 @@ class ReviewState:
                                 export_markdown(book, self.root / "working")
                             self.failed_fingerprint, self.error = None, None
                             self.announce()
-                            print(f"[render] {snapshot['revision']}: {snapshot['metrics']}", flush=True)
+                            log(f"[render] {snapshot['revision']}: {snapshot['metrics']}")
                 except Exception as error:
                     with self.lock:
                         message = str(error)
                         if message != self.error:
                             self.error, self.pending = message, False
                             self.announce()
-                            print(f"[render failed] {message}", flush=True)
+                            log(f"[render failed] {message}")
                         self.failed_fingerprint = locals().get("fingerprint")
                 self.stopping.wait(0.5)
         except Exception as error:
@@ -202,11 +225,54 @@ class ReviewState:
             set_heading_level(element, command["level"])
         self.mutate(command["expected_revision"], update)
 
+    def visibility(self, command):
+        if type(command["visible"]) is not bool:
+            raise ValueError("Visible must be a boolean")
+
+        def update(book):
+            element = next((e for e in elements(book) if e["id"] == command["id"]), None)
+            if element is None:
+                raise ValueError("Element no longer exists")
+            element["visible"] = command["visible"]
+        self.mutate(command["expected_revision"], update)
+
+    def discard_element(self, command):
+        with self.lock:
+            if not self.accepted or self.accepted["revision"] != command["accepted_revision"]:
+                raise ValueError("Discard requires the current Accepted revision")
+            accepted, _, fingerprint = load_input(self.root / "accepted")
+            if fingerprint != self.accepted["input_fingerprint"]:
+                raise ValueError("Accepted changed; reload and retry")
+            original = next((e for e in elements(accepted) if e["id"] == command["id"]), None)
+            if original is None:
+                raise ValueError("Element has no Accepted version")
+
+            def update(book):
+                element = next((e for e in elements(book) if e["id"] == command["id"]), None)
+                if element is None:
+                    raise ValueError("Element no longer exists")
+                element.clear()
+                element.update(deepcopy(authored_element(original)))
+            self.mutate(command["expected_revision"], update)
+
+    def hide_page(self, command):
+        page = command["page"]
+        if type(page) is not int or not any(item["page"] == page for item in self.pdf_pages):
+            raise ValueError("Expected an existing PDF page number")
+
+        def update(book):
+            matched = [e for e in elements(book) if any(r["page"] == page for r in e["pdf_regions"])]
+            if not matched:
+                raise ValueError("PDF page has no Working elements to hide")
+            for element in matched:
+                element["visible"] = False
+        self.mutate(command["expected_revision"], update)
+
     def toc(self, command):
-        if type(command["enabled"]) is not bool or type(command["depth"]) is not int or command["depth"] not in (1, 2, 3):
-            raise ValueError("TOC requires a boolean enabled flag and depth 1, 2 or 3")
+        if type(command["depth"]) is not int or command["depth"] not in (1, 2, 3):
+            raise ValueError("TOC depth must be 1, 2 or 3")
         self.mutate(command["expected_revision"], lambda book: book.update(
-            toc={"enabled": command["enabled"], "depth": command["depth"]}))
+            toc={"depth": command["depth"]}))
 
     def accept(self, command):
         with self.lock:
@@ -215,6 +281,17 @@ class ReviewState:
                 raise ValueError("Acceptance requires the newest complete Working revision")
             replace_accepted(self.root, self.working)
             self.accepted = read_snapshot(self.root / "accepted")
+            self.announce()
+
+    def discard(self, command):
+        with self.lock:
+            status = self.status()
+            if (not status["can_discard"] or status["authored_revision"] != command["expected_revision"]
+                    or self.accepted["revision"] != command["accepted_revision"]):
+                raise ValueError("Discard requires the current Working and Accepted revisions")
+            replace_bundle(self.root, self.accepted, "accepted", "working", command["expected_revision"])
+            self.working = read_snapshot(self.root / "working")
+            self.pending, self.error, self.failed_fingerprint = False, None, None
             self.announce()
 
 
@@ -264,12 +341,17 @@ class Handler(BaseHTTPRequestHandler):
                 with self.state.lock:
                     if path in ("/", "/viewer.js", "/viewer.css"):
                         file = HERE / ("viewer.html" if path == "/" else path[1:])
+                    elif path.startswith("/katex/"):
+                        relative = path.removeprefix("/katex/")
+                        if relative != "katex.min.css" and not (relative.startswith("fonts/") and Path(relative).suffix in {".woff", ".woff2", ".ttf"}):
+                            raise FileNotFoundError()
+                        file = confined(KATEX, relative)
                     elif path.startswith("/files/"):
                         relative = path.removeprefix("/files/")
                         if relative.split("/", 1)[0] not in {"working", "accepted", "pdf"}:
                             raise FileNotFoundError()
                         file = confined(self.state.root, relative)
-                        if file.suffix not in {".png", ".md", ".json"}:
+                        if file.suffix not in {".png", ".md", ".json", ".html", ".css"}:
                             raise FileNotFoundError()
                     else:
                         raise FileNotFoundError()
@@ -291,8 +373,16 @@ class Handler(BaseHTTPRequestHandler):
             command = json.loads(self.rfile.read(length))
             if self.path == "/api/heading":
                 self.state.heading(command)
+            elif self.path == "/api/visibility":
+                self.state.visibility(command)
+            elif self.path == "/api/hide-page":
+                self.state.hide_page(command)
             elif self.path == "/api/toc":
                 self.state.toc(command)
+            elif self.path == "/api/discard":
+                self.state.discard(command)
+            elif self.path == "/api/discard-element":
+                self.state.discard_element(command)
             elif self.path == "/api/accept":
                 self.state.accept(command)
             else:

@@ -1,1 +1,1 @@
-"""Local deterministic book authoring and bitmap review."""
+"""Local deterministic book authoring and direct HTML review."""

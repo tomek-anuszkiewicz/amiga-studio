@@ -1,9 +1,7 @@
-"""Persistent full-chapter browser measurement and immutable cached PNG strips."""
+"""Full-chapter Markdown/KaTeX preparation and immutable HTML publication."""
 
 from copy import deepcopy
-import base64
 import html
-import json
 from pathlib import Path
 import shutil
 import time
@@ -12,7 +10,7 @@ from markdown_it import MarkdownIt
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from playwright.sync_api import sync_playwright
 
-from .model import asset_names, digest, element_markdown, json_bytes, toc_entries, write_json
+from .model import asset_names, digest, element_markdown, elements, heading_text, json_bytes, toc_entries, write_json
 
 HERE = Path(__file__).resolve().parent
 KATEX = HERE.parent / "node_modules" / "katex" / "dist"
@@ -24,40 +22,26 @@ def math_node(source, options):
     return f'<{tag} data-math="{html.escape(source, quote=True)}" data-display="{display}"></{tag}>'
 
 
-MEASURE = """() => {
-  const rectangle = node => {
-    const r = node.getBoundingClientRect();
-    return [r.x, r.y, r.right, r.bottom];
-  };
-  return {height: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
-    elements: [...document.querySelectorAll('[data-element]')].map(node => ({
-      id: node.dataset.element, bbox: rectangle(node),
-      links: [...node.querySelectorAll('a[data-target]')].flatMap(a =>
-        [...a.getClientRects()].map(r => ({target: a.dataset.target,
-          bbox: [r.x,r.y,r.right,r.bottom]})))
-    }))};
-}"""
-
-
 class Renderer:
-    """Own this object on the rendering thread, never on HTTP request threads."""
+    """Prepare complete HTML on the rendering thread; geometry belongs to the viewer."""
 
     def __init__(self, width=1200, channel="msedge"):
         if width < 320:
-            raise ValueError("Render width must be at least 320 pixels")
+            raise ValueError("Preparation viewport width must be at least 320 pixels")
         if not (KATEX / "katex.min.js").exists():
             raise FileNotFoundError("Install local math assets with npm install in book-to-markdown")
-        self.width = width
         self.style = (HERE / "document.css").read_text(encoding="utf-8")
         self.settings = {"width": width, "channel": channel, "style": digest(self.style.encode()),
-                         "renderer": digest(Path(__file__).read_bytes()), "katex": "0.16.22"}
+                         "renderer": digest(Path(__file__).read_bytes()), "katex": "0.16.22",
+                         "line_breaks": digest((HERE / "markdown.py").read_bytes()),
+                         "element_markup": digest((HERE / "model.py").read_bytes()),
+                         "presentation": "html"}
         self.md = MarkdownIt("commonmark", {"html": True}).enable("table").enable("strikethrough")
         self.md.use(dollarmath_plugin, allow_labels=False, renderer=math_node)
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(channel=channel or None)
-        self.page = self.browser.new_page(viewport={"width": width, "height": 900}, device_scale_factor=1)
-        self.capture = self.page.context.new_cdp_session(self.page)
-        # The renderer is local and deterministic: never fetch remote resources.
+        self.page = self.browser.new_page(viewport={"width": width, "height": 900})
+        # Preparation uses only the snapshotted local resources.
         self.page.route("http://**/*", lambda route: route.abort())
         self.page.route("https://**/*", lambda route: route.abort())
 
@@ -72,86 +56,50 @@ class Renderer:
                                   "assets": {name: asset_hashes[name]
                                              for e in entries for name in asset_names(e)}}))
 
-    def render_chapter(self, entries, directory, cache, key, asset_hashes):
+    def render_chapter(self, entries, directory, key):
         bodies = []
         for entry in entries:
-            if not entry.get("visible", True):
-                continue
-            body = entry.get("html") if "html" in entry else self.md.render(element_markdown(entry))
+            # Keep hidden content available for review without including it in exports.
+            body = entry.get("html") if "html" in entry else self.md.render(
+                element_markdown({**entry, "visible": True}))
             bodies.append(f'<div data-element="{entry["id"]}" id="element-{entry["id"]}">{body}</div>')
-        markup = (f'<!doctype html><html><head><meta charset="utf-8">'
-                  f'<base href="{directory.as_uri()}/">'
-                  f'<link rel="stylesheet" href="{(KATEX / "katex.min.css").as_uri()}">'
-                  f'<style>{self.style}</style></head><body>{"".join(bodies)}'
-                  f'<script src="{(KATEX / "katex.min.js").as_uri()}"></script>'
-                  '<script>for(const n of document.querySelectorAll("[data-math]")) '
-                  'katex.render(n.dataset.math,n,{displayMode:n.dataset.display==="true",throwOnError:true});'
-                  '</script></body></html>')
-        # Navigate a complete HTML file instead of patching a live document.
-        document = directory / "chapter.html"
-        document.write_text(markup, encoding="utf-8")
-        errors = []
-        def record_error(error):
-            errors.append(str(error))
-        self.page.on("pageerror", record_error)
+        # Navigate a trusted shell, then insert document content as inert DOM.
+        shell = directory / "preparation.html"
+        shell.write_text(
+            '<!doctype html><html><head><meta charset="utf-8">'
+            f'<link rel="stylesheet" href="{(KATEX / "katex.min.css").as_uri()}">'
+            f'<style>{self.style}</style></head><body><div class="document"></div>'
+            f'<script src="{(KATEX / "katex.min.js").as_uri()}"></script></body></html>',
+            encoding="utf-8")
         try:
-            self.page.goto(document.as_uri(), wait_until="load")
-            self.page.evaluate("""async () => {
-              await Promise.all([...document.images].map(i => i.decode()));
-              await document.fonts.ready;
-              for (const pre of document.querySelectorAll('pre')) {
-                const available = pre.clientWidth - 32;
-                if (pre.scrollWidth > pre.clientWidth) {
-                  const code = pre.querySelector('code') || pre;
-                  code.style.fontSize = `${parseFloat(getComputedStyle(code).fontSize) * available / (pre.scrollWidth - 32)}px`;
+            self.page.goto(shell.as_uri(), wait_until="load")
+            prepared = self.page.evaluate("""async markup => {
+              const template = document.createElement('template');
+              template.innerHTML = markup;
+              // Raw HTML tables/details remain; executable content is not book content.
+              template.content.querySelectorAll('script,style,link,iframe,object,embed,base,meta').forEach(n => n.remove());
+              for (const n of template.content.querySelectorAll('*')) {
+                for (const a of [...n.attributes]) {
+                  if (/^on/i.test(a.name) || ['srcdoc','srcset'].includes(a.name.toLowerCase())) n.removeAttribute(a.name);
+                  if (['src','href','xlink:href','action','formaction'].includes(a.name.toLowerCase()) &&
+                      /^\\s*(javascript|vbscript|data):/i.test(a.value)) n.removeAttribute(a.name);
                 }
               }
-              for (const table of document.querySelectorAll('table')) {
-                const available = table.parentElement.clientWidth;
-                const width = table.getBoundingClientRect().width;
-                if (width > available) table.style.zoom = available / width;
+              const root = document.querySelector('.document');
+              root.append(template.content);
+              for (const n of root.querySelectorAll('[data-math]')) {
+                katex.render(n.dataset.math,n,{displayMode:n.dataset.display==='true',throwOnError:true});
+                n.removeAttribute('data-math'); n.removeAttribute('data-display');
               }
-              await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-            }""")
-            if errors:
-                raise ValueError("Math/document rendering failed: " + "; ".join(errors))
-            measured = self.page.evaluate(MEASURE)
+              await Promise.all([...root.querySelectorAll('img')].map(i => i.decode()));
+              await document.fonts.ready;
+              return root.innerHTML;
+            }""", "".join(bodies))
         finally:
-            self.page.remove_listener("pageerror", record_error)
-        boxes = measured["elements"]
-        boundaries = [0] + [round(box["bbox"][1]) for box in boxes[1:]] + [round(measured["height"])]
-        strips, captures = [], 0
-        by_id = {e["id"]: e for e in entries}
-        for index, box in enumerate(boxes):
-            start, end = boundaries[index:index + 2]
-            if end <= start:
-                # Empty retained objects still need a stable selectable location.
-                strips.append({"id": box["id"], "image": None, "width": self.width, "height": 0,
-                               "bbox": [0, 0, self.width, 0], "links": [], "cache_key": None})
-                continue
-            x0, y0, x1, y1 = box["bbox"]
-            local = [x0, max(0, y0 - start), x1, min(end - start, y1 - start)]
-            entry = by_id[box["id"]]
-            relevant = {k: v for k, v in entry.items() if k not in {"pdf_regions", "render_regions"}}
-            assets = {name: asset_hashes[name] for name in asset_names(entry)}
-            links = [{"target": link["target"], "bbox": [link["bbox"][0], link["bbox"][1] - start,
-                       link["bbox"][2], link["bbox"][3] - start]} for link in box["links"]]
-            identity = digest(json_bytes({"input": relevant, "assets": assets, "settings": self.settings,
-                                          "height": end - start, "bbox": local, "links": links}))
-            image = cache / f"{identity}.png"
-            if not image.exists():
-                captured = self.capture.send("Page.captureScreenshot", {
-                    "format": "png", "captureBeyondViewport": True, "fromSurface": True,
-                    "optimizeForSpeed": True,
-                    "clip": {"x": 0, "y": start, "width": self.width, "height": end - start, "scale": 1}})
-                image.write_bytes(base64.b64decode(captured["data"]))
-                captures += 1
-            target = directory / image.name
-            shutil.copy2(image, target)
-            strips.append({"id": box["id"], "image": target.name, "width": self.width,
-                           "height": end - start, "bbox": local, "links": links, "cache_key": identity})
-        document.unlink()
-        return {"key": key, "strips": strips}, captures
+            shell.unlink(missing_ok=True)
+        filename = f"{key}.html"
+        (directory / filename).write_text(prepared, encoding="utf-8")
+        return {"key": key, "document": filename}
 
     def render(self, working, book, assets, fingerprint, previous=None):
         started = time.perf_counter()
@@ -163,46 +111,36 @@ class Renderer:
             target = directory / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
-        cache = working / "renders" / ".cache"
-        cache.mkdir(parents=True, exist_ok=True)
+        (directory / "document.css").write_text(self.style, encoding="utf-8")
         snapshot = deepcopy(book)
+        for element in elements(snapshot):
+            element.pop("render_regions", None)
         snapshot.update({"revision": revision, "input_fingerprint": fingerprint,
                          "asset_hashes": asset_hashes, "settings": self.settings, "render": {"chapters": []}})
         entries = toc_entries(book)
         toc_body = '<h1>Table of Contents</h1>' + "".join(
             f'<p class="toc-level-{e["heading_level"]}"><a href="#element-{e["id"]}" '
-            f'data-target="{e["id"]}">{self.md.renderInline(" ".join(element_markdown(e).lstrip("# ").split()))}</a></p>'
+            f'data-target="{e["id"]}">{self.md.renderInline(" ".join(heading_text(e).split()))}</a></p>'
             for _, e in entries)
-        documents = [("toc", [{"id": "generated-toc", "html": toc_body}])] if book["toc"]["enabled"] else []
+        documents = [("toc", [{"id": "generated-toc", "html": toc_body}])]
         documents += [(c["id"], c["elements"]) for c in book["chapters"]]
         previous_layouts = {c["id"]: c for c in previous.get("render", {}).get("chapters", [])} if previous else {}
-        captures = 0
+        prepared = 0
         for identifier, chapter_entries in documents:
             key = self.chapter_key(chapter_entries, asset_hashes)
             old = previous_layouts.get(identifier)
-            if old and old["key"] == key:
+            source = working / old["document"] if old and "document" in old else None
+            if old and old["key"] == key and source and source.exists():
                 layout = deepcopy(old)
-                for strip in layout["strips"]:
-                    if strip["image"]:
-                        source = working / strip["image"]
-                        target = directory / Path(strip["image"]).name
-                        if source != target:
-                            shutil.copy2(source, target)
+                target = directory / source.name
+                if source != target:
+                    shutil.copy2(source, target)
+                layout["document"] = target.name
             else:
-                layout, count = self.render_chapter(chapter_entries, directory, cache, key, asset_hashes)
-                captures += count
-            layout["id"] = identifier
-            for strip in layout["strips"]:
-                if strip["image"]:
-                    strip["image"] = f"renders/{revision}/{Path(strip['image']).name}"
+                layout = self.render_chapter(chapter_entries, directory, key)
+                prepared += 1
+            layout.update({"id": identifier, "document": f"renders/{revision}/{layout['document']}"})
             snapshot["render"]["chapters"].append(layout)
-        rendered_elements = {s["id"]: s for c in snapshot["render"]["chapters"] for s in c["strips"]}
-        for chapter in snapshot["chapters"]:
-            for element in chapter["elements"]:
-                strip = rendered_elements.get(element["id"])
-                element["render_regions"] = ([{"image": strip["image"], "bbox": strip["bbox"]}]
-                                              if strip and strip["image"] else [])
-        snapshot["metrics"] = {"captures": captures, "seconds": round(time.perf_counter() - started, 3)}
-        # Caller publishes only after this complete immutable manifest is ready.
+        snapshot["metrics"] = {"prepared_chapters": prepared, "seconds": round(time.perf_counter() - started, 3)}
         write_json(directory / "rendered.json", snapshot)
         return snapshot
