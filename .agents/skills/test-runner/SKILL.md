@@ -39,7 +39,8 @@ Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
    The verifier always runs standard suites; only DMA/SingleStep depend on changed sources.
    Use `--verify-dma` or `--verify-singlestep` alone for the corresponding standalone suite,
    or combine them with a completion profile to force inclusion.
-   Use `--milestone` for stage completion and `--plan` to inspect the selection without running it.
+   After the commit verification above, run `python tools/harness/verify.py --milestone` for stage completion.
+   The milestone set does not repeat commit checks; use `--plan` to inspect either set.
    Individual suite commands below are for development and diagnosis, not alternative completion gates.
 
 ## Background Checks and Result Collection

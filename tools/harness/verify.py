@@ -159,12 +159,12 @@ def quality_gates(milestone):
         ("Code Quality", check_code_quality_per_commit),
     ]
     if milestone:
-        gates.extend([
+        return [
             ("Hardware Quality (Milestone)", check_hardware_quality_milestone),
             ("Code Quality (Milestone)", check_code_quality_milestone),
             ("Docs Quality & Governance", check_docs_quality),
             ("Strict English Policy", check_polish_language),
-        ])
+        ]
     return gates
 
 
@@ -204,7 +204,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--commit", action="store_true", help="Run all standard tests; select DMA/SingleStep from staged changes")
-    mode.add_argument("--milestone", action="store_true", help="Verify all test environments and milestone quality gates")
+    mode.add_argument("--milestone", action="store_true", help="Run only milestone audits, chipset throughput and full vAmiga captures")
     parser.add_argument("--verify-dma", action="store_true", help="Run the Cartesian DMA set, alone or alongside a completion profile")
     parser.add_argument("--verify-singlestep", action="store_true", help="Run the full SingleStepTests set, alone or alongside a completion profile")
     parser.add_argument("--plan", action="store_true", help="Print selected commands without executing checks")

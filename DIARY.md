@@ -2252,3 +2252,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Commit profile retains known golden trace, Copper, matcher and PDF publication failures
   - No goldens or expectations changed
   - Full milestone not run
+---
+
+### [2026-10-09 19:22 CEST] — VERIFY-04: Separate milestone checks from commit verification
+- **Affected Subsystems**:
+  - `tools/harness`
+  - `verifier regressions`
+  - `agent rules and skills`
+  - `testing documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Milestone runs only its four additional audits, chipset throughput and full vAmiga capture checks
+  - Remove implicit commit tests and DMA/SingleStep selection from milestone
+  - Retain explicit CPU-set selectors alongside either profile
+  - Update every active milestone workflow to run commit once for the same snapshot before milestone
+- **Architectural Rationale & Trade-Offs**:
+  - Verification profiles must have independent execution scopes and avoid repeating standard commit checks during stage closure
+- **Verification & Test Results**:
+  - Eleven verifier regression tests passed including disjoint gate and command selection
+  - Vault links and script governance passed
+  - Commit baseline retains previously recorded golden trace, Copper, matcher and PDF publication failures
+  - Milestone selection inspected without running the complete capture catalog
+  - No golden expectations changed

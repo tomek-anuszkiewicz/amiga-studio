@@ -17,7 +17,12 @@ Use this procedure when reorganizing [ROADMAP.md](../../../ROADMAP.md), reviewin
 
 ## Complete a Listed Task
 
-- Confirm implementation and relevant domain tests. Run the per-commit gates in [AGENTS.md](../../../AGENTS.md); milestone completion additionally requires `python tools/harness/verify.py --milestone`, which includes all crate and harness tests.
+- Confirm implementation and run both independent verification sets once:
+  ```powershell
+  python tools/harness/verify.py --commit
+  python tools/harness/verify.py --milestone
+  ```
+  If commit verification already ran for this exact snapshot, run only the remaining milestone set. Milestone contains additional audits and whole-catalog checks; it does not repeat commit tests.
 - Before declaring a minor roadmap point or major milestone complete, perform the required semantic parity review, affected design synchronization, checkpoint review, and diary compaction. A reorganization alone does not trigger subsystem milestone completion.
 - Delete the verified task entirely. Leave any distinct unfinished work with its own gate; keep evidence in diary and Git rather than a completed-capability section.
 - Update the [vAmigaTS Verification Scorecard](../../../Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md) when the policy's scorecard triggers apply.

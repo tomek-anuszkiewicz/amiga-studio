@@ -22,7 +22,7 @@ def collect_changes(root, mode):
         raise RuntimeError("Untracked files exist. Stage intended files or move diagnostics to .agent/tmp/.")
     changes = set(paths.decode("utf-8").rstrip("\0").split("\0")) - {""}
     if mode == "commit" and not changes:
-        raise RuntimeError("No staged changes. Use --milestone for full repository verification.")
+        raise RuntimeError("No staged changes. Stage the intended snapshot for --commit.")
     return changes
 
 
@@ -57,8 +57,8 @@ WORKSPACE_INPUTS = {"Cargo.toml", "Cargo.lock", ".cargo/config.toml"}
 def select_tests(root, changes, mode, verify_dma=False, verify_singlestep=False):
     import sys
 
-    completion = mode in {"commit", "milestone"}
-    complete = mode == "milestone" or (completion and bool(changes & WORKSPACE_INPUTS))
+    completion = mode == "commit"
+    complete = completion and bool(changes & WORKSPACE_INPUTS)
     dma = complete or verify_dma or (completion and any(p.startswith(DMA_PATHS) for p in changes))
     singlestep = complete or verify_singlestep or (completion and any(p.startswith(SINGLESTEP_PATHS) for p in changes))
     commands = []

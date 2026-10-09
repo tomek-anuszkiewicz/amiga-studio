@@ -4,14 +4,14 @@ This document describes verification against CPU vectors, integration scenarios,
 
 ## Completion verification
 
-Stage the complete intended source snapshot, then run:
+Stage the complete intended source snapshot. For milestone closure run both separate sets, once each:
 
 ```powershell
 python tools/harness/verify.py --commit
 python tools/harness/verify.py --milestone
 ```
 
-Choose at most one completion profile. Commit always runs the quality gates, all ordinary workspace crate tests, all standard `test_runner` suites, and all Python tool contracts. Only Cartesian DMA and full SingleStepTests are conditional on staged changes. Milestone always includes both expensive CPU suites and adds documentation, hardware, code-quality, language, chipset throughput, and all runnable vAmigaTS capture checks.
+Routine commits use only the first command. The profiles are invoked separately. Commit always runs the quality gates, all ordinary workspace crate tests, all standard `test_runner` suites, and all Python tool contracts. Only Cartesian DMA and full SingleStepTests are conditional on staged changes. Milestone runs only additional documentation, hardware, code-quality and language audits, chipset throughput, and all runnable vAmigaTS capture checks. It does not run commit checks or automatically select DMA/SingleStep.
 
 DMA and SingleStep are independent test sets. They can run alone, together, or alongside a completion profile:
 
@@ -35,9 +35,9 @@ The two expensive environments use CPU + synthetic TestMemoryBus, not production
 | SingleStep runner/reporter or its test target | No | Yes |
 | Production memory implementation, MemoryBus, machine loop, chips, GUI, tools, docs | No | No |
 | Explicit force switch | `--verify-dma` | `--verify-singlestep` |
-| Milestone | Always | Always |
+| Milestone | Only with explicit selector | Only with explicit selector |
 
-Architecture tests run once as a fixed quality gate. All remaining tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory and the targeted vAmiga cargo suites. Milestone additionally compares the existing chipset performance baseline and runs the complete runnable vAmiga capture catalog; deferred cases remain deferred. Capture summary failures are checked explicitly because the underlying CLI does not reliably set a failing exit code.
+Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory and the targeted vAmiga cargo suites. The separate milestone set compares the existing chipset performance baseline and runs the complete runnable vAmiga capture catalog; deferred cases remain deferred. Capture summary failures are checked explicitly because the underlying CLI does not reliably set a failing exit code.
 
 Manual commands in the following sections and `run_tests.py` remain development/diagnostic tools; they do not replace completion verification. Wall-clock microbenchmarks and external sampling profiles remain manual measurement tools: the verifier runs their regression fixtures, and milestone runs the chipset throughput comparison without recording or changing goldens. Semantic review, design synchronization, diary compaction, and roadmap pruning still require agent/developer work.
 

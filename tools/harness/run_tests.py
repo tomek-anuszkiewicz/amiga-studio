@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Amiga 500 Emulator: Diagnostic Test Tier Runner CLI
-Completion uses verify.py --commit / --milestone, which owns change-based selection.
+Completion uses verify.py --commit; stage closure additionally runs the separate --milestone set.
 Runs unit, integration, and CPU/bus verification; whole-machine captures form the separate fourth tier:
   - Tier 1 (--unit): Fast, isolated unit tests (< 2s).
   - Tier 2 (--integration): Multi-crate integration & headless UI interaction tests.

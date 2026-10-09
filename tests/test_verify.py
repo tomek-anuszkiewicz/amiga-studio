@@ -93,12 +93,19 @@ class TestSelection(unittest.TestCase):
             self.assertEqual(execute.call_count, 1)
             self.assertEqual(execute.call_args.args[0], expected)
 
-    def test_milestone_selects_all_tests_and_external_capture_comparison(self):
-        commands = self.commands(mode="milestone")
-        expected = {p.stem for p in (ROOT / "crates/test_runner/tests").glob("test_*.rs")} - {"test_architecture_rules"}
-        self.assertEqual(expected, self.suites(commands))
+    def test_milestone_is_disjoint_from_commit_even_when_cpu_changed(self):
+        commands = self.commands("crates/cpu/src/state.rs", mode="milestone")
+        self.assertEqual({name for name, _, _ in commands},
+                         {"Chipset throughput", "All runnable vAmigaTS captures"})
+        self.assertEqual(self.suites(commands), set())
         self.assertTrue(any("--compare" in cmd for _, cmd, _ in commands))
         self.assertTrue(any("vamiga" in cmd and "all" in cmd for _, cmd, _ in commands))
+        commit = {name for name, _ in VERIFY.quality_gates(False)}
+        milestone = {name for name, _ in VERIFY.quality_gates(True)}
+        self.assertFalse(commit & milestone)
+        self.assertEqual(len(milestone), 4)
+        forced = self.commands(mode="milestone", verify_dma=True, verify_singlestep=True)
+        self.assertEqual(self.suites(forced), {"test_dma_cartesian", "test_singlestep"})
 
     def test_cli_passes_both_force_flags_to_selection(self):
         import contextlib
