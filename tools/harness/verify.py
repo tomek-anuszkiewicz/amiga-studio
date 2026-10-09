@@ -260,8 +260,9 @@ Examples:
     gates = quality_gates(args.milestone) if selected_mode != "standalone" else []
     scope = f"current working tree; changed paths: {len(changes)}" if selected_mode != "standalone" else "current working tree"
     print(f"Verification mode: {selected_mode}; {scope}", flush=True)
-    for name, _ in gates:
-        print(f"  Quality: {name}")
+    if args.plan:
+        for name, _ in gates:
+            print(f"  Quality: {name}")
     for name, command, overrides in commands:
         print(f"  Tests: {name}\n    {' '.join(command)}")
         if overrides:

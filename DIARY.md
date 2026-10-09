@@ -2328,3 +2328,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - temporary scope probes confirmed detection in crates and Cargo helpers and exclusion of diagnostics
   - Graphify updated. Full commit verification retains existing benchmark trace, Copper, capture matcher and PDF publication failures. Generated tracked traces restored
   - no golden references changed. Milestone execution not run.
+---
+
+### [2026-10-09 20:26 CEST] — VERIFY-08: Remove redundant quality preview from execution output
+- **Affected Subsystems**:
+  - `Verification console output`
+- **What Was Changed (The Concrete Reality)**:
+  - Print the Quality preview only in plan mode
+  - Preserve quality gate execution and RUN/PASS/FAIL progress messages
+- **Architectural Rationale & Trade-Offs**:
+  - Normal execution already reports each quality check and its result
+  - making the initial list redundant.
+- **Verification & Test Results**:
+  - 13 verifier regression tests passed
+  - inspected normal output without Quality preview and plan output retaining it
+  - Graphify updated
+  - full commit verification retains known benchmark trace, Copper, capture matcher and PDF publication failures. Generated tracked traces restored
+  - no golden changes. Milestone execution not run.
