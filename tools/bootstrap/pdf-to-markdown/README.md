@@ -1,7 +1,7 @@
 # PDF-to-Markdown
 
 Prepare PDF page images, positioned text, logical objects and transcribed tables
-for [book-to-markdown](../book-to-markdown/README.md). Preparation ends at Stage 05;
+for [book-to-markdown](../book-to-markdown/README.md). Preparation ends at Stage 06;
 the separate chapter generator is not implemented yet.
 
 ## Run an attempt
@@ -12,7 +12,7 @@ and authenticate with `codex login`. Run from the repository root:
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --pdf "<PDF_DIRECTORY>/source.pdf" `
-  --page-ranges "2-3" --from-stage 01 --to-stage 05
+  --page-ranges "2-3" --from-stage 01 --to-stage 06
 ```
 
 Without `--workspace`, the program creates and uses `<PDF_DIRECTORY>/pdf-to-markdown/`.
@@ -36,15 +36,18 @@ and a 180-second request timeout. Rendering uses 300 DPI.
 | [03: Page conversion](stages/03_page_conversion/README.md) | Ordered page objects, Markdown text and pixel boxes in `03_page_conversion/` |
 | [04: Filter](stages/04_filter_page_content/README.md) | Page objects with headers/footers removed in `04_filter_page_content/` |
 | [05: Tables](stages/05_transform_page_tables/README.md) | Only pages changed by table transcription in `05_transform_page_tables/` |
+| [06: Crops](stages/06_extract_crops/README.md) | All `graphic` bbox crops in `06_extract_crops/assets/<segment_id>.png` |
 
 The book-processing handoff consists of Stage 02 images/text, Stage 04 filtered
 objects and Stage 05 replacement pages. Unchanged pages remain in Stage 04;
 an empty Stage 05 directory is valid. Its status entry records the selected range.
+Stage 06 overlays Stage 05 pages on Stage 04 and extracts graphic crops from
+Stage 02 PNGs. Book processing consumes these assets alongside the page objects.
 
 ### Physical-page selection
 
 `--page-ranges` selects physical 1-based pages for this invocation, for example
-`"2-3,7"`. Stage 01 always prepares or reuses the complete PDF; Stages 02–05
+`"2-3,7"`. Stage 01 always prepares or reuses the complete PDF; Stages 02–06
 process only selected input pages. Omission selects all available pages.
 
 ## Restart and status

@@ -274,7 +274,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertIsNone(self.pipeline.resolve_stage_idx("02k"))
         self.assertIsNone(self.pipeline.resolve_stage_idx("02.90"))
         self.assertIsNone(self.pipeline.resolve_stage_idx("2.9"))
-        self.assertEqual(self.pipeline.STAGE_REGISTRY[-1]["id"], "05")
+        self.assertEqual(self.pipeline.STAGE_REGISTRY[-1]["id"], "06")
         self.assertEqual(self.pipeline.resolve_stage_idx("04"), self.stage_idx("04"))
         before = read_json(self.workspace / "stage_status.json")["03"]
         def worker(stage, *args):
@@ -290,6 +290,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual(after["03"], before)
         self.assertEqual(after["04"]["status"], "success")
         self.assertNotIn("05", after)
+        self.assertNotIn("06", after)
 
     def test_previous_numbering_is_rejected_before_cleanup(self):
         state_path = self.workspace / "stage_status.json"

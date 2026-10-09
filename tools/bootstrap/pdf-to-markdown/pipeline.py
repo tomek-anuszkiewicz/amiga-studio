@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-pipeline.py: Master CLI orchestrator for PDF page preparation and table transcription.
+pipeline.py: Master CLI for PDF page preparation, table transcription and graphic crops.
 """
 
 import argparse
@@ -53,13 +53,19 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "targets": ["05_transform_page_tables"],
         "inspect": ("page_*_segments.json", "transcribed table page JSON files"),
     },
+    {
+        "id": "06", "dir": "06_extract_crops", "script": "extract_crops.py",
+        "desc": "Extract graphic assets from original page PNGs using segment boxes",
+        "targets": ["06_extract_crops"],
+        "inspect": ("assets/*.png", "graphic PNG crops"),
+    },
 ]
 
 # Each stage reads explicitly named predecessor artifacts.
 for stage in STAGE_REGISTRY:
     stage["inputs"] = {
         "01": [], "02": ["01"], "03": ["02"], "04": ["02", "03"],
-        "05": ["02", "04"],
+        "05": ["02", "04"], "06": ["02", "04", "05"],
     }[stage["id"]]
 
 
@@ -83,7 +89,7 @@ def update_status(
         data = read_json(status_file)
     entry = data.setdefault(stage_num, {})
     entry["status"] = status
-    if stage_num == "05":
+    if stage_num in {"05", "06"}:
         entry["page_ranges"] = page_ranges
     if details or "details" not in entry:
         entry["details"] = details
@@ -144,7 +150,7 @@ def run_stage(
     elif stage_num == "02":
         prepared_pdf = prepared_pdf_path(pdf_path)
         cmd.extend(["--pdf", str(prepared_pdf)])
-    if page_ranges is not None and stage_num in {"01", "02", "03", "04", "05"}:
+    if page_ranges is not None:
         cmd.extend(["--page-ranges", page_ranges])
 
     status_file = workspace_dir / "stage_status.json"
@@ -313,7 +319,7 @@ def invalidate_status(status_file, stages):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="PDF preparation pipeline (page objects and table transcription)")
+    parser = argparse.ArgumentParser(description="PDF preparation pipeline (page objects, tables and graphic crops)")
     parser.add_argument("--pdf", type=Path, help="Source PDF or directory containing one source PDF")
     parser.add_argument("--workspace", type=Path, help="Attempt directory (default: pdf-to-markdown beside the source PDF)")
     parser.add_argument("--from-stage", help="Start stage (default: 01); clears this stage and all later results")

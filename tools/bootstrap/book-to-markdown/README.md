@@ -2,12 +2,13 @@
 
 This directory starts the planned deterministic chapter generator. It will consume prepared data from [PDF-to-Markdown](../pdf-to-markdown/README.md) and authored JSON recipes. The generator is not implemented yet.
 
-PDF preparation ends at Stage 05. The intended handoff uses Stage 02 original
+PDF preparation ends at Stage 06. The intended handoff uses Stage 02 original
 page PNGs and positioned text, Stage 04 filtered page objects and Stage 05
 changed page objects. The 05 status entry records its selected page range;
 overlay replacements on those selected 04 pages and retain unchanged pages.
-The generator will emit chapter Markdown and crop graphic assets directly from
-this prepared data. No intermediate page-ordered Markdown export is required.
+Stage 06 extracts graphic assets to `06_extract_crops/assets/<segment_id>.png`.
+The generator will emit chapter Markdown and copy these prepared assets.
+No intermediate page-ordered Markdown export is required.
 
 ## Source catalog and variant layout
 

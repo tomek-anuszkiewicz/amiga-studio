@@ -23,13 +23,15 @@ headers/footers. Covers, contents, indexes and lists of tables or illustrations
 remain for later manual classification and removal, even in older saved objects.
 The Stage 03 prompt classifies recurring margin logos as header/footer content;
 Stage 04 performs no image matching. Generated YAML metadata remains.
-All page workers from 02 through 05 apply the current invocation's
+All page workers from 02 through 06 apply the current invocation's
 `--page-ranges` before reading inputs. Selection is not persisted in config;
 omission means all available predecessor pages. Stage 01 prepares or reuses the
 full-source OCR PDF. Stage 04 reads Stage 03 directly, and Stage 05 reads
 only filtered objects. Stage 05 saves only changed table pages and records its
 invocation's page range in stage_status.json for separate book processing, which
 must overlay changed pages on selected Stage 04 input and retain unchanged pages.
+Stage 06 uses that same overlay to crop every `graphic` from the original Stage 02
+PNG into `06_extract_crops/assets/<segment_id>.png`, without modifying page JSON.
 See the [pipeline selection contract](pdf-to-markdown/README.md#physical-page-selection).
 
 Use language-tagged code fences for listings and fixed-width text for raw byte layouts. Quote Motorola dollar-prefixed hexadecimal values in inline code to protect math rendering. Render genuine equations as math. Prefer GFM for simple tables; preserve merged cells with HTML `rowspan` and `colspan`. Use HTML superscripts/subscripts or Unicode for math inside HTML table cells.

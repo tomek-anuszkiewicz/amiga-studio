@@ -1,5 +1,5 @@
 # Global configuration for the modular PDF-to-Markdown pipeline
-# Preparation ends at Stage 05; book generation is a separate program.
+# Preparation ends at Stage 06; book generation is a separate program.
 
 llm:
   stages:

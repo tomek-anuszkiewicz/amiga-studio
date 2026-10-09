@@ -1529,3 +1529,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - all 19 architecture tests passed
   - scoped diff check passed
   - obsolete per-task commit wording absent from shared instructions
+---
+
+### [2026-10-09 03:06 CET] — Add deterministic Stage 06 graphic extraction
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/book-to-markdown/README.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Register Stage 06 with predecessor requirements, selected page ranges and restart cleanup
+  - Extract graphic bounding boxes from original Stage 02 PNGs using Stage 04 objects with Stage 05 replacements
+  - Document the prepared asset handoff and update the existing restart test
+- **Architectural Rationale & Trade-Offs**:
+  - Prepare graphic assets independently of the future chapter generator without model calls or changes to predecessor artifacts. The PDF-MARKDOWN-WORKFLOW-1 plan retains unfinished book workflow scope.
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture suite passed 19 tests
+  - PDF conversion suite passed 26 tests
+  - PDF review selection suite passed 4 tests
+  - diff check passed before diary append
+  - no conversion or crop-quality evaluation run in this commit session
+  - no milestone completion claimed

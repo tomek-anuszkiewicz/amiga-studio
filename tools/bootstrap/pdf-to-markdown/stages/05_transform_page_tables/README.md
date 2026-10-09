@@ -16,6 +16,7 @@ Run through the [pipeline](../../README.md) with `--from-stage 05 --to-stage 05`
 after successful Stages 02 and 04. The configured model/effort and shared response
 cache apply. The status entry records this invocation's page range.
 
-This is the final preparation stage. Future
-[book processing](../../../book-to-markdown/README.md) combines its replacement
-pages with the selected Stage 04 dataset and Stage 02 images/text.
+[Stage 06](../06_extract_crops/README.md) overlays these replacement pages on
+Stage 04 and extracts graphic assets. Future
+[book processing](../../../book-to-markdown/README.md) consumes those assets,
+the selected page objects and Stage 02 images/text.
