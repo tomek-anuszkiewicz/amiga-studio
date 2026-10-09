@@ -202,24 +202,27 @@ def execute_test(name, command, overrides):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    mode = parser.add_mutually_exclusive_group(required=True)
+    mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--commit", action="store_true", help="Run all standard tests; select DMA/SingleStep from staged changes")
     mode.add_argument("--milestone", action="store_true", help="Verify all test environments and milestone quality gates")
-    parser.add_argument("--verify-dma", action="store_true", help="Force Cartesian DMA regardless of changed paths")
-    parser.add_argument("--verify-singlestep", action="store_true", help="Force full SingleStepTests regardless of changed paths")
+    parser.add_argument("--verify-dma", action="store_true", help="Run the Cartesian DMA set, alone or alongside a completion profile")
+    parser.add_argument("--verify-singlestep", action="store_true", help="Run the full SingleStepTests set, alone or alongside a completion profile")
     parser.add_argument("--plan", action="store_true", help="Print selected commands without executing checks")
     args = parser.parse_args(argv)
-    selected_mode = "milestone" if args.milestone else "commit"
+    if not any((args.commit, args.milestone, args.verify_dma, args.verify_singlestep)):
+        parser.error("Select --commit, --milestone, --verify-dma or --verify-singlestep")
+    selected_mode = "milestone" if args.milestone else "commit" if args.commit else "standalone"
     try:
-        changes = collect_changes(REPO_ROOT, selected_mode)
+        changes = collect_changes(REPO_ROOT, selected_mode) if selected_mode != "standalone" else set()
         before = snapshot(REPO_ROOT)
         commands = select_tests(REPO_ROOT, changes, selected_mode,
                                 verify_dma=args.verify_dma, verify_singlestep=args.verify_singlestep)
     except (RuntimeError, OSError, ValueError) as error:
         print(f"[FAIL] Cannot select verification: {error}", file=sys.stderr)
         return 1
-    gates = quality_gates(args.milestone)
-    print(f"Verification mode: {selected_mode}; staged paths: {len(changes)}", flush=True)
+    gates = quality_gates(args.milestone) if selected_mode != "standalone" else []
+    scope = f"staged paths: {len(changes)}" if selected_mode != "standalone" else "current working tree"
+    print(f"Verification mode: {selected_mode}; {scope}", flush=True)
     for name, _ in gates:
         print(f"  Quality: {name}")
     for name, command, overrides in commands:
@@ -244,7 +247,7 @@ def main(argv=None):
     except RuntimeError:
         unchanged = False
     if not unchanged:
-        print("[FAIL] Source or index changed during verification. Stage and verify again.")
+        print("[FAIL] Source or index changed during verification. Verify the current snapshot again.")
         results.append(False)
     print(f"[{'PASS' if all(results) else 'FAIL'}] {selected_mode} verification")
     return 0 if all(results) else 1

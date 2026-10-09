@@ -2229,3 +2229,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Existing golden trace, Copper, matcher and PDF publication failures remain and produce a failed gate
   - Generated trace outputs were preserved under .agent/tmp and restored
   - Full milestone not run
+---
+
+### [2026-10-09 19:15 CEST] — VERIFY-03: Allow independent DMA and SingleStep test sets
+- **Affected Subsystems**:
+  - `tools/harness`
+  - `verifier regressions`
+  - `agent instructions`
+  - `testing documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Allow --verify-dma and --verify-singlestep without --commit or --milestone
+  - Standalone selectors run only their explicit sets on the current working tree without staging or quality gates
+  - Preserve automatic commit triggers, complete milestone coverage and additive deduplicated combinations
+  - Reject empty and conflicting completion selections
+- **Architectural Rationale & Trade-Offs**:
+  - Targeted CPU verification must be callable independently from completion profiles without implicitly executing the standard commit suite
+- **Verification & Test Results**:
+  - Eleven CLI and selection regressions passed
+  - Combined standalone command ran only the two requested sets in 58.08 seconds
+  - Cartesian DMA passed and full SingleStepTests retained the existing DIVU failure
+  - Link and governance checks passed
+  - Commit profile retains known golden trace, Copper, matcher and PDF publication failures
+  - No goldens or expectations changed
+  - Full milestone not run

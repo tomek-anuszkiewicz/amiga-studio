@@ -6,7 +6,7 @@
 - Maintain integration coverage when chips gate execution, transfer Chip RAM, signal peers, or compete for bus slots. Extend existing tests when they already exercise that coordination.
 - For defects, follow [repro-first.md](repro-first.md). Remove test-only zombie runtime methods unless they intentionally expose host I/O or debugger controls.
 - Verification has four tiers: isolated crate behavior, machine/debugger/GUI integration, CPU and bus silicon verification, and whole-machine hardware captures. Architecture checks are a separate gate.
-- Completion verification uses `python tools/harness/verify.py --commit` or `--milestone`; standard tests always run and the verifier owns only the DMA/SingleStep change triggers and force switches. Use [test-runner](../skills/test-runner/SKILL.md) for focused diagnostics and snapshot handling. Report actual checks and coverage gaps; changed test files alone prove no coverage.
+- Completion verification uses `python tools/harness/verify.py --commit` or `--milestone`; standard tests always run and the verifier owns only the DMA/SingleStep change triggers and independent set selectors. Use [test-runner](../skills/test-runner/SKILL.md) for focused diagnostics and snapshot handling. Report actual checks and coverage gaps; changed test files alone prove no coverage.
 
 ## Bootstrap Converter Scope
 

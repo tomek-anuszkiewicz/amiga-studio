@@ -65,6 +65,34 @@ class TestSelection(unittest.TestCase):
         for suite in ("test_dma_cartesian", "test_singlestep"):
             self.assertEqual(sum(cmd.count(suite) for _, cmd, _ in commands), 1)
 
+    def test_standalone_selection_contains_only_explicit_sets(self):
+        for flag, expected in (("verify_dma", "test_dma_cartesian"),
+                               ("verify_singlestep", "test_singlestep")):
+            commands = self.commands("crates/cpu/src/state.rs", mode="standalone", **{flag: True})
+            self.assertEqual(len(commands), 1)
+            self.assertEqual(self.suites(commands), {expected})
+        commands = self.commands(mode="standalone", verify_dma=True, verify_singlestep=True)
+        self.assertEqual(len(commands), 2)
+        self.assertEqual(self.suites(commands), {"test_dma_cartesian", "test_singlestep"})
+
+    def test_standalone_cli_executes_without_staging_or_quality_gates(self):
+        import contextlib
+        import io
+        for flag, expected in (("--verify-dma", "Cartesian DMA"),
+                               ("--verify-singlestep", "Full SingleStepTests")):
+            with (
+                patch.object(VERIFY, "collect_changes") as collect,
+                patch.object(VERIFY, "snapshot", return_value="stable"),
+                patch.object(VERIFY, "quality_gates") as gates,
+                patch.object(VERIFY, "execute_test", return_value=(True, "passed", 0)) as execute,
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
+                self.assertEqual(VERIFY.main([flag]), 0)
+            collect.assert_not_called()
+            gates.assert_not_called()
+            self.assertEqual(execute.call_count, 1)
+            self.assertEqual(execute.call_args.args[0], expected)
+
     def test_milestone_selects_all_tests_and_external_capture_comparison(self):
         commands = self.commands(mode="milestone")
         expected = {p.stem for p in (ROOT / "crates/test_runner/tests").glob("test_*.rs")} - {"test_architecture_rules"}

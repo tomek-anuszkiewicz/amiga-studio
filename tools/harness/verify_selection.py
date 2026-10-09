@@ -57,19 +57,22 @@ WORKSPACE_INPUTS = {"Cargo.toml", "Cargo.lock", ".cargo/config.toml"}
 def select_tests(root, changes, mode, verify_dma=False, verify_singlestep=False):
     import sys
 
-    complete = mode == "milestone" or bool(changes & WORKSPACE_INPUTS)
-    dma = complete or verify_dma or any(p.startswith(DMA_PATHS) for p in changes)
-    singlestep = complete or verify_singlestep or any(p.startswith(SINGLESTEP_PATHS) for p in changes)
-    commands = [
-        ("All ordinary crate tests", ["cargo", "test", "--no-fail-fast", "--workspace",
-                                      "--exclude", "test_runner", "--", "--quiet"], {}),
-    ]
-    suites = {p.stem for p in (root / "crates/test_runner/tests").glob("test_*.rs")}
-    standard = suites - {"test_architecture_rules", "test_dma_cartesian", "test_singlestep"}
-    command = ["cargo", "test", "--no-fail-fast", "-p", "test_runner"]
-    for suite in sorted(standard):
-        command.extend(["--test", suite])
-    commands.append(("All standard harness tests", command + ["--", "--quiet"], {}))
+    completion = mode in {"commit", "milestone"}
+    complete = mode == "milestone" or (completion and bool(changes & WORKSPACE_INPUTS))
+    dma = complete or verify_dma or (completion and any(p.startswith(DMA_PATHS) for p in changes))
+    singlestep = complete or verify_singlestep or (completion and any(p.startswith(SINGLESTEP_PATHS) for p in changes))
+    commands = []
+    if completion:
+        commands.extend([
+            ("All ordinary crate tests", ["cargo", "test", "--no-fail-fast", "--workspace",
+                                          "--exclude", "test_runner", "--", "--quiet"], {}),
+        ])
+        suites = {p.stem for p in (root / "crates/test_runner/tests").glob("test_*.rs")}
+        standard = suites - {"test_architecture_rules", "test_dma_cartesian", "test_singlestep"}
+        command = ["cargo", "test", "--no-fail-fast", "-p", "test_runner"]
+        for suite in sorted(standard):
+            command.extend(["--test", suite])
+        commands.append(("All standard harness tests", command + ["--", "--quiet"], {}))
     if dma:
         commands.append(("Cartesian DMA", ["cargo", "test", "-p", "test_runner", "--test",
                                            "test_dma_cartesian", "--", "--quiet"], {}))
@@ -77,8 +80,9 @@ def select_tests(root, changes, mode, verify_dma=False, verify_singlestep=False)
         commands.append(("Full SingleStepTests", ["cargo", "test", "-p", "test_runner", "--test",
                                                   "test_singlestep", "--", "--quiet"],
                          {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"}))
-    commands.append(("All Python tool contracts", [sys.executable, "-m", "unittest", "discover",
-                                                 "-s", "tests", "-q"], {}))
+    if completion:
+        commands.append(("All Python tool contracts", [sys.executable, "-m", "unittest", "discover",
+                                                     "-s", "tests", "-q"], {}))
     if mode == "milestone":
         commands.append(("Chipset throughput", ["cargo", "run", "--release", "-p", "test_runner", "--",
                                                 "benchmark-chipset", "--compare"], {}))
