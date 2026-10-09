@@ -12,18 +12,14 @@ def git(root, *args):
     return result.stdout
 
 
-def collect_changes(root, mode):
-    """Use both rename endpoints; commit verification tests an exact index snapshot."""
-    if git(root, "diff", "--name-only", "-z"):
-        raise RuntimeError("Tracked unstaged changes exist. Stage the intended snapshot first.")
-    paths = git(root, "diff", "--cached", "--name-only", "--no-renames", "-z")
-    untracked = git(root, "ls-files", "--others", "--exclude-standard", "-z")
-    if untracked:
-        raise RuntimeError("Untracked files exist. Stage intended files or move diagnostics to .agent/tmp/.")
-    changes = set(paths.decode("utf-8").rstrip("\0").split("\0")) - {""}
-    if mode == "commit" and not changes:
-        raise RuntimeError("No staged changes. Stage the intended snapshot for --commit.")
-    return changes
+def collect_changes(root):
+    """Include staged, unstaged and new paths, with both rename endpoints."""
+    changes = set()
+    for args in (("diff", "--cached", "--name-only", "--no-renames", "-z"),
+                 ("diff", "--name-only", "--no-renames", "-z"),
+                 ("ls-files", "--others", "--exclude-standard", "-z")):
+        changes.update(git(root, *args).decode("utf-8").split("\0"))
+    return changes - {""}
 
 
 def snapshot(root):
@@ -32,6 +28,9 @@ def snapshot(root):
     for args in (("rev-parse", "HEAD"), ("diff", "--cached", "--binary"),
                  ("diff", "--binary"), ("ls-files", "--others", "--exclude-standard", "-z")):
         digest.update(git(root, *args))
+    for path in git(root, "ls-files", "--others", "--exclude-standard", "-z").decode("utf-8").split("\0"):
+        if path:
+            digest.update(hashlib.sha256((root / path).read_bytes()).digest())
     return digest.hexdigest()
 
 

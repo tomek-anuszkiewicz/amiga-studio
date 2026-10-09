@@ -32,7 +32,7 @@ Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
    python -m unittest discover -s tests -p <fixture_file.py> -q
    ```
 3. Repair the demonstrated mechanism, rerun the focused case, and retain its regression protection.
-4. Stage the complete intended snapshot and run the completion verifier:
+4. Run the completion verifier on the intended working-tree source; staging is optional:
    ```powershell
    python tools/harness/verify.py --commit
    ```

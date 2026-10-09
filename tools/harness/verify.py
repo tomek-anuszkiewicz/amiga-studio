@@ -203,7 +203,7 @@ def execute_test(name, command, overrides):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--commit", action="store_true", help="Run all standard tests; select DMA/SingleStep from staged changes")
+    mode.add_argument("--commit", action="store_true", help="Run all standard tests; select DMA/SingleStep from working-tree changes")
     mode.add_argument("--milestone", action="store_true", help="Run only milestone audits, chipset throughput and full vAmiga captures")
     parser.add_argument("--verify-dma", action="store_true", help="Run the Cartesian DMA set, alone or alongside a completion profile")
     parser.add_argument("--verify-singlestep", action="store_true", help="Run the full SingleStepTests set, alone or alongside a completion profile")
@@ -213,7 +213,7 @@ def main(argv=None):
         parser.error("Select --commit, --milestone, --verify-dma or --verify-singlestep")
     selected_mode = "milestone" if args.milestone else "commit" if args.commit else "standalone"
     try:
-        changes = collect_changes(REPO_ROOT, selected_mode) if selected_mode != "standalone" else set()
+        changes = collect_changes(REPO_ROOT) if selected_mode != "standalone" else set()
         before = snapshot(REPO_ROOT)
         commands = select_tests(REPO_ROOT, changes, selected_mode,
                                 verify_dma=args.verify_dma, verify_singlestep=args.verify_singlestep)
@@ -221,7 +221,7 @@ def main(argv=None):
         print(f"[FAIL] Cannot select verification: {error}", file=sys.stderr)
         return 1
     gates = quality_gates(args.milestone) if selected_mode != "standalone" else []
-    scope = f"staged paths: {len(changes)}" if selected_mode != "standalone" else "current working tree"
+    scope = f"current working tree; changed paths: {len(changes)}" if selected_mode != "standalone" else "current working tree"
     print(f"Verification mode: {selected_mode}; {scope}", flush=True)
     for name, _ in gates:
         print(f"  Quality: {name}")
@@ -244,7 +244,7 @@ def main(argv=None):
         print(f"[{'PASS' if ok else 'FAIL'}] {name} ({elapsed:.2f}s): {detail}", flush=True)
     try:
         unchanged = before == snapshot(REPO_ROOT)
-    except RuntimeError:
+    except (RuntimeError, OSError):
         unchanged = False
     if not unchanged:
         print("[FAIL] Source or index changed during verification. Verify the current snapshot again.")

@@ -6,7 +6,7 @@
 - Use an English Conventional Commit message with a concise imperative summary, rationale when useful, and actual validation results. Templates are in [agent maintenance](../../docs/ai_agents.md#recording-and-validating-changes).
 - Every commit includes its own diary entry per [diary-maintenance.md](diary-maintenance.md).
 
-Before each commit, stage the intended files and run the canonical verification entry point:
+Before each commit, run the canonical verification entry point on the final intended source and explicitly stage the intended files. Verification does not require staging first:
 
 ```powershell
 python tools/harness/verify.py --commit

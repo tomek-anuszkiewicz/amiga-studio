@@ -4,14 +4,14 @@ This document describes verification against CPU vectors, integration scenarios,
 
 ## Completion verification
 
-Stage the complete intended source snapshot. For milestone closure run both separate sets, once each:
+Verification runs on the current working tree and does not require staging or pending changes. For milestone closure run both separate sets, once each:
 
 ```powershell
 python tools/harness/verify.py --commit
 python tools/harness/verify.py --milestone
 ```
 
-Routine commits use only the first command. The profiles are invoked separately. Commit always runs the quality gates, all ordinary workspace crate tests, all standard `test_runner` suites, and all Python tool contracts. Only Cartesian DMA and full SingleStepTests are conditional on staged changes. Milestone runs only additional documentation, hardware, code-quality and language audits, chipset throughput, and all runnable vAmigaTS capture checks. It does not run commit checks or automatically select DMA/SingleStep.
+Routine commits use only the first command. The profiles are invoked separately. Commit always runs the quality gates, all ordinary workspace crate tests, all standard `test_runner` suites, and all Python tool contracts. Only Cartesian DMA and full SingleStepTests are conditional on staged, unstaged and nonignored new paths. Milestone runs only additional documentation, hardware, code-quality and language audits, chipset throughput, and all runnable vAmigaTS capture checks. It does not run commit checks or automatically select DMA/SingleStep.
 
 DMA and SingleStep are independent test sets. They can run alone, together, or alongside a completion profile:
 
@@ -24,7 +24,7 @@ python tools/harness/verify.py --commit --verify-dma --verify-singlestep --plan
 
 With no completion profile, `--verify-dma` runs only Cartesian DMA and `--verify-singlestep` runs only full SingleStepTests. Standalone sets use the current working tree, require no staging, and run no quality gates, ordinary crate tests, or Python contracts. With `--commit` or `--milestone`, the switches add their sets to that profile. Each selected suite runs once, even when changes also select it. Standalone runs do not replace completion verification. Add `--plan` to inspect commands without executing checks. There are no hooks. Unknown arguments are rejected.
 
-The verifier includes formatting, Clippy, architecture rules, API-reference scanning, and per-commit hardware/code audits. API-reference scans are textual checks, not execution coverage. Completion profiles reject tracked unstaged changes and untracked files and use both endpoints of renames. All profiles reject results if the source or index changes during execution. Ignored diagnostics belong in `.agent/tmp/`. The verifier does not stage or commit files.
+The verifier includes formatting, Clippy, architecture rules, API-reference scanning, and per-commit hardware/code audits. API-reference scans are textual checks, not execution coverage. All profiles accept clean trees, unstaged changes and new files. Change selection includes both endpoints of renames. Completion evidence must match the final committed source; rerun verification if that source changes. All profiles reject results if the source or index changes during execution. Ignored diagnostics belong in `.agent/tmp/`. The verifier does not stage or commit files.
 
 The two expensive environments use CPU + synthetic TestMemoryBus, not production MemoryBus or PhysicalMemory. Their trigger paths are owned by [verify_selection.py](../tools/harness/verify_selection.py):
 

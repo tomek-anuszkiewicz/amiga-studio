@@ -2273,3 +2273,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Commit baseline retains previously recorded golden trace, Copper, matcher and PDF publication failures
   - Milestone selection inspected without running the complete capture catalog
   - No golden expectations changed
+---
+
+### [2026-10-09 20:15 CEST] — VERIFY-05: Allow verification without staging
+- **Affected Subsystems**:
+  - `Verification harness`
+  - `agent workflow`
+  - `testing documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Allow commit and milestone sets on clean or dirty working trees
+  - Select expensive CPU suites from staged, unstaged and nonignored new paths
+  - Fingerprint untracked file contents and retain mutation detection
+  - Update regression tests and remove staging prerequisites from guidance
+- **Architectural Rationale & Trade-Offs**:
+  - Verification profiles describe test sets and must be runnable on demand
+  - independently of Git staging.
+- **Verification & Test Results**:
+  - 12 verifier regression tests passed
+  - documentation scripts, vault links and governance passed
+  - Graphify updated
+  - full commit verification ran without staging: quality gates and ordinary crate tests passed, existing test_benchmark_trace, test_vamiga_copper, test_vamiga_harness and PDF publication contract failures remain. Trace tests rewrote tracked reference outputs, causing snapshot rejection
+  - generated traces preserved under ignored diagnostics and original references restored. Milestone execution not run.

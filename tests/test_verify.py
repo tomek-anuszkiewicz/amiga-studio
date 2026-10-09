@@ -1,4 +1,4 @@
-"""Protect change selection and exact-index verification from false green results."""
+"""Protect working-tree selection and verification from false green results."""
 
 import importlib.util
 from pathlib import Path
@@ -117,6 +117,21 @@ class TestSelection(unittest.TestCase):
             self.assertEqual(VERIFY.main(["--commit", "--verify-dma", "--verify-singlestep", "--plan"]), 0)
         self.assertEqual(select.call_args.kwargs, {"verify_dma": True, "verify_singlestep": True})
 
+    def test_completion_profiles_run_and_plan_on_a_clean_tree(self):
+        import contextlib
+        import io
+        for mode in ("--commit", "--milestone"):
+            for plan in (False, True):
+                with (
+                    patch.object(VERIFY, "collect_changes", return_value=set()),
+                    patch.object(VERIFY, "snapshot", return_value="stable"),
+                    patch.object(VERIFY, "quality_gates", return_value=[]),
+                    patch.object(VERIFY, "execute_test", return_value=(True, "passed", 0)) as execute,
+                    contextlib.redirect_stdout(io.StringIO()),
+                ):
+                    self.assertEqual(VERIFY.main([mode] + (["--plan"] if plan else [])), 0)
+                self.assertEqual(execute.call_count, 0 if plan else 3 if mode == "--commit" else 2)
+
     def test_cli_rejects_unknown_or_conflicting_modes(self):
         for args in (("--commit", "--quick"), ("--commit", "--milestone"), ()):
             result = subprocess.run([sys.executable, str(ROOT / "tools/harness/verify.py"), *args], capture_output=True)
@@ -131,8 +146,8 @@ class TestSelection(unittest.TestCase):
             self.assertTrue(VERIFY.execute_test("All runnable vAmigaTS captures", command, {})[0])
 
 
-class TestIndexSnapshot(unittest.TestCase):
-    def test_partial_staging_and_untracked_sources_are_rejected_and_rename_keeps_both_paths(self):
+class TestWorkingTreeSnapshot(unittest.TestCase):
+    def test_clean_partial_staging_and_untracked_sources_are_allowed_and_fingerprinted(self):
         scratch = ROOT / ".agent/tmp"
         scratch.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=scratch) as directory:
@@ -144,17 +159,18 @@ class TestIndexSnapshot(unittest.TestCase):
             git("add", "old.rs")
             git("-c", "user.name=Verification Fixture", "-c", "user.email=fixture@example.invalid",
                 "-c", "commit.gpgsign=false", "commit", "-qm", "Initial fixture")
+            self.assertEqual(SELECT.collect_changes(root), set())
             git("mv", "old.rs", "new.rs")
-            self.assertEqual(SELECT.collect_changes(root, "commit"), {"old.rs", "new.rs"})
+            self.assertEqual(SELECT.collect_changes(root), {"old.rs", "new.rs"})
             before = SELECT.snapshot(root)
             (root / "new.rs").write_text("unstaged", encoding="utf-8")
             self.assertNotEqual(before, SELECT.snapshot(root))
-            with self.assertRaisesRegex(RuntimeError, "unstaged"):
-                SELECT.collect_changes(root, "commit")
-            git("add", "new.rs")
+            self.assertEqual(SELECT.collect_changes(root), {"old.rs", "new.rs"})
             (root / "extra.rs").write_text("untracked", encoding="utf-8")
-            with self.assertRaisesRegex(RuntimeError, "Untracked"):
-                SELECT.collect_changes(root, "commit")
+            self.assertEqual(SELECT.collect_changes(root), {"old.rs", "new.rs", "extra.rs"})
+            before = SELECT.snapshot(root)
+            (root / "extra.rs").write_text("changed untracked", encoding="utf-8")
+            self.assertNotEqual(before, SELECT.snapshot(root))
 
 
 if __name__ == "__main__":
