@@ -1,11 +1,13 @@
 # Scope and Root-Cause Resolution
 
 - Inspection questions authorize investigation and explanation. Modify files when implementation is requested or proposed changes are accepted.
-- Complete the requested change, including affected consumers, tests, and documentation. Avoid unrelated cleanup; obtain direction if the cause requires expanding the agreed scope.
+- Every new behavior must follow from a user requirement or be technically necessary for that requirement to work correctly. Explain necessity in terms of what would fail or remain incomplete without it. Convenience, possible future use, and agent preference do not establish necessity.
+- Complete the requested change, including affected consumers, relevant tests, and documentation. Choose routine implementation details autonomously within that scope. Avoid unrelated cleanup; obtain direction if the cause requires expanding the agreed scope.
+- Present optional features, flags, configuration, automation, and fallback behavior as proposals; implement them only after acceptance. Leave product and editorial decisions, such as selecting, hiding, or replacing source content, to the user unless explicitly delegated. Continue authorized work that does not depend on those decisions.
 - Explain the failing data flow, clock phase, or state transition before repairing it. Follow [repro-first.md](repro-first.md) to confirm the defect and fix.
 - Repair a shared upstream mechanism only when evidence establishes it. Reuse authoritative constants, types, and helpers; prove the mechanism on an isolated case before scaling.
 - Do not nudge coordinates or timing to fit a test, hardcode one-artifact OCR substitutions, or special-case an opcode, address, or filename to mask a defect. Represent the actual condition in the state machine or data model.
-- Before completion, verify scope, cause, and absence of duplicated definitions; requested refactors follow [clean-break-refactoring.md](clean-break-refactoring.md). Report delivered work, actual verification, and material unresolved findings.
+- Before completion, review the diff and identify the requirement or technical necessity behind each added behavior. Remove unrequested additions introduced by the current task; preserve pre-existing work. Verify cause and absence of duplicated definitions; requested refactors follow [clean-break-refactoring.md](clean-break-refactoring.md). Report delivered work, actual verification, and material unresolved findings.
 
 ## Execution-Plan Lifecycle
 

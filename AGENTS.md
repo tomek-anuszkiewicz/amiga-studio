@@ -8,6 +8,8 @@ Read these shared rules before task work; linked files require explicit reads:
 - [Path privacy](.agents/rules/no-external-paths.md): Keep committed paths portable.
 - [Commit policy](.agents/rules/git-commits.md): Required commit points, user-controlled timing, validation, and diary entries.
 
+Implement requested behavior and the technical changes necessary to make it work. Propose optional additions before implementing them; usefulness alone does not authorize a new feature. Leave product and editorial decisions to the user unless delegated explicitly. Before completion, review the diff against this boundary using the [scope rules](.agents/rules/structural-root-cause.md).
+
 Answer in the user's language; repository content and commits are English. Read [language-policy.md](.agents/rules/language-policy.md) for language checks, [audio-transcription.md](.agents/rules/audio-transcription.md) when audio is supplied, and [model-reasoning-advisory.md](.agents/rules/model-reasoning-advisory.md) when reasoning-effort advice is relevant. Do not guess unavailable model metadata.
 
 Run validation commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks. Use `.agent/tasks/` for English execution plans and `.agent/tmp/` for disposable diagnostics and artifacts. Follow the [execution-plan lifecycle](.agents/rules/structural-root-cause.md#execution-plan-lifecycle) when closing tasks. Treat existing temporary artifacts as unverified until their assumptions are checked.

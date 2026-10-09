@@ -1630,3 +1630,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify incremental refresh completed
   - diff check passed
   - no source-book conversion or milestone completion claimed
+---
+
+### [2026-10-10 00:21 CEST] — Clarify authorization boundaries for optional changes
+- **Affected Subsystems**:
+  - `AGENTS.md`
+  - `.agents/rules/structural-root-cause.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Require new behavior to follow a user requirement or technical necessity
+  - propose optional product and editorial features before implementation
+  - require a final scope review and preservation of pre-existing work
+- **Architectural Rationale & Trade-Offs**:
+  - Keep routine implementation autonomy while reserving product and editorial decisions for the user
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture suite passed 19 tests
+  - staged diff check passed
+  - documentation-only change, no conversion or milestone completion
