@@ -2345,3 +2345,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify updated
   - full commit verification retains known benchmark trace, Copper, capture matcher and PDF publication failures. Generated tracked traces restored
   - no golden changes. Milestone execution not run.
+---
+
+### [2026-10-10 01:42 CEST] — Refresh SHIFT-04 trace after canonical mnemonic correction
+- **Affected Subsystems**:
+  - `Benchmark execution traces`
+- **What Was Changed (The Concrete Reality)**:
+  - Refresh SHIFT-04 instruction labels from ROXL/ROXR to ASL/ASR
+  - Preserve opcodes, register deltas, CCK timings and existing golden hashes
+- **Architectural Rationale & Trade-Offs**:
+  - Align the tracked trace artifact with the canonical disassembler output and the golden hash approved in commit c621cdc. Scoped design review selected Performance Profiling and Optimization Strategy
+  - no documentation change is required for this artifact refresh.
+- **Verification & Test Results**:
+  - SHIFT-04 normalized FNV-1a matches the existing golden hash 0xA7B1BA76B22AC2C7
+  - python tests/verify.py --commit ran: ordinary crate tests, coverage reporting, formatting, Clippy, architecture, hardware quality and code quality passed
+  - Standard harness suite failed on BCD-02 and BCD-04 trace hash mismatches
+  - Python tool contracts failed in test_validated_pdf_resume_publishes_workspace_output
+  - No golden constants changed
+  - Milestone verification not run
