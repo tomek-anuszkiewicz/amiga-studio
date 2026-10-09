@@ -2205,3 +2205,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Existing PDF publication test fails in unchanged code with expected 16 versus actual 1
   - Commit verification passed including 19 architecture tests and five affected Python fixture suites
   - Milestone selection plan inspected; full milestone not run
+---
+
+### [2026-10-09 19:01 CEST] — VERIFY-02: Keep standard verification unconditional and expose CPU suite overrides
+- **Affected Subsystems**:
+  - `tools/harness`
+  - `verification tests`
+  - `agent instructions`
+  - `testing documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Always run ordinary workspace tests, standard test_runner suites and Python contracts for commit verification
+  - Retain staged-path triggers only for Cartesian DMA and full SingleStepTests
+  - Add independent additive --verify-dma and --verify-singlestep switches
+  - Keep milestone as the complete profile including both CPU suites
+  - Remove reverse dependency and Python fixture selection machinery
+- **Architectural Rationale & Trade-Offs**:
+  - Measured runtimes support a fixed standard profile with only the two expensive synthetic CPU suites selected conditionally
+  - Explicit overrides allow verification without altering trigger paths or disabling normal tests
+- **Verification & Test Results**:
+  - Nine routing and CLI regressions passed
+  - Commit verification ran all standard tests and omitted both expensive suites in 36.86 seconds
+  - Quality gates including 19 architecture tests and all ordinary crate tests passed
+  - Existing golden trace, Copper, matcher and PDF publication failures remain and produce a failed gate
+  - Generated trace outputs were preserved under .agent/tmp and restored
+  - Full milestone not run

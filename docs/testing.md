@@ -11,22 +11,32 @@ python tools/harness/verify.py --commit
 python tools/harness/verify.py --milestone
 ```
 
-Use one mode: commit checks affected test environments; milestone checks all environments and adds documentation, hardware, code-quality, language, chipset throughput, and all runnable vAmigaTS capture checks. Add `--plan` to inspect the selection without executing it. There are no hooks. Unknown arguments are rejected.
+Use one mode. Commit always runs the quality gates, all ordinary workspace crate tests, all standard `test_runner` suites, and all Python tool contracts. Only Cartesian DMA and full SingleStepTests are conditional on staged changes. Milestone always includes both expensive CPU suites and adds documentation, hardware, code-quality, language, chipset throughput, and all runnable vAmigaTS capture checks.
+
+The force switches are additive and independent:
+
+```powershell
+python tools/harness/verify.py --commit --verify-dma
+python tools/harness/verify.py --commit --verify-singlestep
+python tools/harness/verify.py --commit --verify-dma --verify-singlestep --plan
+```
+
+`--verify-dma` forces Cartesian DMA; `--verify-singlestep` forces full SingleStepTests. Each selected suite runs once, even when changes also select it. Flags do not skip ordinary tests or weaken milestone. Add `--plan` to inspect commands without executing checks. There are no hooks. Unknown arguments are rejected.
 
 The verifier includes formatting, Clippy, architecture rules, API-reference scanning, and per-commit hardware/code audits. API-reference scans are textual checks, not execution coverage. It rejects tracked unstaged changes and untracked files, uses both endpoints of renames, and rejects results if the index or source changes during execution. Ignored diagnostics belong in `.agent/tmp/`. The verifier does not stage or commit files.
 
-Ordinary crate tests follow the transitive workspace dependency graph, including nested objects and test dependencies. For example, a Blitter change selects Blitter, Agnus, MemoryBus, machine, debugger, and GUI tests. PhysicalMemory changes select ordinary CPU tests, which instantiate real memory, but do not select synthetic silicon/DMA tests unless the shared AddressBus/BusResult contract changes.
+The two expensive environments use CPU + synthetic TestMemoryBus, not production MemoryBus or PhysicalMemory. Their trigger paths are owned by [verify_selection.py](../tools/harness/verify_selection.py):
 
-Special `test_runner` suites are selected in [verify_selection.py](../tools/harness/verify_selection.py):
+| Trigger | Cartesian DMA | Full SingleStepTests |
+| --- | --- | --- |
+| CPU/config crate, shared AddressBus/BusResult contract, common synthetic harness, vectors, workspace manifest/lock/config | Yes | Yes |
+| DMA harness or its test target | Yes | No |
+| SingleStep runner/reporter or its test target | No | Yes |
+| Production memory implementation, MemoryBus, machine loop, chips, GUI, tools, docs | No | No |
+| Explicit force switch | `--verify-dma` | `--verify-singlestep` |
+| Milestone | Always | Always |
 
-| Test environment | Change triggers |
-| --- | --- |
-| CPU + synthetic TestMemoryBus | CPU, shared bus contract, CPU harness/diagnostics, silicon vectors, or owning test files; SingleStep always uses full mode |
-| CPU benchmark + real memory | CPU, PhysicalMemory, configuration/RTC, benchmark implementation, persisted benchmark artifacts, analysis tools, or owning test files |
-| Full A500Machine / vAmiga harness | Any machine component, vAmiga harness/assets, or owning test files |
-| Python tool contracts | Changes to the tested tool select its fixture group: harness/governance, conversion, bootstrap, MCP, or worktree; owning fixture changes select that fixture |
-
-Workspace manifest/lock changes select all Rust and Python suites. Individual crate manifests select that crate and its reverse dependents. Changes to shared test helpers select their owning suites. Architecture tests run once as a fixed quality gate. Milestone additionally compares the existing chipset performance baseline and runs the complete runnable vAmiga capture catalog; deferred cases remain deferred. Capture summary failures are checked explicitly because the underlying CLI does not reliably set a failing exit code.
+Architecture tests run once as a fixed quality gate. All remaining tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory and the targeted vAmiga cargo suites. Milestone additionally compares the existing chipset performance baseline and runs the complete runnable vAmiga capture catalog; deferred cases remain deferred. Capture summary failures are checked explicitly because the underlying CLI does not reliably set a failing exit code.
 
 Manual commands in the following sections and `run_tests.py` remain development/diagnostic tools; they do not replace completion verification. Wall-clock microbenchmarks and external sampling profiles remain manual measurement tools: the verifier runs their regression fixtures, and milestone runs the chipset throughput comparison without recording or changing goldens. Semantic review, design synchronization, diary compaction, and roadmap pruning still require agent/developer work.
 

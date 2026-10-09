@@ -181,7 +181,7 @@ def execute_test(name, command, overrides):
     env = os.environ.copy()
     env.update(overrides)
     code, stdout, stderr, elapsed = run_cmd(command, env=env)
-    detail = "passed"
+    detail = f"command exited with code {code}" if code else "passed"
     # vAmiga CLI currently prints failures without setting a failing process exit code.
     # Require a nonempty, complete summary instead of trusting that exit code.
     if name == "All runnable vAmigaTS captures":
@@ -203,15 +203,18 @@ def execute_test(name, command, overrides):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--commit", action="store_true", help="Verify staged changes and affected test environments")
+    mode.add_argument("--commit", action="store_true", help="Run all standard tests; select DMA/SingleStep from staged changes")
     mode.add_argument("--milestone", action="store_true", help="Verify all test environments and milestone quality gates")
+    parser.add_argument("--verify-dma", action="store_true", help="Force Cartesian DMA regardless of changed paths")
+    parser.add_argument("--verify-singlestep", action="store_true", help="Force full SingleStepTests regardless of changed paths")
     parser.add_argument("--plan", action="store_true", help="Print selected commands without executing checks")
     args = parser.parse_args(argv)
     selected_mode = "milestone" if args.milestone else "commit"
     try:
         changes = collect_changes(REPO_ROOT, selected_mode)
         before = snapshot(REPO_ROOT)
-        commands = select_tests(REPO_ROOT, changes, selected_mode)
+        commands = select_tests(REPO_ROOT, changes, selected_mode,
+                                verify_dma=args.verify_dma, verify_singlestep=args.verify_singlestep)
     except (RuntimeError, OSError, ValueError) as error:
         print(f"[FAIL] Cannot select verification: {error}", file=sys.stderr)
         return 1

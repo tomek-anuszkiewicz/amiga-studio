@@ -36,7 +36,8 @@ Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
    ```powershell
    python tools/harness/verify.py --commit
    ```
-   The verifier selects required suites from changed components and their test environments.
+   The verifier always runs standard suites; only DMA/SingleStep depend on changed sources.
+   Use `--verify-dma` or `--verify-singlestep` to force either suite.
    Use `--milestone` for stage completion and `--plan` to inspect the selection without running it.
    Individual suite commands below are for development and diagnosis, not alternative completion gates.
 

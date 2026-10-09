@@ -53,7 +53,7 @@ Per-commit commands:
 ```powershell
 python tools/harness/verify.py --commit
 ```
-The verifier owns quality gates and change-dependent test selection, including architecture, crate integration, full SingleStepTests and Cartesian DMA for their actual test environments, and Python tool contracts. Stage the complete intended snapshot before verification; tracked unstaged or untracked files are rejected. Use `--plan` to inspect selected commands. Targeted manual tests remain available during development; do not duplicate completion commands outside the verifier.
+The verifier always runs quality gates, architecture, all ordinary crate/standard harness tests, and Python tool contracts. Only full SingleStepTests and Cartesian DMA depend on their source changes in commit mode; `--verify-singlestep` and `--verify-dma` force them independently. Milestone includes both suites unconditionally. Stage the complete intended snapshot before verification; tracked unstaged or untracked files are rejected. Use `--plan` to inspect commands. Targeted manual tests remain available during development; do not duplicate completion commands outside the verifier.
 
 Milestone completion requires `python tools/harness/verify.py --milestone`, [semantic parity review](.agents/skills/audit-semantic-parity/SKILL.md) of modified subsystems, design synchronization and checkpoint updates, diary compaction, and pruning completed roadmap steps. Do not claim unrun checks passed. **Prohibition of Blind Golden Hash Modifications:** Never silently change golden hashes or cycle references; follow the conflict and approval procedure in specification-compliance rules.
 

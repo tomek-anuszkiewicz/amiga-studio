@@ -18,42 +18,52 @@ import verify_selection as SELECT
 
 
 class TestSelection(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.graph = SELECT.package_graph(ROOT)
-
-    def commands(self, *paths, mode="commit"):
-        with patch.object(SELECT, "package_graph", return_value=self.graph):
-            return SELECT.select_tests(ROOT, set(paths), mode)
+    def commands(self, *paths, mode="commit", **forced):
+        return SELECT.select_tests(ROOT, set(paths), mode, **forced)
 
     def suites(self, commands):
         return {cmd[i + 1] for _, cmd, _ in commands for i, value in enumerate(cmd) if value == "--test"}
 
-    def test_physical_memory_selects_real_cpu_and_machine_but_not_synthetic_dma(self):
-        commands = self.commands("crates/physical_memory/src/map.rs")
-        crates = {cmd[i + 1] for _, cmd, _ in commands for i, value in enumerate(cmd) if value == "-p"}
-        self.assertTrue({"cpu", "physical_memory", "memory_bus", "machine_loop", "debugger", "gui"} <= crates)
-        self.assertNotIn("test_dma_cartesian", self.suites(commands))
-        self.assertNotIn("test_singlestep", self.suites(commands))
+    def test_standard_profile_is_identical_for_unrelated_changes(self):
+        expected = self.commands("docs/testing.md")
+        for path in ("crates/physical_memory/src/map.rs", "crates/blitter/src/blitter.rs",
+                     "crates/gui/src/app.rs", "tools/bootstrap/conversion/lineage.py"):
+            self.assertEqual(expected, self.commands(path))
+        suites = self.suites(expected)
+        self.assertNotIn("test_dma_cartesian", suites)
+        self.assertNotIn("test_singlestep", suites)
+        self.assertIn("test_vamiga_blitter", suites)
+        self.assertIn("test_benchmark_trace", suites)
+        self.assertTrue(any("--workspace" in cmd for _, cmd, _ in expected))
+        self.assertTrue(any(name == "All Python tool contracts" for name, _, _ in expected))
 
     def test_shared_bus_contract_and_cpu_force_full_silicon_verification(self):
-        for path in ("crates/physical_memory/src/address_bus.rs", "crates/cpu/src/state.rs"):
+        for path in ("crates/physical_memory/src/address_bus.rs", "crates/cpu/src/state.rs",
+                     "crates/cpu/Cargo.toml", "crates/config/src/registers.rs", "Cargo.lock"):
             commands = self.commands(path)
             self.assertTrue({"test_dma_cartesian", "test_singlestep"} <= self.suites(commands))
             self.assertTrue(any(env.get("SINGLESTEP_FULL") == "1" for _, _, env in commands))
 
-    def test_nested_blitter_selects_parent_environments(self):
-        commands = self.commands("crates/blitter/src/blitter.rs")
-        crates = {cmd[i + 1] for _, cmd, _ in commands for i, value in enumerate(cmd) if value == "-p"}
-        self.assertTrue({"blitter", "agnus", "memory_bus", "machine_loop", "debugger", "gui"} <= crates)
-        self.assertIn("test_vamiga_blitter", self.suites(commands))
-        self.assertNotIn("test_singlestep", self.suites(commands))
+    def test_each_harness_triggers_only_its_expensive_suite(self):
+        for path in ("crates/test_runner/src/dma_harness.rs", "crates/test_runner/tests/test_dma_cartesian.rs"):
+            suites = self.suites(self.commands(path))
+            self.assertIn("test_dma_cartesian", suites)
+            self.assertNotIn("test_singlestep", suites)
+        for path in ("crates/test_runner/src/runner.rs", "crates/test_runner/tests/test_singlestep.rs"):
+            suites = self.suites(self.commands(path))
+            self.assertIn("test_singlestep", suites)
+            self.assertNotIn("test_dma_cartesian", suites)
 
-    def test_deleted_test_and_manifest_changes_are_not_lost(self):
-        self.assertIn("test_singlestep", self.suites(self.commands("crates/test_runner/src/runner.rs")))
-        self.assertIn("test_dma_cartesian", self.suites(self.commands("Cargo.lock")))
-        # This named target is also imported by another target via #[path].
-        self.assertIn("test_benchmark_csv", self.suites(self.commands("crates/test_runner/tests/test_golden_row_hashes.rs")))
+    def test_force_flags_are_independent_and_additive(self):
+        for flag, expected, absent in (("verify_dma", "test_dma_cartesian", "test_singlestep"),
+                                      ("verify_singlestep", "test_singlestep", "test_dma_cartesian")):
+            suites = self.suites(self.commands("docs/testing.md", **{flag: True}))
+            self.assertIn(expected, suites)
+            self.assertNotIn(absent, suites)
+        commands = self.commands("docs/testing.md", verify_dma=True, verify_singlestep=True)
+        self.assertTrue({"test_dma_cartesian", "test_singlestep"} <= self.suites(commands))
+        for suite in ("test_dma_cartesian", "test_singlestep"):
+            self.assertEqual(sum(cmd.count(suite) for _, cmd, _ in commands), 1)
 
     def test_milestone_selects_all_tests_and_external_capture_comparison(self):
         commands = self.commands(mode="milestone")
@@ -62,13 +72,15 @@ class TestSelection(unittest.TestCase):
         self.assertTrue(any("--compare" in cmd for _, cmd, _ in commands))
         self.assertTrue(any("vamiga" in cmd and "all" in cmd for _, cmd, _ in commands))
 
-    def test_python_contracts_follow_the_tool_environment(self):
-        harness = self.commands("tools/harness/verify.py")
-        names = {name for name, _, _ in harness}
-        self.assertIn("Python: test_verify", names)
-        self.assertNotIn("Python: test_conversion_publish", names)
-        converter = self.commands("tools/bootstrap/conversion/lineage.py")
-        self.assertIn("Python: test_conversion_publish", {name for name, _, _ in converter})
+    def test_cli_passes_both_force_flags_to_selection(self):
+        import contextlib
+        import io
+        with patch.object(VERIFY, "collect_changes", return_value={"docs/testing.md"}), \
+             patch.object(VERIFY, "snapshot", return_value="stable"), \
+             patch.object(VERIFY, "select_tests", return_value=[]) as select, \
+             contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(VERIFY.main(["--commit", "--verify-dma", "--verify-singlestep", "--plan"]), 0)
+        self.assertEqual(select.call_args.kwargs, {"verify_dma": True, "verify_singlestep": True})
 
     def test_cli_rejects_unknown_or_conflicting_modes(self):
         for args in (("--commit", "--quick"), ("--commit", "--milestone"), ()):

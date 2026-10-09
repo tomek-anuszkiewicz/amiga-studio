@@ -19,7 +19,7 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[CPU SingleSt
 
 ## Completion entry point
 
-Completion uses [verify.py](../../../tools/harness/verify.py) with `--commit` for staged changes or `--milestone` for all environments. The [selection implementation](../../../tools/harness/verify_selection.py) owns change-dependent commands; [developer testing documentation](../../../docs/testing.md#completion-verification) describes snapshot requirements and the environment map. Crate tests follow reverse workspace dependencies. Synthetic SingleStep/DMA suites have separate triggers because they use TestMemoryBus rather than the production machine. Manual tier commands below are diagnostic entry points, not additional completion obligations.
+Completion uses [verify.py](../../../tools/harness/verify.py) with `--commit` for staged changes or `--milestone` for all environments. The [selection implementation](../../../tools/harness/verify_selection.py) owns the fixed profile and the two expensive CPU-suite trigger maps; [developer testing documentation](../../../docs/testing.md#completion-verification) describes snapshot requirements and the environment map. All ordinary crate tests, standard harness suites, and Python contracts run on every commit. Only synthetic SingleStep/DMA suites have change triggers because they use TestMemoryBus rather than the production machine; `--verify-singlestep` and `--verify-dma` force them independently. Milestone always includes both. Manual tier commands below are diagnostic entry points, not additional completion obligations.
 
 ## 1. Architectural Purpose & Testing Pyramid
 
