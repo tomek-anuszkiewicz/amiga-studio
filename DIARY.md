@@ -1576,3 +1576,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Python compilation and JavaScript syntax passed. Earlier task-scoped renderer, queue and GUI checks passed, including stale edits, malformed JSON/math recovery, scrolling and copy-failure acceptance safety. Test Book import retained 1052 elements, 160 unchanged page PNGs and 56 assets
   - final cold render produced 1047 strips in 285.417 seconds, warm render captured 0 strips. Graphify refresh completed and diff check passed. No new inference or conversion-quality assessment performed
   - milestone gate not run.
+---
+
+### [2026-10-10 00:17 CEST] — Centralize PDF preparation settings in YAML
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_pdf_ocr_profile.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Store shared rendering DPI and Stage 01 OCR settings in config.yaml
+  - remove the separate OCR profile and runtime version checks, retaining requirements.txt pins
+  - apply configured settings in Stages 01 and 02 with defaults for older workspace configs
+  - retain language-model hash checks and record effective settings and actual library versions
+  - update focused tests and documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Keep editable preparation settings in one configuration source while preserving exact language-model identity and existing prepared-PDF reuse
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture suite passed 19 tests
+  - OCR configuration suite passed 2 tests
+  - PDF conversion suite passed 28 tests
+  - prior configuration override and OCR parameter forwarding checks passed
+  - Graphify incremental refresh completed
+  - no source-book conversion or milestone completion claimed

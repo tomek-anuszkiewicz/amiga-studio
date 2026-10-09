@@ -76,7 +76,7 @@ and omission selects all available pages. Existing workspace config takes
 precedence and is preserved without rewriting. A missing config is copied from
 `pdf-to-markdown/config.yaml`; there is no pipeline `--config` option. PDF workers
 use the fixed shared `book-to-markdown/books/.cache/codex` response cache, without
-a pipeline `--cache-dir` override. Rendering uses fixed 300 DPI PNGs, inference
+a pipeline `--cache-dir` override. Rendering uses `rendering.dpi` from configuration (default 300 DPI), inference
 concurrency 1 and a 180-second request timeout. Legacy config selection fields
 do not control source or page selection. No historical source-selection
 comparison runs.
@@ -270,8 +270,19 @@ Stage 02 reads only this PDF using that mapping, applies the attempt page select
 and persists positioned text JSON with matching PNGs. Its provenance is `prepared`
 or `none`; a reused PDF does not establish native versus OCR origin. Native spans
 are preserved regardless of length. Textless source
-pages use local Tesseract through PyMuPDF with fixed English (`eng`) language
-data, discovered automatically or through `TESSDATA_PREFIX`. Stage 01 has
+pages use local Tesseract through PyMuPDF with configured language data
+(default English `eng`), discovered automatically or through `TESSDATA_PREFIX`.
+The [pipeline configuration](pdf-to-markdown/config.yaml) supplies shared
+`rendering.dpi` and `stages.01_text_layer` language-model and render/save settings.
+Missing preparation settings in older workspace configurations use repository
+defaults without rewriting those files. New OCR checks the language-model SHA-256;
+library versions are pinned only in `requirements.txt`. The source-adjacent
+`*-ocr.json` records effective settings, actual PyMuPDF/MuPDF versions,
+source/prepared hashes, attempted OCR pages and Python/platform identity.
+This model check does not restore PDF-content or geometry validation. Existing
+prepared PDFs still reuse by existence, without provenance backfill or checks.
+See [Stage 01](pdf-to-markdown/stages/01_text_layer/README.md) for installation
+and reproducibility limits. Stage 01 has
 no Codex model selection, prompt or model request. Later inference stages retain
 the shared Codex transport.
 

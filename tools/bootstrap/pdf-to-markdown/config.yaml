@@ -1,6 +1,22 @@
 # Global configuration for the modular PDF-to-Markdown pipeline
 # Preparation ends at Stage 06; book generation is a separate program.
 
+# Shared rendering settings for Stages 01 and 02.
+rendering:
+  dpi: 300
+
+stages:
+  # Stage 01: add a text layer to pages that need OCR.
+  01_text_layer:
+    language: "eng"
+    traineddata_sha256: "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"
+    traineddata_url: "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/eng.traineddata"
+    colorspace: "RGB"
+    alpha: false
+    ocr_compress: true
+    save_deflate: true
+    save_garbage: 4
+
 llm:
   stages:
     03_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

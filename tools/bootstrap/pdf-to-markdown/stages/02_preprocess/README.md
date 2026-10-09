@@ -2,7 +2,9 @@
 
 Read the prepared [Stage 01 PDF](../01_text_layer/README.md) and write one
 `02_preprocess/page_XXXX.png` and `page_XXXX.json` for each selected physical page,
-including blank pages. Render at 300 DPI; no OCR or model request is made.
+including blank pages. Render using shared `rendering.dpi` from the
+[pipeline configuration](../../config.yaml), default 300 DPI; no OCR or model
+request is made.
 
 JSON records the source page number, page geometry, actual PNG dimensions,
 extracted text blocks and the transform between text and raster coordinates.

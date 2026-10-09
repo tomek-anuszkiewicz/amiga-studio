@@ -23,9 +23,11 @@ without `--pdf` or `--workspace`, the default is `pdf-to-markdown/` in the curre
 Supply the original `--pdf` on every conversion or restart. If the workspace has
 no `config.yaml`, the program copies `tools/bootstrap/pdf-to-markdown/config.yaml`
 there automatically. An existing workspace config is preserved without rewriting.
-Edit that local file to select model/effort for Stages 03 and 05.
+Edit that local file to configure Stage 01 OCR, shared rendering DPI, and
+model/effort for Stages 03 and 05. Missing preparation fields use the repository
+defaults without rewriting an existing workspace config.
 Inference uses ChatGPT authentication, original-detail images, concurrency 1
-and a 180-second request timeout. Rendering uses 300 DPI.
+and a 180-second request timeout. Rendering uses `rendering.dpi` (default 300 DPI) in Stages 01 and 02.
 
 ## Stages and outputs
 
