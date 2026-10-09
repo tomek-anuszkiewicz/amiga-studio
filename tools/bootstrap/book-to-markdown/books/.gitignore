@@ -3,3 +3,7 @@
 workspace/
 pdf-to-markdown/
 .cache/
+pdf/
+working/
+accepted/
+.accepted-*/

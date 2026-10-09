@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Book Review</title><link rel="stylesheet" href="/viewer.css"></head><body>
+<header><strong>Book Review</strong><label>Chapter <select id="chapter"><option value="">Choose…</option></select></label>
+<button id="previous">Previous Change</button><button id="next">Next Change</button>
+<button id="copy" disabled>Copy ID</button><button id="accept" disabled>Accept Working</button>
+<label><input type="checkbox" id="toc-enabled" checked> TOC</label>
+<label>Depth <select id="toc-depth"><option>1</option><option selected>2</option><option>3</option></select></label>
+<span id="status" role="status">Connecting…</span></header>
+<div id="selection">Select an element to inspect its identity and source bindings.</div>
+<main><section><h2>PDF</h2><div class="pane" id="pdf" tabindex="0"></div></section>
+<section><h2>Accepted</h2><div class="pane" id="accepted" tabindex="0"></div></section>
+<section><h2>Working</h2><div class="pane" id="working" tabindex="0"></div></section></main>
+<dialog id="heading-dialog"><form method="dialog"><h3>Heading level</h3><p id="heading-id"></p>
+<label>Level <select id="level"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
+<div><button value="cancel">Cancel</button><button type="button" id="save-heading">Save</button></div></form></dialog>
+<script src="/viewer.js"></script></body></html>

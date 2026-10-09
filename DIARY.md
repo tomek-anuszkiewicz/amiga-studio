@@ -1552,3 +1552,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - diff check passed before diary append
   - no conversion or crop-quality evaluation run in this commit session
   - no milestone completion claimed
+---
+
+### [2026-10-09 03:52 CET] — Implement editable book import and three-column bitmap review
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Implement PDF-MARKDOWN-WORKFLOW-1 import from Stage 04 with full Stage 05 replacements and Stage 06 assets
+  - add per-version authored models, deterministic chapter exports and stable-ID table of contents
+  - add full-context Edge measurement and cached immutable PNG strips
+  - add local HTTP/SSE rendering queue and three bitmap columns with linked overlays, navigation and proportional scrolling
+  - add revision-aware heading and TOC edits and explicit complete-bundle acceptance
+  - document dependencies, launch commands and artifact conventions
+- **Architectural Rationale & Trade-Offs**:
+  - Separate local editorial review from PDF inference and emulator runtime. Preserve source IDs and original page geometry, keep Accepted independent of Working, retain complete views during pending edits and failures, and reuse unchanged raster strips. Further user review and corrections remain active for the next session
+  - this commit does not close a roadmap milestone.
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture suite passed 19 tests
+  - PDF conversion suite passed 26 tests
+  - PDF review selection suite passed 4 tests
+  - Python compilation and JavaScript syntax passed. Earlier task-scoped renderer, queue and GUI checks passed, including stale edits, malformed JSON/math recovery, scrolling and copy-failure acceptance safety. Test Book import retained 1052 elements, 160 unchanged page PNGs and 56 assets
+  - final cold render produced 1047 strips in 285.417 seconds, warm render captured 0 strips. Graphify refresh completed and diff check passed. No new inference or conversion-quality assessment performed
+  - milestone gate not run.

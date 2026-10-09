@@ -10,7 +10,7 @@ This initial vocabulary describes the source elements distinguished during book 
 | `toc_heading` | The title of the formal table of contents, including a continuation title; treated as a level-1 heading. |
 | `toc` | Formal table-of-contents entries and their page references. |
 | `thumb_index` | Printed edge tabs and marginal chapter navigation markers. |
-| `heading` | A chapter, appendix, section or subsection title. Its `level` property defines its depth in the document hierarchy. |
+| `heading` | A chapter, appendix, section or subsection title. Its `heading_level` property defines its depth in the document hierarchy. |
 | `callout` | A standalone advisory label, such as NOTE, WARNING or CAUTION. |
 | `callout_text` | The body of an advisory callout, including its paragraphs, lists or formulas. |
 | `prose` | Narrative paragraphs and general explanations, including run-in titles. |
@@ -45,7 +45,7 @@ Prepared groups provide the source context for the [image description prompt](pr
 
 ## Heading hierarchy
 
-Use one `heading` type with an integer `level` property for hierarchy depth. The section's source number is a separate optional `number` string; it identifies the section rather than determining its type.
+Use one `heading` type with an integer `heading_level` property for hierarchy depth. The section's source number is a separate optional `number` string; it identifies the section rather than determining its type.
 
 | Type | Level | Example number |
 | --- | --- | --- |
@@ -55,6 +55,30 @@ Use one `heading` type with an integer `level` property for hierarchy depth. The
 
 Unnumbered titles still have a level and omit `number`. Preserve appendix identifiers such as `A` or `A.1` as strings when present. Do not introduce `chapter1`, `chapter2` or `chapter3` types; chapter and appendix openings use `heading` at the appropriate level. The PDF preparation vocabulary remains separate from this book-authoring model.
 
-`toc_heading`, `index_heading`, `list_of_tables_heading` and `list_of_figures_heading` retain their semantic types but use `level: 1`. Book processing treats them like `heading` with `level: 1` for hierarchy and Markdown heading rendering (`#`). Their types identify which contents, index or list they introduce; the following entries retain their own element types.
+`toc_heading`, `index_heading`, `list_of_tables_heading` and `list_of_figures_heading` retain their semantic types but use `heading_level: 1`. Book processing treats them like `heading` with `heading_level: 1` for hierarchy and Markdown heading rendering (`#`). Their types identify which contents, index or list they introduce; the following entries retain their own element types.
 
-`continuation`, `level`, `number`, geometry and group membership are properties of elements rather than additional element types.
+`continuation`, `heading_level`, `number`, geometry and group membership are properties of elements rather than additional element types.
+
+## Editable review model
+
+Each version has its own `book.json` with ordered `chapters` and
+`toc: {enabled: true, depth: 2}`. A chapter has `id`, `title`, `markdown_file`
+and ordered `elements`. Title and safe filename are derived from its first
+heading only when the chapter is created; subsequent edits do not rename files.
+
+The importer retains provisional source classifications without automatic
+grouping or reclassification. Each element has a stable `id` (the imported
+`segment_id`), `type`, `visible` (default true), applicable `md_text`,
+`heading_level`, `table_format`, and a graphic `asset: assets/<id>.png`.
+`pdf_regions` contains ordered `{page, bbox}` records in original Stage 02 pixels.
+It has no duplicated segment ID, image dimensions or OCR block associations.
+Joined elements may have several regions; split/merge editing is deferred.
+Legacy `chapter` and `table_legend` classifications remain until explicitly
+edited; `chapter` participates in heading rendering without rewriting inference
+artifacts or substituting source text.
+
+`rendered.json` records the exact completed model, `render_regions` containing
+`{image, bbox}` in local PNG pixels, chapter strips, TOC link hit regions,
+asset hashes, input fingerprint, render settings and revision. Authored input
+has no derived geometry or schema-version field. See the [review workflow](README.md#local-bitmap-review)
+for the queue and whole-version acceptance contract.
