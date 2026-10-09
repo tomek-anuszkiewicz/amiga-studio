@@ -1161,16 +1161,18 @@ fn test_named_crate_roots_and_zero_generic_lib_rs() {
 
     let mut violations = Vec::new();
 
-    // 1. Assert zero files named lib.rs exist in the repository
+    // 1. Check owned crates and Cargo helper tools, excluding unrelated repository trees.
     let mut all_rs_files = Vec::new();
-    collect_rs_files(&repo_root, &mut all_rs_files);
-    for file in all_rs_files {
-        if file
-            .components()
-            .any(|c| c.as_os_str() == "target" || c.as_os_str() == ".git")
-        {
-            continue;
+    collect_rs_files(&crates_dir, &mut all_rs_files);
+    if let Ok(entries) = fs::read_dir(repo_root.join("tools")) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() && path.join("Cargo.toml").is_file() {
+                collect_rs_files(&path, &mut all_rs_files);
+            }
         }
+    }
+    for file in all_rs_files {
         if file.file_name().map_or(false, |n| n == "lib.rs") {
             let rel = file.strip_prefix(&repo_root).unwrap_or(&file);
             violations.push(format!(

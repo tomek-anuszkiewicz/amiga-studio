@@ -2312,3 +2312,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - documentation links and governance passed
   - Graphify updated
   - full commit verification retains existing trace, Copper, capture matcher and PDF publication failures plus snapshot rejection from generated traces. Generated reference traces restored without changing goldens. Milestone execution not run.
+---
+
+### [2026-10-09 20:22 CEST] — VERIFY-07: Limit crate-root architecture scanning to Cargo source trees
+- **Affected Subsystems**:
+  - `Architecture verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Scan crates and immediate Cargo helper-tool directories for prohibited lib.rs files instead of traversing the repository
+  - Retain crate root and Cargo.toml entry-point validation
+- **Architectural Rationale & Trade-Offs**:
+  - Repository artifacts and external reference sources are outside the workspace naming policy and dominated traversal time. Helper Cargo tools remain covered by the existing policy.
+- **Verification & Test Results**:
+  - All 19 architecture tests passed in 0.13-0.14s versus previous approximately 4.55s
+  - verifier Architecture Rules total 0.38s versus previous 4.78s
+  - temporary scope probes confirmed detection in crates and Cargo helpers and exclusion of diagnostics
+  - Graphify updated. Full commit verification retains existing benchmark trace, Copper, capture matcher and PDF publication failures. Generated tracked traces restored
+  - no golden references changed. Milestone execution not run.
