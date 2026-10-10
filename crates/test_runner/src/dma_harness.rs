@@ -387,6 +387,8 @@ fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
     } else {
         cpu.state.pc = test.initial.pc;
     }
+    // Exception frames use the opcode address, four bytes behind the primed PC.
+    cpu.state.instruction_pc = cpu.state.pc.wrapping_sub(4);
     cpu.state.ir = (test.initial.prefetch[0] & 0xFFFF) as u16;
     cpu.state.prefetch = (test.initial.prefetch[1] & 0xFFFF) as u16;
 }

@@ -6,8 +6,11 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-12
+updated: 2026-10-10
 related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)"]
+tracked_paths:
+  - "crates/test_runner/src/runner.rs"
+  - "crates/test_runner/src/dma_harness.rs"
 ---
 
 # M68000 SingleStepTests Suite Specification
@@ -241,6 +244,7 @@ The test harness is implemented in the dedicated workspace crate [`crates/test_r
 Implemented directly in [`crates/test_runner/src/runner.rs`](../../../crates/test_runner/src/runner.rs):
 - Instantiates a clean [`TestMemoryBus`](../../../crates/test_runner/src/test_memory_bus.rs) and injects initial RAM vectors via `bus.load_test_ram()`.
 - Primes CPU registers $D_0-D_7$, $A_0-A_6$, $USP$, $SSP$, $SR$, and Program Counter (accounting for Tom Harte's $+4$ prefetch offset).
+- Initializes `instruction_pc` to the opcode address (`pc - 4` after priming) in both SingleStep and DMA fixtures, so exception frames preserve the instruction address even on the first executed instruction.
 - Primes prefetch queue registers `ir` and `prefetch`.
 - Drives instruction stepping via `cpu.step_instruction(&mut bus)` or CCK-by-CCK via `cpu.step_cck(&mut bus)`.
 

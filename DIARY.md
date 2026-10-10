@@ -2397,3 +2397,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Roadmap retention check and git diff --check passed
   - Graphify code graph updated
   - Milestone closure, full SingleStepTests, Cartesian DMA and manual capture/performance runs not performed
+---
+
+### [2026-10-10 03:02 CET] — Initialize opcode PC in silicon and DMA test fixtures
+- **Affected Subsystems**:
+  - `test_runner`
+  - `CPU SingleStepTests specification`
+- **What Was Changed (The Concrete Reality)**:
+  - Initialize instruction_pc from the primed PC in SingleStep and DMA fixtures
+  - Document opcode-address initialization and add scoped tracked-path ownership
+  - Retain existing silicon-vector coverage without the user-rejected additional regression test
+- **Architectural Rationale & Trade-Offs**:
+  - The first instruction previously inherited a zero opcode address
+  - corrupting the divide-by-zero exception frame for DIVU vector 5744. Existing full SingleStepTests cover the demonstrated failure.
+- **Verification & Test Results**:
+  - python tests/verify.py --commit executed: full SingleStepTests 127/127 and 962412/962412 vectors passed
+  - Cartesian DMA 20/20 passed
+  - Ordinary crate tests and formatting, Clippy, architecture, hardware and code quality gates passed
+  - Standard harness retains existing BCD-02 and BCD-04 trace hash failures
+  - Python contracts retain the existing PDF publication failure
+  - Vault frontmatter and all 1054 links passed
+  - Milestone verification not run
+  - Golden references unchanged
