@@ -2419,3 +2419,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Vault frontmatter and all 1054 links passed
   - Milestone verification not run
   - Golden references unchanged
+---
+
+### [2026-10-10 03:03 CET] — Use service-owned configuration for read-only RAG tools
+- **Affected Subsystems**:
+  - `Amiga RAG MCP adapter`
+  - `bootstrap RAG commands`
+  - `developer documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove index-state configuration and arguments from MCP search, status and source listing
+  - Keep explicit source and state-file selection for indexing
+  - Update bootstrap status invocations, documentation and command contract tests
+  - Integrate with Qdrant read-contract commit e8b9b14
+- **Architectural Rationale & Trade-Offs**:
+  - Read-only clients should not choose an indexing ledger. The persistent service owns the read configuration
+  - so worktree-local state paths no longer block retrieval. Scoped tooling and documentation review required no additional emulator specification changes.
+- **Verification & Test Results**:
+  - python tests/verify.py --commit executed: ordinary crate tests, formatting, Clippy, architecture, hardware and code quality passed
+  - All 10 MCP and 4 bootstrap contract tests passed
+  - Python contracts retained only the existing PDF publication failure
+  - Standard harness retained existing BCD-02 and BCD-04 trace hash failures
+  - Qdrant preflight --full passed with 35 tests
+  - After service restart live CLI status, source listing and search passed, and fresh stdio MCP status and search passed
+  - Already connected MCP process still requires client-side reload
+  - Graphify updated
+  - Milestone verification not run
+  - No indexing or golden changes

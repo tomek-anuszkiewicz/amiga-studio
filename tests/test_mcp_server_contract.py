@@ -33,6 +33,22 @@ class FakeMCP:
 
 
 class CommandContractTests(unittest.TestCase):
+    def test_all_read_tools_work_without_index_environment(self):
+        server = self.load_server()
+        calls = []
+        def respond(arguments):
+            calls.append(arguments)
+            return {} if "--status" in arguments else []
+        with patch.dict(os.environ, {}, clear=True), patch.object(server, "run_rag_qdrant_json", side_effect=respond):
+            server.rag_search("Copper timing", ["amiga"])
+            server.rag_list_sources()
+            server.rag_status()
+        self.assertEqual(calls, [
+            ["search", "Copper timing", "--source", "amiga", "--limit", "5", "--json"],
+            ["--list-sources", "--json"],
+            ["--status", "--json"],
+        ])
+
     def load_server(self):
         """Import the adapter without requiring the optional FastMCP package."""
         original_module = sys.modules.pop("amiga_rag_mcp_server", None)
@@ -57,25 +73,23 @@ class CommandContractTests(unittest.TestCase):
             return SimpleNamespace(returncode=0, stdout='[{"source": "amiga"}]', stderr="")
 
         result = run_rag_qdrant_json(
-            ["search", "Copper timing", "--index-json", "index.json", "--json"],
+            ["search", "Copper timing", "--json"],
             runner=runner,
         )
 
         self.assertEqual(result, [{"source": "amiga"}])
         self.assertEqual(
             calls[0][0],
-            [RAG_QDRANT_COMMAND, "search", "Copper timing", "--index-json", "index.json", "--json"],
+            [RAG_QDRANT_COMMAND, "search", "Copper timing", "--json"],
         )
         self.assertTrue(calls[0][1]["capture_output"])
 
     def test_multisource_search_uses_the_cli_comma_separated_filter(self):
         self.assertEqual(
-            build_search_command("Copper timing", ["amiga", "devnotes", "amiga"], 2, "index.json"),
+            build_search_command("Copper timing", ["amiga", "devnotes", "amiga"], 2),
             [
                 "search",
                 "Copper timing",
-                "--index-json",
-                "index.json",
                 "--source",
                 "amiga,devnotes",
                 "--limit",
@@ -86,11 +100,11 @@ class CommandContractTests(unittest.TestCase):
 
     def test_unfiltered_search_omits_source_option(self):
         self.assertEqual(
-            build_search_command("Copper timing", None, 5, "index.json"),
-            ["search", "Copper timing", "--index-json", "index.json", "--limit", "5", "--json"],
+            build_search_command("Copper timing", None, 5),
+            ["search", "Copper timing", "--limit", "5", "--json"],
         )
 
-    def test_mcp_search_passes_the_required_state_file_and_combined_sources(self):
+    def test_mcp_search_uses_combined_sources_without_index_state(self):
         server = self.load_server()
         original_index_json = os.environ.get("RAG_INDEX_JSON")
         calls = []
@@ -101,7 +115,7 @@ class CommandContractTests(unittest.TestCase):
             self.assertIn("No relevant documentation found", server.rag_search("Copper timing", ["amiga", "devnotes"]))
             self.assertEqual(
                 calls,
-                [["search", "Copper timing", "--index-json", "index.json", "--source", "amiga,devnotes", "--limit", "5", "--json"]],
+                [["search", "Copper timing", "--source", "amiga,devnotes", "--limit", "5", "--json"]],
             )
         finally:
             if original_index_json is None:
@@ -143,10 +157,10 @@ class CommandContractTests(unittest.TestCase):
             else:
                 os.environ[variable_name] = original
 
-    def test_mcp_server_requires_cli_state_file_and_exposes_read_only_tools(self):
+    def test_mcp_server_exposes_read_only_tools_without_index_state(self):
         server_source = (SERVER_ROOT / "amiga_rag_mcp_server.py").read_text(encoding="utf-8")
 
-        self.assertIn('RAG_INDEX_JSON_VARIABLE = "RAG_INDEX_JSON"', server_source)
+        self.assertNotIn("RAG_INDEX_JSON", server_source)
         self.assertIn("build_search_command", server_source)
         self.assertIn("run_rag_qdrant_json", server_source)
         self.assertNotIn("def rag_reindex()", server_source)

@@ -49,8 +49,8 @@ requirements installed in the configured Python environment. It skips when
 Codex or FastMCP is absent. Verify backend connectivity with `rag_status` and a
 source-filtered `rag_search` in the refreshed Codex session.
 
-Create the ignored project `.env` file with the CLI state-file location shared
-by every command operating on `projects_docs`:
+Read-only MCP tools use the service configuration and do not require a local
+index-state path. Configure the ignored project `.env` only for indexing:
 
 ```dotenv
 RAG_INDEX_JSON=<shared-rag-index-state-file>
@@ -64,7 +64,7 @@ Documentation indexing is a heavy batch process handled strictly outside the MCP
 - `Obsidian/Amiga/Design`
 - `Obsidian/Amiga/Reference`
 
-The CLI uses the `amiga` source tag and passes `RAG_INDEX_JSON` to every invocation. It hashes every Markdown file on each run and processes only modified or added files.
+The CLI uses the `amiga` source tag and passes `RAG_INDEX_JSON` only to indexing invocations. It hashes every Markdown file on each run and processes only modified or added files.
 
 When the MCP `rag_search` tool receives multiple source tags, it passes the
 deduplicated tags as the CLI's supported comma-separated `--source` value.

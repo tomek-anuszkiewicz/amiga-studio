@@ -278,10 +278,10 @@ Add the cloned repository's `rag-qdrant\bin` directory to `PATH` so `rag_qdrant`
 $env:PATH = "$RagRepo\rag-qdrant\bin;$env:PATH"
 Get-Command rag_qdrant.bat
 $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
-rag_qdrant.bat --status --index-json $env:RAG_INDEX_JSON --json
+rag_qdrant.bat --status --json
 ```
 
-Set `RAG_INDEX_JSON` to an absolute path for a writable state file and reuse it for every command against this collection. Add the launcher directory to your persistent user `PATH` if other shells or IDE sessions need it. Run the three Amiga indexing commands in [Chapter 5](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag) from the Amiga repository root after the documentation audit succeeds. The `-Rag` and `-All` bootstrap switches still use this repository's older, independent Qdrant container helper and may conflict with the external repository's Compose container on ports 6333/6334. Use the external repository's Compose setup and the direct CLI commands for the shared database.
+Set `RAG_INDEX_JSON` to the service's canonical writable state file for indexing. Search, status and source listing use the service configuration without a state-file argument. Add the launcher directory to your persistent user `PATH` if other shells or IDE sessions need it. Run the three Amiga indexing commands in [Chapter 5](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag) from the Amiga repository root after the documentation audit succeeds. The `-Rag` and `-All` bootstrap switches still use this repository's older, independent Qdrant container helper and may conflict with the external repository's Compose container on ports 6333/6334. Use the external repository's Compose setup and the direct CLI commands for the shared database.
 
 <a id="code-knowledge-graph-setup-graphify"></a>
 #### 4. Code Knowledge Graph Setup (`-Graphify`)
@@ -322,16 +322,16 @@ Generates the Abstract Syntax Tree (AST) code knowledge graph connecting active 
    - Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "devnotes"])`. The Amiga project only retrieves `devnotes`; its owning project indexes it.
   - Fast CLI search across hardware manuals:
     ```powershell
-    rag_qdrant search "Agnus blitter line mode minterm" --source amiga --limit 5 --index-json $env:RAG_INDEX_JSON --json
+    rag_qdrant search "Agnus blitter line mode minterm" --source amiga --limit 5 --json
     ```
   - Fast CLI search across architectural design specs:
     ```powershell
-    rag_qdrant search "Color Clock CCK phases memory bus wait states" --source devnotes --limit 5 --index-json $env:RAG_INDEX_JSON --json
+    rag_qdrant search "Color Clock CCK phases memory bus wait states" --source devnotes --limit 5 --json
     ```
   - Check database status and document/source counts:
     ```powershell
-    rag_qdrant --status --index-json $env:RAG_INDEX_JSON --json
-    rag_qdrant --list-sources --index-json $env:RAG_INDEX_JSON --json
+    rag_qdrant --status --json
+    rag_qdrant --list-sources --json
     ```
 
 ---
