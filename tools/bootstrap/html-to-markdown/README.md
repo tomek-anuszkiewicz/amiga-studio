@@ -11,6 +11,10 @@ handling, response caching and metrics.
 
 Agent development guidance is in the [bootstrap instructions](../AGENTS.md#converter-development).
 
+Model requests contain the transcription prompt and source HTML/title. All
+conversion instructions live in the prompt file; the shared transport clears
+base/developer instructions and sends no output schema or additional examples.
+
 ## Quick Start
 
 Install the pinned SDK/runtime and dependencies, then sign in to Codex with ChatGPT. API-key mode is rejected:

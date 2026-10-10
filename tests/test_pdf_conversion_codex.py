@@ -51,7 +51,6 @@ class PdfArtifactIdentityTests(unittest.TestCase):
     def test_compact_artifact_prompt_replays_preloaded_cache(self):
         stage = "03_page_conversion"
         config = {"llm": {"stages": {stage: {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}}}}
-        schema = {"type": "object"}
         # This identity is the compact alias prepared before artifact migration.
         seeded_prompt = 'Frozen page:\n{"segments": [{"type": "graphic", "bbox": [1, 2, 3, 4]}]}'
         result = {"status": "completed", "text": '{"rotation": 0}', "usage": {"inputTokens": 12}}
@@ -60,7 +59,7 @@ class PdfArtifactIdentityTests(unittest.TestCase):
             transport = Mock()
             transport.run.side_effect = AssertionError("Preloaded cache must avoid inference")
             with CodexClient(config, stage=stage, cache=cache, transport=transport, operation="pdf_page_to_objects") as client:
-                cache.save(identity(client.selected, seeded_prompt, [], schema, operation="pdf_page_to_objects"), result)
+                cache.save(identity(client.selected, seeded_prompt, [], operation="pdf_page_to_objects"), result)
                 path = Path(directory) / "page.json"
                 write_json(path, {"segments": [{"type": "graphic", "bbox": [1, 2, 3, 4],
                                               "rotation": 0, "md_text": None,
@@ -69,7 +68,7 @@ class PdfArtifactIdentityTests(unittest.TestCase):
                                               "replacement_stage": "02.44", "image_only": True}]})
                 prompt = "Frozen page:\n" + json.dumps(read_json(path), ensure_ascii=False)
                 self.assertEqual(prompt, seeded_prompt)
-                self.assertEqual(client.generate_json(prompt, schema=schema), {"rotation": 0})
+                self.assertEqual(client.generate_json(prompt), {"rotation": 0})
                 transport.run.assert_not_called()
                 self.assertEqual((client.call_count, client.cached_call_count), (0, 1))
 

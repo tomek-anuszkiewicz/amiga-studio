@@ -2,8 +2,9 @@
 
 For each selected Stage 02 page, send its original-resolution PNG and matching
 text JSON to Codex. The [prompt](prompt.md) defines grouping, classification,
-reading order and transcription; the [request schema](../../common/pdf_page_conversion.py)
-guides the returned JSON.
+reading order, transcription and the returned JSON fields. No output schema or
+separate type enumeration is sent to the model; the prompt is the authority for
+classification, including `legend`, `note` and `preformatted_text`.
 
 Write `03_page_conversion/page_XXXX_segments.json` with ordered logical objects,
 their types, `md_text` and integer pixel boxes `[x0,y0,x1,y1]`. Boxes use the

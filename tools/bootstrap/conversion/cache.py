@@ -12,12 +12,12 @@ CONTRACT_VERSION = "1"
 DEFAULT_CACHE = Path(__file__).resolve().parents[1] / "book-to-markdown/books/.cache/codex"
 
 
-def identity(selected, prompt, images, schema, *, operation):
+def identity(selected, prompt, images, *, operation):
     return {"engine": "codex-chatgpt", "sdk_runtime": SDK_VERSION, "contract": CONTRACT_VERSION,
             "operation": operation, "model": selected.model,
             "reasoning_effort": selected.reasoning_effort, "instructions": BASE_INSTRUCTIONS,
             "developer_instructions": DEVELOPER_INSTRUCTIONS, "execution": OVERRIDES,
-            "prompt": prompt, "image_detail": "original", "schema": schema,
+            "prompt": prompt, "image_detail": "original",
             "images": [hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in images]}
 
 

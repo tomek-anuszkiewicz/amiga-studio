@@ -53,7 +53,14 @@ class ReviewSelectionTests(unittest.TestCase):
             transport.generate_json.return_value = {"page": 64, "segments": []}
             stage.convert_pages(self.workspace, {"input": {"pages": [63]}}, pages=[64])
         self.assertEqual(transport.generate_json.call_count, 1)
+        self.assertNotIn('schema', transport.generate_json.call_args.kwargs)
         self.assertNotIn('char_bboxes', transport.generate_json.call_args.args[0])
+        prompt = (PDF / 'stages/03_page_conversion/prompt.md').read_text(encoding='utf-8')
+        source = json.loads((self.workspace / '02_preprocess/page_0064.json').read_text())
+        for block in source['blocks']:
+            block.pop('char_bboxes')
+        self.assertEqual(transport.generate_json.call_args.args[0],
+                         prompt + '\n\nSource data (complete extracted-text JSON):\n' + json.dumps(source, ensure_ascii=False))
         self.assertIn('char_bboxes', (self.workspace / '02_preprocess/page_0064.json').read_text())
         self.assertEqual(transport.generate_json.call_args.kwargs["image_path"].name, "page_0064.png")
         self.assertEqual([p.name for p in (self.workspace / "03_page_conversion").glob("*_segments.json")
@@ -124,6 +131,9 @@ class ReviewSelectionTests(unittest.TestCase):
         page = json.loads((output / "page_0064_segments.json").read_text())
         table = page["segments"][0]
         self.assertEqual(table["md_text"], transport.generate_json.return_value["md_text"])
+        self.assertNotIn('schema', transport.generate_json.call_args.kwargs)
+        self.assertEqual(transport.generate_json.call_args.args[0],
+                         (PDF / 'stages/05_transform_page_tables/prompt.md').read_text(encoding='utf-8'))
         self.assertEqual(table["table_format"], "html")
         for key in ("table_rag_text", "table_group_segment_ids", "table_source_asset"):
             self.assertNotIn(key, table)

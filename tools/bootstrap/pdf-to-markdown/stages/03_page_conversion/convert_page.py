@@ -11,7 +11,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
 from common.pdf_config import load_config
 from common.pdf_artifacts import read_json, write_json, page_files
-from common.pdf_page_conversion import RESPONSE
 from common.pdf_selection import selected_pages
 
 
@@ -26,15 +25,10 @@ def convert_pages(workspace, config, pages=None):
             # Character rectangles belong to deterministic book import, not the model request.
             for block in data["blocks"]:
                 block.pop("char_bboxes", None)
-            entry = data
             page_id = path.stem
             request = (prompt + "\n\nSource data (complete extracted-text JSON):\n"
-                       + json.dumps(data, ensure_ascii=False)
-                       + "\nOutput page identity: " + json.dumps({
-                           "page": entry["page"], "image_width": entry["raster"]["pixel_width"],
-                           "image_height": entry["raster"]["pixel_height"]}))
-            value = codex.generate_json(request, schema=RESPONSE,
-                                        image_path=path.with_suffix(".png"))
+                       + json.dumps(data, ensure_ascii=False))
+            value = codex.generate_json(request, image_path=path.with_suffix(".png"))
             for ordinal, segment in enumerate(value["segments"], 1):
                 segment["segment_id"] = f"{page_id}_seg_{ordinal:03d}"
             write_json(output / f"{page_id}_segments.json", value)

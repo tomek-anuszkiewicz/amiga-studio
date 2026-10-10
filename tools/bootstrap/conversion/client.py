@@ -24,14 +24,12 @@ class CodexClient:
         self.cached_call_count = 0
         self.metrics = []
 
-    def _generate(self, prompt, images=(), schema=None, validator=None):
-        request = identity(self.selected, prompt, images, schema, operation=self.operation)
+    def _generate(self, prompt, images=(), validator=None):
+        request = identity(self.selected, prompt, images, operation=self.operation)
 
         def checked(result):
             if result.get("status") != "completed" or not isinstance(result.get("text"), str) or not result["text"].strip():
                 raise RuntimeError("Incomplete conversion result")
-            if schema is not None:
-                json.loads(result["text"])
             if validator is not None:
                 validator(result["text"])
 
@@ -48,7 +46,7 @@ class CodexClient:
             self.call_count += 1
             started = time.monotonic()
             try:
-                result = self.transport.run(self.selected, prompt, images=images, schema=schema, timeout=self.timeout)
+                result = self.transport.run(self.selected, prompt, images=images, timeout=self.timeout)
                 checked(result)
             except Exception as error:
                 self._record({"stage": self.selected.stage, "model": self.selected.model,
@@ -68,9 +66,9 @@ class CodexClient:
         self.metrics.append(metric)
         record(metric)
 
-    def generate_json(self, prompt, *, schema, image_path=None):
+    def generate_json(self, prompt, *, image_path=None):
         images = [] if image_path is None else (image_path if isinstance(image_path, (list, tuple)) else [image_path])
-        return json.loads(self._generate(prompt, images, schema))
+        return json.loads(self._generate(prompt, images, validator=json.loads))
 
     def close(self):
         self.transport.close()

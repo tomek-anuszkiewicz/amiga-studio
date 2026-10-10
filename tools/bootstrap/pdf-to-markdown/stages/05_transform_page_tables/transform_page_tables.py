@@ -15,12 +15,8 @@ from conversion import CodexClient
 from common.pdf_config import load_config
 from common.pdf_artifacts import write_json
 from common.pdf_page_conversion import read_conversion
-from common.pdf_schemas import object_schema, STRING
 from common.pdf_tables import STAGE, converted
 from common.pdf_selection import selected_pages
-
-RESPONSE = object_schema({"format": {"type": "string", "enum": ["markdown", "html", "unconverted"]},
-                          "md_text": STRING})
 
 
 def transform_tables(workspace, config, pages=None):
@@ -47,7 +43,7 @@ def transform_tables(workspace, config, pages=None):
                         crop_path = Path(temporary) / f"{table['segment_id']}.png"
                         with image.crop(tuple(table["bbox"])) as crop:
                             crop.save(crop_path)
-                        result = codex.generate_json(prompt, schema=RESPONSE, image_path=crop_path)
+                        result = codex.generate_json(prompt, image_path=crop_path)
                         for key in ("table_rag_text", "table_group_segment_ids", "table_source_asset"):
                             table.pop(key, None)
                         table["table_format"] = result["format"]

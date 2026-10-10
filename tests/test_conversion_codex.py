@@ -121,18 +121,27 @@ class ClientTests(unittest.TestCase):
         image = Path(self.tmp.name) / "image.png"
         image.write_bytes(b"sample")
         transport.text = '{"signal":"CCK"}'
-        schema = {"type": "object", "required": ["signal"], "properties": {"signal": {"type": "string"}}}
-        self.assertEqual(client.generate_json("json", schema=schema), {"signal": "CCK"})
+        self.assertEqual(client.generate_json("json"), {"signal": "CCK"})
         self.assertEqual({call[0] for call in transport.calls}, {client.selected})
-        self.assertEqual(transport.calls[-1][2]["schema"], schema)
+        self.assertNotIn("schema", transport.calls[-1][2])
+        self.assertEqual(client.generate_json("prompt-only JSON", image_path=image), {"signal": "CCK"})
+        self.assertNotIn("schema", transport.calls[-1][2])
+
+    def test_html_request_contains_only_prompt_and_source(self):
+        transport = FakeTransport()
+        prompt_file = ROOT / 'tools/bootstrap/html-to-markdown/references/llm-transcription-prompt.md'
+        source = '<h1>Sample</h1><p>Body</p>'
+        html.convert_with_llm(source, 'Sample', prompt_file, self.client(transport))
+        self.assertEqual(transport.calls[0][1], prompt_file.read_text(encoding='utf-8') +
+                         '\n\nDocument Title: Sample\n\nHTML Content:\n```html\n' + source + '\n```')
+        self.assertNotIn('schema', transport.calls[0][2])
 
     def test_cache_hits_do_not_make_requests(self):
         image = Path(self.tmp.name) / "image.png"
         image.write_bytes(b"sample image")
-        schema = {"type": "object", "properties": {"signal": {"type": "string"}}, "required": ["signal"]}
         for method, arguments, response in (
             ("generate_text", {}, "Saved text"),
-            ("generate_json", {"schema": schema, "image_path": image}, '{"signal":"CCK"}'),
+            ("generate_json", {"image_path": image}, '{"signal":"CCK"}'),
         ):
             with self.subTest(method=method):
                 cache_directory = Path(self.tmp.name) / method
@@ -166,14 +175,13 @@ class ClientTests(unittest.TestCase):
 
     def test_request_changes_make_new_calls_and_cache_the_new_response(self):
         images = [Path(self.tmp.name) / name for name in ("a.png", "b.png")]
-        for changed_field in ("prompt", "model", "reasoning_effort", "operation", "schema", "image_contents", "image_order"):
+        for changed_field in ("prompt", "model", "reasoning_effort", "operation", "image_contents", "image_order"):
             with self.subTest(changed_field=changed_field):
                 for index, image in enumerate(images):
                     image.write_bytes(str(index).encode())
                 cache = ResponseCache(Path(self.tmp.name) / changed_field)
-                schema = {"type": "object", "properties": {"signal": {"type": "string"}}, "required": ["signal"]}
                 with CodexClient(config(), stage="html_to_markdown", transport=FakeTransport(text='{"signal":"old"}'), cache=cache, operation="html_to_markdown") as first:
-                    self.assertEqual(first.generate_json("sample", schema=schema, image_path=images), {"signal": "old"})
+                    self.assertEqual(first.generate_json("sample", image_path=images), {"signal": "old"})
                 changed = config()
                 stage, operation, prompt, ordered_images = "html_to_markdown", "html_to_markdown", "sample", images
                 if changed_field == "prompt":
@@ -182,25 +190,23 @@ class ClientTests(unittest.TestCase):
                     changed["llm"]["stages"][stage][changed_field] = "other-model" if changed_field == "model" else "high"
                 elif changed_field == "operation":
                     operation = "different_operation"
-                elif changed_field == "schema":
-                    schema["additionalProperties"] = False
                 elif changed_field == "image_contents":
                     images[0].write_bytes(b"changed image at the same path")
                 elif changed_field == "image_order":
                     ordered_images = images[::-1]
                 transport = FakeTransport(text='{"signal":"new"}')
                 with CodexClient(changed, stage=stage, transport=transport, cache=cache, operation=operation) as client:
-                    self.assertEqual(client.generate_json(prompt, schema=schema, image_path=ordered_images), {"signal": "new"})
+                    self.assertEqual(client.generate_json(prompt, image_path=ordered_images), {"signal": "new"})
                     self.assertEqual((client.call_count, client.cached_call_count), (1, 0))
                 self.assertEqual(len(transport.calls), 1)
                 unused = FakeTransport(error=RuntimeError("Changed request replay must use cache"))
                 with CodexClient(changed, stage=stage, transport=unused, cache=cache, operation=operation) as replay:
-                    self.assertEqual(replay.generate_json(prompt, schema=schema, image_path=ordered_images), {"signal": "new"})
+                    self.assertEqual(replay.generate_json(prompt, image_path=ordered_images), {"signal": "new"})
                     self.assertEqual((replay.call_count, replay.cached_call_count), (0, 1))
                 self.assertEqual(unused.calls, [])
 
     def test_unreadable_incomplete_and_mismatched_cache_entries_are_refetched(self):
-        request = identity(selection(config(), "html_to_markdown"), "sample", [], None, operation="html_to_markdown")
+        request = identity(selection(config(), "html_to_markdown"), "sample", [], operation="html_to_markdown")
         valid = {"identity": request, "status": "completed", "text": "Old response"}
         mismatch = {**request, "engine": "legacy-engine"}
         bodies = {
@@ -222,15 +228,14 @@ class ClientTests(unittest.TestCase):
                 self.assertEqual(self.cache.load(request)["text"], "Fresh response")
 
     def test_cached_json_is_parsed_before_reuse_without_model_calls(self):
-        schema = {"type": "object", "properties": {"signal": {"type": "string"}}, "required": ["signal"]}
-        request = identity(selection(config(), "html_to_markdown"), "sample", [], schema, operation="html_to_markdown")
+        request = identity(selection(config(), "html_to_markdown"), "sample", [], operation="html_to_markdown")
         for response in ("truncated {", ""):
             with self.subTest(response=response):
                 self.cache.save(request, {"status": "completed", "text": response})
                 transport = FakeTransport()
                 with self.client(transport) as client:
                     with self.assertRaisesRegex(RuntimeError, "Invalid cached conversion response"):
-                        client.generate_json("sample", schema=schema)
+                        client.generate_json("sample")
                     self.assertEqual((client.call_count, client.cached_call_count), (0, 0))
                 self.assertEqual(transport.calls, [])
                 self.assertEqual(self.cache.load(request)["text"], response)
@@ -252,22 +257,22 @@ class ClientTests(unittest.TestCase):
                 self.assertEqual((replay.call_count, replay.cached_call_count), (0, 1))
             self.assertEqual(unused.calls, [])
 
-    def test_cache_identity_changes_with_effort_schema_images_and_order(self):
+    def test_cache_identity_changes_with_effort_images_and_order(self):
         images = [Path(self.tmp.name) / name for name in ("a.png", "b.png")]
         for index, path in enumerate(images):
             path.write_bytes(str(index).encode())
         selected = selection(config(), "html_to_markdown")
-        first = identity(selected, "sample", images, None, operation="html_to_markdown")
-        variants = [identity(selected, "other", images, None, operation="html_to_markdown"), identity(selected, "sample", images[::-1], None, operation="html_to_markdown"),
-                    identity(selected, "sample", images, {"type": "object"}, operation="html_to_markdown")]
+        first = identity(selected, "sample", images, operation="html_to_markdown")
+        variants = [identity(selected, "other", images, operation="html_to_markdown"),
+                    identity(selected, "sample", images[::-1], operation="html_to_markdown")]
         changed = config()
         changed["llm"]["stages"]["html_to_markdown"]["reasoning_effort"] = "high"
-        variants.append(identity(selection(changed, "html_to_markdown"), "sample", images, None, operation="html_to_markdown"))
+        variants.append(identity(selection(changed, "html_to_markdown"), "sample", images, operation="html_to_markdown"))
         for field in ("BASE_INSTRUCTIONS", "DEVELOPER_INSTRUCTIONS", "SDK_VERSION", "CONTRACT_VERSION"):
             with patch(f"conversion.cache.{field}", "changed cache contract"):
-                variants.append(identity(selected, "sample", images, None, operation="html_to_markdown"))
+                variants.append(identity(selected, "sample", images, operation="html_to_markdown"))
         images[0].write_bytes(b"changed")
-        variants.append(identity(selected, "sample", images, None, operation="html_to_markdown"))
+        variants.append(identity(selected, "sample", images, operation="html_to_markdown"))
         self.assertEqual(len({digest(first), *(digest(v) for v in variants)}), len(variants) + 1)
         self.assertEqual(first["engine"], "codex-chatgpt")
 
@@ -275,7 +280,7 @@ class ClientTests(unittest.TestCase):
         for transport in (FakeTransport(status="failed"), FakeTransport(status="interrupted"), FakeTransport(text=""),
                           FakeTransport(text="truncated {")):
             with self.subTest(text=transport.text, status=transport.status), self.assertRaises(Exception):
-                self.client(transport).generate_json("schema", schema={"type":"object", "properties":{"signal":{"type":"string"}}, "required":["signal"]})
+                self.client(transport).generate_json("JSON response")
         self.assertFalse(self.cache.directory.exists())
 
     def test_auth_quota_timeout_propagate_without_retries(self):
@@ -286,14 +291,14 @@ class ClientTests(unittest.TestCase):
             self.assertEqual(len(transport.calls), 1)
         self.assertFalse(self.cache.directory.exists())
 
-    def test_pdf_json_uses_request_schema_without_local_enforcement(self):
+    def test_pdf_json_uses_prompt_without_local_schema_enforcement(self):
         pdf_config = {"llm": {"extra": True, "stages": {"03_page_conversion": {"model": "fixture", "reasoning_effort": "medium", "extra": "retained"}}}}
         transport = FakeTransport(text='{"segments": "unvalidated"}')
         transport.validate = lambda *args, **kwargs: self.fail("PDF model configuration must not be locally validated")
         with CodexClient(pdf_config, stage="03_page_conversion", transport=transport, cache=self.cache, operation="pdf_page_to_objects") as client:
-            result = client.generate_json("PDF", schema={"type": "object", "required": ["missing"]})
+            result = client.generate_json("PDF")
             self.assertEqual(result, {"segments": "unvalidated"})
-            client.generate_json("PDF", schema={"type": "object", "required": ["missing"]})
+            client.generate_json("PDF")
             self.assertEqual(len(transport.calls), 1)
 
     def test_markdown_validation_runs_before_cache_write(self):
@@ -370,12 +375,21 @@ class TransportTests(unittest.TestCase):
         transport.run(selected, "two")
         self.assertEqual(len(wire.threads), 2)
         self.assertTrue(all(p["sandbox"] == "read-only" and p["ephemeral"] for p in wire.threads))
+        self.assertTrue(all(p['baseInstructions'] == '' and p['developerInstructions'] == '' for p in wire.threads))
+        self.assertEqual(wire.turns[0][1], [{'type': 'text', 'text': 'one'},
+            {'type': 'localImage', 'path': str(Path('image.png').resolve()), 'detail': 'original'}])
+        self.assertEqual(wire.turns[1][1], [{'type': 'text', 'text': 'two'}])
+        self.assertTrue(all(set(turn[2]) == {'model', 'effort'} for turn in wire.turns))
         self.assertEqual(wire.turns[0][1][1]["detail"], "original")
         self.assertEqual(wire.turns[0][2]["effort"], "medium")
         pdf_config = {"llm": {"stages": {"03_page_conversion": {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}}}}
         transport.models = []
         CodexTransport.run(transport, selection(pdf_config, "03_page_conversion"), "PDF without catalog precheck")
         self.assertEqual(len(wire.threads), 3)
+        self.assertEqual(wire.threads[-1]['baseInstructions'], '')
+        self.assertEqual(wire.threads[-1]['developerInstructions'], '')
+        self.assertEqual(wire.turns[-1][1], [{'type': 'text', 'text': 'PDF without catalog precheck'}])
+        self.assertEqual(set(wire.turns[-1][2]), {'model', 'effort'})
 
     def test_timeout_closes_transport_and_rejects_completion(self):
         wire = WireClient(blocked=True)

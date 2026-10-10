@@ -1677,3 +1677,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Isolated browser checks for Markdown table merging and protected type changes passed
   - Earlier isolated movement, callout repair, cross-column menus, type comparison and tooltip-removal checks passed
   - git diff --cached --check passed. Conversion quality remains subject to author review.
+---
+
+### [2026-10-10 04:10 CEST] — Use prompt-only conversion contracts
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/html-to-markdown`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `converter tests and documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove transport output schemas and inherited conversion instructions so checked-in prompts define model output contracts
+  - Keep JSON parsing validation inside the shared generation path and align cache identities with the actual request
+  - Move HTML transcription requirements into its prompt and remove duplicated PDF request metadata
+  - Align PDF heading_level instructions and update converter regression tests and documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Keep conversion instructions in a single reviewable source while preserving JSON validation and existing stage processing
+  - Routine commit requested by the user on bootstrap-codex-api
+- **Verification & Test Results**:
+  - python tools/harness/pre_flight.py --quick passed
+  - Architecture rules suite passed 19 tests
+  - Conversion unittest discovery passed 60 tests
+  - PDF review selection passed 4 tests
+  - HTML assembly sources passed 2 tests
+  - git diff --check passed
+  - graphify update completed
+  - No real document conversion was run and output quality was not assessed

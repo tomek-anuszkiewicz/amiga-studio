@@ -80,8 +80,12 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF_DIRECTORY>/source
 PDF worker responses use the fixed shared cache at
 `tools/bootstrap/book-to-markdown/books/.cache/codex`. Cache identity uses stable
 operation IDs (`pdf_page_to_objects`, `pdf_table_to_markup`), independent of stage
-names and numbering. Prompts, inputs, model settings and response schemas still
+names and numbering. Prompts, inputs, model settings and isolated execution settings
 participate in the key. The pipeline has no `--config`, `--cache-dir` or `--verbose` options.
+
+Model requests contain only the stage prompt, source JSON where needed, and the
+page or table image. The shared transport clears base/developer instructions and
+does not send output schemas, separate type lists or examples outside the prompt.
 
 Agent development guidance is in the [bootstrap instructions](../AGENTS.md#converter-development).
 A successful stage confirms execution, not transcription quality.

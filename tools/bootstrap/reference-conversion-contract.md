@@ -49,16 +49,26 @@ with layout, classification, fidelity and JSON constraints. Its Markdown style
 guidance is limited to source paragraph boundaries, single newlines within
 compact explanatory blocks, fenced code/preformatted blocks and keeping wrapped
 descriptive labels together outside listings. The shared transport's base/developer
-instructions contain no style recipes; repository instructions are disabled and
+instructions are empty; repository instructions are disabled and
 this contract is not injected into the request.
 
 ## Codex boundary
 
 Use ChatGPT authentication through the pinned Python SDK and app-server runtime. API-key billing is not a fallback. Each inference stage selects its own explicit model and reasoning effort. HTML checks the runtime catalog and input capabilities; PDF sends its configured selection without those local prechecks. Actual thread selection and transport completion handling remain enforced. A completed live request establishes access for that request, not future entitlement or a quota estimate.
 
-Run each request in a fresh isolated thread with explicit conversion instructions, no inherited repository instruction files, read-only execution and disabled shell, web, MCP, app and agent tools. Pass images with `detail: original` through the SDK's public low-level client because its high-level image wrappers do not expose detail. Check completion and actual thread selection before caching. HTML also enforces local response schemas; PDF parses JSON without local schema enforcement or validator callbacks. Stop errors without retrying another model, effort, provider, configuration or deterministic conversion.
+Run each request in a fresh isolated thread. Conversion instructions belong only
+in the converter's prompt file; append only source text/JSON and source metadata,
+and attach applicable images. Clear base/developer instructions, inherit no
+repository instruction files, and send no output schema, type enumeration or
+additional examples outside the prompt. Keep read-only execution and disabled
+shell, web, MCP, app and agent tools. Pass images with `detail: original` through
+the SDK's public low-level client because its high-level image wrappers do not
+expose detail. Check completion and actual thread selection before caching. HTML
+retains local Markdown validation; PDF parses JSON without local schema
+enforcement. Stop errors without retrying another model, effort, provider,
+configuration or deterministic conversion.
 
-The Codex cache is separate from legacy Gemini data. Its identity includes engine, a stable operation ID, model, effort, pinned runtime, contract version, execution instructions, prompt, ordered image bytes, image detail and output schema. Operation IDs are `pdf_page_to_objects`, `pdf_table_to_markup` and `html_to_markdown`; stage numbers and names remain in execution status and metrics, outside the cache identity. Renaming or renumbering a stage does not invalidate an otherwise identical request. Completed cached outputs are reusable; partial, interrupted, empty or unparseable JSON outputs are not. Cache reuse retains authenticated runtime handling; HTML also validates selected capabilities and response content. Record calls, cache hits, elapsed time and available token usage; cached usage describes the original request, not new consumption.
+The Codex cache is separate from legacy Gemini data. Its identity includes engine, a stable operation ID, model, effort, pinned runtime, contract version, cleared base/developer instructions, execution settings, prompt, ordered image bytes and image detail. Operation IDs are `pdf_page_to_objects`, `pdf_table_to_markup` and `html_to_markdown`; stage numbers and names remain in execution status and metrics, outside the cache identity. Renaming or renumbering a stage does not invalidate an otherwise identical request. Completed cached outputs are reusable; partial, interrupted, empty or unparseable JSON outputs are not. Cache reuse retains authenticated runtime handling; HTML also validates selected capabilities and response content. Record calls, cache hits, elapsed time and available token usage; cached usage describes the original request, not new consumption.
 
 Prepared-PDF hashes are not stored in page JSON.
 Stage 03 receives page data without a document-wide hash, so
@@ -98,7 +108,7 @@ Normal execution uses no conversion state, manifest, snapshot or chapter registr
 The PDF path removes local input/configuration/response checks, page/block/segment
 identity and coverage checks, geometry and text validation, PDF-text re-extraction
 comparisons, review-frame/label checks and Markdown/asset/crop verification.
-Request schemas remain model guidance. Necessary parsing, coordinate calculations,
+Prompts alone define the model's output contract. Necessary parsing, coordinate calculations,
 extraction, drawing, cropping and IO remain; ordinary library errors stop execution.
 These checks must not reappear in shared loaders or clients. HTML validations,
 provider authentication/completion handling, cleanup confinement and publication
@@ -128,7 +138,7 @@ The cache has been prepared with compact-input keys; requests now use those keys
 directly and the temporary dual-key writer is removed. Existing files are
 compacted in memory on read, with no bulk workspace rewrite. For `graphic`,
 `table` and `cover`, inference still returns empty `md_text`, omitted on save.
-Cache reuse still requires matching prompt instructions, schema, image bytes and
+Cache reuse still requires matching prompt instructions, image bytes and
 model/runtime settings.
 
 Stage 03 only identifies, classifies and bounds these objects; internal text,
@@ -267,7 +277,7 @@ Existing files alone do not establish successful predecessor execution.
 completion handling, response-cache identity and metrics. HTML-only YAML loading,
 configuration/model validation, text requests and publication live in
 `html-to-markdown/support/`. Direct PDF YAML parsing lives in
-`pdf-to-markdown/common/pdf_config.py`; schemas remain request guidance and JSON
+`pdf-to-markdown/common/pdf_config.py`; prompts define responses and JSON
 parsing remains necessary IO. Each converter's requirements file includes the
 shared SDK/YAML dependencies and its own document-processing dependencies.
 

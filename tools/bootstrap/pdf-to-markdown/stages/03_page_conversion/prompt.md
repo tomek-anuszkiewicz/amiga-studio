@@ -49,7 +49,7 @@ priority, not the order of the returned segments.
     indentation, blank lines and line breaks; do not reconstruct it as a table,
     drawing or prose.
 13. `thumb_index`: Printed edge tabs and marginal chapter navigation markers.
-14. `heading`: A chapter, appendix, section or subsection title. Use level for
+14. `heading`: A chapter, appendix, section or subsection title. Use heading_level for
     hierarchy depth and an optional number string for source numbering.
     Bold text or a trailing colon alone does not make a heading; run-in titles
     remain with their paragraph.
@@ -85,9 +85,9 @@ wrap across source lines beside several listing lines: keep the complete label
 together before the fenced block, outside it, rather than pairing each label
 fragment with a listing line. Preserve the listing's own line breaks and tokens.
 
-For heading, set level to an integer from 1 through 6. Include number only when
+For heading, set heading_level to an integer from 1 through 6. Include number only when
 the source provides it, as a string such as "1.2" or "A.1"; preserve it in the
-title as well. For other types, set level to null and omit number.
+title as well. For other types, set heading_level to null and omit number.
 Set continuation to true only for a heading or caption explicitly marked as
 continued, concluded or a later sheet/part. Preserve that wording in md_text.
 Otherwise set continuation to false; page-edge placement alone is insufficient.

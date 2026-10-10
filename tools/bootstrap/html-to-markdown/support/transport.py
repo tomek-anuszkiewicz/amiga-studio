@@ -32,6 +32,6 @@ class HtmlTransport(CodexTransport):
         if not required.issubset(model["inputModalities"]):
             raise ValueError(f"{selected.stage}: missing input capabilities {required}")
 
-    def run(self, selected, prompt, *, images=(), schema=None, timeout=180):
+    def run(self, selected, prompt, *, images=(), timeout=180):
         self.validate(selected, images=bool(images))
-        return super().run(selected, prompt, images=images, schema=schema, timeout=timeout)
+        return super().run(selected, prompt, images=images, timeout=timeout)

@@ -1,25 +1,6 @@
-"""Independent page-object contract in original PNG pixel coordinates."""
+"""Read prompt-defined page objects in physical-page order."""
 
 from .pdf_artifacts import read_json, page_files
-from .pdf_schemas import object_schema, STRING, BOOL
-
-TYPES = ["cover", "header", "footer", "toc_heading", "toc", "thumb_index", "chapter", "heading",
-         "callout", "callout_text", "prose", "code_block", "table", "graphic", "caption",
-         "footnote", "table_legend", "index_heading", "index",
-         "list_of_tables_heading", "list_of_tables", "list_of_figures_heading", "list_of_figures"]
-SEGMENT = object_schema({
-    "type": {"type": "string", "enum": TYPES},
-    "continuation": BOOL,
-    "heading_level": {"type": ["integer", "null"], "minimum": 1, "maximum": 6},
-    "md_text": STRING,
-    "bbox": {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4},
-})
-RESPONSE = object_schema({
-    "page": {"type": "integer", "minimum": 1},
-    "image_width": {"type": "integer", "minimum": 1},
-    "image_height": {"type": "integer", "minimum": 1},
-    "segments": {"type": "array", "items": SEGMENT},
-})
 
 
 def read_conversion(workspace, page_object_directory="03_page_conversion", *, pages=None):
