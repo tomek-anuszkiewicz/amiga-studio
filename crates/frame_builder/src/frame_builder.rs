@@ -172,46 +172,6 @@ impl FrameBuilder {
         }
     }
 
-    /// Extracts the canonical vAmigaTS 716 x 285 RGB24 viewport (X in [196, 912), Y in [26, 311)).
-    /// Writes exactly 612,180 bytes (716 * 285 * 3) into `out`.
-    pub fn extract_vamiga_raw_viewport(&self, out: &mut [u8; 612_180]) {
-        self.extract_vamiga_raw_viewport_with_cutout(out, None);
-    }
-
-    /// Extracts the canonical vAmigaTS 716 x 285 RGB24 viewport, optionally applying a regression
-    /// tester cutout window `(x1, y1, x2, y2)`. Areas outside the cutout receive the standard
-    /// vAmiga checkerboard pattern (grey2=0x22 / grey4=0x44).
-    pub fn extract_vamiga_raw_viewport_with_cutout(
-        &self,
-        out: &mut [u8; 612_180],
-        cutout: Option<(isize, isize, isize, isize)>,
-    ) {
-        let (cx1, cy1, cx2, cy2) = cutout.unwrap_or((196, 26, 912, 311));
-        let mut out_idx = 0;
-        for y in 26..311isize {
-            let row_offset = (y as usize) * MAX_FRAME_WIDTH;
-            for x in 196..912isize {
-                let is_inside_cutout = (cy1..cy2).contains(&y) && (cx1..cx2).contains(&x);
-                if is_inside_cutout {
-                    let argb = self.buffer[row_offset + (x as usize)];
-                    out[out_idx] = ((argb >> 16) & 0xFF) as u8;
-                    out[out_idx + 1] = ((argb >> 8) & 0xFF) as u8;
-                    out[out_idx + 2] = (argb & 0xFF) as u8;
-                } else {
-                    let grey = if ((y >> 3) & 1) == ((x >> 3) & 1) {
-                        0x22
-                    } else {
-                        0x44
-                    };
-                    out[out_idx] = grey;
-                    out[out_idx + 1] = grey;
-                    out[out_idx + 2] = grey;
-                }
-                out_idx += 3;
-            }
-        }
-    }
-
     /// Signals VBlank and marks the current frame as ready for presentation
     #[inline]
     pub fn end_frame(&mut self) {

@@ -476,13 +476,6 @@ impl Denise {
         self.bplcon2 = val;
     }
 
-    /// Action method: sets display window clipping coordinates
-    #[inline]
-    pub fn set_diw(&mut self, strt: u16, stop: u16) {
-        self.diwstrt = strt;
-        self.diwstop = stop;
-    }
-
     /// Returns the active number of bitplanes (0..6)
     #[inline]
     pub fn bitplane_count(&self) -> u8 {

@@ -13,7 +13,6 @@ pub mod runner;
 pub mod schema;
 pub mod test_memory_bus;
 pub mod transactions;
-pub mod vamiga;
 
 pub use diagnostic::{CcrBreakdown, StateDiff, TestFailure};
 pub use dma_harness::{
@@ -29,4 +28,3 @@ pub use test_memory_bus::{MemoryType, TestMemoryBus, TestMemoryStorage, FLAT_TES
 pub use transactions::{
     match_transactions, parse_transactions, BusAccessSize, ExpectedTransaction, RecordedTransaction,
 };
-pub use vamiga::*;

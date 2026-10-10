@@ -11,7 +11,6 @@ EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py test runner singlestep case test_add_b sample 500
   python tools/verification/verify.py check architecture case test_file_size_limits
   python tools/verification/verify.py runner summary --log-level full
-  python tools/verification/verify.py runner vamiga category Copper frames 16
   python tools/verification/verify.py runner bench quick filter arith_mul pin off
 
 Execution options --plan and --log-level full|warn|error may appear anywhere
@@ -58,8 +57,8 @@ def parser():
     checks.add_argument("name", choices=("all", "architecture", "english", "code", "hardware",
                                          "formatting", "clippy", "build"))
     checks.add_argument("words", nargs="*", metavar="SELECTOR")
-    runs = commands.add_parser("runner", help="Reports, hardware runs, benchmarks, GUI captures and profiling")
-    runs.add_argument("action", choices=("build", "summary", "diff", "suite", "bench", "chipset", "vamiga", "gui", "profile", "analyze"))
+    runs = commands.add_parser("runner", help="Reports, CPU benchmarks, GUI captures and profiling")
+    runs.add_argument("action", choices=("build", "summary", "diff", "suite", "bench", "gui", "profile", "analyze"))
     runs.add_argument("words", nargs=argparse.REMAINDER)
     return root
 

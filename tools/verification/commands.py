@@ -251,14 +251,8 @@ def runner_commands(action, words):
     args = list(words)
     if action == "gui" and "--" in args:
         args.remove("--")
-    if "--record" in args:
-        raise ValueError("Baseline recording remains an explicit workflow outside verification")
     if action != "gui" and any(word.startswith("-") for word in args):
-        raise ValueError("Runner commands use sentence selectors; use runner vamiga category NAME frames N")
-    target = args[0] if action == "profile" and args else action
-    settings = args[1:] if action == "profile" else args
-    if target == "chipset" and "record" in settings:
-        raise ValueError("Baseline recording remains an explicit workflow outside verification")
+        raise ValueError("Runner commands use sentence selectors; use runner bench quick passes N")
     if action == "build":
         if args:
             raise ValueError("Runner build accepts no additional arguments")
@@ -274,12 +268,11 @@ def runner_commands(action, words):
         if len(args) == 3:
             command += ["--output", args[2]]
         return [("Benchmark analysis", command, {})]
-    native = ("bench", "chipset", "vamiga")
     if action == "gui":
         return [("GUI inspector", ["cargo", "run", "-p", "gui", "--bin", "gui-inspector", "--", *args], {})]
     if action == "profile":
-        if not args or args[0] not in native:
-            raise ValueError("Use runner profile vamiga|chipset|bench [sentence selectors]")
+        if not args or args[0] != "bench":
+            raise ValueError("Use runner profile bench [sentence selectors]")
         executable = "test_runner.exe" if os.name == "nt" else "test_runner"
         return [("Build profiling runner", ["cargo", "build", "--release", "-p", "test_runner"], {}),
                 ("External sampling profile", ["samply", "record", "target/release/" + executable,

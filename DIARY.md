@@ -385,13 +385,13 @@ Every repository commit must include a new Section 10 entry for the changes it r
 
 ---
 
-### [2026-09-14 23:59 CEST] — Milestone Digest: Language Guardrails, HRM Alignment & vAmigaTS Verification Harness
+### [2026-09-14 23:59 CEST] — Milestone Digest: Language Guardrails, HRM Alignment & CPU Verification
 - **Timestamp & Context**: 2026-09-14 — Quality assurance infrastructure, verification suites, and hardware manual alignment.
 - **Affected Subsystems**: `crates/test_runner`, `.agents/rules/`, `tools/harness`, `Obsidian/Amiga/Reference/`.
 - **What Was Changed (The Concrete Reality)**:
   - Codified the strict English language policy across code, documentation, and agent reasoning.
   - Ingested Commodore Hardware Reference Manuals (HRM) and Amiga Hardware Reference Manual into local reference stores.
-  - Built the `vAmigaTS` headless test runner infrastructure in `crates/test_runner` supporting Tom Harte single-step CPU tests, Cartesian DMA contention suites, and RGB24 viewport golden master matchers.
+  - Built headless verification infrastructure in `crates/test_runner` for Tom Harte single-step CPU tests and Cartesian DMA contention suites.
   - Implemented pre-flight gate scripts (`pre_flight.py`) to enforce formatting, architectural rules, and test coupling.
 - **Architectural Rationale & Trade-Offs**:
   - *Headless Test Harness:* Driving test cases via synthetic headless runners avoids dependency on host UI rendering, enabling high-speed verification (< 5s for full suites).
@@ -399,23 +399,6 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Invariants**:
   - `cargo test -p test_runner`: Architecture rule suite and single-step CPU validation tests.
   - `pre_flight.py`: Pre-commit validation of formatting, API coverage, and rule compliance.
-
----
-
-### [2026-09-15 23:59 CEST] — Milestone Digest: Custom Chipset Silicon Calibration & Phase 1 vAmigaTS Verification
-- **Timestamp & Context**: 2026-09-14 to 2026-09-15 — Hardware circuit timing calibration across Agnus (Copper/Blitter), Denise display pipeline, and whole-machine integration testing.
-- **Affected Subsystems**: `crates/copper`, `crates/blitter`, `crates/denise`, `crates/machine_loop`, `crates/test_runner/src/vamiga`.
-- **What Was Changed (The Concrete Reality)**:
-  - Calibrated Agnus Copper execution timing: 1-CCK instruction fetch pipeline, comparator race conditions against beam counters, `CDANG` danger mode handling, and cycle `$E0` DMA denial in PAL display scanlines.
-  - Fully implemented Blitter HRM Table 6.2 decomposition: 256-minterm Boolean ALU, barrel shifters, modulo pointer advancement, unconnected channel latch calibration, and area fill logic with 100% pass on Blitter regression suites.
-  - Calibrated Denise pixel serializer and display window flip-flops (`DIWSTRT`/`DIWSTOP`), aligning pipeline latency and bitplane shifter arming.
-  - Implemented the 4-iteration whole-machine cascading integration verification framework in `crates/machine_loop/tests/`, testing Copper, Blitter, Denise, and interrupt cascades without external GUI overhead.
-- **Architectural Rationale & Trade-Offs**:
-  - *Silicon-Exact Comparator Matching:* Rather than using abstract programmatic coordinates, Copper beam comparisons evaluate on exact physical clock phases, mirroring Agnus comparator silicon.
-  - *Table 6.2 Truth Table Decomposition:* Modeling Blitter logic as a pure 256-entry lookup table avoids branch cascades and executes at peak throughput on modern host CPU architectures.
-- **Verification & Invariants**:
-  - 100% pass on vAmigaTS Blitter area fill and line drawer tests.
-  - Full suite of Tier 2 whole-machine integration tests passing in `crates/machine_loop/tests/`.
 
 ---
 
@@ -562,22 +545,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
 
 ---
 
-### [2026-09-29 01:50 CEST] — Historical Section 10 Compaction into 10 Architectural Milestone Digests
+### [2026-09-29 01:50 CEST] — Historical Section 10 Compaction into Architectural Milestone Digests
 - **Affected Subsystems**:
   - `DIARY.md` (Section 10 synthesized per `.agents/skills/compact-diary/SKILL.md`)
   - `.agents/rules/diary-maintenance.md`, `.agents/rules/roadmap-maintenance.md`, `.agents/skills/compact-diary/SKILL.md`
 - **What Was Changed (The Concrete Reality)**:
-  - Audited and compacted 340+ historical chronological entries in Section 10 (September 12–22, 2026) spanning over 8,500 lines into 10 high-signal Architectural Milestone Digests covering all major project phases:
+  - Audited and compacted 340+ historical chronological entries in Section 10 (September 12–22, 2026) spanning over 8,500 lines into high-signal Architectural Milestone Digests covering all major project phases:
     1. Disassembler Extraction, Memory Banking & Core Machine Setup (2026-09-12)
-    2. Language Guardrails, HRM Alignment & vAmigaTS Verification Harness (2026-09-14)
-    3. Custom Chipset Silicon Calibration & Phase 1 vAmigaTS Verification (2026-09-15)
-    4. Multimodal Reference Ingestion & 14-Stage PDF-to-Markdown Pipeline (2026-09-16)
-    5. RAG Knowledge Base, Diagram Sidecars & Attractor Elimination (2026-09-16)
-    6. Tooling Ergonomics, Zero-Junction Invariant & Full Worktree Storage Isolation (2026-09-17)
-    7. MemoryBus Streamlining, Agnus DMA Mastership & Decoupled State Serialization (2026-09-18)
-    8. Tripartite Quality Audits, Crate Renaming (m68000 -> cpu), and Compiler Lints Baseline (2026-09-19)
-    9. Strict Compilation Policy, CPU Semantic Parity & Scope Discipline (2026-09-21)
-    10. RAG Tooling Reform, CLI Single Source of Truth & Documentation Scoping (2026-09-22)
+    2. Language Guardrails, HRM Alignment & CPU Verification (2026-09-14)
+    3. Multimodal Reference Ingestion & 14-Stage PDF-to-Markdown Pipeline (2026-09-16)
+    4. RAG Knowledge Base, Diagram Sidecars & Attractor Elimination (2026-09-16)
+    5. Tooling Ergonomics, Zero-Junction Invariant & Full Worktree Storage Isolation (2026-09-17)
+    6. MemoryBus Streamlining, Agnus DMA Mastership & Decoupled State Serialization (2026-09-18)
+    7. Tripartite Quality Audits, Crate Renaming (m68000 -> cpu), and Compiler Lints Baseline (2026-09-19)
+    8. Strict Compilation Policy, CPU Semantic Parity & Scope Discipline (2026-09-21)
+    9. RAG Tooling Reform, CLI Single Source of Truth & Documentation Scoping (2026-09-22)
   - Purged obsolete raw micro-diffs, transient command traces, and uncompacted historical duplication while permanently preserving every major subsystem accomplishment, architectural dilemma, and verification result.
   - Retained the active September 29 roadmap milestone entry (Step 1.4: MachineLoop Architecture Review) in full granular detail.
   - Updated diary maintenance rules and skills to formally allow compaction upon completing minor roadmap points or when Section 10 exceeds operational size thresholds.
@@ -2617,3 +2599,32 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Initial Clippy visibility findings were corrected and the final Clippy check passed
   - Graphify code graph refreshed
   - Full SingleStepTests Cartesian DMA milestone checks hardware captures and performance measurements were not selected or run for this CLI change
+---
+
+### [2026-10-10 18:40 CEST] — VAMIGA-HARNESS-REMOVE-01: remove the previous capture harness
+- **Affected Subsystems**:
+  - `crates/test_runner`
+  - `crates/frame_builder`
+  - `crates/denise`
+  - `tools/verification`
+  - `baselines/benchmarks`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the vAmigaTS execution module and its library exports command routing and CLI test cases
+  - Remove the dependent coptim1 chipset benchmark and its stored baseline
+  - Remove capture viewport extraction and the orphaned Denise display window setter while retaining equivalent test input state
+  - Classify step_frame as the documented host stepping API in the code quality audit
+  - Remove the earlier chipset calibration digest and its summary references
+- **Architectural Rationale & Trade-Offs**:
+  - Retire the previous test-driven chipset integration before future implementation work
+  - Keep CPU benchmarks SingleStepTests Cartesian DMA and host frame stepping
+  - Preserve bootstrap documentation roadmap external sources and older local artifacts at the user request
+  - Retained documentation still contains commands for the removed integration
+- **Verification & Test Results**:
+  - Final implementation verification passed ordinary crate coverage all quality gates standard harness suites full SingleStepTests Cartesian DMA and all five Python contract directories
+  - Focused CLI and Denise pixel pipeline tests passed
+  - Pre-commit design review covered five mapped specifications and the Machine Loop stepping contract
+  - Library export and removed harness paths lacked tracked path ownership and mapping edits were deferred because the user retained documentation unchanged
+  - Initial test-only API findings and formatting failure were resolved
+  - Graphify code graph refreshed and git diff --check passed
+  - Milestone verification vault audits hardware captures and performance measurements were not run

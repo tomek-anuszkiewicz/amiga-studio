@@ -6,7 +6,6 @@ mod cli;
 use cli::{parse, Command};
 use std::process::Command as Process;
 use test_runner::benchmark::BenchmarkProfile;
-use test_runner::vamiga::VamigaCategory;
 
 fn sentence(words: &str) -> Vec<String> {
     words.split_whitespace().map(str::to_owned).collect()
@@ -30,33 +29,6 @@ fn test_sentence_configs_preserve_execution_settings() {
     assert_eq!(config.filter.as_deref(), Some("arith_mul"));
     assert_eq!(config.out_dir.to_str(), Some("reports"));
     assert!(!config.pin_core);
-
-    let Command::Vamiga(options) = parse(&sentence(
-        "vamiga category Copper test coptim1 frames 16 limit 5 verbose summary",
-    ))
-    .unwrap() else {
-        panic!("Expected capture command")
-    };
-    assert_eq!(options.category, Some(VamigaCategory::Copper));
-    assert_eq!(options.test.as_deref(), Some("coptim1"));
-    assert_eq!(options.config.frames_to_run, 16);
-    assert_eq!(options.limit, Some(5));
-    assert!(options.config.verbose);
-
-    assert!(matches!(
-        parse(&sentence("chipset compare frames 50")),
-        Ok(Command::Chipset {
-            record: false,
-            frames: 50
-        })
-    ));
-    assert!(matches!(
-        parse(&sentence("chipset record frames 50")),
-        Ok(Command::Chipset {
-            record: true,
-            frames: 50
-        })
-    ));
 }
 
 #[test]
@@ -68,10 +40,6 @@ fn test_default_configs_and_report_commands() {
         panic!("Expected opcode command")
     };
     assert_eq!(opcode, "ADD.b");
-    let Command::Vamiga(options) = parse(&sentence("vamiga list deferred")).unwrap() else {
-        panic!("Expected deferred list")
-    };
-    assert!(options.list_deferred);
     let Command::Bench(config) = parse(&sentence("bench")).unwrap() else {
         panic!("Expected default benchmark")
     };
@@ -87,7 +55,6 @@ fn test_invalid_sentences_fail_before_execution() {
         "suite",
         "suite ADD.b extra",
         "--summary",
-        "benchmark-chipset",
         "bench --quick",
         "bench quick thorough",
         "bench quick quick",
@@ -96,15 +63,6 @@ fn test_invalid_sentences_fail_before_execution() {
         "bench unroll invalid",
         "bench pin maybe",
         "bench unknown 10",
-        "vamiga category unknown",
-        "vamiga frames 4294967296",
-        "vamiga frames -1",
-        "vamiga frames 0",
-        "vamiga limit 0",
-        "vamiga category Copper category Paula",
-        "vamiga list deferred frames 1",
-        "chipset compare record",
-        "chipset frames",
     ] {
         assert!(
             parse(&sentence(words)).is_err(),
@@ -113,7 +71,7 @@ fn test_invalid_sentences_fail_before_execution() {
     }
     let binary = env!("CARGO_BIN_EXE_test_runner");
     let error = Process::new(binary)
-        .args(["vamiga", "frames", "invalid"])
+        .args(["bench", "passes", "invalid"])
         .output()
         .unwrap();
     assert_eq!(error.status.code(), Some(2));

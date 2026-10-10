@@ -183,7 +183,8 @@ fn test_pipeline_pixels_latency_and_backdrop_immediacy() {
     denise.set_bplcon0(0x1200); // 1 bitplane, low-res
     denise.color[0] = 0xF00; // Red backdrop
     denise.color[1] = 0x0F0; // Green foreground
-    denise.set_diw(0x2C81, 0x2CC1); // Standard PAL display window
+    denise.diwstrt = 0x2C81; // Standard PAL display window
+    denise.diwstop = 0x2CC1;
 
     // When bpl_armed is false: all 4 pixels of CCK receive backdrop immediately
     let beam = config::BeamPosition::new(50, 100, false);
@@ -287,7 +288,8 @@ fn test_scanline_end_open_diw_renders_bitplanes() {
     assert!(denise.bpl_armed);
 
     // DIW open from hstart=0x02 to hstop=0x1C8 (> 0x1C7, does not close within scanline)
-    denise.set_diw(0x2C02, 0x2CC8);
+    denise.diwstrt = 0x2C02;
+    denise.diwstop = 0x2CC8;
 
     // Step to start of line, then arm bitplanes with solid 1s
     denise.step_cck(config::BeamPosition::new(0, 50, false));

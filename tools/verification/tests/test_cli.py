@@ -74,11 +74,11 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(commands[0][1][-2:], ["docs/testing.md", "AGENTS.md"])
 
     def test_settings_can_follow_subcommands_without_eating_runner_arguments(self):
-        _, args = parse_args(["runner", "vamiga", "--log-level", "full", "--plan", "category", "all"])
+        _, args = parse_args(["runner", "bench", "--log-level", "full", "--plan", "filter", "all"])
         self.assertTrue(args.plan)
         self.assertEqual(args.log_level, "full")
         command = select_phases(args, set())[0][1][0][1]
-        self.assertEqual(command[-3:], ["vamiga", "category", "all"])
+        self.assertEqual(command[-3:], ["bench", "filter", "all"])
 
     def test_report_output_is_visible_by_default_and_can_be_overridden(self):
         self.assertEqual(parse_args(["runner", "summary"])[1].log_level, "full")
@@ -86,10 +86,8 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(parse_args(["commit"])[1].log_level, "warn")
 
     def test_runner_sentences_reach_the_binary_and_profiler_unchanged(self):
-        self.assertEqual(selected("runner chipset compare frames 10")[0][1][-4:],
-                         ["chipset", "compare", "frames", "10"])
-        self.assertEqual(selected("runner profile vamiga test coptim1")[1][1][-3:],
-                         ["vamiga", "test", "coptim1"])
+        self.assertEqual(selected("runner profile bench quick")[1][1][-2:],
+                         ["bench", "quick"])
         self.assertEqual(selected("runner bench quick pin off")[0][1][-4:],
                          ["bench", "quick", "pin", "off"])
         self.assertEqual(selected("runner suite ADD.b")[0][1][-2:], ["suite", "ADD.b"])
@@ -99,13 +97,12 @@ class SelectionTests(unittest.TestCase):
     def test_gui_keeps_its_separate_native_options(self):
         self.assertEqual(selected("runner gui -- --frames 10")[0][1][-2:], ["--frames", "10"])
 
-    def test_invalid_sentences_and_baseline_mutation_are_rejected(self):
+    def test_invalid_sentences_are_rejected(self):
         for sentence in ("test rust suite missing", "test rust crate cpu crate gui",
                          "test python directory missing", "test runner dma sample 50",
                          "test runner singlestep sample 0", "test runner singlestep sample 50 full",
                          "commit singlestep singlestep", "check english case name",
-                         "runner chipset record", "runner profile chipset record",
-                         "runner chipset --record", "runner vamiga -- --category all"):
+                         "runner bench -- --quick"):
             with self.subTest(sentence=sentence), self.assertRaises(ValueError):
                 selected(sentence)
 
@@ -119,7 +116,7 @@ class ExecutionTests(unittest.TestCase):
     def test_failed_profile_build_does_not_launch_a_stale_binary(self):
         with patch.object(verify, "execute_command", return_value=(False, "build failed", 0)) as execute, \
              patch.object(verify, "snapshot", return_value="same"), contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(verify.main(["runner", "profile", "vamiga"]), 1)
+            self.assertEqual(verify.main(["runner", "profile", "bench"]), 1)
             self.assertEqual(execute.call_count, 1)
             self.assertEqual(execute.call_args.args[0][:2], ["cargo", "build"])
 

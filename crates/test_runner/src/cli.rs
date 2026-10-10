@@ -2,10 +2,9 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use test_runner::benchmark::{BenchmarkConfig, BenchmarkProfile, DEFAULT_BENCHMARK_FRAMES};
-use test_runner::vamiga::{VamigaCategory, VamigaRunConfig};
+use test_runner::benchmark::{BenchmarkConfig, BenchmarkProfile};
 
-pub const USAGE: &str = "M68000 SingleStepTest & vAmigaTS Verification Runner
+pub const USAGE: &str = "M68000 Verification and Benchmark Runner
 Usage: cargo run -p test_runner -- COMMAND
 
 Commands:
@@ -14,18 +13,12 @@ Commands:
   suite OPCODE                    Run diagnostics for one opcode (e.g. ADD.b)
   bench [quick|standard|thorough] [filter TAG] [unroll N] [passes N]
         [output PATH] [pin on|off]
-  chipset [compare|record] [frames N]
-  vamiga [category NAME] [test NAME] [frames N] [limit N] [verbose] [summary]
-  vamiga list deferred            List deferred capture suites
   help                            Print these instructions
 
 Examples:
   cargo run -p test_runner -- bench quick filter arith_mul passes 3
-  cargo run -p test_runner -- vamiga category Copper frames 16 limit 5
-  python tools/verification/verify.py runner chipset compare frames 50
 
-Counts must be positive. Unknown or repeated selectors are errors.
-Record updates reference baselines and remains an explicit standalone operation.";
+Counts must be positive. Unknown or repeated selectors are errors.";
 
 #[derive(Debug)]
 pub enum Command {
@@ -34,17 +27,6 @@ pub enum Command {
     Diff,
     Suite(String),
     Bench(BenchmarkConfig),
-    Chipset { record: bool, frames: u32 },
-    Vamiga(VamigaOptions),
-}
-
-#[derive(Debug, Default)]
-pub struct VamigaOptions {
-    pub(super) category: Option<VamigaCategory>,
-    pub(super) test: Option<String>,
-    pub(super) limit: Option<usize>,
-    pub(super) list_deferred: bool,
-    pub(super) config: VamigaRunConfig,
 }
 
 pub fn parse(args: &[String]) -> Result<Command, String> {
@@ -59,8 +41,6 @@ pub fn parse(args: &[String]) -> Result<Command, String> {
             Ok(Command::Suite(words[0].clone()))
         }
         "bench" => parse_bench(words).map(Command::Bench),
-        "chipset" => parse_chipset(words),
-        "vamiga" => parse_vamiga(words).map(Command::Vamiga),
         _ => Err(format!(
             "Unknown command or unexpected arguments: {}",
             args.join(" ")
@@ -111,13 +91,6 @@ fn positive_count(values: &HashMap<&str, &str>, key: &str) -> Result<Option<usiz
         .transpose()
 }
 
-fn frames(values: &HashMap<&str, &str>, default: u32) -> Result<u32, String> {
-    match positive_count(values, "frames")? {
-        Some(count) => u32::try_from(count).map_err(|_| "Frame count exceeds u32 range".to_owned()),
-        None => Ok(default),
-    }
-}
-
 fn parse_bench(words: &[String]) -> Result<BenchmarkConfig, String> {
     let values = selectors(
         words,
@@ -161,39 +134,4 @@ fn parse_bench(words: &[String]) -> Result<BenchmarkConfig, String> {
         };
     }
     Ok(config)
-}
-
-fn parse_chipset(words: &[String]) -> Result<Command, String> {
-    let values = selectors(words, &["frames"], &["compare", "record"])?;
-    if values.contains_key("record") && values.contains_key("compare") {
-        return Err("Choose chipset compare or chipset record".to_owned());
-    }
-    Ok(Command::Chipset {
-        record: values.contains_key("record"),
-        frames: frames(&values, DEFAULT_BENCHMARK_FRAMES)?,
-    })
-}
-
-fn parse_vamiga(words: &[String]) -> Result<VamigaOptions, String> {
-    let mut options = VamigaOptions::default();
-    if words == ["list", "deferred"] {
-        options.list_deferred = true;
-        return Ok(options);
-    }
-    let values = selectors(
-        words,
-        &["category", "test", "frames", "limit"],
-        &["verbose", "summary"],
-    )?;
-    if let Some(value) = values.get("category") {
-        options.category = Some(
-            VamigaCategory::from_str_loose(value)
-                .ok_or_else(|| format!("Unknown category: {value}"))?,
-        );
-    }
-    options.test = values.get("test").map(|value| (*value).to_owned());
-    options.limit = positive_count(&values, "limit")?;
-    options.config.frames_to_run = frames(&values, options.config.frames_to_run)?;
-    options.config.verbose = values.contains_key("verbose");
-    Ok(options)
 }

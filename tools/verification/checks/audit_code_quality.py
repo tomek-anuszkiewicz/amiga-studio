@@ -75,13 +75,13 @@ HOST_IO_AND_SPEC_SYMBOLS = {
     "DEFAULT_TARGET_ADDRESS", "toggle_pc_breakpoint", "has_pc_breakpoint", "check_watchpoint",
     "total_count", "save_state_to_json", "load_state_from_json", "run_until_breakpoint",
     # Host Display & Frame Buffer Extraction
-    "is_in_display_window", "get_pixel", "frame_buffer", "frame_buffer_mut", "begin_frame", "end_frame", "extract_vamiga_raw_viewport",
+    "is_in_display_window", "get_pixel", "frame_buffer", "frame_buffer_mut", "begin_frame", "end_frame",
     # Host Audio Sample Ring Buffer
     "pop_sample", "samples_available",
     # Host Real-Time Clock
     "set_time",
     # System Topologies & Save States / Synchronous Stepping
-    "bare_512k", "expanded_power_user", "to_json", "step_cycles", "step_line", "execute_blit",
+    "bare_512k", "expanded_power_user", "to_json", "step_cycles", "step_line", "step_frame", "execute_blit",
     # Bus Query & Overlay Status
     "is_wait", "is_low_memory_overlay_active",
     # HRM Figure 6-9 DMA Slot Timing Specifications
