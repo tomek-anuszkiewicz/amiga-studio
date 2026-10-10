@@ -1,104 +1,116 @@
 ---
 name: sync-design-docs
-description: Synchronize Obsidian design specifications with active codebase changes, prune draft code, and update crate graph.
+description: Before every authorized Git commit, review the intended changes per crate and synchronize only the design specifications selected by tracked_paths; leave already accurate documents untouched.
 ---
 
-# Recipe: Design Documentation & Codebase Synchronization
+# Design Documentation Review Before Commit
 
-This skill provides the operational procedure for maintaining, pruning, and synchronizing architectural specifications under [Obsidian/Amiga/Design/](../../../Obsidian/Amiga/Design/) with active Rust codebase changes per [`.agents/rules/docs-maintenance.md`](../../rules/docs-maintenance.md).
+Follow [docs-maintenance.md](../../rules/docs-maintenance.md) and
+[git-commits.md](../../rules/git-commits.md). This procedure reviews documentation;
+it does not authorize staging, committing, or modifying unrelated work.
 
----
+## When to Use
 
-## 1. When to Use This Skill
+Mandatory before every authorized Git commit, including documentation, rules,
+tests and merge commits. Review only the intended commit snapshot. Ordinary
+implementation or refactoring alone does not trigger this procedure. Milestone
+closure uses its completion commit's review; do not repeat it for the same
+snapshot unless relevant inputs changed. Explicit review requests remain valid.
 
-Activate this skill whenever:
-- Implementing, refactoring, or completing any subsystem, opcode, or bus mechanism.
-- Modifying crate dependencies in `Cargo.toml` (adding/removing crates or inter-crate dependencies).
-- Concluding a roadmap milestone or step in [`ROADMAP.md`](../../../ROADMAP.md).
-- Removing obsolete speculative code sketches or draft proposals from documentation.
+## 1. Establish the Intended Snapshot
 
----
+Identify the exact paths and changes agreed for this commit before reviewing.
+Do not treat every dirty file as part of the commit or stage files merely to
+select a documentation scope.
 
-## 2. Step-by-Step Execution Workflow
+For an already staged snapshot, use:
 
-### Step 1: Detect Drift & Staleness via Audit Engine
-Run the automated design synchronization auditor to identify all specifications whose tracked Rust crates have evolved:
 ```powershell
-python tools/harness/audit_docs_quality.py --design-sync
-```
-- **Within Active Tolerance ($\le 100$ commits, $\le 30$ days):** Specifications undergoing routine development without architectural changes are marked `[PASS / TOLERATED]`. Do NOT bump checkpoints or create empty commits for these.
-- **Stale ($> 100$ commits or $> 30$ days without audit):** Specifications exceeding the threshold are flagged as `[STALE]`, requiring inspection and reconciliation.
-
-Tracked specifications and their corresponding paths include:
-- `crates/cpu/` $\to$ `CPU Motorola M68000.md`, `CPU Micro-Step State Machine.md`
-- `crates/memory_bus/` $\to$ `MemoryBus.md`
-- `crates/agnus/` $\to$ `Agnus.md`
-- `crates/denise/` $\to$ `Denise.md`
-- `crates/paula/` $\to$ `Paula.md`
-- `crates/floppy/` $\to$ `Floppy.md`
-- `crates/cia/` $\to$ `CIA.md`
-- `crates/rtc/` $\to$ `RTC.md`
-- `crates/joystick/`, `crates/mouse/`, `crates/keyboard/` $\to$ `Joystick.md`, `Mouse.md`, `Keyboard.md`
-- `crates/machine_loop/` $\to$ `Main loop A500.md`
-- `crates/gui/`, `crates/debugger/` $\to$ `GUI.md`, `GUI Specification.md`, `Debugger.md`
-- `crates/config/` $\to$ `Configuration.md`
-- `crates/save_state/` $\to$ `SaveState.md`
-
-### Step 2: Inspect Crate Git Diff Since Checkpoint
-For any stale or updating specification, inspect the exact code changes made to its tracked paths since the last recorded synchronization checkpoint:
-```powershell
-python tools/harness/audit_docs_quality.py --design-diff Denise.md
+git diff --cached --name-only --no-renames -z
+git diff --cached -- <selected_paths>
 ```
 
-### Step 3: Synchronize Architectural Reality
-For each affected design document:
-1. Update register bitfields, timing constants, clock phase tables (`CCK1`/`CCK2`), and bus arbitration rules to match the working code.
-2. Ensure hardware circuit realities, pinouts, and physical timings are clearly explained.
-3. Keep technical specifications exhaustive—per rule, design specs have **no line count ceiling**.
+Using `--no-renames` exposes both old and new paths as deletion/addition. Include
+both when selecting documents; compare old content from HEAD for deleted files.
+For a commit not yet staged, use `git diff HEAD -- <intended_paths>` for tracked
+files and read only explicitly selected untracked files. An untracked file is
+not present in Git's diff. If the intended patch is partial or a file has both
+staged and unstaged edits, inspect the actual proposed version and exclude
+unrelated hunks. Do not use a worktree diff as evidence for a different index
+snapshot. For an initial commit, use the intended index without assuming HEAD
+exists. For a merge, inspect the intended result against its first parent and
+review conflict resolutions and relevant changes from the other parent.
 
-### Step 4: Prune Draft Code & Eliminate Duplication
-1. **Remove Speculative Snippets:** Delete tentative code proposals, hypothetical sketches, or superseded draft ideas written before implementation.
-2. **Replace Raw Code Duplication:** Design documents must not duplicate full Rust structs or functions. Replace verbatim code blocks with concise hardware behavior descriptions, tables, and direct markdown links to the living Rust source files:
-   ```markdown
-   For the cycle-exact bus arbitration implementation, see [`MemoryBus::step_cck`](../../../crates/memory_bus/src/memory_bus.rs).
-   ```
+If the intended paths or patch cannot be identified, report the missing scope
+and establish it before proceeding. Never substitute the whole working tree,
+an arbitrary earlier commit, or the complete repository history.
 
-### Step 5: Update Crate Dependency Mermaid Graph (If Dependencies Changed)
-If crate dependencies were added or altered in any `Cargo.toml`:
-1. Open [`Obsidian/Amiga/Design/General Architecture.md`](../../../Obsidian/Amiga/Design/General%20Architecture.md).
-2. Locate Section 2 (`Workspace Crate Architecture & Dependencies`).
-3. Update the Mermaid `graph TD` diagram to accurately depict current crate relationships and dependencies.
+## 2. Select Documents by Path Ownership
 
-### Step 6: Validate Links & Graph Integrity
-Verify YAML frontmatter properties and ensure zero broken links:
-```powershell
-python tools/harness/verify.py --commit
-```
+Read only YAML frontmatter from specifications under
+`Obsidian/Amiga/Design/` to collect their `tracked_paths`. Keep this mapping in
+the documents; do not maintain a second crate-to-document table here.
 
-### Step 7: Stamp the Git Checkpoint & Commit Atomically
-Once the specification is substantively updated (or formally verified after exceeding the 100-commit / 30-day threshold), stamp its frontmatter checkpoint to HEAD:
-```powershell
-python tools/harness/audit_docs_quality.py --design-bump Denise.md
-```
-**Strict Prohibition of Empty Sync Commits:**
-- Stage and commit the bumped document **together with its substantive documentation improvements**.
-- Never create standalone commits that only modify `last_synced_commit`.
+Normalize repository-relative paths to forward slashes. A tracked path matches
+an identical file path or a descendant under a directory boundary: `crates/agnus`
+may match `crates/agnus/src/agnus.rs`, but not `crates/agnus_extra/...`.
 
----
+Group intended code changes by `crates/<crate>/`, then select every specification
+whose tracked paths intersect those changes. One crate may select several
+documents; a file-specific mapping selects only changes to that file. Apply the
+same matching to non-crate paths explicitly listed in `tracked_paths`.
 
-## 3. Standard Sync Report Format
+- Check that configured paths resolve to existing files/directories, or are
+  explained by an intended deletion or rename. Update mappings when ownership
+  changes; do not silently skip an invalid path.
+- Report changed crate code with no matching specification. Determine the
+  appropriate document from existing domain references and resolve the missing
+  mapping before claiming its documentation review complete. Do not invent an
+  association or inspect every subsystem to compensate.
+- Include design documents explicitly changed in the intended commit, even if
+  they have no tracked paths. For changes solely to rules or tooling with no
+  mapping, review their directly affected instructions and links, not all
+  emulator specifications.
+- Workspace/dependency changes require the affected crate manifests and
+  [General Architecture](../../../Obsidian/Amiga/Design/General%20Architecture.md),
+  not every implementation file.
 
-```markdown
-### 📚 Design Documentation Sync Report
-- **Total Specifications Tracked:** <count>
-- **Drifted Specifications Reconciled:** <count>
-- **Documents Updated & Bumped:**
-  | Design Document | Subsystem / Topic | Changes Applied | Checkpoint Bumped |
-  | :--- | :--- | :--- | :--- |
-  | `Obsidian/Amiga/Design/<doc>.md` | `<subsystem>` | Synchronized registers, timing tables | `HEAD` (`<hash>`) |
-- **Pruned Draft / Redundant Content:**
-  - `<doc>.md`: Removed speculative code snippets.
-- **Mermaid Graph Status:** [UPDATED | UNCHANGED]
-- **Vault Link Integrity:** `test_obsidian_design_docs_links_integrity` passed (0 broken links).
-- **Design Specs Sync Status:** All tracked specifications in sync with HEAD.
-```
+## 3. Review the Selected Changes
+
+Read each selected document and inspect only the intended changed files, their
+diff and necessary local context. Evaluate behavior, registers, timing phases,
+bus coordination, public contracts and dependency changes described by the
+specification. Extend to another subsystem only when a concrete shared contract,
+dependency or interaction requires it; record the reason and added scope.
+
+Follow [spec-compliance.md](../../rules/spec-compliance.md) for conflicts. Do not
+rewrite a specification simply to legitimize an implementation divergence.
+
+## 4. Update Only Real Documentation Differences
+
+Correct affected descriptions, register/timing tables and dependency diagrams.
+Prune superseded drafts and copied implementations only within the reviewed
+scope; retain concise links to living source. Update `tracked_paths` if ownership
+changed. Design specifications have no line-count ceiling.
+
+If the document already describes the intended code correctly, leave the file
+unchanged, including its `updated` date. Change `updated` only alongside a real
+content correction. Never add synchronization hashes/dates, periodic stamps or
+review-only metadata. A successful review can produce no file edits and no
+additional commit.
+
+## 5. Validate and Return to the Commit Workflow
+
+After document edits, follow
+[obsidian-vault-linking](../obsidian-vault-linking/SKILL.md) for metadata and link
+checks. Include only the necessary documentation corrections in the agreed
+atomic commit. Recheck selection if intended code, ownership or the proposed
+snapshot changes. The enclosing workflow runs verification on the final source
+and stages only authorized paths; do not repeat its gates inside this skill.
+
+## Report
+
+Record the intended snapshot, changed crates/paths, selected documents, concrete
+corrections or no-change findings, scope extensions, missing/invalid mappings,
+and checks actually run. Do not claim unchanged documents were updated or that
+an unreviewed subsystem was verified.

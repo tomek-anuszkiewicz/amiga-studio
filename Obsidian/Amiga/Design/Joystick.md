@@ -11,8 +11,6 @@ related: ["[Game Ports.md](Game%20Ports.md)", "[Mouse.md](Mouse.md)", "[Denise.m
 tracked_paths:
   - "crates/joystick"
   - "crates/game_ports"
-last_synced_commit: "a4f9f76"
-last_synced_date: "2026-09-19"
 ---
 # Amiga 500 Joystick Subsystem & Input Architecture
 

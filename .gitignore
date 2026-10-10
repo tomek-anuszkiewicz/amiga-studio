@@ -51,7 +51,7 @@ tests/singlestep/
 # external binaries, but THEY CONTAIN CRITICAL DATA AND MUST NEVER BE DELETED.
 #
 # They are automatically linked into isolated Git worktrees via zero-cost NTFS
-# directory junctions (0 ms, 0 bytes) using `tools/git/worktree.ps1`:
+# directory junctions (0 ms, 0 bytes) using `tools/harness/worktree.ps1`:
 # ==============================================================================
 
 # Physical 68000 silicon test vectors (SingleStepTests, 6.5 GB) & clean-room

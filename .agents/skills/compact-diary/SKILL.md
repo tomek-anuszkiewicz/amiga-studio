@@ -7,7 +7,7 @@ description: Compact settled per-commit diary entries into separate milestone di
 
 ## Logging and Compaction Are Separate
 
-Every commit adds a concise entry to [DIARY.md](../../../DIARY.md) Section 10 using `tools/harness/log_diary.py`, per [diary-maintenance.md](../../rules/diary-maintenance.md). The appender formats entries; it does not compact them.
+Every commit adds a concise entry to [DIARY.md](../../../DIARY.md) Section 10 using `.agents/skills/compact-diary/scripts/log_diary.py`, per [diary-maintenance.md](../../rules/diary-maintenance.md). The appender formats entries; it does not compact them.
 
 Run this skill after a minor roadmap point or major milestone passes its completion gates, regardless of diary size. Consolidate its settled commit entries before the completion commit. A user may also explicitly request historical compaction.
 
@@ -35,6 +35,11 @@ Run this skill after a minor roadmap point or major milestone passes its complet
 3. Replace only the settled entries with chronologically ordered digests. Review the diff for lost decisions, hardware findings, or evidence.
 4. Run the per-commit checks from [git-commits.md](../../rules/git-commits.md), plus the applicable milestone gates.
 5. Append the completion commit's own entry describing the result and compaction. Stage it with the milestone changes. Do not create a second diary-only commit or duplicate compaction entry.
+6. After compaction and the new entry, validate the final diary structure and
+   timestamp order. Record failures before claiming closure:
+   ```powershell
+   python .agents/skills/compact-diary/scripts/check_diary.py
+   ```
 
 ## Report
 

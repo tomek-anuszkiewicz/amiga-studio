@@ -397,7 +397,7 @@ fn test_audit_micro_step_coverage() {
 // NOTE: `cargo fmt --all -- --check` is intentionally NOT run here.
 // Spawning a child `cargo` process inside `cargo test` causes redundant toolchain
 // invocations and can race with the parent cargo build. Formatting compliance is
-// exclusively enforced by `pre_flight.py --quick` (step: check_formatting).
+// exclusively enforced by `verify.py --commit` (command: cargo fmt --all -- --check).
 
 #[test]
 fn test_inlining_guidelines_compliance() {

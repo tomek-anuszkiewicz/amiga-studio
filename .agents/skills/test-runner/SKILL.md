@@ -13,8 +13,8 @@ This skill standardizes test execution across the 4 testing tiers, persists exec
 
 | Tier | Scope | Target Command | Typical Runtime |
 | :---: | :--- | :--- | :---: |
-| **Tier 1** | Unit tests (isolated crates) | `python tools/harness/run_tests.py --unit` | $< 2$s |
-| **Tier 2** | Machine loop integration | `python tools/harness/run_tests.py --integration` | $3$–$15$s |
+| **Tier 1** | Unit tests (isolated crates) | `python tests/verify.py --unit` | $< 2$s |
+| **Tier 2** | Machine loop integration | `python tests/verify.py --integration` | $3$–$15$s |
 | **Tier 3** | SingleStep CPU silicon vectors | `cargo test -p test_runner --test test_singlestep` | $6$–$15$s |
 | **Tier 4** | vAmigaTS whole-machine captures | `target/release/test_runner.exe vamiga --category <cat>` | $10$–$60$s |
 | **Arch** | Architecture rules & gates | `cargo test -p test_runner --test test_architecture_rules` | $< 2$s |
@@ -34,12 +34,12 @@ Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
 3. Repair the demonstrated mechanism, rerun the focused case, and retain its regression protection.
 4. Run the completion verifier on the intended working-tree source; staging is optional:
    ```powershell
-   python tools/harness/verify.py --commit
+   python tests/verify.py --commit
    ```
    The verifier always runs standard suites; only DMA/SingleStep depend on changed sources.
    Use `--verify-dma` or `--verify-singlestep` alone for the corresponding standalone suite,
    or combine them with a completion profile to force inclusion.
-   After the commit verification above, run `python tools/harness/verify.py --milestone` for stage completion.
+   After the commit verification above, run `python tests/verify.py --milestone` for stage completion.
    The milestone set does not repeat commit checks; use `--plan` to inspect either set.
    Individual suite commands below are for development and diagnosis, not alternative completion gates.
 
@@ -73,7 +73,7 @@ When invoked without parameters (e.g. `$test-runner`):
 3. If the working tree is dirty or no snapshots exist, run Tier 1 and machine
    integration verification:
    ```powershell
-   python tools/harness/run_tests.py --unit
+   python tests/verify.py --unit
    cargo test -p machine_loop
    ```
    Establish an initial snapshot when none exists; report freshness of existing results.

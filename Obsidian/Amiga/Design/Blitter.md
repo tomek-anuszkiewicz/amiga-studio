@@ -10,8 +10,6 @@ updated: 2026-09-19
 related: ["[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Copper.md](Copper.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/blitter"
-last_synced_commit: "0fcd519"
-last_synced_date: "2026-09-19"
 ---
 # Blitter (Bit-Block Transferrer) Architecture & Hardware Specification
 

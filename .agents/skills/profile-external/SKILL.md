@@ -147,4 +147,4 @@ cargo run --release -p test_runner -- benchmark-chipset --record --frames 50
 cargo run --release -p test_runner -- benchmark-chipset --compare
 ```
 
-Stage and commit `tests/benchmarks/chipset_benchmark_baseline.json` as part of the atomic commit for the optimization task.
+When a commit is authorized by [git-commits.md](../../rules/git-commits.md), include `tests/benchmarks/chipset_benchmark_baseline.json` in the atomic commit for the optimization task.

@@ -10,8 +10,6 @@ updated: 2026-09-12
 related: ["[CIA.md](CIA.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[GUI.md](GUI.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/keyboard"
-last_synced_commit: "03da398"
-last_synced_date: "2026-09-19"
 ---
 # Amiga 500 Keyboard Subsystem & Input Architecture
 

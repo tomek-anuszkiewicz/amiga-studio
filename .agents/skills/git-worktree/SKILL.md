@@ -34,7 +34,7 @@ Activate this skill whenever:
      - `tests/singlestep/` & `tests/benchmarks/` (test baseline outputs)
      - `.env` (environment configuration, `RAG_CACHE_FILE`)
    - **Local Knowledge Graphs:** Physically copy `graphify-out/` into each new worktree as a fast initial graph seed. Never link or share it. Immediately run `graphify update .` in the target worktree so the copied graph reflects that checkout.
-   - **Mandatory Script Use:** Always use `.\tools\git\worktree.ps1` to create and tear down worktrees. The script automatically executes multi-threaded physical copying of necessary test assets into standalone directories.
+   - **Mandatory Script Use:** Always use `.\tools\harness\worktree.ps1` to create and tear down worktrees. The script automatically executes multi-threaded physical copying of necessary test assets into standalone directories.
 
 3. **Isolated Cargo Build Cache:**
    - `target/` is deliberately **not** linked or copied. Each worktree maintains an independent Cargo build cache to prevent concurrent compiler database lock contention.
@@ -46,11 +46,11 @@ Activate this skill whenever:
 ### Step 1: Create an Isolated Worktree
 When the user asks to create a worktree for a branch or feature:
 ```powershell
-.\tools\git\worktree.ps1 add <branch_name>
+.\tools\harness\worktree.ps1 add <branch_name>
 ```
 To branch from a specific base branch:
 ```powershell
-.\tools\git\worktree.ps1 add <branch_name> -Base master
+.\tools\harness\worktree.ps1 add <branch_name> -Base master
 ```
 
 The script will:
@@ -68,13 +68,13 @@ cargo test -p <crate>
 ### Step 3: Repairing / Synchronizing an Active Worktree
 If an existing worktree was created without the script and is missing `.env`, `ref_src/`, or `graphify-out/`:
 ```powershell
-.\tools\git\worktree.ps1 sync
+.\tools\harness\worktree.ps1 sync
 ```
 
 ### Step 4: Teardown & Cleanup
 Once the worktree branch has been merged into `master` or is no longer needed:
 ```powershell
-.\tools\git\worktree.ps1 remove <branch_name>
+.\tools\harness\worktree.ps1 remove <branch_name>
 ```
 The script removes the worktree via `git worktree remove --force` and prunes stale worktree registrations.
 
@@ -83,7 +83,7 @@ The script removes the worktree via `git worktree remove --force` and prunes sta
 ## 4. Subagent Delegation Contract
 
 When delegating an isolated task to a subagent:
-1. The parent agent creates the worktree via `.\tools\git\worktree.ps1 add <branch>`.
+1. The parent agent creates the worktree via `.\tools\harness\worktree.ps1 add <branch>`.
 2. The subagent executes all commands strictly within the worktree directory.
 3. Upon completion and verification, the subagent returns its report to the parent.
-4. The parent merges the branch (using `git-resolve-merge` if conflicts arise) and runs `.\tools\git\worktree.ps1 remove <branch>`.
+4. The parent merges the branch (using `git-resolve-merge` if conflicts arise) and runs `.\tools\harness\worktree.ps1 remove <branch>`.

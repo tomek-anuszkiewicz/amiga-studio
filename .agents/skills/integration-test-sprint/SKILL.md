@@ -140,7 +140,7 @@ Review all modifications across the diff and ask:
 - [ ] All exploratory ad-hoc `if` branches and $\pm 1$ coordinate nudges eliminated.
 - [ ] Unified physical hardware law implemented in the appropriate substrate crate.
 - [ ] Full regression check passed cleanly with zero regressions.
-- [ ] Changes committed atomically per [`.agents/rules/git-commits.md`](../../rules/git-commits.md).
+- [ ] Commit timing follows [`.agents/rules/git-commits.md`](../../rules/git-commits.md): leave validated changes uncommitted unless the user requests a commit or a minor roadmap point completes; authorized commits are atomic.
 - [ ] Quantitative results recorded in [`DIARY.md`](../../../DIARY.md).
 
 

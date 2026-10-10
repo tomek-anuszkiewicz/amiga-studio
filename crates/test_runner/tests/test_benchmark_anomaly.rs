@@ -3,17 +3,14 @@
 //! Thorough Benchmark Empirical Anomaly & Architecture Invariant Regression Test Suite
 //!
 //! Validates empirical performance bounds on the high-precision `--thorough` benchmark dataset:
-//! 1. Automatically invokes `tools/benchmarks/analyze_benchmarks.py` to regenerate
-//!    `tests/benchmarks/thorough/analysis_report.md`.
-//! 2. Asserts Zero Anomalies (`anomaly == false`) across all 108 specifications.
-//! 3. Asserts 16-bit Register ALU Functional Family Symmetry (spread <= 10.0%).
-//! 4. Asserts Addressing Mode Latency Ladder Monotonicity (Reg < Indirect < Displacement < AbsoluteLong).
-//! 5. Asserts Statistical Noise Bound (Jitter CV < 3.0%).
-//! 6. Asserts Normalized Emulation Tax ($R_{norm} \le 4.5$ ns/CCK for ALU and data movement).
+//! 1. Asserts Zero Anomalies (`anomaly == false`) across all 108 specifications.
+//! 2. Asserts 16-bit Register ALU Functional Family Symmetry (spread <= 10.0%).
+//! 3. Asserts Addressing Mode Latency Ladder Monotonicity (Reg < Indirect < Displacement < AbsoluteLong).
+//! 4. Asserts Statistical Noise Bound (Jitter CV < 3.0%).
+//! 5. Asserts Normalized Emulation Tax ($R_{norm} \le 4.5$ ns/CCK for ALU and data movement).
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 /// Locates repository root for accessing `tests/benchmarks/` and `tools/` on disk
 fn find_repo_root() -> Option<PathBuf> {
@@ -24,17 +21,6 @@ fn find_repo_root() -> Option<PathBuf> {
         }
     }
     Some(dir)
-}
-
-/// Detects available python executable (`python` or `python3`)
-fn detect_python() -> Option<&'static str> {
-    if Command::new("python").arg("--version").output().is_ok() {
-        Some("python")
-    } else if Command::new("python3").arg("--version").output().is_ok() {
-        Some("python3")
-    } else {
-        None
-    }
 }
 
 /// Resolves the thorough CSV dataset path (`m68k_benchmark_baseline.csv`, `m68k_benchmark_latest.csv`, or `m68k_benchmark.csv`)
@@ -103,75 +89,6 @@ fn load_thorough_records(path: &Path) -> Result<Vec<CsvRecord>, String> {
     }
 
     Ok(records)
-}
-
-#[test]
-fn test_thorough_analysis_report_generation() {
-    let repo_root = match find_repo_root() {
-        Some(r) => r,
-        None => return,
-    };
-
-    let thorough_csv = match find_thorough_csv(&repo_root) {
-        Some(p) => p,
-        None => {
-            println!("[*] Skipping thorough report generation: thorough CSV not found on disk");
-            return;
-        }
-    };
-
-    let py_bin = match detect_python() {
-        Some(py) => py,
-        None => {
-            println!(
-                "[!] Python not found in PATH; skipping automated analysis_report.md execution"
-            );
-            return;
-        }
-    };
-
-    let script_path = repo_root.join("tools/benchmarks/analyze_benchmarks.py");
-    let report_out = repo_root.join("tests/benchmarks/thorough/analysis_report.md");
-
-    let output = Command::new(py_bin)
-        .arg(&script_path)
-        .arg(&thorough_csv)
-        .arg("--output")
-        .arg(&report_out)
-        .output()
-        .expect("Failed to execute analyze_benchmarks.py");
-
-    assert!(
-        output.status.success(),
-        "analyze_benchmarks.py failed with stderr:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-
-    assert!(
-        report_out.exists(),
-        "Expected generated analysis report at {}",
-        report_out.display()
-    );
-
-    let report_text = fs::read_to_string(&report_out).expect("Failed to read generated report");
-    assert!(
-        report_text.contains("# M68000 Instruction Benchmark Analysis Report"),
-        "Report header missing or malformed in {}",
-        report_out.display()
-    );
-    assert!(
-        report_text.contains("Functional Family Symmetry"),
-        "Functional Family Symmetry section missing in report"
-    );
-    assert!(
-        report_text.contains("Addressing Mode Latency Ladder"),
-        "Addressing Mode section missing in report"
-    );
-
-    println!(
-        "[*] Successfully regenerated and verified {}",
-        report_out.display()
-    );
 }
 
 #[test]

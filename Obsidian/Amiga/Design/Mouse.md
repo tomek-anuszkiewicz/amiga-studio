@@ -11,8 +11,6 @@ related: ["[Game Ports.md](Game%20Ports.md)", "[Joystick.md](Joystick.md)", "[De
 tracked_paths:
   - "crates/mouse"
   - "crates/game_ports"
-last_synced_commit: "a4f9f76"
-last_synced_date: "2026-09-19"
 ---
 # Amiga 500 Mouse Subsystem & Pointer Architecture
 

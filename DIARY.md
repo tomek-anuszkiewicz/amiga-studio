@@ -2363,3 +2363,37 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Python tool contracts failed in test_validated_pdf_resume_publishes_workspace_output
   - No golden constants changed
   - Milestone verification not run
+---
+
+### [2026-10-10 02:02 CEST] — Reorganize verification tooling and scope automated test coverage
+- **Affected Subsystems**:
+  - `Verification harness`
+  - `quality checks`
+  - `agent governance`
+  - `test_runner`
+  - `frame_builder tests`
+  - `design documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Move verification and coverage reporting to tests and concrete audits to tests/checks
+  - Move skill-owned documentation, semantic, diary and roadmap checks into their skill script directories
+  - Move benchmark analysis into test_runner and worktree utility into tools/harness
+  - Remove standalone harness utility tests, vAmigaTS regression suites, viewport extraction tests and selected Python audit regression tests while retaining emulator execution and golden-result checks
+  - Automatically report ordinary-crate LLVM coverage and preserve diagnostic tier selectors
+  - Consolidate quality audit scope and make milestone verification the staged English audit
+  - Require scoped design review before authorized commits, remove obsolete synchronization checkpoints and align instructions with the new layout
+  - Refresh eight remaining canonical-mnemonic trace artifacts without changing golden constants
+  - Add tracked-path ownership for benchmark analysis and verification
+- **Architectural Rationale & Trade-Offs**:
+  - Record all user-authorized pending changes as one verification and agent-workflow reorganization. Documentation review covered changed design metadata and the benchmark, testing, frame-buffer and profiling contracts
+  - production emulator behavior was not changed. Removed suites reduce automated regression coverage
+  - retained manual tools do not replace that coverage.
+- **Verification & Test Results**:
+  - python tests/verify.py --commit ran: ordinary workspace crate tests and formatting, Clippy, architecture, hardware and code quality gates passed
+  - Ordinary-crate line coverage 52.41 percent, functions 58.62 percent and regions 49.80 percent, without a threshold
+  - Standard harness verification failed on existing BCD-02 and BCD-04 golden trace mismatches
+  - Python contracts failed in test_validated_pdf_resume_publishes_workspace_output
+  - All eight changed trace artifacts match existing golden hashes
+  - Vault links and frontmatter checks passed for 42 documents and 1054 links
+  - Roadmap retention check and git diff --check passed
+  - Graphify code graph updated
+  - Milestone closure, full SingleStepTests, Cartesian DMA and manual capture/performance runs not performed

@@ -9,4 +9,4 @@ Applies to chip, DMA, bus, interrupt, and peripheral coordination. Read the affe
 - Disk DMA is bidirectional; Agnus still generates addresses and bus cycles while Paula supplies or receives holding-register data.
 - Route DMA requests, interrupts, reset, sync, TOD, and peripheral port signals through the coordinator according to their authoritative signal definitions. Do not replace physical dependencies with software shortcuts.
 
-Use [audit-hardware-quality](../skills/audit-hardware-quality/SKILL.md) for the review procedure. Specifications own detailed signal names, directions, register lists, and timing tables.
+Specifications own detailed signal names, directions, register lists, and timing tables.

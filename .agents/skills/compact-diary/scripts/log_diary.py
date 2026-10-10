@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-tools/log_diary.py
+.agents/skills/compact-diary/scripts/log_diary.py
 Deterministic CLI Appender for DIARY.md Section 10.
 
 Eliminates the need for the LLM to read 90+ KB of DIARY.md into its context window.
@@ -20,7 +20,7 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 DIARY_PATH = REPO_ROOT / "DIARY.md"
 
 def get_current_timestamp():

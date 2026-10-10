@@ -9,10 +9,10 @@
     directory junctions or symbolic links to preserve total repository isolation.
 
 .EXAMPLE
-    .\tools\git\worktree.ps1 add feature-blitter
-    .\tools\git\worktree.ps1 sync
-    .\tools\git\worktree.ps1 remove feature-blitter
-    .\tools\git\worktree.ps1 list
+    .\tools\harness\worktree.ps1 add feature-blitter
+    .\tools\harness\worktree.ps1 sync
+    .\tools\harness\worktree.ps1 remove feature-blitter
+    .\tools\harness\worktree.ps1 list
 #>
 
 [CmdletBinding()]
@@ -146,7 +146,7 @@ $currentRepo = (git rev-parse --show-toplevel)
 switch ($Action) {
     "add" {
         if (-not $Name) {
-            Write-Error "Branch or worktree name is required for 'add'. Example: .\tools\git\worktree.ps1 add feature-blitter"
+            Write-Error "Branch or worktree name is required for 'add'. Example: .\tools\harness\worktree.ps1 add feature-blitter"
             exit 1
         }
 
@@ -210,7 +210,7 @@ switch ($Action) {
 
     "remove" {
         if (-not $Name) {
-            Write-Error "Branch name or worktree path is required for 'remove'. Example: .\tools\git\worktree.ps1 remove feature-blitter"
+            Write-Error "Branch name or worktree path is required for 'remove'. Example: .\tools\harness\worktree.ps1 remove feature-blitter"
             exit 1
         }
 

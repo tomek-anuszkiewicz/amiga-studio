@@ -11,8 +11,6 @@ related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md
 tracked_paths:
   - "tests/benchmarks"
   - ".agents/skills/profile-external"
-last_synced_commit: "a4f9f76"
-last_synced_date: "2026-09-19"
 ---
 # Performance Profiling & Optimization Strategy
 

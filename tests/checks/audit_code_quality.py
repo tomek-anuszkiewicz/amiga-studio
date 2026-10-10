@@ -2,7 +2,7 @@
 """
 audit_code_quality.py - Comprehensive On-Demand Code Quality Auditor
 
-Audits four architectural dimensions across workspace crates:
+Audits three architectural dimensions across workspace crates:
 1. Dead Code & Test-Only Zombies:
    - Completely dead symbols (0 callers anywhere).
    - Test-only zombie symbols (0 callers in production crates/*/src/, only called in tests/).
@@ -10,9 +10,7 @@ Audits four architectural dimensions across workspace crates:
    - Over-exposed `pub` items that are only called within their own defining crate (should be `pub(crate)`).
    - Over-exposed `pub`/`pub(crate)` items that are only called within their own defining file (should be private).
    - Over-exposed `pub mod` declarations whose items are never referenced externally.
-3. Condition Soup & Self-Documenting Boolean Logic:
-   - Complex compound boolean conditions needing named explaining variables or domain predicate methods.
-4. Method Naming & Accessor Conventions:
+3. Method Naming & Accessor Conventions:
    - Evaluates standard getters matching field name without `get_` prefix.
    - Evaluates boolean getters starting with `is_` (or `has_`/`can_`) and zero duplicate prefixes.
    - Evaluates setters starting with `set_<field>`.
@@ -23,9 +21,7 @@ and 800-line file size limits are verified directly via `cargo test -p test_runn
 and `cargo clippy --workspace --all-targets`.
 """
 
-import argparse
 import datetime
-import json
 import re
 import subprocess
 import sys
@@ -248,15 +244,13 @@ def collect_declared_symbols(crate_dir):
 
 
 
-def scan_dead_and_zombie_code(target_crate=None):
+def scan_dead_and_zombie_code():
     """Detects completely dead code (0 callers) and test-only zombie code."""
     prod_files, test_files = get_file_corpus_cached()
     all_declared = []
 
     for crate_dir in sorted(CRATES_DIR.iterdir()):
         if not crate_dir.is_dir() or not (crate_dir / "Cargo.toml").exists():
-            continue
-        if target_crate and crate_dir.name != target_crate:
             continue
         if crate_dir.name in EXEMPT_CRATES:
             continue
@@ -297,15 +291,13 @@ def scan_dead_and_zombie_code(target_crate=None):
     return completely_dead, test_only_zombies
 
 
-def scan_least_visibility(target_crate=None):
+def scan_least_visibility():
     """Detects symbols with over-broad visibility (pub instead of pub(crate) or private)."""
     prod_files, test_files = get_file_corpus_cached()
     all_declared = []
 
     for crate_dir in sorted(CRATES_DIR.iterdir()):
         if not crate_dir.is_dir() or not (crate_dir / "Cargo.toml").exists():
-            continue
-        if target_crate and crate_dir.name != target_crate:
             continue
         if crate_dir.name in EXEMPT_CRATES:
             continue
@@ -373,83 +365,9 @@ def scan_least_visibility(target_crate=None):
     return visibility_leaks
 
 
-def scan_condition_soup(target_crate=None):
-    """
-    Scans crate source files for complex, multi-clause compound boolean conditionals
-    (e.g. mixed nested &&/|| with parentheses or >= 3 boolean operators) that lack
-    explaining variables per .agents/rules/performance-and-readability.md.
-    """
-    crates = (
-        [CRATES_DIR / target_crate]
-        if target_crate
-        else [p for p in CRATES_DIR.iterdir() if p.is_dir() and (p / "Cargo.toml").exists()]
-    )
-    issues = []
-
-    exempt_files = {
-        "crates/cpu/src/micro/dispatch_table.rs",
-    }
-
-    for c in crates:
-        src_dir = c / "src"
-        if not src_dir.exists():
-            continue
-
-        for f in src_dir.rglob("*.rs"):
-            rel = f.relative_to(REPO_ROOT).as_posix()
-            if rel in exempt_files:
-                continue
-
-            try:
-                content = f.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                continue
-
-            # Strip comments to avoid false positives on commented logic
-            clean_lines = []
-            in_block_comment = False
-            for line in content.splitlines():
-                if in_block_comment:
-                    if "*/" in line:
-                        in_block_comment = False
-                        line = line.split("*/", 1)[1]
-                    else:
-                        clean_lines.append("")
-                        continue
-                if "/*" in line and "*/" not in line:
-                    in_block_comment = True
-                    line = line.split("/*", 1)[0]
-                elif "//" in line:
-                    line = line.split("//", 1)[0]
-                clean_lines.append(line)
-
-            clean_text = "\n".join(clean_lines)
-
-            for m in re.finditer(r'\b(if|while)\s+([^\{]+)\{', clean_text):
-                cond = m.group(2).strip()
-                if cond.startswith("let ") or "let " in cond:
-                    continue
-
-                and_count = cond.count("&&")
-                or_count = cond.count("||")
-                has_mixed_nesting = "(" in cond and and_count >= 1 and or_count >= 1
-
-                if and_count + or_count >= 3 or has_mixed_nesting:
-                    line_idx = content[: m.start()].count("\n") + 1
-                    first_line = cond.split("\n")[0].strip()
-                    issues.append({
-                        "type": "compound_condition_soup",
-                        "file": rel,
-                        "line": line_idx,
-                        "keyword": m.group(1),
-                        "snippet": first_line[:80],
-                        "recommendation": "Decompose compound boolean condition into named explaining variables or domain predicate methods, preserving short-circuit evaluation without eager speculative computation.",
-                    })
-
-    return issues
 
 
-def scan_accessor_conventions(target_crate=None):
+def scan_accessor_conventions():
     """
     Scans crate source files for violations of method naming and accessor conventions
     per .agents/rules/rust-best-practices.md:
@@ -457,11 +375,7 @@ def scan_accessor_conventions(target_crate=None):
     2. Boolean getters must start with `is_` (or retain `has_`/`can_`) with zero duplicate prefixes.
     3. Setters must start with `set_<field>`.
     """
-    crates = (
-        [CRATES_DIR / target_crate]
-        if target_crate
-        else [p for p in CRATES_DIR.iterdir() if p.is_dir() and (p / "Cargo.toml").exists()]
-    )
+    crates = [p for p in CRATES_DIR.iterdir() if p.is_dir() and (p / "Cargo.toml").exists()]
     issues = []
 
     re_struct_start = re.compile(r"^\s*(?:pub(?:\([^)]+\))?\s+)?struct\s+([a-zA-Z0-9_]+)\b[^{;]*\{")
@@ -617,71 +531,18 @@ def scan_accessor_conventions(target_crate=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Audit dead code, minimum visibility leaks, boolean conditions, and method naming & accessor conventions."
-    )
-    parser.add_argument("--all", action="store_true", help="Run all code quality audits")
-    parser.add_argument("--per-commit", action="store_true", help="Run per-commit audits (Pillars 1 & 2: dead code & least visibility)")
-    parser.add_argument("--milestone", action="store_true", help="Run milestone audits (Pillars 3 & 4: condition soup & accessors)")
-    parser.add_argument("--dead-code", action="store_true", help="Run dead code & zombie scanner")
-    parser.add_argument("--visibility", action="store_true", help="Run least visibility scanner")
-    parser.add_argument("--conditions", action="store_true", help="Run condition soup & boolean clarity scanner")
-    parser.add_argument("--accessors", action="store_true", help="Run method naming and accessor convention checks")
-    parser.add_argument("--strict", action="store_true", help="Exit with non-zero exit code if issues are found")
-    parser.add_argument("--crate", help="Filter audit to a specific crate")
-    parser.add_argument("--json", action="store_true", help="Output results as JSON")
-    args = parser.parse_args()
+    if len(sys.argv) > 1:
+        print("This auditor accepts no arguments. Run: python tests/checks/audit_code_quality.py", file=sys.stderr)
+        return 2
 
-    if args.per_commit:
-        args.dead_code = True
-        args.visibility = True
-    if args.milestone:
-        args.conditions = True
-        args.accessors = True
-
-    # Default to --all if no specific mode selected
-    if not (
-        args.all
-        or args.per_commit
-        or args.milestone
-        or args.dead_code
-        or args.visibility
-        or args.conditions
-        or args.accessors
-    ):
-        args.all = True
-
-    dead, zombies = ([], [])
-    if args.all or args.dead_code:
-        dead, zombies = scan_dead_and_zombie_code(args.crate)
-
-    vis_leaks = []
-    if args.all or args.visibility:
-        vis_leaks = scan_least_visibility(args.crate)
-
-    condition_issues = []
-    if args.all or args.conditions:
-        condition_issues = scan_condition_soup(args.crate)
-
-    accessor_issues = []
-    if args.all or args.accessors:
-        accessor_issues = scan_accessor_conventions(args.crate)
+    dead, zombies = scan_dead_and_zombie_code()
+    vis_leaks = scan_least_visibility()
+    accessor_issues = scan_accessor_conventions()
 
     total_issues = sum(len(issues) for issues in (
-        dead, zombies, vis_leaks, condition_issues, accessor_issues
+        dead, zombies, vis_leaks, accessor_issues
     ))
-    exit_code = 1 if args.strict and total_issues > 0 else 0
-
-    if args.json:
-        out = {
-            "dead_code": dead,
-            "test_only_zombies": zombies,
-            "visibility_leaks": vis_leaks,
-            "condition_issues": condition_issues,
-            "accessor_issues": accessor_issues,
-        }
-        print(json.dumps(out, indent=2))
-        return exit_code
+    exit_code = 1 if total_issues > 0 else 0
 
     if sys.stdout.encoding != "utf-8":
         try:
@@ -693,57 +554,42 @@ def main():
     print(" AMIGA 500 EMULATOR: ARCHITECTURAL CODE QUALITY AUDIT")
     print("=" * 76)
 
-    if args.all or args.dead_code:
-        print(f"\n[1. DEAD CODE & ZOMBIE SCANNER]")
-        print(f"  - Completely Dead: {len(dead)} symbol(s)")
-        for s in dead[:10]:
-            print(f"    * [{s['kind']}] {s['crate']}::{s['name']} -> {s['file']}:{s['line']}")
-        if len(dead) > 10:
-            print(f"    * ... and {len(dead) - 10} more")
+    print(f"\n[1. DEAD CODE & ZOMBIE SCANNER]")
+    print(f"  - Completely Dead: {len(dead)} symbol(s)")
+    for s in dead[:10]:
+        print(f"    * [{s['kind']}] {s['crate']}::{s['name']} -> {s['file']}:{s['line']}")
+    if len(dead) > 10:
+        print(f"    * ... and {len(dead) - 10} more")
 
-        print(f"  - Test-Only Zombies: {len(zombies)} symbol(s) (unused by production code)")
-        for s in zombies[:10]:
-            callers_str = ", ".join(f"{c[0]}:{c[1]}" for c in s["test_callers"][:2])
-            print(f"    * [{s['kind']}] {s['crate']}::{s['name']} -> {s['file']}:{s['line']} (tested in {callers_str})")
-        if len(zombies) > 10:
-            print(f"    * ... and {len(zombies) - 10} more")
+    print(f"  - Test-Only Zombies: {len(zombies)} symbol(s) (unused by production code)")
+    for s in zombies[:10]:
+        callers_str = ", ".join(f"{c[0]}:{c[1]}" for c in s["test_callers"][:2])
+        print(f"    * [{s['kind']}] {s['crate']}::{s['name']} -> {s['file']}:{s['line']} (tested in {callers_str})")
+    if len(zombies) > 10:
+        print(f"    * ... and {len(zombies) - 10} more")
 
-    if args.all or args.visibility:
-        print(f"\n[2. PRINCIPLE OF MINIMUM VISIBILITY (LEAST PRIVILEGE)]")
-        print(f"  - Over-exposed `pub` items: {len(vis_leaks)} symbol(s)")
-        for v in vis_leaks[:15]:
-            print(f"    * {v['crate']}::{v['name']} ({v['file']}:{v['line']}) -> recommend `{v['recommended']}` ({v['reason']})")
-        if len(vis_leaks) > 15:
-            print(f"    * ... and {len(vis_leaks) - 15} more")
+    print(f"\n[2. PRINCIPLE OF MINIMUM VISIBILITY (LEAST PRIVILEGE)]")
+    print(f"  - Over-exposed `pub` items: {len(vis_leaks)} symbol(s)")
+    for v in vis_leaks[:15]:
+        print(f"    * {v['crate']}::{v['name']} ({v['file']}:{v['line']}) -> recommend `{v['recommended']}` ({v['reason']})")
+    if len(vis_leaks) > 15:
+        print(f"    * ... and {len(vis_leaks) - 15} more")
 
-    if args.all or args.conditions:
-        print(f"\n[3. CONDITION SOUP & SELF-DOCUMENTING BOOLEAN LOGIC]")
-        if not condition_issues:
-            print("  - Status: [PASS] All conditionals use clean explaining variables and domain predicates.")
-        else:
-            print(f"  - Status: [WARN] {len(condition_issues)} compound condition(s) detected without explaining variables:")
-            for issue in condition_issues[:15]:
-                print(f"    * [{issue['type']}] {issue['file']}:{issue['line']} (`{issue['keyword']}`) -> {issue['snippet']}")
-                print(f"      -> {issue['recommendation']}")
-            if len(condition_issues) > 15:
-                print(f"    * ... and {len(condition_issues) - 15} more")
 
-    if args.all or args.accessors:
-        print(f"\n[4. METHOD NAMING & ACCESSOR CONVENTIONS]")
-        if not accessor_issues:
-            print("  - Status: [PASS] All getters and setters adhere to method naming conventions (no get_ prefix, is_/has_/can_ booleans, set_ setters, slice view collection getters).")
-        else:
-            print(f"  - Status: [WARN] {len(accessor_issues)} accessor convention violation(s) detected:")
-            for issue in accessor_issues[:15]:
-                print(f"    * [{issue['type']}] {issue['file']}:{issue['line']} -> `{issue['metric']}`")
-                print(f"      -> {issue['recommendation']}")
-            if len(accessor_issues) > 15:
-                print(f"    * ... and {len(accessor_issues) - 15} more")
+    print(f"\n[3. METHOD NAMING & ACCESSOR CONVENTIONS]")
+    if not accessor_issues:
+        print("  - Status: [PASS] All getters and setters adhere to method naming conventions (no get_ prefix, is_/has_/can_ booleans, set_ setters, slice view collection getters).")
+    else:
+        print(f"  - Status: [WARN] {len(accessor_issues)} accessor convention violation(s) detected:")
+        for issue in accessor_issues[:15]:
+            print(f"    * [{issue['type']}] {issue['file']}:{issue['line']} -> `{issue['metric']}`")
+            print(f"      -> {issue['recommendation']}")
+        if len(accessor_issues) > 15:
+            print(f"    * ... and {len(accessor_issues) - 15} more")
 
     print("\n" + "=" * 76)
     print(
         f"Code Quality Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, "
-        f"{len(condition_issues)} condition soup issues, "
         f"{len(accessor_issues)} method naming & accessor issues."
     )
     print("=" * 76)

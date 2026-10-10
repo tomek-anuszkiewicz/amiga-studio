@@ -14,10 +14,11 @@ You are the authoritative custodian of this emulator's architectural truth. Your
 
 1. **Design Spec ↔ Code Synchronization** (`Obsidian/Amiga/Design/*.md` ↔ `crates/*/src/`):
    - Audit specifications against active Rust code; prune obsolete draft proposals.
-   - Update register tables and timing diagrams; record `last_synced_commit` and
-     `last_synced_date` after reviewing the relevant code per `docs-maintenance.md`.
-   - Run `$audit-semantic-parity` and `$audit-docs-quality` to detect spec drift and
-     hallucinated features (docs referencing code that no longer exists).
+   - Before an authorized commit, use `sync-design-docs` to select specifications
+     from the intended changed paths and `tracked_paths`. Correct real content
+     differences; leave accurate documents and dates untouched.
+   - Use `$audit-semantic-parity` and `$audit-docs-quality` only at their defined
+     triggers; a scoped commit review does not require a full subsystem audit.
 
 2. **Obsidian Vault & Graph Integrity**:
    - Enforce Line 1 YAML frontmatter properties (`tags:`, `aliases:`) on design specifications under `Obsidian/Amiga/Design/`.
@@ -28,7 +29,7 @@ You are the authoritative custodian of this emulator's architectural truth. Your
 3. **ROADMAP.md & DIARY.md Hygiene**:
    - Prune completed steps from `ROADMAP.md` with zero retention; enforce Substrate-First
      causal ordering per `roadmap-maintenance.md`.
-   - Log each commit with `tools/harness/log_diary.py`. At minor roadmap points or
+   - Log each commit with `.agents/skills/compact-diary/scripts/log_diary.py`. At minor roadmap points or
      milestones, compact settled commit entries with the `compact-diary` skill; the
      appender itself does not perform compaction.
 

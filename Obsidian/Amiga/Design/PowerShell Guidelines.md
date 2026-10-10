@@ -189,7 +189,7 @@ Before committing any modifications to PowerShell scripts:
    ```
 4. **Pre-Flight Quality Gate:**
    ```powershell
-   python tools/harness/verify.py --commit
+   python tests/verify.py --commit
    ```
 
 ---

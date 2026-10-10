@@ -4,31 +4,91 @@ This document describes verification against CPU vectors, integration scenarios,
 
 ## Completion verification
 
-Run `python tools/harness/verify.py` without arguments (or with `--help`) to display the verification sets, automatic CPU-suite selection rules, plan behavior and command examples. This prints instructions and exits successfully without running verification.
+Verification orchestration and coverage result processing live in `tests/`;
+worktree utilities live in `tools/harness/`. The diary appender belongs to `.agents/skills/compact-diary/scripts/`. Concrete project audits and checks live in `tests/checks/`. Run these scripts from the repository root. Their
+command-line options and verification scope are unchanged by this layout.
+
+Python tests of verification routing, quality audits, language scanning and skill-governance checks have been removed. The verification commands and audits themselves remain active; Python contracts for other project tools are retained.
+
+The `test_runner` suites retain emulator execution checks and reference-result invariants. Standalone checks of its analyzers, statistics, PRNG, persistence, host setup, synthetic bus, program injection, report schemas, parsers and frame matcher are excluded; mixed suites retain their real execution cases. Benchmark CSV and empirical anomaly checks use stored results and do not establish fresh performance measurements.
+
+Commit verification starts with ordinary workspace crate tests under LLVM coverage instrumentation, excluding `test_runner`. This is automatic, with no coverage switch. Only this execution contributes to the coverage report; the remaining quality gates and harness suites use normal Cargo artifacts. `cargo-llvm-cov` uses its separate `target/llvm-cov-target` cache, while normal Cargo commands retain their usual target directory. Raw measurement counters and the previous summary are cleared before each measurement, without deleting the build caches. Yellow `[INFO]` messages identify the instrumented and uninstrumented phases and summarize line, function and region coverage. Full summary data is saved to `.agent/tmp/coverage/summary.json`; there is no percentage threshold. Coverage does not measure performance or prove assertion quality. Stable coverage does not include doctest execution; branch coverage is not enabled.
+
+Install the required tooling once:
+
+```powershell
+rustup component add llvm-tools-preview
+cargo install cargo-llvm-cov --locked
+```
+
+Run `python tests/verify.py` without arguments (or with `--help`) to display the verification sets, automatic CPU-suite selection rules, plan behavior and command examples. This prints instructions and exits successfully without running verification.
 
 Verification runs on the current working tree and does not require staging or pending changes. For milestone closure run both separate sets, once each:
 
 ```powershell
-python tools/harness/verify.py --commit
-python tools/harness/verify.py --milestone
+python tests/verify.py --commit
+python tests/verify.py --milestone
 ```
 
-Routine commits use only the first command. The profiles are invoked separately. Commit always runs the quality gates, all ordinary workspace crate tests, all standard `test_runner` suites, and all Python tool contracts. Only Cartesian DMA and full SingleStepTests are conditional on staged, unstaged and nonignored new paths. Milestone runs only additional documentation, hardware, code-quality and language audits, chipset throughput, and all runnable vAmigaTS capture checks. It does not run commit checks or automatically select DMA/SingleStep.
+Routine commits use only the first command. The profiles are invoked separately. Commit first runs ordinary workspace crate tests with coverage, reports the measured coverage, then runs quality gates, standard `test_runner` suites and Python tool contracts without coverage instrumentation. Only Cartesian DMA and full SingleStepTests are conditional on staged, unstaged and nonignored new paths. Milestone runs only the staged English language audit. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification. It does not run commit checks or automatically select DMA/SingleStep.
+
+The code-quality auditor accepts no arguments and always checks dead code,
+visibility and accessor conventions across the workspace. Commit verification
+runs it once; milestone verification does not repeat it. Every finding returns
+exit code 1. Run `python tests/checks/audit_code_quality.py` for the same full audit
+manually. Passing command-line arguments is rejected.
+
+The hardware-quality auditor accepts no arguments and always checks hardware
+bus topology and DMA mastership patterns. Commit verification runs it once;
+milestone verification and the hardware-review skill do not repeat it. It does
+not check CCK timing, open-bus values or test-file presence.
+
+There is no shared documentation-governance script in the verifier. Instruction
+brevity, script ownership and procedure routing are reviewed manually.
+Scoped design review, vault links and
+frontmatter, static semantic comparisons, diary chronology and roadmap retention
+are run by their owning skills. Follow
+[sync-design-docs](../.agents/skills/sync-design-docs/SKILL.md),
+[obsidian-vault-linking](../.agents/skills/obsidian-vault-linking/SKILL.md),
+[audit-semantic-parity](../.agents/skills/audit-semantic-parity/SKILL.md),
+[compact-diary](../.agents/skills/compact-diary/SKILL.md) and
+[roadmap-maintenance](../.agents/skills/roadmap-maintenance/SKILL.md) at their defined
+triggers. Semantic milestone review is required by its skill. A successful
+`verify.py --milestone` alone does not certify these separate skill checks.
 
 DMA and SingleStep are independent test sets. They can run alone, together, or alongside a completion profile:
 
 ```powershell
-python tools/harness/verify.py --verify-dma
-python tools/harness/verify.py --verify-singlestep
-python tools/harness/verify.py --verify-dma --verify-singlestep
-python tools/harness/verify.py --commit --verify-dma --verify-singlestep --plan
+python tests/verify.py --verify-dma
+python tests/verify.py --verify-singlestep
+python tests/verify.py --verify-dma --verify-singlestep
+python tests/verify.py --commit --verify-dma --verify-singlestep --plan
 ```
 
 With no completion profile, `--verify-dma` runs only Cartesian DMA and `--verify-singlestep` runs only full SingleStepTests. Standalone sets use the current working tree, require no staging, and run no quality gates, ordinary crate tests, or Python contracts. With `--commit` or `--milestone`, the switches add their sets to that profile. Each selected suite runs once, even when changes also select it. Standalone runs do not replace completion verification. Add `--plan` to inspect commands without executing checks. There are no hooks. Unknown arguments are rejected.
 
-The verifier includes formatting, Clippy, architecture rules, API-reference scanning, and per-commit hardware/code audits. API-reference scans are textual checks, not execution coverage. All profiles accept clean trees, unstaged changes and new files. Change selection includes both endpoints of renames. Completion evidence must match the final committed source; rerun verification if that source changes. All profiles reject results if the source or index changes during execution. Ignored diagnostics belong in `.agent/tmp/`. The verifier does not stage or commit files.
+The verifier includes formatting, Clippy, architecture rules, and per-commit hardware/code audits. Ordinary-crate coverage measures executed code; there is no public-function name-matching gate. All profiles accept clean trees, unstaged changes and new files. Change selection includes both endpoints of renames. Completion evidence must match the final committed source; rerun verification if that source changes. All profiles reject results if the source or index changes during execution. Ignored diagnostics belong in `.agent/tmp/`. The verifier does not stage or commit files. It only selects external commands, launches them and aggregates exit codes; source/index stability is an orchestration guard. Quality commands are declared in `tests/verify.py`. `tests/checks/check_silicon_vectors.py` checks the external vector prerequisite before CPU suites. During execution, `[RUN]` identifies the active check and `[CMD]` prints its exact command immediately before launching it; explicit environment overrides appear as `[ENV]`. Full child output is saved in a unique log under `.agent/tmp/verify/`. `--log-level full|warn|error` controls child output: `full` streams everything, `warn` (default) shows warnings and errors, and `error` shows only errors. Filtered modes include up to 12 indented diagnostic context lines, limited to 300 characters per line. Commands and final results remain visible in every mode. If a failed command emits no recognized error marker, its last 12 log lines are shown as failure context; failed commands also show the full log path before the final FAIL result. There is no initial test-command preview. `--plan` starts with an explicit preview-only message and does not launch commands.
 
-The two expensive environments use CPU + synthetic TestMemoryBus, not production MemoryBus or PhysicalMemory. Their trigger paths are owned by [verify_selection.py](../tools/harness/verify_selection.py):
+Focused development diagnostics also use `verify.py`:
+
+```powershell
+python tests/verify.py --unit
+python tests/verify.py --integration
+python tests/verify.py --harness
+python tests/verify.py --all --plan
+```
+
+`--unit` runs the former isolated-crate tier and golden-row fixtures;
+`--integration` runs memory_bus, machine_loop, debugger and GUI tests;
+`--harness` runs architecture, benchmark smoke and Cartesian DMA, including
+silicon-vector prerequisites. `--all` retains the former tier runner's meaning:
+unit + integration, without harness or full SingleStepTests. Diagnostic selectors
+may be combined with each other and explicit CPU selectors; each CPU suite runs
+once. They run without coverage or completion gates and must be invoked separately
+from `--commit` and `--milestone`. `--plan` and `--log-level` apply to diagnostics
+as well. With no arguments the entry point still displays help.
+
+The two expensive environments use CPU + synthetic TestMemoryBus, not production MemoryBus or PhysicalMemory. Their trigger paths are owned by [verify.py](../tests/verify.py):
 
 | Trigger | Cartesian DMA | Full SingleStepTests |
 | --- | --- | --- |
@@ -39,9 +99,9 @@ The two expensive environments use CPU + synthetic TestMemoryBus, not production
 | Explicit force switch | `--verify-dma` | `--verify-singlestep` |
 | Milestone | Only with explicit selector | Only with explicit selector |
 
-Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory and the targeted vAmiga cargo suites. The separate milestone set compares the existing chipset performance baseline and runs the complete runnable vAmiga capture catalog; deferred cases remain deferred. Capture summary failures are checked explicitly because the underlying CLI does not reliably set a failing exit code.
+Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory. The separate milestone set runs additional audits only; vAmigaTS Cargo suites and automatic chipset/capture runs have been removed.
 
-Manual commands in the following sections and `run_tests.py` remain development/diagnostic tools; they do not replace completion verification. Wall-clock microbenchmarks and external sampling profiles remain manual measurement tools: the verifier runs their regression fixtures, and milestone runs the chipset throughput comparison without recording or changing goldens. Semantic review, design synchronization, diary compaction, and roadmap pruning still require agent/developer work.
+Manual commands in the following sections and diagnostic selectors in `verify.py` remain development/diagnostic tools; they do not replace completion verification. Wall-clock microbenchmarks and external sampling profiles remain manual measurement tools: the verifier retains CPU benchmark regression fixtures. The chipset throughput comparison is available only as an explicit manual command. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
 
 ---
 

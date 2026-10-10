@@ -10,16 +10,6 @@ This repository is engineered from the ground up for autonomous AI agent pair-pr
 
 All automated modifications and agent sessions must strictly adhere to [`AGENTS.md`](../AGENTS.md) and modularized rules under [`.agents/rules/`](../.agents/rules/):
 
-- **Language Policy (`language-policy.md`):** User's language in conversation; English for code, identifiers, comments, documentation, and commits.
-- **Audio Voice Transcription (`audio-transcription.md`):** Transcribe spoken user voice recordings at the top of responses before responding in the user's language.
-- **Strict Path Privacy (`no-external-paths.md`):** Zero external host paths in committed files; use generic placeholders.
-- **Zero Host Panics (`performance-and-readability.md`):** No `.unwrap()` or `.expect()` in runtime emulation hot paths.
-- **Hardware Efficiency & Readability:** Zero custom macros (`macro_rules!`), zero const-generic instruction handlers, contiguous memory layouts, and zero heap allocations in execution loops.
-- **Amiga RAG Knowledge Base (`amiga-rag.md`):** Targeted domain/reference retrieval through the CLI or optional MCP adapter; consult developer notes when project evidence is insufficient.
-- **Graphify AST Knowledge Graph:** Follow the mandatory routing in `AGENTS.md` and the [Graphify skill](../.agents/skills/graphify/SKILL.md) for source navigation and explicit graph refresh.
-- **Information Hierarchy (`information-hierarchy.md`):** Inverted pyramid structure, leading with key architectural conclusions.
-- **Practitioner Voice & Tone (`practitioner-voice-and-tone.md`):** Hands-on lead architect persona, in-depth tech blog standard, and zero academic/dissertation jargon.
-- **Scoped Changes & Root-Cause Resolution (`structural-root-cause.md`):** Fix the mechanism, reuse existing definitions, and keep changes within the requested task.
 
 ---
 
@@ -53,40 +43,11 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 
 ## 3. Specialized Agent Skills (`.agents/skills/`)
 
-Operational procedures and recipes are modularized under [`.agents/skills/`](../.agents/skills/) across four primary engineering domains:
-
-### A. CPU & Hardware Emulation
-- [`add-m68k-instruction`](../.agents/skills/add-m68k-instruction/SKILL.md): Step-by-step recipe for implementing new M68000 instructions (decoding, CCK micro-steps, inlined CCR flags, and single-step test validation).
-- [`m68k-singlestep-test`](../.agents/skills/m68k-singlestep-test/SKILL.md): Diagnostic runbook for running, isolating, and troubleshooting Tom Harte physical silicon single-step hardware test failures.
-- [`audit-hardware-quality`](../.agents/skills/audit-hardware-quality/SKILL.md): Comprehensive hardware architectural and silicon fidelity audit covering bus topology, Agnus DMA mastership, passive chip latching, CCK timing, and silicon invariants.
-
-### B. Quality Assurance, Performance & Refactoring
-- [`code-review`](../.agents/skills/code-review/SKILL.md): Independent code, architecture, and specification compliance review against repository rules.
-- [`test-runner`](../.agents/skills/test-runner/SKILL.md): Standardized test execution across all 4 tiers, `.test_results/` snapshot management, and automated differential regression telemetry.
-- [`integration-test-sprint`](../.agents/skills/integration-test-sprint/SKILL.md): 4-Iteration Cascading Verification Protocol runbook for multi-chip integration test suites, failure clustering, and 2–3 attempt limits.
-- [`synthesize-test-fixes`](../.agents/skills/synthesize-test-fixes/SKILL.md): Post-facto root-cause consolidation using the 3-Column Diagnostic Matrix (`[Symptom] | [Location] | [Mechanism]`) to replace scattered local workarounds with a unified upstream hardware model.
-- [`audit-code-quality`](../.agents/skills/audit-code-quality/SKILL.md): Comprehensive on-demand code quality auditor and pruning playbook covering dead code, test-only zombies, minimum visibility leaks, SRP cohesion, inlining, and test parity.
-- [`refactor-split-module`](../.agents/skills/refactor-split-module/SKILL.md): Decompose oversized Rust source files (> 800 lines) into cohesive submodules while preserving 3-tier re-exports.
-- [`profile-external`](../.agents/skills/profile-external/SKILL.md): Profile Amiga 500 emulator execution hot paths using external sampling profilers (`samply` / Firefox Profiler) and verify throughput against Git-tracked baselines.
-- [`egui-vision-debugger`](../.agents/skills/egui-vision-debugger/SKILL.md): Headless visual inspection and autonomous self-healing skill for the `egui` frontend using `gui-inspector` (`egui_kittest` + `wgpu`) and Agent Multimodal Vision to diagnose layout squishing, splitter contention, and focus lifecycles.
-- [`capture-gui-screenshot`](../.agents/skills/capture-gui-screenshot/SKILL.md): 1-shot headless screenshot capture and multimodal visual inspection for the Amiga 500 egui Developer Studio.
-
-### C. Architecture, Knowledge & Documentation
-- [`obsidian-vault-linking`](../.agents/skills/obsidian-vault-linking/SKILL.md): Enforces Line 1 YAML properties (`tags: [spec, ...]`), inverted pyramid structure, dual-layer linking (inline contextual + bottom structural references), and zero broken links across [Obsidian/Amiga/Design/](../Obsidian/Amiga/Design/).
-- [`sync-design-docs`](../.agents/skills/sync-design-docs/SKILL.md): Synchronize Obsidian design specifications with active codebase changes, prune draft code, and update crate graphs.
-- [`roadmap-maintenance`](../.agents/skills/roadmap-maintenance/SKILL.md): Systematic maintenance and substrate-first ordering of `ROADMAP.md` with zero retention of completed items.
-- [`compact-diary`](../.agents/skills/compact-diary/SKILL.md): Milestone compaction procedure synthesizing settled per-commit log entries in [DIARY.md](../DIARY.md) into concise architectural digests while preserving key evolutionary rationale and verified results.
-- [`index-amiga-rag`](../.agents/skills/index-amiga-rag/SKILL.md): CLI-first guidance for project Markdown retrieval and incremental indexing.
-- [`author-methodology-doc`](../.agents/skills/author-methodology-doc/SKILL.md): Author, audit, or restructure narrative articles, methodology documents, essays, and retrospective devlogs (e.g. `docs/how_this_emulator_was_written.md`) using the 6-layer Inverted Pyramid hierarchy.
-- [`graphify`](../.agents/skills/graphify/SKILL.md): Persistent code knowledge graph navigation, call hierarchy tracing, and scoped subtree updates (`crates/` vs `ref_src/`).
-- [`audit-docs-quality`](../.agents/skills/audit-docs-quality/SKILL.md): Comprehensive documentation, Obsidian vault linking, constitutional size limits, and agent governance quality audit playbook.
-- [`audit-semantic-parity`](../.agents/skills/audit-semantic-parity/SKILL.md): Inference-driven bidirectional semantic audit evaluating code-to-docs parity (blind spots, undocumented code) and docs-to-code parity (hallucinations, ghost features, spec drift).
-
-### D. Git & Worktree Orchestration
-- [`git-worktree`](../.agents/skills/git-worktree/SKILL.md): Create, synchronize, and tear down isolated Git worktrees with automatic physical copying of ignored test assets, `.env`, and a `graphify-out/` seed followed by `graphify update .` (Zero NTFS Junctions).
-- [`git-resolve-merge`](../.agents/skills/git-resolve-merge/SKILL.md): Resolve 3-way Git merge conflicts holistically in isolated worktrees with mandatory merge commits and regression verification.
-
----
+Browse [`.agents/skills/`](../.agents/skills/) for available procedures. Each
+`SKILL.md` contains its name, description, use conditions and execution steps.
+Project rules live in [`.agents/rules/`](../.agents/rules/); [AGENTS.md](../AGENTS.md)
+routes required reads and shared obligations. No separate skills or rules register
+is maintained in this guide.
 
 ## Bootstrap Conversion Programs (`tools/bootstrap/`)
 
@@ -106,11 +67,11 @@ name and description first and its full instructions when selected. Use `$` to
 mention a skill (for example, `$audit-code-quality` or `$test-runner`), or `/skills`
 to select one. Codex may also select a skill when a task matches its description.
 
-The procedures in Section 3 include execution ordering, targeted commands,
+The skill files include execution ordering, targeted commands,
 verification, and reporting. Conditional detail is linked from the owning skill,
 such as the [manual diff checklist](../.agents/skills/audit-code-quality/references/manual-diff-checklist.md).
 
-`AGENTS.md` does not need to repeat this skill catalog. It retains shared
+`AGENTS.md` retains shared
 obligations and required actions; task rules route to procedures that must run.
 Rules are explicitly read Markdown, while skill selection starts from `name`
 and `description`. Keep trigger boundaries in that description, not only in a
@@ -124,25 +85,19 @@ for discovery and invocation behavior.
 - Rules own obligations, scope, and exceptions. Skills own steps, commands,
   diagnostics, and templates; conditional examples live in the owning skill's
   `references/` directory. Mechanical requirements belong in scripts and tests.
-- Reserve `tools/harness/` for shared or universal gates. A specialized script
-  used by at most one skill belongs under that skill's `scripts/`; a script used
-  by multiple skills belongs in the shared harness. Supporting references count
-  as part of their owning skill, not as additional consumers.
-- Keep all active skills documented in Section 3. Adding or removing a skill
-  requires updating the catalog; keep descriptions scoped and entrypoints valid.
+- Keep verification orchestration and coverage result processing in `tests/`,
+  worktree utilities in `tools/harness/`, and concrete audits and checks in `tests/checks/`.
+  The diary appender lives in `.agents/skills/compact-diary/scripts/`.
+  A specialized script used by at most one skill belongs under that skill's
+  `scripts/`; a shared script uses the directory matching its role. Supporting
+  references count as part of their owning skill, not as additional consumers.
 - Adding, removing, or renaming a rule requires updating active links and
-  applicable companion classifications. No manual audit registry is required.
+  affected procedure references. No manual audit registry is required.
   Historical diary references remain historical. Reach design specifications
   through domain rules or the design index; do not duplicate every document link.
 - Passive rules do not need duplicate skills. Active procedures must remain
   reachable through their owning skills. Report concrete executed checks and
   their limits; static checks do not establish complete behavioral enforcement.
-- Verify the affected governance with explicit commands:
-  ```powershell
-  python tools/harness/audit_docs_quality.py --size-limits --skills --scripts --governance --workflow-invariants
-  python -m unittest discover -s tests -p test_skill_governance.py -q
-  ```
-
 ### Recording and Validating Changes
 
 Commit policy is in [git-commits.md](../.agents/rules/git-commits.md); diary policy
@@ -150,7 +105,7 @@ is in [diary-maintenance.md](../.agents/rules/diary-maintenance.md). Inspect the
 diff, stage intended paths, run the per-commit gates, and append observed results:
 
 ```powershell
-python tools/harness/log_diary.py `
+python .agents/skills/compact-diary/scripts/log_diary.py `
   --title "<Commit-sized change>" `
   --subsystems "<relative components>" `
   --changes "<change 1>; <change 2>" `
@@ -174,8 +129,8 @@ Usual types are `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, and `chore`;
 scope names identify the affected subsystem or tooling. Implementation, tests,
 design updates, and diary for the same concern belong together.
 
-For an explicit language scan, use `python tools/harness/check_polish.py <path>`
-or `python tools/harness/check_polish.py --staged`. The milestone gate includes
+For an explicit language scan, use `python tests/checks/check_polish.py <path>`
+or `python tests/checks/check_polish.py --staged`. The milestone gate includes
 the staged scan. Invoke validation explicitly; use no lifecycle or Git hooks.
 
 ---
@@ -215,6 +170,6 @@ Validated documentation is indexed through [index-amiga-rag](../.agents/skills/i
 
 The Amiga RAG stdio adapter is declared in [`.codex/config.toml`](../.codex/config.toml). Project configuration requires a trusted project in Codex. MCP connectivity and Graphify runtime repairs are separate from format conversion.
 
-Every commit includes its own DIARY.md Section 10 entry; at minor roadmap points or milestones, compact settled entries into milestone digests. Run validation commands explicitly, using `python tools/harness/verify.py --commit` and, at stage closure, also `python tools/harness/verify.py --milestone` once for the same snapshot. The separate milestone set contains only extra audits and whole-catalog/performance checks. The commit set includes architecture and all standard tests, with change triggers only for DMA/SingleStep and independent `--verify-dma` / `--verify-singlestep` test sets, runnable alone or alongside a completion profile. Language checks support file paths or `python tools/harness/check_polish.py --staged` for staged additions. Do not install or use lifecycle, code, or Git hooks.
+Create Git commits only on explicit user request or when closing a completed minor roadmap point (for example, 1.1 or 1.2). Routine task completion leaves validated changes uncommitted and unstaged. Every commit includes its own DIARY.md Section 10 entry; at minor roadmap points or milestones, compact settled entries into milestone digests. Run validation commands explicitly, using `python tests/verify.py --commit` and, at stage closure, also `python tests/verify.py --milestone` once for the same snapshot. The separate milestone set contains only extra audits. vAmigaTS captures and chipset workloads are excluded from automatic verification. The commit set includes architecture and all standard tests, with change triggers only for DMA/SingleStep and independent `--verify-dma` / `--verify-singlestep` test sets, runnable alone or alongside a completion profile. Language checks support file paths or `python tests/checks/check_polish.py --staged` for staged additions. Do not install or use lifecycle, code, or Git hooks.
 
 Format references: [Codex agents](https://learn.chatgpt.com/docs/agent-configuration/subagents), [project instructions](https://learn.chatgpt.com/docs/agent-configuration/agents-md), and [configuration](https://learn.chatgpt.com/docs/config-file/config-reference).

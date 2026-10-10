@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-WORKTREE_SCRIPT = REPOSITORY_ROOT / "tools" / "git" / "worktree.ps1"
+WORKTREE_SCRIPT = REPOSITORY_ROOT / "tools" / "harness" / "worktree.ps1"
 
 
 class WorktreeContractTests(unittest.TestCase):

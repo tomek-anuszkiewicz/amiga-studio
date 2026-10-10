@@ -1,6 +1,26 @@
 # Performance and Readability
 
-Applies to emulation execution, memory access, and interrupt paths.
+Readability principles apply to all project code. Hot-path constraints apply to
+emulation execution, memory access, and interrupt paths.
+
+## Readability and Clean Code
+
+- Apply clean-code principles when writing and reviewing code: use names that
+  express domain intent, keep functions focused on one coherent responsibility,
+  and make control flow easy to follow. Avoid speculative abstractions and
+  fragmentation that makes the physical model harder to trace.
+- Evaluate condition readability by meaning and context, not operator counts.
+  Name a predicate or extract a domain helper when it explains a decision;
+  keep a direct condition when it is already clear. Reduce unnecessary nesting
+  where doing so preserves the execution model.
+- Preserve short-circuit evaluation, evaluation order, side effects, and hardware
+  timing. Do not eagerly compute a named boolean when the original branch would
+  skip a call or memory access. Preserve these semantics when extracting helpers.
+- During implementation and review, identify confusing conditions and explain
+  concrete improvements using this rule. Readability is assessed by the agent;
+  no operator-count scanner or automatic threshold enforces it.
+
+## Performance and Hardware Traceability
 
 - Allocate no heap memory in hot loops. Use fixed-capacity or in-place state and contiguous arrays instead of pointer-chased dynamic structures.
 - Avoid cascaded runtime opcode/size/addressing dispatch; use flat dispatch or concrete specialized handlers. Language-level prohibitions are owned by [rust-best-practices.md](rust-best-practices.md).

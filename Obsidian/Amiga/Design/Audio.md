@@ -10,8 +10,6 @@ updated: 2026-09-19
 related: ["[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[CIA.md](CIA.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
 tracked_paths:
   - "crates/audio"
-last_synced_commit: "0fcd519"
-last_synced_date: "2026-09-19"
 ---
 # Paula 4-Channel DMA Audio Architecture & Hardware Specification
 

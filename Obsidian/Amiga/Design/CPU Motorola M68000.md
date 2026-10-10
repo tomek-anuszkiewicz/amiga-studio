@@ -10,8 +10,6 @@ updated: 2026-09-20
 related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/cpu"
-last_synced_commit: "9558483973639a25211924cab2ddea208895723e"
-last_synced_date: "2026-09-20"
 ---
 # Motorola 68000 CPU Design Specification
 

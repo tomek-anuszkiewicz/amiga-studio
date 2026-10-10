@@ -10,8 +10,6 @@ updated: 2026-09-19
 related: ["[Audio.md](Audio.md)", "[Floppy.md](Floppy.md)", "[Interrupts.md](Interrupts.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CIA.md](CIA.md)", "[SaveState.md](SaveState.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/paula"
-last_synced_commit: "e10f5085c8a0526c8a5ca03bf29eefdc32b34805"
-last_synced_date: "2026-09-19"
 ---
 # Paula (MOS 8364) Architecture & Hardware Specification
 

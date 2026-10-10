@@ -63,7 +63,7 @@ For each conflicted file:
 Never finalize a merge commit without running the full repository verification gate:
 ```powershell
 cargo fmt --all -- --check
-python tools/harness/verify.py --commit
+python tests/verify.py --commit
 cargo test --workspace --exclude test_runner
 ```
 
@@ -90,7 +90,7 @@ Verification:
 If the branch was developed in an isolated worktree:
 1. Teardown the worktree using the automated script:
    ```powershell
-   .\tools\git\worktree.ps1 remove <branch-name>
+   .\tools\harness\worktree.ps1 remove <branch-name>
    ```
 2. Delete the merged feature branch (if not deleted by worktree remove):
    ```powershell

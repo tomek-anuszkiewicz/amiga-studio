@@ -1,6 +1,6 @@
 ---
 name: audit-semantic-parity
-description: Inference-driven bidirectional semantic audit evaluating code-to-docs parity (blind spots, undocumented code) and docs-to-code parity (hallucinations, ghost features, spec drift).
+description: At minor roadmap point or major milestone completion, audit modified subsystems for bidirectional code/specification parity; combine static checks with inference for blind spots, ghost features, and drift.
 ---
 
 # Recipe: Inference-Driven Bidirectional Semantic Parity Auditor
@@ -9,9 +9,26 @@ This skill provides an inference-driven, qualitative architectural audit that ev
 
 ---
 
+## Completion Trigger and Deterministic Checks
+
+Mandatory at completion of a minor roadmap point or major milestone: review the
+modified subsystems before declaring the stage complete. This obligation is
+owned here; ordinary commits alone do not require this semantic review.
+Explicit subsystem audits remain available on request.
+
+Start with the workspace-wide deterministic checks, retaining their full scope:
+
+```powershell
+python .agents/skills/audit-semantic-parity/scripts/audit_semantic_sync.py --semantic-sync
+```
+
+Record failures and then assess their meaning alongside the subsystem review.
+A passing script does not establish full semantic parity. Recheck static evidence
+if remediation changes its inputs before closure.
+
 ## 1. The Core Mandate: Beyond Static Heuristics
 
-Deterministic static analysis (regexes, Git commit hashes, register matrix tables) can verify that a register offset matches or that a commit checkpoint is current. However, **static scripts cannot judge semantic comprehension**:
+Deterministic static analysis can verify configured register offsets, memory ranges and method names. However, **static scripts cannot judge semantic comprehension**:
 - A script cannot determine whether a design specification is an exhaustive, cycle-exact hardware document or merely a 10-line high-level stub.
 - A script cannot detect **Blind Spots**: subtle silicon behaviors, edge cases, wait-state logic, or register bitfields implemented in Rust that the documentation never mentions.
 - A script cannot detect **Ghost Features & Hallucinations**: timing models, register modes, or hardware features asserted in Markdown that the Rust code never actually simulates.
@@ -104,7 +121,8 @@ When executing an audit:
 5. **Step 5: Propose Actionable Remediation:**
    - Provide concrete Markdown additions or code adjustments to achieve parity.
    - For `NEEDS_DOCS_ENRICHMENT`, reconcile the specification and use
-     [`$audit-docs-quality`](../audit-docs-quality/SKILL.md) to verify links and checkpoints.
+     [sync-design-docs](../sync-design-docs/SKILL.md) for scoped pre-commit documentation review and
+     [obsidian-vault-linking](../obsidian-vault-linking/SKILL.md) for links and metadata.
    - For `NEEDS_CODE_ALIGNMENT` or `SPEC_DIVERGENCE`, escalate before changing
      production code per [`spec-compliance.md`](../../rules/spec-compliance.md).
 

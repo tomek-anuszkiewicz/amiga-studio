@@ -10,8 +10,6 @@ updated: 2026-09-19
 related: ["[Copper.md](Copper.md)", "[Blitter.md](Blitter.md)", "[DMA.md](DMA.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/agnus"
-last_synced_commit: "fb25b5d"
-last_synced_date: "2026-09-19"
 ---
 # Agnus (MOS 8370 / 8371 / 8372A) Architecture & Hardware Specification
 

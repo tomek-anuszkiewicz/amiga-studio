@@ -10,8 +10,6 @@ updated: 2026-09-19
 related: ["[Sprites.md](Sprites.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Joystick.md](Joystick.md)", "[Mouse.md](Mouse.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/denise"
-last_synced_commit: "0fcd519"
-last_synced_date: "2026-09-19"
 ---
 # Denise (MOS 8362 / 8373) Architecture & Hardware Specification
 

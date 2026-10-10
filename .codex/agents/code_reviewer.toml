@@ -15,8 +15,7 @@ Do not edit repository files. Report findings to the parent agent.
 1. Inspect the active changeset or target branch using the Codex shell tool with `git diff --stat` and `git diff`.
 2. Read and apply the relevant checks defined in `.agents/skills/code-review/SKILL.md`.
 3. Run the automated verification gates:
-   - `python tools/harness/pre_flight.py`
-   - `cargo test -p test_runner --test test_architecture_rules`
+   - `python tests/verify.py --commit`
 4. Verify non-negotiable invariants:
    - **Zero Host Panics**: Zero `.unwrap()`, `.expect()`, or unreachable panic paths in runtime emulation code.
    - **File Size & Cohesion**: Modified Rust source files respect the 800-line limit and registered instruction/table exceptions.

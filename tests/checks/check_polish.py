@@ -4,8 +4,8 @@ Standalone Polish Language Detection & Quality Gate
 Enforces .agents/rules/language-policy.md (Strict English mandate).
 Detects Polish words and phrases even without diacritics ('ogonki').
 Supports:
-  1. CLI file scanning: python tools/harness/check_polish.py [file_path ...]
-  2. Explicit staged-additions scanning: python tools/harness/check_polish.py --staged
+  1. CLI file scanning: python tests/checks/check_polish.py [file_path ...]
+  2. Explicit staged-additions scanning: python tests/checks/check_polish.py --staged
 """
 
 import sys
@@ -228,7 +228,7 @@ def scan_staged_additions():
         return 1
 
     excluded_files = {
-        "tools/harness/check_polish.py",
+        "tests/checks/check_polish.py",
         ".agents/rules/language-policy.md",
         "DIARY.md"
     }

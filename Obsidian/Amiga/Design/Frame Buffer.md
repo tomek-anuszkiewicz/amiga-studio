@@ -10,8 +10,6 @@ updated: 2026-09-19
 related: ["[Denise.md](Denise.md)", "[Sprites.md](Sprites.md)", "[Agnus.md](Agnus.md)", "[GUI.md](GUI.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
 tracked_paths:
   - "crates/frame_builder"
-last_synced_commit: "0fcd519"
-last_synced_date: "2026-09-19"
 ---
 # Denise Frame Builder, Raster Compositor & Video Signal Specification
 

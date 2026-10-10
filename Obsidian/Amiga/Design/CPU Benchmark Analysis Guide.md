@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-12
-updated: 2026-09-16
+updated: 2026-10-09
 related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
 ---
 
@@ -159,14 +159,14 @@ Analyzing high-cycle system and multicycle operations to determine whether large
 
 ## 4. How to Run the Automated Analysis Tool
 
-To analyze any benchmark CSV report and generate markdown analysis tables using [`tools/benchmarks/analyze_benchmarks.py`](../../../tools/benchmarks/analyze_benchmarks.py):
+To analyze any benchmark CSV report and generate markdown analysis tables using [`crates/test_runner/src/analyze_benchmarks.py`](../../../crates/test_runner/src/analyze_benchmarks.py):
 
 ```powershell
 # Analyze the thorough benchmark run:
-python tools/benchmarks/analyze_benchmarks.py tests/benchmarks/thorough/m68k_benchmark.csv
+python crates/test_runner/src/analyze_benchmarks.py tests/benchmarks/thorough/m68k_benchmark.csv
 
 # Analyze and export directly to a markdown report:
-python tools/benchmarks/analyze_benchmarks.py tests/benchmarks/thorough/m68k_benchmark.csv --output tests/benchmarks/thorough/analysis_report.md
+python crates/test_runner/src/analyze_benchmarks.py tests/benchmarks/thorough/m68k_benchmark.csv --output tests/benchmarks/thorough/analysis_report.md
 ```
 
 ---
@@ -225,20 +225,13 @@ To confirm that a benchmark run on disk is 100% valid and regression-free:
      - Standard (columns 1..=7, `total_guest_instructions = 6997200`): `0x9FE3956BC57151D1`
      - Thorough (columns 1..=7, `total_guest_instructions = 149992500`): `0xDB747B4AC9321D39`
 
-2. **CSV vs. JSON 1:1 Parity & Schema Verification ([`test_benchmark_json.rs`](../../../crates/test_runner/tests/test_benchmark_json.rs)):**
-   ```powershell
-   cargo test -p test_runner --test test_benchmark_json
-   ```
-   - The test `test_benchmark_csv_matches_json_for_sample_case` parses both `m68k_benchmark.csv` and `m68k_benchmark.json` across test profiles and asserts that row columns match JSON object fields identically for metadata, cycle counts, operation counts, and formatted floating-point telemetry strings.
-   - The test `test_benchmark_json_schema_and_completeness` validates schema version 1, host environment metadata, and full 108-spec completeness.
-
-3. **Single-Pass Step Trace Audit ([`test_benchmark_trace.rs`](../../../crates/test_runner/tests/test_benchmark_trace.rs)):**
+2. **Single-Pass Step Trace Audit ([`test_benchmark_trace.rs`](../../../crates/test_runner/tests/test_benchmark_trace.rs)):**
    ```powershell
    cargo test -p test_runner --test test_benchmark_trace
    ```
    - Asserts that executing every benchmark program step-by-step produces the exact expected disassembly, instruction cycle counts, register side-effects, and terminates cleanly at `BENCH_EXIT_PC = $004FFE` (`STOP #$2700`).
 
-4. **Telemetry Plausibility (Statistical Bounds):**
+3. **Telemetry Plausibility (Statistical Bounds):**
    - Confirm that pass jitter is low (`host_jitter_pct < 3.0%`).
    - Confirm that 16-bit register ALU operations (`ADD.W`, `SUB.W`, `AND.W`, `OR.W`) cluster within $\pm 5\%$ of each other.
    - Confirm that memory addressing modes scale monotonically ($\Delta T_{\text{mode}} > 0$).
@@ -253,8 +246,7 @@ To confirm that a benchmark run on disk is 100% valid and regression-free:
 - [CPU Instruction Benchmark Strategies](CPU%20Instruction%20Benchmark%20Strategies.md): Strategy matrix for cascading stacks and data generators.
 - [CPU Motorola M68000 Architecture](CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
 - [CPU Micro-Step State Machine Specification](CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
-- [Benchmark Analysis Python CLI](../../../tools/benchmarks/analyze_benchmarks.py): Telemetry parser and markdown analysis generator.
+- [Benchmark Analysis Python CLI](../../../crates/test_runner/src/analyze_benchmarks.py): Telemetry parser and markdown analysis generator.
 - [Benchmark CSV Validation Suite](../../../crates/test_runner/tests/test_benchmark_csv.rs): Golden hash regression test for benchmark data consistency.
-- [Benchmark JSON Validation Suite](../../../crates/test_runner/tests/test_benchmark_json.rs): JSON telemetry schema and CSV-to-JSON cross-format parity tests.
 - [Benchmark Single-Pass Trace Suite](../../../crates/test_runner/tests/test_benchmark_trace.rs): Deterministic execution trace validation.
 

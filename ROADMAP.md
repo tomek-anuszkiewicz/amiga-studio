@@ -28,7 +28,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
 
 - **2.1: Test Suite Review and Structural Orientation**
   - Review `test_runner` and per-crate tests: execution commands, fixtures, golden references, L1/L2/L3 boundaries, and subsystem coverage. Identify obsolete tests, behavioral gaps, missing regression evidence, and any harness/layout changes needed before the HRM test sprint.
-  - **Gate:** A gap matrix in `Obsidian/Amiga/Design/Test Coverage Matrix.md` explains the test paths and priorities, supported by `python tools/harness/audit_code_quality.py --dead-code`.
+  - **Gate:** A gap matrix in `Obsidian/Amiga/Design/Test Coverage Matrix.md` explains the test paths and priorities, supported by `python tests/checks/audit_code_quality.py`.
 
 - **2.2: Sampling and Counter Profiling Feasibility**
   - Try `cargo flamegraph` on headless execution; use the [external profiling workflow](.agents/skills/profile-external/SKILL.md) and `samply` when host constraints require it. Evaluate `cargo-profiler`/Callgrind/Cachegrind or `perf` as complementary tools and compare available hot-symbol results.
@@ -53,8 +53,8 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - **Special inter-chip signal lines:** Verify documentation for DMA request/grant (`RGA` bus), interrupt lines (`_IPL0`–`_IPL2`, `_INTREQ`/`_INTENA` propagation through Paula → CIA → CPU), and any other active signal paths (e.g. blitter busy, disk DMA, copper WAIT/SKIP). Ensure polling methods and timing are documented with cycle-phase precision.
     - Sync any divergence between documentation and actual `MachineLoop` poll-and-route implementation found in Step 2.1.
   - **Verification Gate:**
-    - `python tools/harness/pre_flight.py --milestone` (Docs Quality pillar).
-    - All updated design docs have `last_synced_commit` checkpoint bumped.
+    - `python tests/verify.py --milestone` (Docs Quality pillar).
+    - The intended commit changes were reviewed against documents selected by `tracked_paths`; real corrections are included, and accurate documents remain untouched.
 
 - **3.3: HRM-Aligned Subsystem Test Suite Authoring**
   - **Objective:** Write a clean, authoritative test suite for each custom chip subsystem derived strictly from the Amiga Hardware Reference Manual — not from source code inference. Tests must be simple, register-behavioral, and free from cycle-exact timing complexity.
@@ -64,7 +64,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Simple inter-subsystem interaction tests (L2): focus on the cleanest signal paths — e.g. CIA timer overflow → Paula `_INT` → CPU IPL change. Prefer to write inter-chip tests and any required implementation changes during horizontal blanking (hblank return) when bus is idle, to minimize contention complexity.
     - Do **not** target vAmigaTS or silicon-level cycle accuracy in this step — that is Step 3.7 and Step 5.
   - **Verification Gate:**
-    - `python tools/harness/pre_flight.py --quick`
+    - `python tests/verify.py --commit`
     - `cargo test -p test_runner --test test_architecture_rules`
     - Tests verify subsystem behavior, boundary conditions, and relevant failure modes per unit-testing-policy; no assertion-count quota applies.
 
@@ -106,7 +106,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Strictly adhere to repro-first defect resolution (`.agents/rules/repro-first.md`) and 4-tier integration archetypes (`.agents/rules/unit-testing-policy.md`).
   - **Verification Gate:**
     - `cargo test -p machine_loop`
-    - `python tools/harness/run_tests.py --integration`
+    - `python tests/verify.py --integration`
 
 ---
 

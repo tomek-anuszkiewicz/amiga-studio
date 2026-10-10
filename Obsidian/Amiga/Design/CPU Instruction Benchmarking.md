@@ -6,8 +6,11 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-10
-updated: 2026-09-16
+updated: 2026-10-10
 related: ["[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
+tracked_paths:
+  - "crates/test_runner/src/benchmark"
+  - "crates/test_runner/src/analyze_benchmarks.py"
 ---
 
 # M68000 Instruction Benchmarking Architecture & Anomaly Detection
@@ -639,7 +642,7 @@ cargo run -p test_runner -- --diff
 cargo run -p test_runner -- --suite ADD.b
 
 # 11. Full markdown comparative analysis report generation from latest thorough run:
-python tools/benchmarks/analyze_benchmarks.py tests/benchmarks/thorough/m68k_benchmark_latest.json --output tests/benchmarks/thorough/analysis_report.md
+python crates/test_runner/src/analyze_benchmarks.py tests/benchmarks/thorough/m68k_benchmark_latest.csv --output tests/benchmarks/thorough/analysis_report.md
 ```
 
 ---
@@ -659,18 +662,11 @@ All components specified in this document are implemented without macros or cons
 | **Anomaly Classifier** | [`crates/test_runner/src/benchmark/anomaly.rs`](../../../crates/test_runner/src/benchmark/anomaly.rs) | Evaluates Type A, Type B, Type C, and `ExecutionTimeoutOrInfiniteLoop` anomalies; diffs against baseline. |
 | **Persistence Engine** | [`crates/test_runner/src/benchmark/persistence.rs`](../../../crates/test_runner/src/benchmark/persistence.rs) | Formats and saves version-controlled JSON (`m68k_benchmark.json`, `latest.json`) and tabular CSV (`m68k_benchmark.csv`). |
 | **Single-Pass Tracer** | [`crates/test_runner/src/benchmark/tracer.rs`](../../../crates/test_runner/src/benchmark/tracer.rs) | Generates step-by-step disassembly, cycle counts, register deltas, and memory write audit traces. |
-| **Anomaly Engine Tests** | [`crates/test_runner/tests/test_anomaly.rs`](../../../crates/test_runner/tests/test_anomaly.rs) | Unit tests for Type A/B/C anomalies, timeout verdicts, baseline delta percentages, and regression statuses. |
-| **Statistical Analysis Tests** | [`crates/test_runner/tests/test_stats.rs`](../../../crates/test_runner/tests/test_stats.rs) | Unit tests for Tukey's outlier fences, percentiles, trimmed means, jitter CV, and nominal total_ops invariance. |
-| **Platform Abstraction Tests** | [`crates/test_runner/tests/test_platform.rs`](../../../crates/test_runner/tests/test_platform.rs) | Unit tests for host CPU topology detection, platform naming, and P-core affinity pinning without panics. |
-| **Results Persistence Tests** | [`crates/test_runner/tests/test_persistence.rs`](../../../crates/test_runner/tests/test_persistence.rs) | Unit tests for timestamp formatting, JSON/CSV roundtrips, baseline loading, and canonical file overwriting. |
-| **Program Builder Tests** | [`crates/test_runner/tests/test_builder.rs`](../../../crates/test_runner/tests/test_builder.rs) | Unit tests for unroll factors, PRNG seeding, cyclic memory buffers, and CPU/bus injection across all 108 specs. |
-| **Deterministic PRNG Tests** | [`crates/test_runner/tests/test_prng.rs`](../../../crates/test_runner/tests/test_prng.rs) | Validates PRNG seed determinism, BCD domain clamping, non-zero divisors, and buffer alignment. |
-| **Smoke & Catalog Tests** | [`crates/test_runner/tests/test_benchmark_smoke.rs`](../../../crates/test_runner/tests/test_benchmark_smoke.rs) | Rapid catalog integrity, cascading stack execution, profiles, and quick runner smoke tests. |
+| **Smoke & Catalog Tests** | [`crates/test_runner/tests/test_benchmark_smoke.rs`](../../../crates/test_runner/tests/test_benchmark_smoke.rs) | Cascading RTS execution and a quick CPU benchmark workload. |
 | **Step Trace Verification** | [`crates/test_runner/tests/test_benchmark_trace.rs`](../../../crates/test_runner/tests/test_benchmark_trace.rs) | Exhaustive single-pass execution trace assertions across all 108 benchmark specifications. |
 | **Golden Master CSV Tests** | [`crates/test_runner/tests/test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs) | Invariant column hashing, profile-specific verification, and row diff diagnostics. |
-| **JSON Schema & Parity Tests** | [`crates/test_runner/tests/test_benchmark_json.rs`](../../../crates/test_runner/tests/test_benchmark_json.rs) | Hierarchical JSON schema verification, completeness (108 specs), and CSV-vs-JSON 1:1 parity. |
 | **Benchmark Entry** | [`crates/test_runner/benches/bench_instructions.rs`](../../../crates/test_runner/benches/bench_instructions.rs) | Standard `cargo bench` entry point invoking the benchmark suite. |
-| **Analysis & Reporting Tool** | [`tools/benchmarks/analyze_benchmarks.py`](../../../tools/benchmarks/analyze_benchmarks.py) | Comparative analysis tool evaluating functional symmetry, addressing mode scaling, and emulation tax. |
+| **Analysis & Reporting Tool** | [`crates/test_runner/src/analyze_benchmarks.py`](../../../crates/test_runner/src/analyze_benchmarks.py) | Comparative analysis tool evaluating functional symmetry, addressing mode scaling, and emulation tax. |
 
 ---
 
@@ -749,25 +745,14 @@ ACTION: Regenerate benchmark CSV files via 'cargo run -p test_runner --release -
 
 This immediately pinpoints the exact row and divergent field, enabling rapid diagnosis of unintentional changes.
 
-### 10.5 Cross-Format Parity: CSV vs. JSON 1:1 Verification (`test_benchmark_json`)
-
-To verify that the flat tabular CSV and the rich hierarchical JSON report describe the exact same benchmark run, the test suite [`crates/test_runner/tests/test_benchmark_json.rs`](../../../crates/test_runner/tests/test_benchmark_json.rs) performs schema validation and 1:1 field parity checks for sample instructions (e.g. `ADD.W D1, D0`):
-- **Metadata Parity:** Asserts `mnemonic`, `variant`, `addressing_mode`, `category`, and `opcode_hex` match.
-- **Timing & Cycle Parity:** Asserts `amiga_cck_cycles` and `total_guest_instructions` match.
-- **Formatted Telemetry Parity:** Asserts formatted decimal strings for `host_duration_median_ms`, `host_ns_per_instruction`, `host_ns_per_guest_cck`, `host_mips`, `host_jitter_pct`, and `anomaly_flag` match 1:1 between CSV columns and JSON object fields.
-- **Schema & Completeness:** Asserts `version == 1`, non-empty environment telemetry (`host_os`, `host_arch`), and presence of all 108 specification entries.
-
-### 10.6 Automated Test Execution Commands
+### 10.5 Automated Test Execution Commands
 
 ```powershell
 # 1. Run the Golden Master CSV invariant regression test:
 cargo test -p test_runner --test test_benchmark_csv
 
-# 2. Run the JSON schema and CSV-to-JSON cross-format parity test:
-cargo test -p test_runner --test test_benchmark_json
-
-# 3. Run the complete benchmark verification test suite:
-cargo test -p test_runner --test prng --test test_benchmark_smoke --test test_benchmark_trace --test test_benchmark_csv --test test_benchmark_json --test test_architecture_rules
+# 2. Run the remaining benchmark verification test suites:
+cargo test -p test_runner --test test_benchmark_smoke --test test_benchmark_trace --test test_benchmark_csv --test test_architecture_rules
 ```
 
 ---
@@ -782,7 +767,6 @@ cargo test -p test_runner --test prng --test test_benchmark_smoke --test test_be
 - [CPU Micro-Step State Machine Specification](CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
 - [Benchmark Harness Implementation](../../../crates/test_runner/src/benchmark/): Living Rust benchmark harness, runners, and profiler models.
 - [Benchmark CSV Validation Suite](../../../crates/test_runner/tests/test_benchmark_csv.rs): Golden hash regression test for benchmark data consistency.
-- [Benchmark JSON Validation Suite](../../../crates/test_runner/tests/test_benchmark_json.rs): JSON telemetry schema and CSV-to-JSON cross-format parity tests.
 
 
 

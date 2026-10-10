@@ -11,8 +11,6 @@ related: ["[Agnus.md](Agnus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", 
 tracked_paths:
   - "crates/memory_bus"
   - "crates/physical_memory"
-last_synced_commit: "859017971b0453661ce25cc2c6f4de6b7475f2df"
-last_synced_date: "2026-09-19"
 ---
 # Amiga 500 MemoryBus Architecture & Bus Topology
 

@@ -34,7 +34,7 @@ related: ["[SiblingDoc.md](SiblingDoc.md)"]
 ---
 ```
 **Audit Check:**
-- Is `updated` set to today's date (`YYYY-MM-DD`)?
+- If substantive content changed, is `updated` set to today (`YYYY-MM-DD`)? A review without content corrections must leave dates unchanged.
 - Does `status` reflect current implementation maturity?
 - Are `related` links formatted as valid relative markdown links?
 
@@ -71,9 +71,9 @@ Verify that all relative paths strictly adhere to the depth matrix:
 
 Run automated verification:
 ```powershell
-cargo test -p test_runner --test test_architecture_rules
+python .agents/skills/obsidian-vault-linking/scripts/audit_vault.py --vault-links --frontmatter
 ```
-Ensure `test_obsidian_design_docs_links_integrity` passes with 0 broken links.
+Ensure both checks complete with zero issues.
 
 ---
 
@@ -87,5 +87,5 @@ Ensure `test_obsidian_design_docs_links_integrity` passes with 0 broken links.
   | Document | Broken Link Target | Corrected Relative Path |
   | :--- | :--- | :--- |
   | `Obsidian/Amiga/Design/...` | `[Wrong.md]` | `[Correct.md](Correct.md)` |
-- **Architecture Test Result:** `test_obsidian_design_docs_links_integrity` (0 broken links).
+- **Script Result:** <actual link/frontmatter results; report missing checks>.
 ```

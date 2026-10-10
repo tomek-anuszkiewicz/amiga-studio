@@ -85,7 +85,7 @@ Evaluate the matrix against the physical hardware architecture:
 Execute the [`$test-runner`](../test-runner/SKILL.md) skill:
 ```powershell
 cargo run -p test_runner -- --diff
-python tools/harness/run_tests.py --unit
+python tests/verify.py --unit
 cargo test -p machine_loop
 ```
 Confirm:

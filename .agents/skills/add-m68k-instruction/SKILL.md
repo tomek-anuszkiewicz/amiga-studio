@@ -474,6 +474,6 @@ cargo test -p test_runner --test test_architecture_rules
 
 Before completing a CPU change, stage the intended snapshot and run:
 ```powershell
-python tools/harness/verify.py --commit
+python tests/verify.py --commit
 ```
 The verifier owns full SingleStepTests and Cartesian DMA selection; targeted commands above remain diagnostic tools.

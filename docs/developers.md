@@ -465,27 +465,9 @@ Ensure reference assets are extracted prior to running vAmigaTS suites:
 .\tools\bootstrap\bootstrap.ps1 -Sources
 ```
 
-#### 3. Subsystem Integration Test Suites (Cargo)
-Dedicated regression tests in `crates/test_runner/tests/` exercise targeted custom chip components:
-```powershell
-# Run general vAmiga test infrastructure & catalog discovery tests:
-cargo test -p test_runner --test test_vamiga_runner
+#### 3. Automatic Verification Scope
 
-# Run low-level test harness, stub vectors, and raw buffer matcher tests:
-cargo test -p test_runner --test test_vamiga_harness
-
-# Verify Copper coprocessor timing, hazards, and halt clusters:
-cargo test -p test_runner --test test_vamiga_copper
-
-# Verify Blitter DMA channels, line drawing mode, and minterms:
-cargo test -p test_runner --test test_vamiga_blitter
-
-# Verify Denise display window (DIW) clipping and bitplane color decoding:
-cargo test -p test_runner --test test_vamiga_denise
-
-# Verify Paula audio channels, period division, and interrupt timings:
-cargo test -p test_runner --test test_vamiga_paula
-```
+vAmigaTS Cargo test suites and chipset workload tests have been removed during test reorganization. Neither commit nor milestone verification runs vAmigaTS captures or chipset throughput comparisons. Reference assets and the manual CLI below remain available for explicitly requested investigations.
 
 #### 4. Interactive CLI Runner (`test_runner vamiga`)
 Execute tests with live pixel diff reporting, category filtering, and frame control:
