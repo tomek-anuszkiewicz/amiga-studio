@@ -29,7 +29,7 @@ Activate this skill whenever:
 The headless capture harness is compiled directly from `crates/gui`:
 
 ```powershell
-cargo run -p gui --bin gui-inspector -- [OPTIONS]
+python tools/verification/verify.py runner gui -- [OPTIONS]
 ```
 
 ### CLI Options:
@@ -44,25 +44,25 @@ cargo run -p gui --bin gui-inspector -- [OPTIONS]
 ### Example Invocations:
 ```powershell
 # 1. Baseline standard desktop view (1280x720)
-cargo run -p gui --bin gui-inspector -- --scenario baseline --output target/gui_captures/baseline.png
+python tools/verification/verify.py runner gui -- --scenario baseline --output target/gui_captures/baseline.png
 
 # 2. Small window / laptop display test (1024x600)
-cargo run -p gui --bin gui-inspector -- --scenario small_window --width 1024 --height 600 --output target/gui_captures/small_1024.png
+python tools/verification/verify.py runner gui -- --scenario small_window --width 1024 --height 600 --output target/gui_captures/small_1024.png
 
 # 3. Hovering mouse over column splitters
-cargo run -p gui --bin gui-inspector -- --scenario hover_splitter --output target/gui_captures/hover_splitter.png
+python tools/verification/verify.py runner gui -- --scenario hover_splitter --output target/gui_captures/hover_splitter.png
 
 # 4. In-App documentation hover audits (educational cards)
-cargo run -p gui --bin gui-inspector -- --scenario hover_register --output target/gui_captures/hover_reg.png
-cargo run -p gui --bin gui-inspector -- --scenario hover_ccr --output target/gui_captures/hover_ccr.png
-cargo run -p gui --bin gui-inspector -- --scenario hover_memory --output target/gui_captures/hover_mem.png
+python tools/verification/verify.py runner gui -- --scenario hover_register --output target/gui_captures/hover_reg.png
+python tools/verification/verify.py runner gui -- --scenario hover_ccr --output target/gui_captures/hover_ccr.png
+python tools/verification/verify.py runner gui -- --scenario hover_memory --output target/gui_captures/hover_mem.png
 
 # 5. Inline register editing state
-cargo run -p gui --bin gui-inspector -- --scenario edit_register --output target/gui_captures/edit_register.png
+python tools/verification/verify.py runner gui -- --scenario edit_register --output target/gui_captures/edit_register.png
 
 # 6. Alternative themes & modes
-cargo run -p gui --bin gui-inspector -- --scenario workbench_theme --output target/gui_captures/workbench.png
-cargo run -p gui --bin gui-inspector -- --scenario game_mode --output target/gui_captures/game_mode.png
+python tools/verification/verify.py runner gui -- --scenario workbench_theme --output target/gui_captures/workbench.png
+python tools/verification/verify.py runner gui -- --scenario game_mode --output target/gui_captures/game_mode.png
 ```
 
 ---

@@ -33,7 +33,7 @@ This specification establishes a **Two-Tier Performance Monitoring Architecture*
 ```mermaid
 graph TD
     subgraph "Tier 1: Continuous Regression Sentinel"
-        RUN["cargo run -p test_runner --release -- benchmark-chipset --compare"]
+        RUN["python tools/verification/verify.py runner chipset compare"]
         GOLDEN["baselines/benchmarks/chipset_benchmark_baseline.json<br/>(Git-Tracked Golden Baselines)"]
         DELTA{"Throughput Delta < -5.0%?"}
 

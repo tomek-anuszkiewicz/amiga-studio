@@ -247,7 +247,7 @@ def check_semantic_quirks_coverage():
         "Address Register Direct CCR Immunity & Sign Extension": ["adda", "suba", "movea", "cmpa"],
         "Address Register Direct CCR Immunity": ["adda", "suba", "movea", "cmpa"],
         "ASL Sticky Overflow ($V$)": ["asl", "overflow", "test_asl"],
-        "Dual-Memory Address Error Deferral": ["addr1", "addr2", "test_address_error", "test_architecture_rules"],
+        "Dual-Memory Address Error Deferral": ["addr1", "addr2", "test_address_error", "check_architecture"],
         "Multi-Cycle Division Overflow CCR Quirk": ["divu", "divs", "overflow"],
         "Post-Increment `(An)+` Address Error AGU Register Commitment": ["cmpm", "test_cmpm", "test_singlestep", "ea_calc"],
         "`ASR` Count $\\ge$ Width Silicon Exhaustion ($C=0, X=0$)": ["test_asr", "asr", "test_singlestep"],

@@ -560,36 +560,36 @@ cargo run -p test_runner [FLAGS] -- [COMMAND] [OPTIONS]
 #### 8.4.4 Practical CLI Execution Examples
 ```powershell
 # 1. Quick sanity check across all 108 benchmark specifications (~2–5 seconds):
-cargo run -p test_runner --release -- bench --quick
+python tools/verification/verify.py runner bench -- --quick
 
 # 2. Standard benchmark run (default profile, ~1–2 minutes, full suite):
-cargo run -p test_runner --release -- bench
+python tools/verification/verify.py runner bench --
 # Or explicitly:
-cargo run -p test_runner --release -- bench --standard
+python tools/verification/verify.py runner bench -- --standard
 
 # 4. Targeted profiling of arithmetic operations (multiplications and divisions):
-cargo run -p test_runner --release -- bench --quick --filter "arith_mul|arith_div"
+python tools/verification/verify.py runner bench -- --quick --filter "arith_mul|arith_div"
 
 # 5. High-precision thorough profiling targeting memory data movement (MOVE instructions):
-cargo run -p test_runner --release -- bench --thorough --filter "move_"
+python tools/verification/verify.py runner bench -- --thorough --filter "move_"
 
 # 6. Custom tuning: 10 passes with unroll block factor K = 500 into custom directory:
-cargo run -p test_runner --release -- bench --passes 10 --unroll 500 --out-dir .agent/tmp/benchmarks/custom
+python tools/verification/verify.py runner bench -- --passes 10 --unroll 500 --out-dir .agent/tmp/benchmarks/custom
 
 # 7. Unpinned profiling (for virtual machines or heterogeneous host schedulers):
-cargo run -p test_runner --release -- bench --quick --no-pin
+python tools/verification/verify.py runner bench -- --quick --no-pin
 
 # 8. SingleStepTest coverage matrix summary:
-cargo run -p test_runner -- --summary
+python tools/verification/verify.py runner summary
 
 # 9. SingleStepTest regression diff against previous test pass:
-cargo run -p test_runner -- --diff
+python tools/verification/verify.py runner diff
 
 # 10. SingleStepTest live diagnostics for specific opcode:
-cargo run -p test_runner -- --suite ADD.b
+python tools/verification/verify.py runner suite ADD.b
 
 # 11. Full markdown comparative analysis report generation from latest thorough run:
-python crates/test_runner/src/analyze_benchmarks.py .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.csv --output .agent/tmp/benchmarks/thorough/analysis_report.md
+python tools/verification/verify.py runner analyze .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.csv report .agent/tmp/benchmarks/thorough/analysis_report.md
 ```
 
 ---
@@ -675,10 +675,12 @@ A differing deterministic row fails with its expected and actual field values. G
 
 ```powershell
 # 1. Run the reference CSV invariant regression test:
-cargo test -p test_runner --test test_benchmark_csv
+python tools/verification/verify.py test rust crate test_runner suite test_benchmark_csv
 
 # 2. Run the remaining benchmark verification test suites:
-cargo test -p test_runner --test test_benchmark_smoke --test test_benchmark_csv --test test_architecture_rules
+python tools/verification/verify.py test rust crate test_runner suite test_benchmark_smoke
+python tools/verification/verify.py test rust crate test_runner suite test_benchmark_csv
+python tools/verification/verify.py check architecture
 ```
 
 ---

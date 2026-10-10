@@ -20,11 +20,11 @@ This skill guides an agent (or subagent reviewer) through performing a strict po
 ## Review Procedure
 
 ### Step 1: Automated Architecture, Compiler & Formatting Verification
-Verify formatting compliance, run compiler/clippy verification, and run the automated architectural test suite in `test_runner`:
+Verify formatting compliance, run compiler/clippy verification, and run the Python repository architecture checks:
 ```powershell
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets
-cargo test -p test_runner --test test_architecture_rules
+python tools/verification/verify.py check formatting
+python tools/verification/verify.py check clippy
+python tools/verification/verify.py check architecture
 ```
 Report failed checks as findings and distinguish pre-existing failures from regressions in the reviewed change. Continue independent diff review when evidence permits; do not modify files during a review-only task. Approval requires the applicable gates to pass or an explicit decision about a known failure.
 
@@ -39,7 +39,7 @@ Analyze all modified and added files using `git diff`:
    - Verify zero-allocations in hot execution paths (no `Vec`, `Box`, `format!`, dynamic boxed iterators).
    - Endianness Bypass: bitwise operations (`AND`, `OR`, `EOR`, `NOT`, `CLR`) and block copies avoid redundant byte swapping in hot loops.
    - **Readability, Macro & Const-Generic Prohibition**: Confirm code is clean, idiomatic Rust, self-documenting, strictly free of user-defined macros (`macro_rules!`), and free of const-generic handler functions (`<const N: ...>`). In the era of LLMs, code generation is cheap; macros and const-generic matrices break code navigation and add unnecessary cognitive complexity.
-6. **Inlining Rules (Verified automatically by test_architecture_rules)**:
+6. **Inlining Rules (Verified automatically by check_architecture.py)**:
    - Small accessors & cross-crate helpers (e.g. config getters, rtc setters): `#[inline]`.
    - CCR condition code flags, register Dn/An accessors & leaf ALU calculations (`add_b`, `sub_w`, `and_l`): `#[inline(always)]`.
    - Cold exception handlers & diagnostic paths (`trigger_address_error`, `trigger_chk_trap`, `trigger_divide_by_zero`): `#[inline(never)]`.
@@ -78,9 +78,9 @@ Provide the audit report using the following standard template:
 
 ```markdown
 ### 🛡️ Code & Architecture Compliance Review:
-- [ ] **Code Formatting Compliance:** `cargo fmt --all -- --check` passed cleanly across workspace.
-- [ ] **Compiler & Clippy Compliance:** `cargo clippy --workspace --all-targets` passed cleanly (zero warnings/errors).
-- [ ] **Architecture Test Suite:** `cargo test -p test_runner --test test_architecture_rules` passed.
+- [ ] **Code Formatting Compliance:** `python tools/verification/verify.py check formatting` passed cleanly across workspace.
+- [ ] **Compiler & Clippy Compliance:** `python tools/verification/verify.py check clippy` passed cleanly (zero warnings/errors).
+- [ ] **Architecture Test Suite:** `python tools/verification/verify.py check architecture` passed.
 - [ ] **Unit Test Coverage:** Every module with testable logic has dedicated unit tests in `crates/*/tests/` (zero inline tests in `src/`).
 - [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.
 - [ ] **Host CPU Performance & Sympathy:** Flattened dispatch (branch-minimization), zero heap allocations in hot path, endianness bypass on bitwise ops.

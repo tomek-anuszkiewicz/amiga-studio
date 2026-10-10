@@ -27,6 +27,7 @@ copyfile
 copytree
 css
 csv
+crlf
 ctx
 ctypes
 cwd
@@ -76,6 +77,7 @@ fx
 getattr
 getters
 getuser
+getvalue
 gz
 hasattr
 hashlib
@@ -112,6 +114,7 @@ lto
 maxdepth
 maxlen
 memcpy
+metavar
 mkstemp
 mpsc
 msvcrt
@@ -174,6 +177,7 @@ strftime
 struct
 subdir
 subdirs
+subparsers
 svg
 symlink
 sysctl

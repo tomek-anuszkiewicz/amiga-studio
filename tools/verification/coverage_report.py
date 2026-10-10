@@ -10,7 +10,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prepare", action="store_true", help="Remove the previous report before a fresh run")
     args = parser.parse_args()
-    report = Path(__file__).resolve().parents[1] / ".agent/tmp/coverage/summary.json"
+    report = Path(__file__).resolve().parents[2] / ".agent/tmp/coverage/summary.json"
     if args.prepare:
         report.parent.mkdir(parents=True, exist_ok=True)
         report.unlink(missing_ok=True)

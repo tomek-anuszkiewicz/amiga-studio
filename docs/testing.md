@@ -3,7 +3,7 @@
 This guide explains what the project's tests check and how to interpret their
 results. It gives users and developers an overview of the evidence behind the
 emulator and starting points for investigating a failure. Exact commands and
-verification routing are documented in [tests/README.md](../tests/README.md)
+verification routing are documented in [tools/verification/README.md](../tools/verification/README.md)
 and the verifier's command-line help.
 
 ## Different Tests Answer Different Questions
@@ -62,15 +62,15 @@ explains the measurement model.
 From the repository root, the normal completion entry point is:
 
 ```powershell
-python tests/verify.py --commit
+python tools/verification/verify.py commit
 ```
 
 It runs standard tests and quality checks on the current working tree, including
 unchanged files where the check's scope requires them. Staging is not required,
 and the command does not create a commit. The expensive silicon and contention
 suites are selected by relevant changes or explicit requests. Use
-`python tests/verify.py --help` for the available profiles and
-[tests/README.md](../tests/README.md#completion-verification) for execution details.
+`python tools/verification/verify.py --help` for the available profiles and
+[tools/verification/README.md](../tools/verification/README.md#completion-verification) for execution details.
 
 The report includes code coverage for ordinary crate tests. Coverage shows which
 code was executed; it does not tell you whether the assertions were sufficient,

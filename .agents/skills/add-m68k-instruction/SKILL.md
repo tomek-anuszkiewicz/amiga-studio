@@ -44,7 +44,7 @@ The M68000 core models execution via the **Cycle-Exact Micro-Step State Machine*
 5. **Strict Prohibitions**:
    - Zero custom macros (`macro_rules!` is strictly forbidden).
    - Zero const-generic matrices (`fn op<const S: usize>` is strictly forbidden).
-   - **Strict Flat Instruction Hierarchy**: Every instruction must reside in a single flat file `crates/cpu/src/instructions/<mnemonic>.rs`. Subdirectories under `instructions/` are strictly forbidden. If an instruction exceeds 800 lines due to exhaustive addressing modes (e.g. `add.rs`, `sub.rs`, `and.rs`), it must remain a single flat file and be registered under `LINE_COUNT_EXCEPTIONS` in `test_architecture_rules.rs`. Other non-instruction source files $\le 800$ lines.
+   - **Strict Flat Instruction Hierarchy**: Every instruction must reside in a single flat file `crates/cpu/src/instructions/<mnemonic>.rs`. Subdirectories under `instructions/` are strictly forbidden. If an instruction exceeds 800 lines due to exhaustive addressing modes (e.g. `add.rs`, `sub.rs`, `and.rs`), it must remain a single flat file and be registered under `LINE_COUNT_EXCEPTIONS` in `check_architecture.py`. Other non-instruction source files $\le 800$ lines.
 
 ---
 
@@ -447,7 +447,7 @@ fn test_sub_w() {
 ```
 Run targeted tests:
 ```powershell
-cargo test -p test_runner --test test_singlestep -- test_sub
+python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_sub
 ```
 
 ### Tier 2 — Cartesian DMA Contention Verification
@@ -460,20 +460,20 @@ fn test_dma_cartesian_sub() {
 ```
 Run Cartesian stress tests (validating cycle invariance $C = C_0 + 2 \times \text{wait\_states}$, Fast RAM immunity, and state invariance across the entire $2^k \times 2^M$ space):
 ```powershell
-cargo test -p test_runner --test test_dma_cartesian -- test_dma_cartesian_sub
+python tools/verification/verify.py test rust crate test_runner suite test_dma_cartesian case test_dma_cartesian_sub
 ```
 
 ### Architecture, Inlining & Formatting Gate
 Always verify before declaring complete:
 ```powershell
-cargo fmt --all -- --check
-cargo test -p test_runner --test test_architecture_rules
+python tools/verification/verify.py check formatting
+python tools/verification/verify.py check architecture
 ```
 > [!IMPORTANT]
-> The automated test `test_inlining_guidelines_compliance` automatically validates that all leaf ALU functions have `#[inline(always)]`, all cold exception/trap triggers have `#[inline(never)]`, and CCR mutators have `#[inline(always)]`. If an inlining attribute is missing or misconfigured, `test_architecture_rules` will fail immediately.
+> The automated test `test_inlining_guidelines_compliance` automatically validates that all leaf ALU functions have `#[inline(always)]`, all cold exception/trap triggers have `#[inline(never)]`, and CCR mutators have `#[inline(always)]`. If an inlining attribute is missing or misconfigured, `check_architecture.py` will fail immediately.
 
 Before completing a CPU change, stage the intended snapshot and run:
 ```powershell
-python tests/verify.py --commit
+python tools/verification/verify.py commit
 ```
 The verifier owns full SingleStepTests and Cartesian DMA selection; targeted commands above remain diagnostic tools.

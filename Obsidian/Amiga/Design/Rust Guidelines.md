@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-09-10
-updated: 2026-09-17
+updated: 2026-10-10
 related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[PowerShell Guidelines.md](PowerShell%20Guidelines.md)"]
 ---
 
@@ -107,7 +107,7 @@ To keep the codebase maintainable and prevent monolithic files:
 - **< 300 lines:** Baseline for focused modules, state structs, and handlers.
 - **300–600 lines:** Sweet spot combining types, enums, and operational logic.
 - **600–800 lines:** Review trigger for separable submodules.
-- **> 800 lines:** Split mandate into cohesive submodules, unless covered by registered exceptions in `test_architecture_rules.rs` (`LINE_COUNT_EXCEPTIONS`).
+- **> 800 lines:** Split mandate into cohesive submodules, unless covered by registered exceptions in `check_architecture.py` (`LINE_COUNT_EXCEPTIONS`).
 - **1:1 Flat Instruction Files:** Every distinct CPU mnemonic resides in its own dedicated flat file directly under `crates/cpu/src/instructions/<mnemonic>.rs` with zero subdirectories.
 
 ---
@@ -116,7 +116,7 @@ To keep the codebase maintainable and prevent monolithic files:
 
 Every implementation or bugfix must satisfy:
 1. **Targeted Unit Tests:** Verification of edge cases, register side effects, and boundary conditions.
-2. **Automated Architecture Compliance:** Zero-macro, no-unwrap, file size, and inlining rules verified by `cargo test -p test_runner --test test_architecture_rules`.
+2. **Automated Architecture Compliance:** Zero-macro, no-unwrap, file size, and inlining rules verified by `python tools/verification/verify.py check architecture`.
 3. **Format & Lints:** Code formatted with `cargo fmt --all` and validated with `cargo check --all-targets`.
 
 ---
@@ -128,5 +128,5 @@ Every implementation or bugfix must satisfy:
 - [Rust Best Practices Rule](../../../.agents/rules/rust-best-practices.md): Safe borrowing, wrapping math, and inlining policies.
 - [Unit Testing Policy](../../../.agents/rules/unit-testing-policy.md): Unit and integration testing mandates.
 - [General Architecture Specification](General%20Architecture.md): Machine topology, bus interfaces, and crate layout.
-- [Architecture Verification Test Suite](../../../crates/test_runner/tests/test_architecture_rules.rs): Automated enforcement of systems and architecture rules.
+- [Architecture Verification Test Suite](../../../tools/verification/checks/check_architecture.py): Automated enforcement of systems and architecture rules.
 

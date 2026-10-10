@@ -2535,3 +2535,31 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS byte preservation during relocation of 266 files and unchanged tracked baseline content
   - PASS worktree script syntax validation
   - Milestone verification and Cartesian DMA were not run for this organization change
+---
+
+### [2026-10-10 17:30 CEST] — VERIFY-CLI-01: centralize verification tools and commands
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `tools/worktree.ps1`
+  - `tools/log_diary.py`
+  - `crates/cpu/tests`
+  - `agent rules and skills`
+  - `design and developer documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Move verification orchestration and checks from tests to tools/verification and shared worktree and diary utilities to tools
+  - Replace switch-based selection with commit, milestone, test, check and runner commands and route skill diagnostics through Verify
+  - Port 17 architecture inspection checks to Python and retain the compiled opcode coverage test unchanged in CPU tests
+  - Remove the unused HTML conversion audit and reference comparison scripts
+  - Update active callers, command references, ownership mappings and approved programming vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Verification describes repository checks and diagnostics rather than emulator fixtures
+  - Architecture source inspection requires no Rust compilation
+  - Preserve quality gates, ordinary crate coverage, change-aware silicon selection, logging and source/index stability
+  - Keep bootstrap, conversion, indexing, worktree operations and reference recording outside verification
+- **Verification & Test Results**:
+  - Commit verification passed ordinary crate coverage, all quality gates, standard harness suites, full SingleStepTests, Cartesian DMA and all five Python contract directories
+  - Verification contracts passed 35 tests
+  - Rust and Python architecture implementations matched on 47 fixture outcomes across 17 controls
+  - Scoped design review covered eight specifications with no unmapped crate paths
+  - Vault audit passed 42 specifications and 1049 links
+  - No roadmap milestone closure or reference baseline changes

@@ -65,3 +65,27 @@ fn test_register_by_register_initialization() {
         assert_eq!(state.a_long(i), val);
     }
 }
+
+#[test]
+fn test_audit_micro_step_coverage() {
+    let mut micro_covered = 0;
+
+    for op in 0..=65535usize {
+        let desc = &cpu::micro::OPCODE_DESCRIPTOR_TABLE[op];
+        if !desc.steps.is_empty() {
+            micro_covered += 1;
+        }
+    }
+
+    println!("AUDIT RESULTS:");
+    println!(
+        "  Micro-step covered: {} / 65536 ({:.2}%)",
+        micro_covered,
+        (micro_covered as f64 / 65536.0) * 100.0
+    );
+    assert!(
+        micro_covered >= 15000,
+        "Expected >=15000 opcodes covered, got {}",
+        micro_covered
+    );
+}

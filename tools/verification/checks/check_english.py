@@ -14,10 +14,10 @@ import unicodedata
 try:
     from spellchecker import SpellChecker
 except ImportError:
-    print("[ERROR] Install the scanner dependency: python -m pip install -r tests/checks/requirements.txt", file=sys.stderr)
+    print("[ERROR] Install the scanner dependency: python -m pip install -r tools/verification/checks/requirements.txt", file=sys.stderr)
     sys.exit(2)
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SCOPE_FILE = Path(__file__).with_suffix(".json")
 WORKER_SCOPE = None
 WORKER_VOCABULARY = None

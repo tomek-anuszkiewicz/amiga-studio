@@ -19,7 +19,7 @@
     "tools/blep_generator/output"
   ],
   "excluded_files": [
-    "tests/checks/check_english.json"
+    "tools/verification/checks/check_english.json"
   ],
   "text_extensions": [
     ".rs",

@@ -28,7 +28,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
 
 - **2.1: Test Suite Review and Structural Orientation**
   - Review `test_runner` and per-crate tests: execution commands, fixtures, golden references, L1/L2/L3 boundaries, and subsystem coverage. Identify obsolete tests, behavioral gaps, missing regression evidence, and any harness/layout changes needed before the HRM test sprint.
-  - **Gate:** A gap matrix in `Obsidian/Amiga/Design/Test Coverage Matrix.md` explains the test paths and priorities, supported by `python tests/checks/audit_code_quality.py`.
+  - **Gate:** A gap matrix in `Obsidian/Amiga/Design/Test Coverage Matrix.md` explains the test paths and priorities, supported by `python tools/verification/verify.py check code`.
 
 - **2.2: Sampling and Counter Profiling Feasibility**
   - Try `cargo flamegraph` on headless execution; use the [external profiling workflow](.agents/skills/profile-external/SKILL.md) and `samply` when host constraints require it. Evaluate `cargo-profiler`/Callgrind/Cachegrind or `perf` as complementary tools and compare available hot-symbol results.
@@ -43,8 +43,8 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Establish an "idealistic", pure architectural baseline with zero ad-hoc hacks.
     - **Decision required before implementation:** The proposed removal/deferment of timing and hardware quirks conflicts with the current design invariants. Review it against [specification compliance](.agents/rules/spec-compliance.md) and the [Platform Quirks Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md); preserve documented behavior unless an explicit specification change is approved.
   - **Verification Gate:**
-    - `cargo check --workspace`
-    - `cargo test -p test_runner --test test_architecture_rules`
+    - `python tools/verification/verify.py check build`
+    - `python tools/verification/verify.py check architecture`
 
 - **3.2: Signal Propagation Documentation Audit & Hardening**
   - **Objective:** Ensure that all agent governance files (rules, skills, workflows, design docs) accurately and completely describe the two signal propagation mechanisms so any future agent has zero ambiguity about how to implement them correctly.
@@ -53,7 +53,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - **Special inter-chip signal lines:** Verify documentation for DMA request/grant (`RGA` bus), interrupt lines (`_IPL0`–`_IPL2`, `_INTREQ`/`_INTENA` propagation through Paula → CIA → CPU), and any other active signal paths (e.g. blitter busy, disk DMA, copper WAIT/SKIP). Ensure polling methods and timing are documented with cycle-phase precision.
     - Sync any divergence between documentation and actual `MachineLoop` poll-and-route implementation found in Step 2.1.
   - **Verification Gate:**
-    - `python tests/verify.py --milestone` (Docs Quality pillar).
+    - `python tools/verification/verify.py milestone` (Docs Quality pillar).
     - The intended commit changes were reviewed against documents selected by `tracked_paths`; real corrections are included, and accurate documents remain untouched.
 
 - **3.3: HRM-Aligned Subsystem Test Suite Authoring**
@@ -64,8 +64,8 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Simple inter-subsystem interaction tests (L2): focus on the cleanest signal paths — e.g. CIA timer overflow → Paula `_INT` → CPU IPL change. Prefer to write inter-chip tests and any required implementation changes during horizontal blanking (hblank return) when bus is idle, to minimize contention complexity.
     - Do **not** target vAmigaTS or silicon-level cycle accuracy in this step — that is Step 3.7 and Step 5.
   - **Verification Gate:**
-    - `python tests/verify.py --commit`
-    - `cargo test -p test_runner --test test_architecture_rules`
+    - `python tools/verification/verify.py commit`
+    - `python tools/verification/verify.py check architecture`
     - Tests verify subsystem behavior, boundary conditions, and relevant failure modes per unit-testing-policy; no assertion-count quota applies.
 
 - **3.4: Lockstep Differential Tracer vs. vAmiga (Contingency)**
@@ -74,11 +74,11 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
   - **Actionable Scope:**
     - Add a `StepTracer` trait (or feature-gated callback) to `MachineLoop`: at each `step_cck()`, serialize `CpuState` + all chip register banks into a compact binary or JSON snapshot. All state structs already implement `serde::Serialize` — snapshot is essentially `serde_json::to_string(&machine.snapshot())`.
     - Wire vAmiga's existing headless state-dump mode (`ref_src/vAmiga`) to emit equivalent snapshots at the same CCK boundaries.
-    - Harness (`tools/harness/lockstep_diff.py`): load both snapshot streams, walk them in parallel, and stop at the first CCK where any field diverges — output: `CCK #N | field | expected (vAmiga) | actual (ours)`.
+    - Harness (`tools/verification/lockstep_diff.py`): load both snapshot streams, walk them in parallel, and stop at the first CCK where any field diverges — output: `CCK #N | field | expected (vAmiga) | actual (ours)`.
     - Keep tracer behind a feature flag (`--features tracer`) so zero overhead in production builds.
   - **Verification Gate:**
     - Tracer successfully identifies the CCK and field of a known injected regression (synthetic test).
-    - `cargo test -p test_runner --test test_lockstep_tracer` (smoke test against a trivial ROM loop).
+    - `python tools/verification/verify.py test rust crate test_runner suite test_lockstep_tracer` (smoke test against a trivial ROM loop).
 
 - **3.5: Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution**
 
@@ -105,8 +105,8 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Implement and calibrate custom chip features following the substrate-first causality chain (Layer 0 $\to$ Layer 4).
     - Strictly adhere to repro-first defect resolution (`.agents/rules/repro-first.md`) and 4-tier integration archetypes (`.agents/rules/unit-testing-policy.md`).
   - **Verification Gate:**
-    - `cargo test -p machine_loop`
-    - `python tests/verify.py --integration`
+    - `python tools/verification/verify.py test rust crate machine_loop`
+    - `python tools/verification/verify.py test rust integration`
 
 ---
 
@@ -119,7 +119,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Verify layout stability, margin geometry, scrollbar ergonomics, and responsive display tiers (`LayoutTier::FullHdWide`, `LayoutTier::StandardDesktop`, `LayoutTier::Compact`).
     - Test upcoming Save State management (`State` menu, in-memory quick slots 1–5, `F6`/`F9` shortcuts, and native file dialogs).
   - **Verification Gate:**
-    - `cargo test -p gui --test test_interactions` (all headless egui interaction tests passing).
+    - `python tools/verification/verify.py test rust crate gui suite test_interactions` (all headless egui interaction tests passing).
 
 - **4.2: Developer Studio & Debugger Keyboard Shortcuts Documentation & Discoverability**
   - **Objective:** Complete audit, documentation, and user-facing surfacing of all implemented keyboard shortcuts across Developer Studio and Game View modes, ensuring zero hidden keys.
@@ -140,7 +140,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Maintain and audit formal gate categories: FPU Coprocessors (206 tests deferred to the scope decision in Step 11.2), ECS & AGA Silicon (112 tests deferred to Steps 11.1 and 11.2), 68010 CPU Architecture (91 tests deferred to Step 11.2), AmigaOS Floppy MFM Bootblock (7 tests deferred to Step 9.1), and Non-Visual Register Assertions (193 tests deferred to Step 5.2.6).
     - Ensure test runner automatically filters deferred tests when executing baseline OCS suites.
   - **Verification Gate:**
-    - `cargo test -p test_runner --test test_vamiga_runner -- test_vamiga_deferred_reasons_audit`
+    - `python tools/verification/verify.py test rust crate test_runner suite test_vamiga_runner case test_vamiga_deferred_reasons_audit`
 
 - **5.2: Targeted Subsystem Verification Sub-Suites Execution Track (1,468 Active Baseline Tests)**
   - **Objective:** Progressively execute and pass the 1,468 active baseline vAmigaTS tests in strict substrate-first causal order (Layer 0 $\to$ Layer 4), tracking progress in [vAmigaTS Verification Scorecard](Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md).
@@ -164,7 +164,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Re-evaluate with `--profile` across vAmigaTS suites to measure empirical throughput gains.
   - **Verification Gate:**
     - Zero regression across all active baseline OCS vAmigaTS suites.
-    - `cargo test -p test_runner --test test_dma_cartesian`
+    - `python tools/verification/verify.py test rust crate test_runner suite test_dma_cartesian`
 
 ---
 
@@ -279,13 +279,13 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - vAmigaTS test runner passing all MFM and OS-level tests.
 
 - **9.2: End-to-End Bootable ADF Integration Testing**
-  - **Objective:** Boot and execute genuine Amiga benchmarks and diagnostic suites directly from floppy disk images (`cargo test -p test_runner --test test_boot_adf`).
+  - **Objective:** Boot and execute genuine Amiga benchmarks and diagnostic suites directly from floppy disk images (`python tools/verification/verify.py test rust crate test_runner suite test_boot_adf`).
   - **Actionable Scope:**
     - Load and execute `AmigaTestKit.adf`, `SysInfo.adf`, and Dhrystone on the authentic Kickstart / Amiga chipset stack.
     - Leverage address guards, breakpoint traps, and instruction bounds for parameterized termination.
     - Assert functional correctness, numerical determinism, and measure baseline throughput (MIPS, host CPU cycle cost per emulated CCK).
   - **Verification Gate:**
-    - `cargo test -p test_runner --test test_boot_adf` passing cleanly.
+    - `python tools/verification/verify.py test rust crate test_runner suite test_boot_adf` passing cleanly.
 
 - **9.3: Real-Workload Host Cache Miss & Footprint Impact**
   - **Objective:** Profile host L1i/L1d cache misses, Last Level Cache (LLC) misses, and branch mispredictions during continuous execution of genuine Amiga software.
@@ -317,7 +317,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Ensure every optimized handler retains 100% cycle-exact Color Clock fidelity.
     - Pass the full exhaustive SingleStepTests suite ($env:SINGLESTEP_FULL = "1") and full workspace unit/integration test suites.
   - **Verification Gate:**
-    - `$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep`
+    - `python tools/verification/verify.py test runner singlestep full`
     - `cargo test --workspace`
 
 ---

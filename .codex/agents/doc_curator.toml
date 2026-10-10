@@ -29,7 +29,7 @@ You are the authoritative custodian of this emulator's architectural truth. Your
 3. **ROADMAP.md & DIARY.md Hygiene**:
    - Prune completed steps from `ROADMAP.md` with zero retention; enforce Substrate-First
      causal ordering per `roadmap-maintenance.md`.
-   - Log each commit with `.agents/skills/compact-diary/scripts/log_diary.py`. At minor roadmap points or
+   - Log each commit with `tools/log_diary.py`. At minor roadmap points or
      milestones, compact settled commit entries with the `compact-diary` skill; the
      appender itself does not perform compaction.
 

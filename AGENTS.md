@@ -63,13 +63,13 @@ edits or authorize another commit.
 
 Per-commit commands:
 ```powershell
-python tests/verify.py --commit
+python tools/verification/verify.py commit
 ```
-In commit mode, the verifier always runs quality gates, architecture, all ordinary crate/standard harness tests, and Python tool contracts. Only full SingleStepTests and Cartesian DMA depend on their source changes in commit mode; `--verify-singlestep` and `--verify-dma` are independent test sets that can run alone or alongside a completion profile. Every commit includes the full-repository English language audit. Milestone is a separate set containing the same full audit; it does not include commit, DMA or SingleStep sets. All sets may run at any time on the current working tree, including a clean tree. Automatic CPU-suite selection uses staged, unstaged and nonignored new paths. Completion evidence must match the final committed source. Standalone DMA/SingleStep runs use the current working tree and do not replace completion verification. Use `--plan` to inspect commands. Targeted manual tests remain available during development; do not duplicate completion commands outside the verifier.
+In commit mode, the verifier always runs quality gates, architecture, all ordinary crate/standard harness tests, and Python tool contracts. Only full SingleStepTests and Cartesian DMA depend on their source changes in commit mode; `test runner singlestep` and `test runner dma` are independent test sets that can run alone or alongside a completion profile. Every commit includes the full-repository English language audit. Milestone is a separate set containing the same full audit; it does not include commit, DMA or SingleStep sets. All sets may run at any time on the current working tree, including a clean tree. Automatic CPU-suite selection uses staged, unstaged and nonignored new paths. Completion evidence must match the final committed source. Standalone DMA/SingleStep runs use the current working tree and do not replace completion verification. Use `--plan` to inspect commands. Targeted manual tests remain available during development; do not duplicate completion commands outside the verifier.
 
 Before closing a minor roadmap point or major milestone, run the per-commit
 command above once for the final snapshot, followed by
-`python tests/verify.py --milestone`. Complete the maintenance and required skill
+`python tools/verification/verify.py milestone`. Complete the maintenance and required skill
 procedures from the routed roadmap, design-maintenance and diary rules before
 claiming closure. The verifier does not invoke these skills, and passing its gates
 alone does not establish stage completion. Revalidate affected checks if a procedure

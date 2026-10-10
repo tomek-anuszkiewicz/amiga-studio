@@ -19,10 +19,10 @@ Use this procedure when reorganizing [ROADMAP.md](../../../ROADMAP.md), reviewin
 
 - Confirm implementation and run both independent verification sets once:
   ```powershell
-  python tests/verify.py --commit
-  python tests/verify.py --milestone
+  python tools/verification/verify.py commit
+  python tools/verification/verify.py milestone
   ```
-  If commit verification already ran for this exact snapshot, run only the remaining milestone set. Milestone contains additional audits and whole-catalog checks; it does not repeat commit tests.
+  If commit verification already ran for this exact snapshot, run only the remaining milestone set. Milestone runs the full language audit; it does not repeat commit tests. CPU sets run only when explicitly added.
 - Before declaring a minor roadmap point or major milestone complete, perform the required semantic parity review, the completion commit's scoped design review, and diary compaction. A reorganization alone does not trigger subsystem milestone completion.
 - Delete the verified task entirely. Leave any distinct unfinished work with its own gate; keep evidence in diary and Git rather than a completed-capability section.
 - After pruning, check the final roadmap for presence and retained completed

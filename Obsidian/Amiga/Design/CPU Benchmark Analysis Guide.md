@@ -163,10 +163,10 @@ To analyze any benchmark CSV report and generate markdown analysis tables using 
 
 ```powershell
 # Analyze the thorough benchmark run:
-python crates/test_runner/src/analyze_benchmarks.py .agent/tmp/benchmarks/thorough/m68k_benchmark.csv
+python tools/verification/verify.py runner analyze .agent/tmp/benchmarks/thorough/m68k_benchmark.csv
 
 # Analyze and export directly to a markdown report:
-python crates/test_runner/src/analyze_benchmarks.py .agent/tmp/benchmarks/thorough/m68k_benchmark.csv --output .agent/tmp/benchmarks/thorough/analysis_report.md
+python tools/verification/verify.py runner analyze .agent/tmp/benchmarks/thorough/m68k_benchmark.csv report .agent/tmp/benchmarks/thorough/analysis_report.md
 ```
 
 ---
@@ -213,7 +213,7 @@ Benchmark CSV Table (14 Columns)
 To confirm that a benchmark run on disk is 100% valid and regression-free:
 
 1. **Direct Reference CSV Comparison ([`test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs)):**
-   Run `cargo test -p test_runner --test test_benchmark_csv`.
+   Run `python tools/verification/verify.py test rust crate test_runner suite test_benchmark_csv`.
    - Compares columns 1..=6 of all 108 rows with `baselines/benchmarks/m68k_benchmark_baseline.csv` and checks nominal instruction totals for each profile: Quick 31,500; Standard 6,997,200; Thorough 149,992,500.
    - Reports the differing row with expected and actual values. Generated fixtures use `.agent/tmp/benchmark-csv/<profile>/`.
 

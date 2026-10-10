@@ -82,10 +82,10 @@ it. The [testing overview](testing.md) explains the different kinds of evidence
 available and their limits. For ordinary completion verification, run:
 
 ```powershell
-python tests/verify.py --commit
+python tools/verification/verify.py commit
 ```
 
 This checks the working tree and reports results; it does not create a commit.
-Use [tests/README.md](../tests/README.md) for operational details and focused test
+Use [tools/verification/README.md](../tools/verification/README.md) for operational details and focused test
 commands. If you work through an agent, [Working with an AI Agent](ai_agents.md)
 explains how to frame the task, review the result and request a commit.

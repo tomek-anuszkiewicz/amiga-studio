@@ -12,7 +12,7 @@ Before each authorized commit, execute [sync-design-docs](../skills/sync-design-
 Then run the canonical verification entry point on the final intended source and explicitly stage the intended files. Verification does not require staging first:
 
 ```powershell
-python tests/verify.py --commit
+python tools/verification/verify.py commit
 ```
 
 `verify.py` owns test selection and includes the architecture gate. Do not replace it with individually chosen completion suites. Milestone requirements are in [roadmap-maintenance.md](roadmap-maintenance.md). Run [audit-code-quality](../skills/audit-code-quality/SKILL.md) only on explicit request or before a major branch merge.

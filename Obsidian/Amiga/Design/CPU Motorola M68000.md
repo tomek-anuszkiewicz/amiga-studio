@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-20
+updated: 2026-10-10
 related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/cpu"
@@ -669,7 +669,7 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
 
 - **1:1 Mnemonic-to-File Hierarchy & Zero Subdirectories Mandate:**
   - Every distinct M68000 instruction mnemonic has its own dedicated flat `.rs` file (e.g. `add.rs`, `sub.rs`, `mulu.rs`, `muls.rs`, `divu.rs`, `divs.rs`, `link.rs`, `unlk.rs`, `abcd.rs`, `sbcd.rs`, `nbcd.rs`, `trapv.rs`, `rtr.rs`, `rte.rs`, `stop.rs`, `reset.rs`, `move_usp.rs`, `bra.rs`, `bsr.rs`, `bcc.rs`, `asl.rs`, `asr.rs`, etc.).
-  - **Zero Subdirectories:** Creating subdirectories or multi-file submodules under `crates/cpu/src/instructions/` is strictly forbidden. The hierarchy must remain 100% flat; any nested subdirectory at any depth causes `cargo test -p test_runner --test test_architecture_rules` to fail immediately.
+  - **Zero Subdirectories:** Creating subdirectories or multi-file submodules under `crates/cpu/src/instructions/` is strictly forbidden. The hierarchy must remain 100% flat; any nested subdirectory at any depth causes `python tools/verification/verify.py check architecture` to fail immediately.
   - **Elimination of Legacy Umbrella Files:** Disparate instructions are never grouped into composite umbrella modules. All legacy multi-instruction files have been decomposed:
     - `mul.rs` $\rightarrow$ [`mulu.rs`](../../../crates/cpu/src/instructions/mulu.rs), [`muls.rs`](../../../crates/cpu/src/instructions/muls.rs)
     - `div.rs` $\rightarrow$ [`divu.rs`](../../../crates/cpu/src/instructions/divu.rs), [`divs.rs`](../../../crates/cpu/src/instructions/divs.rs) (shared zero-divide exception micro-step sequences centralized in [`micro/common.rs`](../../../crates/cpu/src/micro/common.rs))

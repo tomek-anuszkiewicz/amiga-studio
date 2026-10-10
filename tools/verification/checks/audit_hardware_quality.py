@@ -23,7 +23,7 @@ def find_repo_root() -> Path:
     for p in [curr] + list(curr.parents):
         if (p / "Cargo.toml").exists() and (p / ".git").exists():
             return p
-    return curr.parents[1]
+    return curr.parents[2]
 
 REPO_ROOT = find_repo_root()
 CRATES_DIR = REPO_ROOT / "crates"
@@ -177,7 +177,7 @@ def check_dma_mastership_and_passive_latching():
 
 def main():
     if len(sys.argv) > 1:
-        print("This auditor accepts no arguments. Run: python tests/checks/audit_hardware_quality.py", file=sys.stderr)
+        print("This auditor accepts no arguments. Run: python tools/verification/checks/audit_hardware_quality.py", file=sys.stderr)
         return 2
 
     print("=" * 76)

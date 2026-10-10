@@ -10,9 +10,9 @@ checks or configuration. For everyday collaboration, start with
 - Rules own obligations, scope, and exceptions. Skills own steps, commands,
   diagnostics, and templates; conditional examples live in the owning skill's
   `references/` directory. Mechanical requirements belong in scripts and tests.
-- Keep verification orchestration and coverage result processing in `tests/`,
-  worktree utilities in `tools/harness/`, and concrete audits and checks in `tests/checks/`.
-  The diary appender lives in `.agents/skills/compact-diary/scripts/`.
+- Keep verification orchestration and coverage result processing in `tools/verification/`,
+  worktree management in `tools/worktree.ps1`, and concrete audits and checks in `tools/verification/checks/`.
+  The shared diary appender lives in `tools/log_diary.py`.
   A specialized script used by at most one skill belongs under that skill's
   `scripts/`; a shared script uses the directory matching its role. Supporting
   references count as part of their owning skill, not as additional consumers.
@@ -23,6 +23,15 @@ checks or configuration. For everyday collaboration, start with
 - Passive rules do not need duplicate skills. Active procedures must remain
   reachable through their owning skills. Report concrete executed checks and
   their limits; static checks do not establish complete behavioral enforcement.
+## Shared Verification Routing
+
+Skills select checks and diagnostics through `python tools/verification/verify.py`.
+Use its `test`, `check` and `runner` subcommands; completion uses `commit` and
+`milestone`. The command reference is [tools/verification/README.md](../../tools/verification/README.md).
+Skill-owned scripts keep their own entry points. Workflow operations such as
+bootstrap, conversion, indexing, worktree management, diary appending, tool
+installation and recording approved reference baselines remain separate.
+
 ## Recording and Validating Changes
 
 Commit policy is in [git-commits.md](../rules/git-commits.md); diary policy
@@ -31,7 +40,7 @@ diff, run the per-commit gates on the intended snapshot, and append observed res
 Stage only the agreed paths when a commit is authorized:
 
 ```powershell
-python .agents/skills/compact-diary/scripts/log_diary.py `
+python tools/log_diary.py `
   --title "<Commit-sized change>" `
   --subsystems "<relative components>" `
   --changes "<change 1>; <change 2>" `
@@ -55,11 +64,11 @@ Usual types are `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, and `chore`;
 scope names identify the affected subsystem or tooling. Implementation, tests,
 design updates, and diary for the same concern belong together.
 
-For a full English vocabulary scan, use `python tests/checks/check_english.py`. Both commit
-and milestone profiles include this scan. Install its pinned dictionary dependency with `python -m pip install -r tests/checks/requirements.txt`. Scope exclusions and text formats live
-in `tests/checks/check_english.json`; maintain them according to
+For a full English vocabulary scan, use `python tools/verification/verify.py check english`. Both commit
+and milestone profiles include this scan. Install its pinned dictionary dependency with `python -m pip install -r tools/verification/checks/requirements.txt`. Scope exclusions and text formats live
+in `tools/verification/checks/check_english.json`; maintain them according to
 [language-policy.md](../rules/language-policy.md). Explicit file arguments
-scan those entire files using the same English dictionary and project vocabulary. Reviewed terms live in [english_words/](../../tests/checks/english_words/); deliberate literal examples use the scope catalog's exact-file `file_words` map. Invoke validation explicitly; use no lifecycle or Git hooks.
+scan those entire files using the same English dictionary and project vocabulary. Reviewed terms live in [english_words/](../../tools/verification/checks/english_words/); deliberate literal examples use the scope catalog's exact-file `file_words` map. Invoke validation explicitly; use no lifecycle or Git hooks.
 
 
 ## Configuration and Reference Provisioning

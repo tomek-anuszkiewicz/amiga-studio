@@ -13,11 +13,11 @@ This skill standardizes test execution across the 4 testing tiers, persists exec
 
 | Tier | Scope | Target Command | Typical Runtime |
 | :---: | :--- | :--- | :---: |
-| **Tier 1** | Unit tests (isolated crates) | `python tests/verify.py --unit` | $< 2$s |
-| **Tier 2** | Machine loop integration | `python tests/verify.py --integration` | $3$–$15$s |
-| **Tier 3** | SingleStep CPU silicon vectors | `cargo test -p test_runner --test test_singlestep` | $6$–$15$s |
-| **Tier 4** | vAmigaTS whole-machine captures | `target/release/test_runner.exe vamiga --category <cat>` | $10$–$60$s |
-| **Arch** | Architecture rules & gates | `cargo test -p test_runner --test test_architecture_rules` | $< 2$s |
+| **Tier 1** | Unit tests (isolated crates) | `python tools/verification/verify.py test rust unit` | $< 2$s |
+| **Tier 2** | Machine loop integration | `python tools/verification/verify.py test rust integration` | $3$–$15$s |
+| **Tier 3** | SingleStep CPU silicon vectors | `python tools/verification/verify.py test runner singlestep` | $6$–$15$s |
+| **Tier 4** | vAmigaTS whole-machine captures | `python tools/verification/verify.py runner vamiga -- --category <cat>` | $10$–$60$s |
+| **Arch** | Architecture rules & gates | `python tools/verification/verify.py check architecture` | $< 2$s |
 
 ---
 
@@ -25,21 +25,21 @@ This skill standardizes test execution across the 4 testing tiers, persists exec
 
 Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
 
-1. Identify an existing isolated regression or add a focused test in the owning suite. For Rust, use `crates/<crate>/tests/`; Python tool contracts use the owning tool's `tests/` directory, listed in [tests/README.md](../../../tests/README.md).
+1. Identify an existing isolated regression or add a focused test in the owning suite. For Rust, use `crates/<crate>/tests/`; Python tool contracts use the owning tool's `tests/` directory, listed in [tools/verification/README.md](../../../tools/verification/README.md).
 2. Run it before the repair and confirm the expected failure, rather than a missing fixture or unrelated setup error:
    ```powershell
-   cargo test -p <crate> --test <suite> -- <filter>
-   python -m unittest discover -s <tool_directory>/tests -p <fixture_file.py> -q
+   python tools/verification/verify.py test rust crate <crate> suite <suite> case <filter>
+   python tools/verification/verify.py test python directory <tool_directory>/tests file <fixture_file.py>
    ```
 3. Repair the demonstrated mechanism, rerun the focused case, and retain its regression protection.
 4. Run the completion verifier on the intended working-tree source; staging is optional:
    ```powershell
-   python tests/verify.py --commit
+   python tools/verification/verify.py commit
    ```
    The verifier always runs standard suites; only DMA/SingleStep depend on changed sources.
-   Use `--verify-dma` or `--verify-singlestep` alone for the corresponding standalone suite,
-   or combine them with a completion profile to force inclusion.
-   After the commit verification above, run `python tests/verify.py --milestone` for stage completion.
+   Use `test runner dma` or `test runner singlestep` for an independent full suite.
+   Append `dma` or `singlestep` to `commit` or `milestone` to force inclusion.
+   After the commit verification above, run `python tools/verification/verify.py milestone` for stage completion.
    The milestone set does not repeat commit checks; use `--plan` to inspect either set.
    Individual suite commands below are for development and diagnosis, not alternative completion gates.
 
@@ -64,17 +64,17 @@ Test executions maintain rotating state to detect regressions across runs:
 When invoked without parameters (e.g. `$test-runner`):
 1. Runs the quick regression gate:
    ```powershell
-   cargo run -p test_runner -- --diff
+   python tools/verification/verify.py runner diff
    ```
 2. Displays the tabular summary across opcodes and subsystems:
    ```powershell
-   cargo run -p test_runner -- --summary
+   python tools/verification/verify.py runner summary
    ```
 3. If the working tree is dirty or no snapshots exist, run Tier 1 and machine
    integration verification:
    ```powershell
-   python tests/verify.py --unit
-   cargo test -p machine_loop
+   python tools/verification/verify.py test rust unit
+   python tools/verification/verify.py test rust crate machine_loop
    ```
    Establish an initial snapshot when none exists; report freshness of existing results.
 

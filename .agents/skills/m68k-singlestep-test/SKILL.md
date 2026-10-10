@@ -38,16 +38,16 @@ Each test case contains:
 ### Running SingleStepTests via Cargo Test Runner
 ```powershell
 # Fast sample run (default: 50 cases per suite, ~5.8s):
-cargo test -p test_runner --test test_singlestep
+python tools/verification/verify.py test rust crate test_runner suite test_singlestep
 
 # Full exhaustive verification (~300,000 cases across all 77 suites, ~14s):
-$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
+python tools/verification/verify.py test runner singlestep full
 
 # Full exhaustive run for a single instruction:
-$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep -- test_add_b
+python tools/verification/verify.py test runner singlestep case test_add_b full
 
 # Custom sample limit (e.g. 500 cases):
-$env:SINGLESTEP_LIMIT = "500"; cargo test -p test_runner --test test_singlestep -- test_move_w
+python tools/verification/verify.py test runner singlestep case test_move_w sample 500
 ```
 
 ---
@@ -101,13 +101,13 @@ When a test fails, follow this systematic diagnostic checklist:
 
 The test harness automatically tracks test outcomes, diffs, and regressions across executions:
 
-### A. Results Directory Structure (`.test_results/`)
-- `.test_results/latest/<suite_name>.json`: Detailed outcomes of the most recent test run.
-- `.test_results/previous/<suite_name>.json`: Rotated snapshot of the previous run used for regression diffing.
-- `.test_results/summary.json`: Global repository-wide pass/fail matrix, percentages, and active failure names.
+### A. Results Directory Structure (`.agent/tmp/singlestep/`)
+- `.agent/tmp/singlestep/latest/<suite_name>.json`: Detailed outcomes of the most recent test run.
+- `.agent/tmp/singlestep/previous/<suite_name>.json`: Rotated snapshot of the previous run used for regression diffing.
+- `.agent/tmp/singlestep/summary.json`: Global repository-wide pass/fail matrix, percentages, and active failure names.
 
 ### B. Automated Regression & Progress Alerts
-When running tests via `cargo test -p test_runner`, the test runner automatically compares the current run against the previous run:
+When running tests via `python tools/verification/verify.py test rust crate test_runner`, the test runner automatically compares the current run against the previous run:
 - 🔴 **Regressions**: Tests that previously passed but failed after your changes:
   ```text
   ⚠️  [REGRESSION DETECTED] Suite 'Real68k::ADD.b': 1 test(s) that previously PASSED now FAILED!
@@ -123,13 +123,13 @@ When running tests via `cargo test -p test_runner`, the test runner automaticall
 Agents can quickly inspect test coverage or check for regressions without searching log outputs:
 ```powershell
 # Check whether your latest code edits caused any regressions
-cargo run -p test_runner -- --diff
+python tools/verification/verify.py runner diff
 
 # Print a tabular summary of pass rates and active failure cases across all opcodes
-cargo run -p test_runner -- --summary
+python tools/verification/verify.py runner summary
 
 # Run a specific opcode suite with live diagnostics
-cargo run -p test_runner -- --suite ADD.b
+python tools/verification/verify.py runner suite ADD.b
 ```
 
 ---

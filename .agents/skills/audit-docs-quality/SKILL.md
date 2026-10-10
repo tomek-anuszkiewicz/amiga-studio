@@ -62,7 +62,7 @@ Automated checks validate their configured patterns and boundaries. They do not 
 When invoked without a narrower scope, run:
 
 ```powershell
-python tests/verify.py --commit
+python tools/verification/verify.py commit
 ```
 
 Only after the scoped documentation review and verification succeed, use [`$index-amiga-rag`](../index-amiga-rag/SKILL.md)
@@ -83,5 +83,5 @@ Report observed results; mark checks that were not run instead of copying the ex
 - **Semantic Documentation-to-Code:** [PASS | <count> discrepancies] (registers, memory map, crate topology, signals, quirks)
 - **Workflow Invariants:** [PASS | <count> issues] (diary structure/timestamps, roadmap file/checkboxes)
 - **Manual Review:** <inspected scope and unresolved questions; mark unrun reviews>
-- **Verification:** `verify.py` (PASS), `test_architecture_rules` (PASS)
+- **Verification:** `verify.py` (PASS), `check_architecture.py` (PASS)
 ```

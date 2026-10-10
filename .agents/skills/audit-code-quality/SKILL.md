@@ -5,7 +5,7 @@ description: Interpret code-quality verification results and review Rust archite
 
 # Recipe: Architectural Code Quality Auditor & Pruning Playbook
 
-This skill interprets deterministic verification results and reviews code-quality decisions that require source and architectural context. Automatic audits belong to [tests/verify.py](../../../tests/verify.py); this skill does not launch the Python auditor or repeat completion verification. Apply fixes only within the requested scope.
+This skill interprets deterministic verification results and reviews code-quality decisions that require source and architectural context. Automatic audits belong to [tools/verification/verify.py](../../../tools/verification/verify.py); this skill does not launch the Python auditor or repeat completion verification. Apply fixes only within the requested scope.
 
 ---
 
@@ -29,7 +29,7 @@ This skill interprets deterministic verification results and reviews code-qualit
    - *Remediation:* Triage against external Host I/O boundaries (see Section 4). If internal scaffolding, purge both the method and its orphaned test.
 3. **Internal Unused Symbols (The "Visibility Downgrade" Indicator):**
    - In Rust library crates (`[lib]`), `rustc` treats all `pub` items as public API and suppresses `dead_code` warnings.
-   - Demoting `pub` to `pub(crate)` unmasks `rustc`'s built-in reachability analysis via `cargo check --workspace`.
+   - Demoting `pub` to `pub(crate)` unmasks `rustc`'s built-in reachability analysis via `python tools/verification/verify.py check build`.
 
 ### Pillar 2: Principle of Minimum Visibility (Least Privilege)
 - **Over-Exposed `pub` Items:** Symbols declared `pub` whose callers are strictly confined to their own crate. Demote to `pub(crate)`.
@@ -59,7 +59,7 @@ This is an agent review; the deterministic auditor has no condition scanner.
 - **Verification Ownership:** Commit verification owns workspace Clippy. Review its existing diagnostics without repeating the gate here.
 
 ### Pillar 6: Automated Architecture Guardrails
-- **Method Inlining Guidelines:** Verified via `test_inlining_guidelines_compliance` in `test_architecture_rules.rs`.
+- **Method Inlining Guidelines:** Verified via `test_inlining_guidelines_compliance` in `check_architecture.py`.
 - **Macro & Const-Generic Prohibitions:** Verified via `test_zero_user_defined_macros` and `test_zero_const_generic_handlers`.
 - **Dedicated External Test Suites & Parity:** Verified via `test_every_crate_has_dedicated_external_tests_suite`, `test_canonical_test_file_naming_convention`, and `test_zero_inline_tests_in_crates_src`.
 - **Path Privacy & Host Isolation:** Verified via `test_no_external_hardcoded_paths`.
@@ -86,7 +86,7 @@ This is an agent review; the deterministic auditor has no condition scanner.
 4. Report confirmed issues, rejected candidates and proposed remedies. Perform
    edits only when remediation is within the requested scope.
 5. After an authorized visibility change or deletion, run
-   `cargo check --workspace` to check production callers. Integration tests may
+   `python tools/verification/verify.py check build` to check production callers. Integration tests may
    require public API; a successful production check does not establish their
    validity. Completion verification belongs to the enclosing task's workflow
    and must cover the final source after any edits.
@@ -108,7 +108,7 @@ For each symbol reported under `[TEST-ONLY ZOMBIES]`:
 ### Step 2: Safe Clean-Break Deletion
 1. Delete confirmed dead symbols in `crates/<crate>/src/`.
 2. Delete orphaned test assertions/functions in `crates/<crate>/tests/`.
-3. Run `cargo check --workspace` to detect broken production callers.
+3. Run `python tools/verification/verify.py check build` to detect broken production callers.
 4. Return the changed scope to the enclosing completion workflow for verification of the final source; do not repeat the full verification set inside this skill.
 
 
@@ -133,7 +133,7 @@ Report observed results and counts; mark checks that were not run instead of cop
 - **Readability Review:** <concrete findings and inspected scope; no operator-count threshold>
 - **Method Naming & Accessor Conventions:** [PASS | <count> violations]
 - **Workspace Clippy & Compiler Lints:** [PASS | <count> violations]
-- **Architecture Rules (`test_architecture_rules`):** [PASS | <passed>/<total> tests passed]
+- **Architecture Rules (`check_architecture.py`):** [PASS | <passed>/<total> tests passed]
 - **Manual Review:** <observations and unresolved questions>
 - **Verification Evidence:** <existing results, source freshness, compiler checks actually run, and missing checks>
 ```

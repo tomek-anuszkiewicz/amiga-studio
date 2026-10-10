@@ -7,7 +7,7 @@ description: Compact settled per-commit diary entries into separate milestone di
 
 ## Logging and Compaction Are Separate
 
-Every commit adds a concise entry to [DIARY.md](../../../DIARY.md) Section 10 using `.agents/skills/compact-diary/scripts/log_diary.py`, per [diary-maintenance.md](../../rules/diary-maintenance.md). The appender formats entries; it does not compact them.
+Every commit adds a concise entry to [DIARY.md](../../../DIARY.md) Section 10 using `tools/log_diary.py`, per [diary-maintenance.md](../../rules/diary-maintenance.md). The appender formats entries; it does not compact them.
 
 Run this skill after a minor roadmap point or major milestone passes its completion gates, regardless of diary size. Consolidate its settled commit entries before the completion commit. A user may also explicitly request historical compaction.
 

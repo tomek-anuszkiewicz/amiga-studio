@@ -84,9 +84,9 @@ Evaluate the matrix against the physical hardware architecture:
 ### Step 5: Verify Non-Regression
 Execute the [`$test-runner`](../test-runner/SKILL.md) skill:
 ```powershell
-cargo run -p test_runner -- --diff
-python tests/verify.py --unit
-cargo test -p machine_loop
+python tools/verification/verify.py runner diff
+python tools/verification/verify.py test rust unit
+python tools/verification/verify.py test rust crate machine_loop
 ```
 Confirm:
 - All previously fixed tests continue to pass.

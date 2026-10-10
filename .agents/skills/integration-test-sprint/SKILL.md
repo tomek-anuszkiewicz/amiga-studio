@@ -57,11 +57,11 @@ graph TD
 ### Iteration 1: Global Discovery Sweep & Test Selection
 1. **Build the Runner:**
    ```powershell
-   cargo build --release -p test_runner
+   python tools/verification/verify.py runner build
    ```
 2. **Run Baseline Sweep:**
-   - For vAmigaTS: `target/release/test_runner.exe vamiga --category all`
-   - For Machine Loop: `cargo test -p machine_loop`
+   - For vAmigaTS: `python tools/verification/verify.py runner vamiga -- --category all`
+   - For Machine Loop: `python tools/verification/verify.py test rust crate machine_loop`
 3. **Filter Out Non-Runnable Tests:**
    Do not waste cycles debugging tests that expect hardware outside the current phase:
    - **AGA / 2 MB Chip RAM:** Tests exercising AGA-only registers (`BPLCON3`, 32-bit burst).

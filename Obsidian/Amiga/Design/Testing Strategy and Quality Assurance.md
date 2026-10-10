@@ -10,9 +10,7 @@ updated: 2026-10-10
 related: ["[General Architecture.md](General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
-  - "tests/verify.py"
-  - "tests/coverage_report.py"
-  - "tests/checks"
+  - "tools/verification"
   - "tools/bootstrap/tests"
   - "tools/bootstrap/conversion/tests"
   - "tools/bootstrap/pdf-to-markdown/tests"
@@ -28,7 +26,7 @@ tracked_paths:
 
 ## Completion entry point
 
-Completion uses [verify.py](../../../tests/verify.py) with `--commit` for standard verification and separate `--milestone` for additional stage audits. vAmigaTS Cargo suites and automatic capture/chipset workload runs have been removed during test reorganization; their reference assets and manual CLI remain available. Stage closure requires both commands once for the same snapshot. The [selection implementation](../../../tests/verify.py) owns the fixed profile and the two expensive CPU-suite trigger maps; [test execution reference](../../../tests/README.md#completion-verification) describes working-tree verification and the environment map. All sets can run without staging, even with no changes; completion evidence must match the final committed source. All ordinary crate tests, standard harness suites, and Python contracts run on every commit. Python contracts live in the owning tools' test directories for bootstrap, shared conversion, PDF conversion and the RAG MCP adapter; the verifier discovers each directory separately. Both commit and milestone profiles also scan all repository-owned text against the English dictionary and approved vocabulary, including unchanged and nonignored new files; scope exclusions and handling of unknown words follow the [language policy](../../../.agents/rules/language-policy.md). Only synthetic SingleStep/DMA suites have change triggers because they use TestMemoryBus rather than the production machine; `--verify-singlestep` and `--verify-dma` select independent sets that may run alone on the current working tree or alongside a completion profile. Milestone does not implicitly include commit or either CPU set. Its shared documentation auditor covers instruction size and agent governance only; scoped pre-commit design review and the vault, semantic and workflow checks run through their owning skills. The milestone semantic-review obligation is defined in [audit-semantic-parity](../../../.agents/skills/audit-semantic-parity/SKILL.md), not in the verifier. Manual tier commands below are diagnostic entry points, not additional completion obligations.
+Completion uses [verify.py](../../../tools/verification/verify.py) with `commit` for standard verification and separate `milestone` for the full language audit. vAmigaTS Cargo suites and automatic capture/chipset workload runs have been removed during test reorganization; their reference assets and manual CLI remain available. Stage closure requires both commands once for the same snapshot. The [selection implementation](../../../tools/verification/commands.py) owns the fixed profile and the two expensive CPU-suite trigger maps; [test execution reference](../../../tools/verification/README.md#completion-verification) describes working-tree verification and the environment map. All sets can run without staging, even with no changes; completion evidence must match the final committed source. All ordinary crate tests, standard harness suites, and Python contracts run on every commit. Python contracts live in the owning tools' test directories for bootstrap, shared conversion, PDF conversion, the RAG MCP adapter and the verification CLI; the verifier discovers each directory separately. Both commit and milestone profiles also scan all repository-owned text against the English dictionary and approved vocabulary, including unchanged and nonignored new files; scope exclusions and handling of unknown words follow the [language policy](../../../.agents/rules/language-policy.md). Only synthetic SingleStep/DMA suites have change triggers because they use TestMemoryBus rather than the production machine; `test runner singlestep` and `test runner dma` select independent sets that may run alone on the current working tree or alongside a completion profile. Milestone does not implicitly include commit or either CPU set. Milestone runs only the language audit unless CPU sets are explicitly added; scoped pre-commit design review and the vault, semantic and workflow checks run through their owning skills. The milestone semantic-review obligation is defined in [audit-semantic-parity](../../../.agents/skills/audit-semantic-parity/SKILL.md), not in the verifier. Manual tier commands below are diagnostic entry points, not additional completion obligations.
 
 ## 1. Architectural Purpose & Testing Pyramid
 
@@ -56,10 +54,11 @@ graph TD
     subgraph Tier3["Tier 3: Silicon Ground Truth, Benchmarks & Gates (L3 — Verification Harness)"]
         V1["Silicon SingleStepTests<br/><code>crates/test_runner/tests/test_singlestep.rs</code>"]:::t3
         V2["Cartesian DMA Permutations<br/><code>crates/test_runner/tests/test_dma_cartesian.rs</code>"]:::t3
-        V4["Opcode Benchmark Hashes & Architecture Rules<br/><code>crates/test_runner/tests/test_architecture_rules.rs</code>"]:::t3
+        V4["Benchmark Smoke & Golden Rows<br/><code>crates/test_runner/tests/</code>"]:::t3
     end
 
     V3["Tier 4: vAmigaTS Whole-Machine Captures<br/><code>test_runner vamiga (manual only)</code>"]:::t3
+    A1["Repository Architecture Gate<br/><code>tools/verification/checks/check_architecture.py</code>"]:::t1
     Tier1 --> Tier2
     Tier2 --> Tier3
     Tier3 --> V3
@@ -72,7 +71,7 @@ graph TD
 ### Tier 1: Isolated Unit Tests (L1 — Fast, Unit Scope)
 - **Scope**: Single crate, single module in complete isolation. Zero multi-chip machine state.
 - **Execution Speed**: Microseconds to milliseconds (< 2 seconds total across all 24 peripheral and core crates).
-- **Execution Command**: `python tests/verify.py --unit`
+- **Execution Command**: `python tools/verification/verify.py test rust unit`
 - **Responsibilities**:
   - Bitwise operations, register reads/writes, wrapping arithmetic, and state transitions.
   - Bresenham line drawer math, octants, and 256-minterm Boolean truth tables ([`crates/blitter/tests/`](../../../crates/blitter/tests/)).
@@ -85,7 +84,7 @@ graph TD
 ### Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)
 - **Scope**: Multi-crate interaction, bus routing, and system loop orchestration.
 - **Execution Speed**: 3 to 15 seconds.
-- **Execution Command**: `python tests/verify.py --integration`
+- **Execution Command**: `python tools/verification/verify.py test rust integration`
 - **Primary Integration Hubs**:
   1. **Machine Loop Nexus ([`crates/machine_loop/tests/`](../../../crates/machine_loop/tests/))**:
      - `test_machine_loop.rs`: Top-level A500 state machine loop step progression, monotonic CCK clock progression, CPU bus wait-states.
@@ -144,12 +143,19 @@ If the answer to **any** question is **YES**, authoring a Tier 2 integration tes
 
 ### Tier 3: Silicon Ground Truth & Verification Harness (L3 — Physical Vectors)
 - **Scope**: External reference validation against real Commodore hardware silicon captures and benchmarks.
-- **Execution Command**: `python tests/verify.py --harness` or targeted test runners.
+- **Execution Command**: `python tools/verification/verify.py test runner harness` or targeted test runners.
 - **Key Verification Suites**:
   - **Tom Harte SingleStepTests ([`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs))**: 45,565 valid opcodes tested cycle-by-cycle against physical silicon captures (see [CPU SingleStepTests.md](CPU%20SingleStepTests.md)).
   - **Cartesian DMA Contention ([`crates/test_runner/tests/test_dma_cartesian.rs`](../../../crates/test_runner/tests/test_dma_cartesian.rs))**: Full $2^k \times 2^M$ permutation sweep verifying cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity.
   - **Opcode Micro-Benchmarks ([`crates/test_runner/tests/test_benchmark_*.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs))**: Direct CSV reference comparisons (see [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)).
-  - **Automated Architecture Rules ([`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs))**: Automated guardrail tests verifying zero unwraps, file size limits, macro prohibitions, test naming, and 1:1 test parity.
+
+Repository architecture checks are a separate gate, implemented in
+[`tools/verification/checks/check_architecture.py`](../../../tools/verification/checks/check_architecture.py).
+`verify.py check architecture [case FILTER]` runs source and repository inspection
+without compiling Rust. Commit verification always includes all 17 controls.
+The compiled opcode descriptor coverage check remains in
+[`crates/cpu/tests/test_visibility.rs`](../../../crates/cpu/tests/test_visibility.rs)
+and runs with ordinary CPU tests.
 
 ---
 
@@ -178,8 +184,8 @@ graph TD
 ```
 
 1. **Iteration 1: Global Discovery Sweep & Baseline Auditing**:
-   - Compile the test runner in release mode (`cargo build --release -p test_runner`).
-   - Run the entire active baseline (`target/release/test_runner.exe vamiga --category all`) across all 1,468 runnable tests in Phase 1 Baseline.
+   - Compile the test runner in release mode (`python tools/verification/verify.py runner build`).
+   - Run the entire active baseline (`python tools/verification/verify.py runner vamiga -- --category all`) across all 1,468 runnable tests in Phase 1 Baseline.
    - Categorize by subsystem (Copper, Agnus, Blitter, CPU, Denise, Paula, Mainboard, Memory).
    - Filter out and defer non-runnable tests:
      - **AGA / ECS Enhanced**: Tests requiring 2 MB Chip RAM or AGA registers (`BPLCON3`, 32-bit burst).
@@ -257,11 +263,11 @@ When building, extending, or refactoring any part of the emulator, execute tests
 
 | Level | Verification Tier | Primary Tool / Command | Pass Criteria |
 | :---: | :--- | :--- | :--- |
-| **L1** | **Isolated Unit Tests** | `cargo test -p <crate>` | 100% pass; $< 1$s runtime; zero allocations |
-| **L2** | **Multi-Crate Integration** | `cargo test -p machine_loop` | 100% pass; 4-question checklist satisfied |
-| **L3** | **Silicon Ground Truth** | `cargo test -p test_runner --test test_singlestep` | Physical silicon opcode match; Cartesian cycle invariance |
-| **L4** | **vAmigaTS Visual Harness** | `target/release/test_runner.exe vamiga --category <cat>` | 4-iteration cascading protocol; RGB24 pixel exact |
-| **L5** | **Architecture Cleanup** | `git diff` review & `python tests/verify.py --commit` | Zero ad-hoc `if` patches; 100% physical hardware model |
+| **L1** | **Isolated Unit Tests** | `python tools/verification/verify.py test rust crate <crate>` | 100% pass; $< 1$s runtime; zero allocations |
+| **L2** | **Multi-Crate Integration** | `python tools/verification/verify.py test rust crate machine_loop` | 100% pass; 4-question checklist satisfied |
+| **L3** | **Silicon Ground Truth** | `python tools/verification/verify.py test rust crate test_runner suite test_singlestep` | Physical silicon opcode match; Cartesian cycle invariance |
+| **L4** | **vAmigaTS Visual Harness** | `python tools/verification/verify.py runner vamiga -- --category <cat>` | 4-iteration cascading protocol; RGB24 pixel exact |
+| **L5** | **Architecture Cleanup** | `git diff` review & `python tools/verification/verify.py commit` | Zero ad-hoc `if` patches; 100% physical hardware model |
 
 ---
 
@@ -290,9 +296,9 @@ When building, extending, or refactoring any part of the emulator, execute tests
 
 | Tool / Script | Purpose | Enforcement Layer |
 | :--- | :--- | :--- |
-| [`tests/verify.py`](../../../tests/verify.py) | Canonical commit/milestone quality gate, change-aware CPU-suite selector, and diagnostic tier runner (`--unit`, `--integration`, `--harness`, `--all`). | Explicit agent/developer command & CI |
-| [`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs) | 19 automated tests validating architectural rules, test naming, and multi-module parity. | `cargo test` & commit verification gate |
-| [`$test-runner`](../../../.agents/skills/test-runner/SKILL.md) | Standardized execution runner across tiers, writing snapshots to `.test_results/` and diffing regressions. | Codex skill |
+| [`tools/verification/verify.py`](../../../tools/verification/verify.py) | Canonical commit/milestone quality gate, change-aware CPU-suite selector, and diagnostic frontend (`test rust`, `test python`, `test runner`, `check`, `runner`). | Explicit agent/developer command & CI |
+| [`tools/verification/checks/check_architecture.py`](../../../tools/verification/checks/check_architecture.py) | 17 Python checks validating architectural rules, test naming, and multi-module parity. | `verify.py check architecture` & commit verification gate |
+| [`$test-runner`](../../../.agents/skills/test-runner/SKILL.md) | Standardized execution runner across tiers, writing snapshots to `.agent/tmp/singlestep/` and diffing regressions. | Codex skill |
 | [`$integration-test-sprint`](../../../.agents/skills/integration-test-sprint/SKILL.md) | Orchestrates the 4-iteration cascading verification sweep and failure cluster triage. | Codex skill |
 | [`$synthesize-test-fixes`](../../../.agents/skills/synthesize-test-fixes/SKILL.md) | Audits recent test patches, builds the 3-column diagnostic matrix, and synthesizes root causes into upstream crates. | Codex skill |
 

@@ -25,7 +25,7 @@ Unlike the iterative repair loop in [`egui-vision-debugger`](../egui-vision-debu
 The capture engine is driven by the compiled `gui-inspector` binary from `crates/gui`:
 
 ```powershell
-cargo run -p gui --bin gui-inspector -- --scenario <SCENARIO> --output target/gui_captures/<NAME>.png [OPTIONS]
+python tools/verification/verify.py runner gui -- --scenario <SCENARIO> --output target/gui_captures/<NAME>.png [OPTIONS]
 ```
 
 ### Supported Scenarios:
@@ -57,7 +57,7 @@ Whenever a visual check is needed, the agent executes this exact 4-step sequence
 
 ### Step 1: Render Headless Frame
 ```powershell
-cargo run -p gui --bin gui-inspector -- --scenario baseline --output target/gui_captures/baseline.png
+python tools/verification/verify.py runner gui -- --scenario baseline --output target/gui_captures/baseline.png
 ```
 
 ### Step 2: Inspect via Native Multimodal Vision

@@ -13,7 +13,7 @@ You are a specialized CPU silicon and micro-architecture verifier for the Motoro
 1. **Targeted Single-Step Triage**:
    - Run targeted SingleStepTests for specific opcodes:
      ```powershell
-     cargo test -p test_runner --test test_singlestep -- <opcode_filter>
+     python tools/verification/verify.py test rust crate test_runner suite test_singlestep case <opcode_filter>
      ```
    - When diagnosing failures, isolate cycle mismatch coordinates, register state divergence, or condition code differences.
 2. **Cycle & Micro-Step Analysis**:

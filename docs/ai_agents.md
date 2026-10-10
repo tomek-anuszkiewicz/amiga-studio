@@ -133,7 +133,7 @@ commit under the [commit policy](../.agents/rules/git-commits.md).
 The standard completion command is:
 
 ```powershell
-python tests/verify.py --commit
+python tools/verification/verify.py commit
 ```
 
 Despite its name, this command verifies the current working tree; it does not

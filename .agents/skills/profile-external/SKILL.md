@@ -54,7 +54,7 @@ cargo install samply
 Always profile the optimized release build. Debug builds introduce artificial function call and un-inlined method overhead:
 
 ```powershell
-cargo build --release -p test_runner
+python tools/verification/verify.py runner build
 ```
 
 ### Step 2: Record a Profiling Session with Samply
@@ -62,10 +62,10 @@ Run `samply record` targeting a representative workload or vAmigaTS test case:
 
 ```powershell
 # Profile a Copper test over 100 frames
-samply record target/release/test_runner.exe vamiga --test coptim1 --frames 100
+python tools/verification/verify.py runner profile vamiga -- --test coptim1 --frames 100
 
 # Profile the standard chipset benchmark suite
-samply record target/release/test_runner.exe benchmark-chipset --frames 100
+python tools/verification/verify.py runner profile chipset -- --frames 100
 ```
 
 `samply` will launch a local server and automatically open the interactive Firefox Profiler UI in the default browser.
@@ -131,20 +131,20 @@ Before modifying code, check active performance against the Git-tracked baseline
 
 ```powershell
 # Run the automated regression audit
-cargo run --release -p test_runner -- benchmark-chipset --compare
+python tools/verification/verify.py runner chipset compare
 ```
 
 The comparison audit verifies overall FPS throughput against golden limits and prints the recorded baseline method profile breakdown.
 
 ### Updating the Golden Baseline
-When an approved hardware optimization is verified and pass rates are preserved, update the committed golden baseline:
+When an approved hardware optimization is verified and pass rates are preserved, update the committed golden baseline. Recording changes the reference artifact and remains a direct workflow operation outside verification:
 
 ```powershell
 # Record new golden metrics to baselines/benchmarks/chipset_benchmark_baseline.json
 cargo run --release -p test_runner -- benchmark-chipset --record --frames 50
 
 # Verify the updated baseline comparison passes
-cargo run --release -p test_runner -- benchmark-chipset --compare
+python tools/verification/verify.py runner chipset compare
 ```
 
 When a commit is authorized by [git-commits.md](../../rules/git-commits.md), include `baselines/benchmarks/chipset_benchmark_baseline.json` in the atomic commit for the optimization task.

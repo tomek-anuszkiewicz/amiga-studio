@@ -62,9 +62,9 @@ For each conflicted file:
 ### Step 4: Execute Pre-Commit Verification Gate
 Never finalize a merge commit without running the full repository verification gate:
 ```powershell
-cargo fmt --all -- --check
-python tests/verify.py --commit
-cargo test --workspace --exclude test_runner
+python tools/verification/verify.py check formatting
+python tools/verification/verify.py commit
+python tools/verification/verify.py test rust workspace
 ```
 
 Run any additional domain gates required by `AGENTS.md`. Append the merge's
@@ -81,16 +81,16 @@ Conflict Resolution:
 - <file2>: <Concise description of resolution>
 
 Verification:
-- Passed: cargo fmt --all -- --check
-- Passed: cargo test -p test_runner --test test_architecture_rules
-- Passed: cargo test --workspace --exclude test_runner"
+- Passed: python tools/verification/verify.py check formatting
+- Passed: python tools/verification/verify.py check architecture
+- Passed: python tools/verification/verify.py test rust workspace"
 ```
 
 ### Step 6: Worktree Teardown & Cleanup (If Using Worktrees)
 If the branch was developed in an isolated worktree:
 1. Teardown the worktree using the automated script:
    ```powershell
-   .\tools\harness\worktree.ps1 remove <branch-name>
+   .\tools\worktree.ps1 remove <branch-name>
    ```
 2. Delete the merged feature branch (if not deleted by worktree remove):
    ```powershell
@@ -111,8 +111,8 @@ If the branch was developed in an isolated worktree:
   | :--- | :--- | :--- |
   | `crates/.../<crate>.rs` | Both branches added imports | Merged both import blocks, eliminated duplicate entries |
 - **Test Verification:**
-  - `cargo test --all`: PASS
-  - `cargo fmt --all -- --check`: PASS
-  - `test_architecture_rules`: PASS
+  - `python tools/verification/verify.py test rust workspace`: PASS
+  - `python tools/verification/verify.py check formatting`: PASS
+  - `check_architecture.py`: PASS
 - **Worktree Cleanup:** Worktree removed and pruned cleanly.
 ```

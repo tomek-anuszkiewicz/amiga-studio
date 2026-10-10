@@ -271,33 +271,33 @@ Tests are executed via standard Cargo commands or through the dedicated `test_ru
 
 ```powershell
 # Run all single-step integration tests with default fast sample limit (50 vectors per suite)
-cargo test -p test_runner --test test_singlestep
+python tools/verification/verify.py test rust crate test_runner suite test_singlestep
 
 # Run exhaustive full validation across all ~300,000 vectors in parallel
-$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
+python tools/verification/verify.py test runner singlestep full
 
 # Run tests with a custom vector limit per suite
-$env:SINGLESTEP_LIMIT = "500"; cargo test -p test_runner --test test_singlestep
+$env:SINGLESTEP_LIMIT = "500"; python tools/verification/verify.py test rust crate test_runner suite test_singlestep
 
 # Run all tests for a specific opcode across both suites
-cargo test -p test_runner -- test_add_b
-cargo test -p test_runner -- test_move_w
-cargo test -p test_runner -- test_nop
+python tools/verification/verify.py test rust crate test_runner case test_add_b
+python tools/verification/verify.py test rust crate test_runner case test_move_w
+python tools/verification/verify.py test rust crate test_runner case test_nop
 
 # Run Cartesian DMA contention permutation test suite
-cargo test -p test_runner --test test_dma_cartesian
+python tools/verification/verify.py test rust crate test_runner suite test_dma_cartesian
 
 # Run automated architectural compliance suite
-cargo test -p test_runner --test test_architecture_rules
+python tools/verification/verify.py check architecture
 
 # Check for regressions or improvements against previous test run
-cargo run -p test_runner -- --diff
+python tools/verification/verify.py runner diff
 
 # Display global pass/fail matrix and coverage summary
-cargo run -p test_runner -- --summary
+python tools/verification/verify.py runner summary
 
 # Run a specific opcode suite directly with live diagnostic failure logs
-cargo run -p test_runner -- --suite ADD.b
+python tools/verification/verify.py runner suite ADD.b
 ```
 
 ---
@@ -385,13 +385,13 @@ Test outcomes are persisted across runs in the `.agent/tmp/singlestep/` workspac
 Developers and AI agents can query test status and regressions directly:
 ```powershell
 # Show regressions and fixed tests vs previous run
-cargo run -p test_runner -- --diff
+python tools/verification/verify.py runner diff
 
 # Display global pass/fail matrix across all suites
-cargo run -p test_runner -- --summary
+python tools/verification/verify.py runner summary
 
 # Run a specific opcode suite directly
-cargo run -p test_runner -- --suite ADD.b
+python tools/verification/verify.py runner suite ADD.b
 ```
 
 ---

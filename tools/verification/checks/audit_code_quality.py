@@ -17,7 +17,7 @@ Audits three architectural dimensions across workspace crates:
    - Evaluates collection getters returning borrowed slices rather than concrete container references (&Vec<T>).
 
 Note: Inlining rules, macro/const-generic prohibitions, external test directory layouts, path privacy,
-and 800-line file size limits are verified directly via `cargo test -p test_runner --test test_architecture_rules`
+and 800-line file size limits are verified directly via `python tools/verification/verify.py check architecture`
 and `cargo clippy --workspace --all-targets`.
 """
 
@@ -32,7 +32,7 @@ def find_repo_root() -> Path:
     for p in [curr] + list(curr.parents):
         if (p / "Cargo.toml").exists() and (p / ".git").exists():
             return p
-    return curr.parents[3]
+    return curr.parents[2]
 
 REPO_ROOT = find_repo_root()
 CRATES_DIR = REPO_ROOT / "crates"
@@ -532,7 +532,7 @@ def scan_accessor_conventions():
 
 def main():
     if len(sys.argv) > 1:
-        print("This auditor accepts no arguments. Run: python tests/checks/audit_code_quality.py", file=sys.stderr)
+        print("This auditor accepts no arguments. Run: python tools/verification/checks/audit_code_quality.py", file=sys.stderr)
         return 2
 
     dead, zombies = scan_dead_and_zombie_code()
