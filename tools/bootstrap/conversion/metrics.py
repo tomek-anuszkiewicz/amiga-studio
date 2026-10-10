@@ -3,13 +3,20 @@
 import json
 import os
 from pathlib import Path
+from threading import Lock
+
+_LOCK = Lock()
 
 
 def record(metric):
     target = os.environ.get("LLM_STAGE_METRICS_FILE")
     if not target:
         return
-    path = Path(target)
+    with _LOCK:
+        _record(Path(target), metric)
+
+
+def _record(path, metric):
     data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     data.setdefault("requests", []).append(metric)
     cached = metric.get("cached", False)

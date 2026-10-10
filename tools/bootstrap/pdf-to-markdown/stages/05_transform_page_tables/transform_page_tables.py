@@ -12,6 +12,7 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
+from conversion.parallel import convert_parallel
 from common.pdf_config import load_config
 from common.pdf_artifacts import write_json
 from common.pdf_page_conversion import read_conversion
@@ -27,39 +28,57 @@ def transform_tables(workspace, config, pages=None):
     output.mkdir(parents=True, exist_ok=True)
     counts = dict.fromkeys(("markdown", "html", "unconverted"), 0)
     saved_pages = 0
-    with tempfile.TemporaryDirectory(prefix=".05-", dir=workspace) as temporary, \
-            CodexClient(config, stage=STAGE, operation="pdf_table_to_markup") as codex:
+    with tempfile.TemporaryDirectory(prefix=".05-", dir=workspace) as temporary:
+        jobs = []
+        pending_pages = {}
         for entry, page in read_conversion(workspace, input_dir,
                                            pages=pages):
             tables = [s for s in page["segments"] if s["type"] == "table"]
             if tables:
                 print(f"[tables] {entry['page_id']}: {len(tables)} tables", flush=True)
-                original = deepcopy(page)
+                pending_pages[entry['page_id']] = {
+                    "page": page, "original": deepcopy(page), "remaining": len(tables)}
                 with Image.open(workspace / entry["png_file"]) as image:
                     for index, table in enumerate(tables, 1):
                         label = f"{table['segment_id']} ({index}/{len(tables)})"
-                        print(f"[table] {label}: transcribing...", flush=True)
-                        started = perf_counter()
                         crop_path = Path(temporary) / f"{table['segment_id']}.png"
                         with image.crop(tuple(table["bbox"])) as crop:
                             crop.save(crop_path)
-                        result = codex.generate_json(prompt, image_path=crop_path)
-                        for key in ("table_rag_text", "table_group_segment_ids", "table_source_asset"):
-                            table.pop(key, None)
-                        table["table_format"] = result["format"]
-                        if converted(table):
-                            table["md_text"] = result["md_text"]
-                        counts[result["format"]] += 1
-                        print(f"[table] {label}: {result['format']} in "
-                              f"{perf_counter() - started:.2f}s", flush=True)
-                if page != original:
-                    write_json(output / f"{entry['page_id']}_segments.json", page)
-                    saved_pages += 1
-                    print(f"[tables] {entry['page_id']}: changed page saved", flush=True)
-                else:
-                    print(f"[tables] {entry['page_id']}: unchanged; no file saved", flush=True)
+                        jobs.append((entry['page_id'], table, label, crop_path))
             else:
                 print(f"[tables] {entry['page_id']}: no tables; skipped", flush=True)
+
+        def convert(codex, job):
+            _, _, label, crop_path = job
+            print(f"[table] {label}: transcribing...", flush=True)
+            started = perf_counter()
+            result = codex.generate_json(prompt, image_path=crop_path)
+            print(f"[table] {label}: {result['format']} in "
+                  f"{perf_counter() - started:.2f}s", flush=True)
+            return result
+
+        def accept(job, result):
+            nonlocal saved_pages
+            page_id, table, _, _ = job
+            for key in ("table_rag_text", "table_group_segment_ids", "table_source_asset"):
+                table.pop(key, None)
+            table["table_format"] = result["format"]
+            if converted(table):
+                table["md_text"] = result["md_text"]
+            counts[result["format"]] += 1
+            pending = pending_pages[page_id]
+            pending["remaining"] -= 1
+            if pending["remaining"] == 0:
+                if pending["page"] != pending["original"]:
+                    write_json(output / f"{page_id}_segments.json", pending["page"])
+                    saved_pages += 1
+                    print(f"[tables] {page_id}: changed page saved", flush=True)
+                else:
+                    print(f"[tables] {page_id}: unchanged; no file saved", flush=True)
+                del pending_pages[page_id]
+
+        convert_parallel(config, stage=STAGE, operation="pdf_table_to_markup",
+                         jobs=jobs, convert=convert, accept=accept, client_factory=CodexClient)
     print(f"[tables] {counts}; changed pages saved: {saved_pages}; JSON: {output}", flush=True)
 
 

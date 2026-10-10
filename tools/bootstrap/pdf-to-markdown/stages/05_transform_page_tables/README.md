@@ -12,6 +12,9 @@ Pages without tables and unchanged pages remain in Stage 04. Preserve other
 source objects, their IDs, geometry and order. Remove temporary request crops
 after execution. Console progress reports each table's start, format and elapsed
 time, followed by the page's save/skip outcome.
+Table requests run with the configured `llm.concurrency` limit, including tables
+from the same page. Each worker owns a separate Codex client. The coordinator
+applies results and writes a page only after all its tables complete successfully.
 
 Run through the [pipeline](../../README.md) with `--from-stage 05 --to-stage 05`
 after successful Stages 02 and 04. The configured model/effort and shared response

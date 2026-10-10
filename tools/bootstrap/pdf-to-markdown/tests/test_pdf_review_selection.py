@@ -51,7 +51,7 @@ class ReviewSelectionTests(unittest.TestCase):
         with patch.object(stage, "CodexClient") as client:
             transport = client.return_value.__enter__.return_value
             transport.generate_json.return_value = {"page": 64, "segments": []}
-            stage.convert_pages(self.workspace, {"input": {"pages": [63]}}, pages=[64])
+            stage.convert_pages(self.workspace, {"llm": {"concurrency": 1}, "input": {"pages": [63]}}, pages=[64])
         self.assertEqual(transport.generate_json.call_count, 1)
         self.assertNotIn('schema', transport.generate_json.call_args.kwargs)
         self.assertNotIn('char_bboxes', transport.generate_json.call_args.args[0])
@@ -144,7 +144,7 @@ class ReviewSelectionTests(unittest.TestCase):
             client.return_value.__enter__.return_value.generate_json.side_effect = [
                 {"format": "markdown", "md_text": "| A |\n| --- |\n| B |"},
                 {"format": "unconverted", "md_text": ""}]
-            stage.transform_tables(self.workspace, {})
+            stage.transform_tables(self.workspace, {"llm": {"concurrency": 1}})
         self.assertEqual([p.name for p in (self.workspace / stage.STAGE).glob("*_segments.json")],
                          ["page_0063_segments.json"])
         converted = json.loads((self.workspace / stage.STAGE / 'page_0063_segments.json').read_text())
@@ -170,7 +170,7 @@ class ReviewSelectionTests(unittest.TestCase):
             transport = client.return_value.__enter__.return_value
             transport.generate_json.return_value = {
                 "format": "html", "md_text": '<table><tr><td colspan="2">A</td></tr></table>'}
-            stage.transform_tables(self.workspace, {"input": {"pages": [63]}}, pages=[64])
+            stage.transform_tables(self.workspace, {"llm": {"concurrency": 1}, "input": {"pages": [63]}}, pages=[64])
         self.assertEqual(transport.generate_json.call_count, 1)
         output = self.workspace / stage.STAGE
         self.assertEqual([p.name for p in output.glob("*_segments.json")], ["page_0064_segments.json"])

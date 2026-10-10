@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 import tempfile
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -23,6 +24,8 @@ from common.pdf_config import load_config as load_pdf_config
 from conversion.cache import ResponseCache, digest, identity
 from conversion.config import selection
 from conversion.transport import CodexTransport
+from conversion.parallel import convert_parallel
+from conversion.metrics import record
 
 spec = importlib.util.spec_from_file_location("html_pipeline", ROOT / "tools/bootstrap/html-to-markdown/pipeline.py")
 html = importlib.util.module_from_spec(spec)
@@ -401,6 +404,83 @@ class TransportTests(unittest.TestCase):
         for wire in (WireClient(status="interrupted"), WireClient(item_type="commandExecution")):
             with self.assertRaises(RuntimeError):
                 self.transport(wire).run(selection(config(), "html_to_markdown"), "reject")
+
+    def test_capacity_notification_aborts_runtime_retry(self):
+        for info in ("rateLimitExceeded", "usageLimitExceeded", "serverOverloaded",
+                     {"httpConnectionFailed": {"httpStatusCode": 429}}):
+            wire = WireClient()
+            payload = {"error": {"message": "Capacity exhausted", "codexErrorInfo": info},
+                       "willRetry": True}
+            wire.next_turn_notification = lambda _: SimpleNamespace(
+                method="error", payload=SimpleNamespace(model_dump=lambda **_: payload))
+            with self.subTest(info=info), self.assertRaisesRegex(RuntimeError, "without retries"):
+                self.transport(wire).run(selection(config(), "html_to_markdown"), "stop")
+            self.assertTrue(wire.closed.is_set())
+
+
+class ParallelConversionTests(unittest.TestCase):
+    def test_worker_clients_are_isolated_and_accept_runs_on_coordinator(self):
+        barrier = threading.Barrier(2)
+        coordinator = threading.get_ident()
+        clients, accepted = [], []
+
+        class Client:
+            def __enter__(self):
+                self.owner = threading.get_ident()
+                clients.append(self)
+                return self
+
+            def __exit__(self, *_):
+                self.closed = True
+
+        def convert(client, job):
+            self.assertEqual(threading.get_ident(), client.owner)
+            barrier.wait(timeout=3)
+            return job * 2
+
+        def accept(job, value):
+            self.assertEqual(threading.get_ident(), coordinator)
+            accepted.append((job, value))
+
+        convert_parallel({"llm": {"concurrency": 2}}, stage="stage", operation="operation",
+                         jobs=range(4), convert=convert, accept=accept,
+                         client_factory=lambda *_, **__: Client())
+        self.assertEqual(sorted(accepted), [(0, 0), (1, 2), (2, 4), (3, 6)])
+        self.assertEqual(len(clients), 2)
+        self.assertTrue(all(client.closed for client in clients))
+
+    def test_failure_stops_pending_jobs_without_retry(self):
+        calls = []
+
+        class Client:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                pass
+
+        def convert(client, job):
+            calls.append(job)
+            raise RuntimeError("rate limit")
+
+        with self.assertRaisesRegex(RuntimeError, "rate limit"):
+            convert_parallel({"llm": {"concurrency": 1}}, stage="stage", operation="operation",
+                             jobs=range(5), convert=convert, accept=lambda *_: self.fail("No result"),
+                             client_factory=lambda *_, **__: Client())
+        self.assertEqual(calls, [0])
+
+    def test_concurrent_metrics_preserve_all_calls(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "metrics.json"
+            with patch.dict(os.environ, {"LLM_STAGE_METRICS_FILE": str(path)}):
+                with ThreadPoolExecutor(max_workers=8) as workers:
+                    list(workers.map(lambda index: record({"cached": index % 2 == 0,
+                                                         "duration_seconds": 1}), range(80)))
+            metrics = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(len(metrics["requests"]), 80)
+            self.assertEqual(metrics["llm_calls"], 40)
+            self.assertEqual(metrics["llm_cached_calls"], 40)
+            self.assertEqual(metrics["llm_time_seconds"], 40)
 
 
 if __name__ == "__main__":

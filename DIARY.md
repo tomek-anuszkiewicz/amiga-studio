@@ -1736,3 +1736,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify was refreshed after source changes
   - Existing local book reports missing role under the current-only contract and was not repaired
   - No real-book conversion, import regeneration, indexing or milestone validation was run
+---
+
+### [2026-10-10 14:17 CEST] — Run bounded parallel PDF inference and clarify transcription prompts
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add llm.concurrency with a default of two page or table requests per stage
+  - Give each worker an isolated Codex transport and serialize page writes and metrics
+  - Stop admission after failures and abort capacity-limit notifications without retrying
+  - Publish table pages only after every table succeeds
+  - Require Markdown for simple tables and define renderer-compatible math and literal hexadecimal notation
+- **Architectural Rationale & Trade-Offs**:
+  - Reduce sequential inference time while preserving page identity and source order
+  - Keep the concurrency limit local to one invocation rather than claiming a guaranteed provider limit
+  - Improve future transcription through prompts without repairing existing book artifacts
+- **Verification & Test Results**:
+  - Shared conversion tests: 27 passed
+  - PDF tests: 37 passed
+  - Architecture rules: 19 passed
+  - Quick preflight passed
+  - Renderer syntax checks passed for inline math and literal hexadecimal prefixes and HTML overbars
+  - No live conversion or account throughput measurement was run

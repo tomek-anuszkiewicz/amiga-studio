@@ -8,6 +8,8 @@ format. No separate output schema or type enumeration is sent.
 The program assigns page-scoped `segment_id` values in returned order and saves
 the response to `03_page_conversion/page_XXXX_segments.json`. The shared artifact
 writer omits empty/default fields.
+Pages run with the configured `llm.concurrency` limit; each worker owns a separate
+Codex client. The coordinator saves each completed page to its own file.
 
 [Stage 04](../04_filter_page_content/README.md) consumes the saved page objects.
 Changing the prompt does not rewrite existing results.

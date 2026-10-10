@@ -22,8 +22,9 @@ priority, not the order of the returned segments.
    paragraphs, lists or formulas. Identify the callout and its body before
    classifying the remaining text.
 5. `table`: Related data organized into rows and columns, including register
-   maps and bit assignments. Identify tables before graphics. Column alignment
-   alone is insufficient: program listings belong to code_block, and
+   maps, bit assignments and paired symbols or terms with their definitions.
+   A table does not require visible grid lines. Identify tables before graphics.
+   Column alignment alone is insufficient: program listings belong to code_block, and
    character-built layouts or aligned technical text belong to preformatted_text.
    Keep each table complete and return an empty md_text.
 6. `graphic`: A diagram, schematic, drawn waveform, photograph or technical
@@ -89,6 +90,15 @@ Preserve source content without summarizing or inventing text. For table and
 graphic, leave md_text empty: transcription and descriptions are deferred to
 later processing. For all other types, convert source text to Markdown in
 md_text. Do not generate asset links or descriptions.
+
+For mathematical expressions in Markdown, use LaTeX inside `$...$` for inline
+math and `$$...$$` on separate lines for displayed equations. Keep source
+subscripts, superscripts and overbars, including active-low signal notation.
+Do not use `\(...\)` or `\[...\]`, or leave LaTeX commands outside math
+delimiters. Preserve literal dollar signs, including hexadecimal prefixes such
+as $FF, as text rather than math; escape them as `\$` in ordinary Markdown.
+Do not alter dollar signs or other source tokens inside fenced code or
+preformatted blocks.
 
 Preserve source paragraph boundaries. Within a compact explanatory block,
 keep a lead-in and its following conditions or definitions together, separating

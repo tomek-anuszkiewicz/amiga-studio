@@ -26,8 +26,19 @@ there automatically. An existing workspace config is preserved without rewriting
 Edit that local file to configure Stage 01 OCR, shared rendering DPI, and
 model/effort for Stages 03 and 05. Missing preparation fields use the repository
 defaults without rewriting an existing workspace config.
-Inference uses ChatGPT authentication, original-detail images, concurrency 1
-and a 180-second request timeout. Rendering uses `rendering.dpi` (default 300 DPI) in Stages 01 and 02.
+Inference uses ChatGPT authentication, original-detail images and a 180-second
+request timeout. `llm.concurrency` limits simultaneous requests within each stage
+(repository default: 2; set 1 for sequential execution). Stage 03 runs per page;
+Stage 05 runs per table, including tables on the same page. Stages remain
+sequential. Each worker owns a separate Codex transport; one coordinator saves
+page results, preserving source object order. Metrics writes are serialized.
+On failure, workers stop taking new jobs; requests already in progress may finish.
+Capacity-limit notifications abort the affected transport without retrying.
+The limit applies to one pipeline invocation, not other Codex sessions or
+concurrent pipeline processes. It is a conservative starting value, not a
+provider-guaranteed safe account limit. Edit the attempt's local `config.yaml`
+to change an existing workspace's limit.
+Rendering uses `rendering.dpi` (default 300 DPI) in Stages 01 and 02.
 
 ## Stages and outputs
 

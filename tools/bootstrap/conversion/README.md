@@ -16,6 +16,10 @@ Requests contain the prompt and source data, with applicable images sent at
 `detail: original`. No separate output schema is sent. The transport verifies
 the actual thread configuration and completion before returning a result.
 Failures stop conversion without switching model, effort or provider.
+Rate, usage-budget and server-capacity error notifications close the affected
+transport immediately, including notifications for which the runtime proposes
+a retry. The converter does not retry those requests. PDF parallel workers own
+separate transports so a timeout cannot close another worker's connection.
 
 HTML performs configuration/capability checks and validates Markdown responses.
 PDF parses JSON without local response-schema enforcement. A successful request

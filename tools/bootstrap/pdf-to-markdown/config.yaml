@@ -18,6 +18,8 @@ stages:
     save_garbage: 4
 
 llm:
+  # Maximum simultaneous page/table requests within one stage invocation.
+  concurrency: 4
   stages:
     03_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     05_transform_page_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

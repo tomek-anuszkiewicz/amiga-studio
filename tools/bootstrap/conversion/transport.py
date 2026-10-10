@@ -94,6 +94,20 @@ class CodexTransport:
                 event = self._client.next_turn_notification(turn.turn.id)
                 methods.add(event.method)
                 payload = event.payload.model_dump(mode="json", by_alias=True) if hasattr(event.payload, "model_dump") else {}
+                if event.method == "error":
+                    error = payload.get("error") or {}
+                    info = error.get("codexErrorInfo")
+                    if isinstance(info, str):
+                        capacity = info in {"rateLimitExceeded", "usageLimitExceeded",
+                                            "sessionBudgetExceeded", "serverOverloaded"}
+                    else:
+                        capacity = isinstance(info, dict) and any(
+                            isinstance(detail, dict) and detail.get("httpStatusCode") in {429, 503}
+                            for detail in info.values())
+                    if capacity:
+                        # Stop runtime retries before admitting further conversion work.
+                        self._client.close()
+                        raise RuntimeError(f"Codex capacity limit; conversion stopped without retries: {error}")
                 if event.method == "model/rerouted":
                     raise RuntimeError("Conversion model was rerouted; configured model is required")
                 if event.method == "thread/tokenUsage/updated":
