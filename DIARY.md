@@ -1647,3 +1647,33 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture suite passed 19 tests
   - staged diff check passed
   - documentation-only change, no conversion or milestone completion
+---
+
+### [2026-10-10 04:06 CEST] — Expand source-preserving book review editing
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/review`
+  - `tools/bootstrap/book-to-markdown/README.md`
+  - `tools/bootstrap/book-to-markdown/elements.md`
+  - `tests/test_book_review_hints.py`
+  - `tests/test_book_review_scroll.py`
+  - `tests/test_book_review_visibility.py`
+  - `tests/test_book_text_recipe.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add Markdown and bold editing, split/merge, and one-position element movement with PDF character-range and region preservation
+  - Add Markdown-only table joining with header, alignment and row validation, plus bulk callout repair with orphan warnings and styled previews
+  - Enable Working operations from every review column and restricted text-type changes
+  - Replace hover property tooltips with a disabled Accepted/Working type comparison in the context menu
+  - Cache input snapshots and dependency reads without hiding external book, PDF-text or asset changes
+  - Update scroll-test status fixtures for the expanded menu contract
+- **Architectural Rationale & Trade-Offs**:
+  - Keep reconstruction edits deterministic and revision-checked while retaining source provenance. Table and graphic type conversions remain excluded
+  - HTML table joining is unsupported
+  - and invalid bulk-callout pairs remain unchanged. The proposed separate role property is not implemented. This is a routine editor commit on bootstrap-codex-api
+  - not a roadmap milestone. Local working book data and unrelated converter changes are excluded.
+- **Verification & Test Results**:
+  - python tools/harness/pre_flight.py --quick passed
+  - cargo test -p test_runner --test test_architecture_rules -- --quiet passed 19 tests
+  - python -m unittest discover -s tests -p test_book*.py -q passed 35 tests after correcting three stale mocked-status failures
+  - Isolated browser checks for Markdown table merging and protected type changes passed
+  - Earlier isolated movement, callout repair, cross-column menus, type comparison and tooltip-removal checks passed
+  - git diff --cached --check passed. Conversion quality remains subject to author review.

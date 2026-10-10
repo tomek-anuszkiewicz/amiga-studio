@@ -136,9 +136,9 @@ def compile_markdown_template(page, blocks, target):
     return ''.join(parts)
 
 
-def resolve_template(template, pages, prepared=None):
+def resolve_template(template, pages, prepared=None, *, block_index=None):
     """Only template syntax is parsed; expanded PDF text is never parsed again."""
-    blocks = {page: {b["block_id"]: b["text"] for b in entries} for page, entries in pages.items()}
+    blocks = block_index if block_index is not None else {page: {b["block_id"]: b["text"] for b in entries} for page, entries in pages.items()}
     parts, position = [], 0
     while position < len(template):
         char = template[position]
@@ -175,6 +175,64 @@ def resolve_template(template, pages, prepared=None):
             parts.append(char)
             position += 1
     return "".join(parts)
+
+
+def slice_template(template, start, end):
+    """Slice resolved Unicode offsets without losing or reassigning PDF ranges."""
+    parts, position, offset = [], 0, 0
+    while position < len(template):
+        match = REFERENCE.match(template, position)
+        if match:
+            page, block, base, limit = map(int, match.groups())
+            length = limit - base
+            left, right = max(start, offset), min(end, offset + length)
+            if left < right:
+                parts.append('{{text ' + f'page={page} block={block} chars={base+left-offset}:{base+right-offset}' + '}}')
+            offset += length
+            position = match.end()
+        else:
+            length = 2 if template[position] == "\\" else 1
+            if start <= offset < end:
+                parts.append(template[position:position + length])
+            position += length
+            offset += 1
+    return ''.join(parts)
+
+
+def edit_template(template, pages, target):
+    """Preserve the provenance of unchanged characters, including partial ranges."""
+    source = resolve_template(template, pages)
+    # Formatting-only insertion/removal must not realign repeated words to a
+    # different occurrence just because a larger substring happens to match.
+    def subsequence(needle, haystack):
+        matches, position = [], 0
+        for char in needle:
+            position = haystack.find(char, position)
+            if position < 0:
+                return None
+            matches.append(position)
+            position += 1
+        return matches
+    inserted = subsequence(source, target)
+    deleted = subsequence(target, source) if inserted is None else None
+    if inserted is not None or deleted is not None:
+        matches = list(enumerate(inserted)) if inserted is not None else [(a, b) for b, a in enumerate(deleted)]
+        runs = []
+        for a, b in matches:
+            if runs and runs[-1][0] + runs[-1][2] == a and runs[-1][1] + runs[-1][2] == b:
+                runs[-1][2] += 1
+            else:
+                runs.append([a, b, 1])
+        parts, position = [], 0
+        for a, b, size in runs:
+            parts.extend((escape_literal(target[position:b]), slice_template(template, a, a + size)))
+            position = b + size
+        parts.append(escape_literal(target[position:]))
+        return ''.join(parts)
+    parts = []
+    for operation, a, b, c, d in SequenceMatcher(None, source, target, autojunk=False).get_opcodes():
+        parts.append(slice_template(template, a, b) if operation == 'equal' else escape_literal(target[c:d]))
+    return ''.join(parts)
 
 
 def region_blocks(page_data, bbox):

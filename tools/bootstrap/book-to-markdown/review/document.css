@@ -11,6 +11,10 @@ code { font: 17px/1.4 Consolas, "Courier New", monospace; }
 table { border-collapse: collapse; font-size: 17px; }
 th, td { border: 1px solid #9aa6b2; padding: 5px 9px; vertical-align: top; }
 a { color: #185a9d; } blockquote { border-left: 3px solid #819bb4; padding-left: 16px; }
+.markdown-callout { border-left: 4px solid #2871b5; padding: 12px 16px; background: #edf5fc; }
+.markdown-callout[data-callout="warning"], .markdown-callout[data-callout="caution"] { border-color: #a86900; background: #fff7e6; }
+.markdown-callout .callout-title { font-weight: 700; margin-bottom: 8px; }
+.markdown-callout > :last-child { margin-bottom: 0; }
 .toc-level-2 { margin-left: 24px; } .toc-level-3 { margin-left: 48px; }
 [data-element].hover { outline: 1px solid #1e78c5; background: #2884c51c; }
 [data-element].selected { outline: 2px solid #d67a00; background: #ffac1c1a; }

@@ -194,9 +194,102 @@ Chapter titles do not add duplicate TOC entries. Links use stable element-ID
 anchors; generated TOC content has no invented source regions.
 
 Click an element to select it, then use **Element actions**, right-click, or
-Enter/Shift+F10 on a focused element to open its menu. Working elements (also
-selected through PDF) expose **Hide Element** or **Unhide Element**; headings also expose levels
-1 through 6 through **Heading level**. Accepted remains read-only.
+Enter/Shift+F10 on a focused element to open its menu. The same actions are
+available from PDF, Accepted and Working; edits always target the corresponding
+Working element. Elements expose **Hide Element** or **Unhide Element**; headings expose
+an expandable **Heading** menu with **H1** through **H6**, applied immediately.
+Accepted remains unchanged until **Accept Working**. If an Accepted element has
+no Working counterpart, its element-editing actions are disabled.
+Click the selected element again, press **Escape**, or click an empty area to
+clear the selection and its yellow frame in all three panels. Document links,
+controls and text selection retain their existing interactions.
+
+The top of the element menu shows a disabled **Type: ...** label for quick
+inspection. Equal types appear once; different types appear as
+**Type: Accepted / Working**. If the element exists in only one version, its
+type appears once. The label does not open an editor.
+
+**Change type** offers `heading`, `callout`, `callout_text`, `prose`, `code_block`,
+`preformatted_text`, `caption`, `footnote`, `note` and `legend` from the
+[book element vocabulary](elements.md). Cover, header/footer, contents, thumb
+index, index and list-of-tables/figures roles remain valid existing source types
+but are not offered as conversion targets.
+It operates on Working from any column and preserves IDs, visibility, order and
+PDF source regions/references. Tables, graphics, image-backed elements and empty
+elements cannot change type; table and graphic are also excluded as targets.
+Existing source and legacy text roles can be changed to the offered roles.
+A new heading defaults to H1; changing an existing heading role to `heading`
+preserves its level. Leaving a heading role removes its `#`
+prefix and heading level. Other text markup is retained; this action changes the
+role rather than rewriting content. `/api/type` checks the authored revision and
+enforces the same restrictions as the menu.
+
+Text elements expose **Edit Markdown**, **Bold**, **Split** and **Merge with next**. The Markdown
+dialog shows resolved source text with its Markdown/HTML syntax, rather than PDF
+template references. Menu **Bold** immediately wraps the selected element's text
+in `**...**`, preserving heading prefixes and paragraph boundaries; menu
+**Remove Bold** removes strong markup immediately. Neither opens an editor.
+In the Markdown dialog, **Add Bold** and **Remove Bold** operate on the selected
+text, or the whole section when nothing is selected. The same controls are
+available during raw Markdown editing. **Save** writes Working; **Cancel** leaves
+it unchanged. Edited heading hashes update the heading role and level; removing
+the heading prefix converts that element to prose.
+
+**Split** opens the Markdown source. Place the cursor at the boundary or select
+the opening text, then choose **Split at cursor / after selection**. The dialog
+shows two editable sections; **OK** saves them as consecutive elements in the
+same chapter. Both must contain text. The first keeps its ID and the second gets
+a new ID; both retain the original PDF regions, without inferring separate crop
+geometry. Splitting is a structural edit; element **Discard** restores the first
+element's Accepted properties but does not remove the new element. Use
+**Discard Changes** to undo the complete split.
+
+**Merge with next** opens both elements' resolved Markdown in one editable field,
+separated by a newline. **OK** replaces them with one element at the first
+element's position and ID. All source pages and distinct PDF bounding boxes from
+both elements are retained, including merges across PDF pages. The next element
+means the immediate successor in the authored book order, including hidden
+elements and chapter boundaries; the result belongs to the first element's
+chapter. The action is disabled at the end of the book or when either element
+has no editable text. **Cancel** preserves both elements. Like Split, this is a
+structural edit; use **Discard Changes** to restore the complete Accepted bundle.
+
+**Fix all callouts** scans the entire Working book in authored order, including
+hidden elements. Each adjacent `callout` + `callout_text` pair becomes one
+Markdown callout (`> [!NOTE] NOTE`, for example), preserving the original label
+as its title, body formatting and PDF references/regions. The label keeps its ID,
+chapter and visibility. Already formatted callouts are left alone. Orphan labels
+or bodies, invalid labels, empty bodies and pairs with different visibility are
+left unchanged and reported by ID in the completion dialog. The operation checks
+the authored revision and saves valid pairs together. **Discard Changes** restores
+the full Accepted bundle. This is an explicit editing action; import is unchanged.
+The review renderer displays callout markers as titled advisory blocks.
+
+**Merge tables** immediately joins the selected table with the next authored
+element, which must also be a Markdown table. Column counts, names/order and
+alignment must match; header emphasis and whitespace differences are ignored.
+The first header is retained and the second table's data rows are appended.
+The first element keeps its ID, chapter and visibility; PDF regions from both
+elements are retained. HTML, malformed tables, surrounding text and incompatible
+columns report an error without saving. Hidden elements are included in authored
+order; move intervening captions/notes first. Use **Discard Changes** to restore
+the complete Accepted bundle.
+
+**Move up** and **Move down** immediately move the selected Working element one
+position in authored book order, including hidden elements. At a chapter boundary,
+the element moves into the neighboring chapter, before or after its neighboring
+element. Text, visibility, IDs and PDF source regions remain unchanged. The
+corresponding action is disabled at the beginning or end of the book. Use
+**Discard Changes** to restore the Accepted order.
+
+Markdown, split, merge and move commands (`/api/markdown`, `/api/split`, `/api/merge`, `/api/merge-tables`, `/api/move`) check the authored
+revision before saving. Unchanged text retains PDF character-range references,
+including ranges cut at a split; inserted or replaced text becomes escaped
+literal recipe content. Edited legacy Stage 04/05 references are first migrated
+to PDF-range recipes. New asset links must resolve before the edit is saved.
+Failed saves keep the dialog's draft for correction. Working is rendered and
+exported through the existing queue; **Accept Working** copies the completed
+bundle to Accepted.
 **Hide Page** is available from element menus in all three panels, including
 Accepted, and from the PDF page background. It hides every Working element
 mapped to the contextual PDF page in one revision-aware `/api/hide-page` command;
@@ -208,7 +301,7 @@ without a PDF source page or when that page has no visible Working elements.
 
 **Show hidden elements** is a client-only view option for both versions and PDF
 source overlays: hidden content has a violet tint and dotted overlay. It does
-not change `visible`, property tooltips, Markdown exports, the generated TOC or
+not change `visible`, Markdown exports, the generated TOC or
 acceptance. Original PDF page pixels remain intact. A PDF page is hidden when no visible Working element maps to it,
 including pages without any mapped elements. **Show hidden elements** reveals
 all pages again for source inspection. Page visibility follows Working even before acceptance, without a
@@ -230,6 +323,13 @@ or chapter organization. **Discard Changes** still restores the complete bundle.
 `/api/accept` copies the newest complete Working bundle to Accepted.
 
 A separate rendering thread polls only authored JSON and referenced asset bytes.
+The server reuses loaded inputs while the file signatures of the authored model,
+referenced source JSON and assets remain unchanged. External edits invalidate
+that cache; the PDF block lookup is shared across templates within each load.
+Client refresh replaces only versions whose rendered revision changed. Accepted
+stays mounted during Working edits; the PDF panel is rebuilt only when page
+metadata, element IDs, visibility or source regions change. Text-only edits
+refresh the existing overlays' model references without replacing page images.
 It finishes its immutable input snapshot before reading the newest pending
 state. Every affected chapter is regenerated as complete HTML using
 `markdown-it-py` with tables/raw HTML and parsed math nodes rendered by local
@@ -292,13 +392,8 @@ Changed elements have a 5-pixel orange vertical marker in the left margin of
 both columns, spanning the element's height without shifting the content.
 Hover/selection matches exact IDs; Copy ID copies that identity. Selecting text
 does not open the heading menu. Document styling is isolated from the toolbar.
-Hovering or focusing an element opens an Accepted/Working configuration table,
-with changed properties highlighted and a short change summary. TOC includes
-its depth; other elements include visibility (`true`/`false`), type, heading level,
-number, table format and text preview as applicable. Changed rows have an
-orange-yellow background. Long values are abbreviated, while
-comparison uses the complete values. This replaces the selection strip below
-the toolbar. The toolbar counts changed elements, using `1 change` for one;
+Hovering or focusing an element shows no tooltip or property popup.
+The toolbar counts changed elements, using `1 change` for one;
 pending rendering and errors appear there instead of the count.
 The chapter selector, shared Accepted/Working collapse state and Previous/Next
 Change controls navigate logical content. Change navigation stops at the first
@@ -323,8 +418,8 @@ remain unchanged.
 Native TOC links navigate real target headings; scrolling the TOC alone does
 not invent a PDF binding.
 
-The GUI supports heading-level and visibility editing. Type/text/split/merge GUI
-operations, independent Accepted/Working width adjustment, zoom and acceptance
+The GUI supports heading-level, bold, raw Markdown, split, merge and visibility editing.
+General type editing, independent Accepted/Working width adjustment, zoom and acceptance
 undo are deferred.
 Unconverted empty table/cover content remains in the model and PDF column;
 the importer does not infer replacement text or invent raster crops. Technical

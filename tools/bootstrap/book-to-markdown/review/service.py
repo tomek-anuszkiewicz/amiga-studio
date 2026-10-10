@@ -4,6 +4,7 @@ from copy import deepcopy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import mimetypes
+import re
 from pathlib import Path
 import shutil
 import sys
@@ -13,8 +14,10 @@ import uuid
 
 from PIL import Image
 
-from .model import (HEADING_TYPES, authored_element, changes, confined, elements, export_markdown, json_bytes,
-                    load_input, set_heading_level, write_json)
+from .model import (EDITABLE_TYPES, HEADING_TYPES, PROTECTED_TYPES, InputCache, authored_element, changes, confined, edit_markdown, elements, export_markdown, json_bytes,
+                    load_input, set_element_type, set_heading_level, update_markdown_heading, write_json)
+from .text_recipe import slice_template
+from .markdown import table_structure
 from .render import HERE, KATEX, Renderer
 
 
@@ -105,6 +108,7 @@ class ReviewState:
         self.lock = threading.RLock()
         self.condition = threading.Condition(self.lock)
         self.stopping = threading.Event()
+        self.input_cache = InputCache()
         for version in ("working", "accepted"):
             backup, target = root / f".{version}-backup", root / version
             if backup.exists():
@@ -129,7 +133,7 @@ class ReviewState:
     def status(self):
         with self.lock:
             try:
-                authored = load_input(self.root / "working")[2]
+                authored = self.input_cache.load(self.root / "working")[2]
                 current = bool(self.working and self.working["input_fingerprint"] == authored)
                 input_error = None
             except Exception as error:
@@ -146,7 +150,8 @@ class ReviewState:
                     "can_discard": bool(current and not self.pending and not self.error
                                         and self.accepted and authored != self.accepted["input_fingerprint"]),
                     "discardable_elements": discardable_elements,
-                    "changes": diff, "pdf_pages": self.pdf_pages, "heading_types": sorted(HEADING_TYPES)}
+                    "changes": diff, "pdf_pages": self.pdf_pages, "heading_types": sorted(HEADING_TYPES),
+                    "editable_types": EDITABLE_TYPES, "protected_types": PROTECTED_TYPES}
 
     def render_loop(self):
         renderer = None
@@ -160,7 +165,7 @@ class ReviewState:
             while not self.stopping.is_set():
                 try:
                     with self.lock:
-                        book, assets, fingerprint = load_input(self.root / "working")
+                        book, assets, fingerprint = self.input_cache.load(self.root / "working")
                         previous = self.working
                         needs_render = (not previous or previous["input_fingerprint"] != fingerprint
                                         or previous["settings"] != renderer.settings)
@@ -180,7 +185,7 @@ class ReviewState:
                         with self.lock:
                             write_json(self.root / "working" / "rendered.json", snapshot)
                             self.working = snapshot
-                            self.pending = load_input(self.root / "working")[2] != fingerprint
+                            self.pending = self.input_cache.load(self.root / "working")[2] != fingerprint
                             if self.accepted is None and not self.pending:
                                 replace_accepted(self.root, snapshot)
                                 self.accepted = read_snapshot(self.root / "accepted")
@@ -207,11 +212,13 @@ class ReviewState:
 
     def mutate(self, expected_revision, update):
         with self.lock:
-            book, _, fingerprint = load_input(self.root / "working")
+            original, _, fingerprint = self.input_cache.load(self.root / "working")
+            book = deepcopy(original)
             if fingerprint != expected_revision:
                 raise ValueError("Stale edit command; reload the latest authored revision")
             update(book)
-            if load_input(self.root / "working")[2] != fingerprint:
+            self.input_cache.load(self.root / "working", book)
+            if self.input_cache.load(self.root / "working")[2] != fingerprint:
                 raise ValueError("Working changed before save; retry the command")
             write_json(self.root / "working" / "book.json", book)
             self.pending, self.error, self.failed_fingerprint = True, None, None
@@ -225,6 +232,14 @@ class ReviewState:
             set_heading_level(element, command["level"])
         self.mutate(command["expected_revision"], update)
 
+    def change_type(self, command):
+        def update(book):
+            element = next((e for e in elements(book) if e['id'] == command['id']), None)
+            if element is None:
+                raise ValueError('Element no longer exists')
+            set_element_type(element, command['type'])
+        self.mutate(command['expected_revision'], update)
+
     def visibility(self, command):
         if type(command["visible"]) is not bool:
             raise ValueError("Visible must be a boolean")
@@ -235,6 +250,168 @@ class ReviewState:
                 raise ValueError("Element no longer exists")
             element["visible"] = command["visible"]
         self.mutate(command["expected_revision"], update)
+
+    def markdown(self, command):
+        def update(book):
+            element = next((e for e in elements(book) if e['id'] == command['id']), None)
+            if element is None:
+                raise ValueError('Element no longer exists')
+            edit_markdown(self.root, element, command['text'])
+        self.mutate(command['expected_revision'], update)
+
+    def fix_callouts(self, command):
+        result = {'fixed': 0, 'warnings': []}
+
+        def update(book):
+            ordered = [(chapter, element) for chapter in book['chapters'] for element in chapter['elements']]
+            consumed = set()
+            for index, (_, element) in enumerate(ordered):
+                if element['id'] in consumed:
+                    continue
+                text = element.get('resolved_md_text', element.get('md_text', ''))
+                if element['type'] == 'callout_text':
+                    result['warnings'].append(f"{element['id']}: callout text has no preceding callout label")
+                    continue
+                if element['type'] != 'callout' or re.match(r'^\s*>\s*\[!', text):
+                    continue
+                if index + 1 >= len(ordered) or ordered[index + 1][1]['type'] != 'callout_text':
+                    result['warnings'].append(f"{element['id']}: callout has no immediately following callout text")
+                    continue
+                chapter, body = ordered[index + 1]
+                label = re.fullmatch(r'\s*([A-Za-z][A-Za-z0-9_-]*):?\s*', text)
+                body_text = body.get('resolved_md_text', body.get('md_text', ''))
+                if not label or not body_text.strip():
+                    result['warnings'].append(f"{element['id']}: invalid callout label or empty body {body['id']}")
+                    continue
+                if element.get('visible', True) != body.get('visible', True):
+                    result['warnings'].append(f"{element['id']}: visibility differs from body {body['id']}; left unchanged")
+                    continue
+                edit_markdown(self.root, element, text)
+                edit_markdown(self.root, body, body_text)
+                # Keep the original label as the explicit title, including its PDF
+                # references and punctuation; only the type marker is new syntax.
+                title = slice_template(element['md_text'], len(text) - len(text.lstrip()), len(text.rstrip()))
+                parts = ['> [!' + label[1].upper() + '] ' + title, '\n>\n']
+                offset = 0
+                for line in body_text.splitlines(keepends=True):
+                    parts.extend(('> ', slice_template(body['md_text'], offset, offset + len(line))))
+                    offset += len(line)
+                element['md_text'] = ''.join(parts)
+                element['resolved_md_text'] = '> [!' + label[1].upper() + '] ' + text.strip() + '\n>\n' + ''.join(
+                    '> ' + line for line in body_text.splitlines(keepends=True))
+                for region in body['pdf_regions']:
+                    if region not in element['pdf_regions']:
+                        element['pdf_regions'].append(deepcopy(region))
+                chapter['elements'].remove(body)
+                consumed.add(body['id'])
+                result['fixed'] += 1
+        self.mutate(command['expected_revision'], update)
+        return result
+
+    def split(self, command):
+        def update(book):
+            for chapter in book['chapters']:
+                for index, element in enumerate(chapter['elements']):
+                    if element['id'] != command['id']:
+                        continue
+                    first_text, second_text = command['first'], command['second']
+                    if not all(isinstance(text, str) and text.strip() for text in (first_text, second_text)):
+                        raise ValueError('Both split sections must contain text')
+                    edit_markdown(self.root, element, first_text + second_text)
+                    second = deepcopy(element)
+                    # Both sections retain the source area; no new PDF geometry is inferred.
+                    template = element['md_text']
+                    for part, text, start, end in ((element, first_text, 0, len(first_text)),
+                                                  (second, second_text, len(first_text), len(first_text + second_text))):
+                        part['md_text'] = slice_template(template, start, end)
+                        part['resolved_md_text'] = text
+                        update_markdown_heading(part, text)
+                    second['id'] = 'split-' + uuid.uuid4().hex
+                    chapter['elements'].insert(index + 1, second)
+                    return
+            raise ValueError('Element no longer exists')
+        self.mutate(command['expected_revision'], update)
+
+    def move(self, command):
+        if command['direction'] not in ('up', 'down'):
+            raise ValueError('Move direction must be up or down')
+
+        def update(book):
+            ordered = [(chapter, element) for chapter in book['chapters'] for element in chapter['elements']]
+            index = next((i for i, (_, e) in enumerate(ordered) if e['id'] == command['id']), None)
+            if index is None:
+                raise ValueError('Element no longer exists')
+            offset = -1 if command['direction'] == 'up' else 1
+            target = index + offset
+            if not 0 <= target < len(ordered):
+                raise ValueError('Element is already at the edge of the book')
+            chapter, element = ordered[index]
+            destination, neighbor = ordered[target]
+            chapter['elements'].remove(element)
+            position = destination['elements'].index(neighbor)
+            destination['elements'].insert(position + (offset == 1), element)
+        self.mutate(command['expected_revision'], update)
+
+    def merge_tables(self, command):
+        def update(book):
+            ordered = [(chapter, element) for chapter in book['chapters'] for element in chapter['elements']]
+            index = next((i for i, (_, e) in enumerate(ordered) if e['id'] == command['id']), None)
+            if index is None or index + 1 >= len(ordered):
+                raise ValueError('No next table to merge')
+            _, first = ordered[index]
+            chapter, second = ordered[index + 1]
+            if any(e['type'] != 'table' for e in (first, second)):
+                raise ValueError('Both elements must be tables; move intervening elements first')
+            if any(e.get('table_format') != 'markdown' for e in (first, second)):
+                raise ValueError('Only Markdown tables are supported; HTML is not supported')
+            first_text = first.get('resolved_md_text', first['md_text'])
+            second_text = second.get('resolved_md_text', second['md_text'])
+            headers, alignment, _ = table_structure(first_text)
+            next_headers, next_alignment, body_start = table_structure(second_text)
+            if len(headers) != len(next_headers):
+                raise ValueError('Tables have different numbers of columns')
+            if headers != next_headers:
+                raise ValueError('Table column names or their order differ')
+            if alignment != next_alignment:
+                raise ValueError('Table column alignment differs')
+            # Normalize legacy recipes independently; append only the second body
+            # so retained PDF references never realign to repeated text elsewhere.
+            edit_markdown(self.root, first, first_text)
+            edit_markdown(self.root, second, second_text)
+            first['md_text'] = slice_template(first['md_text'], 0, len(first_text.rstrip())) + '\n' + slice_template(
+                second['md_text'], body_start, len(second_text))
+            first['resolved_md_text'] = first_text.rstrip() + '\n' + second_text[body_start:]
+            for region in second['pdf_regions']:
+                if region not in first['pdf_regions']:
+                    first['pdf_regions'].append(deepcopy(region))
+            chapter['elements'].remove(second)
+        self.mutate(command['expected_revision'], update)
+
+    def merge(self, command):
+        def update(book):
+            ordered = [(chapter, element) for chapter in book['chapters'] for element in chapter['elements']]
+            index = next((i for i, (_, e) in enumerate(ordered) if e['id'] == command['id']), None)
+            if index is None or index + 1 >= len(ordered):
+                raise ValueError('Element has no next element to merge')
+            _, first = ordered[index]
+            chapter, second = ordered[index + 1]
+            if second['id'] != command['next_id']:
+                raise ValueError('Next element changed; reopen the merge dialog')
+            merged = deepcopy(first)
+            following = deepcopy(second)
+            # Normalize each recipe independently before concatenating provenance.
+            edit_markdown(self.root, merged, first.get('resolved_md_text', ''))
+            edit_markdown(self.root, following, second.get('resolved_md_text', ''))
+            merged['md_text'] += '\n' + following['md_text']
+            merged['resolved_md_text'] += '\n' + following['resolved_md_text']
+            for region in following['pdf_regions']:
+                if region not in merged['pdf_regions']:
+                    merged['pdf_regions'].append(deepcopy(region))
+            edit_markdown(self.root, merged, command['text'])
+            first.clear()
+            first.update(merged)
+            chapter['elements'].remove(second)
+        self.mutate(command['expected_revision'], update)
 
     def discard_element(self, command):
         with self.lock:
@@ -371,8 +548,23 @@ class Handler(BaseHTTPRequestHandler):
             if not 0 < length < 65536:
                 raise ValueError("Invalid command length")
             command = json.loads(self.rfile.read(length))
+            result = {"ok": True}
             if self.path == "/api/heading":
                 self.state.heading(command)
+            elif self.path == "/api/type":
+                self.state.change_type(command)
+            elif self.path == "/api/markdown":
+                self.state.markdown(command)
+            elif self.path == "/api/split":
+                self.state.split(command)
+            elif self.path == "/api/merge":
+                self.state.merge(command)
+            elif self.path == "/api/move":
+                self.state.move(command)
+            elif self.path == "/api/merge-tables":
+                self.state.merge_tables(command)
+            elif self.path == "/api/fix-callouts":
+                result.update(self.state.fix_callouts(command))
             elif self.path == "/api/visibility":
                 self.state.visibility(command)
             elif self.path == "/api/hide-page":
@@ -388,7 +580,7 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self.send_bytes(b"Not found", "text/plain", 404)
                 return
-            self.send_bytes(json_bytes({"ok": True}), "application/json")
+            self.send_bytes(json_bytes(result), "application/json")
         except Exception as error:
             self.send_bytes(json_bytes({"error": str(error)}), "application/json", 409)
 

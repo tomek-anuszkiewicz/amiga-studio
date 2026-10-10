@@ -9,11 +9,23 @@
 <button id="discard" disabled>Discard Changes</button>
 <label>TOC depth <select id="toc-depth"><option>1</option><option selected>2</option><option>3</option></select></label>
 <span id="status" role="status">Connecting…</span></header>
-<div id="element-hint" role="tooltip" hidden></div>
 <div id="element-menu" role="menu" aria-label="Element actions" hidden>
+<button id="menu-current-type" role="menuitem" disabled hidden>Type:</button>
 <button id="menu-visibility" role="menuitem">Hide Element</button>
 <button id="menu-hide-page" role="menuitem">Hide Page</button>
-<button id="menu-heading" role="menuitem">Heading level...</button>
+<button id="menu-fix-callouts" role="menuitem">Fix all callouts</button>
+<button id="menu-heading" role="menuitem" aria-haspopup="menu" aria-expanded="false">Heading ▸</button>
+<div id="heading-menu" role="menu" aria-label="Heading level" hidden></div>
+<button id="menu-type" role="menuitem" aria-haspopup="menu" aria-expanded="false">Change type &#9656;</button>
+<div id="type-menu" role="menu" aria-label="Element type" hidden></div>
+<button id="menu-bold" role="menuitem">Bold</button>
+<button id="menu-remove-bold" role="menuitem">Remove Bold</button>
+<button id="menu-markdown" role="menuitem">Edit Markdown...</button>
+<button id="menu-split" role="menuitem">Split...</button>
+<button id="menu-merge" role="menuitem">Merge with next...</button>
+<button id="menu-merge-tables" role="menuitem">Merge tables</button>
+<button id="menu-move-up" role="menuitem">Move up</button>
+<button id="menu-move-down" role="menuitem">Move down</button>
 <button id="menu-discard" role="menuitem">Discard</button>
 <button id="menu-copy" role="menuitem">Copy ID</button>
 </div>
@@ -22,7 +34,15 @@
  tabindex="0" title="Drag to resize the PDF column; arrow keys adjust its width"></div>
 <section><h2>Accepted</h2><div class="pane" id="accepted" tabindex="0"></div></section>
 <section><h2>Working</h2><div class="pane" id="working" tabindex="0"></div></section></main>
-<dialog id="heading-dialog"><form method="dialog"><h3>Heading level</h3><p id="heading-id"></p>
-<label>Level <select id="level"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
-<div><button value="cancel">Cancel</button><button type="button" id="save-heading">Save</button></div></form></dialog>
+<dialog id="markdown-dialog"><form method="dialog"><h3 id="markdown-title">Edit Markdown</h3>
+<p id="markdown-id"></p>
+<p id="markdown-help">Edit the Markdown source. Select text to add or remove bold; without a selection, the whole section is used.</p>
+<div class="markdown-tools"><button type="button" id="add-bold">Add Bold</button><button type="button" id="remove-bold">Remove Bold</button>
+<button type="button" id="split-at-cursor" hidden>Split at cursor / after selection</button></div>
+<label id="first-label" for="markdown-text">Markdown</label>
+<textarea id="markdown-text" spellcheck="false"></textarea>
+<div id="second-section" hidden><label for="markdown-second">Second section</label><textarea id="markdown-second" spellcheck="false"></textarea></div>
+<p id="markdown-error" role="alert" hidden></p>
+<div class="dialog-actions"><button value="cancel" id="cancel-markdown">Cancel</button><button type="button" id="save-markdown">Save</button></div>
+</form></dialog>
 <script src="/viewer.js"></script></body></html>

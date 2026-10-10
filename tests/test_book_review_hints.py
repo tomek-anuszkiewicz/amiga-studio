@@ -1,4 +1,4 @@
-"""Review configuration hints and mandatory TOC behavior."""
+"""Tooltip-free element hover/focus and mandatory TOC behavior."""
 
 from copy import deepcopy
 import json
@@ -36,7 +36,7 @@ class ReviewHintsTest(unittest.TestCase):
         self.assertEqual(changes(loaded, updated)[0]["accepted"], {"depth": 2})
         self.assertEqual(changes(loaded, updated)[0]["working"], {"depth": 3})
 
-    def test_hover_compares_depth_and_heading_properties(self):
+    def test_hover_and_focus_show_no_tooltip(self):
         accepted = self.book()
         working = deepcopy(accepted)
         working["toc"]["depth"] = 3
@@ -75,22 +75,12 @@ class ReviewHintsTest(unittest.TestCase):
             self.assertEqual(page.locator("#status").inner_text(), "1 change")
             self.assertEqual(page.locator("#toc-enabled, #selection").count(), 0)
             page.locator('#working [data-element="generated-toc"]').hover()
-            hint = page.locator("#element-hint")
-            self.assertTrue(hint.is_visible())
-            row = hint.locator("tr.changed")
-            self.assertEqual(row.inner_text().split(), ["Depth", "2", "3"])
-            self.assertIn("Changed: Depth", hint.inner_text())
-            box = hint.bounding_box()
-            self.assertGreaterEqual(box["x"], 0)
-            self.assertLessEqual(box["x"] + box["width"], 1600)
-            self.assertLessEqual(box["y"] + box["height"], 900)
+            self.assertEqual(page.locator('#element-hint, [role="tooltip"]').count(), 0)
             page.locator("header strong").hover()
-            self.assertFalse(hint.is_visible())
-            working["chapters"][0]["elements"][0]["heading_level"] = 3
-            page.evaluate("value => {state.working.chapters[0].elements[0].heading_level=value;}", 3)
             page.locator('#working [data-element="heading"]').focus()
-            self.assertIn("Heading level", hint.locator("tr.changed").inner_text())
+            self.assertEqual(page.locator('#element-hint, [role="tooltip"]').count(), 0)
+            page.locator('#accepted [data-element="heading"]').hover()
+            self.assertEqual(page.locator('#element-hint, [role="tooltip"]').count(), 0)
             page.keyboard.press("Escape")
-            self.assertFalse(hint.is_visible())
             self.assertEqual(errors, [])
             browser.close()

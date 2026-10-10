@@ -12,11 +12,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "pdf-to-markdown"))
 from common.pdf_artifacts import read_json
 from common.pdf_page_conversion import read_conversion
 from .markdown import PARSER, preserve_line_breaks
-from .text_recipe import (MARKDOWN_REFERENCE, REFERENCE, escape_literal,
+from .text_recipe import (MARKDOWN_REFERENCE, REFERENCE, escape_literal, edit_template,
                           compile_markdown_template, region_blocks, resolve_template)
 
 HEADING_TYPES = {"heading", "chapter", "toc_heading", "index_heading",
                  "list_of_tables_heading", "list_of_figures_heading"}
+PROTECTED_TYPES = ('table', 'graphic')
+EDITABLE_TYPES = ('heading', 'callout', 'callout_text', 'prose', 'code_block',
+                  'preformatted_text', 'caption', 'footnote', 'note', 'legend')
 
 
 def json_bytes(value):
@@ -63,6 +66,27 @@ def set_heading_level(element, level):
     element["md_text"] = "#" * level + " " + re.sub(r"^#{1,6}[ \t]*", "", element.get("md_text", "")).strip()
     if "resolved_md_text" in element:
         element["resolved_md_text"] = "#" * level + " " + re.sub(r"^#{1,6}[ \t]*", "", element["resolved_md_text"])
+
+
+def set_element_type(element, kind):
+    """Reclassify text roles while preserving source text and heading semantics."""
+    if kind not in EDITABLE_TYPES:
+        raise ValueError('Unsupported target type; table and graphic conversions are not allowed')
+    if element['type'] in PROTECTED_TYPES or element.get('asset') or not element.get('md_text', '').strip():
+        raise ValueError('Tables, graphics and elements without editable text cannot change type')
+    previous = element['type']
+    if previous == kind:
+        return
+    element['type'] = kind
+    if kind in HEADING_TYPES:
+        level = element.get('heading_level', 1) if kind == 'heading' else 1
+        set_heading_level(element, level)
+    else:
+        if previous in HEADING_TYPES:
+            element['md_text'] = re.sub(r'^#{1,6}[ \t]*', '', element['md_text'])
+            if 'resolved_md_text' in element:
+                element['resolved_md_text'] = re.sub(r'^#{1,6}[ \t]*', '', element['resolved_md_text'])
+        element.pop('heading_level', None)
 
 
 def new_chapter(elements, chapter_id, existing_files=()):
@@ -139,6 +163,42 @@ def elements(book):
         yield from chapter["elements"]
 
 
+def edit_markdown(root, element, text):
+    """Save visible Markdown while retaining source ranges and literal corrections."""
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("Markdown must contain text")
+    if 'md_text' not in element or element.get('asset'):
+        raise ValueError("This element has no editable Markdown text")
+    template = element['md_text']
+    pages = {int(m[1]) for m in REFERENCE.finditer(template)}
+    pages.update(int(m[2]) for m in MARKDOWN_REFERENCE.finditer(template))
+    blocks = {page: read_json(root / 'pdf-to-markdown' / '02_preprocess' / f'page_{page:04d}.json')['blocks']
+              for page in pages}
+    # An edited legacy segment becomes a PDF-range recipe before applying edits.
+    def migrate(match):
+        stage, page, segment = match.groups()
+        directory = '04_filter_page_content' if stage == '04' else '05_transform_page_tables'
+        data = read_json(root / 'pdf-to-markdown' / directory / f'page_{int(page):04d}_segments.json')
+        original = next(s for s in data['segments'] if s['segment_id'] == segment)
+        return compile_markdown_template(int(page), blocks[int(page)], original.get('md_text', ''))
+    template = MARKDOWN_REFERENCE.sub(migrate, template)
+    element['md_text'] = edit_template(template, blocks, text)
+    element['resolved_md_text'] = text
+    update_markdown_heading(element, text)
+
+
+def update_markdown_heading(element, text):
+    """Keep heading metadata consistent with explicitly edited Markdown syntax."""
+    heading = re.match(r'^(#{1,6})[ \t]+', text)
+    if heading:
+        if element['type'] not in HEADING_TYPES:
+            element['type'] = 'heading'
+        element['heading_level'] = len(heading[1])
+    elif element['type'] in HEADING_TYPES:
+        element['type'] = 'prose'
+        element.pop('heading_level', None)
+
+
 def authored_element(element):
     """Return element properties without resolved text or legacy render geometry."""
     return {k: v for k, v in element.items() if k not in {"resolved_md_text", "render_regions"}}
@@ -155,28 +215,69 @@ def asset_names(element):
     return names
 
 
-def load_input(working):
+class InputCache:
+    """Reuse immutable inputs while tracking external edits to every dependency."""
+    def __init__(self):
+        self.files = {}
+        self.snapshots = {}
+        self.dependencies = {}
+
+    @staticmethod
+    def signature(path):
+        stat = path.stat()
+        return stat.st_mtime_ns, stat.st_ctime_ns, stat.st_size, stat.st_ino
+
+    def read(self, path, reader):
+        signature = self.signature(path)
+        self.dependencies[path] = signature
+        cached = self.files.get(path)
+        if cached is None or cached[0] != signature:
+            value = reader(path)
+            if self.signature(path) != signature:
+                raise ValueError('Input changed while being read; retry')
+            cached = signature, value
+            self.files[path] = cached
+        return cached[1]
+
+    def load(self, working, book=None):
+        cached = self.snapshots.get(working)
+        if book is None and cached and all(self.signature(path) == signature for path, signature in cached[1].items()):
+            return cached[0]
+        self.dependencies = {}
+        result = load_input(working, book, cache=self)
+        if book is None:
+            dependencies = dict(self.dependencies)
+            if any(self.signature(path) != signature for path, signature in dependencies.items()):
+                raise ValueError('Input changed during loading; retry')
+            self.snapshots[working] = result, dependencies
+        return result
+
+
+def load_input(working, book=None, *, cache=None):
     """Read an immutable model and asset byte snapshot, with a content revision."""
-    raw = (working / "book.json").read_bytes()
-    book = json.loads(raw)
+    read_bytes = (lambda path: cache.read(path, Path.read_bytes)) if cache else Path.read_bytes
+    read_source = (lambda path: cache.read(path, read_json)) if cache else read_json
+    book = json.loads(read_bytes(working / "book.json")) if book is None else deepcopy(book)
     templates = [element.get("md_text", "") for element in elements(book)]
     templates += [chapter[field] for chapter in book["chapters"] for field in ("title", "markdown_file")]
     referenced_pages = {int(match[1]) for template in templates for match in REFERENCE.finditer(template)}
     text_pages = {}
     for page in sorted(referenced_pages):
-        blocks = read_json(working.parent / "pdf-to-markdown" / "02_preprocess" / f"page_{page:04d}.json")["blocks"]
+        blocks = read_source(working.parent / "pdf-to-markdown" / "02_preprocess" / f"page_{page:04d}.json")["blocks"]
         text_pages[page] = blocks
     prepared = {}
     converted_pages = {(match[1], int(match[2])) for template in templates
                        for match in MARKDOWN_REFERENCE.finditer(template)}
     for stage, page in sorted(converted_pages):
         directory = '04_filter_page_content' if stage == '04' else '05_transform_page_tables'
-        data = read_json(working.parent / 'pdf-to-markdown' / directory / f'page_{page:04d}_segments.json')
+        data = read_source(working.parent / 'pdf-to-markdown' / directory / f'page_{page:04d}_segments.json')
         for segment in data['segments']:
             prepared[(stage, page, segment['segment_id'])] = segment.get('md_text', '')
+    block_index = {page: {b['block_id']: b['text'] for b in entries} for page, entries in text_pages.items()}
+    resolve = lambda template: resolve_template(template, text_pages, prepared, block_index=block_index)
     for element in elements(book):
         if "md_text" in element:
-            element["resolved_md_text"] = resolve_template(element["md_text"], text_pages, prepared)
+            element["resolved_md_text"] = resolve(element["md_text"])
     ids, filenames, chapters = set(), {"table-of-contents.md"}, set()
     assets = {}
     # Older authored books may carry the retired visibility option. TOC is mandatory.
@@ -185,7 +286,7 @@ def load_input(working):
         raise ValueError("TOC depth must be 1, 2 or 3")
     for chapter in book["chapters"]:
         for field in ("title", "markdown_file"):
-            chapter["resolved_" + field] = resolve_template(chapter[field], text_pages, prepared)
+            chapter["resolved_" + field] = resolve(chapter[field])
         if chapter["id"] in chapters:
             raise ValueError("Duplicate chapter ID")
         chapters.add(chapter["id"])
@@ -205,7 +306,7 @@ def load_input(working):
             for name in asset_names(element):
                 if not name.startswith("assets/"):
                     raise ValueError("Assets must be under assets/")
-                assets[name] = confined(working, name).read_bytes()
+                assets[name] = read_bytes(confined(working, name))
     fingerprint = digest(json_bytes({"model": book, "assets": {k: digest(v) for k, v in sorted(assets.items())}}))
     return book, assets, fingerprint
 

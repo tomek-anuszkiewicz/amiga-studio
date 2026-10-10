@@ -3,6 +3,7 @@ from copy import deepcopy
 import json
 from io import BytesIO
 from pathlib import Path
+import sys
 import unittest
 from urllib.parse import urlsplit
 
@@ -10,6 +11,8 @@ from PIL import Image
 from playwright.sync_api import sync_playwright
 
 REVIEW = Path(__file__).resolve().parents[1] / 'tools/bootstrap/book-to-markdown/review'
+sys.path.insert(0, str(REVIEW.parent))
+from review.model import EDITABLE_TYPES, PROTECTED_TYPES
 
 
 class ScrollReviewTest(unittest.TestCase):
@@ -30,6 +33,7 @@ class ScrollReviewTest(unittest.TestCase):
         working = deepcopy(accepted)
         status = {'working': working, 'accepted': accepted, 'can_accept': True,
                   'authored_revision': 'before', 'pending': False, 'error': None,
+                  'editable_types': EDITABLE_TYPES, 'protected_types': PROTECTED_TYPES,
                   'changes': [], 'heading_types': [], 'pdf_pages': [
                       {'page': i+1, 'width': 200, 'height': 100, 'image': f'pdf/page_{i+1}.png'} for i in range(30)]}
         image=BytesIO()

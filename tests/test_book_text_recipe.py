@@ -6,9 +6,10 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools/bootstrap/book-to-markdown'))
-from review.text_recipe import compile_template, compile_region_template, compile_markdown_template, preserve_bold, resolve_template
-from review.model import element_markdown, export_markdown, import_book, load_input, set_heading_level, write_json
+from review.text_recipe import compile_template, compile_region_template, compile_markdown_template, edit_template, slice_template, preserve_bold, resolve_template
+from review.model import InputCache, element_markdown, export_markdown, import_book, load_input, set_heading_level, write_json
 from review.service import replace_accepted
+from review.service import ReviewState
 from review.render import Renderer
 from markdown_it import MarkdownIt
 import pymupdf
@@ -16,6 +17,106 @@ from common.pdf_geometry import text_blocks
 
 
 class TextRecipeTest(unittest.TestCase):
+    def test_input_cache_reuses_model_and_detects_external_dependency_changes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            page = root / 'pdf-to-markdown/02_preprocess/page_0001.json'
+            write_json(page, {'blocks': [{'block_id': 0, 'text': 'First'}]})
+            book = {'toc': {'depth': 2}, 'chapters': [{'id': 'c', 'title': 'Example', 'markdown_file': 'example.md',
+                'elements': [{'id': 'p', 'type': 'prose', 'md_text': '{{text page=1 block=0 chars=0:5}}', 'pdf_regions': []},
+                             {'id': 'g', 'type': 'graphic', 'asset': 'assets/a.png', 'pdf_regions': []}]}]}
+            working = root / 'working'
+            (working / 'assets').mkdir(parents=True)
+            asset = working / 'assets/a.png'
+            asset.write_bytes(b'old asset')
+            write_json(working / 'book.json', book)
+            cache = InputCache()
+            original = cache.load(working)
+            self.assertIs(cache.load(working), original)
+            changed = {**book, 'toc': {'depth': 3}}
+            cache.load(working, changed)
+            self.assertEqual(cache.load(working)[0]['toc']['depth'], 2)
+            write_json(working / 'book.json', changed)
+            self.assertEqual(cache.load(working)[0]['toc']['depth'], 3)
+            write_json(page, {'blocks': [{'block_id': 0, 'text': 'Other'}]})
+            source_changed = cache.load(working)
+            self.assertEqual(source_changed[0]['chapters'][0]['elements'][0]['resolved_md_text'], 'Other')
+            asset.write_bytes(b'changed asset')
+            self.assertNotEqual(cache.load(working)[2], source_changed[2])
+            asset.unlink()
+            with self.assertRaises(OSError):
+                cache.load(working)
+
+    def test_merge_preserves_both_pages_ranges_and_boxes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            regions = [{'page': 1, 'bbox': [10, 20, 100, 40]}, {'page': 2, 'bbox': [15, 25, 110, 55]}]
+            for page in (1, 2):
+                write_json(root / f'pdf-to-markdown/02_preprocess/page_{page:04d}.json',
+                           {'blocks': [{'block_id': 0, 'text': 'Same'}]})
+            first = {'id': 'a', 'type': 'prose', 'md_text': '{{text page=1 block=0 chars=0:4}}', 'pdf_regions': [regions[0]]}
+            second = {'id': 'b', 'type': 'prose', 'md_text': '{{text page=2 block=0 chars=0:4}}', 'pdf_regions': regions}
+            book = {'toc': {'depth': 2}, 'chapters': [{'id': 'c', 'title': 'Example', 'markdown_file': 'example.md', 'elements': [first, second]}]}
+            write_json(root / 'working/book.json', book)
+            write_json(root / 'accepted/book.json', book)
+            accepted_before = (root / 'accepted/book.json').read_bytes()
+            state = ReviewState(root)
+            command = {'id': 'a', 'next_id': 'b', 'expected_revision': load_input(root / 'working')[2], 'text': '**Same**\nSame {edited}'}
+            before = (root / 'working/book.json').read_bytes()
+            for invalid in ({**command, 'next_id': 'wrong'}, {**command, 'text': ''}, {**command, 'expected_revision': 'stale'}):
+                with self.assertRaises(ValueError):
+                    state.merge(invalid)
+                self.assertEqual((root / 'working/book.json').read_bytes(), before)
+            state.merge(command)
+            result = load_input(root / 'working')[0]['chapters'][0]['elements']
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0]['id'], 'a')
+            self.assertEqual(result[0]['resolved_md_text'], command['text'])
+            self.assertEqual(result[0]['pdf_regions'], regions)
+            self.assertIn('{{text page=1 block=0 chars=0:4}}', result[0]['md_text'])
+            self.assertIn('{{text page=2 block=0 chars=0:4}}', result[0]['md_text'])
+            self.assertEqual((root / 'accepted/book.json').read_bytes(), accepted_before)
+            with self.assertRaisesRegex(ValueError, 'no next'):
+                state.merge({**command, 'expected_revision': load_input(root / 'working')[2]})
+
+    def test_edit_and_split_preserve_unicode_ranges_and_repeated_source(self):
+        pages = {1: [{'block_id': 0, 'text': 'Same 😀 Same 😀'}]}
+        template = '{{text page=1 block=0 chars=0:13}}'
+        edited = edit_template(template, pages, '**Same 😀** Same 😀 {manual}')
+        self.assertEqual(resolve_template(edited, pages), '**Same 😀** Same 😀 {manual}')
+        first = slice_template(edited, 0, 11)
+        second = slice_template(edited, 11, len('**Same 😀** Same 😀 {manual}'))
+        self.assertEqual(resolve_template(first, pages) + resolve_template(second, pages), '**Same 😀** Same 😀 {manual}')
+        self.assertIn('chars=7:13', second)
+        self.assertNotIn('chars=0:', second)
+
+    def test_markdown_and_split_are_atomic_and_reject_stale_edits(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            write_json(root / 'pdf-to-markdown/02_preprocess/page_0001.json',
+                       {'blocks': [{'block_id': 0, 'text': 'Same Same'}]})
+            element = {'id': 'p', 'type': 'prose', 'md_text': '{{text page=1 block=0 chars=0:9}}', 'pdf_regions': []}
+            book = {'toc': {'depth': 2}, 'chapters': [{'id': 'c', 'title': 'Example', 'markdown_file': 'example.md', 'elements': [element]}]}
+            write_json(root / 'working/book.json', book)
+            state = ReviewState(root)
+            command = {'id': 'p', 'expected_revision': load_input(root / 'working')[2]}
+            before = (root / 'working/book.json').read_bytes()
+            with self.assertRaises(ValueError):
+                state.split({**command, 'first': 'Same ', 'second': ''})
+            with self.assertRaises(OSError):
+                state.markdown({**command, 'text': '![missing](assets/missing.png)'})
+            self.assertEqual((root / 'working/book.json').read_bytes(), before)
+            state.split({**command, 'first': 'Same ', 'second': 'Same'})
+            split = load_input(root / 'working')[0]['chapters'][0]['elements']
+            self.assertEqual(split[0]['md_text'], '{{text page=1 block=0 chars=0:5}}')
+            self.assertEqual(split[1]['md_text'], '{{text page=1 block=0 chars=5:9}}')
+            with self.assertRaisesRegex(ValueError, 'Stale'):
+                state.markdown({**command, 'text': 'Old edit'})
+            command['expected_revision'] = load_input(root / 'working')[2]
+            state.markdown({**command, 'text': '### Same'})
+            heading = load_input(root / 'working')[0]['chapters'][0]['elements'][0]
+            self.assertEqual((heading['type'], heading['heading_level']), ('heading', 3))
+
     def test_recipe_reorders_pdf_label_and_preserves_listing_structure(self):
         source = 'Assembler\nADD < ea > ,Dn \nSyntax:\nADD Dn, < ea > \n'
         blocks = [{'block_id': 10, 'text': source}]

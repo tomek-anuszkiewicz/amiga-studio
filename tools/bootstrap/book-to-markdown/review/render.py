@@ -11,6 +11,7 @@ from mdit_py_plugins.dollarmath import dollarmath_plugin
 from playwright.sync_api import sync_playwright
 
 from .model import asset_names, digest, element_markdown, elements, heading_text, json_bytes, toc_entries, write_json
+from .markdown import callout_plugin
 
 HERE = Path(__file__).resolve().parent
 KATEX = HERE.parent / "node_modules" / "katex" / "dist"
@@ -38,6 +39,7 @@ class Renderer:
                          "presentation": "html"}
         self.md = MarkdownIt("commonmark", {"html": True}).enable("table").enable("strikethrough")
         self.md.use(dollarmath_plugin, allow_labels=False, renderer=math_node)
+        self.md.use(callout_plugin)
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(channel=channel or None)
         self.page = self.browser.new_page(viewport={"width": width, "height": 900})

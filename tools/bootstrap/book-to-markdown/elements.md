@@ -11,7 +11,7 @@ This initial vocabulary describes the source elements distinguished during book 
 | `toc` | Formal table-of-contents entries and their page references. |
 | `thumb_index` | Printed edge tabs and marginal chapter navigation markers. |
 | `heading` | A chapter, appendix, section or subsection title. Its `heading_level` property defines its depth in the document hierarchy. |
-| `callout` | A standalone advisory label, such as NOTE, WARNING or CAUTION. |
+| `callout` | A source advisory label, such as NOTE, WARNING or CAUTION; after editor repair, a complete Markdown callout including its body. |
 | `callout_text` | The body of an advisory callout, including its paragraphs, lists or formulas. |
 | `prose` | Narrative paragraphs and general explanations, including run-in titles. |
 | `code_block` | Source code, assembly, pseudocode, scripts and similar program or command listings. Preserve their tokens, indentation and line breaks. |

@@ -1,7 +1,7 @@
 "use strict";
 const panes = Object.fromEntries(["pdf", "accepted", "working"].map(id => [id, document.getElementById(id)]));
 let state = null, selected = null, hovered = null, leader = "working", changeIndex = -1;
-let pointerX = 0, headingCommand = null, loading = false, requested = false, resizing = false;
+let pointerX = 0, loading = false, requested = false, resizing = false;
 const collapsed = new Set(), suppressed = new Map();
 let nodes = {pdf: [], accepted: [], working: []};
 let lastLogical = null, publishing = false;
@@ -13,24 +13,40 @@ const elementMenu = document.getElementById("element-menu");
 const visibilityButton = document.getElementById("menu-visibility");
 const hidePageButton = document.getElementById("menu-hide-page");
 const headingButton = document.getElementById("menu-heading");
+const headingMenu = document.getElementById("heading-menu");
+const typeButton = document.getElementById("menu-type");
+const typeMenu = document.getElementById("type-menu");
+const markdownDialog = document.getElementById("markdown-dialog");
+const markdownText = document.getElementById("markdown-text");
+const markdownSecond = document.getElementById("markdown-second");
+let textCommand=null, splitting=false, merging=false, activeText=markdownText;
 const discardElementButton = document.getElementById("menu-discard");
 let selectedPane="working", selectedPage=null, menuCommand=null, pageCommand=null, menuReturnFocus=null, menuScrollPosition={};
 function closeMenu(restoreFocus=false) {
   const wasOpen=!elementMenu.hidden;
   elementMenu.hidden=true; actionsButton.setAttribute("aria-expanded","false");
+  headingMenu.hidden=true; headingButton.setAttribute("aria-expanded","false");
+  typeMenu.hidden=true; typeButton.setAttribute("aria-expanded","false");
   if(restoreFocus && wasOpen && menuReturnFocus?.isConnected) menuReturnFocus.focus({preventScroll:true});
 }
 function openMenu(x,y) {
   if((!selected && selectedPage === null) || !state) return;
-  hideHint(); menuReturnFocus=document.activeElement;
+   menuReturnFocus=document.activeElement;
   menuScrollPosition=Object.fromEntries(Object.entries(panes).map(([name,pane])=>[name,pane.scrollTop]));
   const element=elementIndex(state.working).get(selected)?.element;
-  const editable=selectedPane !== "accepted" && element && !state.pending && !loading;
+  const acceptedElement=elementIndex(state.accepted).get(selected)?.element;
+  const typeLabel=document.getElementById("menu-current-type");
+  typeLabel.hidden=!element && !acceptedElement;
+  const types=acceptedElement && element && acceptedElement.type !== element.type ?
+    `${acceptedElement.type} / ${element.type}` : element?.type ?? acceptedElement?.type;
+  typeLabel.textContent=types ? `Type: ${types}` : "Type:";
+  const editable=element && !state.pending && !loading;
   menuCommand=element ? {id:element.id,expected_revision:state.authored_revision,
     accepted_revision:state.accepted?.revision,visible:element.visible === false} : null;
   visibilityButton.hidden=!element; visibilityButton.disabled=!editable;
   visibilityButton.textContent=element?.visible === false ? "Unhide Element" : "Hide Element";
   pageCommand={page:selectedPage,expected_revision:state.authored_revision};
+  document.getElementById("menu-fix-callouts").disabled=state.pending || loading;
   hidePageButton.disabled=selectedPage === null || state.pending || loading ||
     ![...elementIndex(state.working).values()].some(({element})=>element.visible !== false &&
       element.pdf_regions.some(region=>region.page === selectedPage));
@@ -39,6 +55,41 @@ function openMenu(x,y) {
   document.getElementById("menu-copy").disabled=!selected || selected === "generated-toc";
   headingButton.hidden=!element || !state.heading_types.includes(element.type);
   headingButton.disabled=!editable;
+  typeButton.hidden=!element;
+  typeButton.disabled=!editable || state.protected_types.includes(element.type) || !!element.asset ||
+    typeof element.md_text !== "string" || !element.md_text.trim();
+  typeMenu.replaceChildren();
+  for(const kind of state.editable_types) {
+    const button=document.createElement("button");button.type="button";button.dataset.type=kind;
+    button.textContent=kind;button.setAttribute("role","menuitemradio");
+    button.setAttribute("aria-checked",String(kind === element?.type));
+    button.disabled=typeButton.disabled || kind === element?.type;
+    button.onclick=async()=>{
+      const command={id:menuCommand.id,expected_revision:menuCommand.expected_revision,type:kind};
+      closeMenu(true);
+      try{await post("/api/type",command);await refresh();}
+      catch(error){await refresh();showError(error.message);}
+    };
+    typeMenu.append(button);
+  }
+  for(const id of ["menu-bold","menu-remove-bold","menu-markdown","menu-split"]) {
+    const button=document.getElementById(id);
+    button.hidden=!element || typeof element.md_text !== "string" || !!element.asset;
+    button.disabled=!editable;
+  }
+  const next=nextElement(element?.id);
+  const mergeButton=document.getElementById("menu-merge");
+  mergeButton.hidden=!element || typeof element.md_text !== "string" || !!element.asset;
+  mergeButton.disabled=!editable || !next || typeof next.md_text !== "string" || !!next.asset;
+  const mergeTablesButton=document.getElementById("menu-merge-tables");
+  mergeTablesButton.hidden=!element || element.type !== "table";
+  mergeTablesButton.disabled=!editable;
+  for(const [id,offset] of [["menu-move-up",-1],["menu-move-down",1]]) {
+    const button=document.getElementById(id);
+    button.hidden=!element;
+    button.disabled=!editable || !adjacentElement(element?.id,offset);
+  }
+  for(const button of headingMenu.children)button.setAttribute("aria-checked",String(Number(button.dataset.level) === element?.heading_level));
   discardElementButton.hidden=!element;
   discardElementButton.disabled=!editable || !state.discardable_elements?.includes(element.id);
   discardElementButton.title="Restore this element's text and properties from Accepted";
@@ -56,16 +107,36 @@ document.addEventListener("pointerdown",event=>{
   if(!event.composedPath().includes(elementMenu) && !event.composedPath().includes(actionsButton))closeMenu();
 });
 elementMenu.addEventListener("keydown",event=>{
-  const buttons=[...elementMenu.querySelectorAll("button:not([hidden]):not(:disabled)")];
+  const buttons=[...elementMenu.querySelectorAll("button:not([hidden]):not(:disabled)")].filter(button=>!button.closest("[hidden]"));
   const index=buttons.indexOf(document.activeElement);
   if(["ArrowDown","ArrowUp","Home","End"].includes(event.key)) {
     event.preventDefault();
     const next=event.key === "Home" ? 0 : event.key === "End" ? buttons.length-1 :
       (index+(event.key === "ArrowDown" ? 1 : -1)+buttons.length)%buttons.length;
     buttons[next]?.focus();
+  } else if(event.key === "ArrowRight" && [headingButton,typeButton].includes(document.activeElement)) {
+    const button=document.activeElement, menu=button === headingButton ? headingMenu : typeMenu;
+    event.preventDefault();if(menu.hidden)button.click();menu.querySelector("button:not(:disabled)")?.focus();
+  } else if(event.key === "ArrowLeft" && [headingMenu,typeMenu].some(menu=>menu.contains(document.activeElement))) {
+    const menu=headingMenu.contains(document.activeElement) ? headingMenu : typeMenu;
+    const button=menu === headingMenu ? headingButton : typeButton;
+    event.preventDefault();menu.hidden=true;button.setAttribute("aria-expanded","false");button.focus();
   } else if(event.key === "Tab") closeMenu();
 });
-document.addEventListener("keydown",event=>{if(event.key === "Escape")closeMenu(true);});
+function clearSelection() {
+  selected=null;selectedPage=null;hovered=null;
+  let focused=document.activeElement;
+  while(focused?.shadowRoot?.activeElement)focused=focused.shadowRoot.activeElement;
+  if(focused?.matches("[data-id],[data-element],.page"))focused.blur();
+  closeMenu();highlight();
+}
+document.addEventListener("keydown",event=>{if(event.key === "Escape")clearSelection();});
+document.addEventListener("click",event=>{
+  if(event.composedPath().some(node=>node.matches?.(
+    "[data-id],[data-element],a,summary,button,input,select,textarea,#element-menu,dialog")))return;
+  if(!getSelection().isCollapsed)return;
+  clearSelection();
+});
 visibilityButton.onclick=async()=>{
   const command=menuCommand;closeMenu(true);
   try{await post("/api/visibility",command);await refresh();}
@@ -82,14 +153,81 @@ discardElementButton.onclick=async()=>{
   catch(error){await refresh();showError(error.message);}
 };
 headingButton.onclick=()=>{
+  typeMenu.hidden=true;typeButton.setAttribute("aria-expanded","false");
+  headingMenu.hidden=!headingMenu.hidden;headingButton.setAttribute("aria-expanded",String(!headingMenu.hidden));
+  const rect=elementMenu.getBoundingClientRect();
+  elementMenu.style.top=`${Math.max(8,Math.min(rect.top,innerHeight-rect.height-8))}px`;
+};
+typeButton.onclick=()=>{
+  headingMenu.hidden=true;headingButton.setAttribute("aria-expanded","false");
+  typeMenu.hidden=!typeMenu.hidden;typeButton.setAttribute("aria-expanded",String(!typeMenu.hidden));
+  const rect=elementMenu.getBoundingClientRect();
+  elementMenu.style.top=`${Math.max(8,Math.min(rect.top,innerHeight-rect.height-8))}px`;
+};
+for(let level=1;level<=6;level++) {
+  const button=document.createElement("button");button.type="button";button.dataset.level=level;
+  button.textContent=`H${level}`;button.setAttribute("role","menuitemradio");
+  button.onclick=async()=>{
+    const command={...menuCommand,level};closeMenu(true);
+    try{await post("/api/heading",command);await refresh();}
+    catch(error){await refresh();showError(error.message);}
+  };
+  headingMenu.append(button);
+}
+for(const id of ["menu-markdown","menu-split"])document.getElementById(id).onclick=()=>{
   const element=elementIndex(state.working).get(menuCommand.id)?.element;
-  closeMenu(true);if(element)editHeading(element);
+  textCommand={id:menuCommand.id,expected_revision:menuCommand.expected_revision};
+  closeMenu(true);if(element)editMarkdown(element,id === "menu-split");
+};
+for(const id of ["menu-bold","menu-remove-bold"])document.getElementById(id).onclick=async()=>{
+  const element=elementIndex(state.working).get(menuCommand.id)?.element;
+  const command={id:menuCommand.id,expected_revision:menuCommand.expected_revision,
+    text:boldText(element.resolved_md_text ?? element.md_text,id === "menu-bold")};
+  closeMenu(true);
+  try{await post("/api/markdown",command);await refresh();}
+  catch(error){await refresh();showError(error.message);}
+};
+function adjacentElement(id,offset) {
+  const ordered=[...elementIndex(state?.working).values()].map(entry=>entry.element);
+  const index=ordered.findIndex(element=>element.id === id);
+  return index < 0 ? null : ordered[index+offset];
+}
+function nextElement(id) {return adjacentElement(id,1);}
+
+document.getElementById("menu-fix-callouts").onclick=async()=>{
+  const command={expected_revision:pageCommand.expected_revision};
+  closeMenu(true);
+  try {
+    const result=await post("/api/fix-callouts",command);await refresh();
+    alert(`Fixed ${result.fixed} callouts.`+(result.warnings.length ? `\n\nWarnings:\n${result.warnings.join("\n")}` : ""));
+  } catch(error){await refresh();showError(error.message);}
+};
+
+document.getElementById("menu-merge-tables").onclick=async()=>{
+  const command={id:menuCommand.id,expected_revision:menuCommand.expected_revision};
+  closeMenu(true);
+  try{await post("/api/merge-tables",command);await refresh();}
+  catch(error){await refresh();showError(error.message);}
+};
+
+for(const direction of ["up","down"])document.getElementById(`menu-move-${direction}`).onclick=async()=>{
+  const command={id:menuCommand.id,expected_revision:menuCommand.expected_revision,direction};
+  closeMenu(true);
+  try{await post("/api/move",command);await refresh();}
+  catch(error){await refresh();showError(error.message);}
+};
+document.getElementById("menu-merge").onclick=()=>{
+  const element=elementIndex(state.working).get(menuCommand.id)?.element;
+  const next=nextElement(menuCommand.id);
+  if(!element || !next)return;
+  textCommand={id:element.id,next_id:next.id,expected_revision:menuCommand.expected_revision};
+  closeMenu(true);editMarkdown(element,false,next);
 };
 document.getElementById("menu-copy").onclick=async()=>{
   closeMenu(true);try{await navigator.clipboard.writeText(selected);}catch(error){showError(error.message);}
 };
 showHidden.onchange=()=>{
-  const logical=anchor(leader);closeMenu();hideHint();hovered=null;highlight();
+  const logical=anchor(leader);closeMenu();hovered=null;highlight();
   if(logical)position(leader,logical);sync(leader);
 };
 
@@ -184,12 +322,8 @@ function elementPage(node, id, pane, y) {
 }
 function bindElement(node, id, pane) {
   node.dataset.id = id; node.tabIndex = 0;
-  node.addEventListener("pointerenter", event => { hovered = id; highlight(); showHint(id,event.clientX,event.clientY); });
-  node.addEventListener("pointerleave", () => { hovered = null; highlight(); hideHint(); });
-  node.addEventListener("focus", () => {
-    const rect=node.getBoundingClientRect(); showHint(id,rect.left,rect.top);
-  });
-  node.addEventListener("blur", hideHint);
+  node.addEventListener("pointerenter", () => { hovered = id; highlight(); });
+  node.addEventListener("pointerleave", () => { hovered = null; highlight(); });
   node.addEventListener("contextmenu", event => {
     event.preventDefault(); event.stopPropagation();
     selected=id; selectedPane=pane; selectedPage=elementPage(node,id,pane,event.clientY); highlight(); openMenu(event.clientX,event.clientY);
@@ -205,7 +339,9 @@ function bindElement(node, id, pane) {
     if (event.target.closest("a,summary,button,input,select,textarea")) return;
     // A drag selection copies ordinary document text without opening an edit menu.
     if (!getSelection().isCollapsed) return;
-    event.stopPropagation(); selected = id; highlight(); hideHint();
+    event.stopPropagation();
+    if(selected === id){clearSelection();return;}
+    selected = id; highlight();
     selectedPane = pane; selectedPage=elementPage(node,id,pane,event.clientY); closeMenu();
   });
 }
@@ -364,55 +500,6 @@ function highlight() {
   actionsButton.disabled = !selected && selectedPage === null;
   updateChangeNavigation();
 }
-const hint = document.getElementById("element-hint");
-function hideHint() { hint.hidden=true; }
-function hintConfiguration(id,version) {
-  const snapshot=state?.[version];
-  if(!snapshot) return {};
-  if(id === "generated-toc") return {Visible:true,Depth:snapshot.toc.depth};
-  const entry=elementIndex(snapshot).get(id);
-  if(!entry) return {};
-  const {element}=entry;
-  const values={Visible:element.visible !== false,Type:element.type};
-  const labels={heading_level:"Heading level",number:"Number",md_text:"Text (preview)",
-    table_format:"Table format"};
-  for(const [key,label] of Object.entries(labels)) {
-    if(element[key] !== undefined) values[label]=key === "md_text" ?
-      element.resolved_md_text ?? element[key] : element[key];
-  }
-  return values;
-}
-function showHint(id,x,y) {
-  if (!elementMenu.hidden) return;
-  const before=hintConfiguration(id,"accepted"), after=hintConfiguration(id,"working");
-  hint.replaceChildren();
-  const title=document.createElement("strong");
-  title.textContent=id === "generated-toc" ? "Generated Table of Contents" : id;
-  const summary=document.createElement("div");
-  const fields=[...new Set([...Object.keys(before),...Object.keys(after)])];
-  const different=key=>JSON.stringify(before[key])!==JSON.stringify(after[key]);
-  const changed=fields.filter(different);
-  summary.textContent=changed.length ? `Changed: ${changed.join(", ")}` :
-    state?.changes.some(change=>change.id===id) ? "Content or placement changed" : "No changes";
-  const table=document.createElement("table");
-  const head=table.createTHead().insertRow();
-  for(const label of ["Property","Accepted","Working"]) {
-    const cell=document.createElement("th");cell.scope="col";cell.textContent=label;head.append(cell);
-  }
-  const body=table.createTBody();
-  const display=value=>value===undefined ? "—" : typeof value==="object" ? JSON.stringify(value) : String(value);
-  for(const key of fields) {
-    const row=body.insertRow();row.classList.toggle("changed",different(key));
-    for(const value of [key,before[key],after[key]]) {
-      const text=display(value);row.insertCell().textContent=text.length>180 ? `${text.slice(0,177)}…` : text;
-    }
-  }
-  hint.append(title,summary,table);hint.hidden=false;
-  const rect=hint.getBoundingClientRect();
-  hint.style.left=`${Math.max(12,Math.min(x+16,innerWidth-rect.width-12))}px`;
-  hint.style.top=`${Math.max(12,Math.min(y+16,innerHeight-rect.height-12))}px`;
-}
-document.addEventListener("keydown",event=>{if(event.key === "Escape")hideHint();});
 function anchor(pane) {
   const viewport = panes[pane].getBoundingClientRect(), line = viewport.top + .25*panes[pane].clientHeight;
   let candidates = visibleNodes(pane);
@@ -477,7 +564,7 @@ function sync(pane) {
 }
 function navigate(id, preferred="working") {
   selectedPane=preferred;selectedPage=(elementIndex(state[preferred]).get(id) || elementIndex(state.accepted).get(id))?.element.pdf_regions[0]?.page ?? null;closeMenu();
-  expand(id); selected=id; highlight();hideHint();
+  expand(id); selected=id; highlight();
   leader=visibleNodes(preferred,id).length ? preferred : visibleNodes("accepted",id).length ? "accepted" : "pdf";
   const snapshot=elementIndex(state.working).has(id) ? state.working : state.accepted;
   const logical={id,progress:0,order:[...elementIndex(snapshot).keys()]};
@@ -495,12 +582,54 @@ async function post(url, command) {
 function showError(message) {
   const status=document.getElementById("status");status.textContent=message;status.classList.add("error");
 }
-function editHeading(element) {
-  headingCommand={id:element.id,expected_revision:state.authored_revision};
-  document.getElementById("heading-id").textContent=element.id;
-  document.getElementById("level").value=element.heading_level;
-  document.getElementById("heading-dialog").showModal();
+function editMarkdown(element,split,next=null) {
+  splitting=split;merging=!!next;activeText=markdownText;
+  markdownText.value=(element.resolved_md_text ?? element.md_text)+(next ? `\n${next.resolved_md_text ?? next.md_text}` : "");markdownSecond.value="";
+  document.getElementById("markdown-title").textContent=merging ? "Merge with next" : split ? "Split section" : "Edit Markdown";
+  document.getElementById("markdown-id").textContent=merging ? `${element.id} + ${next.id}` : element.id;
+  document.getElementById("markdown-help").textContent=merging ?
+    "Edit the combined Markdown, then press OK. The merged element keeps the PDF pages and source boxes of both elements." : split ?
+    "Place the cursor at the split, or select the opening text and split after it. Review and edit both sections, then press OK." :
+    "Edit the Markdown source. Select text to add or remove bold; without a selection, the whole section is used.";
+  document.getElementById("split-at-cursor").hidden=!split;
+  document.getElementById("second-section").hidden=true;
+  document.getElementById("first-label").textContent=split ? "First section" : "Markdown";
+  document.getElementById("save-markdown").textContent=split || merging ? "OK" : "Save";
+  document.getElementById("save-markdown").disabled=split;
+  document.getElementById("markdown-error").hidden=true;
+  markdownDialog.showModal();markdownText.focus();markdownText.setSelectionRange(0,0);
 }
+for(const field of [markdownText,markdownSecond])field.addEventListener("focus",()=>{activeText=field;});
+function formatBold(add) {
+  const field=activeText;
+  let start=field.selectionStart,end=field.selectionEnd;
+  if(start === end){start=0;end=field.value.length;}
+  const marker=field.value.slice(start-2,start);
+  if(["**","__"].includes(marker) && field.value.slice(end,end+2) === marker) {
+    if(add)return;
+    start-=2;end+=2;
+  }
+  field.setRangeText(boldText(field.value.slice(start,end),add),start,end,"select");field.focus();
+}
+function boldText(text,add) {
+  return add ? text.split(/(\n[ \t]*\n)/).map(part=>part.replace(/^(#{1,6}[ \t]+)?(\s*)([\s\S]*?)(\s*)$/,(_,heading,leading,body,trailing)=>
+    `${heading || ""}${leading}${!body || (body.startsWith("**") && body.endsWith("**")) || (body.startsWith("__") && body.endsWith("__")) ? body : `**${boldText(body,false)}**`}${trailing}`)).join("") :
+    text.replace(/(`+)([\s\S]*?)\1|\*\*([\s\S]+?)\*\*|__([\s\S]+?)__|<(strong|b)\b[^>]*>([\s\S]*?)<\/\5>/gi,
+      (match,code,ticks,stars,underscores,tag,html)=>code ? match : stars ?? underscores ?? html);
+}
+document.getElementById("add-bold").onclick=()=>formatBold(true);
+document.getElementById("remove-bold").onclick=()=>formatBold(false);
+document.getElementById("split-at-cursor").onclick=()=>{
+  const cut=markdownText.selectionEnd;
+  if(!markdownText.value.slice(0,cut).trim() || !markdownText.value.slice(cut).trim()) {
+    const error=document.getElementById("markdown-error");error.textContent="Choose a split with text on both sides.";error.hidden=false;return;
+  }
+  markdownSecond.value=markdownText.value.slice(cut);markdownText.value=markdownText.value.slice(0,cut);
+  document.getElementById("second-section").hidden=false;
+  document.getElementById("split-at-cursor").hidden=true;
+  document.getElementById("save-markdown").disabled=false;
+  document.getElementById("markdown-error").hidden=true;
+};
 async function refresh() {
   requested=true; if(loading) return; loading=true;
   try {
@@ -508,22 +637,27 @@ async function refresh() {
       requested=false;
       const response=await fetch("/api/status"); if(!response.ok) throw new Error("Cannot load review state");
       const next=await response.json();
-      const changed=!state || next.working?.revision!==state.working?.revision || next.accepted?.revision!==state.accepted?.revision;
+      const versions=["accepted","working"].filter(version=>!state || next[version]?.revision!==state[version]?.revision);
+      const changed=versions.length>0;
+      const pdfView=value=>[value.pdf_pages,...["working","accepted"].map(version=>
+        [...elementIndex(value[version]).values()].map(({element:e})=>[e.id,e.visible!==false,e.pdf_regions]))];
+      const pdfChanged=!state || JSON.stringify(pdfView(state))!==JSON.stringify(pdfView(next));
       let prepared = [];
       if(changed) {
         document.getElementById("accept").disabled=true;
         document.getElementById("discard").disabled=true;
         document.getElementById("status").textContent="Loading HTML presentation…";
         try {
-          // Prepare both views before changing either displayed revision.
-          for(const version of ["accepted","working"]) prepared.push(await buildMarkdown(version,next[version]));
+          // Prepare changed views before publishing a complete revision.
+          for(const version of versions)prepared.push({version,...await buildMarkdown(version,next[version])});
           const logical=state ? anchor(leader) : null;
           publishing=true;
-          state=next; nodes={pdf:[],accepted:prepared[0].entries,working:prepared[1].entries};
-          for(const [index,version] of ["accepted","working"].entries()) {
-            panes[version].replaceChildren(...prepared[index].stage.children);
-            for(const id of collapsed) applyCollapse(id);
+          state=next;
+          for(const item of prepared) {
+            nodes[item.version]=item.entries;
+            panes[item.version].replaceChildren(...item.stage.children);
           }
+          for(const id of collapsed)applyCollapse(id);
           // Moving Shadow DOM between containers reloads linked stylesheets.
           // Restore geometry only after the mounted documents have their styles.
           await Promise.all(prepared.flatMap(item=>item.styles).map(link=>link.sheet ? Promise.resolve() :
@@ -532,7 +666,13 @@ async function refresh() {
               link.addEventListener("error",()=>reject(new Error(`Cannot load document styles: ${link.href}`)),{once:true});
             })));
           await document.fonts.ready;
-          buildPdf();
+          if(pdfChanged){nodes.pdf=[];buildPdf();}
+          else {
+            const indexes={working:elementIndex(state.working),accepted:elementIndex(state.accepted)};
+            for(const entry of nodes.pdf)if(entry.source) {
+              entry.source.element=indexes[entry.source.version].get(entry.id).element;
+            }
+          }
           highlight();
           if(logical) {
             const restored=position(leader,logical) || logical;
@@ -553,7 +693,7 @@ async function refresh() {
       document.getElementById("toc-depth").value=state.working?.toc.depth ?? 2;
       const status=document.getElementById("status");status.classList.toggle("error",Boolean(state.error));
       status.textContent=state.error || (state.pending ? "Rendering pending…" : `${state.changes.length} ${state.changes.length===1 ? "change" : "changes"}`);
-      closeMenu();highlight();hideHint();
+      closeMenu();highlight();
     }
   } catch(error) {showError(error.message);} finally {loading=false;}
 }
@@ -566,7 +706,7 @@ for(const [name,pane] of Object.entries(panes)) {
     if(publishing)return;
     // A scroll queued before opening the menu must not close that new menu.
     if(elementMenu.hidden || pane.scrollTop !== menuScrollPosition[name])closeMenu();
-    hideHint();
+
     if(suppressed.has(name) && Math.abs(pane.scrollTop-suppressed.get(name))<1) {suppressed.delete(name);return;}
     suppressed.delete(name);leader=name;sync(name);
   },{passive:true});
@@ -599,13 +739,19 @@ document.getElementById("accept").onclick=async()=>{try{await post("/api/accept"
 document.getElementById("discard").onclick=async()=>{
   const command={expected_revision:state.authored_revision,accepted_revision:state.accepted.revision};
   document.getElementById("discard").disabled=true;
-  closeMenu();hideHint();document.getElementById("heading-dialog").close();
+  closeMenu();markdownDialog.close();
   try{await post("/api/discard",command);await refresh();}
   catch(error){await refresh();showError(error.message);}
 };
-document.getElementById("save-heading").onclick=async()=>{
-  try{await post("/api/heading",{...headingCommand,level:Number(document.getElementById("level").value)});document.getElementById("heading-dialog").close();await refresh();}
-  catch(error){showError(error.message);document.getElementById("heading-dialog").close();await refresh();showError(error.message);}
+document.getElementById("save-markdown").onclick=async()=>{
+  const button=document.getElementById("save-markdown");button.disabled=true;
+  try {
+    await post(merging ? "/api/merge" : splitting ? "/api/split" : "/api/markdown",{...textCommand,...(splitting ?
+      {first:markdownText.value,second:markdownSecond.value} : {text:markdownText.value})});
+    markdownDialog.close();await refresh();
+  } catch(error) {
+    const message=document.getElementById("markdown-error");message.textContent=error.message;message.hidden=false;
+  } finally {button.disabled=false;}
 };
 const events=new EventSource("/api/events");events.onmessage=refresh;events.onopen=refresh;
 events.onerror=()=>showError("Connection interrupted; reconnecting…");
