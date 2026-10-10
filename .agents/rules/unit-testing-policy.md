@@ -10,7 +10,7 @@
 
 ## Bootstrap Converter Scope
 
-Applies to `tools/bootstrap/conversion/`, `tools/bootstrap/pdf-to-markdown/` and `tools/bootstrap/html-to-markdown/`. Follow the [developer-led conversion workflow](../../tools/bootstrap/reference-conversion-contract.md#development-workflow); emulator hardware and CPU verification requirements are unaffected.
+Applies to `tools/bootstrap/conversion/`, `tools/bootstrap/pdf-to-markdown/` and `tools/bootstrap/html-to-markdown/`. Follow the [converter development instructions](../../tools/bootstrap/AGENTS.md#converter-development); emulator hardware and CPU verification requirements are unaffected.
 
 - Keep existing technical tests for configuration, Codex transport, response/cache validity and restart/artifact preservation. These tests do not certify conversion quality. Run relevant existing checks for a concrete change; do not turn every edit into a full converter test campaign.
 - Do not add tests by default or create coverage matrices, exhaustive stage/branch suites or automated conversion-quality evaluations. A new test must address a concrete technical defect within the requested task, rather than hypothetical coverage or the current pipeline's internal layout.

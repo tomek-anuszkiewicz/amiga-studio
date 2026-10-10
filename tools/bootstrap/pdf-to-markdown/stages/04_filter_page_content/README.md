@@ -1,7 +1,7 @@
 # Stage 04: Filter Page Content
 
 Read selected Stage 03 page JSONs and remove objects whose type is exactly
-`header` or `footer`. Preserve every surviving object's fields, ID and order.
+`header`, `footer` or `thumb_index`. Preserve every surviving object's fields, ID and order.
 Covers, contents, indexes and other source roles remain for later manual editing.
 No model request, image inspection or further role inference is performed.
 

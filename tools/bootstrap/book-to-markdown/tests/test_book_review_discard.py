@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-REVIEW = Path(__file__).resolve().parents[1] / 'tools/bootstrap/book-to-markdown'
+REVIEW = Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown'
 sys.path.insert(0, str(REVIEW))
 from review.model import export_markdown, load_input, write_json
 from review.service import ReviewState
@@ -17,7 +17,7 @@ class DiscardBundleTest(unittest.TestCase):
     def prepare(self, root):
         book = {'toc': {'depth': 2}, 'chapters': [{'id': 'chapter', 'title': 'Example',
             'markdown_file': 'example.md', 'elements': [{'id': 'image', 'type': 'graphic',
-            'asset': 'assets/image.png', 'pdf_regions': []}]}]}
+            'asset': 'assets/image.png', 'pdf_regions': [], 'role': 'legend'}]}]}
         for version, content in [('accepted', b'accepted asset'), ('working', b'edited asset')]:
             directory = root / version
             (directory / 'assets').mkdir(parents=True)
@@ -88,8 +88,8 @@ class DiscardBundleTest(unittest.TestCase):
             state, _ = self.prepare(root)
             book = load_input(root / 'working')[0]
             original = deepcopy(book['chapters'][0]['elements'][0])
-            book['chapters'][0]['elements'][0].update(type='prose', visible=False, md_text='Edited text')
-            other = {'id': 'other', 'type': 'prose', 'md_text': 'Keep this edit', 'pdf_regions': []}
+            book['chapters'][0]['elements'][0].update(type='prose', role='note', visible=False, md_text='Edited text')
+            other = {'id': 'other', 'type': 'prose', 'md_text': 'Keep this edit', 'pdf_regions': [], 'role': None}
             book['chapters'][0]['elements'].append(other)
             book['toc']['depth'] = 3
             write_json(root / 'working/book.json', book)

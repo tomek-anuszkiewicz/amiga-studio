@@ -10,9 +10,9 @@ from urllib.parse import urlsplit
 from PIL import Image
 from playwright.sync_api import sync_playwright
 
-REVIEW = Path(__file__).resolve().parents[1] / 'tools/bootstrap/book-to-markdown/review'
+REVIEW = Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown/review'
 sys.path.insert(0, str(REVIEW.parent))
-from review.model import EDITABLE_TYPES, PROTECTED_TYPES
+from review.model import EDITABLE_TYPES, ELEMENT_ROLES, PROTECTED_TYPES
 
 
 class ScrollReviewTest(unittest.TestCase):
@@ -26,14 +26,14 @@ class ScrollReviewTest(unittest.TestCase):
         self.check_hide('p12', 'p13', 'pdf')
 
     def check_hide(self, hidden_id, expected_id, pane='working'):
-        elements = [{'id': f'p{i}', 'type': 'prose', 'pdf_regions': [{'page': i+1, 'bbox': [0, 0, 200, 100]}]} for i in range(30)]
+        elements = [{'id': f'p{i}', 'type': 'prose', 'pdf_regions': [{'page': i+1, 'bbox': [0, 0, 200, 100]}], 'role': None} for i in range(30)]
         accepted = {'revision': 'before', 'toc': {'depth': 2}, 'chapters': [
             {'id': 'chapter', 'title': 'Example', 'elements': elements}],
             'render': {'chapters': [{'id': 'chapter', 'document': 'chapter.html'}]}}
         working = deepcopy(accepted)
         status = {'working': working, 'accepted': accepted, 'can_accept': True,
                   'authored_revision': 'before', 'pending': False, 'error': None,
-                  'editable_types': EDITABLE_TYPES, 'protected_types': PROTECTED_TYPES,
+                  'editable_types': EDITABLE_TYPES, 'protected_types': PROTECTED_TYPES, 'roles': ELEMENT_ROLES,
                   'changes': [], 'heading_types': [], 'pdf_pages': [
                       {'page': i+1, 'width': 200, 'height': 100, 'image': f'pdf/page_{i+1}.png'} for i in range(30)]}
         image=BytesIO()

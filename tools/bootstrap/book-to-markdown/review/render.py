@@ -52,7 +52,7 @@ class Renderer:
         self.playwright.stop()
 
     def chapter_key(self, entries, asset_hashes):
-        rendered = [{k: v for k, v in e.items() if k not in {"pdf_regions", "render_regions"}}
+        rendered = [{k: v for k, v in e.items() if k not in {"pdf_regions"}}
                     for e in entries]
         return digest(json_bytes({"elements": rendered, "settings": self.settings,
                                   "assets": {name: asset_hashes[name]
@@ -115,8 +115,6 @@ class Renderer:
             target.write_bytes(data)
         (directory / "document.css").write_text(self.style, encoding="utf-8")
         snapshot = deepcopy(book)
-        for element in elements(snapshot):
-            element.pop("render_regions", None)
         snapshot.update({"revision": revision, "input_fingerprint": fingerprint,
                          "asset_hashes": asset_hashes, "settings": self.settings, "render": {"chapters": []}})
         entries = toc_entries(book)

@@ -4,7 +4,6 @@ from copy import deepcopy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import mimetypes
-import re
 from pathlib import Path
 import shutil
 import sys
@@ -14,8 +13,8 @@ import uuid
 
 from PIL import Image
 
-from .model import (EDITABLE_TYPES, HEADING_TYPES, PROTECTED_TYPES, InputCache, authored_element, changes, confined, edit_markdown, elements, export_markdown, json_bytes,
-                    load_input, set_element_type, set_heading_level, update_markdown_heading, write_json)
+from .model import (EDITABLE_TYPES, ELEMENT_ROLES, HEADING_TYPES, PROTECTED_TYPES, InputCache, authored_element, changes, confined, edit_markdown, elements, export_markdown, json_bytes,
+                    load_input, set_element_role, set_element_type, set_heading_level, update_markdown_heading, write_json)
 from .text_recipe import slice_template
 from .markdown import table_structure
 from .render import HERE, KATEX, Renderer
@@ -57,8 +56,6 @@ def replace_bundle(root, snapshot, source_name, target_name, expected_working):
     prepared.mkdir()
     try:
         book = {k: deepcopy(snapshot[k]) for k in ("toc", "chapters")}
-        for e in elements(book):
-            e.pop("render_regions", None)
         write_json(prepared / "book.json", book)
         write_json(prepared / "rendered.json", snapshot)
         export_markdown(book, prepared)
@@ -151,7 +148,8 @@ class ReviewState:
                                         and self.accepted and authored != self.accepted["input_fingerprint"]),
                     "discardable_elements": discardable_elements,
                     "changes": diff, "pdf_pages": self.pdf_pages, "heading_types": sorted(HEADING_TYPES),
-                    "editable_types": EDITABLE_TYPES, "protected_types": PROTECTED_TYPES}
+                    "editable_types": EDITABLE_TYPES, "protected_types": PROTECTED_TYPES,
+                    "roles": ELEMENT_ROLES}
 
     def render_loop(self):
         renderer = None
@@ -240,6 +238,14 @@ class ReviewState:
             set_element_type(element, command['type'])
         self.mutate(command['expected_revision'], update)
 
+    def change_role(self, command):
+        def update(book):
+            element = next((e for e in elements(book) if e['id'] == command['id']), None)
+            if element is None:
+                raise ValueError('Element no longer exists')
+            set_element_role(element, command['role'])
+        self.mutate(command['expected_revision'], update)
+
     def visibility(self, command):
         if type(command["visible"]) is not bool:
             raise ValueError("Visible must be a boolean")
@@ -258,55 +264,6 @@ class ReviewState:
                 raise ValueError('Element no longer exists')
             edit_markdown(self.root, element, command['text'])
         self.mutate(command['expected_revision'], update)
-
-    def fix_callouts(self, command):
-        result = {'fixed': 0, 'warnings': []}
-
-        def update(book):
-            ordered = [(chapter, element) for chapter in book['chapters'] for element in chapter['elements']]
-            consumed = set()
-            for index, (_, element) in enumerate(ordered):
-                if element['id'] in consumed:
-                    continue
-                text = element.get('resolved_md_text', element.get('md_text', ''))
-                if element['type'] == 'callout_text':
-                    result['warnings'].append(f"{element['id']}: callout text has no preceding callout label")
-                    continue
-                if element['type'] != 'callout' or re.match(r'^\s*>\s*\[!', text):
-                    continue
-                if index + 1 >= len(ordered) or ordered[index + 1][1]['type'] != 'callout_text':
-                    result['warnings'].append(f"{element['id']}: callout has no immediately following callout text")
-                    continue
-                chapter, body = ordered[index + 1]
-                label = re.fullmatch(r'\s*([A-Za-z][A-Za-z0-9_-]*):?\s*', text)
-                body_text = body.get('resolved_md_text', body.get('md_text', ''))
-                if not label or not body_text.strip():
-                    result['warnings'].append(f"{element['id']}: invalid callout label or empty body {body['id']}")
-                    continue
-                if element.get('visible', True) != body.get('visible', True):
-                    result['warnings'].append(f"{element['id']}: visibility differs from body {body['id']}; left unchanged")
-                    continue
-                edit_markdown(self.root, element, text)
-                edit_markdown(self.root, body, body_text)
-                # Keep the original label as the explicit title, including its PDF
-                # references and punctuation; only the type marker is new syntax.
-                title = slice_template(element['md_text'], len(text) - len(text.lstrip()), len(text.rstrip()))
-                parts = ['> [!' + label[1].upper() + '] ' + title, '\n>\n']
-                offset = 0
-                for line in body_text.splitlines(keepends=True):
-                    parts.extend(('> ', slice_template(body['md_text'], offset, offset + len(line))))
-                    offset += len(line)
-                element['md_text'] = ''.join(parts)
-                element['resolved_md_text'] = '> [!' + label[1].upper() + '] ' + text.strip() + '\n>\n' + ''.join(
-                    '> ' + line for line in body_text.splitlines(keepends=True))
-                for region in body['pdf_regions']:
-                    if region not in element['pdf_regions']:
-                        element['pdf_regions'].append(deepcopy(region))
-                chapter['elements'].remove(body)
-                consumed.add(body['id'])
-                result['fixed'] += 1
-        self.mutate(command['expected_revision'], update)
-        return result
 
     def split(self, command):
         def update(book):
@@ -362,6 +319,8 @@ class ReviewState:
             chapter, second = ordered[index + 1]
             if any(e['type'] != 'table' for e in (first, second)):
                 raise ValueError('Both elements must be tables; move intervening elements first')
+            if first['role'] != second['role']:
+                raise ValueError('Elements have different roles; change their roles before merging')
             if any(e.get('table_format') != 'markdown' for e in (first, second)):
                 raise ValueError('Only Markdown tables are supported; HTML is not supported')
             first_text = first.get('resolved_md_text', first['md_text'])
@@ -374,7 +333,7 @@ class ReviewState:
                 raise ValueError('Table column names or their order differ')
             if alignment != next_alignment:
                 raise ValueError('Table column alignment differs')
-            # Normalize legacy recipes independently; append only the second body
+            # Append only the second body
             # so retained PDF references never realign to repeated text elsewhere.
             edit_markdown(self.root, first, first_text)
             edit_markdown(self.root, second, second_text)
@@ -397,6 +356,8 @@ class ReviewState:
             chapter, second = ordered[index + 1]
             if second['id'] != command['next_id']:
                 raise ValueError('Next element changed; reopen the merge dialog')
+            if first['role'] != second['role']:
+                raise ValueError('Elements have different roles; change their roles before merging')
             merged = deepcopy(first)
             following = deepcopy(second)
             # Normalize each recipe independently before concatenating provenance.
@@ -553,6 +514,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.state.heading(command)
             elif self.path == "/api/type":
                 self.state.change_type(command)
+            elif self.path == "/api/role":
+                self.state.change_role(command)
             elif self.path == "/api/markdown":
                 self.state.markdown(command)
             elif self.path == "/api/split":
@@ -563,8 +526,6 @@ class Handler(BaseHTTPRequestHandler):
                 self.state.move(command)
             elif self.path == "/api/merge-tables":
                 self.state.merge_tables(command)
-            elif self.path == "/api/fix-callouts":
-                result.update(self.state.fix_callouts(command))
             elif self.path == "/api/visibility":
                 self.state.visibility(command)
             elif self.path == "/api/hide-page":

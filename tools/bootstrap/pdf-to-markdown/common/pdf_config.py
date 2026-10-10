@@ -8,7 +8,7 @@ def load_config(path):
 
 
 def preparation_settings(config):
-    """Resolve preparation defaults without rewriting older workspace configs."""
+    """Resolve the current preparation settings and configuration defaults."""
     defaults = load_config(Path(__file__).resolve().parents[1] / "config.yaml")
     rendering = {**defaults["rendering"], **config.get("rendering", {})}
     ocr = {**defaults["stages"]["01_text_layer"],

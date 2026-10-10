@@ -11,15 +11,22 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "pdf-to-markdown"))
 from common.pdf_artifacts import read_json
 from common.pdf_page_conversion import read_conversion
+from common.pdf_elements import ELEMENT_ROLES, ELEMENT_TYPES
 from .markdown import PARSER, preserve_line_breaks
-from .text_recipe import (MARKDOWN_REFERENCE, REFERENCE, escape_literal, edit_template,
+from .text_recipe import (REFERENCE, escape_literal, edit_template,
                           compile_markdown_template, region_blocks, resolve_template)
 
-HEADING_TYPES = {"heading", "chapter", "toc_heading", "index_heading",
+HEADING_TYPES = {"heading", "toc_heading", "index_heading",
                  "list_of_tables_heading", "list_of_figures_heading"}
 PROTECTED_TYPES = ('table', 'graphic')
 EDITABLE_TYPES = ('heading', 'callout', 'callout_text', 'prose', 'code_block',
-                  'preformatted_text', 'caption', 'footnote', 'note', 'legend')
+                  'preformatted_text')
+
+
+def set_element_role(element, role):
+    if role not in ELEMENT_ROLES:
+        raise ValueError('Unsupported element role')
+    element['role'] = role
 
 
 def json_bytes(value):
@@ -107,31 +114,25 @@ def new_chapter(elements, chapter_id, existing_files=()):
             "markdown_file": filename, "elements": elements}
 
 
-def import_book(root, previous=None):
-    """Use full Stage 05 page replacements; never consult Stage 03."""
+def import_book(root):
+    """Import final Stage 07 page objects and Stage 06 assets."""
     working = root / "working"
-    if (working / "book.json").exists() or (root / "accepted").exists():
-        raise FileExistsError("Book already imported; edit working/book.json instead")
     workspace = root / "pdf-to-markdown"
     status = read_json(workspace / "stage_status.json")
-    for stage in ("02", "04", "05", "06"):
+    for stage in ("02", "06", "07"):
         if status.get(stage, {}).get("status") != "success":
             raise ValueError(f"Preparation stage {stage} is not successful")
-    visibility = {e['id']: e.get('visible', True) for c in previous['chapters']
-                  for e in c['elements']} if previous else {}
     elements = []
     assets = working / "assets"
     assets.mkdir(parents=True, exist_ok=True)
-    for entry, baseline in read_conversion(workspace, "04_filter_page_content"):
-        replacement = workspace / "05_transform_page_tables" / f"{entry['page_id']}_segments.json"
-        page = read_json(replacement) if replacement.exists() else baseline
+    for entry, page in read_conversion(workspace, "07_repair_callouts"):
         text_page = read_json(workspace / '02_preprocess' / f"{entry['page_id']}.json")
         for segment in page["segments"]:
-            if segment["type"] == "thumb_index":
-                continue
             element = {"id": segment["segment_id"], "type": segment["type"],
-                       "visible": visibility.get(segment['segment_id'], True),
-                       "pdf_regions": [{"page": page["page"], "bbox": deepcopy(segment["bbox"])}]}
+                       "role": segment['role'],
+                       "visible": True,
+                       "pdf_regions": deepcopy(segment.get("pdf_regions",
+                           [{"page": page["page"], "bbox": segment["bbox"]}]))}
             for field in ("md_text", "heading_level", "table_format"):
                 if segment.get(field) is not None:
                     element[field] = segment[field]
@@ -152,7 +153,7 @@ def import_book(root, previous=None):
     destination.mkdir(parents=True, exist_ok=True)
     for image in sorted((workspace / "02_preprocess").glob("page_*.png")):
         shutil.copy2(image, destination / image.name)
-    book = {"toc": deepcopy(previous['toc']) if previous else {"depth": 2},
+    book = {"toc": {"depth": 2},
             "chapters": [new_chapter(elements, "chapter-001")]}
     write_json(working / "book.json", book)
     return book
@@ -171,17 +172,8 @@ def edit_markdown(root, element, text):
         raise ValueError("This element has no editable Markdown text")
     template = element['md_text']
     pages = {int(m[1]) for m in REFERENCE.finditer(template)}
-    pages.update(int(m[2]) for m in MARKDOWN_REFERENCE.finditer(template))
     blocks = {page: read_json(root / 'pdf-to-markdown' / '02_preprocess' / f'page_{page:04d}.json')['blocks']
               for page in pages}
-    # An edited legacy segment becomes a PDF-range recipe before applying edits.
-    def migrate(match):
-        stage, page, segment = match.groups()
-        directory = '04_filter_page_content' if stage == '04' else '05_transform_page_tables'
-        data = read_json(root / 'pdf-to-markdown' / directory / f'page_{int(page):04d}_segments.json')
-        original = next(s for s in data['segments'] if s['segment_id'] == segment)
-        return compile_markdown_template(int(page), blocks[int(page)], original.get('md_text', ''))
-    template = MARKDOWN_REFERENCE.sub(migrate, template)
     element['md_text'] = edit_template(template, blocks, text)
     element['resolved_md_text'] = text
     update_markdown_heading(element, text)
@@ -200,8 +192,8 @@ def update_markdown_heading(element, text):
 
 
 def authored_element(element):
-    """Return element properties without resolved text or legacy render geometry."""
-    return {k: v for k, v in element.items() if k not in {"resolved_md_text", "render_regions"}}
+    """Return element properties without resolved text."""
+    return {k: v for k, v in element.items() if k != "resolved_md_text"}
 
 
 def chapter_value(chapter, field):
@@ -265,23 +257,13 @@ def load_input(working, book=None, *, cache=None):
     for page in sorted(referenced_pages):
         blocks = read_source(working.parent / "pdf-to-markdown" / "02_preprocess" / f"page_{page:04d}.json")["blocks"]
         text_pages[page] = blocks
-    prepared = {}
-    converted_pages = {(match[1], int(match[2])) for template in templates
-                       for match in MARKDOWN_REFERENCE.finditer(template)}
-    for stage, page in sorted(converted_pages):
-        directory = '04_filter_page_content' if stage == '04' else '05_transform_page_tables'
-        data = read_source(working.parent / 'pdf-to-markdown' / directory / f'page_{page:04d}_segments.json')
-        for segment in data['segments']:
-            prepared[(stage, page, segment['segment_id'])] = segment.get('md_text', '')
     block_index = {page: {b['block_id']: b['text'] for b in entries} for page, entries in text_pages.items()}
-    resolve = lambda template: resolve_template(template, text_pages, prepared, block_index=block_index)
+    resolve = lambda template: resolve_template(template, text_pages, block_index=block_index)
     for element in elements(book):
         if "md_text" in element:
             element["resolved_md_text"] = resolve(element["md_text"])
     ids, filenames, chapters = set(), {"table-of-contents.md"}, set()
     assets = {}
-    # Older authored books may carry the retired visibility option. TOC is mandatory.
-    book["toc"].pop("enabled", None)
     if type(book["toc"]["depth"]) is not int or book["toc"]["depth"] not in (1, 2, 3):
         raise ValueError("TOC depth must be 1, 2 or 3")
     for chapter in book["chapters"]:
@@ -295,6 +277,10 @@ def load_input(working, book=None, *, cache=None):
             raise ValueError("Chapter Markdown filenames must be unique bundle-local .md files")
         filenames.add(filename.casefold())
         for element in chapter["elements"]:
+            if element["type"] not in ELEMENT_TYPES:
+                raise ValueError("Unsupported element type")
+            if element["role"] not in ELEMENT_ROLES:
+                raise ValueError("Unsupported element role")
             identifier = element["id"]
             if identifier in ids or not re.fullmatch(r"[A-Za-z0-9_-]+", identifier):
                 raise ValueError("Element IDs must be unique anchor-safe identifiers")
@@ -350,7 +336,7 @@ def export_markdown(book, destination):
 
 
 def changes(accepted, working):
-    """Compare authored values and placement, excluding legacy derived geometry."""
+    """Compare authored values and placement, using current authored properties."""
     common = {e["id"] for e in elements(accepted)} & {e["id"] for e in elements(working)}
     common_chapters = {c["id"] for c in accepted["chapters"]} & {c["id"] for c in working["chapters"]}
     def indexed(snapshot):
@@ -359,7 +345,7 @@ def changes(accepted, working):
         for chapter in snapshot["chapters"]:
             position = 0
             for e in chapter["elements"]:
-                data = {k: v for k, v in e.items() if k != "render_regions"}
+                data = dict(e)
                 result[e["id"]] = (chapter["id"], position, data,
                                    chapter_position, chapter["title"], chapter["markdown_file"],
                                    chapter_value(chapter, "title"), chapter_value(chapter, "markdown_file"))

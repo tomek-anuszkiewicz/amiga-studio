@@ -3,26 +3,20 @@
 import json
 from pathlib import Path
 
-RETIRED_OBJECT_FIELDS = ("source_segment_ids", "replacement_stage", "image_only")
-
 
 def compact_objects(value):
-    """Omit page-object defaults and retired metadata without mutating input."""
+    """Omit page-object defaults without mutating input."""
     if isinstance(value, list):
         return [compact_objects(item) for item in value]
     if not isinstance(value, dict):
         return value
     result = {key: compact_objects(item) for key, item in value.items()}
     if isinstance(value.get("type"), str) and "bbox" in value:
-        for key in RETIRED_OBJECT_FIELDS:
-            result.pop(key, None)
         for key, defaults in (("continuation", (False,)), ("heading_level", (None,)),
                               ("md_text", ("", None)), ("rotation", (0,))):
             if key in result and result[key] in defaults:
                 del result[key]
         if isinstance(result.get("metadata"), dict):
-            for key in RETIRED_OBJECT_FIELDS:
-                result["metadata"].pop(key, None)
             if result["metadata"].get("rotation") == 0:
                 del result["metadata"]["rotation"]
     return result

@@ -10,7 +10,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-BOOK_TO_MARKDOWN = Path(__file__).resolve().parents[1] / "tools/bootstrap/book-to-markdown"
+BOOK_TO_MARKDOWN = Path(__file__).resolve().parents[4] / "tools/bootstrap/book-to-markdown"
 sys.path.insert(0, str(BOOK_TO_MARKDOWN))
 from review.model import load_input, write_json
 from review.service import ReviewState
@@ -51,9 +51,9 @@ class RenderRecoveryTest(unittest.TestCase):
     def test_later_render_preserves_newly_accepted_snapshot_and_its_files(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            book = {"toc": {"enabled": False, "depth": 2}, "chapters": [
+            book = {"toc": {"depth": 2}, "chapters": [
                 {"id": "c", "title": "Chapter", "markdown_file": "chapter.md", "elements": [
-                    {"id": "p", "type": "prose", "md_text": "Initial", "pdf_regions": []}]}]}
+                    {"id": "p", "type": "prose", "md_text": "Initial", "pdf_regions": [], 'role': None}]}]}
             renderer = SnapshotRenderer()
             for version in ("working", "accepted"):
                 directory = root / version
@@ -85,9 +85,9 @@ class RenderRecoveryTest(unittest.TestCase):
     def test_unicode_math_error_does_not_stop_queue_on_ascii_console(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            book = {"toc": {"enabled": True, "depth": 2}, "chapters": [
+            book = {"toc": {"depth": 2}, "chapters": [
                 {"id": "c", "title": "Math", "markdown_file": "math.md", "elements": [
-                    {"id": "p", "type": "prose", "md_text": "Valid", "pdf_regions": []}]}]}
+                    {"id": "p", "type": "prose", "md_text": "Valid", "pdf_regions": [], 'role': None}]}]}
             for version in ("working", "accepted"):
                 write_json(root / version / "book.json", book)
                 fingerprint = load_input(root / version)[2]

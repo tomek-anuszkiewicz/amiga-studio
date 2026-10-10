@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[4]
 SPEC = importlib.util.spec_from_file_location(
     "prepare_text_layer", ROOT / "tools/bootstrap/pdf-to-markdown/stages/01_text_layer/prepare_text_layer.py")
 STAGE = importlib.util.module_from_spec(SPEC)

@@ -5,7 +5,6 @@ import re
 from markdown_it import MarkdownIt
 
 REFERENCE = re.compile(r"\{\{text page=(\d+) block=(\d+) chars=(\d+):(\d+)\}\}")
-MARKDOWN_REFERENCE = re.compile(r"\{\{markdown stage=(04|05) page=(\d+) segment=(page_\d+_seg_\d+)\}\}")
 
 
 def escape_literal(text):
@@ -136,7 +135,7 @@ def compile_markdown_template(page, blocks, target):
     return ''.join(parts)
 
 
-def resolve_template(template, pages, prepared=None, *, block_index=None):
+def resolve_template(template, pages, *, block_index=None):
     """Only template syntax is parsed; expanded PDF text is never parsed again."""
     blocks = block_index if block_index is not None else {page: {b["block_id"]: b["text"] for b in entries} for page, entries in pages.items()}
     parts, position = [], 0
@@ -148,15 +147,6 @@ def resolve_template(template, pages, prepared=None, *, block_index=None):
             parts.append(template[position + 1])
             position += 2
         elif char == "{":
-            converted = MARKDOWN_REFERENCE.match(template, position)
-            if converted:
-                stage, page, segment = converted.groups()
-                try:
-                    parts.append(prepared[(stage, int(page), segment)])
-                except (KeyError, TypeError) as error:
-                    raise ValueError("Markdown reference points to a missing prepared segment") from error
-                position = converted.end()
-                continue
             match = REFERENCE.match(template, position)
             if not match:
                 raise ValueError("Invalid text reference; escape literal braces")

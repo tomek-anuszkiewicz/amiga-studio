@@ -16,6 +16,8 @@ const headingButton = document.getElementById("menu-heading");
 const headingMenu = document.getElementById("heading-menu");
 const typeButton = document.getElementById("menu-type");
 const typeMenu = document.getElementById("type-menu");
+const roleButton = document.getElementById("menu-role");
+const roleMenu = document.getElementById("role-menu");
 const markdownDialog = document.getElementById("markdown-dialog");
 const markdownText = document.getElementById("markdown-text");
 const markdownSecond = document.getElementById("markdown-second");
@@ -27,6 +29,7 @@ function closeMenu(restoreFocus=false) {
   elementMenu.hidden=true; actionsButton.setAttribute("aria-expanded","false");
   headingMenu.hidden=true; headingButton.setAttribute("aria-expanded","false");
   typeMenu.hidden=true; typeButton.setAttribute("aria-expanded","false");
+  roleMenu.hidden=true; roleButton.setAttribute("aria-expanded","false");
   if(restoreFocus && wasOpen && menuReturnFocus?.isConnected) menuReturnFocus.focus({preventScroll:true});
 }
 function openMenu(x,y) {
@@ -40,13 +43,18 @@ function openMenu(x,y) {
   const types=acceptedElement && element && acceptedElement.type !== element.type ?
     `${acceptedElement.type} / ${element.type}` : element?.type ?? acceptedElement?.type;
   typeLabel.textContent=types ? `Type: ${types}` : "Type:";
+  const roleLabel=document.getElementById("menu-current-role");
+  roleLabel.hidden=!element && !acceptedElement;
+  const roleName=value=>value ?? "None";
+  const roles=acceptedElement && element && acceptedElement.role !== element.role ?
+    `${roleName(acceptedElement.role)} / ${roleName(element.role)}` : roleName((element ?? acceptedElement)?.role);
+  roleLabel.textContent=`Role: ${roles}`;
   const editable=element && !state.pending && !loading;
   menuCommand=element ? {id:element.id,expected_revision:state.authored_revision,
     accepted_revision:state.accepted?.revision,visible:element.visible === false} : null;
   visibilityButton.hidden=!element; visibilityButton.disabled=!editable;
   visibilityButton.textContent=element?.visible === false ? "Unhide Element" : "Hide Element";
   pageCommand={page:selectedPage,expected_revision:state.authored_revision};
-  document.getElementById("menu-fix-callouts").disabled=state.pending || loading;
   hidePageButton.disabled=selectedPage === null || state.pending || loading ||
     ![...elementIndex(state.working).values()].some(({element})=>element.visible !== false &&
       element.pdf_regions.some(region=>region.page === selectedPage));
@@ -71,6 +79,22 @@ function openMenu(x,y) {
       catch(error){await refresh();showError(error.message);}
     };
     typeMenu.append(button);
+  }
+  roleButton.hidden=!element;
+  roleButton.disabled=!editable;
+  roleMenu.replaceChildren();
+  for(const role of state.roles) {
+    const button=document.createElement("button");button.type="button";
+    button.textContent=roleName(role);button.setAttribute("role","menuitemradio");
+    button.setAttribute("aria-checked",String(role === element?.role));
+    button.disabled=roleButton.disabled || role === element?.role;
+    button.onclick=async()=>{
+      const command={id:menuCommand.id,expected_revision:menuCommand.expected_revision,role};
+      closeMenu(true);
+      try{await post("/api/role",command);await refresh();}
+      catch(error){await refresh();showError(error.message);}
+    };
+    roleMenu.append(button);
   }
   for(const id of ["menu-bold","menu-remove-bold","menu-markdown","menu-split"]) {
     const button=document.getElementById(id);
@@ -114,12 +138,12 @@ elementMenu.addEventListener("keydown",event=>{
     const next=event.key === "Home" ? 0 : event.key === "End" ? buttons.length-1 :
       (index+(event.key === "ArrowDown" ? 1 : -1)+buttons.length)%buttons.length;
     buttons[next]?.focus();
-  } else if(event.key === "ArrowRight" && [headingButton,typeButton].includes(document.activeElement)) {
-    const button=document.activeElement, menu=button === headingButton ? headingMenu : typeMenu;
+  } else if(event.key === "ArrowRight" && [headingButton,typeButton,roleButton].includes(document.activeElement)) {
+    const button=document.activeElement, menu=button === headingButton ? headingMenu : button === typeButton ? typeMenu : roleMenu;
     event.preventDefault();if(menu.hidden)button.click();menu.querySelector("button:not(:disabled)")?.focus();
-  } else if(event.key === "ArrowLeft" && [headingMenu,typeMenu].some(menu=>menu.contains(document.activeElement))) {
-    const menu=headingMenu.contains(document.activeElement) ? headingMenu : typeMenu;
-    const button=menu === headingMenu ? headingButton : typeButton;
+  } else if(event.key === "ArrowLeft" && [headingMenu,typeMenu,roleMenu].some(menu=>menu.contains(document.activeElement))) {
+    const menu=headingMenu.contains(document.activeElement) ? headingMenu : typeMenu.contains(document.activeElement) ? typeMenu : roleMenu;
+    const button=menu === headingMenu ? headingButton : menu === typeMenu ? typeButton : roleButton;
     event.preventDefault();menu.hidden=true;button.setAttribute("aria-expanded","false");button.focus();
   } else if(event.key === "Tab") closeMenu();
 });
@@ -153,14 +177,23 @@ discardElementButton.onclick=async()=>{
   catch(error){await refresh();showError(error.message);}
 };
 headingButton.onclick=()=>{
+  roleMenu.hidden=true;roleButton.setAttribute("aria-expanded","false");
   typeMenu.hidden=true;typeButton.setAttribute("aria-expanded","false");
   headingMenu.hidden=!headingMenu.hidden;headingButton.setAttribute("aria-expanded",String(!headingMenu.hidden));
   const rect=elementMenu.getBoundingClientRect();
   elementMenu.style.top=`${Math.max(8,Math.min(rect.top,innerHeight-rect.height-8))}px`;
 };
 typeButton.onclick=()=>{
+  roleMenu.hidden=true;roleButton.setAttribute("aria-expanded","false");
   headingMenu.hidden=true;headingButton.setAttribute("aria-expanded","false");
   typeMenu.hidden=!typeMenu.hidden;typeButton.setAttribute("aria-expanded",String(!typeMenu.hidden));
+  const rect=elementMenu.getBoundingClientRect();
+  elementMenu.style.top=`${Math.max(8,Math.min(rect.top,innerHeight-rect.height-8))}px`;
+};
+roleButton.onclick=()=>{
+  headingMenu.hidden=true;headingButton.setAttribute("aria-expanded","false");
+  typeMenu.hidden=true;typeButton.setAttribute("aria-expanded","false");
+  roleMenu.hidden=!roleMenu.hidden;roleButton.setAttribute("aria-expanded",String(!roleMenu.hidden));
   const rect=elementMenu.getBoundingClientRect();
   elementMenu.style.top=`${Math.max(8,Math.min(rect.top,innerHeight-rect.height-8))}px`;
 };
@@ -193,15 +226,6 @@ function adjacentElement(id,offset) {
   return index < 0 ? null : ordered[index+offset];
 }
 function nextElement(id) {return adjacentElement(id,1);}
-
-document.getElementById("menu-fix-callouts").onclick=async()=>{
-  const command={expected_revision:pageCommand.expected_revision};
-  closeMenu(true);
-  try {
-    const result=await post("/api/fix-callouts",command);await refresh();
-    alert(`Fixed ${result.fixed} callouts.`+(result.warnings.length ? `\n\nWarnings:\n${result.warnings.join("\n")}` : ""));
-  } catch(error){await refresh();showError(error.message);}
-};
 
 document.getElementById("menu-merge-tables").onclick=async()=>{
   const command={id:menuCommand.id,expected_revision:menuCommand.expected_revision};

@@ -36,27 +36,29 @@ and a 180-second request timeout. Rendering uses `rendering.dpi` (default 300 DP
 | [01: Text layer](stages/01_text_layer/README.md) | Full-source `<source stem>-ocr.pdf` beside the original PDF; local Tesseract when needed |
 | [02: Preprocess](stages/02_preprocess/README.md) | Selected-page PNGs and positioned-text JSON in `02_preprocess/` |
 | [03: Page conversion](stages/03_page_conversion/README.md) | Ordered page objects, Markdown text and pixel boxes in `03_page_conversion/` |
-| [04: Filter](stages/04_filter_page_content/README.md) | Page objects with headers/footers removed in `04_filter_page_content/` |
+| [04: Filter](stages/04_filter_page_content/README.md) | Page objects with headers, footers and thumb indexes removed in `04_filter_page_content/` |
 | [05: Tables](stages/05_transform_page_tables/README.md) | Only pages changed by table transcription in `05_transform_page_tables/` |
 | [06: Crops](stages/06_extract_crops/README.md) | All `graphic` bbox crops in `06_extract_crops/assets/<segment_id>.png` |
+| [07: Callouts](stages/07_repair_callouts/README.md) | Final page objects with adjacent advisory labels/bodies assembled as Markdown callouts in `07_repair_callouts/` |
 
-The book-processing handoff consists of Stage 02 images/text, Stage 04 filtered
-objects and Stage 05 replacement pages. Unchanged pages remain in Stage 04;
-an empty Stage 05 directory is valid. Its status entry records the selected range.
+Stage 05 replacements overlay Stage 04 pages; unchanged pages remain in Stage 04.
+An empty Stage 05 directory is valid. Its status entry records the selected range.
 Stage 06 overlays Stage 05 pages on Stage 04 and extracts graphic crops from
-Stage 02 PNGs. Book processing consumes these assets alongside the page objects.
+Stage 02 PNGs. Stage 07 applies that same page overlay and repairs callouts.
+The book-processing handoff consists of Stage 02 images/text, Stage 06 graphic
+assets and all retained Stage 07 final page objects.
 
 ### Physical-page selection
 
 `--page-ranges` selects physical 1-based pages for this invocation, for example
-`"2-3,7"`. Stage 01 always prepares or reuses the complete PDF; Stages 02–06
+`"2-3,7"`. Stage 01 always prepares or reuses the complete PDF; Stages 02–07
 process only selected input pages. Omission selects all available pages.
 
 ## Restart and status
 
 Use `--from-stage` and `--to-stage` to run an interval; equal values run one stage.
 Starting a stage clears its results and all later stage results, even when
-`--to-stage` stops earlier. With `--page-ranges`, Stages 02–06 clear only files
+`--to-stage` stops earlier. With `--page-ranges`, Stages 02–07 clear only files
 for the selected pages, including Stage 06 graphic crops; other pages remain.
 Without a range, these stage directories are cleared completely. Stage 01 always
 clears its whole workspace directory, while preserving the sibling OCR PDF.
@@ -70,7 +72,7 @@ Attempts using the previous stage numbering require a new named workspace.
 `stage_status.json` records the last invocation's execution, page range and request
 metrics, not accumulated page coverage. Restart invalidates the selected stage
 and all later completion statuses before cleanup, including partial restarts.
-Book import reads all retained Stage 04 pages with Stage 05 replacements rather
+Book import reads all retained Stage 07 pages rather
 than restricting the book to the last invocation's range. Inspect status with:
 
 ```powershell
@@ -86,9 +88,23 @@ participate in the key. The pipeline has no `--config`, `--cache-dir` or `--verb
 Model requests contain only the stage prompt, source JSON where needed, and the
 page or table image. The shared transport clears base/developer instructions and
 does not send output schemas, separate type lists or examples outside the prompt.
+Stage 03 chooses `type` and nullable `role` independently in one image-and-text
+request. Roles are `caption`, `legend`, `note` and `footnote`; they are preserved
+through filtering, table transcription and final callout preparation into book
+import. A legend represented as a table is transcribed as a table in Stage 05.
 
 Agent development guidance is in the [bootstrap instructions](../AGENTS.md#converter-development).
+
+## Tests
+
+PDF execution, OCR profile and page-selection tests live in `tests/` beside this
+program. Run them from the repository root:
+
+```powershell
+python -m unittest discover -s tools/bootstrap/pdf-to-markdown/tests -q
+```
+
+Shared conversion transport tests remain in the repository's top-level `tests/`.
 A successful stage confirms execution, not transcription quality.
-PDF responses are parsed without local
-schema enforcement; source-fidelity details belong to the
-[conversion contract](../reference-conversion-contract.md).
+PDF responses are parsed without local schema enforcement. Shared execution and
+cache behavior are documented in the [conversion client README](../conversion/README.md).

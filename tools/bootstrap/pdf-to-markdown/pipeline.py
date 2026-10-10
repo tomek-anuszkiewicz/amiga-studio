@@ -44,7 +44,7 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
     },
     {
         "id": "04", "dir": "04_filter_page_content", "script": "filter_page_content.py",
-        "desc": "Remove objects classified as headers or footers",
+        "desc": "Remove objects classified as headers, footers or thumb indexes",
         "targets": ["04_filter_page_content"],
         "inspect": ("page_*_segments.json", "filtered page conversion JSON files"),
     },
@@ -60,6 +60,12 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "targets": ["06_extract_crops"],
         "inspect": ("assets/*.png", "graphic PNG crops"),
     },
+    {
+        "id": "07", "dir": "07_repair_callouts", "script": "repair_callouts.py",
+        "desc": "Assemble adjacent advisory labels and bodies into Markdown callouts",
+        "targets": ["07_repair_callouts"],
+        "inspect": ("page_*_segments.json", "final page object JSON files"),
+    },
 ]
 
 # Each stage reads explicitly named predecessor artifacts.
@@ -67,6 +73,7 @@ for stage in STAGE_REGISTRY:
     stage["inputs"] = {
         "01": [], "02": ["01"], "03": ["02"], "04": ["02", "03"],
         "05": ["02", "04"], "06": ["02", "04", "05"],
+        "07": ["02", "04", "05", "06"],
     }[stage["id"]]
 
 
@@ -359,8 +366,6 @@ def main():
 
     status_file = workspace / "stage_status.json"
     statuses = read_json(status_file) if status_file.exists() else {}
-    if any(stage_id in statuses for stage_id in ("00", "02.80", "02.81")):
-        raise ValueError("This attempt uses the previous stage numbering; start a new named workspace")
     selected = STAGE_REGISTRY[start:end + 1]
     selected_ids = {stage["id"] for stage in selected}
     invalid = invalidated_stages(start)

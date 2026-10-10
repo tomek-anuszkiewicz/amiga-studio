@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 
 from playwright.sync_api import sync_playwright
 
-REVIEW = Path(__file__).resolve().parents[1] / "tools/bootstrap/book-to-markdown/review"
+REVIEW = Path(__file__).resolve().parents[4] / "tools/bootstrap/book-to-markdown/review"
 sys.path.insert(0, str(REVIEW.parent))
 from review.model import changes, load_input, toc_entries, toc_markdown, write_json
 
@@ -19,22 +19,7 @@ class ReviewHintsTest(unittest.TestCase):
     def book(self):
         return {"toc": {"depth": 2}, "chapters": [{"id": "chapter", "title": "Example",
             "markdown_file": "example.md", "elements": [{"id": "heading", "type": "heading",
-            "heading_level": 2, "md_text": "## Example", "pdf_regions": []}]}]}
-
-    def test_retired_visibility_cannot_disable_toc(self):
-        book = self.book()
-        book["toc"]["enabled"] = False
-        self.assertEqual(len(toc_entries(book)), 1)
-        self.assertIn("Table of Contents", toc_markdown(book))
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            write_json(root / "working/book.json", book)
-            loaded, _, _ = load_input(root / "working")
-        self.assertEqual(loaded["toc"], {"depth": 2})
-        updated = deepcopy(loaded)
-        updated["toc"]["depth"] = 3
-        self.assertEqual(changes(loaded, updated)[0]["accepted"], {"depth": 2})
-        self.assertEqual(changes(loaded, updated)[0]["working"], {"depth": 3})
+            "heading_level": 2, "md_text": "## Example", "pdf_regions": [], 'role': None}]}]}
 
     def test_hover_and_focus_show_no_tooltip(self):
         accepted = self.book()

@@ -22,7 +22,7 @@ def filter_page_content(workspace, pages=None):
     output_pages = output_objects = 0
     for path, value in pages:
         segments = [segment for segment in value["segments"]
-                    if segment["type"] not in {"header", "footer"}]
+                    if segment["type"] not in {"header", "footer", "thumb_index"}]
         if not segments:
             continue
         write_json(output / path.name, {**value, "segments": segments})

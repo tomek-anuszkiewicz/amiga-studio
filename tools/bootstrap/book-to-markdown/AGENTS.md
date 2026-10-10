@@ -23,11 +23,19 @@ These instructions supplement the [bootstrap instructions](../AGENTS.md).
 - Recipe changes requested by the user mean changes to the generating and
   consuming code. Do not hand-edit generated `book.json` to conceal an importer
   or renderer defect. Regeneration is a separate operation, performed when requested;
-  preserve existing authored choices and previous bundles during that operation.
+  existing authored choices and generated bundles do not constrain that operation.
 - Keep implemented reconstruction separate from pending work. See the
-  [recipe design](recipe-reconstruction.md) and [template contract](README.md#editing-and-publication).
+  [documentation and RAG roadmap](../../../ROADMAP.md#step-1-manual-conversion-and-initial-knowledge-base) and [template contract](README.md#editing-and-publication).
 
 ## Scope
+
+Use only the current recipe format. Do not implement backward compatibility,
+automatic migrations, legacy interpretation, manual patches or inference-based
+rescue of existing content. Import rebuilds its output and may overwrite an
+existing Working book; do not preserve old content or settings to avoid loss.
+Repair the generating code or prompt instead. Run import/regeneration only when
+the user requests it. Ordinary editor operations and current-format validation
+remain supported.
 
 Do not publish, stage or commit book recipes or source artifacts merely because
 publication is the intended final workflow. Follow the user's requested timing

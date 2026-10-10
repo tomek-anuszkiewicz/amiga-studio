@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 from PIL import Image
 from playwright.sync_api import sync_playwright
 
-REVIEW = Path(__file__).resolve().parents[1] / 'tools/bootstrap/book-to-markdown/review'
+REVIEW = Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown/review'
 
 
 class ChangeNavigationTest(unittest.TestCase):
@@ -21,7 +21,7 @@ class ChangeNavigationTest(unittest.TestCase):
 
     def check_navigation(self, check_bounds):
         elements = [{'id': f'p{i}', 'type': 'prose',
-                     'pdf_regions': [{'page': i+1, 'bbox': [0, 0, 200, 100]}]} for i in range(30)]
+                     'pdf_regions': [{'page': i+1, 'bbox': [0, 0, 200, 100]}], 'role': None} for i in range(30)]
         accepted = {'revision': 'before', 'toc': {'depth': 2}, 'chapters': [
             {'id': 'chapter', 'title': 'Example', 'elements': elements}],
             'render': {'chapters': [{'id': 'chapter', 'document': 'chapter.html'}]}}

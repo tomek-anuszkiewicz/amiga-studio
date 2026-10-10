@@ -9,7 +9,7 @@ import unittest
 from PIL import Image
 from playwright.sync_api import sync_playwright
 
-REVIEW = Path(__file__).resolve().parents[1] / 'tools/bootstrap/book-to-markdown'
+REVIEW = Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown'
 sys.path.insert(0, str(REVIEW))
 from review.model import load_input, write_json
 from review.service import Handler, ReviewState
@@ -20,12 +20,12 @@ class HidePageReviewTest(unittest.TestCase):
         book = {'toc': {'depth': 2}, 'chapters': [{'id': 'chapter', 'title': 'Example',
             'markdown_file': 'example.md', 'elements': [
                 {'id': 'first', 'type': 'prose', 'md_text': 'First page text.',
-                 'pdf_regions': [{'page': 1, 'bbox': [20, 20, 180, 60]}]},
+                 'pdf_regions': [{'page': 1, 'bbox': [20, 20, 180, 60]}], 'role': None},
                 {'id': 'spanning', 'type': 'prose', 'md_text': 'Text spanning two pages.',
                  'pdf_regions': [{'page': 1, 'bbox': [20, 80, 180, 120]},
-                                 {'page': 2, 'bbox': [20, 20, 180, 60]}]},
+                                 {'page': 2, 'bbox': [20, 20, 180, 60]}], 'role': None},
                 {'id': 'other', 'type': 'prose', 'md_text': 'Other page text.',
-                 'pdf_regions': [{'page': 2, 'bbox': [20, 80, 180, 120]}]}]}]}
+                 'pdf_regions': [{'page': 2, 'bbox': [20, 80, 180, 120]}], 'role': None}]}]}
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / 'pdf/pages').mkdir(parents=True)

@@ -3,12 +3,8 @@
 Read selected Stage 04 page JSONs and original Stage 02 PNGs. For each `table`,
 make one Codex request using its exact, unpadded pixel crop and the
 [table prompt](prompt.md). Replace table `md_text` and record `table_format`.
-The prompt defines the response fields; no separate JSON schema is sent.
-The transcription includes all text visible inside the crop, preserving reading
-order and inline formatting. Column labels, including bit-position numbers above
-the grid border, remain in aligned table header cells. Shared headings and
-independent surrounding text remain separate blocks within the same `md_text` value.
-Use Markdown for simple tables and HTML with `rowspan`/`colspan` for merged cells.
+The prompt is the sole source of transcription instructions and response format;
+no separate JSON schema is sent.
 An `unconverted` result retains the original table content.
 
 Save a full page JSON to `05_transform_page_tables/` only when its data changes.
@@ -22,6 +18,5 @@ after successful Stages 02 and 04. The configured model/effort and shared respon
 cache apply. The status entry records this invocation's page range.
 
 [Stage 06](../06_extract_crops/README.md) overlays these replacement pages on
-Stage 04 and extracts graphic assets. Future
-[book processing](../../../book-to-markdown/README.md) consumes those assets,
-the selected page objects and Stage 02 images/text.
+Stage 04 and extracts graphic assets. [Stage 07](../07_repair_callouts/README.md)
+uses the same overlay to produce the final page objects for book import.

@@ -12,8 +12,8 @@ import unittest
 import pymupdf
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap/pdf-to-markdown"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools/bootstrap"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools/bootstrap/pdf-to-markdown"))
 from common.pdf_config import load_config
 import yaml
 from common.pdf_artifacts import read_json, write_json
@@ -22,7 +22,7 @@ from conversion import CodexClient
 from conversion.cache import ResponseCache, identity
 from unittest.mock import Mock
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[4]
 
 
 class PdfArtifactIdentityTests(unittest.TestCase):
@@ -30,8 +30,7 @@ class PdfArtifactIdentityTests(unittest.TestCase):
     def test_compact_artifacts_preserve_source_and_meaningful_fields(self):
         obj = {"type": "graphic", "bbox": [1, 2, 3, 4], "segment_id": "g",
                "continuation": False, "heading_level": None, "md_text": "",
-               "rotation": 0, "source_segment_ids": ["s"],
-               "replacement_stage": "02.44", "image_only": True,
+               "rotation": 0,
                "metadata": {"rotation": 0, "other": "retained"}}
         meaningful = {**obj, "rotation": 90.5, "md_text": "Text", "heading_level": 2,
                       "continuation": True, "metadata": {"rotation": 15}}
@@ -51,7 +50,7 @@ class PdfArtifactIdentityTests(unittest.TestCase):
     def test_compact_artifact_prompt_replays_preloaded_cache(self):
         stage = "03_page_conversion"
         config = {"llm": {"stages": {stage: {"model": "gpt-6.1-sol", "reasoning_effort": "medium"}}}}
-        # This identity is the compact alias prepared before artifact migration.
+        # An identical current-format request must reuse its cached response.
         seeded_prompt = 'Frozen page:\n{"segments": [{"type": "graphic", "bbox": [1, 2, 3, 4]}]}'
         result = {"status": "completed", "text": '{"rotation": 0}', "usage": {"inputTokens": 12}}
         with tempfile.TemporaryDirectory() as directory:
@@ -63,9 +62,7 @@ class PdfArtifactIdentityTests(unittest.TestCase):
                 path = Path(directory) / "page.json"
                 write_json(path, {"segments": [{"type": "graphic", "bbox": [1, 2, 3, 4],
                                               "rotation": 0, "md_text": None,
-                                              "continuation": False, "heading_level": None,
-                                              "source_segment_ids": ["s"],
-                                              "replacement_stage": "02.44", "image_only": True}]})
+                                              "continuation": False, "heading_level": None}]})
                 prompt = "Frozen page:\n" + json.dumps(read_json(path), ensure_ascii=False)
                 self.assertEqual(prompt, seeded_prompt)
                 self.assertEqual(client.generate_json(prompt), {"rotation": 0})
@@ -273,7 +270,7 @@ class PdfRestartTests(unittest.TestCase):
         self.assertIsNone(self.pipeline.resolve_stage_idx("02k"))
         self.assertIsNone(self.pipeline.resolve_stage_idx("02.90"))
         self.assertIsNone(self.pipeline.resolve_stage_idx("2.9"))
-        self.assertEqual(self.pipeline.STAGE_REGISTRY[-1]["id"], "06")
+        self.assertEqual(self.pipeline.STAGE_REGISTRY[-1]["id"], "07")
         self.assertEqual(self.pipeline.resolve_stage_idx("04"), self.stage_idx("04"))
         before = read_json(self.workspace / "stage_status.json")["03"]
         def worker(stage, *args):
@@ -290,18 +287,6 @@ class PdfRestartTests(unittest.TestCase):
         self.assertEqual(after["04"]["status"], "success")
         self.assertNotIn("05", after)
         self.assertNotIn("06", after)
-
-    def test_previous_numbering_is_rejected_before_cleanup(self):
-        state_path = self.workspace / "stage_status.json"
-        state = read_json(state_path)
-        state["00"] = {"status": "success"}
-        write_json(state_path, state)
-        before = state_path.read_bytes()
-        with self.assertRaisesRegex(ValueError, "previous stage numbering"):
-            self.run_pipeline(["--from-stage", "01"],
-                              lambda *args: self.fail("Legacy attempts must not launch workers"))
-        self.assertEqual(state_path.read_bytes(), before)
-        self.assertTrue((self.output / "artifact.json").exists())
 
     def test_range_restart_preserves_other_pages_and_removes_selected_dependents(self):
         files = []

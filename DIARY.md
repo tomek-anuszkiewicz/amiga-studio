@@ -1702,3 +1702,37 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - git diff --check passed
   - graphify update completed
   - No real document conversion was run and output quality was not assessed
+---
+
+### [2026-10-10 13:30 CEST] — Separate book element roles and finalize PDF preparation (BOOK-ELEMENT-ROLE)
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/book-to-markdown`
+  - `bootstrap tests and instructions`
+  - `ROADMAP.md`
+  - `docs/developers.md`
+  - `tools/bootstrap/conversion/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Classify representation type and nullable semantic role together in the Stage 03 image/text request and preserve roles into book.json
+  - Add role editing and Accepted/Working readouts in all three panes while retaining role during type changes and splits and rejecting merges with different roles
+  - Move callout assembly into new Stage 07 and remove the editor repair action and endpoint
+  - Filter thumb indexes in Stage 04 and keep standalone headings separate from prose in the prompt
+  - Require current-format roles and remove legacy normalization and converted-Markdown reference migration while allowing import to overwrite Working without retaining old settings
+  - Move book and PDF suites beside their owning bootstrap programs
+  - Remove redundant conversion-contract and reconstruction-design files and consolidate instructions and shared transport documentation
+  - Update pending roadmap work for portable recipes and PDF-based reconstruction before RAG ingestion
+- **Architectural Rationale & Trade-Offs**:
+  - Keep representation independent of caption/legend/note/footnote function and make preparation responsible for callout assembly
+  - Follow the explicit user decision against backward compatibility or artifact rescue
+  - Record BOOK-ELEMENT-ROLE closure and delete its temporary plan after this user-requested commit
+  - Roadmap reorganization does not certify completion of standalone reconstruction or RAG ingestion
+- **Verification & Test Results**:
+  - python tools/harness/pre_flight.py --quick passed
+  - Architecture rules suite passed 19 tests
+  - Book-to-Markdown suite passed 37 tests including role editing from all three panes and import overwrite
+  - PDF-to-Markdown suite passed 35 tests
+  - Staged diff whitespace checks passed
+  - Local documentation link and roadmap numbering checks passed during development
+  - Graphify was refreshed after source changes
+  - Existing local book reports missing role under the current-only contract and was not repaired
+  - No real-book conversion, import regeneration, indexing or milestone validation was run

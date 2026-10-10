@@ -1,11 +1,12 @@
 """Source templates must preserve braces, corrections and exact source ranges."""
 
 from pathlib import Path
+import importlib.util
 import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools/bootstrap/book-to-markdown'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown'))
 from review.text_recipe import compile_template, compile_region_template, compile_markdown_template, edit_template, slice_template, preserve_bold, resolve_template
 from review.model import InputCache, element_markdown, export_markdown, import_book, load_input, set_heading_level, write_json
 from review.service import replace_accepted
@@ -23,8 +24,8 @@ class TextRecipeTest(unittest.TestCase):
             page = root / 'pdf-to-markdown/02_preprocess/page_0001.json'
             write_json(page, {'blocks': [{'block_id': 0, 'text': 'First'}]})
             book = {'toc': {'depth': 2}, 'chapters': [{'id': 'c', 'title': 'Example', 'markdown_file': 'example.md',
-                'elements': [{'id': 'p', 'type': 'prose', 'md_text': '{{text page=1 block=0 chars=0:5}}', 'pdf_regions': []},
-                             {'id': 'g', 'type': 'graphic', 'asset': 'assets/a.png', 'pdf_regions': []}]}]}
+                'elements': [{'id': 'p', 'type': 'prose', 'md_text': '{{text page=1 block=0 chars=0:5}}', 'pdf_regions': [], 'role': None},
+                             {'id': 'g', 'type': 'graphic', 'asset': 'assets/a.png', 'pdf_regions': [], 'role': None}]}]}
             working = root / 'working'
             (working / 'assets').mkdir(parents=True)
             asset = working / 'assets/a.png'
@@ -54,8 +55,8 @@ class TextRecipeTest(unittest.TestCase):
             for page in (1, 2):
                 write_json(root / f'pdf-to-markdown/02_preprocess/page_{page:04d}.json',
                            {'blocks': [{'block_id': 0, 'text': 'Same'}]})
-            first = {'id': 'a', 'type': 'prose', 'md_text': '{{text page=1 block=0 chars=0:4}}', 'pdf_regions': [regions[0]]}
-            second = {'id': 'b', 'type': 'prose', 'md_text': '{{text page=2 block=0 chars=0:4}}', 'pdf_regions': regions}
+            first = {'id': 'a', 'type': 'prose', 'md_text': '{{text page=1 block=0 chars=0:4}}', 'pdf_regions': [regions[0]], 'role': None}
+            second = {'id': 'b', 'type': 'prose', 'md_text': '{{text page=2 block=0 chars=0:4}}', 'pdf_regions': regions, 'role': None}
             book = {'toc': {'depth': 2}, 'chapters': [{'id': 'c', 'title': 'Example', 'markdown_file': 'example.md', 'elements': [first, second]}]}
             write_json(root / 'working/book.json', book)
             write_json(root / 'accepted/book.json', book)
@@ -95,7 +96,7 @@ class TextRecipeTest(unittest.TestCase):
             root = Path(temporary)
             write_json(root / 'pdf-to-markdown/02_preprocess/page_0001.json',
                        {'blocks': [{'block_id': 0, 'text': 'Same Same'}]})
-            element = {'id': 'p', 'type': 'prose', 'md_text': '{{text page=1 block=0 chars=0:9}}', 'pdf_regions': []}
+            element = {'id': 'p', 'type': 'prose', 'md_text': '{{text page=1 block=0 chars=0:9}}', 'pdf_regions': [], 'role': None}
             book = {'toc': {'depth': 2}, 'chapters': [{'id': 'c', 'title': 'Example', 'markdown_file': 'example.md', 'elements': [element]}]}
             write_json(root / 'working/book.json', book)
             state = ReviewState(root)
@@ -128,7 +129,7 @@ class TextRecipeTest(unittest.TestCase):
         self.assertNotIn('ADD', template)
         self.assertIn('```asm', template)
         html = MarkdownIt('commonmark', {'html': True}).render(element_markdown(
-            {'type': 'code_block', 'resolved_md_text': target}))
+            {'type': 'code_block', 'resolved_md_text': target, 'role': None}))
         self.assertIn('<strong>Assembler Syntax:</strong>', html)
         self.assertIn('class="language-asm"', html)
         self.assertNotIn('language-text', html)
@@ -136,49 +137,55 @@ class TextRecipeTest(unittest.TestCase):
     def test_import_preserves_prepared_markdown_without_literal_transcription(self):
         prepared = ['**Operation:** Source + Destination',
                     '```asm\nADD <ea>,Dn\nADD Dn,<ea>\n```',
-                    '| X | N |\n|---|---|\n| * | * |', '\\*Word and long only', '**NOTE**']
+                    '| X | N |\n|---|---|\n| * | * |', '\\*Word and long only', 'NOTE', 'Read carefully.']
+        expected = prepared[:-2] + ['> [!NOTE] NOTE\n>\n> Read carefully.']
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             workspace = root / 'pdf-to-markdown'
-            status = {s: {'status': 'success'} for s in ('02', '04', '05', '06')}
+            status = {s: {'status': 'success'} for s in ('02', '04', '05', '06', '07')}
             # The last table refresh does not restrict the retained page collection.
             status['05']['page_ranges'] = '2'
             write_json(workspace / 'stage_status.json', status)
-            source = 'Operation: Source + Destination\nADD <ea>,Dn\nADD Dn,<ea>\nX N\n* *\n*Word and long only\nNOTE\n'
+            source = 'Operation: Source + Destination\nADD <ea>,Dn\nADD Dn,<ea>\nX N\n* *\n*Word and long only\nNOTE\nRead carefully.\n'
             write_json(workspace / '02_preprocess/page_0001.json', {'page': 1, 'page_id': 'page_0001',
                 'raster': {'display_to_pixels': [1, 0, 0, 1, 0, 0]},
                 'blocks': [{'block_id': 0, 'text': source, 'bbox': [0, 0, 100, 10],
                             'char_bboxes': [[0, 0, 100, 10]] * len(source)}]})
             segments = [{'segment_id': f'page_0001_seg_{i:03d}', 'type': kind, 'bbox': [0, 0, 100, 10],
-                         'md_text': text} for i, (kind, text) in enumerate(zip(
-                         ['prose', 'code_block', 'table', 'footnote', 'callout'], prepared), 1)]
+                         'md_text': text, 'role': None} for i, (kind, text) in enumerate(zip(
+                         ['prose', 'code_block', 'table', 'prose', 'callout', 'callout_text'], prepared), 1)]
+            segments[2]['role'] = 'legend'
+            segments[3]['role'] = 'footnote'
             write_json(workspace / '04_filter_page_content/page_0001_segments.json', {'page': 1, 'segments': segments})
             (workspace / '05_transform_page_tables').mkdir()
-            previous = {'toc': {'depth': 3}, 'chapters': [{'elements': [
-                {'id': 'page_0001_seg_001', 'visible': False}]}]}
-            imported = import_book(root, previous)
-            self.assertEqual(imported['toc'], previous['toc'])
-            self.assertFalse(imported['chapters'][0]['elements'][0]['visible'])
-            self.assertEqual([e['resolved_md_text'] for e in imported['chapters'][0]['elements']], prepared)
+            stage_path = Path(__file__).resolve().parents[4] / 'tools/bootstrap/pdf-to-markdown/stages/07_repair_callouts/repair_callouts.py'
+            spec = importlib.util.spec_from_file_location('repair_callouts', stage_path)
+            stage = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(stage)
+            stage.repair_callouts(workspace)
+            write_json(root / 'working/book.json', {'toc': {'depth': 3}, 'chapters': []})
+            imported = import_book(root)
+            self.assertEqual(imported['toc'], {'depth': 2})
+            self.assertTrue(imported['chapters'][0]['elements'][0]['visible'])
+            self.assertEqual([e['resolved_md_text'] for e in imported['chapters'][0]['elements']], expected)
+            self.assertEqual(imported['chapters'][0]['elements'][-1]['id'], 'page_0001_seg_005')
+            self.assertEqual([e['role'] for e in imported['chapters'][0]['elements']],
+                             [None, None, 'legend', 'footnote', None])
             raw = (root / 'working/book.json').read_text(encoding='utf-8')
             self.assertNotIn('Operation:', raw)
             self.assertNotIn('Word and long only', raw)
             self.assertTrue(all('{{text ' in e['md_text'] for e in imported['chapters'][0]['elements']))
             self.assertNotIn('{{markdown ', raw)
             loaded, _, _ = load_input(root / 'working')
-            self.assertEqual([e['resolved_md_text'] for e in loaded['chapters'][0]['elements']], prepared)
+            self.assertEqual([e['resolved_md_text'] for e in loaded['chapters'][0]['elements']], expected)
             page_data = {'page': 1, 'blocks': [{'block_id': 0, 'text': source.replace('Source', 'Target')}]}
             write_json(workspace / '02_preprocess/page_0001.json', page_data)
             updated, _, _ = load_input(root / 'working')
             self.assertEqual(updated['chapters'][0]['elements'][0]['resolved_md_text'], '**Operation:** Target + Destination')
 
-    def test_prepared_reference_is_single_pass_and_missing_segments_fail(self):
-        template = '{{markdown stage=05 page=1 segment=page_0001_seg_001}}'
-        source = '**NOTE** {{text page=9 block=0 chars=0:4}}'
-        prepared = {('05', 1, 'page_0001_seg_001'): source}
-        self.assertEqual(resolve_template(template, {}, prepared), source)
-        with self.assertRaisesRegex(ValueError, 'missing prepared segment'):
-            resolve_template(template, {}, {})
+    def test_obsolete_prepared_reference_is_not_interpreted(self):
+        with self.assertRaisesRegex(ValueError, 'Invalid text reference'):
+            resolve_template('{{markdown stage=05 page=1 segment=page_0001_seg_001}}', {})
 
     def test_region_recipe_preserves_bold_without_replacing_pdf_text(self):
         text = 'Description: The size may be speciﬁed as word or\nlong.\n'
@@ -259,12 +266,12 @@ class TextRecipeTest(unittest.TestCase):
         ]
         for kind, text in cases:
             with self.subTest(kind=kind, text=text):
-                element = {'type': kind, 'resolved_md_text': text, 'heading_level': 1}
+                element = {'type': kind, 'resolved_md_text': text, 'heading_level': 1, 'role': None}
                 self.assertEqual(parser.render(element_markdown(element)), parser.render(text))
 
     def test_source_lines_remain_visible_in_preview_and_export(self):
         source = "X — Set the same as the carry bit. \nN — Undefined. \nZ — Unchanged if zero. \n"
-        element = {"id": "flags", "type": "table_legend", "resolved_md_text": source}
+        element = {"id": "flags", "type": "prose", "role": "legend", "resolved_md_text": source}
         markdown = element_markdown(element)
         parser = MarkdownIt('commonmark', {'html': True})
         self.assertEqual(parser.render(markdown).count('<br'), 2)
@@ -318,7 +325,7 @@ class TextRecipeTest(unittest.TestCase):
                     'chapters': [{'id': 'c', 'title': 'Title ' + name_template,
                     'markdown_file': name_template + '.md',
                     'elements': [{'id': 'h', 'type': 'heading', 'heading_level': 1,
-                    'pdf_regions': [], 'md_text': template}]}]}
+                    'pdf_regions': [], 'md_text': template, 'role': None}]}]}
             write_json(root / 'working/book.json', book)
             loaded, assets, fingerprint = load_input(root / 'working')
             renderer = Renderer()

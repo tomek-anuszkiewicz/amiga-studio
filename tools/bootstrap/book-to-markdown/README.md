@@ -4,17 +4,24 @@ This directory implements a deterministic book importer, Markdown/TOC generator
 and local HTML review application. It consumes existing prepared data from
 [PDF-to-Markdown](../pdf-to-markdown/README.md); review makes no model calls.
 
-PDF preparation ends at Stage 06. The intended handoff uses Stage 02 original
-page PNGs and positioned text, Stage 04 filtered page objects and Stage 05
-changed page objects. The 05 status entry records its last invocation's page range;
-import all retained 04 pages, overlay available 05 replacements and retain unchanged
-pages. A partial PDF refresh preserves the rest of the prepared page collection.
-Stage 06 extracts graphic assets to `06_extract_crops/assets/<segment_id>.png`.
+PDF preparation ends at Stage 07. The handoff uses Stage 02 original page PNGs
+and positioned text, final Stage 07 page objects, and Stage 06 graphic assets at
+`06_extract_crops/assets/<segment_id>.png`. Stage 07 assembles callouts before
+book import. A partial PDF refresh preserves other prepared pages.
 The generator emits chapter Markdown and copies these prepared assets.
 No intermediate page-ordered Markdown export is required.
 
-The [published recipe design](recipe-reconstruction.md) records the intended
-bootstrap path from an exact source PDF to reconstructed Markdown. New imports
+## Tests
+
+Book recipe and review tests live in `tests/` beside this program. Run them from
+the repository root:
+
+```powershell
+python -m unittest discover -s tools/bootstrap/book-to-markdown/tests -q
+```
+
+The [documentation and RAG roadmap](../../../ROADMAP.md#step-1-manual-conversion-and-initial-knowledge-base)
+tracks portable recipes and standalone Markdown reconstruction from matching PDFs. New imports
 store PDF text references in `book.json`; loading,
 rendering and acceptance resolve them against Stage 02 positioned text. Automatic
 source acquisition and reconstruction directly from a PDF remain pending.
@@ -55,7 +62,7 @@ the full hash identifies the exact source PDF. Future book preparation uses this
 
 ## Element vocabulary
 
-The initial [element list](elements.md) records source roles used in book authoring. Notes and legends use generic `note` and `legend` types; authored groups associate them with tables or images, and notes may also stand independently in the text. Image elements retain the existing `graphic` identifier. Grouping is authored separately from PDF table transcription.
+The initial [element list](elements.md) records source roles used in book authoring. Notes and legends use independent `note` and `legend` roles; authored groups associate them with tables or images, and notes may also stand independently in the text. Image elements retain the existing `graphic` identifier. Grouping is authored separately from PDF table transcription.
 
 Chapter, appendix and section titles use `heading` with a `heading_level` property for hierarchy depth and an optional `number` string for their source numbering.
 The dedicated contents, index, table-list and figure-list heading types retain their roles and are treated as level-1 headings.
@@ -77,8 +84,8 @@ bundled Chromium, run `python -m playwright install chromium` and pass
 longer captures Markdown screenshots. The review browser displays the resulting
 HTML directly. Preparation and review use local resources.
 
-Use the existing Test Book variant; the import command refuses to overwrite an
-authored model or Accepted bundle:
+Use the existing Test Book variant. Import rebuilds Working and may overwrite
+its existing content and settings:
 
 ```powershell
 $Book = "tools/bootstrap/book-to-markdown/books/test-book-example-4567/1cea0b35ee62"
@@ -102,9 +109,10 @@ and port. Accepted and Working share the remaining space, with a 240-pixel minim
 each; narrower windows scroll the complete three-column layout horizontally.
 These layout changes do not modify the book or request server rendering.
 
-The import reads successful preparation statuses, reads all retained Stage 04 pages,
-and uses entire Stage 05 replacements where present.
-Stage 03 is never consulted. Thumb indexes are omitted. All imported elements
+The import requires successful Stages 02, 06 and 07 and reads all retained
+Stage 07 final page objects. Earlier page-object stages are never consulted.
+Thumb indexes are removed in PDF Stage 04 and callouts are repaired in PDF
+Stage 07; the importer does not perform either transformation. All imported elements
 start visible, including source contents and lists of figures/tables.
 One draft chapter preserves the surviving source
 order. Stage 02 PNGs are copied byte-for-byte and Stage 06 supplies graphic assets.
@@ -143,15 +151,13 @@ JSON retains templates, while snapshots carry derived `resolved_title` and
 chapter title references its first heading; its output filename is an identifier.
 New imports keep conversion Markdown/HTML structure as literal recipe syntax,
 replacing matching source text with `{{text page=3 block=1 chars=0:6}}` references.
-Stage 05 replacements supply their whole page; unchanged pages use Stage 04.
+Stage 07 supplies complete final pages, preserving transcribed tables and callouts.
 Positioned Stage 02 blocks intersecting the element region supply candidate text.
 Exact matching can reorder source selections, such as a wrapped label beside an
 assembly listing. Fences, their language tags and HTML tags/attributes remain
 literal structure. Unmatched transcription/corrections remain explicit literals;
 matching equal characters does not certify semantic attribution of repeated text.
 Loading a new recipe resolves PDF ranges without consulting converted page Markdown.
-Existing authored books using `{{markdown stage=05 page=3 segment=page_0003_seg_001}}`
-remain readable; they are not silently rewritten. Regeneration is a separate request.
 Chapter titles retain the imported heading's recipe.
 
 `{{text page=3 block=1 chars=0:6}}` selects Unicode characters from a Stage 02
@@ -170,11 +176,11 @@ headings, lists, tables, code, math and raw HTML retain their Markdown structure
 Source identity is recorded once in `source.json`; the pinned preparation process
 recreates the PDF text layer. Loading reads only Stage 02 pages named by the
 references and checks block existence and character bounds. It does not hash
-page text or duplicate source metadata in the book. Markdown references load
-the named Stage 04/05 page and segment. PDF geometry locates an element in the
+page text or duplicate source metadata in the book. Old converted-Markdown
+references are unsupported. PDF geometry locates an element in the
 source pane; import does not concatenate intersecting PDF blocks to replace its
-converted text. Both reference types resolve in one pass, including source text
-that contains braces. A missing referenced segment is an error. PDF range
+converted text. PDF references resolve in one pass, including source text
+that contains braces. A missing referenced block is an error. PDF range
 templates remain supported for authored selections; loading them does not
 require character geometry. Authored literals can still be added manually to a
 template, but import does not insert transcription literals.
@@ -189,7 +195,7 @@ with `visible: false`, and decide where the authored book begins and ends.
 The generated TOC is built automatically from visible headings; it does not
 require hiding the source contents. Use `heading_level` consistently with the leading heading hashes. `toc`
 is mandatory, defaults to depth 2, and supports actual heading depths 1, 2 and 3.
-The retired `toc.enabled` property in older books is ignored on load.
+Only the current depth-only TOC format is supported.
 Chapter titles do not add duplicate TOC entries. Links use stable element-ID
 anchors; generated TOC content has no invented source regions.
 
@@ -210,19 +216,29 @@ inspection. Equal types appear once; different types appear as
 type appears once. The label does not open an editor.
 
 **Change type** offers `heading`, `callout`, `callout_text`, `prose`, `code_block`,
-`preformatted_text`, `caption`, `footnote`, `note` and `legend` from the
+`preformatted_text` from the
 [book element vocabulary](elements.md). Cover, header/footer, contents, thumb
 index, index and list-of-tables/figures roles remain valid existing source types
 but are not offered as conversion targets.
 It operates on Working from any column and preserves IDs, visibility, order and
 PDF source regions/references. Tables, graphics, image-backed elements and empty
 elements cannot change type; table and graphic are also excluded as targets.
-Existing source and legacy text roles can be changed to the offered roles.
-A new heading defaults to H1; changing an existing heading role to `heading`
-preserves its level. Leaving a heading role removes its `#`
+Current text types can be changed to the offered types.
+A new heading defaults to H1; changing an existing heading type to `heading`
+preserves its level. Leaving a heading type removes its `#`
 prefix and heading level. Other text markup is retained; this action changes the
-role rather than rewriting content. `/api/type` checks the authored revision and
+type rather than rewriting content. The role is preserved. `/api/type` checks the authored revision and
 enforces the same restrictions as the menu.
+
+**Change role** offers `caption`, `legend`, `note`, `footnote` and **None**
+(`role: null`) for every Working element, including tables and graphics. It
+preserves type, source content, assets and geometry and uses the same revision
+checks as other edits through `/api/role`. The disabled **Role:** menu label shows
+one value when equal or **Accepted / Working** when changed. Role edits work from
+all three panes and participate in change markers, acceptance and discard.
+Splitting retains role; both text and Markdown-table merges reject different roles.
+Only current types and explicit roles are supported; no read-time migration is performed.
+
 
 Text elements expose **Edit Markdown**, **Bold**, **Split** and **Merge with next**. The Markdown
 dialog shows resolved source text with its Markdown/HTML syntax, rather than PDF
@@ -232,7 +248,7 @@ in `**...**`, preserving heading prefixes and paragraph boundaries; menu
 In the Markdown dialog, **Add Bold** and **Remove Bold** operate on the selected
 text, or the whole section when nothing is selected. The same controls are
 available during raw Markdown editing. **Save** writes Working; **Cancel** leaves
-it unchanged. Edited heading hashes update the heading role and level; removing
+it unchanged. Edited heading hashes update the heading type and level; removing
 the heading prefix converts that element to prose.
 
 **Split** opens the Markdown source. Place the cursor at the boundary or select
@@ -254,16 +270,8 @@ chapter. The action is disabled at the end of the book or when either element
 has no editable text. **Cancel** preserves both elements. Like Split, this is a
 structural edit; use **Discard Changes** to restore the complete Accepted bundle.
 
-**Fix all callouts** scans the entire Working book in authored order, including
-hidden elements. Each adjacent `callout` + `callout_text` pair becomes one
-Markdown callout (`> [!NOTE] NOTE`, for example), preserving the original label
-as its title, body formatting and PDF references/regions. The label keeps its ID,
-chapter and visibility. Already formatted callouts are left alone. Orphan labels
-or bodies, invalid labels, empty bodies and pairs with different visibility are
-left unchanged and reported by ID in the completion dialog. The operation checks
-the authored revision and saves valid pairs together. **Discard Changes** restores
-the full Accepted bundle. This is an explicit editing action; import is unchanged.
-The review renderer displays callout markers as titled advisory blocks.
+The review renderer displays prepared Markdown callout markers as titled advisory
+blocks. Callout assembly belongs to PDF Stage 07; no repair menu action is provided.
 
 **Merge tables** immediately joins the selected table with the next authored
 element, which must also be a Markdown table. Column counts, names/order and
@@ -285,8 +293,7 @@ corresponding action is disabled at the beginning or end of the book. Use
 Markdown, split, merge and move commands (`/api/markdown`, `/api/split`, `/api/merge`, `/api/merge-tables`, `/api/move`) check the authored
 revision before saving. Unchanged text retains PDF character-range references,
 including ranges cut at a split; inserted or replaced text becomes escaped
-literal recipe content. Edited legacy Stage 04/05 references are first migrated
-to PDF-range recipes. New asset links must resolve before the edit is saved.
+literal recipe content. Old Stage 04/05 segment references are unsupported. New asset links must resolve before the edit is saved.
 Failed saves keep the dialog's draft for correction. Working is rendered and
 exported through the existing queue; **Accept Working** copies the completed
 bundle to Accepted.

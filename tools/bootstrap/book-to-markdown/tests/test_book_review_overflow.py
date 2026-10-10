@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 from playwright.sync_api import sync_playwright
 
-REVIEW = Path(__file__).resolve().parents[1] / "tools/bootstrap/book-to-markdown/review"
+REVIEW = Path(__file__).resolve().parents[4] / "tools/bootstrap/book-to-markdown/review"
 
 
 class BookOverflowTest(unittest.TestCase):
@@ -19,7 +19,7 @@ class BookOverflowTest(unittest.TestCase):
                   f'<div data-element="table">{table}</div>'
                   '<div data-element="image"><img src="image.svg"></div>'
                   f'<div data-element="second-table">{table}</div>')
-        elements = [{"id": identifier, "type": kind, "pdf_regions": []}
+        elements = [{"id": identifier, "type": kind, "pdf_regions": [], 'role': None}
                     for identifier, kind in [("prose", "prose"), ("table", "table"),
                                              ("image", "graphic"), ("second-table", "table")]]
         snapshot = {"revision": "test", "toc": {"enabled": False, "depth": 2},

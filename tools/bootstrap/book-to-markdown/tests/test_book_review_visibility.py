@@ -9,7 +9,7 @@ import unittest
 from PIL import Image
 from playwright.sync_api import sync_playwright
 
-REVIEW = Path(__file__).resolve().parents[1] / 'tools/bootstrap/book-to-markdown'
+REVIEW = Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown'
 sys.path.insert(0, str(REVIEW))
 from review.model import load_input, write_json
 from review.service import Handler, ReviewState
@@ -20,8 +20,8 @@ class VisibilityReviewTest(unittest.TestCase):
         book = {'toc': {'depth': 2}, 'chapters': [{'id': 'chapter', 'title': 'Example',
             'markdown_file': 'example.md', 'elements': [
                 {'id': 'heading', 'type': 'heading', 'heading_level': 2,
-                 'md_text': '## Example heading', 'pdf_regions': [{'page': 1, 'bbox': [20, 20, 180, 60]}]},
-                {'id': 'prose', 'type': 'prose', 'md_text': 'Ordinary visible paragraph.', 'pdf_regions': [{'page': 2, 'bbox': [20, 20, 180, 60]}]}]}]}
+                 'md_text': '## Example heading', 'pdf_regions': [{'page': 1, 'bbox': [20, 20, 180, 60]}], 'role': None},
+                {'id': 'prose', 'type': 'prose', 'md_text': 'Ordinary visible paragraph.', 'pdf_regions': [{'page': 2, 'bbox': [20, 20, 180, 60]}], 'role': None}]}]}
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / 'pdf/pages').mkdir(parents=True)
@@ -45,6 +45,18 @@ class VisibilityReviewTest(unittest.TestCase):
                     page.goto(f'http://127.0.0.1:{server.server_port}/')
                     page.wait_for_function('state?.can_accept && !loading')
                     self.assertFalse(page.locator("#discard").is_enabled())
+                    for selector in ('#pdf [data-id="heading"]', '#accepted [data-element="heading"]', '#working [data-element="heading"]'):
+                        page.locator(selector).click(button='right')
+                        self.assertEqual(page.locator('#menu-current-role').inner_text(), 'Role: None')
+                        page.locator('#menu-role').click()
+                        page.locator('#role-menu').get_by_role('menuitemradio', name='note', exact=True).click()
+                        page.wait_for_function('!loading && state.can_accept && state.working.chapters[0].elements[0].role === "note"')
+                        page.locator(selector).click(button='right')
+                        self.assertEqual(page.locator('#menu-current-role').inner_text(), 'Role: None / note')
+                        page.locator('#menu-role').click()
+                        page.locator('#role-menu button').filter(has_text='None').click()
+                        page.wait_for_function('!loading && state.can_accept && state.working.chapters[0].elements[0].role === null')
+                    page.keyboard.press('Escape')
                     heading = page.locator('#working [data-element="heading"]')
                     heading.click()
                     self.assertEqual(page.evaluate('selected'), 'heading')
@@ -91,7 +103,7 @@ class VisibilityReviewTest(unittest.TestCase):
                     self.assertFalse(page.locator('#menu-discard').is_enabled())
                     self.assertTrue(page.locator('#menu-visibility').is_enabled())
                     self.assertTrue(page.locator('#menu-bold').is_enabled())
-                    self.assertTrue(page.locator('#menu-fix-callouts').is_enabled())
+                    self.assertEqual(page.locator('#menu-fix-callouts').count(), 0)
                     self.assertTrue(page.locator('#menu-move-down').is_enabled())
                     accepted_before = (root / 'accepted/book.json').read_bytes()
                     page.locator('#menu-bold').click()

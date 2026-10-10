@@ -148,7 +148,7 @@ Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`
    - **Scope:** 16-chapter investigation into silicon quirks: Copper hazards, sprite demultiplexing, DMA slot arbitration, UHRES display modes, and video beam timing anomalies.
 
 > [!TIP]
-> Information and automated scripts for downloading, bootstrapping, and converting these external reference materials into Markdown are provided in **[Chapter 4: Archival Reference Documentation Provisioning (`-Documentation`)](#archival-documentation-provisioning-documentation)** (`.\tools\bootstrap\bootstrap.ps1 -Documentation`).
+> Reference downloads and the planned recipe-based Markdown bootstrap are described in **[Chapter 4: Archival Reference Documentation Provisioning (`-Documentation`)](#archival-documentation-provisioning-documentation)**.
 
 ---
 
@@ -211,55 +211,24 @@ When external test sources are provisioned via `.\tools\bootstrap\bootstrap.ps1 
 <a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a><a id="archival-documentation-provisioning-documentation"></a><a id="upstream-archival-reference-documents"></a><a id="multi-source-fallback-matrix-error-resilience"></a><a id="multi-source-fallback-matrix--error-resilience"></a>
 #### 2. Archival Reference Documentation Provisioning (`-Documentation`)
 
-Provisions original PDF scans, OEM technical manuals, and archival web articles for developers inspecting raw schematics or re-running OCR pipelines:
-
-Each book's downloads go into `Obsidian/Amiga/Reference/<Document_Name>-tmp/`
-(or `<Destination>/<Document_Name>-tmp/` with a custom destination). Conversion
-keeps its `workspace/` there. `-Markdown` prepares PDF page images, text and
-objects through Stage 05; final PDF chapter generation belongs to the planned
-`book-to-markdown` program. HTML conversion emits Markdown in `html_to_markdown/`.
-For HTML, add `-Publish` to copy finished Markdown and assets to the sibling
-`<Document_Name>/` directory without the suffix. Selected PDFs with `-Publish`
-are rejected before downloading. The HTML destination must be absent or empty;
-the converter rechecks before publishing and never replaces occupied directories.
-Existing unsuffixed downloads are not moved or reused automatically. Staging
-directories remain available for inspection and restarting preparation.
-Neither pipeline accepts `--output-dir`. Only HTML supports direct `--publish`;
-it derives the destination from the enclosing `<Document_Name>-tmp/` directory.
+The existing bootstrap downloads original manuals and archival reference sources:
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Documentation
-# Prepare PDF data and convert HTML locally:
-.\tools\bootstrap\bootstrap.ps1 -Documentation -Markdown
-# Publish a selected HTML source to an empty book directory:
-.\tools\bootstrap\bootstrap_documentation.ps1 -Undocumented -Markdown -Publish
 ```
 
-<a id="multi-page-web-crawling-engine"></a>
-##### Multi-Page Web Crawling Engine
-For multi-page web publications, the bootstrapper incorporates an autonomous crawling engine:
-- **Kuba Winnicki's *Achtung! Amiga*:** Downloads the root index and all 17 technical subpages (`What_is_this_all_about.html`, `Copper.html`, `More_register_changes_in_a_scanline.html`, `Sprite_Hardware.html`, `Freeing_the_DMA.html`, `More_sprites_in_one_line.html`, `Disappearing_sprites.html`, `UHRES_Display.html`, `Speed_Up_Tricks.html`, `Faster_Chipmem_bus_in_PAL_mode.html`, `Other_Amiga_Native_Hardware.html`, `CD32_Controller.html`, `Battery_Backed_Clock.html`, `Desaturation_Control_Bit.html`, `Video_timings.html`, `Links.html`, `Last_Words.html`).
-- If the primary live server at `winnicki.net` is unreachable or blocks requests, the crawler automatically switches to the permanent Wayback Machine snapshot mirror.
-
 <a id="processing-raw-documents-into-markdown"></a>
-##### Processing Raw Documents into Markdown
+##### Planned Markdown Reconstruction Bootstrap
 
-The bootstrap converters prepare the initial reference knowledge base from raw scans and downloaded HTML. Each program has a Python CLI; later project work consumes the generated Markdown and assets. HTML and PDF use the shared pinned Codex SDK with ChatGPT authentication and explicit stage model/effort settings. Development follows the [developer-led workflow](../tools/bootstrap/reference-conversion-contract.md#development-workflow): change the converter, run the fragment selected and requested by the user, and let the user assess the generated content. Automatic tests follow the [bootstrap converter scope](../.agents/rules/unit-testing-policy.md#bootstrap-converter-scope); no separate coverage or quality campaign is scheduled. Install the selected converter's dependencies with `python -m pip install -r tools/bootstrap/pdf-to-markdown/requirements.txt` or `python -m pip install -r tools/bootstrap/html-to-markdown/requirements.txt` and sign in using `codex login`. API-key mode is rejected by the Codex client. The dispatcher is [`bootstrap_documentation.ps1`](../tools/bootstrap/bootstrap_documentation.ps1); source fidelity is defined in the [conversion contract](../tools/bootstrap/reference-conversion-contract.md).
+The planned bootstrap will use reviewed `book.json` recipes and PDF source
+identification from `source.json`. Book variants are listed in the
+[source catalog](../tools/bootstrap/book-to-markdown/README.md#source-catalog-and-variant-layout)
+under `tools/bootstrap/book-to-markdown/books/<book-id>/<variant>/`.
+It will obtain the matching PDFs, verify their complete SHA-256 hashes, and
+reconstruct Markdown and referenced images from the PDFs and recipes.
 
-PDF conversion starts with [Stage 01](../tools/bootstrap/pdf-to-markdown/stages/01_text_layer/README.md), which uses local Tesseract through PyMuPDF to publish a full-document `<source stem>-ocr.pdf` beside the source while preserving native text and visuals. An existing sibling prepared PDF skips OCR and PDF writing regardless of the attempt selection. [Stage 02](../tools/bootstrap/pdf-to-markdown/stages/02_preprocess/README.md) deterministically reads that PDF and persists positioned text JSON/PNG pairs with physical page identities. A new workspace can run `--from-stage 01 --to-stage 02`; restart at 02 retains successful Stage 01 status and the configured source path. Legacy workspaces need explicit restart at 01 with the original PDF. Stage 01 always prepares all pages; `--page-ranges` limits page workers from 02 through 06 for the current invocation only. Omitting it selects all available pages; selection is not stored in config. PDF preparation ends at Stage 06; book generation consumes the prepared JSON and image dataset. Selected fragment results do not certify conversion of the remaining pages.
-
-1. **PDF Scans to Markdown ([`pdf-to-markdown`](../tools/bootstrap/pdf-to-markdown/README.md)):**
-   - Prepares a separate native/OCR PDF and matching positioned-text JSON/PNG pairs.
-   - Stage 03 uses Codex text and original-detail image input to group page objects and produce Markdown text, types and pixel boxes.
-   - Stage 04 deterministically removes only headers/footers. Stage 03 classifies recurring margin logos as header/footer content; filtering performs no image matching. Covers, contents, indexes and lists of tables or illustrations remain for later manual classification and removal, including older saved objects with dedicated types. Stage 02/03 completion is required. See the [stage contract](../tools/bootstrap/pdf-to-markdown/stages/04_filter_page_content/README.md) for thresholds and evidence limits. These are the user's deliberate source-fidelity exceptions. Preserve edited exports outside cleanup before restarting at 04. Surviving fields and geometry remain unchanged, and empty output is permitted.
-   - [Stage 05](../tools/bootstrap/pdf-to-markdown/stages/05_transform_page_tables/README.md) replaces table content with Markdown or HTML using one request per temporary original-image crop. It saves only changed table pages and records its invocation's page range in `stage_status.json`. Captions, notes and legends remain unchanged; no grouping, RAG text or companions are generated. Stage 04 is its fixed predecessor.
-   - [Stage 06](../tools/bootstrap/pdf-to-markdown/stages/06_extract_crops/README.md) cuts every `graphic` bbox from its Stage 02 PNG into `06_extract_crops/assets/<segment_id>.png`, using Stage 04 objects with Stage 05 replacements. It emits assets only and makes no model calls.
-   - [Book-to-Markdown](../tools/bootstrap/book-to-markdown/README.md#local-html-review) imports selected Stage 04 page objects with complete Stage 05 replacements and Stage 06 assets, retaining original Stage 02 PNG geometry. Its local Python application displays PDF page bitmaps beside direct Accepted and Working HTML, with linked element selection, a generated TOC, heading-level editing and explicit whole-bundle acceptance. An installed Edge preparation browser validates local KaTeX and saves HTML without taking screenshots; the viewer measures element geometry directly. It makes no model calls; grouping, descriptions and further GUI edit operations remain separate work.
-
-2. **Web Crawls to Markdown ([`html-to-markdown`](../tools/bootstrap/html-to-markdown/README.md)):**
-   - Converts downloaded multi-page HTML hierarchies (e.g. Kuba Winnicki's *Achtung! Amiga*).
-   - Strips legacy table formatting, inline styling, and obsolete navigational chrome.
-   - Normalizes cross-chapter hyperlinks into Obsidian internal vault links (`[[Chapter#Section]]`).
+This end-to-end bootstrap is not implemented yet. The remaining work is
+recorded in the [documentation and RAG roadmap](../ROADMAP.md#step-1-manual-conversion-and-initial-knowledge-base).
 
 <a id="domain-hardware-rag-setup-rag"></a>
 #### 3. Domain Hardware RAG Setup (`-Rag`)
