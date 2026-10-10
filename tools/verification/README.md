@@ -28,17 +28,26 @@ execution. `case` is a substring filter, including Python qualified test names.
 | `runner build` | Build the release test_runner binary |
 | `runner summary|diff` | Read persisted result reports |
 | `runner suite OPCODE` | Existing runner opcode diagnostics |
-| `runner bench -- OPTIONS` | CPU benchmark with native runtime settings |
-| `runner chipset compare -- OPTIONS` | Chipset baseline comparison; no reference recording |
-| `runner vamiga -- OPTIONS` | Explicit whole-machine capture run |
+| `runner bench [quick\|standard\|thorough] [filter TAG] [unroll N] [passes N] [output PATH] [pin on\|off]` | CPU benchmark |
+| `runner chipset [compare] [frames N]` | Chipset baseline comparison; no reference recording |
+| `runner vamiga [category NAME] [test NAME] [frames N] [limit N] [verbose] [summary]` | Explicit whole-machine capture run |
+| `runner vamiga list deferred` | Report deferred capture suites |
 | `runner gui -- OPTIONS` | GUI inspector capture |
-| `runner profile vamiga|chipset|bench -- OPTIONS` | Release build followed by external samply recording |
+| `runner profile vamiga\|chipset\|bench SELECTORS` | Release build followed by external samply recording |
 | `runner analyze CSV [report MARKDOWN]` | Analyze an existing benchmark CSV |
 
 `--plan` previews the exact child commands and environment. `--log-level
-full|warn|error` controls output; both options may appear before the runner's
-`--` separator. Native settings after the separator are passed to the selected
-program. Reports and profiling default to full output; other commands default
+full|warn|error` controls output; both options may appear among sentence selectors.
+The `test_runner` binary accepts the same command words after Cargo's `--`:
+`cargo run -p test_runner -- vamiga category Copper frames 16`.
+Only `runner gui -- OPTIONS` forwards native switches to a separate program.
+Counts must be positive; the binary rejects unknown or repeated selectors and
+missing or invalid values before execution, with exit code 2. Benchmark profiles
+set their defaults before explicit overrides, regardless of selector order.
+Use `cargo run -p test_runner -- help` for binary instructions. The former
+command switches and `benchmark-chipset` name have been replaced; standalone
+baseline recording uses `chipset record frames N` and remains blocked in
+verification. Reports and profiling default to full output; other commands default
 to warnings and errors. Full logs are always stored in `.agent/tmp/verify/`.
 
 Examples:
@@ -48,7 +57,7 @@ python tools/verification/verify.py test rust crate test_runner suite test_singl
 python tools/verification/verify.py test runner singlestep case test_move_w sample 500
 python tools/verification/verify.py test python directory tools/bootstrap/tests file test_bootstrap_contract.py case test_all
 python tools/verification/verify.py check architecture case test_file_size_limits
-python tools/verification/verify.py runner vamiga --plan -- --category all
+python tools/verification/verify.py runner vamiga category all --plan
 python tools/verification/verify.py runner summary
 ```
 
@@ -313,25 +322,25 @@ vAmigaTS Cargo test suites and chipset workload tests have been removed during t
 Execute tests with live pixel diff reporting, category filtering, and frame control:
 ```powershell
 # Execute a specific test by name with live pixel mismatch reporting:
-cargo run -p test_runner -- vamiga --test coptim1
+cargo run -p test_runner -- vamiga test coptim1
 
 # Execute a specific test with verbose pixel difference coordinates:
-cargo run -p test_runner -- vamiga --test coptim1 -v
+cargo run -p test_runner -- vamiga test coptim1 verbose
 
 # Run all runnable tests in a specific custom chip category:
-cargo run -p test_runner -- vamiga --category Copper
-cargo run -p test_runner -- vamiga --category Blitter
-cargo run -p test_runner -- vamiga --category Denise
-cargo run -p test_runner -- vamiga --category Paula
+cargo run -p test_runner -- vamiga category Copper
+cargo run -p test_runner -- vamiga category Blitter
+cargo run -p test_runner -- vamiga category Denise
+cargo run -p test_runner -- vamiga category Paula
 
 # Override the number of frames simulated (e.g. 16 frames):
-cargo run -p test_runner -- vamiga --test coptim1 --frames 16
+cargo run -p test_runner -- vamiga test coptim1 frames 16
 
 # Limit batch execution count during active development:
-cargo run -p test_runner -- vamiga --category Copper --max-tests 5
+cargo run -p test_runner -- vamiga category Copper limit 5
 
 # Inspect runnable vs deferred test suite breakdown across roadmap phases:
-cargo run -p test_runner -- vamiga --list-deferred
+cargo run -p test_runner -- vamiga list deferred
 ```
 
 ### 5. Diagnostic Diff Reporting & Root-Cause Guidelines

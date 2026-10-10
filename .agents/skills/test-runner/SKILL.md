@@ -16,7 +16,7 @@ This skill standardizes test execution across the 4 testing tiers, persists exec
 | **Tier 1** | Unit tests (isolated crates) | `python tools/verification/verify.py test rust unit` | $< 2$s |
 | **Tier 2** | Machine loop integration | `python tools/verification/verify.py test rust integration` | $3$–$15$s |
 | **Tier 3** | SingleStep CPU silicon vectors | `python tools/verification/verify.py test runner singlestep` | $6$–$15$s |
-| **Tier 4** | vAmigaTS whole-machine captures | `python tools/verification/verify.py runner vamiga -- --category <cat>` | $10$–$60$s |
+| **Tier 4** | vAmigaTS whole-machine captures | `python tools/verification/verify.py runner vamiga category <cat>` | $10$–$60$s |
 | **Arch** | Architecture rules & gates | `python tools/verification/verify.py check architecture` | $< 2$s |
 
 ---

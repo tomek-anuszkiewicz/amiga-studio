@@ -62,10 +62,10 @@ Run `samply record` targeting a representative workload or vAmigaTS test case:
 
 ```powershell
 # Profile a Copper test over 100 frames
-python tools/verification/verify.py runner profile vamiga -- --test coptim1 --frames 100
+python tools/verification/verify.py runner profile vamiga test coptim1 frames 100
 
 # Profile the standard chipset benchmark suite
-python tools/verification/verify.py runner profile chipset -- --frames 100
+python tools/verification/verify.py runner profile chipset frames 100
 ```
 
 `samply` will launch a local server and automatically open the interactive Firefox Profiler UI in the default browser.
@@ -141,7 +141,7 @@ When an approved hardware optimization is verified and pass rates are preserved,
 
 ```powershell
 # Record new golden metrics to baselines/benchmarks/chipset_benchmark_baseline.json
-cargo run --release -p test_runner -- benchmark-chipset --record --frames 50
+cargo run --release -p test_runner -- chipset record frames 50
 
 # Verify the updated baseline comparison passes
 python tools/verification/verify.py runner chipset compare

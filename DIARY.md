@@ -2590,3 +2590,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - All 19 architecture contract tests passed including nested-note regressions
   - Skill validation passed and the code graph was refreshed
   - Milestone verification and full SingleStepTests and DMA sets were not required or run for this documentation change
+---
+
+### [2026-10-10 18:16 CEST] — TEST-RUNNER-CLI-01: adopt sentence-style diagnostic commands
+- **Affected Subsystems**:
+  - `crates/test_runner`
+  - `tools/verification`
+  - `agent skills`
+  - `design specifications`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace diagnostic command switches with summary diff suite bench chipset and vamiga sentences
+  - Parse selector values into execution configurations before running workloads
+  - Forward the same sentence selectors through verification and external profiling
+  - Update command examples and specification ownership for the new CLI module
+- **Architectural Rationale & Trade-Offs**:
+  - Keep diagnostic invocation consistent with the verification grammar
+  - Reject unknown or repeated selectors and invalid counts with exit code 2
+  - Apply benchmark profile defaults before explicit overrides independently of argument order
+  - Preserve standalone reference recording and block it through verification
+- **Verification & Test Results**:
+  - Commit verification passed ordinary crate coverage all quality gates standard harness suites and all five Python contract directories
+  - Three Rust CLI tests passed including real binary help and argument error checks
+  - Scoped documentation review covered three specifications and resolved the new CLI module ownership
+  - Vault audit passed 39 specifications and 1026 links before the added parser link
+  - Initial Clippy visibility findings were corrected and the final Clippy check passed
+  - Graphify code graph refreshed
+  - Full SingleStepTests Cartesian DMA milestone checks hardware captures and performance measurements were not selected or run for this CLI change

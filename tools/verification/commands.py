@@ -249,9 +249,15 @@ def check_commands(name, words):
 
 def runner_commands(action, words):
     args = list(words)
-    if "--" in args:
+    if action == "gui" and "--" in args:
         args.remove("--")
     if "--record" in args:
+        raise ValueError("Baseline recording remains an explicit workflow outside verification")
+    if action != "gui" and any(word.startswith("-") for word in args):
+        raise ValueError("Runner commands use sentence selectors; use runner vamiga category NAME frames N")
+    target = args[0] if action == "profile" and args else action
+    settings = args[1:] if action == "profile" else args
+    if target == "chipset" and "record" in settings:
         raise ValueError("Baseline recording remains an explicit workflow outside verification")
     if action == "build":
         if args:
@@ -260,7 +266,7 @@ def runner_commands(action, words):
     if action in ("summary", "diff", "suite"):
         if (action == "suite" and len(args) != 1) or (action != "suite" and args):
             raise ValueError("Reports take no arguments; suite requires one opcode name")
-        return [("Runner " + action, ["cargo", "run", "-p", "test_runner", "--", "--" + action, *args], {})]
+        return [("Runner " + action, ["cargo", "run", "-p", "test_runner", "--", action, *args], {})]
     if action == "analyze":
         if len(args) not in (1, 3) or len(args) == 3 and args[1] != "report":
             raise ValueError("Use runner analyze CSV [report MARKDOWN]")
@@ -268,19 +274,17 @@ def runner_commands(action, words):
         if len(args) == 3:
             command += ["--output", args[2]]
         return [("Benchmark analysis", command, {})]
-    native = {"bench": "bench", "chipset": "benchmark-chipset", "vamiga": "vamiga"}
+    native = ("bench", "chipset", "vamiga")
     if action == "gui":
         return [("GUI inspector", ["cargo", "run", "-p", "gui", "--bin", "gui-inspector", "--", *args], {})]
     if action == "profile":
         if not args or args[0] not in native:
-            raise ValueError("Use runner profile vamiga|chipset|bench [program options]")
+            raise ValueError("Use runner profile vamiga|chipset|bench [sentence selectors]")
         executable = "test_runner.exe" if os.name == "nt" else "test_runner"
         return [("Build profiling runner", ["cargo", "build", "--release", "-p", "test_runner"], {}),
                 ("External sampling profile", ["samply", "record", "target/release/" + executable,
-                                                native[args[0]], *args[1:]], {})]
-    if action == "chipset" and args[:1] == ["compare"]:
-        args = ["--compare", *args[1:]]
-    return [("Runner " + action, ["cargo", "run", "--release", "-p", "test_runner", "--", native[action], *args], {})]
+                                                *args], {})]
+    return [("Runner " + action, ["cargo", "run", "--release", "-p", "test_runner", "--", action, *args], {})]
 
 
 def select_phases(args, changes):

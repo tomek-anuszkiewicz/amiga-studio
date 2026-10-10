@@ -185,7 +185,7 @@ graph TD
 
 1. **Iteration 1: Global Discovery Sweep & Baseline Auditing**:
    - Compile the test runner in release mode (`python tools/verification/verify.py runner build`).
-   - Run the entire active baseline (`python tools/verification/verify.py runner vamiga -- --category all`) across all 1,468 runnable tests in Phase 1 Baseline.
+   - Run the entire active baseline (`python tools/verification/verify.py runner vamiga category all`) across all 1,468 runnable tests in Phase 1 Baseline.
    - Categorize by subsystem (Copper, Agnus, Blitter, CPU, Denise, Paula, Mainboard, Memory).
    - Filter out and defer non-runnable tests:
      - **AGA / ECS Enhanced**: Tests requiring 2 MB Chip RAM or AGA registers (`BPLCON3`, 32-bit burst).
@@ -205,7 +205,7 @@ graph TD
    - **Enforce the 2–3 Attempt Rule per Cluster**: Never spend more than 2–3 calibration attempts on a single cluster. If an issue requires deep architectural rewrites or analog simulation, document it and proceed to maintain momentum.
 
 4. **Iteration 4: Final Validation Sweep & Regression Lock**:
-   - Re-run the global suite (`--category all`) to capture the updated pass rate.
+   - Re-run the global suite (`category all`) to capture the updated pass rate.
    - Verify that earlier passing tests have not regressed.
    - Log all newly passed tests and quantitative pass rates in [DIARY.md](../../../../DIARY.md).
 
@@ -266,7 +266,7 @@ When building, extending, or refactoring any part of the emulator, execute tests
 | **L1** | **Isolated Unit Tests** | `python tools/verification/verify.py test rust crate <crate>` | 100% pass; $< 1$s runtime; zero allocations |
 | **L2** | **Multi-Crate Integration** | `python tools/verification/verify.py test rust crate machine_loop` | 100% pass; 4-question checklist satisfied |
 | **L3** | **Silicon Ground Truth** | `python tools/verification/verify.py test rust crate test_runner suite test_singlestep` | Physical silicon opcode match; Cartesian cycle invariance |
-| **L4** | **vAmigaTS Visual Harness** | `python tools/verification/verify.py runner vamiga -- --category <cat>` | 4-iteration cascading protocol; RGB24 pixel exact |
+| **L4** | **vAmigaTS Visual Harness** | `python tools/verification/verify.py runner vamiga category <cat>` | 4-iteration cascading protocol; RGB24 pixel exact |
 | **L5** | **Architecture Cleanup** | `git diff` review & `python tools/verification/verify.py commit` | Zero ad-hoc `if` patches; 100% physical hardware model |
 
 ---

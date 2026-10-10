@@ -11,6 +11,7 @@ related: ["[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.
 tracked_paths:
   - "crates/test_runner/Cargo.toml"
   - "crates/test_runner/src/main.rs"
+  - "crates/test_runner/src/cli.rs"
   - "crates/test_runner/src/benchmark"
   - "crates/test_runner/src/analyze_benchmarks.py"
 ---
@@ -223,11 +224,11 @@ The benchmark runner supports scalable execution modes controlled via CLI parame
 
 ### 4.1 Execution Profiles
 
-| Profile | CLI Flag / Env Variable | Total Instructions per Opcode | Approximate Runtime (Whole Suite) | Primary Use Case |
+| Profile | CLI Selector / Env Variable | Total Instructions per Opcode | Approximate Runtime (Whole Suite) | Primary Use Case |
 | :--- | :--- | :--- | :--- | :--- |
-| **Sanity / Quick** | `--quick` / `BENCH_MODE=quick` | $10{,}000$ | ~5 seconds | Pre-commit check, CI pipeline validation. |
-| **Standard** | `--standard` / `BENCH_MODE=standard` | $1{,}000{,}000$ | ~2 minutes | PR review, instruction optimization validation. |
-| **Thorough** | `--thorough` / `BENCH_MODE=thorough` | $10{,}000{,}000$ | ~20 minutes | Nightly performance regression check. |
+| **Sanity / Quick** | `quick` / `BENCH_MODE=quick` | $10{,}000$ | ~5 seconds | Pre-commit check, CI pipeline validation. |
+| **Standard** | `standard` / `BENCH_MODE=standard` | $1{,}000{,}000$ | ~2 minutes | PR review, instruction optimization validation. |
+| **Thorough** | `thorough` / `BENCH_MODE=thorough` | $10{,}000{,}000$ | ~20 minutes | Nightly performance regression check. |
 
 ### 4.2 Configuration Parameters
 
@@ -244,11 +245,11 @@ The runner exposes fine-grained overrides:
 ```mermaid
 flowchart TD
     Start["Benchmark Startup"] --> Mode{"Execution Mode"}
-    Mode -- "--quick (Smoke Test)" --> ParallelOpt{"Parallel Flag Set?"}
+    Mode -- "quick (Smoke Test)" --> ParallelOpt{"Parallel Flag Set?"}
     ParallelOpt -- Yes --> MultiWorker["Run workers across N cores (-j N)"]
     ParallelOpt -- No --> SingleSeq
 
-    Mode -- "--standard / --thorough" --> SingleSeq["Sequential Precision Profiling"]
+    Mode -- "standard / thorough" --> SingleSeq["Sequential Precision Profiling"]
     SingleSeq --> Detect["Detect Host Topology & Core Types"]
     Detect --> FindPCore["Identify Performance Cores (P-Cores)<br/>Windows: EfficiencyClass > 0<br/>Linux: Max cpuinfo_max_freq<br/>macOS: hw.perflevel0"]
     FindPCore --> Pin["1. Pin Worker Thread to Primary P-Core<br/>2. Elevate to High Priority Class"]
@@ -260,7 +261,7 @@ Running multiple benchmark threads concurrently across all CPU cores causes **se
 - **Shared Cache Contention:** Concurrent threads evict each other's lines in the shared L3 cache.
 - **DRAM Bus Saturation:** Memory-referencing instructions compete for shared memory bus bandwidth.
 - **Thermal Downclocking:** Modern multi-core processors reduce clock speeds under all-core load (e.g. all-core boost clock is often 500–1000 MHz lower than peak single-core boost clock).
-- **The Golden Rule:** High-precision instruction profiling (`--standard`, `--thorough`) must execute **sequentially on a single dedicated Performance Core (P-core)** to maintain peak single-core turbo frequencies, clean L1i/L2 caches, and minimal jitter. Multi-threaded execution (`-j <N>`) is strictly reserved for developer smoke tests (`--quick`).
+- **The Golden Rule:** High-precision instruction profiling (`standard`, `thorough`) must execute **sequentially on a single dedicated Performance Core (P-core)** to maintain peak single-core turbo frequencies, clean L1i/L2 caches, and minimal jitter. Multi-threaded execution (`-j <N>`) is strictly reserved for developer smoke tests (`quick`).
 
 #### 2. Automatic Detection of Performance Cores (P-Cores vs E-Cores)
 On modern hybrid architectures (Intel 12th–14th Gen, AMD Zen 4/5c, Apple Silicon M-series), host processors mix high-performance P-cores with lower-clocked Efficiency (E-cores). To guarantee benchmarks always execute on maximum-performance hardware:
@@ -481,13 +482,13 @@ The benchmarking harness supports multiple operational profiles, targeted catego
 
 ### 8.1 Execution Profiles: Quick, Standard, and Thorough
 
-Select an execution profile via `--quick`, `--standard`, or `--thorough`:
+Select an execution profile with the words `quick`, `standard`, or `thorough`:
 
-| Profile Flag | Outer Passes | Iterations / Pass | Total Ops / Spec | Typical Full Suite Duration | Recommended Usage |
+| Profile Selector | Outer Passes | Iterations / Pass | Total Ops / Spec | Typical Full Suite Duration | Recommended Usage |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| **`--quick`** | 3 | 15 | ~10,500 | **~2–5 seconds** | Rapid developer sanity checks, pre-commit validation, CI pipelines. |
-| **`--standard`** *(default)* | 7 | 1,428 | ~1,000,000 | **~1–2 minutes** | Standard performance profiling, PR validation, Tukey outlier rejection. |
-| **`--thorough`** | 15 | 14,285 | ~10,000,000 | **~10–15 minutes** | High-precision baseline generation, jitter elimination ($\text{CV} < 1\%$). |
+| **`quick`** | 3 | 15 | ~10,500 | **~2–5 seconds** | Rapid developer sanity checks, pre-commit validation, CI pipelines. |
+| **`standard`** *(default)* | 7 | 1,428 | ~1,000,000 | **~1–2 minutes** | Standard performance profiling, PR validation, Tukey outlier rejection. |
+| **`thorough`** | 15 | 14,285 | ~10,000,000 | **~10–15 minutes** | High-precision baseline generation, jitter elimination ($\text{CV} < 1\%$). |
 
 ### 8.2 Results Output Files & Directory Structure
 
@@ -530,54 +531,61 @@ The test runner features **built-in zero-configuration differential regression d
 The test runner binary (`crates/test_runner/src/main.rs`) serves as the unified diagnostic and benchmarking CLI for the emulator.
 
 #### 8.4.1 Global Command-Line Syntax
+
+The binary's [sentence parser](../../../../crates/test_runner/src/cli.rs) accepts
+the same command words and selectors forwarded by `verify.py runner`. It rejects
+unknown or repeated selectors and missing or invalid values before execution
+with exit code 2. Counts must be positive. Profile defaults are applied before
+explicit benchmark overrides regardless of selector order.
+
 ```powershell
-cargo run -p test_runner [FLAGS] -- [COMMAND] [OPTIONS]
+cargo run -p test_runner [FLAGS] -- [COMMAND] [SELECTORS]
 ```
 *(Use `--release` when benchmarking to ensure compiler optimizations are active and measurements reflect maximum throughput).*
 
-#### 8.4.2 Benchmark Command Options (`bench [OPTIONS]`)
+#### 8.4.2 Benchmark Command Selectors (`bench [SELECTORS]`)
 
 | Option | Argument | Default | Description |
 | :--- | :---: | :---: | :--- |
-| **`--quick`** | None | — | **Quick Sanity Profile:** 3 passes × 15 iterations (~31,500 operations per specification, ~2–5s total). Validates instruction synthesis, CPU execution, and state mutations without waiting. |
-| **`--standard`** | None | Active | **Standard Profile (Default):** 7 passes × 1,428 iterations (~7,000,000 operations per specification, ~1–2 min total). Robust statistical sampling with Tukey's fences outlier rejection. Used for pull requests and CI. |
-| **`--thorough`** | None | — | **Thorough High-Precision Profile:** 15 passes × 14,285 iterations (~150,000,000 operations per specification, ~10–15 min total). Minimizes jitter ($\text{CV} < 1\%$). Recommended for baseline commits (`m68k_benchmark_baseline.json`). |
-| **`--filter`** | `<TAG>` | All specs | Case-insensitive regex/substring filter matching instruction mnemonics or category tags (e.g. `--filter "arith_mul\|arith_div"`, `--filter "move_"`). |
-| **`--unroll`** | `<K>` | `700` | Overrides the inner loop unroll block factor $K$. Compiles $K$ contiguous repetitions of the instruction between loop branches to amortize jump overhead to $< 0.1\%$. |
-| **`--passes`** | `<N>` | Profile default | Overrides the number of outer measurement passes (e.g. `--passes 10`). Each pass measures $K \times \text{iterations}$ operations. |
-| **`--out-dir`** | `<PATH>` | `.agent/tmp/benchmarks/<profile>/` | Overrides the output directory where JSON and CSV reports are written. |
-| **`--no-pin`** | None | P-core pinned | Disables Windows thread affinity pinning (`SetThreadAffinityMask`) and process priority elevation. Useful when benchmarking inside virtual machines, WSL, or non-hybrid CPU environments. |
+| **`quick`** | None | — | **Quick Sanity Profile:** 3 passes × 15 iterations (~31,500 operations per specification, ~2–5s total). Validates instruction synthesis, CPU execution, and state mutations without waiting. |
+| **`standard`** | None | Active | **Standard Profile (Default):** 7 passes × 1,428 iterations (~7,000,000 operations per specification, ~1–2 min total). Robust statistical sampling with Tukey's fences outlier rejection. Used for pull requests and CI. |
+| **`thorough`** | None | — | **Thorough High-Precision Profile:** 15 passes × 14,285 iterations (~150,000,000 operations per specification, ~10–15 min total). Minimizes jitter ($\text{CV} < 1\%$). Recommended for baseline commits (`m68k_benchmark_baseline.json`). |
+| **`filter`** | `<TAG>` | All specs | Case-insensitive regex/substring filter matching instruction mnemonics or category tags (e.g. `filter "arith_mul\|arith_div"`, `filter "move_"`). |
+| **`unroll`** | `<K>` | `700` | Overrides the inner loop unroll block factor $K$. Compiles $K$ contiguous repetitions of the instruction between loop branches to amortize jump overhead to $< 0.1\%$. |
+| **`passes`** | `<N>` | Profile default | Overrides the number of outer measurement passes (e.g. `passes 10`). Each pass measures $K \times \text{iterations}$ operations. |
+| **`output`** | `<PATH>` | `.agent/tmp/benchmarks/<profile>/` | Overrides the output directory where JSON and CSV reports are written. |
+| **`pin`** | `on` or `off` | `on` | `pin off` disables Windows thread affinity pinning (`SetThreadAffinityMask`) and process priority elevation. Useful when benchmarking inside virtual machines, WSL, or non-hybrid CPU environments. |
 
 #### 8.4.3 SingleStepTest Diagnostic Commands
 
 | Command | Argument | Description |
 | :--- | :---: | :--- |
-| **`--summary`** | None | Reads `target/debug/results/summary.json` and prints the global pass/fail coverage matrix across all tested M68000 opcodes. |
-| **`--diff`** | None | Compares current test execution results against previous runs to detect regressions (tests that previously passed but now fail) and fixes. |
-| **`--suite`** | `<OP>` | Directly runs Tom Harte physical silicon test vectors for a single opcode (e.g. `--suite ADD.b`, `--suite MOVE.w`), outputting full cycle-by-cycle diagnostics on failure. |
-| **`--help`** | None | Prints command-line usage instructions. |
+| **`summary`** | None | Reads `target/debug/results/summary.json` and prints the global pass/fail coverage matrix across all tested M68000 opcodes. |
+| **`diff`** | None | Compares current test execution results against previous runs to detect regressions (tests that previously passed but now fail) and fixes. |
+| **`suite`** | `<OP>` | Directly runs Tom Harte physical silicon test vectors for a single opcode (e.g. `suite ADD.b`, `suite MOVE.w`), outputting full cycle-by-cycle diagnostics on failure. |
+| **`help`** | None | Prints command-line usage instructions. |
 
 #### 8.4.4 Practical CLI Execution Examples
 ```powershell
 # 1. Quick sanity check across all 108 benchmark specifications (~2–5 seconds):
-python tools/verification/verify.py runner bench -- --quick
+python tools/verification/verify.py runner bench quick
 
 # 2. Standard benchmark run (default profile, ~1–2 minutes, full suite):
-python tools/verification/verify.py runner bench --
+python tools/verification/verify.py runner bench
 # Or explicitly:
-python tools/verification/verify.py runner bench -- --standard
+python tools/verification/verify.py runner bench standard
 
 # 4. Targeted profiling of arithmetic operations (multiplications and divisions):
-python tools/verification/verify.py runner bench -- --quick --filter "arith_mul|arith_div"
+python tools/verification/verify.py runner bench quick filter "arith_mul|arith_div"
 
 # 5. High-precision thorough profiling targeting memory data movement (MOVE instructions):
-python tools/verification/verify.py runner bench -- --thorough --filter "move_"
+python tools/verification/verify.py runner bench thorough filter "move_"
 
 # 6. Custom tuning: 10 passes with unroll block factor K = 500 into custom directory:
-python tools/verification/verify.py runner bench -- --passes 10 --unroll 500 --out-dir .agent/tmp/benchmarks/custom
+python tools/verification/verify.py runner bench passes 10 unroll 500 output .agent/tmp/benchmarks/custom
 
 # 7. Unpinned profiling (for virtual machines or heterogeneous host schedulers):
-python tools/verification/verify.py runner bench -- --quick --no-pin
+python tools/verification/verify.py runner bench quick pin off
 
 # 8. SingleStepTest coverage matrix summary:
 python tools/verification/verify.py runner summary
@@ -657,9 +665,9 @@ $$\text{total\_ops} = K \times \text{iterations} \times \text{passes}$$
 
 | Profile | Unroll Factor ($K$) | Inner Iterations | Outer Passes | Nominal `total_ops` (Invariant) |
 | :--- | :---: | :---: | :---: | :---: |
-| **`--quick`** | 700 | 3 | 15 | **31,500** |
-| **`--standard`** | 700 | 1,428 | 7 | **6,997,200** |
-| **`--thorough`** | 700 | 14,285 | 15 | **149,992,500** |
+| **`quick`** | 700 | 3 | 15 | **31,500** |
+| **`standard`** | 700 | 1,428 | 7 | **6,997,200** |
+| **`thorough`** | 700 | 14,285 | 15 | **149,992,500** |
 
 All 108 benchmark specifications within a given profile have identical nominal `total_ops`.
 

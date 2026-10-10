@@ -60,7 +60,7 @@ graph TD
    python tools/verification/verify.py runner build
    ```
 2. **Run Baseline Sweep:**
-   - For vAmigaTS: `python tools/verification/verify.py runner vamiga -- --category all`
+   - For vAmigaTS: `python tools/verification/verify.py runner vamiga category all`
    - For Machine Loop: `python tools/verification/verify.py test rust crate machine_loop`
 3. **Filter Out Non-Runnable Tests:**
    Do not waste cycles debugging tests that expect hardware outside the current phase:

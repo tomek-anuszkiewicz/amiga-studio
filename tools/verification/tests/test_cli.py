@@ -74,29 +74,38 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(commands[0][1][-2:], ["docs/testing.md", "AGENTS.md"])
 
     def test_settings_can_follow_subcommands_without_eating_runner_arguments(self):
-        _, args = parse_args(["runner", "vamiga", "--log-level", "full", "--plan", "--", "--category", "all"])
+        _, args = parse_args(["runner", "vamiga", "--log-level", "full", "--plan", "category", "all"])
         self.assertTrue(args.plan)
         self.assertEqual(args.log_level, "full")
         command = select_phases(args, set())[0][1][0][1]
-        self.assertEqual(command[-3:], ["vamiga", "--category", "all"])
+        self.assertEqual(command[-3:], ["vamiga", "category", "all"])
 
     def test_report_output_is_visible_by_default_and_can_be_overridden(self):
         self.assertEqual(parse_args(["runner", "summary"])[1].log_level, "full")
         self.assertEqual(parse_args(["runner", "summary", "--log-level", "error"])[1].log_level, "error")
         self.assertEqual(parse_args(["commit"])[1].log_level, "warn")
 
-    def test_nested_runner_commands_remove_only_the_frontend_separator(self):
-        self.assertEqual(selected("runner chipset compare -- --frames 10")[0][1][-3:],
-                         ["--compare", "--frames", "10"])
-        self.assertEqual(selected("runner profile vamiga -- --test coptim1")[1][1][-3:],
-                         ["vamiga", "--test", "coptim1"])
+    def test_runner_sentences_reach_the_binary_and_profiler_unchanged(self):
+        self.assertEqual(selected("runner chipset compare frames 10")[0][1][-4:],
+                         ["chipset", "compare", "frames", "10"])
+        self.assertEqual(selected("runner profile vamiga test coptim1")[1][1][-3:],
+                         ["vamiga", "test", "coptim1"])
+        self.assertEqual(selected("runner bench quick pin off")[0][1][-4:],
+                         ["bench", "quick", "pin", "off"])
+        self.assertEqual(selected("runner suite ADD.b")[0][1][-2:], ["suite", "ADD.b"])
+        self.assertEqual(selected("runner summary")[0][1][-1], "summary")
+        self.assertEqual(selected("runner diff")[0][1][-1], "diff")
+
+    def test_gui_keeps_its_separate_native_options(self):
+        self.assertEqual(selected("runner gui -- --frames 10")[0][1][-2:], ["--frames", "10"])
 
     def test_invalid_sentences_and_baseline_mutation_are_rejected(self):
         for sentence in ("test rust suite missing", "test rust crate cpu crate gui",
                          "test python directory missing", "test runner dma sample 50",
                          "test runner singlestep sample 0", "test runner singlestep sample 50 full",
                          "commit singlestep singlestep", "check english case name",
-                         "runner chipset --record", "runner profile chipset --record"):
+                         "runner chipset record", "runner profile chipset record",
+                         "runner chipset --record", "runner vamiga -- --category all"):
             with self.subTest(sentence=sentence), self.assertRaises(ValueError):
                 selected(sentence)
 

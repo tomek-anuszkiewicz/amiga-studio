@@ -11,9 +11,11 @@ EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py test runner singlestep case test_add_b sample 500
   python tools/verification/verify.py check architecture case test_file_size_limits
   python tools/verification/verify.py runner summary --log-level full
+  python tools/verification/verify.py runner vamiga category Copper frames 16
+  python tools/verification/verify.py runner bench quick filter arith_mul pin off
 
 Execution options --plan and --log-level full|warn|error may appear anywhere
-before a runner's -- separator. Runner options after -- belong to that program.
+among sentence selectors. Only runner gui uses -- to pass native program options.
 Focused commands do not run completion gates or coverage. Commit always runs
 ordinary crate coverage, quality gates, standard harness and Python contracts.
 Milestone runs the language audit; domain skills retain their own checks.

@@ -2,38 +2,17 @@
 
 //! CLI tool for inspecting SingleStepTest results, coverage summaries, and regression diffs
 
+mod cli;
+
+use cli::{Command, VamigaOptions};
 use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use test_runner::reporter::{resolve_results_dir, GlobalTestSummary, SuiteResult};
 use test_runner::vamiga::{
-    run_vamiga_suite, run_vamiga_test, VamigaCatalog, VamigaCategory, VamigaRunConfig,
-    VamigaTestStatus,
+    run_vamiga_suite, run_vamiga_test, VamigaCatalog, VamigaCategory, VamigaTestStatus,
 };
-
-fn print_usage() {
-    println!("M68000 SingleStepTest & vAmigaTS Verification Runner");
-    println!("Usage: cargo run -p test_runner -- [COMMAND]\n");
-    println!("Commands:");
-    println!("  bench [OPTIONS]  Execute M68000 instruction benchmarking suite");
-    println!("                   Options: --quick, --standard, --thorough");
-    println!("                            --filter <TAG>, --unroll <K>, --passes <N>");
-    println!("                            --out-dir <PATH>, --no-pin");
-    println!("  benchmark-chipset [OPTIONS] Run chipset throughput benchmark & regression check");
-    println!(
-        "                   Options: --record (record golden baseline), --compare, --frames <N>"
-    );
-    println!("  vamiga [OPTIONS] Execute vAmigaTS regression verification test harness");
-    println!("                   Options: --category <CAT>, --test <NAME>, --frames <N>");
-    println!("                            --max-tests <N>, --list-deferred, --summary, -v");
-    println!("  --summary        Print global pass/fail coverage table across all tested opcodes");
-    println!("  --diff           Compare latest test runs against previous runs to detect regressions/fixes");
-    println!(
-        "  --suite <OP>     Execute and report diagnostics for a specific opcode (e.g. ADD.b)"
-    );
-    println!("  --help           Print this help message");
-}
 
 fn print_summary(results_dir: &Path) {
     let summary_file = results_dir.join("summary.json");
@@ -191,74 +170,14 @@ fn run_specific_suite(opcode: &str) {
     }
 }
 
-fn run_benchmarks_cli(args: &[String]) {
-    use std::path::PathBuf;
-    use test_runner::benchmark::{run_benchmark_suite, BenchmarkConfig, BenchmarkProfile};
-
-    let mut config = BenchmarkConfig::default();
-    let mut i = 0;
-    while i < args.len() {
-        match args[i].as_str() {
-            "--quick" => {
-                config.profile = BenchmarkProfile::Quick;
-                config.passes = BenchmarkProfile::Quick.default_passes();
-                config.iterations = BenchmarkProfile::Quick.default_iterations();
-            }
-            "--standard" => {
-                config.profile = BenchmarkProfile::Standard;
-                config.passes = BenchmarkProfile::Standard.default_passes();
-                config.iterations = BenchmarkProfile::Standard.default_iterations();
-            }
-            "--thorough" => {
-                config.profile = BenchmarkProfile::Thorough;
-                config.passes = BenchmarkProfile::Thorough.default_passes();
-                config.iterations = BenchmarkProfile::Thorough.default_iterations();
-            }
-            "--filter" => {
-                if i + 1 < args.len() {
-                    config.filter = Some(args[i + 1].clone());
-                    i += 1;
-                }
-            }
-            "--unroll" => {
-                if i + 1 < args.len() {
-                    if let Ok(k) = args[i + 1].parse::<usize>() {
-                        config.unroll_k = k;
-                    }
-                    i += 1;
-                }
-            }
-            "--passes" => {
-                if i + 1 < args.len() {
-                    if let Ok(p) = args[i + 1].parse::<usize>() {
-                        config.passes = p;
-                    }
-                    i += 1;
-                }
-            }
-            "--out-dir" => {
-                if i + 1 < args.len() {
-                    config.out_dir = PathBuf::from(&args[i + 1]);
-                    i += 1;
-                }
-            }
-            "--no-pin" => {
-                config.pin_core = false;
-            }
-            other => {
-                eprintln!("Unknown benchmark flag: {}", other);
-            }
-        }
-        i += 1;
-    }
-
-    if let Err(e) = run_benchmark_suite(&config) {
+fn run_benchmarks_cli(config: &test_runner::benchmark::BenchmarkConfig) {
+    if let Err(e) = test_runner::benchmark::run_benchmark_suite(config) {
         eprintln!("Benchmark failed: {}", e);
         std::process::exit(1);
     }
 }
 
-fn run_vamiga_cli(args: &[String]) {
+fn run_vamiga_cli(options: VamigaOptions) {
     let repo_root = if Path::new("ref_src/vAmigaTS").is_dir() {
         PathBuf::from("ref_src/vAmigaTS")
     } else if Path::new("../../ref_src/vAmigaTS").is_dir() {
@@ -268,64 +187,14 @@ fn run_vamiga_cli(args: &[String]) {
         return;
     };
 
-    let mut category = VamigaCategory::All;
-    let mut specific_test: Option<String> = None;
-    let mut list_deferred = false;
-    let mut show_summary = true;
-    let mut max_tests: Option<usize> = None;
-    let mut config = VamigaRunConfig::default();
-
-    let mut i = 0;
-    while i < args.len() {
-        match args[i].as_str() {
-            "--category" | "-c" => {
-                if i + 1 < args.len() {
-                    if let Some(cat) = VamigaCategory::from_str_loose(&args[i + 1]) {
-                        category = cat;
-                    } else {
-                        eprintln!("Unknown category: {}", args[i + 1]);
-                        return;
-                    }
-                    i += 1;
-                }
-            }
-            "--test" | "-t" => {
-                if i + 1 < args.len() {
-                    specific_test = Some(args[i + 1].clone());
-                    i += 1;
-                }
-            }
-            "--frames" | "-f" => {
-                if i + 1 < args.len() {
-                    if let Ok(frames) = args[i + 1].parse::<u32>() {
-                        config.frames_to_run = frames;
-                    }
-                    i += 1;
-                }
-            }
-            "--max-tests" | "-n" => {
-                if i + 1 < args.len() {
-                    if let Ok(n) = args[i + 1].parse::<usize>() {
-                        max_tests = Some(n);
-                    }
-                    i += 1;
-                }
-            }
-            "--list-deferred" => {
-                list_deferred = true;
-            }
-            "--summary" => {
-                show_summary = true;
-            }
-            "--verbose" | "-v" => {
-                config.verbose = true;
-            }
-            other => {
-                eprintln!("Unknown vamiga option: {}", other);
-            }
-        }
-        i += 1;
-    }
+    let VamigaOptions {
+        category,
+        test: specific_test,
+        limit: max_tests,
+        list_deferred,
+        config,
+    } = options;
+    let category = category.unwrap_or(VamigaCategory::All);
 
     println!(
         "[*] Discovering vAmigaTS test catalog in: {}",
@@ -406,43 +275,17 @@ fn run_vamiga_cli(args: &[String]) {
 
     // Batch run category
     let summary = run_vamiga_suite(&catalog, category, &config, max_tests);
-    if show_summary {
-        summary.print_summary();
-    }
+    summary.print_summary();
 }
 
-fn run_chipset_benchmarks_cli(args: &[String]) {
-    use test_runner::benchmark::{
-        compare_chipset_baseline, record_chipset_baseline, DEFAULT_BENCHMARK_FRAMES,
-    };
+fn run_chipset_benchmarks_cli(record: bool, frames: u32) {
+    use test_runner::benchmark::{compare_chipset_baseline, record_chipset_baseline};
 
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(|p| p.parent())
         .expect("Failed to locate repo root")
         .to_path_buf();
-
-    let mut record = false;
-    let mut compare = false;
-    let mut frames = DEFAULT_BENCHMARK_FRAMES;
-
-    let mut i = 0;
-    while i < args.len() {
-        match args[i].as_str() {
-            "--record" => record = true,
-            "--compare" => compare = true,
-            "--frames" | "-f" => {
-                if i + 1 < args.len() {
-                    if let Ok(f) = args[i + 1].parse::<u32>() {
-                        frames = f;
-                    }
-                    i += 1;
-                }
-            }
-            other => eprintln!("Unknown benchmark-chipset option: {}", other),
-        }
-        i += 1;
-    }
 
     if record {
         println!(
@@ -453,7 +296,7 @@ fn run_chipset_benchmarks_cli(args: &[String]) {
             eprintln!("Error recording baseline: {}", e);
             std::process::exit(1);
         }
-    } else if compare || !record {
+    } else {
         println!(
             "[*] Running chipset performance regression audit ({} frames)...",
             frames
@@ -474,31 +317,21 @@ fn run_chipset_benchmarks_cli(args: &[String]) {
 }
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    let results_dir = resolve_results_dir();
-
-    if args.len() < 2 {
-        print_usage();
-        return;
-    }
-
-    match args[1].as_str() {
-        "bench" => run_benchmarks_cli(&args[2..]),
-        "benchmark-chipset" => run_chipset_benchmarks_cli(&args[2..]),
-        "vamiga" => run_vamiga_cli(&args[2..]),
-        "--summary" => print_summary(&results_dir),
-        "--diff" => print_diff(&results_dir),
-        "--suite" => {
-            if args.len() > 2 {
-                run_specific_suite(&args[2]);
-            } else {
-                eprintln!("Error: Missing opcode name after --suite (e.g. --suite ADD.b)");
-            }
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let command = match cli::parse(&args) {
+        Ok(command) => command,
+        Err(error) => {
+            eprintln!("Error: {error}\nUse 'help' for command instructions.");
+            std::process::exit(2);
         }
-        "--help" | "-h" => print_usage(),
-        other => {
-            eprintln!("Unknown option '{}'", other);
-            print_usage();
-        }
+    };
+    match command {
+        Command::Help => println!("{}", cli::USAGE),
+        Command::Bench(config) => run_benchmarks_cli(&config),
+        Command::Chipset { record, frames } => run_chipset_benchmarks_cli(record, frames),
+        Command::Vamiga(options) => run_vamiga_cli(options),
+        Command::Summary => print_summary(&resolve_results_dir()),
+        Command::Diff => print_diff(&resolve_results_dir()),
+        Command::Suite(opcode) => run_specific_suite(&opcode),
     }
 }

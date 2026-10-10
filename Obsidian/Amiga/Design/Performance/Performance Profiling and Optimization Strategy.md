@@ -147,7 +147,7 @@ Whenever refactoring for performance (such as *Dynamic Agnus DMA Slot Arbitratio
 2. **Implement Minimal Code Change:** Implement the focused optimization while preserving code readability and architectural simplicity.
 3. **Verification Gate:** Pass all automated unit tests, SingleStepTests, and vAmigaTS verification suites.
 4. **Post-Optimization Profile:** Re-run `samply` to verify that target self-time decreased.
-5. **Update Baseline:** Re-record golden metrics via `benchmark-chipset --record` and commit atomically.
+5. **Update Baseline:** Re-record golden metrics via `chipset record` and commit atomically.
 
 ---
 
