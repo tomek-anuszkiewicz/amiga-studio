@@ -87,7 +87,7 @@ impl PhysicalMemory {
         self.unmapped_byte
     }
 
-    /// Sets the byte value returned when reading unpopulated test memory or unmapped open bus
+    /// Host configuration API for the byte value returned by unmapped open bus reads
     #[inline]
     pub fn set_unmapped_byte(&mut self, val: u8) {
         self.unmapped_byte = val;

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-10
-updated: 2026-09-12
+updated: 2026-10-10
 related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)"]
 ---
 
@@ -35,11 +35,11 @@ This document provides formal architectural solutions for every instruction fami
 
 ### 1.1 Pseudo-Random Number Generator (PRNG) for Operands
 To prevent host processors from detecting trivial patterns or executing shortcut optimizations, operand values throughout all benchmark programs are generated using a **deterministic pseudo-random number generator (PRNG)**:
-- **Zero Host Cryptographic Requirement:** The PRNG does not need to be cryptographically secure; a fast, lightweight 64-bit generator ([`XorShift64`](../../../../crates/test_runner/src/benchmark/prng.rs) with deterministic seed [`BENCH_PRNG_SEED`](../../../../crates/test_runner/src/benchmark/prng.rs)) is used.
+- **Zero Host Cryptographic Requirement:** The PRNG does not need to be cryptographically secure; a fast, lightweight 64-bit generator ([`XorShift64`](../../../../crates/test_runner/benches/bench_instructions/prng.rs) with deterministic seed [`BENCH_PRNG_SEED`](../../../../crates/test_runner/benches/bench_instructions/prng.rs)) is used.
 - **Memory Buffers:** Memory arrays in Chip RAM (`$000400-$000FFF` and buffers `$006000-$007FFF`) are filled with pseudo-random bytes, ensuring varied bit distributions across all memory read/write instructions.
 - **Register Preambles:** Initial values loaded into Data and Address registers ($D_0 \dots D_7, A_0 \dots A_6$) during the preamble are seeded from the PRNG.
 - **Immediate Operand Stream:** When generating unrolled immediate instructions (e.g. `ADDI.W #xxx, D0`, `MOVE.L #xxx, D0`, `CMPI.B #xxx, D0`), the immediate values `#xxx` are emitted directly from the PRNG stream rather than repeating a static constant.
-- **Domain Clamping:** Where hardware requires valid constraints (e.g. non-zero divisors for `DIVU`, valid decimal digits for `ABCD` via `next_bcd_byte()`, aligned address values), the PRNG output is clamped or masked to remain strictly valid while preserving maximum pseudo-random entropy. See [`crates/test_runner/src/benchmark/prng.rs`](../../../../crates/test_runner/src/benchmark/prng.rs).
+- **Domain Clamping:** Where hardware requires valid constraints (e.g. non-zero divisors for `DIVU`, valid decimal digits for `ABCD` via `next_bcd_byte()`, aligned address values), the PRNG output is clamped or masked to remain strictly valid while preserving maximum pseudo-random entropy. See [`crates/test_runner/benches/bench_instructions/prng.rs`](../../../../crates/test_runner/benches/bench_instructions/prng.rs).
 
 
 ---
@@ -63,14 +63,14 @@ flowchart LR
 - **Characteristics:** Completely non-saturating; preserves register diversity and prevents host CPU register renaming shortcuts.
 
 ### 2.2 Memory Indirect & Post-Increment / Pre-Decrement
-- **Strategy:** Dedicated Chip RAM buffers allocated at [`BENCH_RAM_BUFFER_A0 = $006000`](../../../../crates/test_runner/src/benchmark/builder.rs) (source buffer) and [`BENCH_RAM_BUFFER_A1 = $007000`](../../../../crates/test_runner/src/benchmark/builder.rs) (destination buffer), each 4 KB.
+- **Strategy:** Dedicated Chip RAM buffers allocated at [`BENCH_RAM_BUFFER_A0 = $006000`](../../../../crates/test_runner/benches/bench_instructions/builder.rs) (source buffer) and [`BENCH_RAM_BUFFER_A1 = $007000`](../../../../crates/test_runner/benches/bench_instructions/builder.rs) (destination buffer), each 4 KB.
 - **Post-Increment (`(A0)+`):** Initialize $A_0 = \$006000$. After 700 word reads ($1{,}400\text{ bytes}$), $A_0 = \$006578$. The program preambles and execution harness re-arm pointers cleanly before subsequent iterations.
 - **Pre-Decrement (`-(A0)`):** Initialize $A_0 = \$006578$. After 700 word writes, $A_0$ decrements back to $\$006000$.
 
 ### 2.3 Stack Pushes (`PEA`, `MOVE.L Dn, -(SP)`)
-- **Strategy:** Initialize $SP$ near the top of Chip RAM ([`BENCH_STACK_TOP = $07F000`](../../../../crates/test_runner/src/benchmark/builder.rs)).
+- **Strategy:** Initialize $SP$ near the top of Chip RAM ([`BENCH_STACK_TOP = $07F000`](../../../../crates/test_runner/benches/bench_instructions/builder.rs)).
 - **Capacity:** Pushing 700 longwords ($2{,}800\text{ bytes}$) moves $SP$ downward to $\$07E510$, remaining completely safe within free memory.
-- **Footer Reset:** The execution loop re-arms stack and register state cleanly from [`BenchmarkProgram::inject_into`](../../../../crates/test_runner/src/benchmark/builder.rs#L38).
+- **Footer Reset:** The execution loop re-arms stack and register state cleanly from [`BenchmarkProgram::inject_into`](../../../../crates/test_runner/benches/bench_instructions/builder.rs#L38).
 
 ### 2.4 Stack Frames (`LINK` and `UNLK`)
 - **Strategy:** Paired interleaved execution:
@@ -301,19 +301,19 @@ sequenceDiagram
 ```
 
 #### Execution Steps:
-1. **Layout in Memory:** Emit $K$ consecutive `RTS` opcode words (`$4E75`) at base address [`rts_base = $008000`](../../../../crates/test_runner/src/benchmark/builder.rs) in Chip RAM:
+1. **Layout in Memory:** Emit $K$ consecutive `RTS` opcode words (`$4E75`) at base address [`rts_base = $008000`](../../../../crates/test_runner/benches/bench_instructions/builder.rs) in Chip RAM:
    - $P_0 = \$008000$: `RTS`
    - $P_1 = \$008002$: `RTS`
    - $P_2 = \$008004$: `RTS`
    - $\dots$
    - $P_{K-1} = \$008000 + 2 \times (K-1)$: `RTS`
-2. **Stack Pre-Population:** Before starting execution, push return addresses $P_1 \dots P_{K-1}$, followed by [`BENCH_EXIT_PC = $004FFE`](../../../../crates/test_runner/src/benchmark/builder.rs) onto the stack in reverse order.
+2. **Stack Pre-Population:** Before starting execution, push return addresses $P_1 \dots P_{K-1}$, followed by [`BENCH_EXIT_PC = $004FFE`](../../../../crates/test_runner/benches/bench_instructions/builder.rs) onto the stack in reverse order.
 3. **Execution:** Entry point executes `JMP $008000`.
    - Instruction 0 at $P_0$ pops $P_1$ and branches to $P_1$.
    - Instruction 1 at $P_1$ pops $P_2$ and branches to $P_2$.
    - $\dots$
-   - Final instruction at $P_{K-1}$ pops [`BENCH_EXIT_PC = $004FFE`](../../../../crates/test_runner/src/benchmark/builder.rs) and stops cleanly at `STOP #$2700`.
-4. **Purity:** $K$ consecutive `RTS` instructions execute back-to-back with zero intermediate setup instructions, providing a 100% pure measurement of return microcode latency. Implementation: [`build_cascading_rts`](../../../../crates/test_runner/src/benchmark/builder.rs#L262).
+   - Final instruction at $P_{K-1}$ pops [`BENCH_EXIT_PC = $004FFE`](../../../../crates/test_runner/benches/bench_instructions/builder.rs) and stops cleanly at `STOP #$2700`.
+4. **Purity:** $K$ consecutive `RTS` instructions execute back-to-back with zero intermediate setup instructions, providing a 100% pure measurement of return microcode latency. Implementation: [`build_cascading_rts`](../../../../crates/test_runner/benches/bench_instructions/builder.rs#L262).
 
 ### 8.2 Subroutine Return with CCR (`RTR`)
 - Uses identical cascading layout as `RTS`, but each stack entry is a 6-byte frame: 2-byte CCR followed by 4-byte return address ($PC$).
@@ -450,6 +450,6 @@ Software traps and conditional trap instructions push the Program Counter pointi
 - [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md): Operational guide for interpreting host performance metrics and anomalies.
 - [CPU Motorola M68000 Architecture](../CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
 - [CPU Micro-Step State Machine Specification](../CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
-- [PRNG Stream Generator](../../../../crates/test_runner/src/benchmark/prng.rs): Deterministic pseudo-random number generator for benchmark operands.
-- [Benchmark Program Builder](../../../../crates/test_runner/src/benchmark/builder.rs): Programmatic unrolled loop generation and stack management.
-- [Benchmark Harness Implementation](../../../../crates/test_runner/src/benchmark): Living Rust benchmark harness, runners, and profiler models.
+- [PRNG Stream Generator](../../../../crates/test_runner/benches/bench_instructions/prng.rs): Deterministic pseudo-random number generator for benchmark operands.
+- [Benchmark Program Builder](../../../../crates/test_runner/benches/bench_instructions/builder.rs): Programmatic unrolled loop generation and stack management.
+- [Benchmark Harness Implementation](../../../../crates/test_runner/benches/bench_instructions): Living Rust benchmark harness, runners, and profiler models.

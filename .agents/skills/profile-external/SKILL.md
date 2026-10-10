@@ -137,14 +137,6 @@ python tools/verification/verify.py runner chipset compare
 The comparison audit verifies overall FPS throughput against golden limits and prints the recorded baseline method profile breakdown.
 
 ### Updating the Golden Baseline
-When an approved hardware optimization is verified and pass rates are preserved, update the committed golden baseline. Recording changes the reference artifact and remains a direct workflow operation outside verification:
-
-```powershell
-# Record new golden metrics to baselines/benchmarks/chipset_benchmark_baseline.json
-cargo run --release -p test_runner -- chipset record frames 50
-
-# Verify the updated baseline comparison passes
-python tools/verification/verify.py runner chipset compare
-```
+Chipset baseline recording through `test_runner` is unavailable: the crate has no application binary. A separate workload and recording entry point must be implemented before an approved hardware optimization can update this reference artifact.
 
 When a commit is authorized by [git-commits.md](../../rules/git-commits.md), include `baselines/benchmarks/chipset_benchmark_baseline.json` in the atomic commit for the optimization task.

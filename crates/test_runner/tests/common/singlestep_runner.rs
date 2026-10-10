@@ -1,7 +1,7 @@
-use crate::diagnostic::{format_ccr_diff, StateDiff, TestFailure};
-use crate::reporter::{record_suite_result, SuiteResult, TestFailureSummary};
-use crate::schema::SingleStepTest;
-use crate::test_memory_bus::TestMemoryBus;
+use super::diagnostic::{format_ccr_diff, StateDiff, TestFailure};
+use super::reporter::{record_suite_result, SuiteResult, TestFailureSummary};
+use super::schema::SingleStepTest;
+use super::test_memory_bus::TestMemoryBus;
 use cpu::Cpu;
 use flate2::read::GzDecoder;
 
@@ -236,11 +236,11 @@ pub fn run_single_test_detail_with_bus(
 
     // Verify Bus Transactions
     if mode == VerifyMode::Full {
-        match crate::transactions::parse_transactions(&test.transactions) {
+        match super::transactions::parse_transactions(&test.transactions) {
             Ok(expected_txs) => {
                 let recorded = bus.recorded_transactions().unwrap_or(&[]);
                 if let Err(tx_diffs) =
-                    crate::transactions::match_transactions(recorded, &expected_txs, is_harte)
+                    super::transactions::match_transactions(recorded, &expected_txs, is_harte)
                 {
                     for diff in tx_diffs {
                         failure

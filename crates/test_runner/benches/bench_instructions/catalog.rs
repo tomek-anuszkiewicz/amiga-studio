@@ -146,11 +146,6 @@ pub fn all_benchmark_specs() -> impl Iterator<Item = &'static BenchmarkSpec> {
     CATALOG_DATA_A.iter().chain(CATALOG_DATA_B.iter())
 }
 
-/// Total count of all benchmark specifications in catalog
-pub fn total_benchmark_specs_count() -> usize {
-    CATALOG_DATA_A.len() + CATALOG_DATA_B.len()
-}
-
 /// Looks up a benchmark specification by its unique ID
 pub fn find_spec_by_id(id: &str) -> Option<&'static BenchmarkSpec> {
     all_benchmark_specs().find(|s| s.id == id)

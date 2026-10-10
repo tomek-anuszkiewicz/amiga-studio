@@ -1,8 +1,12 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use test_runner::is_cmpm_postinc_opcode;
-use test_runner::runner::{run_test_file_filtered_with_mode, run_test_file_with_mode, VerifyMode};
-use test_runner::schema::SingleStepTest;
+mod common;
+
+use common::schema::SingleStepTest;
+use common::singlestep_runner::is_cmpm_postinc_opcode;
+use common::singlestep_runner::{
+    run_test_file_filtered_with_mode, run_test_file_with_mode, VerifyMode,
+};
 
 /// Default number of test cases to run per opcode from each test suite
 const DEFAULT_SAMPLE_LIMIT: usize = 50;
@@ -144,7 +148,7 @@ fn test_pea_an_full_verification() {
         std::path::Path::new("../..").join(base_path)
     };
     let file = std::fs::File::open(&harte_path).expect("Failed to open PEA test file");
-    let tests: Vec<test_runner::schema::SingleStepTest> =
+    let tests: Vec<common::schema::SingleStepTest> =
         serde_json::from_reader(std::io::BufReader::new(file)).expect("Failed to parse PEA tests");
 
     let an_tests: Vec<_> = tests
@@ -155,7 +159,7 @@ fn test_pea_an_full_verification() {
 
     assert!(!an_tests.is_empty(), "No PEA (An) tests found");
     for (idx, test) in an_tests.iter().enumerate() {
-        if let Err(failure) = test_runner::runner::run_single_test_detail(
+        if let Err(failure) = common::singlestep_runner::run_single_test_detail(
             test,
             harte_path.to_str().unwrap(),
             idx,

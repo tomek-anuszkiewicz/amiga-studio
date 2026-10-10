@@ -235,19 +235,9 @@ Every instruction family exercises all addressing modes permitted by the M68000 
 
 ## 3. Benchmark Catalog Execution Filtering
 
-The programmatic runner exposes `--filter <TAG>` / `BENCH_FILTER=<TAG>` to isolate specific subsets during profiling:
-
-```powershell
-# Run only data register moves and memory moves:
-cargo bench -p test_runner --bench bench_instructions -- --filter "move_"
-
-# Run only heavy arithmetic (multiplications and divisions):
-cargo bench -p test_runner --bench bench_instructions -- --filter "arith_mul|arith_div"
-
-# Run only subroutine returns and branching:
-cargo bench -p test_runner --bench bench_instructions -- --filter "flow_"
-
-```
+The Cargo benchmark measures the full catalog using one selected profile
+(`--quick`, `--standard` or `--thorough`). Internal harnesses can select subsets
+through `BenchmarkConfig.filter`; filtering is not a command-line option.
 
 ---
 
@@ -259,8 +249,8 @@ cargo bench -p test_runner --bench bench_instructions -- --filter "flow_"
 - [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md): Operational guide for interpreting host performance metrics and anomalies.
 - [CPU Motorola M68000 Architecture](../CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
 - [CPU Micro-Step State Machine Specification](../CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
-- [Benchmark Catalog Core Implementation](../../../../crates/test_runner/src/benchmark/catalog.rs): Living Rust catalog definitions and filter parsers.
-- [Benchmark Catalog Part A](../../../../crates/test_runner/src/benchmark/catalog_data_a.rs): Categories 0–3 specifications.
-- [Benchmark Catalog Part B](../../../../crates/test_runner/src/benchmark/catalog_data_b.rs): Categories 4–8 specifications.
-- [Benchmark Program Builder](../../../../crates/test_runner/src/benchmark/builder.rs): Programmatic instruction sequence synthesis.
+- [Benchmark Catalog Core Implementation](../../../../crates/test_runner/benches/bench_instructions/catalog.rs): Living Rust catalog definitions and filter parsers.
+- [Benchmark Catalog Part A](../../../../crates/test_runner/benches/bench_instructions/catalog_data_a.rs): Categories 0–3 specifications.
+- [Benchmark Catalog Part B](../../../../crates/test_runner/benches/bench_instructions/catalog_data_b.rs): Categories 4–8 specifications.
+- [Benchmark Program Builder](../../../../crates/test_runner/benches/bench_instructions/builder.rs): Programmatic instruction sequence synthesis.
 

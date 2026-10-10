@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 //! Benchmark Runner Orchestrator & Dual-Loop Harness
 //!
 //! Executes the inner unrolled instruction block (K = 700) and outer multi-pass
@@ -9,7 +11,7 @@ use physical_memory::PhysicalMemory;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use super::anomaly::{evaluate_anomaly, RegressionStatus};
+use super::anomaly::evaluate_anomaly;
 use super::builder::BenchmarkProgramBuilder;
 use super::catalog::{filter_specs, find_spec_by_id, BenchmarkSpec, InstructionCategory};
 use super::persistence::{
@@ -72,7 +74,7 @@ pub fn resolve_benchmarks_dir() -> PathBuf {
 }
 
 /// Resolves tracked reference artifacts independently of generated reports.
-pub(crate) fn resolve_benchmark_reference_dir() -> PathBuf {
+pub fn resolve_benchmark_reference_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../baselines/benchmarks")
 }
 
@@ -96,11 +98,8 @@ impl Default for BenchmarkConfig {
 pub struct BenchmarkExecutionResult {
     pub spec: BenchmarkSpec,
     pub metrics: BenchmarkMetrics,
-    pub differential_net_ns_op: Option<f64>,
     pub anomaly_flag: bool,
     pub anomaly_notes: Vec<String>,
-    pub regression_status: Option<RegressionStatus>,
-    pub regression_delta_pct: Option<f64>,
 }
 
 /// Main runner entry point executing benchmark catalog against cycle-exact CPU core
@@ -476,17 +475,11 @@ pub fn execute_single_spec(
             );
         }
 
-        let diff_net =
-            register_baseline_ns_op.map(|base| (metrics.host_ns_per_instruction - base).max(0.0));
-
         return BenchmarkExecutionResult {
             spec: *spec,
             metrics,
-            differential_net_ns_op: diff_net,
             anomaly_flag: verdict.is_anomaly,
             anomaly_notes: verdict.notes,
-            regression_status: None,
-            regression_delta_pct: None,
         };
     }
 }

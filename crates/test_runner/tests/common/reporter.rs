@@ -1,10 +1,11 @@
 //! Test result recording, persistence, and regression tracking
 
-use crate::diagnostic::TestFailure;
+use super::diagnostic::TestFailure;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Write as _;
 use std::fs::{self, File};
-use std::io::{BufReader, BufWriter};
+use std::io::{self, BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
 /// Brief summary of a single test failure for persistence
@@ -21,12 +22,12 @@ impl From<&TestFailure> for TestFailureSummary {
     fn from(f: &TestFailure) -> Self {
         let short_error = if let Some(diff) = f.diffs.first() {
             match diff {
-                crate::diagnostic::StateDiff::StatusRegister {
+                super::diagnostic::StateDiff::StatusRegister {
                     diverging_flags, ..
                 } => {
                     format!("SR mismatch: {}", diverging_flags.join(", "))
                 }
-                crate::diagnostic::StateDiff::DataRegister {
+                super::diagnostic::StateDiff::DataRegister {
                     reg,
                     actual,
                     expected,
@@ -36,7 +37,7 @@ impl From<&TestFailure> for TestFailureSummary {
                         reg, actual, expected
                     )
                 }
-                crate::diagnostic::StateDiff::AddressRegister {
+                super::diagnostic::StateDiff::AddressRegister {
                     reg,
                     actual,
                     expected,
@@ -46,13 +47,13 @@ impl From<&TestFailure> for TestFailureSummary {
                         reg, actual, expected
                     )
                 }
-                crate::diagnostic::StateDiff::ProgramCounter { actual, expected } => {
+                super::diagnostic::StateDiff::ProgramCounter { actual, expected } => {
                     format!(
                         "PC mismatch: got 0x{:08X}, expected 0x{:08X}",
                         actual, expected
                     )
                 }
-                crate::diagnostic::StateDiff::RamByte {
+                super::diagnostic::StateDiff::RamByte {
                     address,
                     actual,
                     expected,
@@ -62,28 +63,28 @@ impl From<&TestFailure> for TestFailureSummary {
                         address, actual, expected
                     )
                 }
-                crate::diagnostic::StateDiff::UserStackPointer { actual, expected } => {
+                super::diagnostic::StateDiff::UserStackPointer { actual, expected } => {
                     format!(
                         "USP mismatch: got 0x{:08X}, expected 0x{:08X}",
                         actual, expected
                     )
                 }
-                crate::diagnostic::StateDiff::SupervisorStackPointer { actual, expected } => {
+                super::diagnostic::StateDiff::SupervisorStackPointer { actual, expected } => {
                     format!(
                         "SSP mismatch: got 0x{:08X}, expected 0x{:08X}",
                         actual, expected
                     )
                 }
-                crate::diagnostic::StateDiff::CycleLength { actual, expected } => {
+                super::diagnostic::StateDiff::CycleLength { actual, expected } => {
                     format!(
                         "Cycles: got {} clocks, expected {} clocks",
                         actual, expected
                     )
                 }
-                crate::diagnostic::StateDiff::TransactionCountMismatch { actual, expected } => {
+                super::diagnostic::StateDiff::TransactionCountMismatch { actual, expected } => {
                     format!("Transactions: recorded {}, expected {}", actual, expected)
                 }
-                crate::diagnostic::StateDiff::TransactionMismatch { details } => {
+                super::diagnostic::StateDiff::TransactionMismatch { details } => {
                     format!("Transaction mismatch: {}", details)
                 }
             }
@@ -190,21 +191,7 @@ pub fn record_suite_result(result: &SuiteResult) {
 
     // Analyze regression vs improvements
     if let Some(prev) = previous_result {
-        let prev_passed_set: HashSet<_> = prev.passed_test_names.iter().collect();
-        let prev_failed_set: HashSet<_> = prev.failures.iter().map(|f| &f.test_name).collect();
-
-        let current_failed_set: HashSet<_> = result.failures.iter().map(|f| &f.test_name).collect();
-        let current_passed_set: HashSet<_> = result.passed_test_names.iter().collect();
-
-        let regressions: Vec<_> = current_failed_set
-            .intersection(&prev_passed_set)
-            .cloned()
-            .collect();
-
-        let improvements: Vec<_> = current_passed_set
-            .intersection(&prev_failed_set)
-            .cloned()
-            .collect();
+        let (regressions, improvements) = suite_changes(&prev, result);
 
         if !regressions.is_empty() {
             eprintln!("\n⚠️  [REGRESSION DETECTED] Suite '{}': {} test(s) that previously PASSED now FAILED!", result.suite_name, regressions.len());
@@ -307,10 +294,190 @@ pub fn update_global_summary(base_dir: &Path) {
         let writer = BufWriter::new(f);
         let _ = serde_json::to_writer_pretty(writer, &summary);
     }
+
+    if let Err(error) = fs::write(base_dir.join("summary.md"), summary_markdown(&summary)) {
+        eprintln!("Failed to write summary.md: {error}");
+    }
+    match diff_markdown(base_dir) {
+        Ok(report) => {
+            if let Err(error) = fs::write(base_dir.join("diff.md"), report) {
+                eprintln!("Failed to write diff.md: {error}");
+            }
+        }
+        Err(error) => eprintln!("Failed to generate diff.md: {error}"),
+    }
 }
 
 /// Fallback timestamp without external chrono dependency
 fn chrono_stub() -> String {
     // Basic counter / standard placeholder format
     "latest_run".to_string()
+}
+
+fn suite_changes(previous: &SuiteResult, latest: &SuiteResult) -> (Vec<String>, Vec<String>) {
+    let previous_passed: BTreeSet<_> = previous.passed_test_names.iter().collect();
+    let previous_failed: BTreeSet<_> = previous.failures.iter().map(|f| &f.test_name).collect();
+    let latest_passed: BTreeSet<_> = latest.passed_test_names.iter().collect();
+    let latest_failed: BTreeSet<_> = latest.failures.iter().map(|f| &f.test_name).collect();
+    (
+        latest_failed
+            .intersection(&previous_passed)
+            .map(|s| (*s).clone())
+            .collect(),
+        latest_passed
+            .intersection(&previous_failed)
+            .map(|s| (*s).clone())
+            .collect(),
+    )
+}
+
+fn cell(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('\\', "&#92;")
+        .replace('|', "&#124;")
+        .replace('`', "&#96;")
+        .replace('*', "&#42;")
+        .replace('_', "&#95;")
+        .replace('[', "&#91;")
+        .replace(']', "&#93;")
+        .replace(['\r', '\n'], " ")
+}
+
+/// Formats all persisted suite statistics and failure names as Markdown.
+fn summary_markdown(summary: &GlobalTestSummary) -> String {
+    let mut report = String::from("# M68000 SingleStep Test Summary\n\n");
+    report.push_str(
+        "Latest saved result for each suite. Suites may come from different executions.\n\n",
+    );
+    let _ = write!(report, "- Suites: {}\n", summary.total_suites);
+    let _ = write!(report, "- Executed: {}\n", summary.total_executed);
+    let _ = write!(report, "- Passed: {}\n", summary.total_passed);
+    let _ = write!(report, "- Failed: {}\n", summary.total_failed);
+    let _ = write!(
+        report,
+        "- Pass rate: {:.2}%\n\n",
+        summary.overall_pass_rate_percent
+    );
+    report.push_str(
+        "| Suite | Executed | Passed | Failed | Pass rate |\n| --- | ---: | ---: | ---: | ---: |\n",
+    );
+    for (name, stats) in &summary.suites {
+        let _ = write!(
+            report,
+            "| {} | {} | {} | {} | {:.2}% |\n",
+            cell(name),
+            stats.total,
+            stats.passed,
+            stats.failed,
+            stats.pass_rate_percent
+        );
+    }
+    if summary
+        .suites
+        .values()
+        .any(|stats| !stats.active_failures.is_empty())
+    {
+        report.push_str("\n## Failing Cases\n\n| Suite | Test |\n| --- | --- |\n");
+        for (name, stats) in &summary.suites {
+            for failure in &stats.active_failures {
+                let _ = write!(report, "| {} | {} |\n", cell(name), cell(failure));
+            }
+        }
+    }
+    report
+}
+
+fn read_suite(path: &Path) -> io::Result<SuiteResult> {
+    serde_json::from_reader(BufReader::new(File::open(path)?)).map_err(|error| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("{}: {error}", path.display()),
+        )
+    })
+}
+
+/// Compares shared case names against the previous saved result for each suite.
+/// Missing baselines are reported separately; unreadable results return an error.
+fn diff_markdown(base_dir: &Path) -> io::Result<String> {
+    let latest_dir = base_dir.join("latest");
+    let previous_dir = base_dir.join("previous");
+    let mut changes = BTreeMap::new();
+    let mut missing_baselines = BTreeSet::new();
+    let mut compared = 0;
+    let mut regressions = 0;
+    let mut improvements = 0;
+
+    if latest_dir.exists() {
+        for entry in fs::read_dir(&latest_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+                continue;
+            }
+            let latest = read_suite(&path)?;
+            let previous_path = previous_dir.join(entry.file_name());
+            if !previous_path.exists() {
+                missing_baselines.insert(latest.suite_name);
+                continue;
+            }
+            let previous = read_suite(&previous_path)?;
+            let (broken, fixed) = suite_changes(&previous, &latest);
+            compared += 1;
+            regressions += broken.len();
+            improvements += fixed.len();
+            if !broken.is_empty() || !fixed.is_empty() {
+                changes.insert(latest.suite_name, (broken, fixed));
+            }
+        }
+    }
+
+    let mut report = String::from("# M68000 SingleStep Test Diff\n\n");
+    report.push_str("Latest versus previous saved result for each suite. History rotates independently per suite. Only shared test names changing between passed and failed are compared; new or removed cases are excluded.\n\n");
+    let _ = write!(report, "- Compared suites: {compared}\n");
+    let _ = write!(
+        report,
+        "- Suites without a previous result: {}\n",
+        missing_baselines.len()
+    );
+    let _ = write!(report, "- Regressions (passed to failed): {regressions}\n");
+    let _ = write!(
+        report,
+        "- Improvements (failed to passed): {improvements}\n\n"
+    );
+    if compared == 0 {
+        report.push_str(
+            "No comparable results yet. Save results for the same suite at least twice.\n",
+        );
+    } else if changes.is_empty() {
+        report.push_str("No pass/fail status changes detected among comparable cases.\n");
+    } else {
+        report.push_str("## Status Changes\n\n| Suite | Change | Test |\n| --- | --- | --- |\n");
+        for (suite, (broken, fixed)) in changes {
+            for test in broken {
+                let _ = write!(
+                    report,
+                    "| {} | REGRESSION | {} |\n",
+                    cell(&suite),
+                    cell(&test)
+                );
+            }
+            for test in fixed {
+                let _ = write!(
+                    report,
+                    "| {} | IMPROVEMENT | {} |\n",
+                    cell(&suite),
+                    cell(&test)
+                );
+            }
+        }
+    }
+    if !missing_baselines.is_empty() {
+        report.push_str("\n## Suites Without a Previous Result\n\n| Suite |\n| --- |\n");
+        for suite in missing_baselines {
+            let _ = write!(report, "| {} |\n", cell(&suite));
+        }
+    }
+    Ok(report)
 }

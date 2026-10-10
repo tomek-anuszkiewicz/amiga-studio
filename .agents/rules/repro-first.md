@@ -6,4 +6,4 @@
 - Apply [structural-root-cause.md](structural-root-cause.md) and [spec-compliance.md](spec-compliance.md); never adjust goldens or timing offsets to manufacture a pass.
 - Use the focused reproduction procedure in [test-runner](../skills/test-runner/SKILL.md). For CPU silicon divergences, use [m68k-singlestep-test](../skills/m68k-singlestep-test/SKILL.md).
 
-Completion requires the domain and per-commit checks in [AGENTS.md](../../AGENTS.md); report actual results and remaining gaps.
+Ordinary defect completion requires relevant focused checks. Full commit and milestone profiles run only at their respective triggers in [AGENTS.md](../../AGENTS.md); report actual results and remaining gaps.

@@ -44,7 +44,7 @@ graph TD
     end
 
     subgraph "Tier 2: Deep Root-Cause Profiler"
-        FAIL --> PROFILE["samply record target/release/test_runner.exe ..."]
+        FAIL --> PROFILE["python tools/verification/verify.py runner profile bench"]
         PROFILE --> FLAME["Interactive Flamegraph (Firefox Profiler UI)"]
         FLAME --> HOTSPOT["Identify Hot Function / Cache Bottleneck"]
     end

@@ -1,6 +1,7 @@
 """Repository architecture checks; source inspection requires no Rust build."""
 from pathlib import Path
 import sys
+import tomllib
 import unittest
 from urllib.parse import unquote
 
@@ -301,6 +302,11 @@ class ArchitectureChecks(unittest.TestCase):
                     files.extend(source_files(path))
         violations = [f"{self.relative(path)}: Generic lib.rs is forbidden" for path in files if path.name == "lib.rs"]
         for crate in self.crates():
+            manifest = tomllib.loads((crate / "Cargo.toml").read_text(encoding="utf-8"))
+            harness_targets = list((crate / "tests").glob("test_*.rs")) + source_files(crate / "benches")
+            if (crate.name not in CORE_EMULATION_CRATES and "lib" not in manifest
+                    and not source_files(crate / "src") and harness_targets):
+                continue
             if not (crate / "src" / (crate.name + ".rs")).is_file():
                 violations.append(f"{self.relative(crate)}: Missing expected crate root src/{crate.name}.rs")
             expected = f'path = "src/{crate.name}.rs"'

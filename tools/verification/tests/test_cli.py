@@ -8,8 +8,10 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cli import parse_args
-from commands import select_phases, SINGLESTEP_PATHS, DMA_PATHS
+from commands import select_phases
+from repository import REPO_ROOT
 import verify
+import commands as selection
 
 
 def selected(sentence, changes=()):
@@ -25,11 +27,37 @@ class SelectionTests(unittest.TestCase):
                                          "test_singlestep", "--", "--quiet", "test_sub"])
         self.assertEqual(commands[0][2], {})
 
+    def test_runner_build_compiles_test_and_benchmark_targets_without_execution(self):
+        commands = selected("runner build")
+        self.assertEqual(len(commands), 1)
+        self.assertEqual(commands[0][1], ["cargo", "test", "--release", "--no-run",
+                                         "-p", "test_runner", "--tests", "--benches"])
+
     def test_python_selection_preserves_directory_file_and_case(self):
         commands = selected("test python directory tools/bootstrap/tests file test_bootstrap_contract.py case test_all")
         self.assertEqual(len(commands), 1)
         self.assertEqual(commands[0][1][1:], ["-m", "unittest", "discover", "-s", "tools/bootstrap/tests",
                                             "-q", "-p", "test_bootstrap_contract.py", "-k", "test_all"])
+
+    def test_default_python_selection_skips_unrelated_changes(self):
+        for changes in ([], ["crates/cpu/src/state.rs"], ["docs/testing.md"],
+                        ["tools/bootstrap/conversion-old/client.py"]):
+            self.assertEqual(selected("test python", changes), [])
+
+    def test_default_python_selection_covers_owned_code_and_shared_dependencies(self):
+        cases = (
+            ("tools/bootstrap/ensure_qdrant.ps1", {"Bootstrap contracts"}),
+            ("tools/bootstrap/tests/test_bootstrap_contract.py", {"Bootstrap contracts"}),
+            ("tools/bootstrap/html-to-markdown/pipeline.py", {"Conversion contracts"}),
+            ("tools/bootstrap/conversion/client.py", {"Conversion contracts", "PDF conversion contracts"}),
+            ("tools/bootstrap/pdf-to-markdown/pipeline.py", {"Conversion contracts", "PDF conversion contracts"}),
+            ("tools/amiga-rag-mcp-server/server.py", {"RAG MCP contracts"}),
+            (".codex/config.toml", {"RAG MCP contracts"}),
+            ("tools/verification/commands.py", {"Verification CLI contracts"}),
+        )
+        for path, expected in cases:
+            with self.subTest(path=path):
+                self.assertEqual({item[0] for item in selected("test python", [path])}, expected)
 
     def test_full_and_sampled_silicon_runs_override_inherited_selection(self):
         commands = selected("test runner singlestep case test_add_b sample 500")
@@ -38,23 +66,40 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(selected("test runner singlestep")[0][2],
                          {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})
 
-    def test_completion_selects_cpu_suites_only_for_relevant_changes(self):
-        for path in SINGLESTEP_PATHS[-2:]:
-            self.assertTrue(any("test_singlestep" in item[1] for item in selected("commit", [path])))
-        self.assertTrue(any("test_dma_cartesian" in item[1] for item in selected("commit", [DMA_PATHS[-1]])))
-        self.assertFalse(any("test_singlestep" in item[1] for item in selected("commit", ["docs/testing.md"])))
-        self.assertFalse(any("test_dma_cartesian" in item[1] for item in selected("commit", ["docs/testing.md"])))
+    def test_commit_excludes_full_cpu_suites_even_for_cpu_changes(self):
+        for changes in ([], ["crates/cpu/src/cpu.rs"], ["Cargo.toml"],
+                        ["crates/test_runner/tests/test_dma_cartesian.rs"], ["docs/testing.md"]):
+            commands = selected("commit", changes)
+            for suite in ("test_singlestep", "test_dma_cartesian"):
+                self.assertFalse(any(suite in item[1] for item in commands))
+
+    def test_empty_standard_harness_never_selects_all_cargo_targets(self):
+        with patch.object(Path, "glob", return_value=[Path("test_singlestep.rs"),
+                                                   Path("test_dma_cartesian.rs")]):
+            commands = selected("commit")
+            self.assertFalse(any(item[1][:2] == ["cargo", "test"] for item in commands))
+            self.assertEqual(selected("test runner standard"), [])
+
+    def test_standard_harness_keeps_explicit_ordinary_targets(self):
+        with patch.object(Path, "glob", return_value=[Path("test_singlestep.rs"),
+                                                   Path("test_reports.rs")]):
+            commands = selection.harness_commands(["standard"])
+            self.assertEqual(commands[0][1], ["cargo", "test", "--no-fail-fast", "-p",
+                                              "test_runner", "--test", "test_reports",
+                                              "--", "--quiet"])
 
     def test_explicit_cpu_sets_run_once_alongside_automatic_selection(self):
-        commands = selected("commit singlestep dma", ["crates/cpu/src/cpu.rs"])
+        commands = selected("milestone singlestep dma", ["crates/cpu/src/cpu.rs"])
         for suite in ("test_singlestep", "test_dma_cartesian"):
             self.assertEqual(sum(suite in item[1] for item in commands), 1)
 
     def test_milestone_retains_separate_scope(self):
-        commands = selected("milestone", ["crates/cpu/src/cpu.rs"])
-        self.assertEqual(len(commands), 1)
-        self.assertTrue(commands[0][1][-1].endswith("check_english.py"))
-        self.assertEqual(len(selected("milestone singlestep dma")), 3)
+        for changes in ([], ["crates/cpu/src/cpu.rs"], ["docs/testing.md"]):
+            commands = selected("milestone", changes)
+            self.assertEqual(len(commands), 3)
+            self.assertTrue(commands[0][1][-1].endswith("check_english.py"))
+            self.assertEqual(commands[1][0], "Cartesian DMA")
+            self.assertEqual(commands[2][2], {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})
 
     def test_commit_keeps_coverage_quality_and_all_python_directories(self):
         commands = selected("commit")
@@ -74,25 +119,24 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(commands[0][1][-2:], ["docs/testing.md", "AGENTS.md"])
 
     def test_settings_can_follow_subcommands_without_eating_runner_arguments(self):
-        _, args = parse_args(["runner", "bench", "--log-level", "full", "--plan", "filter", "all"])
+        _, args = parse_args(["runner", "bench", "--log-level", "full", "--plan", "quick"])
         self.assertTrue(args.plan)
         self.assertEqual(args.log_level, "full")
         command = select_phases(args, set())[0][1][0][1]
-        self.assertEqual(command[-3:], ["bench", "filter", "all"])
+        self.assertEqual(command[:2], ["cargo", "bench"])
+        self.assertEqual(command[-2:], ["--", "--quick"])
 
     def test_report_output_is_visible_by_default_and_can_be_overridden(self):
-        self.assertEqual(parse_args(["runner", "summary"])[1].log_level, "full")
-        self.assertEqual(parse_args(["runner", "summary", "--log-level", "error"])[1].log_level, "error")
+        self.assertEqual(parse_args(["runner", "analyze", "fixture.csv"])[1].log_level, "full")
+        self.assertEqual(parse_args(["runner", "analyze", "fixture.csv", "--log-level", "error"])[1].log_level, "error")
         self.assertEqual(parse_args(["commit"])[1].log_level, "warn")
 
-    def test_runner_sentences_reach_the_binary_and_profiler_unchanged(self):
-        self.assertEqual(selected("runner profile bench quick")[1][1][-2:],
-                         ["bench", "quick"])
-        self.assertEqual(selected("runner bench quick pin off")[0][1][-4:],
-                         ["bench", "quick", "pin", "off"])
-        self.assertEqual(selected("runner suite ADD.b")[0][1][-2:], ["suite", "ADD.b"])
-        self.assertEqual(selected("runner summary")[0][1][-1], "summary")
-        self.assertEqual(selected("runner diff")[0][1][-1], "diff")
+    def test_benchmark_and_profiler_select_the_cargo_benchmark(self):
+        self.assertEqual(selected("runner profile bench quick")[0][1][1:],
+                         ["tools/verification/profile_benchmark.py", "--quick"])
+        self.assertEqual(selected("runner bench quick")[0][1],
+                         ["cargo", "bench", "-p", "test_runner", "--bench", "bench_instructions",
+                          "--", "--quick"])
 
     def test_gui_keeps_its_separate_native_options(self):
         self.assertEqual(selected("runner gui -- --frames 10")[0][1][-2:], ["--frames", "10"])
@@ -101,24 +145,57 @@ class SelectionTests(unittest.TestCase):
         for sentence in ("test rust suite missing", "test rust crate cpu crate gui",
                          "test python directory missing", "test runner dma sample 50",
                          "test runner singlestep sample 0", "test runner singlestep sample 50 full",
-                         "commit singlestep singlestep", "check english case name",
-                         "runner bench -- --quick"):
+                         "milestone singlestep singlestep", "check english case name",
+                         "runner bench -- --quick", "runner bench quick thorough",
+                         "runner bench passes 0", "runner bench pin maybe",
+                         "runner bench quick filter ADD", "runner bench quick unroll 500",
+                         "runner bench quick passes 9", "runner bench quick output reports",
+                         "runner bench quick pin off", "runner profile bench quick pin off",
+                         "runner bench unroll", "runner profile bench unknown"):
             with self.subTest(sentence=sentence), self.assertRaises(ValueError):
                 selected(sentence)
 
     def test_legacy_selectors_are_rejected(self):
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as result:
-            parse_args(["--commit"])
-        self.assertEqual(result.exception.code, 2)
+        for argv in (["--commit"], ["commit", "dma"], ["commit", "singlestep"], ["runner", "suite", "ADD.b"],
+                     ["runner", "summary"], ["runner", "diff"]):
+            with self.subTest(argv=argv), contextlib.redirect_stderr(io.StringIO()), \
+                 self.assertRaises(SystemExit) as result:
+                parse_args(argv)
+            self.assertEqual(result.exception.code, 2)
 
 
 class ExecutionTests(unittest.TestCase):
-    def test_failed_profile_build_does_not_launch_a_stale_binary(self):
-        with patch.object(verify, "execute_command", return_value=(False, "build failed", 0)) as execute, \
-             patch.object(verify, "snapshot", return_value="same"), contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(verify.main(["runner", "profile", "bench"]), 1)
-            self.assertEqual(execute.call_count, 1)
-            self.assertEqual(execute.call_args.args[0][:2], ["cargo", "build"])
+    def test_benchmark_analysis_follows_successful_measurement_only(self):
+        for success in (True, False):
+            with self.subTest(success=success), \
+                 patch.object(verify, "execute_command", return_value=(success, "result", 0)) as execute, \
+                 patch.object(verify, "snapshot", return_value="same"), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(verify.main(["runner", "bench", "quick"]), 0 if success else 1)
+            self.assertEqual(execute.call_count, 2 if success else 1)
+            self.assertEqual(execute.call_args_list[0].args[0][:2], ["cargo", "bench"])
+            if success:
+                self.assertEqual(execute.call_args_list[1].args[0][1:], [
+                    "tools/verification/analyze_benchmarks.py",
+                    ".agent/tmp/benchmarks/quick/m68k_benchmark.csv", "--output",
+                    ".agent/tmp/benchmarks/quick/analysis_report.md"])
+
+    def test_unrelated_changes_execute_no_python_contracts(self):
+        with patch.object(verify, "collect_changes", return_value={"crates/cpu/src/state.rs"}), \
+             patch.object(verify, "execute_command") as execute, patch.object(verify, "snapshot") as snapshot:
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main(["test", "python"]), 0)
+        execute.assert_not_called()
+        snapshot.assert_not_called()
+        self.assertIn("inputs are unchanged", output.getvalue())
+
+    def test_default_python_command_collects_working_tree_changes(self):
+        with patch.object(verify, "collect_changes", return_value={"tools/amiga-rag-mcp-server/server.py"}) as collect:
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main(["test", "python", "--plan"]), 0)
+        collect.assert_called_once_with(REPO_ROOT)
+        self.assertIn("RAG MCP contracts", output.getvalue())
+        self.assertNotIn("Bootstrap contracts", output.getvalue())
 
     def test_plan_never_executes_or_fingerprints_source(self):
         with patch.object(verify, "execute_command") as execute, patch.object(verify, "snapshot") as snapshot:

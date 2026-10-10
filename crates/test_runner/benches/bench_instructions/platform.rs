@@ -1,3 +1,5 @@
+#![allow(unsafe_code, clippy::cast_ptr_alignment)]
+
 //! Platform Abstraction Layer: HostEnvironment & P-Core Pinning
 //!
 //! Provides dynamic hardware topology discovery, Performance Core (P-core) detection,
@@ -7,7 +9,6 @@
 #[derive(Debug, Clone)]
 pub struct HostEnvironment {
     pub platform_name: &'static str,
-    pub p_core_detected: bool,
     pub p_core_id: Option<usize>,
     pub affinity_supported: bool,
 }
@@ -25,7 +26,6 @@ impl HostEnvironment {
         {
             Self {
                 platform_name: "WebAssembly",
-                p_core_detected: false,
                 p_core_id: None,
                 affinity_supported: false,
             }
@@ -33,10 +33,9 @@ impl HostEnvironment {
 
         #[cfg(all(windows, not(target_arch = "wasm32")))]
         {
-            let (p_core_detected, p_core_id) = detect_windows_p_core();
+            let (_, p_core_id) = detect_windows_p_core();
             Self {
                 platform_name: "Windows",
-                p_core_detected,
                 p_core_id,
                 affinity_supported: true,
             }
@@ -44,10 +43,9 @@ impl HostEnvironment {
 
         #[cfg(all(target_os = "linux", not(target_arch = "wasm32")))]
         {
-            let (p_core_detected, p_core_id) = detect_linux_p_core();
+            let (_, p_core_id) = detect_linux_p_core();
             Self {
                 platform_name: "Linux",
-                p_core_detected,
                 p_core_id,
                 affinity_supported: true,
             }
@@ -55,10 +53,9 @@ impl HostEnvironment {
 
         #[cfg(all(target_os = "macos", not(target_arch = "wasm32")))]
         {
-            let (p_core_detected, p_core_id) = detect_macos_p_core();
+            let (_, p_core_id) = detect_macos_p_core();
             Self {
                 platform_name: "macOS",
-                p_core_detected,
                 p_core_id,
                 affinity_supported: true,
             }
@@ -73,7 +70,6 @@ impl HostEnvironment {
         {
             Self {
                 platform_name: "Generic Unix",
-                p_core_detected: false,
                 p_core_id: Some(0),
                 affinity_supported: false,
             }

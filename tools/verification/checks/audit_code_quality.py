@@ -83,7 +83,7 @@ HOST_IO_AND_SPEC_SYMBOLS = {
     # System Topologies & Save States / Synchronous Stepping
     "bare_512k", "expanded_power_user", "to_json", "step_cycles", "step_line", "step_frame", "execute_blit",
     # Bus Query & Overlay Status
-    "is_wait", "is_low_memory_overlay_active",
+    "is_wait", "is_low_memory_overlay_active", "set_unmapped_byte",
     # HRM Figure 6-9 DMA Slot Timing Specifications
     "HPOS_REFRESH_SLOTS", "HPOS_DISK_SLOTS", "HPOS_AUDIO_SLOTS", "HPOS_SPRITE_START", "HPOS_SPRITE_END",
     # Hardware Chip Interface Signals

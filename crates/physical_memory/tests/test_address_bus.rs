@@ -7,13 +7,11 @@ fn test_bus_result_methods() {
     let ready: BusResult<u16> = BusResult::Ready(0x1234);
     assert!(ready.is_ready());
     assert!(!ready.is_wait());
-    assert_eq!(ready.ok(), Some(0x1234));
     assert_eq!(ready.unwrap_or(0xFFFF), 0x1234);
 
     let wait: BusResult<u16> = BusResult::WaitState;
     assert!(!wait.is_ready());
     assert!(wait.is_wait());
-    assert_eq!(wait.ok(), None);
     assert_eq!(wait.unwrap_or(0xFFFF), 0xFFFF);
 }
 

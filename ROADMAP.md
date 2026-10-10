@@ -153,7 +153,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - **Sub-Suite 5.2.6: Mainboard, Memory & Peripheral Assertions (Layer 4 System, 58 visual + 193 non-visual tests):** `Mainboard/`, `Memory/`, `Misc/`, verifying address decoding, port registers, and RAM expansion configurations.
     - **Sub-Suite 5.2.7: M68000 CPU Silicon Pipeline (Layer 4 System Integration, 503 tests):** `CPU/` (ALU, bitwise, shifts, exceptions, traps, IPL autovectors).
   - **Verification Gate:**
-    - `cargo run -p test_runner -- vamiga category <CAT> summary`
+    - Restore a capture-runner entry point and verify each selected vAmigaTS category against its hardware reference captures.
 
 - **5.3: Dynamic Agnus DMA Slot Arbitration Optimization (Deferred Performance Track)**
   - **Objective:** Optimize the dynamic per-CCK DMA slot priority evaluation into a clean, pre-computed scanline slot lookup table (`[DmaSlot; 227]`).

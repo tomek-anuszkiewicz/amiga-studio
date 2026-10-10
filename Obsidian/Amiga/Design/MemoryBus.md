@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "physical_memory"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-19
+updated: 2026-10-10
 related: ["[Agnus.md](Agnus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[RTC.md](RTC.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/memory_bus"
@@ -104,7 +104,7 @@ Maintain the following internal bus state:
 ### Types & Arbitration Primitives
 
 The bus timing and transfer types reside in [`crates/physical_memory/src/address_bus.rs`](../../../crates/physical_memory/src/address_bus.rs):
-- **`BusAccessSize` (`Byte`, `Word`)**: Test-runner bus transfer operand widths defined in [`crates/test_runner/src/transactions.rs`](../../../crates/test_runner/src/transactions.rs).
+- **`BusAccessSize` (`Byte`, `Word`)**: Test-runner bus transfer operand widths defined in [`crates/test_runner/tests/common/transactions.rs`](../../../crates/test_runner/tests/common/transactions.rs).
 - **Function Code Lines (`m68000::function_code::*`)**: FC0–FC2 processor output pins defined in [`crates/cpu/src/state.rs`](../../../crates/cpu/src/state.rs) (`USER_DATA = 1`, `USER_PROGRAM = 2`, `SUPERVISOR_DATA = 5`, `SUPERVISOR_PROGRAM = 6`, `CPU_SPACE = 7`).
 
 ### Direct Passive Bus API & Contention Arbitration
@@ -136,6 +136,7 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
 
 ### Floating Bus / Unmapped Address Space
 - Reads to unmapped regions return **`0xFF`** (8-bit) or **`0xFFFF`** (16-bit).
+- The host can configure the fallback byte through `PhysicalMemory::set_unmapped_byte`; this public host API does not alter guest address decoding.
 - Writes to unmapped regions are silent no-ops.
 - Do not trigger Bus Error exceptions (`_BERR` is not wired on stock A500).
 

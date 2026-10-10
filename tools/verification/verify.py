@@ -18,17 +18,25 @@ def main(argv=None):
     if args is None:
         return 0
     try:
-        changes = collect_changes(REPO_ROOT) if args.command in ("commit", "milestone") else set()
+        automatic_python = args.command == "test" and args.kind == "python" and not args.words
+        changes = collect_changes(REPO_ROOT) if automatic_python else set()
         phases = select_phases(args, changes)
     except (RuntimeError, OSError, ValueError) as error:
         parser.error(str(error))
     if args.plan:
         print("[PLAN] Preview only; no checks or tests will run.")
+        if not any(commands for _, commands in phases):
+            print("[INFO] No Python tool contracts selected: their inputs are unchanged."
+                  if automatic_python else "[INFO] No checks or tests selected.")
         for phase, commands in phases:
             for name, command, overrides in commands:
                 print(f"  {phase}: {name}\n    {subprocess.list2cmdline(command)}")
                 if overrides:
                     print(f"    Environment: {overrides}")
+        return 0
+    if not any(commands for _, commands in phases):
+        print("[INFO] No Python tool contracts selected: their inputs are unchanged."
+                  if automatic_python else "[INFO] No checks or tests selected.")
         return 0
     try:
         before = snapshot(REPO_ROOT)
@@ -46,7 +54,7 @@ def main(argv=None):
             ok, detail, elapsed = execute_command(command, overrides, log_level=args.log_level)
             results.append(ok)
             print(f"{result_label(ok)} {name} ({elapsed:.2f}s): {detail}", flush=True)
-            if args.command == "runner" and args.action == "profile" and not ok:
+            if args.command == "runner" and args.action in ("bench", "profile") and not ok:
                 break
     try:
         unchanged = before == snapshot(REPO_ROOT)

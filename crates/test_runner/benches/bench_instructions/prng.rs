@@ -64,28 +64,6 @@ impl XorShift64 {
         }
     }
 
-    /// Returns a non-zero 16-bit divisor suitable for `DIVU` (range 1..=0xFFFF)
-    #[inline]
-    pub fn next_non_zero_u16(&mut self) -> u16 {
-        let val = self.next_u16();
-        if val == 0 {
-            0x00A5
-        } else {
-            val
-        }
-    }
-
-    /// Returns a non-zero 16-bit signed divisor suitable for `DIVS`
-    #[inline]
-    pub fn next_non_zero_i16(&mut self) -> i16 {
-        let val = self.next_u16() as i16;
-        if val == 0 {
-            0x007B
-        } else {
-            val
-        }
-    }
-
     /// Returns a valid packed BCD byte containing two decimal digits (high nibble 0..9, low nibble 0..9)
     #[inline]
     pub fn next_bcd_byte(&mut self) -> u8 {
@@ -93,16 +71,5 @@ impl XorShift64 {
         let high = ((r >> 8) % 10) as u8;
         let low = ((r & 0xFF) % 10) as u8;
         (high << 4) | low
-    }
-
-    /// Returns a 32-bit word-aligned Chip RAM address strictly within `[min_addr, max_addr]`
-    #[inline]
-    pub fn next_aligned_chip_ram_addr(&mut self, min_addr: u32, max_addr: u32) -> u32 {
-        let span = max_addr.saturating_sub(min_addr);
-        if span == 0 {
-            return min_addr & !1;
-        }
-        let offset = (self.next_u32() % span) & !1;
-        (min_addr + offset) & !1
     }
 }

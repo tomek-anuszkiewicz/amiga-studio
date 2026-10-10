@@ -84,10 +84,10 @@ Evaluate the matrix against the physical hardware architecture:
 ### Step 5: Verify Non-Regression
 Execute the [`$test-runner`](../test-runner/SKILL.md) skill:
 ```powershell
-python tools/verification/verify.py runner diff
 python tools/verification/verify.py test rust unit
 python tools/verification/verify.py test rust crate machine_loop
 ```
+After applicable SingleStep runs, inspect the automatically generated `.agent/tmp/singlestep/diff.md`.
 Confirm:
 - All previously fixed tests continue to pass.
 - No existing tests suffered regressions (0 red diffs).

@@ -25,15 +25,6 @@ impl<T> BusResult<T> {
         matches!(self, BusResult::Ready(_))
     }
 
-    /// Converts `BusResult<T>` to `Option<T>`
-    #[inline(always)]
-    pub fn ok(self) -> Option<T> {
-        match self {
-            BusResult::Ready(val) => Some(val),
-            BusResult::WaitState => None,
-        }
-    }
-
     /// Unwraps the value or returns a default fallback
     #[inline(always)]
     pub fn unwrap_or(self, default: T) -> T {

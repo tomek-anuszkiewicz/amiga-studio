@@ -4,20 +4,23 @@ import argparse
 
 EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py commit
-  python tools/verification/verify.py commit singlestep dma --plan
+  python tools/verification/verify.py milestone --plan
   python tools/verification/verify.py test rust crate cpu
   python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_sub
   python tools/verification/verify.py test python directory tools/bootstrap/tests
+  python tools/verification/verify.py test python
   python tools/verification/verify.py test runner singlestep case test_add_b sample 500
   python tools/verification/verify.py check architecture case test_file_size_limits
-  python tools/verification/verify.py runner summary --log-level full
-  python tools/verification/verify.py runner bench quick filter arith_mul pin off
+  python tools/verification/verify.py runner bench quick
 
 Execution options --plan and --log-level full|warn|error may appear anywhere
 among sentence selectors. Only runner gui uses -- to pass native program options.
 Focused commands do not run completion gates or coverage. Commit always runs
 ordinary crate coverage, quality gates, standard harness and Python contracts.
-Milestone runs the language audit; domain skills retain their own checks.
+Without directory selectors, test python runs only contracts affected by changed
+tool inputs. Explicit directory selection runs that suite even on a clean tree.
+Commit excludes full DMA and SingleStep suites. Milestone runs both full suites
+and the language audit; domain skills retain their own checks.
 """
 
 
@@ -44,12 +47,15 @@ def parser():
     commands = root.add_subparsers(dest="command", required=True)
     for name in ("commit", "milestone"):
         leaf = commands.add_parser(name, help=f"Run the {name} completion profile")
-        leaf.add_argument("sets", nargs="*", metavar="singlestep|dma")
+        if name == "milestone":
+            leaf.add_argument("sets", nargs="*", metavar="singlestep|dma")
+        else:
+            leaf.set_defaults(sets=[])
     tests = commands.add_parser("test", help="Run focused Rust, Python or harness tests")
     kinds = tests.add_subparsers(dest="kind", required=True)
     rust = kinds.add_parser("rust", help="[unit|integration|all|workspace] or crate NAME [suite NAME] [case FILTER]")
     rust.add_argument("words", nargs="*", metavar="SELECTOR")
-    python = kinds.add_parser("python", help="All tool contracts or directory PATH [file PATTERN] [case FILTER]")
+    python = kinds.add_parser("python", help="Changed tool contracts or directory PATH [file PATTERN] [case FILTER]")
     python.add_argument("words", nargs="*", metavar="SELECTOR")
     runner = kinds.add_parser("runner", help="[standard|harness|silicon|singlestep|dma] [case FILTER] [sample N|full]")
     runner.add_argument("words", nargs="*", metavar="SELECTOR")
@@ -58,7 +64,7 @@ def parser():
                                          "formatting", "clippy", "build"))
     checks.add_argument("words", nargs="*", metavar="SELECTOR")
     runs = commands.add_parser("runner", help="Reports, CPU benchmarks, GUI captures and profiling")
-    runs.add_argument("action", choices=("build", "summary", "diff", "suite", "bench", "gui", "profile", "analyze"))
+    runs.add_argument("action", choices=("build", "bench", "gui", "profile", "analyze"))
     runs.add_argument("words", nargs=argparse.REMAINDER)
     return root
 
@@ -75,7 +81,7 @@ def parse_args(argv):
     separator = argv.index("--") if "--" in argv else len(argv)
     settings, words = common.parse_known_args(argv[:separator])
     args = root.parse_args(words + argv[separator:])
-    report = args.command == "runner" and args.action in ("summary", "diff", "suite", "analyze", "profile")
+    report = args.command == "runner" and args.action in ("analyze", "profile")
     args.plan = settings.plan
     args.log_level = settings.log_level or ("full" if report else "warn")
     return root, args

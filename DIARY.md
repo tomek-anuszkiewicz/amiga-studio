@@ -2628,3 +2628,41 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Initial test-only API findings and formatting failure were resolved
   - Graphify code graph refreshed and git diff --check passed
   - Milestone verification vault audits hardware captures and performance measurements were not run
+---
+
+### [2026-10-10 23:28 CET] — TEST-RUNNER-TARGETS-01: separate Cargo test and benchmark targets
+- **Affected Subsystems**:
+  - `crates/test_runner`
+  - `crates/physical_memory`
+  - `crates/machine_loop/tests`
+  - `tools/verification`
+  - `agent rules and skills`
+  - `design specifications`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Move benchmark implementation into the Cargo benchmark target and shared silicon helpers into tests/common
+  - Remove the test_runner application and benchmark validation suites while retaining measurement reports and reference baselines
+  - Generate SingleStep summary and diff reports automatically
+  - Route benchmark analysis and profiling through verification tooling
+  - Separate commit checks from milestone CPU suites and select Python contracts by affected inputs during development
+  - Prevent empty standard harness selection from running every Cargo test target
+  - Remove the unused BusResult::ok helper and its dedicated assertions with user approval and preserve machine integration checks through explicit Ready matching
+  - Retain set_unmapped_byte as documented host configuration API
+  - Add user-approved tomllib vocabulary and correct moved-module visibility and formatting
+  - Synchronize specification paths command examples dependencies and completion policy
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the verification package as Cargo test and benchmark targets with no runtime application
+  - Preserve existing benchmark measurements and protected reference artifacts
+  - Keep full synthetic CPU suites at milestone or explicit diagnosis boundaries
+  - Resolve audit findings against actual symbol users and intentional host APIs
+- **Verification & Test Results**:
+  - Focused CLI contracts passed after an empty-standard-selection regression reproduced the original failure
+  - Workspace compilation passed
+  - Vault audit passed 39 specifications and 1020 links
+  - Scoped design review covered benchmark silicon memory and verification specifications including both sides of moved paths
+  - Initial commit checks exposed vocabulary visibility and unused API findings and the obsolete helper assertions
+  - Final python tools/verification/verify.py commit passed ordinary crate tests with coverage all quality gates the full English audit and all five Python contract directories
+  - Final commit profile selected no standard harness command because only the explicitly excluded CPU targets remain
+  - Full SingleStepTests Cartesian DMA performance measurements and milestone checks were not selected for the final source snapshot
+  - Graphify code graph refreshed
+  - No roadmap milestone closure performance recording or baseline update

@@ -159,7 +159,12 @@ Analyzing high-cycle system and multicycle operations to determine whether large
 
 ## 4. How to Run the Automated Analysis Tool
 
-To analyze any benchmark CSV report and generate markdown analysis tables using [`crates/test_runner/src/analyze_benchmarks.py`](../../../../crates/test_runner/src/analyze_benchmarks.py):
+`python tools/verification/verify.py runner bench quick` (or `standard` / `thorough`)
+automatically analyzes the generated CSV after successful measurement and saves
+`analysis_report.md` under `.agent/tmp/benchmarks/<profile>/`. A failed benchmark
+skips analysis. Direct `cargo bench` does not run the Python analysis.
+
+To analyze any benchmark CSV report and generate markdown analysis tables using [`tools/verification/analyze_benchmarks.py`](../../../../tools/verification/analyze_benchmarks.py):
 
 ```powershell
 # Analyze the thorough benchmark run:
@@ -210,17 +215,11 @@ Benchmark CSV Table (14 Columns)
 
 ### 6.2 Confirmation Checklist for Benchmark Files
 
-To confirm that a benchmark run on disk is 100% valid and regression-free:
+To assess the plausibility of benchmark telemetry:
 
-1. **Direct Reference CSV Comparison ([`test_benchmark_csv.rs`](../../../../crates/test_runner/tests/test_benchmark_csv.rs)):**
-   Run `python tools/verification/verify.py test rust crate test_runner suite test_benchmark_csv`.
-   - Compares columns 1..=6 of all 108 rows with `baselines/benchmarks/m68k_benchmark_baseline.csv` and checks nominal instruction totals for each profile: Quick 31,500; Standard 6,997,200; Thorough 149,992,500.
-   - Reports the differing row with expected and actual values. Generated fixtures use `.agent/tmp/benchmark-csv/<profile>/`.
-
-2. **Telemetry Plausibility (Statistical Bounds):**
-   - Confirm that pass jitter is low (`host_jitter_pct < 3.0%`).
-   - Confirm that 16-bit register ALU operations (`ADD.W`, `SUB.W`, `AND.W`, `OR.W`) cluster within $\pm 5\%$ of each other.
-   - Confirm that memory addressing modes scale monotonically ($\Delta T_{\text{mode}} > 0$).
+- Confirm that pass jitter is low (`host_jitter_pct < 3.0%`).
+- Confirm that 16-bit register ALU operations (`ADD.W`, `SUB.W`, `AND.W`, `OR.W`) cluster within $\pm 5\%$ of each other.
+- Confirm that memory addressing modes scale monotonically ($\Delta T_{\text{mode}} > 0$).
 
 ---
 
@@ -232,6 +231,5 @@ To confirm that a benchmark run on disk is 100% valid and regression-free:
 - [CPU Instruction Benchmark Strategies](CPU%20Instruction%20Benchmark%20Strategies.md): Strategy matrix for cascading stacks and data generators.
 - [CPU Motorola M68000 Architecture](../CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
 - [CPU Micro-Step State Machine Specification](../CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
-- [Benchmark Analysis Python CLI](../../../../crates/test_runner/src/analyze_benchmarks.py): Telemetry parser and markdown analysis generator.
-- [Benchmark CSV Validation Suite](../../../../crates/test_runner/tests/test_benchmark_csv.rs): Direct reference comparison for benchmark data consistency.
+- [Benchmark Analysis Python CLI](../../../../tools/verification/analyze_benchmarks.py): Telemetry parser and markdown analysis generator.
 

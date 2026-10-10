@@ -218,6 +218,19 @@ class ArchitectureContracts(unittest.TestCase):
         self.write("crates/example/Cargo.toml", "[lib]\n")
         self.check(name, False, "Missing [lib] configuration")
 
+    def test_named_roots_allow_harness_packages_but_require_core_libraries(self):
+        name = "test_named_crate_roots_and_zero_generic_lib_rs"
+        self.write("crates/harness/Cargo.toml", '[package]\nname = "harness"\n')
+        self.check(name, False, "Missing expected crate root")
+        self.write("crates/harness/tests/test_cpu.rs", "#[test]\nfn test_cpu() {}\n")
+        self.check(name, True)
+        self.write("crates/harness/Cargo.toml", '[lib]\npath = "missing.rs"\n')
+        self.check(name, False, "Missing expected crate root")
+        self.write("crates/harness/Cargo.toml", '[package]\nname = "harness"\n')
+        self.write("crates/cpu/Cargo.toml", '[package]\nname = "cpu"\n')
+        self.write("crates/cpu/tests/test_cpu.rs", "#[test]\nfn test_cpu() {}\n")
+        self.check(name, False, "crates/cpu: Missing expected crate root")
+
     def test_test_file_names_apply_only_to_direct_rust_files(self):
         name = "test_canonical_test_file_naming_convention"
         self.write("crates/example/Cargo.toml", "")

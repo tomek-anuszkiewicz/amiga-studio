@@ -26,7 +26,34 @@ tracked_paths:
 
 ## Completion entry point
 
-Completion uses [verify.py](../../../../tools/verification/verify.py) with `commit` for standard verification and separate `milestone` for the full language audit. vAmigaTS Cargo suites and automatic capture/chipset workload runs have been removed during test reorganization; their reference assets and manual CLI remain available. Stage closure requires both commands once for the same snapshot. The [selection implementation](../../../../tools/verification/commands.py) owns the fixed profile and the two expensive CPU-suite trigger maps; [test execution reference](../../../../tools/verification/README.md#completion-verification) describes working-tree verification and the environment map. All sets can run without staging, even with no changes; completion evidence must match the final committed source. All ordinary crate tests, standard harness suites, and Python contracts run on every commit. Python contracts live in the owning tools' test directories for bootstrap, shared conversion, PDF conversion, the RAG MCP adapter and the verification CLI; the verifier discovers each directory separately. Both commit and milestone profiles also scan all repository-owned text against the English dictionary and approved vocabulary, including unchanged and nonignored new files; scope exclusions and handling of unknown words follow the [language policy](../../../../.agents/rules/language-policy.md). Only synthetic SingleStep/DMA suites have change triggers because they use TestMemoryBus rather than the production machine; `test runner singlestep` and `test runner dma` select independent sets that may run alone on the current working tree or alongside a completion profile. Milestone does not implicitly include commit or either CPU set. Milestone runs only the language audit unless CPU sets are explicitly added; scoped pre-commit design review and the vault, semantic and workflow checks run through their owning skills. The milestone semantic-review obligation is defined in [audit-semantic-parity](../../../../.agents/skills/audit-semantic-parity/SKILL.md), not in the verifier. Manual tier commands below are diagnostic entry points, not additional completion obligations.
+Completion uses [verify.py](../../../../tools/verification/verify.py) with
+`commit` for ordinary crate tests with coverage, quality gates, all available
+standard harness suites, all Python tool contracts and the full English audit.
+Standard harness selection excludes SingleStep and Cartesian DMA; when no
+standard suites remain, it schedules no Cargo test command. Python contracts
+are discovered separately for bootstrap, shared conversion, PDF conversion,
+the RAG MCP adapter and verification tooling.
+
+The separate `milestone` profile always runs full SingleStepTests, Cartesian
+DMA and the full English audit, including on a clean tree. It does not repeat
+commit checks. Stage closure requires both commands once for the same snapshot.
+Standalone `test runner singlestep` and `test runner dma` select the full CPU
+suites for explicit diagnosis or user requests. These synthetic suites use
+TestMemoryBus rather than the production machine.
+
+The [selection implementation](../../../../tools/verification/commands.py)
+owns execution profiles; the [test execution reference](../../../../tools/verification/README.md#completion-verification)
+describes commands and environment settings. Staging is optional, and completion
+evidence must match the final committed source. Ordinary `test python` runs only
+contracts affected by changed tool inputs or shared dependencies; explicit
+directory selection runs that suite regardless of changed paths.
+
+Scoped design review, vault checks and workflow maintenance use their owning
+skills. Milestone semantic review follows [audit-semantic-parity](../../../../.agents/skills/audit-semantic-parity/SKILL.md).
+English audit scope and vocabulary approval follow the [language policy](../../../../.agents/rules/language-policy.md).
+The test_runner package has no application binary; vAmigaTS captures require a
+future execution entry point. Manual tier commands below are diagnostics,
+not additional completion obligations.
 
 ## 1. Architectural Purpose & Testing Pyramid
 
@@ -147,7 +174,6 @@ If the answer to **any** question is **YES**, authoring a Tier 2 integration tes
 - **Key Verification Suites**:
   - **Tom Harte SingleStepTests ([`crates/test_runner/tests/test_singlestep.rs`](../../../../crates/test_runner/tests/test_singlestep.rs))**: 45,565 valid opcodes tested cycle-by-cycle against physical silicon captures (see [CPU SingleStepTests.md](CPU%20SingleStepTests.md)).
   - **Cartesian DMA Contention ([`crates/test_runner/tests/test_dma_cartesian.rs`](../../../../crates/test_runner/tests/test_dma_cartesian.rs))**: Full $2^k \times 2^M$ permutation sweep verifying cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity.
-  - **Opcode Micro-Benchmarks ([`crates/test_runner/tests/test_benchmark_*.rs`](../../../../crates/test_runner/tests/test_benchmark_csv.rs))**: Direct CSV reference comparisons (see [CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)).
 
 Repository architecture checks are a separate gate, implemented in
 [`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py).
@@ -278,7 +304,7 @@ When building, extending, or refactoring any part of the emulator, execute tests
    - Keeps runtime production code clean, uncluttered, and $\le 800$ lines.
 2. **Canonical Test Naming (`test_<name>.rs`)**:
    - In Cargo workspaces, every `.rs` file directly inside `crates/<crate>/tests/` compiles into an independent test binary.
-   - All test files must strictly start with `test_` (e.g. `test_line.rs`, `test_benchmark_csv.rs`).
+   - All test files must strictly start with `test_` (e.g. `test_line.rs`, `test_singlestep.rs`).
    - Shared non-test helper modules must reside inside subdirectories (e.g. `tests/common/mod.rs`).
 3. **1:1 Multi-Module Parity**:
    - Multi-module crates must maintain dedicated 1:1 unit test files mirroring each major computational submodule:

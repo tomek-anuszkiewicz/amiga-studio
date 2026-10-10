@@ -17,25 +17,6 @@ pub enum AnomalyType {
     ExecutionTimeoutOrInfiniteLoop,
 }
 
-impl AnomalyType {
-    pub const fn description(&self) -> &'static str {
-        match self {
-            Self::HotPathStall => {
-                "Type A: Hot Path Stalling / Cold Dispatch Spike (>2.5x baseline)"
-            }
-            Self::BusContentionOrInliningDefect => {
-                "Type B: Addressing Mode Inefficiency / Memory Inlining Defect (>3.0x reg baseline)"
-            }
-            Self::HostBranchPredictionThrashing => {
-                "Type C: Excessive Jitter / Host Branch Predictor Thrashing (>5.0% CV)"
-            }
-            Self::ExecutionTimeoutOrInfiniteLoop => {
-                "Execution Timeout: Pass exceeded 10x expected cycles (possible infinite loop)"
-            }
-        }
-    }
-}
-
 /// Anomaly evaluation verdict for a benchmark result
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AnomalyVerdict {

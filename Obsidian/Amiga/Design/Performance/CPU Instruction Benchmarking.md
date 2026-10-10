@@ -10,16 +10,14 @@ updated: 2026-10-10
 related: ["[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)"]
 tracked_paths:
   - "crates/test_runner/Cargo.toml"
-  - "crates/test_runner/src/main.rs"
-  - "crates/test_runner/src/cli.rs"
-  - "crates/test_runner/src/benchmark"
-  - "crates/test_runner/src/analyze_benchmarks.py"
+  - "crates/test_runner/benches"
+  - "tools/verification/analyze_benchmarks.py"
 ---
 
 # M68000 Instruction Benchmarking Architecture & Anomaly Detection
 
 - **Parent Specification:** [CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)
-- **Module Location:** `crates/test_runner/src/benchmark/`
+- **Module Location:** `crates/test_runner/benches/bench_instructions/`
 - **Companion Specifications:** [CPU Instruction Benchmark Catalog](CPU%20Instruction%20Benchmark%20Catalog.md) | [CPU Instruction Benchmark Strategies](CPU%20Instruction%20Benchmark%20Strategies.md) | [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md)
 - **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../../AGENTS.md).
 
@@ -220,25 +218,23 @@ Every generated benchmark program conforms to a 4-stage memory layout:
 
 ## 4. Execution Scaling & Runtime Configuration
 
-The benchmark runner supports scalable execution modes controlled via CLI parameters or environment variables, allowing the same test suite to serve as a fast developer sanity check or an exhaustive baseline generation profile.
+The benchmark runner selects one execution profile through the command line, allowing the same catalog to serve as a quick measurement or a longer baseline generation run.
 
 ### 4.1 Execution Profiles
 
-| Profile | CLI Selector / Env Variable | Total Instructions per Opcode | Approximate Runtime (Whole Suite) | Primary Use Case |
+| Profile | CLI Profile | Nominal Total Instructions per Specification | Approximate Runtime (Whole Suite) | Primary Use Case |
 | :--- | :--- | :--- | :--- | :--- |
-| **Sanity / Quick** | `quick` / `BENCH_MODE=quick` | $10{,}000$ | ~5 seconds | Pre-commit check, CI pipeline validation. |
-| **Standard** | `standard` / `BENCH_MODE=standard` | $1{,}000{,}000$ | ~2 minutes | PR review, instruction optimization validation. |
-| **Thorough** | `thorough` / `BENCH_MODE=thorough` | $10{,}000{,}000$ | ~20 minutes | Nightly performance regression check. |
+| **Sanity / Quick** | `--quick` | $31{,}500$ | ~5 seconds | Pre-commit check, CI pipeline validation. |
+| **Standard** | `--standard` | $6{,}997{,}200$ | ~2 minutes | PR review, instruction optimization validation. |
+| **Thorough** | `--thorough` | $149{,}992{,}500$ | ~20 minutes | Nightly performance regression check. |
 
-### 4.2 Configuration Parameters
+### 4.2 Fixed Measurement Settings
 
-The runner exposes fine-grained overrides:
-- `BENCH_UNROLL`: Overrides the unroll block factor $K$ (e.g. `BENCH_UNROLL=500` or `BENCH_UNROLL=1000`). Default: `700`.
-- `BENCH_PASSES`: Number of outer loop statistical passes. Default: `7`.
-- `BENCH_FILTER`: Regex or substring filter to benchmark specific instruction families (e.g. `BENCH_FILTER="ADD|SUB"` or `BENCH_FILTER="RTS"`).
-- `BENCH_OUT_DIR`: Target directory for JSON and CSV output files (defaults to `.agent/tmp/benchmarks/`).
-- `BENCH_PIN_CORE`: Pin benchmark thread to a specific host logical core index (e.g. `BENCH_PIN_CORE=2`). Defaults to auto-detected P-core.
-- `BENCH_PARALLEL`: Number of parallel test workers (`-j <N>`). Default: `1` (sequential).
+The command-line benchmark uses 700 instructions per generated block, the full
+catalog, profile-defined passes and iterations, and host core affinity when
+supported. Reports are written under `.agent/tmp/benchmarks/<profile>/`.
+Only the measurement profile is selectable from the command line. Internal test
+harnesses configure `BenchmarkConfig` directly for their constructed fixtures.
 
 ### 4.3 Multi-Core Policy & Performance Core (P-Core) Auto-Detection
 
@@ -302,8 +298,8 @@ flowchart TD
 ```
 
 #### 1. Decoupled Platform Abstraction (`HostEnvironment`)
-The benchmark harness defines a lightweight platform abstraction with zero runtime overhead in [`crates/test_runner/src/benchmark/platform.rs`](../../../../crates/test_runner/src/benchmark/platform.rs):
-- **Struct [`HostEnvironment`](../../../../crates/test_runner/src/benchmark/platform.rs):** Encapsulates `platform_name`, `p_core_detected`, `p_core_id`, and `affinity_supported`.
+The benchmark harness defines a lightweight platform abstraction with zero runtime overhead in [`crates/test_runner/benches/bench_instructions/platform.rs`](../../../../crates/test_runner/benches/bench_instructions/platform.rs):
+- **Struct [`HostEnvironment`](../../../../crates/test_runner/benches/bench_instructions/platform.rs):** Encapsulates `platform_name`, `p_core_id`, and `affinity_supported`.
 - **`HostEnvironment::detect()`:** Discovers host topology dynamically on startup without hardcoding.
 - **`HostEnvironment::pin_to_p_core()`:** Pins the worker thread to the resolved P-core with high priority class; compiles to a clean no-op on WebAssembly.
 
@@ -361,7 +357,7 @@ Upon completion of a benchmark run, results are serialized to disk into profile-
 1. `.agent/tmp/benchmarks/<profile>/m68k_benchmark.json` (Active structured dataset with environment metadata).
 2. `.agent/tmp/benchmarks/<profile>/m68k_benchmark.csv` (Active flat tabular format for spreadsheet analysis and automated regression testing).
 3. `.agent/tmp/benchmarks/<profile>/m68k_benchmark_latest.json` / `.csv` (Active run copy for automated regression diffing).
-4. `.agent/tmp/benchmarks/<profile>/m68k_benchmark_previous.json` / `.csv` (Immediately preceding run preserved before rotation, accessible via `load_previous_report()`).
+4. `.agent/tmp/benchmarks/<profile>/m68k_benchmark_previous.json` / `.csv` (Immediately preceding run preserved before rotation).
 
 ### 6.1 JSON Data Schema
 ```json
@@ -502,10 +498,9 @@ baselines/benchmarks/                         # Git-tracked references
     quick/                               # Current/latest/previous JSON and CSV
     standard/
     thorough/
-.agent/tmp/benchmark-csv/<profile>/       # Generated CSV validation fixtures
 ```
 
-Benchmark runs and tests write generated artifacts into ignored directories. Tracked baseline reports remain unchanged unless explicitly updated after review.
+Benchmark runs write generated artifacts into ignored directories. Tracked baseline reports remain unchanged unless explicitly updated after review.
 
 ### 8.3 Automated Baseline Diffing & Cross-Hardware Normalization
 
@@ -528,44 +523,44 @@ The test runner features **built-in zero-configuration differential regression d
 
 ### 8.4 Command Cheat-Sheet & Comprehensive CLI Reference
 
-The test runner binary (`crates/test_runner/src/main.rs`) serves as the unified diagnostic and benchmarking CLI for the emulator.
+CPU measurements have one executable entry point: the `bench_instructions`
+Cargo benchmark target in [`Cargo.toml`](../../../../crates/test_runner/Cargo.toml).
+The `test_runner` crate has no application binary. SingleStep reports are generated automatically when suite results are saved.
 
-#### 8.4.1 Global Command-Line Syntax
-
-The binary's [sentence parser](../../../../crates/test_runner/src/cli.rs) accepts
-the same command words and selectors forwarded by `verify.py runner`. It rejects
-unknown or repeated selectors and missing or invalid values before execution
-with exit code 2. Counts must be positive. Profile defaults are applied before
-explicit benchmark overrides regardless of selector order.
+#### 8.4.1 Benchmark Invocation
 
 ```powershell
-cargo run -p test_runner [FLAGS] -- [COMMAND] [SELECTORS]
+cargo bench -p test_runner --bench bench_instructions -- [OPTIONS]
 ```
-*(Use `--release` when benchmarking to ensure compiler optimizations are active and measurements reflect maximum throughput).*
 
-#### 8.4.2 Benchmark Command Selectors (`bench [SELECTORS]`)
+Cargo builds this target with the optimized benchmark profile. The target uses
+`harness = false`: its own entry point invokes the existing measurement engine,
+which retains program synthesis, timing, statistics and report persistence.
+Running without options prints instructions and exits without measuring. Select
+one measurement profile with `--quick`, `--standard` or `--thorough`.
+The [benchmark parser](../../../../crates/test_runner/benches/bench_instructions/cli.rs)
+rejects unknown, repeated, missing or invalid options before execution with exit
+code 2. Only a measurement profile or help is accepted. Cargo's appended
+`--bench` marker is handled without changing the measurement configuration.
+
+`verify.py runner bench` translates sentence selectors into the same Cargo
+invocation. `verify.py runner profile bench` builds the target without execution,
+reads the benchmark executable from Cargo artifact messages and runs that exact
+artifact under `samply`. Build failure or a missing benchmark artifact stops
+profiling before an older executable can run. The
+[profiling launcher](../../../../tools/verification/profile_benchmark.py) owns
+artifact selection and external profiler invocation.
+
+#### 8.4.2 Benchmark Options
 
 | Option | Argument | Default | Description |
 | :--- | :---: | :---: | :--- |
-| **`quick`** | None | — | **Quick Sanity Profile:** 3 passes × 15 iterations (~31,500 operations per specification, ~2–5s total). Validates instruction synthesis, CPU execution, and state mutations without waiting. |
-| **`standard`** | None | Active | **Standard Profile (Default):** 7 passes × 1,428 iterations (~7,000,000 operations per specification, ~1–2 min total). Robust statistical sampling with Tukey's fences outlier rejection. Used for pull requests and CI. |
-| **`thorough`** | None | — | **Thorough High-Precision Profile:** 15 passes × 14,285 iterations (~150,000,000 operations per specification, ~10–15 min total). Minimizes jitter ($\text{CV} < 1\%$). Recommended for baseline commits (`m68k_benchmark_baseline.json`). |
-| **`filter`** | `<TAG>` | All specs | Case-insensitive regex/substring filter matching instruction mnemonics or category tags (e.g. `filter "arith_mul\|arith_div"`, `filter "move_"`). |
-| **`unroll`** | `<K>` | `700` | Overrides the inner loop unroll block factor $K$. Compiles $K$ contiguous repetitions of the instruction between loop branches to amortize jump overhead to $< 0.1\%$. |
-| **`passes`** | `<N>` | Profile default | Overrides the number of outer measurement passes (e.g. `passes 10`). Each pass measures $K \times \text{iterations}$ operations. |
-| **`output`** | `<PATH>` | `.agent/tmp/benchmarks/<profile>/` | Overrides the output directory where JSON and CSV reports are written. |
-| **`pin`** | `on` or `off` | `on` | `pin off` disables Windows thread affinity pinning (`SetThreadAffinityMask`) and process priority elevation. Useful when benchmarking inside virtual machines, WSL, or non-hybrid CPU environments. |
+| **`--quick`** | None | None | 3 passes with 15 iterations per specification. |
+| **`--standard`** | None | None | 7 passes with 1,428 iterations per specification. |
+| **`--thorough`** | None | None | 15 passes with 14,285 iterations per specification. |
+| **`--help`, `-h`** | None | Help | Prints benchmark usage without measuring. |
 
-#### 8.4.3 SingleStepTest Diagnostic Commands
-
-| Command | Argument | Description |
-| :--- | :---: | :--- |
-| **`summary`** | None | Reads `target/debug/results/summary.json` and prints the global pass/fail coverage matrix across all tested M68000 opcodes. |
-| **`diff`** | None | Compares current test execution results against previous runs to detect regressions (tests that previously passed but now fail) and fixes. |
-| **`suite`** | `<OP>` | Directly runs Tom Harte physical silicon test vectors for a single opcode (e.g. `suite ADD.b`, `suite MOVE.w`), outputting full cycle-by-cycle diagnostics on failure. |
-| **`help`** | None | Prints command-line usage instructions. |
-
-#### 8.4.4 Practical CLI Execution Examples
+#### 8.4.3 Practical CLI Execution Examples
 ```powershell
 # 1. Quick sanity check across all 108 benchmark specifications (~2–5 seconds):
 python tools/verification/verify.py runner bench quick
@@ -575,28 +570,10 @@ python tools/verification/verify.py runner bench
 # Or explicitly:
 python tools/verification/verify.py runner bench standard
 
-# 4. Targeted profiling of arithmetic operations (multiplications and divisions):
-python tools/verification/verify.py runner bench quick filter "arith_mul|arith_div"
+# 3. Sampled SingleStep tests for one opcode (reports are saved automatically):
+python tools/verification/verify.py test runner singlestep case test_add_b sample 50
 
-# 5. High-precision thorough profiling targeting memory data movement (MOVE instructions):
-python tools/verification/verify.py runner bench thorough filter "move_"
-
-# 6. Custom tuning: 10 passes with unroll block factor K = 500 into custom directory:
-python tools/verification/verify.py runner bench passes 10 unroll 500 output .agent/tmp/benchmarks/custom
-
-# 7. Unpinned profiling (for virtual machines or heterogeneous host schedulers):
-python tools/verification/verify.py runner bench quick pin off
-
-# 8. SingleStepTest coverage matrix summary:
-python tools/verification/verify.py runner summary
-
-# 9. SingleStepTest regression diff against previous test pass:
-python tools/verification/verify.py runner diff
-
-# 10. SingleStepTest live diagnostics for specific opcode:
-python tools/verification/verify.py runner suite ADD.b
-
-# 11. Full markdown comparative analysis report generation from latest thorough run:
+# 4. Full markdown comparative analysis report generation from latest thorough run:
 python tools/verification/verify.py runner analyze .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.csv report .agent/tmp/benchmarks/thorough/analysis_report.md
 ```
 
@@ -608,22 +585,20 @@ All components specified in this document are implemented without macros or cons
 
 | Subsystem Component | Living Rust Source File | Responsibilities |
 | :--- | :--- | :--- |
-| **Benchmark Runner** | [`crates/test_runner/src/benchmark/runner.rs`](../../../../crates/test_runner/src/benchmark/runner.rs) | Dual-loop runner, baseline calibration, black_box compiler defense, and hard cycle cap timeout. |
-| **Catalog Specifications** | [`crates/test_runner/src/benchmark/catalog.rs`](../../../../crates/test_runner/src/benchmark/catalog.rs)<br/>[`catalog_data_a.rs`](../../../../crates/test_runner/src/benchmark/catalog_data_a.rs)<br/>[`catalog_data_b.rs`](../../../../crates/test_runner/src/benchmark/catalog_data_b.rs) | Exhaustive static catalog of ~80 benchmark specifications covering Categories 0–8. |
-| **Programmatic Builder** | [`crates/test_runner/src/benchmark/builder.rs`](../../../../crates/test_runner/src/benchmark/builder.rs) | Synthesizes unrolled instruction blocks ($K = 700$), cascading return stacks, and Chip RAM buffers. |
-| **Platform Abstraction** | [`crates/test_runner/src/benchmark/platform.rs`](../../../../crates/test_runner/src/benchmark/platform.rs) | Windows P-core topology discovery, affinity pinning (`SetThreadAffinityMask`), priority elevation, WASM fallback. |
-| **Deterministic PRNG** | [`crates/test_runner/src/benchmark/prng.rs`](../../../../crates/test_runner/src/benchmark/prng.rs) | `XorShift64` PRNG seeded with `BENCH_PRNG_SEED`, valid BCD generator, aligned address helpers. |
-| **Statistical Analysis** | [`crates/test_runner/src/benchmark/stats.rs`](../../../../crates/test_runner/src/benchmark/stats.rs) | Multi-pass statistical sampling, Tukey's fences outlier rejection, jitter analysis ($\text{CV} < 3\%$), MIPS calculation. |
-| **Anomaly Classifier** | [`crates/test_runner/src/benchmark/anomaly.rs`](../../../../crates/test_runner/src/benchmark/anomaly.rs) | Evaluates Type A, Type B, Type C, and `ExecutionTimeoutOrInfiniteLoop` anomalies; diffs against baseline. |
-| **Persistence Engine** | [`crates/test_runner/src/benchmark/persistence.rs`](../../../../crates/test_runner/src/benchmark/persistence.rs) | Formats and saves version-controlled JSON (`m68k_benchmark.json`, `latest.json`) and tabular CSV (`m68k_benchmark.csv`). |
-| **Smoke & Catalog Tests** | [`crates/test_runner/tests/test_benchmark_smoke.rs`](../../../../crates/test_runner/tests/test_benchmark_smoke.rs) | Cascading RTS execution and a quick CPU benchmark workload. |
-| **Reference CSV Tests** | [`crates/test_runner/tests/test_benchmark_csv.rs`](../../../../crates/test_runner/tests/test_benchmark_csv.rs) | Direct invariant-field comparison, profile-specific verification, and row diagnostics. |
-| **Benchmark Entry** | [`crates/test_runner/benches/bench_instructions.rs`](../../../../crates/test_runner/benches/bench_instructions.rs) | Standard `cargo bench` entry point invoking the benchmark suite. |
-| **Analysis & Reporting Tool** | [`crates/test_runner/src/analyze_benchmarks.py`](../../../../crates/test_runner/src/analyze_benchmarks.py) | Comparative analysis tool evaluating functional symmetry, addressing mode scaling, and emulation tax. |
+| **Benchmark Runner** | [`crates/test_runner/benches/bench_instructions/runner.rs`](../../../../crates/test_runner/benches/bench_instructions/runner.rs) | Dual-loop runner, baseline calibration, black_box compiler defense, and hard cycle cap timeout. |
+| **Catalog Specifications** | [`crates/test_runner/benches/bench_instructions/catalog.rs`](../../../../crates/test_runner/benches/bench_instructions/catalog.rs)<br/>[`catalog_data_a.rs`](../../../../crates/test_runner/benches/bench_instructions/catalog_data_a.rs)<br/>[`catalog_data_b.rs`](../../../../crates/test_runner/benches/bench_instructions/catalog_data_b.rs) | Exhaustive static catalog of ~80 benchmark specifications covering Categories 0–8. |
+| **Programmatic Builder** | [`crates/test_runner/benches/bench_instructions/builder.rs`](../../../../crates/test_runner/benches/bench_instructions/builder.rs) | Synthesizes unrolled instruction blocks ($K = 700$), cascading return stacks, and Chip RAM buffers. |
+| **Platform Abstraction** | [`crates/test_runner/benches/bench_instructions/platform.rs`](../../../../crates/test_runner/benches/bench_instructions/platform.rs) | Windows P-core topology discovery, affinity pinning (`SetThreadAffinityMask`), priority elevation, WASM fallback. |
+| **Deterministic PRNG** | [`crates/test_runner/benches/bench_instructions/prng.rs`](../../../../crates/test_runner/benches/bench_instructions/prng.rs) | `XorShift64` PRNG seeded with `BENCH_PRNG_SEED`, valid BCD generator. |
+| **Statistical Analysis** | [`crates/test_runner/benches/bench_instructions/stats.rs`](../../../../crates/test_runner/benches/bench_instructions/stats.rs) | Multi-pass statistical sampling, Tukey's fences outlier rejection, jitter analysis ($\text{CV} < 3\%$), MIPS calculation. |
+| **Anomaly Classifier** | [`crates/test_runner/benches/bench_instructions/anomaly.rs`](../../../../crates/test_runner/benches/bench_instructions/anomaly.rs) | Evaluates Type A, Type B, Type C, and `ExecutionTimeoutOrInfiniteLoop` anomalies; diffs against baseline. |
+| **Persistence Engine** | [`crates/test_runner/benches/bench_instructions/persistence.rs`](../../../../crates/test_runner/benches/bench_instructions/persistence.rs) | Formats and saves ignored JSON and CSV measurement reports. |
+| **Benchmark Entry** | [`crates/test_runner/benches/bench_instructions/cli.rs`](../../../../crates/test_runner/benches/bench_instructions/cli.rs) | Sole executable entry point and argument validation for `cargo bench`. |
+| **Analysis & Reporting Tool** | [`tools/verification/analyze_benchmarks.py`](../../../../tools/verification/analyze_benchmarks.py) | Comparative analysis tool evaluating functional symmetry, addressing mode scaling, and emulation tax. |
 
 ---
 
-## 10. Validating Benchmark Results & Deterministic File Invariants (`test_benchmark_csv`)
+## 10. Benchmark Report Fields and Nominal Operation Counts
 
 A fundamental engineering challenge in micro-benchmarking is verifying that generated output files (`.agent/tmp/benchmarks/**/*.csv` and `.json`) are **structurally and functionally correct**, even though physical timing metrics (`host_ns_op`, `host_mips`, `jitter_pct`) naturally vary across host CPUs, operating systems, and ambient workloads.
 
@@ -671,26 +646,6 @@ $$\text{total\_ops} = K \times \text{iterations} \times \text{passes}$$
 
 All 108 benchmark specifications within a given profile have identical nominal `total_ops`.
 
-### 10.3 Direct Reference CSV Comparison
-
-[`test_benchmark_csv.rs`](../../../../crates/test_runner/tests/test_benchmark_csv.rs) reads the tracked `baselines/benchmarks/m68k_benchmark_baseline.csv` and compares all 108 rows directly. Columns 1..=6 cover mnemonic, variant, addressing mode, category, opcode, and expected cycle count. Profile checks additionally compare nominal instruction totals: Quick 31,500; Standard 6,997,200; Thorough 149,992,500. Host timing measurements are validated separately because they vary between runs.
-
-### 10.4 Row-by-Row Diagnostics
-
-A differing deterministic row fails with its expected and actual field values. Generated CSV fixtures reside in `.agent/tmp/benchmark-csv/<profile>/`; tests never overwrite the tracked baseline. Investigate whether the catalog, profile configuration, or reference is incorrect before proposing a reference update.
-
-### 10.5 Automated Test Execution Commands
-
-```powershell
-# 1. Run the reference CSV invariant regression test:
-python tools/verification/verify.py test rust crate test_runner suite test_benchmark_csv
-
-# 2. Run the remaining benchmark verification test suites:
-python tools/verification/verify.py test rust crate test_runner suite test_benchmark_smoke
-python tools/verification/verify.py test rust crate test_runner suite test_benchmark_csv
-python tools/verification/verify.py check architecture
-```
-
 ---
 
 ## 11. Reference Documentation & Upstream Ground Truth
@@ -701,8 +656,7 @@ python tools/verification/verify.py check architecture
 - [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md): Operational guide for interpreting host performance metrics and anomalies.
 - [CPU Motorola M68000 Architecture](../CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
 - [CPU Micro-Step State Machine Specification](../CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
-- [Benchmark Harness Implementation](../../../../crates/test_runner/src/benchmark): Living Rust benchmark harness, runners, and profiler models.
-- [Benchmark CSV Validation Suite](../../../../crates/test_runner/tests/test_benchmark_csv.rs): Direct reference comparison for benchmark data consistency.
+- [Benchmark Harness Implementation](../../../../crates/test_runner/benches/bench_instructions): Living Rust benchmark harness, runners, and profiler models.
 
 
 

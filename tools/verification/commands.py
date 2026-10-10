@@ -5,35 +5,15 @@ from pathlib import Path
 from repository import REPO_ROOT
 
 
-# Only the two expensive synthetic CPU suites depend on changed source paths.
+# Full synthetic CPU suites run automatically only at milestones.
 # These environments use TestMemoryBus, not production MemoryBus/PhysicalMemory.
-COMMON_CPU_PATHS = (
-    "crates/cpu/", "crates/config/", "crates/physical_memory/src/address_bus",
-    "crates/test_runner/Cargo.toml", "crates/test_runner/src/test_runner.rs",
-    "crates/test_runner/src/test_memory_bus.rs", "crates/test_runner/src/schema.rs",
-    "crates/test_runner/src/transactions.rs", "crates/test_runner/src/diagnostic.rs",
-    "crates/test_runner/tests/common/", "ref_src/SingleStepTests-680x0/",
-)
-DMA_PATHS = COMMON_CPU_PATHS + (
-    "crates/test_runner/src/dma_harness.rs", "crates/test_runner/tests/test_dma_cartesian.rs",
-)
-SINGLESTEP_PATHS = COMMON_CPU_PATHS + (
-    "crates/test_runner/src/runner.rs", "crates/test_runner/src/reporter.rs",
-    "crates/test_runner/tests/test_singlestep.rs",
-)
-WORKSPACE_INPUTS = {"Cargo.toml", "Cargo.lock", ".cargo/config.toml"}
-
-
-def select_tests(root, changes, mode, verify_dma=False, verify_singlestep=False):
-    import sys
-
+def select_tests(root, mode, verify_dma=False, verify_singlestep=False):
     completion = mode == "commit"
-    complete = completion and bool(changes & WORKSPACE_INPUTS)
-    dma = complete or verify_dma or (completion and any(p.startswith(DMA_PATHS) for p in changes))
-    singlestep = complete or verify_singlestep or (completion and any(p.startswith(SINGLESTEP_PATHS) for p in changes))
+    dma = mode == "milestone" or verify_dma
+    singlestep = mode == "milestone" or verify_singlestep
     commands = []
     if completion:
-        commands.append(standard_harness(root))
+        commands.extend(standard_harness(root))
     if dma:
         commands.append(("Cartesian DMA", ["cargo", "test", "-p", "test_runner", "--test",
                                            "test_dma_cartesian", "--", "--quiet"], {}))
@@ -93,17 +73,10 @@ TIER1_UNIT_CRATES = [
     "joystick", "keyboard", "cpu", "mouse", "paula", "physical_memory", "rtc", "sprites",
 ]
 
-TIER1_TEST_RUNNER_TESTS = ['test_benchmark_csv']
-
 TIER2_INTEGRATION_CRATES = ['memory_bus', 'machine_loop', 'debugger', 'gui']
 
-TIER3_HARNESS_TESTS = [
-    ("test_runner", "test_dma_cartesian"),
-    ("test_runner", "test_benchmark_smoke"),
-]
 
-
-def select_diagnostic_commands(unit=False, integration=False, harness=False):
+def select_diagnostic_commands(unit=False, integration=False):
     """Select the former tier runner's Cargo targets without completion gates."""
     commands = []
     if unit:
@@ -111,22 +84,11 @@ def select_diagnostic_commands(unit=False, integration=False, harness=False):
         for crate in TIER1_UNIT_CRATES:
             command.extend(["-p", crate])
         commands.append(("Tier 1 ordinary crate tests", command + ["--", "--quiet"], {}))
-        command = ["cargo", "test", "-p", "test_runner"]
-        for suite in TIER1_TEST_RUNNER_TESTS:
-            command.extend(["--test", suite])
-        commands.append(("Tier 1 harness fixtures", command + ["--", "--quiet"], {}))
     if integration:
         command = ["cargo", "test"]
         for crate in TIER2_INTEGRATION_CRATES:
             command.extend(["-p", crate])
         commands.append(("Tier 2 integration tests", command + ["--", "--quiet"], {}))
-    if harness:
-        # DMA is selected through select_tests so force selectors run once.
-        command = ["cargo", "test", "-p", "test_runner"]
-        for _, suite in TIER3_HARNESS_TESTS:
-            if suite != "test_dma_cartesian":
-                command.extend(["--test", suite])
-        commands.append(("Tier 3 benchmark smoke tests", command + ["--", "--quiet"], {}))
     return commands
 
 
@@ -140,8 +102,30 @@ PYTHON_SUITES = (
 )
 
 
-def python_commands(directory=None, pattern=None, case=None):
+PYTHON_INPUTS = {
+    "Bootstrap contracts": (
+        "tools/bootstrap/tests/", "tools/bootstrap/bootstrap.ps1",
+        "tools/bootstrap/bootstrap_rag.ps1", "tools/bootstrap/ensure_qdrant.ps1",
+    ),
+    "Conversion contracts": (
+        "tools/bootstrap/conversion/", "tools/bootstrap/html-to-markdown/",
+        "tools/bootstrap/pdf-to-markdown/",
+        "tools/bootstrap/bootstrap_documentation.ps1", "tools/bootstrap/bootstrap.ps1",
+    ),
+    "PDF conversion contracts": (
+        "tools/bootstrap/pdf-to-markdown/", "tools/bootstrap/conversion/",
+    ),
+    "RAG MCP contracts": ("tools/amiga-rag-mcp-server/", ".codex/config.toml"),
+    "Verification CLI contracts": ("tools/verification/",),
+}
+
+
+def python_commands(directory=None, pattern=None, case=None, changes=None):
     selections = PYTHON_SUITES if directory is None else [("Python contracts", directory)]
+    if directory is None and changes is not None:
+        selections = [(name, target) for name, target in selections
+                      if any(path.startswith(owned) if owned.endswith("/") else path == owned
+                             for path in changes for owned in PYTHON_INPUTS[name])]
     result = []
     for name, target in selections:
         path = Path(target)
@@ -161,10 +145,12 @@ def python_commands(directory=None, pattern=None, case=None):
 def standard_harness(root):
     suites = {p.stem for p in (root / "crates/test_runner/tests").glob("test_*.rs")}
     standard = suites - {"test_dma_cartesian", "test_singlestep"}
+    if not standard:
+        return []
     command = ["cargo", "test", "--no-fail-fast", "-p", "test_runner"]
     for suite in sorted(standard):
         command += ["--test", suite]
-    return "All standard harness tests", command + ["--", "--quiet"], {}
+    return [("All standard harness tests", command + ["--", "--quiet"], {})]
 
 
 def rust_commands(words):
@@ -192,11 +178,11 @@ def harness_commands(words):
     from cli import keyword_values
     scope = words[0] if words else "standard"
     if scope == "standard" and len(words) <= 1:
-        return [standard_harness(REPO_ROOT)]
+        return standard_harness(REPO_ROOT)
     if scope == "harness" and len(words) == 1:
-        return select_diagnostic_commands(harness=True) + select_tests(REPO_ROOT, set(), "standalone", verify_dma=True)
+        return select_tests(REPO_ROOT, "standalone", verify_dma=True)
     if scope == "silicon" and len(words) == 1:
-        return select_tests(REPO_ROOT, set(), "standalone", verify_dma=True, verify_singlestep=True)
+        return select_tests(REPO_ROOT, "standalone", verify_dma=True, verify_singlestep=True)
     if scope not in ("singlestep", "dma"):
         raise ValueError("Runner tests select standard, harness, singlestep or dma")
     selectors = list(words[1:])
@@ -247,24 +233,29 @@ def check_commands(name, words):
     return selected
 
 
+def benchmark_options(words):
+    """Translate a measurement profile to the Cargo benchmark's native option."""
+    if not words:
+        return []
+    if len(words) != 1 or words[0] not in ("quick", "standard", "thorough"):
+        raise ValueError("Select one benchmark profile: quick, standard or thorough")
+    return ["--" + words[0]]
+
+
 def runner_commands(action, words):
     args = list(words)
     if action == "gui" and "--" in args:
         args.remove("--")
     if action != "gui" and any(word.startswith("-") for word in args):
-        raise ValueError("Runner commands use sentence selectors; use runner bench quick passes N")
+        raise ValueError("Runner commands use sentence selectors; use runner bench quick")
     if action == "build":
         if args:
             raise ValueError("Runner build accepts no additional arguments")
-        return [("Build diagnostic runner", ["cargo", "build", "--release", "-p", "test_runner"], {})]
-    if action in ("summary", "diff", "suite"):
-        if (action == "suite" and len(args) != 1) or (action != "suite" and args):
-            raise ValueError("Reports take no arguments; suite requires one opcode name")
-        return [("Runner " + action, ["cargo", "run", "-p", "test_runner", "--", action, *args], {})]
+        return [("Build test harness targets", ["cargo", "test", "--release", "--no-run", "-p", "test_runner", "--tests", "--benches"], {})]
     if action == "analyze":
         if len(args) not in (1, 3) or len(args) == 3 and args[1] != "report":
             raise ValueError("Use runner analyze CSV [report MARKDOWN]")
-        command = [sys.executable, "crates/test_runner/src/analyze_benchmarks.py", args[0]]
+        command = [sys.executable, "tools/verification/analyze_benchmarks.py", args[0]]
         if len(args) == 3:
             command += ["--output", args[2]]
         return [("Benchmark analysis", command, {})]
@@ -273,11 +264,19 @@ def runner_commands(action, words):
     if action == "profile":
         if not args or args[0] != "bench":
             raise ValueError("Use runner profile bench [sentence selectors]")
-        executable = "test_runner.exe" if os.name == "nt" else "test_runner"
-        return [("Build profiling runner", ["cargo", "build", "--release", "-p", "test_runner"], {}),
-                ("External sampling profile", ["samply", "record", "target/release/" + executable,
-                                                *args], {})]
-    return [("Runner " + action, ["cargo", "run", "--release", "-p", "test_runner", "--", action, *args], {})]
+        return [("External sampling profile", [sys.executable, "tools/verification/profile_benchmark.py",
+                                                *benchmark_options(args[1:])], {})]
+    if action == "bench":
+        commands = [("CPU benchmark", ["cargo", "bench", "-p", "test_runner", "--bench",
+                                       "bench_instructions", "--", *benchmark_options(args)], {})]
+        if args:
+            directory = f".agent/tmp/benchmarks/{args[0]}"
+            commands.append(("Benchmark analysis", [sys.executable,
+                             "tools/verification/analyze_benchmarks.py",
+                             f"{directory}/m68k_benchmark.csv", "--output",
+                             f"{directory}/analysis_report.md"], {}))
+        return commands
+    raise ValueError(f"Unsupported runner action: {action}")
 
 
 def select_phases(args, changes):
@@ -287,7 +286,7 @@ def select_phases(args, changes):
             raise ValueError("Completion profiles accept each of singlestep and dma at most once")
         coverage = select_coverage_commands(args.command)
         commands = select_quality_commands(args.command) + select_tests(
-            REPO_ROOT, changes, args.command, verify_dma="dma" in args.sets, verify_singlestep="singlestep" in args.sets)
+            REPO_ROOT, args.command, verify_dma="dma" in args.sets, verify_singlestep="singlestep" in args.sets)
         phases = []
         if coverage:
             phases.append(("Coverage", coverage))
@@ -305,5 +304,6 @@ def select_phases(args, changes):
         values = keyword_values(args.words, ("directory", "file", "case"))
         if values and "directory" not in values:
             raise ValueError("Focused Python selection requires directory PATH")
-        selected = python_commands(values.get("directory"), values.get("file"), values.get("case"))
+        selected = python_commands(values.get("directory"), values.get("file"), values.get("case"),
+                                   changes=changes)
     return [("Diagnostics", selected)]

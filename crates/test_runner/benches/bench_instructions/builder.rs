@@ -20,7 +20,6 @@ pub const BENCH_DEFAULT_UNROLL: usize = 700;
 /// Self-contained synthesized benchmark program ready for injection into Chip RAM
 #[derive(Debug, Clone)]
 pub struct BenchmarkProgram {
-    pub spec: BenchmarkSpec,
     pub entry_pc: u32,
     pub exit_pc: u32,
     pub initial_ssp: u32,
@@ -28,7 +27,6 @@ pub struct BenchmarkProgram {
     pub initial_d: [u32; 8],
     pub initial_a: [u32; 8],
     pub memory_writes: Vec<(u32, u8)>,
-    pub unroll_k: usize,
     pub total_ops_per_pass: u64,
     pub total_cck_per_pass: u64,
 }
@@ -94,11 +92,6 @@ impl BenchmarkProgramBuilder {
 
     pub fn with_unroll(mut self, k: usize) -> Self {
         self.unroll_k = k.max(1);
-        self
-    }
-
-    pub fn with_prng_seed(mut self, seed: u64) -> Self {
-        self.prng = XorShift64::new(seed);
         self
     }
 
@@ -299,7 +292,6 @@ impl BenchmarkProgramBuilder {
         let total_cck = total_ops * (self.spec.amiga_cck as u64);
 
         BenchmarkProgram {
-            spec: self.spec,
             entry_pc: BENCH_ENTRY_PC,
             exit_pc: BENCH_EXIT_PC,
             initial_ssp,
@@ -307,7 +299,6 @@ impl BenchmarkProgramBuilder {
             initial_d,
             initial_a,
             memory_writes: writes,
-            unroll_k: self.unroll_k,
             total_ops_per_pass: total_ops,
             total_cck_per_pass: total_cck,
         }

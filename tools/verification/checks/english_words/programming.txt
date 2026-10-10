@@ -184,6 +184,7 @@ sysctl
 tempfile
 tobytes
 toml
+tomllib
 traceback
 tuple
 tuples

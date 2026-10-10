@@ -105,6 +105,8 @@ The test harness automatically tracks test outcomes, diffs, and regressions acro
 - `.agent/tmp/singlestep/latest/<suite_name>.json`: Detailed outcomes of the most recent test run.
 - `.agent/tmp/singlestep/previous/<suite_name>.json`: Rotated snapshot of the previous run used for regression diffing.
 - `.agent/tmp/singlestep/summary.json`: Global repository-wide pass/fail matrix, percentages, and active failure names.
+- `.agent/tmp/singlestep/summary.md`: Automatically generated readable summary and all failing cases.
+- `.agent/tmp/singlestep/diff.md`: Automatically generated status changes and missing baselines.
 
 ### B. Automated Regression & Progress Alerts
 When running tests via `python tools/verification/verify.py test rust crate test_runner`, the test runner automatically compares the current run against the previous run:
@@ -119,18 +121,8 @@ When running tests via `python tools/verification/verify.py test rust crate test
      🟢 Fixed:  "3c7a [MOVEA.w (d16, PC), A6] 19"
   ```
 
-### C. Agent Inspection CLI Commands
-Agents can quickly inspect test coverage or check for regressions without searching log outputs:
-```powershell
-# Check whether your latest code edits caused any regressions
-python tools/verification/verify.py runner diff
-
-# Print a tabular summary of pass rates and active failure cases across all opcodes
-python tools/verification/verify.py runner summary
-
-# Run a specific opcode suite with live diagnostics
-python tools/verification/verify.py runner suite ADD.b
-```
+### C. Automatic Inspection Reports
+Inspect `.agent/tmp/singlestep/summary.md` and `diff.md` after execution for saved suite statistics and regressions. Both reports are updated automatically with suite results; no separate report command is exposed.
 
 ---
 

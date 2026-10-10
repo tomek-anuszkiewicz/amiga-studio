@@ -3461,11 +3461,8 @@ dependencies = [
 name = "test_runner"
 version = "0.1.0"
 dependencies = [
- "config",
  "cpu",
- "debugger",
  "flate2",
- "machine_loop",
  "physical_memory",
  "serde",
  "serde_json",

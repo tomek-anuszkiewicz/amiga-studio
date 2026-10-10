@@ -112,11 +112,15 @@ fn test_bus_custom_registers_snapshot_sync_and_open_bus() {
     machine.step_cck();
 
     // Reading DMACONR ($DFF002) from bus returns 0x0200
-    let dmaconr = machine.memory_bus().read_word(0xDFF002).ok().unwrap();
+    let BusResult::Ready(dmaconr) = machine.memory_bus().read_word(0xDFF002) else {
+        panic!("Expected a completed bus read");
+    };
     assert_eq!(dmaconr & 0x0200, 0x0200);
 
     // Reading write-only register (e.g. BPLCON0 at $DFF100) returns 0xFFFF (open bus)
-    let bplcon0_read = machine.memory_bus().read_word(0xDFF100).ok().unwrap();
+    let BusResult::Ready(bplcon0_read) = machine.memory_bus().read_word(0xDFF100) else {
+        panic!("Expected a completed bus read");
+    };
     assert_eq!(bplcon0_read, 0xFFFF);
 }
 

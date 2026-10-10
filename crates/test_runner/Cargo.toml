@@ -4,21 +4,16 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
-[lib]
-path = "src/test_runner.rs"
-
-[dependencies]
+[dev-dependencies]
 cpu = { workspace = true }
 physical_memory = { workspace = true }
-debugger = { workspace = true }
 serde = { workspace = true, features = ["derive", "std"] }
 serde_json = { workspace = true, features = ["std"] }
 flate2 = { workspace = true }
-machine_loop = { workspace = true }
-config = { workspace = true }
 
 [[bench]]
 name = "bench_instructions"
+path = "benches/bench_instructions/cli.rs"
 harness = false
 
 [lints]

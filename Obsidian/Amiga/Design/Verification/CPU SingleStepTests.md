@@ -9,9 +9,7 @@ created: 2026-08-31
 updated: 2026-10-10
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)"]
 tracked_paths:
-  - "crates/test_runner/src/runner.rs"
-  - "crates/test_runner/src/reporter.rs"
-  - "crates/test_runner/src/dma_harness.rs"
+  - "crates/test_runner/tests"
 ---
 
 # M68000 SingleStepTests Suite Specification
@@ -48,7 +46,7 @@ To ensure robust, ground-truth verification, the M68000 CPU emulator is validate
 ### 1.1 Opcode Packaging Quirk: CMP and CMPM
 In the test suite, there are **no separate `CMPM.b.json`, `CMPM.w.json`, or `CMPM.l.json` files**. Instead, all `CMPM (Ay)+, (Ax)+` test cases are bundled together inside `CMP.b.json`, `CMP.w.json`, and `CMP.l.json` alongside standard `CMP <ea>, Dn`.
 
-- The test runner provides [`is_cmpm_postinc_opcode`](../../../../crates/test_runner/src/runner.rs) (`(op & 0xF138) == 0xB108`) to isolate `CMPM` cases when specific post-increment testing is required.
+- The test runner provides [`is_cmpm_postinc_opcode`](../../../../crates/test_runner/tests/common/singlestep_runner.rs) (`(op & 0xF138) == 0xB108`) to isolate `CMPM` cases when specific post-increment testing is required.
 - **Batch 1.3 Complete:** Standard `CMP`, `CMPA`, and `CMPI` are fully implemented and verified. Both isolated `CMPM` tests and exhaustive full-suite `CMP.<size>.json` integration tests run in [`crates/test_runner/tests/test_singlestep.rs`](../../../../crates/test_runner/tests/test_singlestep.rs) and [`crates/test_runner/tests/test_dma_cartesian.rs`](../../../../crates/test_runner/tests/test_dma_cartesian.rs).
 
 ---
@@ -166,7 +164,7 @@ The physical hardware test suite logs bus activity as a structured transaction a
 
 ## 3. Rust Deserialization Data Structures
 
-To enforce strict validation, all structs defined in [`crates/test_runner/src/schema.rs`](../../../../crates/test_runner/src/schema.rs) use `#[serde(deny_unknown_fields)]`:
+To enforce strict validation, all structs defined in [`crates/test_runner/tests/common/schema.rs`](../../../../crates/test_runner/tests/common/schema.rs) use `#[serde(deny_unknown_fields)]`:
 - **`SingleStepTest`**: Encapsulates test `name`, `initial: CpuTestState`, `final_state: CpuTestState`, `transactions: Vec<serde_json::Value>`, and expected execution `length: u32`.
 - **`CpuTestState`**: Deserializes registers `d0..d7`, `a0..a6`, `usp`, `ssp`, `sr`, `pc`, `prefetch: [u32; 2]`, and initial/final `ram: Vec<[u32; 2]>` (`[address, byte]`).
 
@@ -227,23 +225,22 @@ flowchart TD
 
 ## 5. Rust Test Harness Implementation (`crates/test_runner`)
 
-The test harness is implemented in the dedicated workspace crate [`crates/test_runner`](../../../../crates/test_runner). It executes test vectors directly against `m68000::Cpu` and a dedicated test bus (`TestMemoryBus::new()`):
+The test harness lives in `tests/common/`, shared by the integration test targets of the dedicated workspace package [`crates/test_runner`](../../../../crates/test_runner). It executes test vectors directly against `m68000::Cpu` and a dedicated test bus (`TestMemoryBus::new()`):
 
 ### 5.1 Module Structure
-- **[`schema.rs`](../../../../crates/test_runner/src/schema.rs):** Strict deserialization of `SingleStepTest` and `CpuTestState` using `#[serde(deny_unknown_fields)]`.
-- **[`runner.rs`](../../../../crates/test_runner/src/runner.rs):** Test execution loop, CPU prefetch priming, state comparison, cycle count validation, and RAM byte validation:
+- **[`schema.rs`](../../../../crates/test_runner/tests/common/schema.rs):** Strict deserialization of `SingleStepTest` and `CpuTestState` using `#[serde(deny_unknown_fields)]`.
+- **[`singlestep_runner.rs`](../../../../crates/test_runner/tests/common/singlestep_runner.rs):** Test execution loop, CPU prefetch priming, state comparison, cycle count validation, and RAM byte validation:
   - `run_single_test_detail(test, file_path, index, mode) -> Result<(), TestFailure>`: Executes a single test case with configurable `VerifyMode` (`StateOnly`, `StateAndCycles`, `Full`).
   - `run_test_file(path, limit) -> Result<(usize, usize), Box<dyn Error>>`: Reads plain `.json` test suites, running up to `limit` test cases in `StateOnly` mode.
   - `run_test_file_with_mode(path, limit, mode)`: Configurable execution mode enabling cycle-exact and bus transaction verification.
-- **[`transactions.rs`](../../../../crates/test_runner/src/transactions.rs):** Deserializes and parses Tom Harte transaction logs, matching recorded bus transactions (read/write/TAS direction, 24-bit address, size, bus value, FC lines) against physical silicon logs.
-- **[`dma_harness.rs`](../../../../crates/test_runner/src/dma_harness.rs):** Synthetic Agnus DMA bus contention runner sweeping single-cycle (`run_dma_contention_sweep`) and multi-cycle burst (`run_dma_burst_contention`) stalls across instruction execution phases, validating State Invariance and Cycle Invariance ($C = C_0 + 2 \times \text{wait\_cycles}$).
-- **[`diagnostic.rs`](../../../../crates/test_runner/src/diagnostic.rs):** Human-readable failure reporting, full CCR flag decomposition ($T, S, I, X, N, Z, V, C$), clock/CCK cycle metrics, and transaction diff formatting.
-- **[`reporter.rs`](../../../../crates/test_runner/src/reporter.rs):** Persistent results recording in `.agent/tmp/singlestep/`, differential regression detection, and global summary generation.
-- **[`benchmark/`](../../../../crates/test_runner/src/benchmark):** Automated per-opcode instruction micro-benchmarking engine, programmatic unrolled block synthesis ($K = 700$), P-core affinity pinning, and anomaly classifier (see [CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)).
+- **[`transactions.rs`](../../../../crates/test_runner/tests/common/transactions.rs):** Deserializes and parses Tom Harte transaction logs, matching recorded bus transactions (read/write/TAS direction, 24-bit address, size, bus value, FC lines) against physical silicon logs.
+- **[`diagnostic.rs`](../../../../crates/test_runner/tests/common/diagnostic.rs):** Human-readable failure reporting, full CCR flag decomposition ($T, S, I, X, N, Z, V, C$), clock/CCK cycle metrics, and transaction diff formatting.
+- **[`reporter.rs`](../../../../crates/test_runner/tests/common/reporter.rs):** Persistent results recording in `.agent/tmp/singlestep/`, differential regression detection, and global summary generation.
+- **[`benchmark/`](../../../../crates/test_runner/benches/bench_instructions):** Automated per-opcode instruction micro-benchmarking engine, programmatic unrolled block synthesis ($K = 700$), P-core affinity pinning, and anomaly classifier (see [CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)).
 
 ### 5.2 CPU State Setup & Execution Flow
-Implemented directly in [`crates/test_runner/src/runner.rs`](../../../../crates/test_runner/src/runner.rs):
-- Instantiates a clean [`TestMemoryBus`](../../../../crates/test_runner/src/test_memory_bus.rs) and injects initial RAM vectors via `bus.load_test_ram()`.
+Implemented directly in [`crates/test_runner/tests/common/singlestep_runner.rs`](../../../../crates/test_runner/tests/common/singlestep_runner.rs):
+- Instantiates a clean [`TestMemoryBus`](../../../../crates/test_runner/tests/common/test_memory_bus.rs) and injects initial RAM vectors via `bus.load_test_ram()`.
 - Primes CPU registers $D_0-D_7$, $A_0-A_6$, $USP$, $SSP$, $SR$, and Program Counter (accounting for Tom Harte's $+4$ prefetch offset).
 - Initializes `instruction_pc` to the opcode address (`pc - 4` after priming) in both SingleStep and DMA fixtures, so exception frames preserve the instruction address even on the first executed instruction.
 - Primes prefetch queue registers `ir` and `prefetch`.
@@ -290,14 +287,8 @@ python tools/verification/verify.py test rust crate test_runner suite test_dma_c
 # Run automated architectural compliance suite
 python tools/verification/verify.py check architecture
 
-# Check for regressions or improvements against previous test run
-python tools/verification/verify.py runner diff
-
-# Display global pass/fail matrix and coverage summary
-python tools/verification/verify.py runner summary
-
-# Run a specific opcode suite directly with live diagnostic failure logs
-python tools/verification/verify.py runner suite ADD.b
+# Run sampled SingleStep tests for one opcode with live failure diagnostics
+python tools/verification/verify.py test runner singlestep case test_add_b sample 50
 ```
 
 ---
@@ -376,22 +367,22 @@ Test outcomes are persisted across runs in the `.agent/tmp/singlestep/` workspac
 - `.agent/tmp/singlestep/latest/<suite>.json`: Full test results and failing test names from the most recent run.
 - `.agent/tmp/singlestep/previous/<suite>.json`: Prior run snapshot rotated upon execution.
 - `.agent/tmp/singlestep/summary.json`: Aggregated repository coverage matrix with pass rates and active failure cases.
+- `.agent/tmp/singlestep/summary.md`: Readable summary with totals, all suites, and all failing case names.
+- `.agent/tmp/singlestep/diff.md`: Status changes against each suite's previous result and suites without a baseline.
+
+Both Markdown reports are updated automatically when suite results are saved. History rotates independently per suite, so reports may combine different executions.
 
 #### Regression & Improvement Detection:
 - 🔴 **Regressions:** Tests that previously passed in `.agent/tmp/singlestep/previous/` but failed in the current run are immediately flagged with `⚠️ [REGRESSION DETECTED]` in the terminal.
 - 🟢 **Improvements:** Tests that previously failed but now pass are flagged with `🎉 [PROGRESS / FIX]`.
 
-### 10.3 CLI Inspection Tool
-Developers and AI agents can query test status and regressions directly:
+### 10.3 Automatic Reports and Focused Execution
+Open the generated `summary.md` and `diff.md` directly to inspect saved results.
+The `test_runner` crate contains integration tests, their shared helpers in `tests/common/`, and benchmarks; it has no application binary or separate report commands.
+
 ```powershell
-# Show regressions and fixed tests vs previous run
-python tools/verification/verify.py runner diff
-
-# Display global pass/fail matrix across all suites
-python tools/verification/verify.py runner summary
-
-# Run a specific opcode suite directly
-python tools/verification/verify.py runner suite ADD.b
+# Run sampled SingleStep tests for one opcode
+python tools/verification/verify.py test runner singlestep case test_add_b sample 50
 ```
 
 ---
@@ -402,7 +393,7 @@ python tools/verification/verify.py runner suite ADD.b
 - [Tom Harte SingleStepTests-680x0 Suite](../../../../ref_src/SingleStepTests-680x0/68000/v1): Comprehensive randomized test vectors for 68000 CPU.
 - [CPU Motorola M68000 Design Specification](../CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
 - [CPU Micro-Step State Machine Specification](../CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
-- [SingleStep Test Runner Implementation](../../../../crates/test_runner/src/runner.rs): Test loading, memory bus fixture, and assertion logic.
+- [SingleStep Test Runner Implementation](../../../../crates/test_runner/tests/common/singlestep_runner.rs): Test loading, memory bus fixture, and assertion logic.
 - [SingleStep Integration Test Suite](../../../../crates/test_runner/tests/test_singlestep.rs): Automated dual-suite regression tests.
 - [DMA Cartesian Contention Test Suite](../../../../crates/test_runner/tests/test_dma_cartesian.rs): Cycle invariance verification across DMA wait-state permutations.
 

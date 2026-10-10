@@ -11,11 +11,11 @@ execution. `case` is a substring filter, including Python qualified test names.
 
 | Sentence | Scope |
 | --- | --- |
-| `commit [singlestep] [dma]` | Required commit profile with optional forced full CPU sets |
-| `milestone [singlestep] [dma]` | Separate language profile with optional full CPU sets |
+| `commit` | Required commit profile; excludes full DMA and SingleStep suites |
+| `milestone [singlestep] [dma]` | Full language audit and both full CPU suites; selectors do not duplicate suites |
 | `test rust [unit|integration|all|workspace]` | Diagnostic tiers; default is unit plus integration; workspace excludes test_runner |
 | `test rust crate NAME [suite NAME] [case FILTER]` | One Cargo package, optionally one integration target and filter |
-| `test python` | All five tool contract directories |
+| `test python` | Tool contracts affected by changed owning inputs and shared dependencies |
 | `test python directory PATH [file PATTERN] [case FILTER]` | One Python test directory and optional discovery filters |
 | `test runner [standard|harness|silicon]` | Standard harness by default, diagnostic harness or both full CPU sets |
 | `test runner singlestep [case FILTER] [full|sample N]` | Full vectors by default; explicit positive sampling limit overrides inherited environment |
@@ -25,29 +25,22 @@ execution. `case` is a substring filter, including Python qualified test names.
 | `check english [files PATH...]` | Full language audit or explicit files |
 | `check code|hardware|formatting|clippy` | One quality gate |
 | `check build [crate NAME]` | Cargo compilation check; workspace by default |
-| `runner build` | Build the release test_runner binary |
-| `runner summary|diff` | Read persisted result reports |
-| `runner suite OPCODE` | Existing runner opcode diagnostics |
-| `runner bench [quick\|standard\|thorough] [filter TAG] [unroll N] [passes N] [output PATH] [pin on\|off]` | CPU benchmark |
-| `runner chipset [compare] [frames N]` | Chipset baseline comparison; no reference recording |
-| `runner vamiga [category NAME] [test NAME] [frames N] [limit N] [verbose] [summary]` | Explicit whole-machine capture run |
-| `runner vamiga list deferred` | Report deferred capture suites |
+| `runner build` | Compile release test and benchmark targets without running them |
+| `runner bench [quick\|standard\|thorough]` | CPU benchmark |
 | `runner gui -- OPTIONS` | GUI inspector capture |
-| `runner profile vamiga\|chipset\|bench SELECTORS` | Release build followed by external samply recording |
+| `runner profile bench SELECTORS` | CPU benchmark followed by external samply recording |
 | `runner analyze CSV [report MARKDOWN]` | Analyze an existing benchmark CSV |
 
 `--plan` previews the exact child commands and environment. `--log-level
 full|warn|error` controls output; both options may appear among sentence selectors.
-The `test_runner` binary accepts the same command words after Cargo's `--`:
-`cargo run -p test_runner -- vamiga category Copper frames 16`.
+CPU benchmarks use the Cargo benchmark target described below.
+SingleStep reports are saved automatically with suite results.
 Only `runner gui -- OPTIONS` forwards native switches to a separate program.
-Counts must be positive; the binary rejects unknown or repeated selectors and
-missing or invalid values before execution, with exit code 2. Benchmark profiles
-set their defaults before explicit overrides, regardless of selector order.
-Use `cargo run -p test_runner -- help` for binary instructions. The former
-command switches and `benchmark-chipset` name have been replaced; standalone
-baseline recording uses `chipset record frames N` and remains blocked in
-verification. Reports and profiling default to full output; other commands default
+Counts must be positive; the parser rejects unknown or repeated selectors and
+missing or invalid values before execution, with exit code 2.
+The `test_runner` crate has no application binary. SingleStep reports are generated
+automatically; chipset baseline recording has no executable entry point.
+Benchmark analysis and profiling default to full output; other commands default
 to warnings and errors. Full logs are always stored in `.agent/tmp/verify/`.
 
 Examples:
@@ -57,8 +50,7 @@ python tools/verification/verify.py test rust crate test_runner suite test_singl
 python tools/verification/verify.py test runner singlestep case test_move_w sample 500
 python tools/verification/verify.py test python directory tools/bootstrap/tests file test_bootstrap_contract.py case test_all
 python tools/verification/verify.py check architecture case test_file_size_limits
-python tools/verification/verify.py runner vamiga category all --plan
-python tools/verification/verify.py runner summary
+python tools/verification/verify.py runner bench quick --plan
 ```
 
 The generic Rust path preserves the selected Cargo test's normal environment.
@@ -67,13 +59,54 @@ Skill-owned scripts remain owned by their skills. Bootstrap, conversion,
 indexing, worktree management, diary appending, tool installation and baseline
 recording remain workflow operations with their own entry points.
 
+## Saved SingleStep reports
+
+Saving a suite result automatically updates `.agent/tmp/singlestep/summary.md`
+and `diff.md` alongside the existing JSON results. The summary contains totals,
+a table for all saved suites, and all failing case names. The diff lists cases
+that changed from passed to failed or failed to passed, and suites without a
+previous result. Suites and cases are ordered for readable comparisons.
+
+Open the generated Markdown files directly; no report-generation command is
+needed. Each suite retains its own latest and previous result, so the reports may
+combine different executions. New and removed cases are excluded from
+status-change comparisons.
+
+## CPU benchmark entry point
+
+CPU measurements run through the `bench_instructions` Cargo target declared in
+[`Cargo.toml`](../../crates/test_runner/Cargo.toml). SingleStep reports are
+generated automatically when suite results are saved.
+
+```powershell
+cargo bench -p test_runner --bench bench_instructions -- --help
+cargo bench -p test_runner --bench bench_instructions -- --quick
+```
+
+Running without options prints instructions without measuring. Select one profile
+with `--quick`, `--standard` or `--thorough`; `--help` and `-h` print instructions.
+Unknown, repeated or combined options fail before measurement. The benchmark uses
+700 instructions per block, profile-defined measurement counts, the full catalog,
+and host core affinity when supported. Reports are saved under
+`.agent/tmp/benchmarks/<profile>/`.
+
+`verify.py runner bench` accepts only a profile and translates it to the native
+option. After successful measurement, it runs
+[analyze_benchmarks.py](analyze_benchmarks.py) on that profile's `m68k_benchmark.csv`
+and saves `analysis_report.md` in the same directory. A failed benchmark skips
+analysis; running without a profile prints help only. Direct `cargo bench` runs
+measurement only. `runner analyze CSV [report MARKDOWN]` remains available for
+existing datasets. `runner profile bench` accepts the same profile and
+builds the same target without running it, reads its executable path from Cargo's
+artifact messages, and passes that executable to `samply record`. A failed build
+or missing artifact cannot launch a previous executable.
+
 ## Completion verification
 
 Verification orchestration and coverage result processing live in `tools/verification/`;
-worktree management lives in `tools/worktree.ps1`. The shared diary appender lives in `tools/log_diary.py`. Concrete project audits and checks live in `tools/verification/checks/`. Run these scripts from the repository root. Their
-Completion scopes remain unchanged. Task selection now uses subcommands; the former selection switches are rejected.
+worktree management lives in `tools/worktree.ps1`. The shared diary appender lives in `tools/log_diary.py`. Concrete project audits and checks live in `tools/verification/checks/`. Run these scripts from the repository root. Task selection uses subcommands; the former selection switches are rejected.
 
-The `test_runner` suites retain emulator execution checks and reference-result invariants. Standalone checks of its analyzers, statistics, PRNG, persistence, host setup, synthetic bus, program injection, report schemas, parsers and frame matcher are excluded; mixed suites retain their real execution cases. Benchmark CSV and empirical anomaly checks use stored results and do not establish fresh performance measurements.
+The `test_runner` suites retain emulator execution checks and reference-result invariants. Standalone checks of its analyzers, statistics, PRNG, persistence, host setup, synthetic bus, program injection, report schemas, parsers and frame matcher are excluded; mixed suites retain their real execution cases. Empirical anomaly checks use stored results and do not establish fresh performance measurements.
 
 Commit verification starts with ordinary workspace crate tests under LLVM coverage instrumentation, excluding `test_runner`. This is automatic, with no coverage switch. Only this execution contributes to the coverage report; the remaining quality gates and harness suites use normal Cargo artifacts. `cargo-llvm-cov` uses its separate `target/llvm-cov-target` cache, while normal Cargo commands retain their usual target directory. Raw measurement counters and the previous summary are cleared before each measurement, without deleting the build caches. Yellow `[INFO]` messages identify the instrumented and uninstrumented phases and summarize line, function and region coverage. Full summary data is saved to `.agent/tmp/coverage/summary.json`; there is no percentage threshold. Coverage does not measure performance or prove assertion quality. Stable coverage does not include doctest execution; branch coverage is not enabled.
 
@@ -84,7 +117,7 @@ rustup component add llvm-tools-preview
 cargo install cargo-llvm-cov --locked
 ```
 
-Run `python tools/verification/verify.py` without arguments (or with `--help`) to display the verification sets, automatic CPU-suite selection rules, plan behavior and command examples. This prints instructions and exits successfully without running verification.
+Run `python tools/verification/verify.py` without arguments (or with `--help`) to display the verification sets, milestone CPU-suite scope, plan behavior and command examples. This prints instructions and exits successfully without running verification.
 
 Verification runs on the current working tree and does not require staging or pending changes. For milestone closure run both separate sets, once each:
 
@@ -93,11 +126,17 @@ python tools/verification/verify.py commit
 python tools/verification/verify.py milestone
 ```
 
-Routine commits use only the first command. The profiles are invoked separately. Commit first runs ordinary workspace crate tests with coverage, reports the measured coverage, then runs quality gates, standard `test_runner` suites and Python tool contracts without coverage instrumentation. Only Cartesian DMA and full SingleStepTests are conditional on staged, unstaged and nonignored new paths. Every commit scans all repository-owned text files against the English dictionary and reviewed project vocabulary, regardless of staging or changes, using `tools/verification/checks/check_english.json`. Milestone runs the same full language audit. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification. It does not run commit checks or automatically select DMA/SingleStep.
+Routine commits use only the first command. The profiles are invoked separately. Commit first runs ordinary workspace crate tests with coverage, reports the measured coverage, then runs quality gates, standard `test_runner` suites and Python tool contracts without coverage instrumentation. It never selects full Cartesian DMA or SingleStepTests, even for CPU changes. Every commit scans all repository-owned text files against the English dictionary and reviewed project vocabulary, regardless of staging or changes, using `tools/verification/checks/check_english.json`. Milestone runs that language audit plus both full CPU suites, including on a clean tree so already committed milestone work is covered. It does not repeat the other commit checks. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification.
 
 Python tool contracts live beside their owning tools. Commit verification runs
 `unittest discover` separately for each directory below; the tools do not run
-these tests during normal operation. Run a focused suite from the repository root
+these tests during normal operation. Without a commit, run only checks relevant
+to a coherent change, not after every edit. Repeat checks only after affected
+input changes, failures or unresolved concerns. `python tools/verification/verify.py test python` selects contracts
+whose owning tool inputs or shared dependencies have staged, unstaged or nonignored
+new changes; unrelated changes and a clean tree select no Python suites. Shared
+conversion changes select both conversion and PDF contracts. The full contract
+set remains mandatory before every authorized commit. Run a focused suite from the repository root
 with `python tools/verification/verify.py test python directory <directory>`,
 optionally adding `file <test_file.py>` and `case <filter>` to narrow discovery.
 
@@ -133,16 +172,16 @@ are run by their owning skills. Follow
 triggers. Semantic milestone review is required by its skill. A successful
 `verify.py milestone` alone does not certify these separate skill checks.
 
-DMA and SingleStep are independent test sets. They can run alone, together, or alongside a completion profile:
+DMA and SingleStep run automatically at milestones. Independent full runs remain available for explicit diagnosis or user requests:
 
 ```powershell
 python tools/verification/verify.py test runner dma
 python tools/verification/verify.py test runner singlestep
 python tools/verification/verify.py test runner silicon
-python tools/verification/verify.py commit dma singlestep --plan
+python tools/verification/verify.py milestone --plan
 ```
 
-With no completion profile, `test runner dma` runs only Cartesian DMA and `test runner singlestep` runs only full SingleStepTests. Standalone sets use the current working tree, require no staging, and run no quality gates, ordinary crate tests, or Python contracts. Append `dma` or `singlestep` to `commit` or `milestone` to add those sets to the profile. Each selected suite runs once, even when changes also select it. Standalone runs do not replace completion verification. Add `--plan` to inspect commands without executing checks. There are no hooks. Unknown arguments are rejected.
+With no completion profile, `test runner dma` runs only Cartesian DMA and `test runner singlestep` runs only full SingleStepTests. Standalone sets use the current working tree, require no staging, and run no quality gates, ordinary crate tests, or Python contracts. Milestone always selects both full suites once; optional milestone selectors do not duplicate them. Commit rejects CPU suite selectors. Standalone runs do not replace completion verification. Add `--plan` to inspect commands without executing checks. There are no hooks. Unknown arguments are rejected.
 
 The verifier includes formatting, Clippy, architecture rules, and per-commit hardware/code audits. Ordinary-crate coverage measures executed code; there is no public-function name-matching gate. All profiles accept clean trees, unstaged changes and new files. Change selection includes both endpoints of renames. Completion evidence must match the final committed source; rerun verification if that source changes. All profiles reject results if the source or index changes during execution. Ignored diagnostics belong in `.agent/tmp/`. The verifier does not stage or commit files. It only selects external commands, launches them and aggregates exit codes; source/index stability is an orchestration guard. Command selection is declared in [commands.py](commands.py); [cli.py](cli.py) owns the grammar, [execution.py](execution.py) owns logging, and [repository.py](repository.py) owns source identity. During execution, `[RUN]` identifies the active check and `[CMD]` prints its exact command immediately before launching it; explicit environment overrides appear as `[ENV]`. Full child output is saved in a unique log under `.agent/tmp/verify/`. `--log-level full|warn|error` controls child output: `full` streams everything, `warn` (default) shows warnings and errors, and `error` shows only errors. Filtered modes include up to 12 indented diagnostic context lines, limited to 300 characters per line. Commands and final results remain visible in every mode. If a failed command emits no recognized error marker, its last 12 log lines are shown as failure context; failed commands also show the full log path before the final FAIL result. There is no initial test-command preview. `--plan` starts with an explicit preview-only message and does not launch commands.
 
@@ -163,20 +202,18 @@ suites; `test runner silicon` selects full SingleStepTests and Cartesian DMA.
 Focused commands do not run coverage or completion gates. With no arguments,
 the entry point displays help without executing commands.
 
-The two expensive environments use CPU + synthetic TestMemoryBus, not production MemoryBus or PhysicalMemory. Their trigger paths are owned by [commands.py](commands.py):
+The two expensive environments use CPU + synthetic TestMemoryBus, not production MemoryBus or PhysicalMemory. Their selection is owned by [commands.py](commands.py):
 
 | Trigger | Cartesian DMA | Full SingleStepTests |
 | --- | --- | --- |
-| CPU/config crate, shared AddressBus/BusResult contract, common synthetic harness, vectors, workspace manifest/lock/config | Yes | Yes |
-| DMA harness or its test target | Yes | No |
-| SingleStep runner/reporter or its test target | No | Yes |
-| Production memory implementation, MemoryBus, machine loop, chips, GUI, tools, docs | No | No |
+| Ordinary edits or task completion | No automatic full run | No automatic full run |
+| Commit, including CPU and harness changes | No | No |
 | Explicit suite selection | `test runner dma` | `test runner singlestep` |
-| Milestone | Only with explicit selector | Only with explicit selector |
+| Milestone, including a clean working tree | Full suite | Full suite |
 
-Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory. The separate milestone set runs the full language audit; vAmigaTS Cargo suites and automatic chipset/capture runs have been removed.
+Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory. The separate milestone set runs the full language audit and both full CPU suites; vAmigaTS Cargo suites and automatic chipset/capture runs have been removed.
 
-Manual commands in the following sections and diagnostic selectors in `verify.py` remain development/diagnostic tools; they do not replace completion verification. Wall-clock microbenchmarks and external sampling profiles remain manual measurement tools: the verifier retains CPU benchmark regression fixtures. The chipset throughput comparison is available only as an explicit manual command. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
+Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks and external sampling profiles remain manual measurement tools: the verifier retains CPU benchmark regression fixtures. The chipset throughput comparison is available only as an explicit manual command. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
 
 ---
 
@@ -261,19 +298,15 @@ It runs with ordinary CPU tests. Formatting remains a separate `check formatting
 
 ---
 
-## 4. CLI Diagnostic Tools & Regression Tracking
+## 4. Automatic Reports & Regression Tracking
 
-The `test_runner` crate provides a standalone CLI tool for inspecting coverage matrices, live failure diagnostics, and detecting regressions:
+The `test_runner` library saves `summary.md` and `diff.md` in
+`.agent/tmp/singlestep/` automatically with suite results. Open these files for
+coverage statistics and regression status.
 
 ```powershell
-# Display global pass/fail matrix and coverage summary across all opcodes
-python tools/verification/verify.py runner summary
-
-# Detect regressions and fixed tests compared to previous run
-python tools/verification/verify.py runner diff
-
-# Execute a single opcode suite directly with live diagnostic failure output
-python tools/verification/verify.py runner suite ADD.b
+# Run sampled SingleStep tests for one opcode with live failure diagnostics
+python tools/verification/verify.py test runner singlestep case test_add_b sample 50
 ```
 
 - 🔴 **Regressions:** Tests that previously passed but now fail are highlighted with `⚠️ [REGRESSION DETECTED]`.
@@ -316,32 +349,12 @@ Ensure reference assets are extracted prior to running vAmigaTS suites:
 
 ### 3. Automatic Verification Scope
 
-vAmigaTS Cargo test suites and chipset workload tests have been removed during test reorganization. Neither commit nor milestone verification runs vAmigaTS captures or chipset throughput comparisons. Reference assets and the manual CLI below remain available for explicitly requested investigations.
+vAmigaTS Cargo test suites and chipset workload tests have been removed during test reorganization. Neither commit nor milestone verification runs vAmigaTS captures or chipset throughput comparisons. Reference assets remain available; there is no manual capture CLI.
 
-### 4. Interactive CLI Runner (`test_runner vamiga`)
-Execute tests with live pixel diff reporting, category filtering, and frame control:
-```powershell
-# Execute a specific test by name with live pixel mismatch reporting:
-cargo run -p test_runner -- vamiga test coptim1
+### 4. Capture Runner Availability
 
-# Execute a specific test with verbose pixel difference coordinates:
-cargo run -p test_runner -- vamiga test coptim1 verbose
-
-# Run all runnable tests in a specific custom chip category:
-cargo run -p test_runner -- vamiga category Copper
-cargo run -p test_runner -- vamiga category Blitter
-cargo run -p test_runner -- vamiga category Denise
-cargo run -p test_runner -- vamiga category Paula
-
-# Override the number of frames simulated (e.g. 16 frames):
-cargo run -p test_runner -- vamiga test coptim1 frames 16
-
-# Limit batch execution count during active development:
-cargo run -p test_runner -- vamiga category Copper limit 5
-
-# Inspect runnable vs deferred test suite breakdown across roadmap phases:
-cargo run -p test_runner -- vamiga list deferred
-```
+The former `test_runner` application and its vAmigaTS execution commands have
+been removed. Reference assets remain available for future capture tooling.
 
 ### 5. Diagnostic Diff Reporting & Root-Cause Guidelines
 When a test fails, the runner outputs a structured mismatch summary:

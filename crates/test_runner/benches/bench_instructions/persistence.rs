@@ -140,17 +140,6 @@ pub fn persist_benchmark_report(
     Ok((canonical_json_path, canonical_csv_path))
 }
 
-/// Attempts to load the previous benchmark report from `out_dir/m68k_benchmark_previous.json`.
-pub fn load_previous_report(out_dir: &Path) -> Option<BenchmarkSuiteReport> {
-    let previous_path = out_dir.join("m68k_benchmark_previous.json");
-    if previous_path.exists() {
-        let content = fs::read_to_string(previous_path).ok()?;
-        serde_json::from_str(&content).ok()
-    } else {
-        None
-    }
-}
-
 /// Attempts to load the historical baseline report from `out_dir/m68k_benchmark_baseline.json`,
 /// its parent directory, or the tracked reference directory.
 pub fn load_historical_baseline(out_dir: &Path) -> Option<BenchmarkSuiteReport> {
