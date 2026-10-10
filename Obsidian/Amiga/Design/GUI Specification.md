@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-10
-updated: 2026-09-16
+updated: 2026-10-10
 related: ["[GUI.md](GUI.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](General%20Architecture.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
 tracked_paths:
   - "crates/gui"
@@ -164,7 +164,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
 - **Data Registers ($D_0 - D_7$):**
   - Displays each register in hexadecimal (`$00000000`) and signed decimal via public accessor `state.d_long(i)`.
   - **Interactive Inline Editing:** Clicking any register value switches to an inline text box with immediate focus. Pressing Enter or clicking outside commits; Escape cancels.
-  - **Educational Tooltips:** Rich `.on_hover_ui` detailing bitwidths, byte/word/long access rules, and signed interpretation.
+  - **Educational Tooltips:** Rich `.on_hover_ui` detailing bit widths, byte/word/long access rules, and signed interpretation.
   - **Diff Highlighting:** If a register value changed in the last execution step, it renders with a glowing pill background in electric cyan (`#67E8F9` text with `#083344` pill background per `ColorTokens`).
 - **Address Registers ($A_0 - A_7$):**
   - Displays $A_0 - A_6$ and the active stack pointer $A_7$ (`USP` vs `SSP`). Word alignment rules explained in contextual tooltips.

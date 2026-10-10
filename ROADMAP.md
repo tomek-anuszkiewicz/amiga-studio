@@ -22,7 +22,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
 
 - **1.4: Validate Bulk Conversion and RAG Ingestion**
   - After approving the sample pipeline, convert the manuals and validate Markdown, links, assets, and descriptions before indexing. Verify fresh and incremental `amiga` ingestion, hashing, chunk fidelity, embeddings, and sidecar retrieval through the canonical `rag_qdrant` CLI.
-  - **Gate:** Accepted converted artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](docs/developers.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag); unchanged input does not cause unnecessary reindexing.
+  - **Gate:** Accepted converted artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](.agents/references/developer-setup.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag); unchanged input does not cause unnecessary reindexing.
 
 ## Step 2: Understand Tests and Establish a Profiling Workflow
 
@@ -112,7 +112,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
 
 ## Step 4: Developer Studio GUI & Diagnostic Tooling Hardening (Ongoing Companion Track)
 
-- **4.1: Continuous Testing & Polish of Developer Studio (Debugger View)**
+- **4.1: Continuous Testing & Refinement of Developer Studio (Debugger View)**
   - **Objective:** Actively test, harden, and refine the Developer Studio GUI (`crates/gui`) under live emulation across all display tiers and interactive workflows.
   - **Actionable Scope:**
     - Test interactive panels under live stepping: Disassembly infinite stream browsing, in-place instruction patching, Memory Hex selection and row-wrapping keyboard navigation, register/CCR editing, Microcode Inspector step progression, and breakpoint/watchpoint triggers.

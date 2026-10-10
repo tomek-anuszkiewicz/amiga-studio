@@ -41,5 +41,5 @@ trunk serve crates/gui/index.html --open
 For the complete controls reference, step-by-step shortcuts, and debugging workflows, see:
 👉 [**Developer Studio & Debugger Guide**](docs/debugger.md)
 
-For compilation instructions, bootstrapping options, test suites, and technical reference guides:
+For an overview of the emulator, its verification and ways to work with the project:
 👉 [**Developer Guide & Technical Index**](docs/developers.md)

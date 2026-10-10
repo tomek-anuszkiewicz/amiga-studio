@@ -19,7 +19,7 @@ Activate this skill whenever:
 - Fixing or improving GUI layout, docking, panels, splitters, or scrollbars.
 - Debugging interactive state transitions: widget focus, inline editing (registers, disassembly, memory hex), Escape cancellation, or click-outside commit/cancel lifecycles.
 - Testing responsive window resizing, content clipping, or small display adaptations (e.g. 1024x600, 800x600).
-- Polishing typography, color palettes, visual contrast, or aligning tabular items in Dark, Light, or Classic Workbench themes.
+- Refining typography, color palettes, visual contrast, or aligning tabular items in Dark, Light, or Classic Workbench themes.
 - Verifying that layout changes did not introduce graphical regressions.
 
 ---

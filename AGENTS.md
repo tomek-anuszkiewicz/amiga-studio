@@ -29,7 +29,7 @@ Read applicable domain rules before editing that domain. Use [Graphify](.agents/
 | Repository skills | [Instruction hierarchy and skill ownership](.agents/rules/information-hierarchy.md) |
 | Commit or milestone | [Diary](.agents/rules/diary-maintenance.md), [roadmap](.agents/rules/roadmap-maintenance.md), [design maintenance](.agents/rules/docs-maintenance.md) |
 | Merge or worktree | [Merge policy and required procedures](.agents/rules/git-merge-commits.md) |
-| Reference conversion bootstrap | [Conversion programs](docs/developers.md#processing-raw-documents-into-markdown), [developer-led workflow](tools/bootstrap/reference-conversion-contract.md#development-workflow), [converter testing scope](.agents/rules/unit-testing-policy.md#bootstrap-converter-scope) |
+| Reference conversion bootstrap | [Conversion programs](.agents/references/developer-setup.md#processing-raw-documents-into-markdown), [developer-led workflow](tools/bootstrap/reference-conversion-contract.md#development-workflow), [converter testing scope](.agents/rules/unit-testing-policy.md#bootstrap-converter-scope) |
 | Long-running checks | [Parallel execution](.agents/rules/parallel-execution.md) |
 
 Skill names and descriptions in `.agents/skills/` guide selection; read the selected
@@ -65,7 +65,7 @@ Per-commit commands:
 ```powershell
 python tests/verify.py --commit
 ```
-In commit mode, the verifier always runs quality gates, architecture, all ordinary crate/standard harness tests, and Python tool contracts. Only full SingleStepTests and Cartesian DMA depend on their source changes in commit mode; `--verify-singlestep` and `--verify-dma` are independent test sets that can run alone or alongside a completion profile. Milestone is a separate set containing the staged English language audit; it does not include commit, DMA or SingleStep sets. All sets may run at any time on the current working tree, including a clean tree. Automatic CPU-suite selection uses staged, unstaged and nonignored new paths. Completion evidence must match the final committed source. Standalone DMA/SingleStep runs use the current working tree and do not replace completion verification. Use `--plan` to inspect commands. Targeted manual tests remain available during development; do not duplicate completion commands outside the verifier.
+In commit mode, the verifier always runs quality gates, architecture, all ordinary crate/standard harness tests, and Python tool contracts. Only full SingleStepTests and Cartesian DMA depend on their source changes in commit mode; `--verify-singlestep` and `--verify-dma` are independent test sets that can run alone or alongside a completion profile. Every commit includes the full-repository English language audit. Milestone is a separate set containing the same full audit; it does not include commit, DMA or SingleStep sets. All sets may run at any time on the current working tree, including a clean tree. Automatic CPU-suite selection uses staged, unstaged and nonignored new paths. Completion evidence must match the final committed source. Standalone DMA/SingleStep runs use the current working tree and do not replace completion verification. Use `--plan` to inspect commands. Targeted manual tests remain available during development; do not duplicate completion commands outside the verifier.
 
 Before closing a minor roadmap point or major milestone, run the per-commit
 command above once for the final snapshot, followed by

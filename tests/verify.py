@@ -130,10 +130,11 @@ def select_quality_commands(mode):
 
     if mode == "milestone":
         return [
-            ("Strict English Policy", script("check_polish", "--staged"), {}),
+            ("Strict English Policy", script("check_english"), {}),
         ]
     if mode == "commit":
         return [
+            ("Strict English Policy", script("check_english"), {}),
             ("Formatting", ["cargo", "fmt", "--all", "--", "--check"], {}),
             ("Clippy Invariants", ["cargo", "clippy", "--workspace", "--all-targets"], {}),
             ("Architecture Rules", ["cargo", "test", "-p", "test_runner", "--test",
@@ -301,7 +302,7 @@ def main(argv=None):
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Verification sets:
   --commit
-    Formatting, Clippy, architecture rules and per-commit
+    Full-repository English scan, formatting, Clippy, architecture rules and per-commit
     hardware/code audits; all ordinary crate tests, standard harness tests and
     Python tool contracts.
     Ordinary crate tests run first with coverage instrumentation; their line,
@@ -311,8 +312,7 @@ def main(argv=None):
     Each CPU suite has its own change triggers; unrelated changes select neither.
 
   --milestone
-    Staged English
-    checks. Domain skills own design drift, vault metadata/links, semantic parity,
+    Full-repository English scan. Domain skills own design drift, vault metadata/links, semantic parity,
     diary chronology and roadmap retention; this set does not run their scripts.
     vAmigaTS captures and chipset workloads are not part of verification.
     A separate set: it does not include --commit or automatically select CPU suites.
@@ -351,7 +351,7 @@ Examples:
 """)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--commit", action="store_true", help="Run all standard tests; select DMA/SingleStep from working-tree changes")
-    mode.add_argument("--milestone", action="store_true", help="Run only the milestone language audit")
+    mode.add_argument("--milestone", action="store_true", help="Run the full-repository language audit")
     parser.add_argument("--verify-dma", action="store_true", help="Run the Cartesian DMA set, alone or alongside a completion profile")
     parser.add_argument("--verify-singlestep", action="store_true", help="Run the full SingleStepTests set, alone or alongside a completion profile")
     parser.add_argument("--unit", "-u", action="store_true", help="Run isolated crate tests and benchmark CSV fixtures")

@@ -79,7 +79,7 @@ tools/bootstrap/html-to-markdown/
 
 > [!IMPORTANT]
 > **Content Fidelity & Meaning:**
-> - **You may reformat and polish layout**, typography, indentations, and presentation.
+> - **You may reformat and refine layout**, typography, indentations, and presentation.
 > - **Preserve 100% of the original content and technical meaning.**
 > - **Do NOT add new content** (no invented text, commentary, or unverified claims).
 > - **Do NOT omit or summarize existing content** (no dropping footnotes, technical sidebars, or instruction tables).

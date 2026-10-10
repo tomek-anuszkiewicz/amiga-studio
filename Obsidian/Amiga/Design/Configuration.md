@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "config"
 status: "active"
 created: 2026-09-05
-updated: 2026-09-12
+updated: 2026-10-10
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
 tracked_paths:
   - "crates/config"
@@ -90,7 +90,7 @@ Because the emulator core is system-agnostic and decoupled from the host filesys
 ## 5. Future Roadmap Extensions (Post-A500)
 
 *The following configurations are deferred to subsequent project milestones:*
-- **A500 Rev 6A / Late OCS:** 1 MB Chip RAM jumperable option (Fat Agnus 8372A in OCS mode).
+- **A500 Rev 6A / Late OCS:** 1 MB Chip RAM option selected via jumpers (Fat Agnus 8372A in OCS mode).
 - **A500 Plus (ECS):** 1 MB Chip RAM (`ChipRamSize::Mb1`), ECS Agnus 8372A (`AgnusModel::Ecs1Mb`), ECS Denise 8373 (`DeniseModel::Ecs8373`), Kickstart 2.04 (512 KB).
 - **Megachip / ECS 2MB:** 2 MB Chip RAM (`ChipRamSize::Mb2`), Agnus 8372B.
 - **A1200 (AGA):** 68EC020 CPU (32-bit), 2 MB Chip RAM, Alice (AGA Agnus), Lisa (AGA Denise), 24-bit color palette.

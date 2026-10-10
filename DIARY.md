@@ -142,7 +142,7 @@ Still focusing on the minimal instruction subset, Stage 2 was born out of the hu
 - ALU operations and instruction evaluation logic remained largely linear and immediate.
 - However, all memory bus operations (reads, writes, prefetches) were deferred and pushed onto a dedicated "command/action buffer".
 - A separate, decoupled execution loop processed this bus buffer, providing a mechanism for the CPU to stall and hold on wait states when blocked by Chip RAM contention.
-- **The Architectural Breakdown:** While this successfully proved that memory wait states could stall execution against SingleStepTests, the resulting architecture was awkward and fragmented ("rozpieprzony"):
+- **The Architectural Breakdown:** While this successfully proved that memory wait states could stall execution against SingleStepTests, the resulting architecture was awkward and fragmented:
   - ALU math ran upfront while bus operations lagged behind in the queue.
   - Pipelined prefetch queue progression ($IR$/$IRC$) became decoupled from memory reads.
   - Mid-instruction Address Error exceptions (Vector 3) across this boundary were completely unnatural: an address error occurring on an unaligned memory read would trigger *after* the ALU had already mutated guest registers!
@@ -979,7 +979,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Python compilation and PDF CLI help passed
   - Quick pre-flight passed
   - Architecture suite: 18 passed and 1 failed because Design links target 62 missing Reference materials
-  - Staged English scan reported the Python standard-library identifier copytree as Polish; manually verified this false positive without changing the scanner
+  - Staged English scan reported the Python standard-library identifier copytree as an English vocabulary violation; manually verified this false positive without changing the scanner
   - Graphify code refresh completed without inference
 ---
 
@@ -2480,3 +2480,31 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Publication tests passed 10/10
   - python tests/verify.py --commit passed all selected checks including ordinary Rust and benchmark tests plus Python tool contracts
   - No CPU or DMA implementation changed and dedicated silicon suites were not selected for this fixture-only change
+---
+
+### [2026-10-10 15:16 CEST] — Check English vocabulary across the repository and clarify documentation entry points
+- **Affected Subsystems**:
+  - `tests/checks`
+  - `tests/verify.py`
+  - `docs`
+  - `.agents`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the former language detector with pyspellchecker and explicit approved vocabulary
+  - Scan unchanged tracked and nonignored new text files on every commit and milestone using the maintained check_english.json scope
+  - Use half the available logical CPUs with one to six processes and deterministic reports
+  - Require a user decision before correcting unknown words or expanding vocabulary exceptions
+  - Organize docs as reader orientation and move operational procedures to agent references and tests/README.md
+  - Update affected links and approved vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Check English words directly while keeping large generated and external collections outside the audit
+  - Keep English findings visible until the user decides how to resolve them
+  - Separate project orientation from operational details
+- **Verification & Test Results**:
+  - PASS python tests/verify.py --commit on final code and documentation
+  - PASS one-process and six-process comparison across 574 files including unknown words and read errors
+  - PASS process count bounds and full scans of 571 files at about one second
+  - PASS 42 design documents and 1048 vault links
+  - PASS 267 local documentation links and git diff --check
+  - Graphify code graph refreshed
+  - Full SingleStep and Cartesian DMA were not selected because no emulator source changed

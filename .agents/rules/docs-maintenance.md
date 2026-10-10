@@ -1,6 +1,10 @@
-# Design Documentation Maintenance
+# Documentation Maintenance
 
-Applies to living specifications under `Obsidian/Amiga/Design/`.
+Reader-facing documentation under `docs/` explains the project and provides entry points for users and developers. Follow [information hierarchy](information-hierarchy.md) when selecting scope and detail. Keep operational procedures with their owning tools, tests or agent references; update incoming links when moving them.
+
+## Living Design Specifications
+
+The following requirements apply to specifications under `Obsidian/Amiga/Design/`.
 
 - Before every authorized commit, use [sync-design-docs](../skills/sync-design-docs/SKILL.md) to review the intended changes per crate and reconcile only affected specifications. Ordinary implementation/refactoring alone does not trigger synchronization; milestone closure uses its completion commit's review. The review does not authorize a commit.
 - Select documents using repository-relative `tracked_paths` in their frontmatter. Match exact files or directory descendants; include both sides of renames and deletions. Keep the mapping accurate and report missing ownership. Read selected diffs and necessary context, not all repository code or history.
@@ -12,4 +16,4 @@ Applies to living specifications under `Obsidian/Amiga/Design/`.
 - Follow [vault linking](vault-linking-and-graph-integrity.md), [information hierarchy](information-hierarchy.md), and [writing style](practitioner-voice-and-tone.md).
 - At milestones, review bidirectional semantic parity as required by [audit-semantic-parity](../skills/audit-semantic-parity/SKILL.md); mechanical drift checks alone do not prove agreement.
 
-Shared script placement and instruction ownership are governed by [agent tooling maintenance](../../docs/ai_agents.md#agent-tooling-maintenance). Specifications may be reached through the design index; neither a direct rule link for every document nor a manual rule audit registry is required.
+Shared script placement and instruction ownership are governed by [agent tooling maintenance](../references/agent-tooling.md#agent-tooling-maintenance). Specifications may be reached through the design index; neither a direct rule link for every document nor a manual rule audit registry is required.

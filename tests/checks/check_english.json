@@ -1,0 +1,132 @@
+{
+  "excluded_directory_names": [
+    ".git",
+    "target",
+    "node_modules",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".obsidian",
+    "dist"
+  ],
+  "excluded_directories": [
+    ".agent/tmp",
+    "scratch",
+    "graphify-out",
+    "ref_src",
+    "Obsidian/Amiga/Reference",
+    "tools/AmigaTestKit",
+    "tests/benchmarks/quick",
+    "tests/benchmarks/standard",
+    "tests/benchmarks/thorough",
+    "tests/singlestep",
+    "tools/blep_generator/output"
+  ],
+  "excluded_files": [
+    "tests/checks/check_english.json"
+  ],
+  "text_extensions": [
+    ".rs",
+    ".md",
+    ".toml",
+    ".py",
+    ".sh",
+    ".json",
+    ".txt",
+    ".yaml",
+    ".yml",
+    ".ps1",
+    ".bat",
+    ".js",
+    ".html",
+    ".css",
+    ".svg",
+    ".asm",
+    ".csv"
+  ],
+  "text_filenames": [
+    "AGENTS.md",
+    ".gitignore",
+    ".gitattributes"
+  ],
+  "word_lists": [
+    "english_words/programming.txt",
+    "english_words/hardware.txt",
+    "english_words/software.txt",
+    "english_words/names.txt"
+  ],
+  "file_words": {
+    ".agents/skills/graphify/references/query.md": [
+      "\u043e\u0431\u0440\u0430\u0431\u043e\u0442\u0447\u0438\u043a",
+      "\u0430\u0443\u0442\u0435\u043d\u0442\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u044f"
+    ],
+    "crates/debugger/tests/test_assembler.rs": [
+      "ghij",
+      "xyz"
+    ],
+    "crates/debugger/tests/test_instruction_trace.rs": [
+      "zelur",
+      "agima"
+    ],
+    "crates/gui/tests/test_interactions.rs": [
+      "zzzzzzzz"
+    ],
+    "tools/bootstrap/pdf-to-markdown/stages/10_proofread_stream/prompt.md": [
+      "audovol",
+      "coproc",
+      "ecooo",
+      "essor",
+      "hardw",
+      "hcooo",
+      "ield",
+      "ooo",
+      "playf"
+    ],
+    "crates/debugger/tests/test_sample_binaries.rs": [
+      "zelur",
+      "agima"
+    ],
+    "tests/bin/README.md": [
+      "zelur",
+      "agima"
+    ],
+    "tests/bin/string_reverse.asm": [
+      "zelur",
+      "agima"
+    ],
+    "tools/bootstrap/pdf-to-markdown/stages/10_proofread_stream/proofread_stream.py": [
+      "coproc",
+      "ecooo",
+      "essor",
+      "hardw",
+      "hcooo",
+      "ield",
+      "ooo",
+      "playf"
+    ],
+    "tools/bootstrap/pdf-to-markdown/stages/12_generate_properties/prompt.md": [
+      "hardw"
+    ],
+    ".agents/references/developer-setup.md": [
+      "toolsbootstrapbootstrapps",
+      "toolsbootstrapbootstrap",
+      "sourcesps",
+      "documentationps"
+    ],
+    "tools/bootstrap/html-to-markdown/README.md": [
+      "regchanges"
+    ],
+    "tools/bootstrap/html-to-markdown/references/llm-transcription-prompt.md": [
+      "regchanges"
+    ],
+    "tools/bootstrap/pdf-to-markdown/stages/04_stream_reduction/prompt_seam.md": [
+      "instruc",
+      "tion"
+    ],
+    "tools/bootstrap/pdf-to-markdown/stages/09_transform_prose/prompt.md": [
+      "ecooo",
+      "hcooo",
+      "ooo"
+    ]
+  }
+}

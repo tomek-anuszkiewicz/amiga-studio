@@ -77,5 +77,5 @@ Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analys
 # Keir Fraser Amiga Test Kit floppy disk images (.adf), debug symbols, and release docs.
 /tools/AmigaTestKit*/
 
-# not worthy roadmap.md and git history itsefl
+# not worthy roadmap.md and git history itself
 TODO.md

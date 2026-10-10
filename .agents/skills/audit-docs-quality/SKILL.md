@@ -27,7 +27,7 @@ This skill reviews instruction brevity and audits agent governance. Design synch
 
 ### Instruction Brevity and Script Ownership (Manual Review)
 Follow [information hierarchy](../../rules/information-hierarchy.md): keep instructions concise, preserve required routing, and remove duplicated procedures. There are no fixed byte ceilings.
-Review script and function ownership using actual callers and responsibilities, including individual switches in mixed scripts. Follow [agent tooling maintenance](../../../docs/ai_agents.md#agent-tooling-maintenance); reference counts alone do not determine placement.
+Review script and function ownership using actual callers and responsibilities, including individual switches in mixed scripts. Follow [agent tooling maintenance](../../references/agent-tooling.md#agent-tooling-maintenance); reference counts alone do not determine placement.
 
 ### Skill and Rule Ownership (Manual Review)
 Review obligations in the affected rules and confirm that required procedures are

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "cia"
 status: "active"
 created: 2026-09-02
-updated: 2026-09-12
+updated: 2026-10-10
 related: ["[CIA.md](CIA.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[GUI.md](GUI.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/keyboard"
@@ -144,7 +144,7 @@ sequenceDiagram
 2. **Reset Warning (`$78`):** The keyboard transmits `$78`. The Amiga OS has up to 10 seconds to park floppy heads and flush write buffers.
 3. **Hard Line Pull:** The microcontroller asserts the motherboard `_RESET` pin low for at least **500 ms**, ensuring all custom chips and the CPU are fully held in reset.
 4. **Kickstart Warm Boot:**
-   - On release, the CPU loads initial SSP and PC from `$000000`/`$000004` (overlayed to Kickstart ROM).
+   - On release, the CPU loads initial SSP and PC from `$000000`/`$000004` (overlaid by Kickstart ROM).
    - Because RAM was not erased, Kickstart verifies the memory checksums (`KickTagPtr`), detects a warm reset, preserves resident modules, and restarts without a cold memory test (see [Main loop A500.md](Main%20loop%20A500.md)).
 
 ---

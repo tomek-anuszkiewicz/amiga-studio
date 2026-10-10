@@ -1,6 +1,6 @@
 # Developer Studio & Time-Travel Debugger
 
-The Amiga 500 emulator provides a built-in immediate-mode **Developer Studio and Time-Travel Debugger** implemented in `crates/gui` and `crates/debugger`.
+This guide introduces the Developer Studio for users and developers who want to inspect the emulated machine, pause execution or investigate a program. It covers the main views and everyday controls; implementation details are linked at the end.
 
 ---
 
@@ -36,8 +36,8 @@ The Amiga 500 emulator provides a built-in immediate-mode **Developer Studio and
 
 ## 3. Core Debugger Subsystems
 
-### A. Time-Travel Rewind ($\ge 1.0\text{s}$ PAL History)
-A high-capacity ring buffer records cycle-exact CPU and bus snapshots with zero dynamic heap allocations in hot paths:
+### A. Execution History and Rewind
+Recorded execution history lets you inspect earlier states within the retained history:
 - **Instruction Scrubbing:** Step backward and forward through past instructions to locate bugs or crashes.
 - **Frame Scrubbing:** Jump backward by entire 50 Hz PAL video frames (~70,824 CCK cycles).
 - **Cycle-Exact Timestamps:** Inspect exact Color Clock cycle timestamps and register states at each step.

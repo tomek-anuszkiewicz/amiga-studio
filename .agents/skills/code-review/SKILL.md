@@ -61,7 +61,7 @@ Analyze all modified and added files using `git diff`:
    - Modules must not be declared complete without tests covering happy paths, boundary conditions, zero/empty states, and failure modes.
 13. **Language Policy & English Purity**:
    - Verify that `git diff` introduces ZERO non-English words, identifiers, or prompt echoes in source code, docstrings, or inline comments (per `language-policy.md`).
-   - Quoting Polish prompt phrases or metaphors in comments—even parenthetically or in quotation marks—is strictly prohibited; all concepts must be translated into idiomatic English before writing to code.
+   - Quoting untranslated prompt phrases or metaphors in comments—even parenthetically or in quotation marks—is strictly prohibited; all concepts must be translated into idiomatic English before writing to code.
 14. **Practitioner Voice & Tone**:
    - Verify that documentation and comments adhere to `practitioner-voice-and-tone.md`: written from a hands-on lead architect perspective (in-depth tech blog standard) with zero academic dissertation jargon or thesis tags.
 

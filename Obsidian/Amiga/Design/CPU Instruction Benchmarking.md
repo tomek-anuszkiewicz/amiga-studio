@@ -96,7 +96,7 @@ flowchart TD
     Aggregate --> Save["Persist Clean Benchmark Record"]
 
     VarianceCheck -- No: Storm Detected --> StormAction{"Retry Count < Max Retries?"}
-    StormAction -- Yes --> Cooldown["'Przeczekać Burzę' (Wait Out the Storm):<br/>500ms-1s Cooldown Sleep<br/>+ Dynamic Pass Extension (+20 passes)"]
+    StormAction -- Yes --> Cooldown["Wait Out the Storm:<br/>500ms-1s Cooldown Sleep<br/>+ Dynamic Pass Extension (+20 passes)"]
     Cooldown --> Collect
 
     StormAction -- No --> FlagNoisy["Mark Run as 'environment_noisy: true'<br/>Preserve record but isolate from regression alerts"]
@@ -111,9 +111,9 @@ flowchart TD
   - Filter out extreme latency spikes where $T > Q_3 + 1.5 \times \text{IQR}$ (typical of host OS context switches and background service interference).
   - Compute a **trimmed mean** (discarding top and bottom 10% of samples) alongside the **median**.
 
-#### 3. Adaptive Environmental Noise Compensation ("Przeczekać Burzę")
+#### 3. Adaptive Environmental Noise Compensation ("Wait Out the Storm")
 If the filtered samples exhibit high jitter ($\text{CV} = \sigma / \mu > 3.0\%$), it indicates the host CPU is experiencing external load or thermal throttling:
-1. **Cooldown Pause ("Przeczekać Burzę"):** Sleep for 500 ms to 1 second to allow transient host spikes (disk I/O bursts, background threads) to settle.
+1. **Cooldown Pause ("Wait Out the Storm"):** Sleep for 500 ms to 1 second to allow transient host spikes (disk I/O bursts, background threads) to settle.
 2. **Dynamic Pass Extension:** Automatically collect additional passes (e.g. extending from 100 to 120+ passes) until a statistically stable cluster of runs is achieved.
 3. **Graceful Noise Flagging:** If the host remains unstable after 3 retry cooldown attempts, the benchmark does not fail; instead, it flags the record with `"environment_noisy": true` and `"confidence": "low"`, preventing external host interference from being falsely reported as an emulator code regression.
 
