@@ -41,13 +41,19 @@ directory, creates an ephemeral session at the repository root without a model
 turn, and verifies the server connects and exposes all three tools:
 
 ```powershell
-python -m unittest discover -s tests -p test_codex_mcp_launch.py -q
+python -m unittest discover -s tools/amiga-rag-mcp-server/tests -p test_codex_mcp_launch.py -q
 ```
 
 This check requires the Codex CLI on `PATH`, a trusted project, and the server
 requirements installed in the configured Python environment. It skips when
 Codex or FastMCP is absent. Verify backend connectivity with `rag_status` and a
 source-filtered `rag_search` in the refreshed Codex session.
+
+Run all adapter and launch contracts from the repository root with:
+
+```powershell
+python -m unittest discover -s tools/amiga-rag-mcp-server/tests -v
+```
 
 Read-only MCP tools use the service configuration and do not require a local
 index-state path. Configure the ignored project `.env` only for indexing:

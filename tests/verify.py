@@ -87,9 +87,6 @@ def select_tests(root, changes, mode, verify_dma=False, verify_singlestep=False)
         for suite in sorted(standard):
             command.extend(["--test", suite])
         commands.append(("All standard harness tests", command + ["--", "--quiet"], {}))
-    if dma or singlestep:
-        commands.append(("Silicon vector prerequisites", [sys.executable,
-                         "tests/checks/check_silicon_vectors.py"], {}))
     if dma:
         commands.append(("Cartesian DMA", ["cargo", "test", "-p", "test_runner", "--test",
                                            "test_dma_cartesian", "--", "--quiet"], {}))
@@ -98,8 +95,14 @@ def select_tests(root, changes, mode, verify_dma=False, verify_singlestep=False)
                                                   "test_singlestep", "--", "--quiet"],
                          {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"}))
     if completion:
-        commands.append(("All Python tool contracts", [sys.executable, "-m", "unittest", "discover",
-                                                     "-s", "tests", "-q"], {}))
+        for name, directory in (
+            ("Bootstrap contracts", "tools/bootstrap/tests"),
+            ("Conversion contracts", "tools/bootstrap/conversion/tests"),
+            ("PDF conversion contracts", "tools/bootstrap/pdf-to-markdown/tests"),
+            ("RAG MCP contracts", "tools/amiga-rag-mcp-server/tests"),
+        ):
+            commands.append((name, [sys.executable, "-m", "unittest", "discover",
+                                    "-s", directory, "-q"], {}))
     return commands
 
 
@@ -180,7 +183,7 @@ def select_diagnostic_commands(unit=False, integration=False, harness=False):
             command.extend(["-p", crate])
         commands.append(("Tier 2 integration tests", command + ["--", "--quiet"], {}))
     if harness:
-        # DMA is selected through select_tests so prerequisites and force selectors run once.
+        # DMA is selected through select_tests so force selectors run once.
         command = ["cargo", "test", "-p", "test_runner"]
         for _, suite in TIER3_HARNESS_TESTS:
             if suite != "test_dma_cartesian":

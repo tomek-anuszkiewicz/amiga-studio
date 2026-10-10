@@ -6,10 +6,10 @@ category: "Design"
 subsystem: "test_runner"
 status: "active"
 created: 2026-09-14
-updated: 2026-09-16
+updated: 2026-10-10
 related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[General Architecture.md](General%20Architecture.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
 tracked_paths:
-  - "tests/benchmarks"
+  - "baselines/benchmarks"
   - ".agents/skills/profile-external"
 ---
 # Performance Profiling & Optimization Strategy
@@ -27,14 +27,14 @@ tracked_paths:
 Maintaining cycle-exact hardware fidelity at high execution speeds requires strict performance discipline. However, inserting synthetic timing probes into hot emulation loops distorts host CPU execution pipelines, flushes compiler instruction caches, and introduces artificial timing divergence.
 
 This specification establishes a **Two-Tier Performance Monitoring Architecture**:
-1. **Tier 1 — Automated Regression Sentinel (Harness Gate):** Continuous, deterministic throughput tracking using Git-tracked golden baselines (`tests/benchmarks/chipset_benchmark_baseline.json`) executing uninstrumented release code.
+1. **Tier 1 — Automated Regression Sentinel (Harness Gate):** Continuous, deterministic throughput tracking using Git-tracked golden baselines (`baselines/benchmarks/chipset_benchmark_baseline.json`) executing uninstrumented release code.
 2. **Tier 2 — External Statistical Sampling Profiler (`samply`):** Deep, method-level call tree and flamegraph inspection using non-invasive OS performance counters on demand.
 
 ```mermaid
 graph TD
     subgraph "Tier 1: Continuous Regression Sentinel"
         RUN["cargo run -p test_runner --release -- benchmark-chipset --compare"]
-        GOLDEN["tests/benchmarks/chipset_benchmark_baseline.json<br/>(Git-Tracked Golden Baselines)"]
+        GOLDEN["baselines/benchmarks/chipset_benchmark_baseline.json<br/>(Git-Tracked Golden Baselines)"]
         DELTA{"Throughput Delta < -5.0%?"}
 
         RUN --> DELTA
@@ -63,7 +63,7 @@ graph TD
 
 Modeled after the proven M68000 instruction benchmarking system ([CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)), the test runner maintains an authoritative golden baseline dataset:
 
-- **Location:** `tests/benchmarks/chipset_benchmark_baseline.json`
+- **Location:** `baselines/benchmarks/chipset_benchmark_baseline.json`
 - **Schema:**
   ```json
   {
@@ -111,7 +111,7 @@ Modeled after the proven M68000 instruction benchmarking system ([CPU Instructio
 To obtain method and module time distribution without intrusive runtime probes:
 1. Run external sampling profiler (`samply record ...` or `perf record ...`).
 2. Aggregate samples by canonical entry method:
-   - `python .agents/skills/profile-external/scripts/aggregate_profile.py <profile_file> --target coptim1 --update-baseline tests/benchmarks/chipset_benchmark_baseline.json`
+   - `python .agents/skills/profile-external/scripts/aggregate_profile.py <profile_file> --target coptim1 --update-baseline baselines/benchmarks/chipset_benchmark_baseline.json`
 3. Canonical entry methods:
    - `Cpu::step_cck` (`cpu`)
    - `Agnus::step_cck_ram` (`agnus` -> `Copper::step_cck`, `Blitter::step_cck_ram`, `DmaScheduler::arbitrate`)

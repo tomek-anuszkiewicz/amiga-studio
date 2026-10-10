@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools/bootstrap"))
 from conversion.publication import book_directory, check_destination, publish_output
 
 
@@ -79,7 +79,7 @@ class PublicationTests(unittest.TestCase):
         self.assertTrue((self.output / "Chapter.md").is_file())
 
     def load_pipeline(self, kind):
-        root = Path(__file__).resolve().parents[1]
+        root = Path(__file__).resolve().parents[4]
         spec = importlib.util.spec_from_file_location(f"publish_{kind}", root / f"tools/bootstrap/{kind}-to-markdown/pipeline.py")
         pipeline = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(pipeline)
@@ -157,7 +157,7 @@ class PublicationTests(unittest.TestCase):
         self.assertFalse((self.book / ".conversion-metrics.json").exists())
 
     def test_bootstrap_rejects_occupied_book_before_download(self):
-        root = Path(__file__).resolve().parents[1]
+        root = Path(__file__).resolve().parents[4]
         target = self.root / "Instruction Prefetch on the Motorola 68000 Processor"
         target.mkdir()
         sentinel = target / ".keep"

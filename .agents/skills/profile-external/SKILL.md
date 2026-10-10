@@ -18,7 +18,7 @@ For inlining decisions, read [inlining-examples](references/inlining-examples.md
 The emulator employs a two-tier performance monitoring strategy:
 1. **Tier 1 — Automated Regression Sentinel (`chipset_benchmark_baseline.json`):**
    - Fast, deterministic benchmark suite running uninstrumented release code.
-   - Compares active execution throughput (FPS and CCK frequency) against Git-tracked golden baselines (`tests/benchmarks/chipset_benchmark_baseline.json`).
+   - Compares active execution throughput (FPS and CCK frequency) against Git-tracked golden baselines (`baselines/benchmarks/chipset_benchmark_baseline.json`).
    - Flags regressions exceeding the $-5.0\%$ threshold.
 2. **Tier 2 — Deep Root-Cause Profiler (`samply`):**
    - External sampling profiler using OS thread timers and hardware counters.
@@ -120,7 +120,7 @@ The aggregator inspects external sampling profiler traces (Samply / Firefox Geck
 python .agents/skills/profile-external/scripts/aggregate_profile.py profile.json --target coptim1
 
 # Ingest profile results directly into the golden benchmark baseline
-python .agents/skills/profile-external/scripts/aggregate_profile.py profile.json --target coptim1 --update-baseline tests/benchmarks/chipset_benchmark_baseline.json
+python .agents/skills/profile-external/scripts/aggregate_profile.py profile.json --target coptim1 --update-baseline baselines/benchmarks/chipset_benchmark_baseline.json
 ```
 
 ---
@@ -140,11 +140,11 @@ The comparison audit verifies overall FPS throughput against golden limits and p
 When an approved hardware optimization is verified and pass rates are preserved, update the committed golden baseline:
 
 ```powershell
-# Record new golden metrics to tests/benchmarks/chipset_benchmark_baseline.json
+# Record new golden metrics to baselines/benchmarks/chipset_benchmark_baseline.json
 cargo run --release -p test_runner -- benchmark-chipset --record --frames 50
 
 # Verify the updated baseline comparison passes
 cargo run --release -p test_runner -- benchmark-chipset --compare
 ```
 
-When a commit is authorized by [git-commits.md](../../rules/git-commits.md), include `tests/benchmarks/chipset_benchmark_baseline.json` in the atomic commit for the optimization task.
+When a commit is authorized by [git-commits.md](../../rules/git-commits.md), include `baselines/benchmarks/chipset_benchmark_baseline.json` in the atomic commit for the optimization task.

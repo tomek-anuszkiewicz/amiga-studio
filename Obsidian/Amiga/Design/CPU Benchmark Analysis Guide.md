@@ -72,7 +72,7 @@ $$T_{\text{host}} = \alpha \times C_{\text{amiga\_cck}} + \beta$$
 
 ## 3. Empirical Analysis: 108-Instruction Thorough Baseline
 
-The following results were captured using the high-precision `--thorough` profile (15 outer passes × 14,285 inner iterations = ~150,000,000 operations per specification) on dedicated P-core hardware (`tests/benchmarks/thorough/m68k_benchmark_epoch_00020706_140107.csv`).
+The following results were captured using the high-precision `--thorough` profile (15 outer passes × 14,285 inner iterations = ~150,000,000 operations per specification) on dedicated P-core hardware (`.agent/tmp/benchmarks/thorough/m68k_benchmark_epoch_00020706_140107.csv`).
 
 ### 3.1 Functional Family Symmetry (16-bit Register ALU)
 
@@ -214,7 +214,7 @@ To confirm that a benchmark run on disk is 100% valid and regression-free:
 
 1. **Direct Reference CSV Comparison ([`test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs)):**
    Run `cargo test -p test_runner --test test_benchmark_csv`.
-   - Compares columns 1..=6 of all 108 rows with `tests/benchmarks/m68k_benchmark_baseline.csv` and checks nominal instruction totals for each profile: Quick 31,500; Standard 6,997,200; Thorough 149,992,500.
+   - Compares columns 1..=6 of all 108 rows with `baselines/benchmarks/m68k_benchmark_baseline.csv` and checks nominal instruction totals for each profile: Quick 31,500; Standard 6,997,200; Thorough 149,992,500.
    - Reports the differing row with expected and actual values. Generated fixtures use `.agent/tmp/benchmark-csv/<profile>/`.
 
 2. **Telemetry Plausibility (Statistical Bounds):**

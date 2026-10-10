@@ -10,6 +10,7 @@ updated: 2026-10-10
 related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)"]
 tracked_paths:
   - "crates/test_runner/src/runner.rs"
+  - "crates/test_runner/src/reporter.rs"
   - "crates/test_runner/src/dma_harness.rs"
 ---
 
@@ -237,7 +238,7 @@ The test harness is implemented in the dedicated workspace crate [`crates/test_r
 - **[`transactions.rs`](../../../crates/test_runner/src/transactions.rs):** Deserializes and parses Tom Harte transaction logs, matching recorded bus transactions (read/write/TAS direction, 24-bit address, size, bus value, FC lines) against physical silicon logs.
 - **[`dma_harness.rs`](../../../crates/test_runner/src/dma_harness.rs):** Synthetic Agnus DMA bus contention runner sweeping single-cycle (`run_dma_contention_sweep`) and multi-cycle burst (`run_dma_burst_contention`) stalls across instruction execution phases, validating State Invariance and Cycle Invariance ($C = C_0 + 2 \times \text{wait\_cycles}$).
 - **[`diagnostic.rs`](../../../crates/test_runner/src/diagnostic.rs):** Human-readable failure reporting, full CCR flag decomposition ($T, S, I, X, N, Z, V, C$), clock/CCK cycle metrics, and transaction diff formatting.
-- **[`reporter.rs`](../../../crates/test_runner/src/reporter.rs):** Persistent results recording in `tests/singlestep/`, differential regression detection, and global summary generation.
+- **[`reporter.rs`](../../../crates/test_runner/src/reporter.rs):** Persistent results recording in `.agent/tmp/singlestep/`, differential regression detection, and global summary generation.
 - **[`benchmark/`](../../../crates/test_runner/src/benchmark/):** Automated per-opcode instruction micro-benchmarking engine, programmatic unrolled block synthesis ($K = 700$), P-core affinity pinning, and anomaly classifier (see [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)).
 
 ### 5.2 CPU State Setup & Execution Flow
@@ -370,14 +371,14 @@ Whenever a test case fails, the runner produces a formatted diagnostic report co
 - **Decomposed CCR Analysis:** Status Register decoded into human-readable flags ($T, S, I, X, N, Z, V, C$) indicating specifically which flags are unexpectedly SET or CLEARED.
 - **Register & Memory Diffs:** Detailed expected vs actual values with decimal offsets for registers ($D_0-D_7, A_0-A_7, PC$) and RAM byte addresses.
 
-### 10.2 Differential Regression Tracker (`tests/singlestep/`)
-Test outcomes are persisted across runs in the `tests/singlestep/` workspace directory:
-- `tests/singlestep/latest/<suite>.json`: Full test results and failing test names from the most recent run.
-- `tests/singlestep/previous/<suite>.json`: Prior run snapshot rotated upon execution.
-- `tests/singlestep/summary.json`: Aggregated repository coverage matrix with pass rates and active failure cases.
+### 10.2 Differential Regression Tracker (`.agent/tmp/singlestep/`)
+Test outcomes are persisted across runs in the `.agent/tmp/singlestep/` workspace directory:
+- `.agent/tmp/singlestep/latest/<suite>.json`: Full test results and failing test names from the most recent run.
+- `.agent/tmp/singlestep/previous/<suite>.json`: Prior run snapshot rotated upon execution.
+- `.agent/tmp/singlestep/summary.json`: Aggregated repository coverage matrix with pass rates and active failure cases.
 
 #### Regression & Improvement Detection:
-- 🔴 **Regressions:** Tests that previously passed in `tests/singlestep/previous/` but failed in the current run are immediately flagged with `⚠️ [REGRESSION DETECTED]` in the terminal.
+- 🔴 **Regressions:** Tests that previously passed in `.agent/tmp/singlestep/previous/` but failed in the current run are immediately flagged with `⚠️ [REGRESSION DETECTED]` in the terminal.
 - 🟢 **Improvements:** Tests that previously failed but now pass are flagged with `🎉 [PROGRESS / FIX]`.
 
 ### 10.3 CLI Inspection Tool

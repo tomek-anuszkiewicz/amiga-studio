@@ -2508,3 +2508,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS 267 local documentation links and git diff --check
   - Graphify code graph refreshed
   - Full SingleStep and Cartesian DMA were not selected because no emulator source changed
+---
+
+### [2026-10-10 15:48 CEST] — Organize verification assets and tool contract tests
+- **Affected Subsystems**:
+  - `test_runner`
+  - `debugger tests`
+  - `verification tooling`
+  - `bootstrap and RAG MCP contracts`
+  - `agent skills`
+- **What Was Changed (The Concrete Reality)**:
+  - Move tracked benchmark baselines to baselines/benchmarks and debugger examples to examples/m68k
+  - Move local benchmark reports and SingleStep snapshots into ignored .agent/tmp directories and update worktree copying
+  - Move six Python contract files beside their owning tools and discover four suites independently from verify.py
+  - Remove the redundant silicon vector prerequisite and the worktree source assertion test
+  - Move the frontmatter parser into its sole consumer audit_vault.py
+  - Update documentation links and tracked path ownership without changing baseline content
+- **Architectural Rationale & Trade-Offs**:
+  - Separate executable tests from examples and reference data while keeping local results outside authored source
+  - Keep contract tests beside their tools and preserve the existing verification entry point
+  - Retain existing benchmark files without overwriting newer local results
+- **Verification & Test Results**:
+  - PASS commit verification before the final documentation review including all four Python contract suites and full SingleStepTests
+  - PASS discovery of all 74 retained Python test methods
+  - PASS final vault audit across 42 specifications and 1048 links
+  - PASS byte preservation during relocation of 266 files and unchanged tracked baseline content
+  - PASS worktree script syntax validation
+  - Milestone verification and Cartesian DMA were not run for this organization change

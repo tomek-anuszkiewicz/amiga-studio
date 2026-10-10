@@ -30,6 +30,19 @@ python tests/verify.py --milestone
 
 Routine commits use only the first command. The profiles are invoked separately. Commit first runs ordinary workspace crate tests with coverage, reports the measured coverage, then runs quality gates, standard `test_runner` suites and Python tool contracts without coverage instrumentation. Only Cartesian DMA and full SingleStepTests are conditional on staged, unstaged and nonignored new paths. Every commit scans all repository-owned text files against the English dictionary and reviewed project vocabulary, regardless of staging or changes, using `tests/checks/check_english.json`. Milestone runs the same full language audit. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification. It does not run commit checks or automatically select DMA/SingleStep.
 
+Python tool contracts live beside their owning tools. Commit verification runs
+`unittest discover` separately for each directory below; the tools do not run
+these tests during normal operation. Run a focused suite from the repository root
+with `python -m unittest discover -s <directory> -v`, optionally adding
+`-p <test_file.py>` to select one file.
+
+| Directory | Coverage |
+| --- | --- |
+| [`tools/bootstrap/tests`](../tools/bootstrap/tests/) | Bootstrap and Qdrant provisioning command contracts |
+| [`tools/bootstrap/conversion/tests`](../tools/bootstrap/conversion/tests/) | Shared client, transport, cache and PDF/HTML publication contracts |
+| [`tools/bootstrap/pdf-to-markdown/tests`](../tools/bootstrap/pdf-to-markdown/tests/) | PDF stage validation, artifacts, restart and resume contracts |
+| [`tools/amiga-rag-mcp-server/tests`](../tools/amiga-rag-mcp-server/tests/) | RAG CLI adapter contracts and real Codex MCP discovery |
+
 The code-quality auditor accepts no arguments and always checks dead code,
 visibility and accessor conventions across the workspace. Commit verification
 runs it once; milestone verification does not repeat it. Every finding returns
@@ -65,7 +78,7 @@ python tests/verify.py --commit --verify-dma --verify-singlestep --plan
 
 With no completion profile, `--verify-dma` runs only Cartesian DMA and `--verify-singlestep` runs only full SingleStepTests. Standalone sets use the current working tree, require no staging, and run no quality gates, ordinary crate tests, or Python contracts. With `--commit` or `--milestone`, the switches add their sets to that profile. Each selected suite runs once, even when changes also select it. Standalone runs do not replace completion verification. Add `--plan` to inspect commands without executing checks. There are no hooks. Unknown arguments are rejected.
 
-The verifier includes formatting, Clippy, architecture rules, and per-commit hardware/code audits. Ordinary-crate coverage measures executed code; there is no public-function name-matching gate. All profiles accept clean trees, unstaged changes and new files. Change selection includes both endpoints of renames. Completion evidence must match the final committed source; rerun verification if that source changes. All profiles reject results if the source or index changes during execution. Ignored diagnostics belong in `.agent/tmp/`. The verifier does not stage or commit files. It only selects external commands, launches them and aggregates exit codes; source/index stability is an orchestration guard. Quality commands are declared in `tests/verify.py`. `tests/checks/check_silicon_vectors.py` checks the external vector prerequisite before CPU suites. During execution, `[RUN]` identifies the active check and `[CMD]` prints its exact command immediately before launching it; explicit environment overrides appear as `[ENV]`. Full child output is saved in a unique log under `.agent/tmp/verify/`. `--log-level full|warn|error` controls child output: `full` streams everything, `warn` (default) shows warnings and errors, and `error` shows only errors. Filtered modes include up to 12 indented diagnostic context lines, limited to 300 characters per line. Commands and final results remain visible in every mode. If a failed command emits no recognized error marker, its last 12 log lines are shown as failure context; failed commands also show the full log path before the final FAIL result. There is no initial test-command preview. `--plan` starts with an explicit preview-only message and does not launch commands.
+The verifier includes formatting, Clippy, architecture rules, and per-commit hardware/code audits. Ordinary-crate coverage measures executed code; there is no public-function name-matching gate. All profiles accept clean trees, unstaged changes and new files. Change selection includes both endpoints of renames. Completion evidence must match the final committed source; rerun verification if that source changes. All profiles reject results if the source or index changes during execution. Ignored diagnostics belong in `.agent/tmp/`. The verifier does not stage or commit files. It only selects external commands, launches them and aggregates exit codes; source/index stability is an orchestration guard. Quality commands are declared in `tests/verify.py`. During execution, `[RUN]` identifies the active check and `[CMD]` prints its exact command immediately before launching it; explicit environment overrides appear as `[ENV]`. Full child output is saved in a unique log under `.agent/tmp/verify/`. `--log-level full|warn|error` controls child output: `full` streams everything, `warn` (default) shows warnings and errors, and `error` shows only errors. Filtered modes include up to 12 indented diagnostic context lines, limited to 300 characters per line. Commands and final results remain visible in every mode. If a failed command emits no recognized error marker, its last 12 log lines are shown as failure context; failed commands also show the full log path before the final FAIL result. There is no initial test-command preview. `--plan` starts with an explicit preview-only message and does not launch commands.
 
 Focused development diagnostics also use `verify.py`:
 
@@ -78,8 +91,7 @@ python tests/verify.py --all --plan
 
 `--unit` runs the former isolated-crate tier and golden-row fixtures;
 `--integration` runs memory_bus, machine_loop, debugger and GUI tests;
-`--harness` runs architecture, benchmark smoke and Cartesian DMA, including
-silicon-vector prerequisites. `--all` retains the former tier runner's meaning:
+`--harness` runs architecture, benchmark smoke and Cartesian DMA. `--all` retains the former tier runner's meaning:
 unit + integration, without harness or full SingleStepTests. Diagnostic selectors
 may be combined with each other and explicit CPU selectors; each CPU suite runs
 once. They run without coverage or completion gates and must be invoked separately
@@ -200,7 +212,7 @@ For interactive pair-programming sessions with the AI Agent in the IDE chat, thr
 
 | Skill | Role in Verification Lifecycle | When to Trigger |
 | :--- | :--- | :--- |
-| [`$test-runner`](../.agents/skills/test-runner/SKILL.md) | **Execution & Telemetry Engine** | Run tests across tiers, update snapshots in `tests/singlestep/`, and report red/green regression diffs. |
+| [`$test-runner`](../.agents/skills/test-runner/SKILL.md) | **Execution & Telemetry Engine** | Run tests across tiers, update snapshots in `.agent/tmp/singlestep/`, and report red/green regression diffs. |
 | [`$integration-test-sprint`](../.agents/skills/integration-test-sprint/SKILL.md) | **Cascading Verification Protocol** | Drive multi-chip test sweeps (integration and hardware-capture scenarios), filter non-runnable tests, and cluster failures with a 2–3 attempt cap. |
 | [`$synthesize-test-fixes`](../.agents/skills/synthesize-test-fixes/SKILL.md) | **Root-Cause Consolidation** | Audit recent commits or git diff, construct the 3-column diagnostic matrix (`[Symptom] \| [Location] \| [Mechanism]`), find the shared hardware law (common denominator), and strip local ad-hoc patches. |
 

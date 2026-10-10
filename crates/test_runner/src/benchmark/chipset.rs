@@ -79,10 +79,10 @@ impl Default for ChipsetBenchmarkBaseline {
     }
 }
 
-/// Resolves the golden chipset baseline path in `tests/benchmarks/`
+/// Resolves the golden chipset baseline path in `baselines/benchmarks/`
 pub fn resolve_chipset_baseline_path(repo_root: &Path) -> PathBuf {
     repo_root
-        .join("tests")
+        .join("baselines")
         .join("benchmarks")
         .join(CHIPSET_BASELINE_FILENAME)
 }

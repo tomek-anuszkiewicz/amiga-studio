@@ -73,7 +73,7 @@ pub fn resolve_benchmarks_dir() -> PathBuf {
 
 /// Resolves tracked reference artifacts independently of generated reports.
 pub(crate) fn resolve_benchmark_reference_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/benchmarks")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../baselines/benchmarks")
 }
 
 impl Default for BenchmarkConfig {

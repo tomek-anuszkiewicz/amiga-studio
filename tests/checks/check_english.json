@@ -16,10 +16,6 @@
     "ref_src",
     "Obsidian/Amiga/Reference",
     "tools/AmigaTestKit",
-    "tests/benchmarks/quick",
-    "tests/benchmarks/standard",
-    "tests/benchmarks/thorough",
-    "tests/singlestep",
     "tools/blep_generator/output"
   ],
   "excluded_files": [
@@ -86,11 +82,11 @@
       "zelur",
       "agima"
     ],
-    "tests/bin/README.md": [
+    "examples/m68k/README.md": [
       "zelur",
       "agima"
     ],
-    "tests/bin/string_reverse.asm": [
+    "examples/m68k/string_reverse.asm": [
       "zelur",
       "agima"
     ],

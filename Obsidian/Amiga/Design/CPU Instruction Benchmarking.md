@@ -463,7 +463,7 @@ flowchart TD
 ### 7.3 Automated Historical Regression Diffing (`bench_diff`)
 
 To make benchmark data immediately actionable across development cycles:
-- **Baseline Comparison:** The test runner automatically looks for `tests/benchmarks/m68k_benchmark_baseline.json`. If present, it computes the delta percentage for each instruction variant:
+- **Baseline Comparison:** The test runner automatically looks for `baselines/benchmarks/m68k_benchmark_baseline.json`. If present, it computes the delta percentage for each instruction variant:
   $$\Delta \% = \frac{T_{\text{new}} - T_{\text{baseline}}}{T_{\text{baseline}}} \times 100\%$$
 - **Regression Alert Thresholds:**
   - **$\Delta \le +3.0\%$:** Normal variance / noise tolerance.
@@ -494,7 +494,7 @@ Select an execution profile via `--quick`, `--standard`, or `--thorough`:
 Tracked references and generated artifacts use separate directories:
 
 ```text
-tests/benchmarks/                         # Git-tracked references
+baselines/benchmarks/                         # Git-tracked references
     m68k_benchmark_baseline.json
     m68k_benchmark_baseline.csv
 .agent/tmp/benchmarks/                    # Ignored CLI output
@@ -509,7 +509,7 @@ Benchmark runs and tests write generated artifacts into ignored directories. Tra
 ### 8.3 Automated Baseline Diffing & Cross-Hardware Normalization
 
 The test runner features **built-in zero-configuration differential regression detection**:
-1. **Automatic Detection:** On every benchmark run, the harness automatically checks whether `tests/benchmarks/m68k_benchmark_baseline.json` exists.
+1. **Automatic Detection:** On every benchmark run, the harness automatically checks whether `baselines/benchmarks/m68k_benchmark_baseline.json` exists.
 2. **Cross-Hardware Normalization:** When running on a different CPU architecture (e.g. AMD Ryzen, Apple Silicon, CI) or when baseline NOP duration diverges by $> 15\%$ from the host's measured NOP latency, the runner automatically normalizes execution durations relative to `BASE-00` (`NOP`):
    $$R_{\text{nop}} = \frac{T_{\text{host}}(\text{Op})}{T_{\text{host}}(\text{NOP})}$$
    $$\Delta\% = \frac{R_{\text{nop, current}} - R_{\text{nop, baseline}}}{R_{\text{nop, baseline}}} \times 100\%$$
@@ -521,8 +521,8 @@ The test runner features **built-in zero-configuration differential regression d
 4. **Promoting / Updating the Baseline:**
    To establish or update the golden baseline after intentional, verified optimizations:
    ```powershell
-   Copy-Item .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.json tests/benchmarks/m68k_benchmark_baseline.json
-   Copy-Item .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.csv tests/benchmarks/m68k_benchmark_baseline.csv
+   Copy-Item .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.json baselines/benchmarks/m68k_benchmark_baseline.json
+   Copy-Item .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.csv baselines/benchmarks/m68k_benchmark_baseline.csv
    ```
 
 ### 8.4 Command Cheat-Sheet & Comprehensive CLI Reference
@@ -574,7 +574,7 @@ cargo run -p test_runner --release -- bench --quick --filter "arith_mul|arith_di
 cargo run -p test_runner --release -- bench --thorough --filter "move_"
 
 # 6. Custom tuning: 10 passes with unroll block factor K = 500 into custom directory:
-cargo run -p test_runner --release -- bench --passes 10 --unroll 500 --out-dir tests/benchmarks/custom
+cargo run -p test_runner --release -- bench --passes 10 --unroll 500 --out-dir .agent/tmp/benchmarks/custom
 
 # 7. Unpinned profiling (for virtual machines or heterogeneous host schedulers):
 cargo run -p test_runner --release -- bench --quick --no-pin
@@ -665,7 +665,7 @@ All 108 benchmark specifications within a given profile have identical nominal `
 
 ### 10.3 Direct Reference CSV Comparison
 
-[`test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs) reads the tracked `tests/benchmarks/m68k_benchmark_baseline.csv` and compares all 108 rows directly. Columns 1..=6 cover mnemonic, variant, addressing mode, category, opcode, and expected cycle count. Profile checks additionally compare nominal instruction totals: Quick 31,500; Standard 6,997,200; Thorough 149,992,500. Host timing measurements are validated separately because they vary between runs.
+[`test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs) reads the tracked `baselines/benchmarks/m68k_benchmark_baseline.csv` and compares all 108 rows directly. Columns 1..=6 cover mnemonic, variant, addressing mode, category, opcode, and expected cycle count. Profile checks additionally compare nominal instruction totals: Quick 31,500; Standard 6,997,200; Thorough 149,992,500. Host timing measurements are validated separately because they vary between runs.
 
 ### 10.4 Row-by-Row Diagnostics
 

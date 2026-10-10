@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 SERVER_ROOT = REPOSITORY_ROOT / "tools" / "amiga-rag-mcp-server"
 sys.path.insert(0, str(SERVER_ROOT))
 

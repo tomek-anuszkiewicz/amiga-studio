@@ -11,9 +11,9 @@ fn test_all_sample_binaries_execution_and_generation() {
         .unwrap()
         .parent()
         .unwrap()
-        .join("tests")
-        .join("bin");
-    fs::create_dir_all(&out_dir).expect("Failed to create tests/bin dir");
+        .join("examples")
+        .join("m68k");
+    fs::create_dir_all(&out_dir).expect("Failed to create examples/m68k dir");
 
     // =========================================================================
     // 1. Fibonacci Sequence ($001000)

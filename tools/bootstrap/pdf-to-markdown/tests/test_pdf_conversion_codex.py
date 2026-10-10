@@ -11,14 +11,14 @@ import pymupdf
 from unittest.mock import patch
 from types import SimpleNamespace
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools/bootstrap"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools/bootstrap"))
 from conversion import load_config
 from conversion.config import PDF_STAGES
 from conversion.lineage import complete_stage, validate_prefix, restore_shared, stage_identity, file_hash, artifact_predecessor
 from conversion.pdf_geometry import text_blocks
 from conversion.pdf_page_conversion import validate_page
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[4]
 
 
 class PdfReviewContinuationTests(unittest.TestCase):

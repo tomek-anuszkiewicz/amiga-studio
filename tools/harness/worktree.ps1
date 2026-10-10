@@ -55,10 +55,8 @@ function Get-IgnoredAssetDirectoryDefinitions {
         "ref_src",
         "Obsidian/Amiga/Reference",
         "tools/AmigaTestKit",
-        "tests/singlestep",
-        "tests/benchmarks/quick",
-        "tests/benchmarks/standard",
-        "tests/benchmarks/thorough",
+        ".agent/tmp/singlestep",
+        ".agent/tmp/benchmarks",
         "graphify-out"
     )
 }

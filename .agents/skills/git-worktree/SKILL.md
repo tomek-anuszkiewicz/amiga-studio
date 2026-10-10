@@ -31,7 +31,7 @@ Activate this skill whenever:
      - `ref_src/` (CPU test vectors and reference emulators)
      - `Obsidian/Amiga/Reference/` (Commodore hardware manuals)
      - `tools/AmigaTestKit/` (test floppy ADFs)
-     - `tests/singlestep/` & `tests/benchmarks/` (test baseline outputs)
+     - `.agent/tmp/singlestep/` & `.agent/tmp/benchmarks/` (local execution snapshots and benchmark outputs)
      - `.env` (environment configuration, `RAG_CACHE_FILE`)
    - **Local Knowledge Graphs:** Physically copy `graphify-out/` into each new worktree as a fast initial graph seed. Never link or share it. Immediately run `graphify update .` in the target worktree so the copied graph reflects that checkout.
    - **Mandatory Script Use:** Always use `.\tools\harness\worktree.ps1` to create and tear down worktrees. The script automatically executes multi-threaded physical copying of necessary test assets into standalone directories.

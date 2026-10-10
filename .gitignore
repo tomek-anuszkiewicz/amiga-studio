@@ -34,16 +34,6 @@ __pycache__/
 # prevent concurrent Cargo compiler locks.
 target/
 
-# ------------------------------------------------------------------------------
-# 6. Local Test & Benchmark Execution Outputs (Regenerated on test runs)
-# ------------------------------------------------------------------------------
-# Run artifacts and CSV results produced by local benchmark
-# and SingleStep test harness invocations.
-tests/benchmarks/quick/
-tests/benchmarks/standard/
-tests/benchmarks/thorough/
-tests/singlestep/
-
 # ==============================================================================
 # 7. PRESERVED EXTERNAL ASSETS & REFERENCE DATA (CRITICAL - DO NOT PURGE / DELETE!)
 # ==============================================================================

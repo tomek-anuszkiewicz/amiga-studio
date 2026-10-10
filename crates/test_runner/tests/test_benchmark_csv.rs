@@ -8,7 +8,7 @@ use test_runner::benchmark::{
     all_benchmark_specs, run_benchmark_suite, BenchmarkConfig, BenchmarkProfile,
 };
 
-/// Locates repository root for accessing `tests/benchmarks/` on disk
+/// Locates repository root for accessing `baselines/benchmarks/` on disk
 fn find_repo_root() -> Option<PathBuf> {
     let mut dir = std::env::current_dir().ok()?;
     while !dir.join("ROADMAP.md").exists() {
@@ -73,7 +73,7 @@ fn synthesize_catalog_structure_lines() -> Vec<String> {
 /// Reads deterministic catalog fields from the tracked baseline without modifying it.
 fn reference_catalog_lines() -> Vec<String> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let content = fs::read_to_string(root.join("tests/benchmarks/m68k_benchmark_baseline.csv"))
+    let content = fs::read_to_string(root.join("baselines/benchmarks/m68k_benchmark_baseline.csv"))
         .expect("Failed to read reference CSV");
     let rows: Vec<_> = content
         .lines()
@@ -494,7 +494,7 @@ fn test_disk_benchmark_baseline_csv() {
         None => return,
     };
 
-    let baseline_path = repo_root.join("tests/benchmarks/m68k_benchmark_baseline.csv");
+    let baseline_path = repo_root.join("baselines/benchmarks/m68k_benchmark_baseline.csv");
     if !baseline_path.exists() {
         return;
     }

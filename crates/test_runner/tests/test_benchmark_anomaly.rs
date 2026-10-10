@@ -12,7 +12,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Locates repository root for accessing `tests/benchmarks/` and `tools/` on disk
+/// Locates repository root for accessing `baselines/benchmarks/` and `tools/` on disk
 fn find_repo_root() -> Option<PathBuf> {
     let mut dir = std::env::current_dir().ok()?;
     while !dir.join("ROADMAP.md").exists() {
@@ -25,7 +25,7 @@ fn find_repo_root() -> Option<PathBuf> {
 
 /// Resolves the thorough CSV dataset path (`m68k_benchmark_baseline.csv`, `m68k_benchmark_latest.csv`, or `m68k_benchmark.csv`)
 fn find_thorough_csv(repo_root: &Path) -> Option<PathBuf> {
-    let baseline = repo_root.join("tests/benchmarks/m68k_benchmark_baseline.csv");
+    let baseline = repo_root.join("baselines/benchmarks/m68k_benchmark_baseline.csv");
     if baseline.exists() {
         return Some(baseline);
     }

@@ -12,8 +12,8 @@ fn test_and_trace_all_sample_binaries() {
         .unwrap()
         .parent()
         .unwrap()
-        .join("tests")
-        .join("bin");
+        .join("examples")
+        .join("m68k");
 
     // 1. Fibonacci
     trace_program(

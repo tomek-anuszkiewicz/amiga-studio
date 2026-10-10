@@ -10,14 +10,14 @@ All programs are **100% pure CPU execution**: they require no Amiga OS, Kickstar
 
 ### In the Desktop / Web GUI:
 1. Click **"Load Binary"** (or press the Binary injection button in the toolbar).
-2. Select any `.bin` file from this folder (`tests/bin/*.bin`).
+2. Select any `.bin` file from this folder (`examples/m68k/*.bin`).
 3. Set the injection target address to `$001000` (default) and ensure **"Reset PC to injection address"** is checked.
 4. Click **"Inject & Reset PC"**.
 5. Step through instructions with **F7** (Step Instruction), Color Clock phases with **F8** (Step CCK), or run with **F5**.
 
 ### Command-Line Launch:
 ```powershell
-cargo run -p gui -- --load tests/bin/fibonacci.bin
+cargo run -p gui -- --load examples/m68k/fibonacci.bin
 ```
 
 ---
