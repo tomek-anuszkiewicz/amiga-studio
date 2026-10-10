@@ -2465,3 +2465,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Full SingleStepTests passed 127/127 and Cartesian DMA passed 20/20
   - Vault link and frontmatter audit passed
   - Commit verification remains failing solely on the pre-existing test_validated_pdf_resume_publishes_workspace_output Python contract
+---
+
+### [2026-10-10 13:23 CEST] — Align PDF publication resume fixture with completed stages
+- **Affected Subsystems**:
+  - `tests/test_conversion_publish.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Populate the simulated resume state with completion records for every registered PDF stage
+  - Preserve the full-prefix validation assertion and add a merge note to discard this local adjustment in favor of the converter development branch
+- **Architectural Rationale & Trade-Offs**:
+  - The fixture mocked all stages as complete while retaining only Stage 00 in state
+  - Keep this correction limited to the test because the separate branch owns the evolving lineage and resume contracts
+- **Verification & Test Results**:
+  - Publication tests passed 10/10
+  - python tests/verify.py --commit passed all selected checks including ordinary Rust and benchmark tests plus Python tool contracts
+  - No CPU or DMA implementation changed and dedicated silicon suites were not selected for this fixture-only change
