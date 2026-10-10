@@ -1,7 +1,7 @@
 //! Platform Abstraction Layer: HostEnvironment & P-Core Pinning
 //!
 //! Provides dynamic hardware topology discovery, Performance Core (P-core) detection,
-//! thread affinity pinning, and process priority elevation per Obsidian/Amiga/Design/CPU Instruction Benchmarking.md.
+//! thread affinity pinning, and process priority elevation per Obsidian/Amiga/Design/Performance/CPU Instruction Benchmarking.md.
 //! Compiles with zero overhead and graceful no-op fallbacks on WebAssembly (wasm32-unknown-unknown).
 
 #[derive(Debug, Clone)]

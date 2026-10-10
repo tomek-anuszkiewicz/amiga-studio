@@ -7,14 +7,14 @@ subsystem: "audio"
 status: "active"
 created: 2026-09-19
 updated: 2026-09-19
-related: ["[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[CIA.md](CIA.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
+related: ["[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[CIA.md](CIA.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/audio"
 ---
 # Paula 4-Channel DMA Audio Architecture & Hardware Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Machine Loop.md](Machine%20Loop.md).
 > Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
 > Central interrupt multiplexing and UART handling are governed by [Paula.md](Paula.md). Agnus DMA time slot scheduling is detailed in [DMA.md](DMA.md), and LED low-pass filter switching is controlled by [CIA.md](CIA.md).
 

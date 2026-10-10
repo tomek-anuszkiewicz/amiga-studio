@@ -2,7 +2,7 @@
 //!
 //! Provides cycle-exact instruction micro-benchmarking, automated program synthesis (K = 700 ops),
 //! P-core affinity pinning, multi-pass statistical noise filtering, and anomaly detection
-//! per Obsidian/Amiga/Design/CPU Instruction Benchmarking.md.
+//! per Obsidian/Amiga/Design/Performance/CPU Instruction Benchmarking.md.
 
 pub mod anomaly;
 pub mod builder;

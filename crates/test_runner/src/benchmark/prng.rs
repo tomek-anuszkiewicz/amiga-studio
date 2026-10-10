@@ -1,7 +1,7 @@
 //! Deterministic Pseudo-Random Number Generator (PRNG) & Domain Clamping for M68000 Benchmarking
 //!
 //! Provides a fast, deterministic 64-bit PRNG (XorShift64) to ensure varied, non-zero operand
-//! distributions and prevent host CPU ALU/branch shortcuts, per Obsidian/Amiga/Design/CPU Instruction Benchmarking.md.
+//! distributions and prevent host CPU ALU/branch shortcuts, per Obsidian/Amiga/Design/Performance/CPU Instruction Benchmarking.md.
 
 /// Canonical seed for reproducible benchmark execution across runs and host architectures
 pub const BENCH_PRNG_SEED: u64 = 0x8547_5938_4721_9381;

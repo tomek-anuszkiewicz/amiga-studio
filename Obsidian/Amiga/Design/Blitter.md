@@ -7,14 +7,14 @@ subsystem: "blitter"
 status: "active"
 created: 2026-09-19
 updated: 2026-09-19
-related: ["[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Copper.md](Copper.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Paula.md](Paula.md)"]
+related: ["[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Copper.md](Copper.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/blitter"
 ---
 # Blitter (Bit-Block Transferrer) Architecture & Hardware Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Machine Loop.md](Machine%20Loop.md).
 > Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
 > Master DMA slot scheduling and Blitter Nasty arbitration are documented in [DMA.md](DMA.md). Master Agnus coordination is detailed in [Agnus.md](Agnus.md), and Blitter completion interrupts are routed to [Paula.md](Paula.md).
 

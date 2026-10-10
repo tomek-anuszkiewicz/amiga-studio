@@ -5,7 +5,7 @@ description: Execute the 4-iteration cascading verification protocol and post-di
 
 # Recipe: Integration Test Sprint & Anti-Patchwork Protocol
 
-This skill guides the systematic execution, triage, and convergence of multi-chip integration test suites (Tier 2 `machine_loop` tests and Tier 4 `vAmigaTS` system captures) following the **4-Iteration Cascading Verification Protocol** and the **Post-Discovery Architecture Cleanup ("Anti-Patchwork" Protocol)** defined in [`Testing Strategy and Quality Assurance.md`](../../../Obsidian/Amiga/Design/Testing%20Strategy%20and%20Quality%20Assurance.md).
+This skill guides the systematic execution, triage, and convergence of multi-chip integration test suites (Tier 2 `machine_loop` tests and Tier 4 `vAmigaTS` system captures) following the **4-Iteration Cascading Verification Protocol** and the **Post-Discovery Architecture Cleanup ("Anti-Patchwork" Protocol)** defined in [`Testing Strategy and Quality Assurance.md`](../../../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md).
 
 ---
 

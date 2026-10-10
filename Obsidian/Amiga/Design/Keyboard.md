@@ -7,7 +7,7 @@ subsystem: "cia"
 status: "active"
 created: 2026-09-02
 updated: 2026-10-10
-related: ["[CIA.md](CIA.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[GUI.md](GUI.md)", "[General Architecture.md](General%20Architecture.md)"]
+related: ["[CIA.md](CIA.md)", "[Machine Loop.md](Machine%20Loop.md)", "[GUI.md](Application/GUI.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/keyboard"
 ---
@@ -16,7 +16,7 @@ tracked_paths:
 This document specifies the keyboard microcontroller hardware, serial transmission protocol, scancode matrix, warm reset mechanics (`Ctrl-Amiga-Amiga`), and cross-platform host keyboard abstraction for the Amiga 500 emulator.
 
 > [!NOTE]
-> For top-level machine coordination and reset sequences, see [Main loop A500.md](Main%20loop%20A500.md) and [General Architecture.md](General%20Architecture.md). For CIA-A register mapping, see [CIA.md](CIA.md). For host frontend keyboard routing, see [GUI.md](GUI.md).
+> For top-level machine coordination and reset sequences, see [Machine Loop.md](Machine%20Loop.md) and [General Architecture.md](General%20Architecture.md). For CIA-A register mapping, see [CIA.md](CIA.md). For host frontend keyboard routing, see [GUI.md](Application/GUI.md).
 
 ---
 
@@ -145,7 +145,7 @@ sequenceDiagram
 3. **Hard Line Pull:** The microcontroller asserts the motherboard `_RESET` pin low for at least **500 ms**, ensuring all custom chips and the CPU are fully held in reset.
 4. **Kickstart Warm Boot:**
    - On release, the CPU loads initial SSP and PC from `$000000`/`$000004` (overlaid by Kickstart ROM).
-   - Because RAM was not erased, Kickstart verifies the memory checksums (`KickTagPtr`), detects a warm reset, preserves resident modules, and restarts without a cold memory test (see [Main loop A500.md](Main%20loop%20A500.md)).
+   - Because RAM was not erased, Kickstart verifies the memory checksums (`KickTagPtr`), detects a warm reset, preserves resident modules, and restarts without a cold memory test (see [Machine Loop.md](Machine%20Loop.md)).
 
 ---
 

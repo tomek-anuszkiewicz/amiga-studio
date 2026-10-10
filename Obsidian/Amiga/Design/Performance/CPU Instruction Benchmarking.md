@@ -7,7 +7,7 @@ subsystem: "m68000"
 status: "active"
 created: 2026-09-10
 updated: 2026-10-10
-related: ["[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
+related: ["[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)"]
 tracked_paths:
   - "crates/test_runner/Cargo.toml"
   - "crates/test_runner/src/main.rs"
@@ -17,10 +17,10 @@ tracked_paths:
 
 # M68000 Instruction Benchmarking Architecture & Anomaly Detection
 
-- **Parent Specification:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)
+- **Parent Specification:** [CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)
 - **Module Location:** `crates/test_runner/src/benchmark/`
 - **Companion Specifications:** [CPU Instruction Benchmark Catalog](CPU%20Instruction%20Benchmark%20Catalog.md) | [CPU Instruction Benchmark Strategies](CPU%20Instruction%20Benchmark%20Strategies.md) | [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md)
-- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../../AGENTS.md).
 
 > [!NOTE]
 > This document defines the architectural specification and execution model for the programmatic M68000 instruction benchmarking subsystem.
@@ -31,7 +31,7 @@ tracked_paths:
 
 ## 1. Benchmarking Goals & Architecture Overview
 
-The Amiga 500 emulator is a cycle-exact, micro-stepped simulation. While functional correctness is validated against over 1 million test vectors via [SingleStepTests](CPU%20SingleStepTests.md) and [Cartesian DMA Contention](CPU%20Motorola%20M68000.md#6-dma-contention--wait-states), raw correctness does not guarantee optimal host CPU performance or absence of micro-architectural stalls.
+The Amiga 500 emulator is a cycle-exact, micro-stepped simulation. While functional correctness is validated against over 1 million test vectors via [SingleStepTests](../Verification/CPU%20SingleStepTests.md) and [Cartesian DMA Contention](../CPU%20Motorola%20M68000.md#6-dma-contention--wait-states), raw correctness does not guarantee optimal host CPU performance or absence of micro-architectural stalls.
 
 The **M68000 Instruction Benchmarking Subsystem** exists to:
 1. **Detect Host Execution Anomalies:** Uncover unexpected execution latency spikes where instructions with identical or lower Amiga cycle counts consume disproportionately more host CPU time due to branch mispredictions, poor code alignment, cold path cache pollution, or missed inlining.
@@ -301,8 +301,8 @@ flowchart TD
 ```
 
 #### 1. Decoupled Platform Abstraction (`HostEnvironment`)
-The benchmark harness defines a lightweight platform abstraction with zero runtime overhead in [`crates/test_runner/src/benchmark/platform.rs`](../../../crates/test_runner/src/benchmark/platform.rs):
-- **Struct [`HostEnvironment`](../../../crates/test_runner/src/benchmark/platform.rs):** Encapsulates `platform_name`, `p_core_detected`, `p_core_id`, and `affinity_supported`.
+The benchmark harness defines a lightweight platform abstraction with zero runtime overhead in [`crates/test_runner/src/benchmark/platform.rs`](../../../../crates/test_runner/src/benchmark/platform.rs):
+- **Struct [`HostEnvironment`](../../../../crates/test_runner/src/benchmark/platform.rs):** Encapsulates `platform_name`, `p_core_detected`, `p_core_id`, and `affinity_supported`.
 - **`HostEnvironment::detect()`:** Discovers host topology dynamically on startup without hardcoding.
 - **`HostEnvironment::pin_to_p_core()`:** Pins the worker thread to the resolved P-core with high priority class; compiles to a clean no-op on WebAssembly.
 
@@ -600,18 +600,18 @@ All components specified in this document are implemented without macros or cons
 
 | Subsystem Component | Living Rust Source File | Responsibilities |
 | :--- | :--- | :--- |
-| **Benchmark Runner** | [`crates/test_runner/src/benchmark/runner.rs`](../../../crates/test_runner/src/benchmark/runner.rs) | Dual-loop runner, baseline calibration, black_box compiler defense, and hard cycle cap timeout. |
-| **Catalog Specifications** | [`crates/test_runner/src/benchmark/catalog.rs`](../../../crates/test_runner/src/benchmark/catalog.rs)<br/>[`catalog_data_a.rs`](../../../crates/test_runner/src/benchmark/catalog_data_a.rs)<br/>[`catalog_data_b.rs`](../../../crates/test_runner/src/benchmark/catalog_data_b.rs) | Exhaustive static catalog of ~80 benchmark specifications covering Categories 0–8. |
-| **Programmatic Builder** | [`crates/test_runner/src/benchmark/builder.rs`](../../../crates/test_runner/src/benchmark/builder.rs) | Synthesizes unrolled instruction blocks ($K = 700$), cascading return stacks, and Chip RAM buffers. |
-| **Platform Abstraction** | [`crates/test_runner/src/benchmark/platform.rs`](../../../crates/test_runner/src/benchmark/platform.rs) | Windows P-core topology discovery, affinity pinning (`SetThreadAffinityMask`), priority elevation, WASM fallback. |
-| **Deterministic PRNG** | [`crates/test_runner/src/benchmark/prng.rs`](../../../crates/test_runner/src/benchmark/prng.rs) | `XorShift64` PRNG seeded with `BENCH_PRNG_SEED`, valid BCD generator, aligned address helpers. |
-| **Statistical Analysis** | [`crates/test_runner/src/benchmark/stats.rs`](../../../crates/test_runner/src/benchmark/stats.rs) | Multi-pass statistical sampling, Tukey's fences outlier rejection, jitter analysis ($\text{CV} < 3\%$), MIPS calculation. |
-| **Anomaly Classifier** | [`crates/test_runner/src/benchmark/anomaly.rs`](../../../crates/test_runner/src/benchmark/anomaly.rs) | Evaluates Type A, Type B, Type C, and `ExecutionTimeoutOrInfiniteLoop` anomalies; diffs against baseline. |
-| **Persistence Engine** | [`crates/test_runner/src/benchmark/persistence.rs`](../../../crates/test_runner/src/benchmark/persistence.rs) | Formats and saves version-controlled JSON (`m68k_benchmark.json`, `latest.json`) and tabular CSV (`m68k_benchmark.csv`). |
-| **Smoke & Catalog Tests** | [`crates/test_runner/tests/test_benchmark_smoke.rs`](../../../crates/test_runner/tests/test_benchmark_smoke.rs) | Cascading RTS execution and a quick CPU benchmark workload. |
-| **Reference CSV Tests** | [`crates/test_runner/tests/test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs) | Direct invariant-field comparison, profile-specific verification, and row diagnostics. |
-| **Benchmark Entry** | [`crates/test_runner/benches/bench_instructions.rs`](../../../crates/test_runner/benches/bench_instructions.rs) | Standard `cargo bench` entry point invoking the benchmark suite. |
-| **Analysis & Reporting Tool** | [`crates/test_runner/src/analyze_benchmarks.py`](../../../crates/test_runner/src/analyze_benchmarks.py) | Comparative analysis tool evaluating functional symmetry, addressing mode scaling, and emulation tax. |
+| **Benchmark Runner** | [`crates/test_runner/src/benchmark/runner.rs`](../../../../crates/test_runner/src/benchmark/runner.rs) | Dual-loop runner, baseline calibration, black_box compiler defense, and hard cycle cap timeout. |
+| **Catalog Specifications** | [`crates/test_runner/src/benchmark/catalog.rs`](../../../../crates/test_runner/src/benchmark/catalog.rs)<br/>[`catalog_data_a.rs`](../../../../crates/test_runner/src/benchmark/catalog_data_a.rs)<br/>[`catalog_data_b.rs`](../../../../crates/test_runner/src/benchmark/catalog_data_b.rs) | Exhaustive static catalog of ~80 benchmark specifications covering Categories 0–8. |
+| **Programmatic Builder** | [`crates/test_runner/src/benchmark/builder.rs`](../../../../crates/test_runner/src/benchmark/builder.rs) | Synthesizes unrolled instruction blocks ($K = 700$), cascading return stacks, and Chip RAM buffers. |
+| **Platform Abstraction** | [`crates/test_runner/src/benchmark/platform.rs`](../../../../crates/test_runner/src/benchmark/platform.rs) | Windows P-core topology discovery, affinity pinning (`SetThreadAffinityMask`), priority elevation, WASM fallback. |
+| **Deterministic PRNG** | [`crates/test_runner/src/benchmark/prng.rs`](../../../../crates/test_runner/src/benchmark/prng.rs) | `XorShift64` PRNG seeded with `BENCH_PRNG_SEED`, valid BCD generator, aligned address helpers. |
+| **Statistical Analysis** | [`crates/test_runner/src/benchmark/stats.rs`](../../../../crates/test_runner/src/benchmark/stats.rs) | Multi-pass statistical sampling, Tukey's fences outlier rejection, jitter analysis ($\text{CV} < 3\%$), MIPS calculation. |
+| **Anomaly Classifier** | [`crates/test_runner/src/benchmark/anomaly.rs`](../../../../crates/test_runner/src/benchmark/anomaly.rs) | Evaluates Type A, Type B, Type C, and `ExecutionTimeoutOrInfiniteLoop` anomalies; diffs against baseline. |
+| **Persistence Engine** | [`crates/test_runner/src/benchmark/persistence.rs`](../../../../crates/test_runner/src/benchmark/persistence.rs) | Formats and saves version-controlled JSON (`m68k_benchmark.json`, `latest.json`) and tabular CSV (`m68k_benchmark.csv`). |
+| **Smoke & Catalog Tests** | [`crates/test_runner/tests/test_benchmark_smoke.rs`](../../../../crates/test_runner/tests/test_benchmark_smoke.rs) | Cascading RTS execution and a quick CPU benchmark workload. |
+| **Reference CSV Tests** | [`crates/test_runner/tests/test_benchmark_csv.rs`](../../../../crates/test_runner/tests/test_benchmark_csv.rs) | Direct invariant-field comparison, profile-specific verification, and row diagnostics. |
+| **Benchmark Entry** | [`crates/test_runner/benches/bench_instructions.rs`](../../../../crates/test_runner/benches/bench_instructions.rs) | Standard `cargo bench` entry point invoking the benchmark suite. |
+| **Analysis & Reporting Tool** | [`crates/test_runner/src/analyze_benchmarks.py`](../../../../crates/test_runner/src/analyze_benchmarks.py) | Comparative analysis tool evaluating functional symmetry, addressing mode scaling, and emulation tax. |
 
 ---
 
@@ -665,7 +665,7 @@ All 108 benchmark specifications within a given profile have identical nominal `
 
 ### 10.3 Direct Reference CSV Comparison
 
-[`test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs) reads the tracked `baselines/benchmarks/m68k_benchmark_baseline.csv` and compares all 108 rows directly. Columns 1..=6 cover mnemonic, variant, addressing mode, category, opcode, and expected cycle count. Profile checks additionally compare nominal instruction totals: Quick 31,500; Standard 6,997,200; Thorough 149,992,500. Host timing measurements are validated separately because they vary between runs.
+[`test_benchmark_csv.rs`](../../../../crates/test_runner/tests/test_benchmark_csv.rs) reads the tracked `baselines/benchmarks/m68k_benchmark_baseline.csv` and compares all 108 rows directly. Columns 1..=6 cover mnemonic, variant, addressing mode, category, opcode, and expected cycle count. Profile checks additionally compare nominal instruction totals: Quick 31,500; Standard 6,997,200; Thorough 149,992,500. Host timing measurements are validated separately because they vary between runs.
 
 ### 10.4 Row-by-Row Diagnostics
 
@@ -687,14 +687,14 @@ python tools/verification/verify.py check architecture
 
 ## 11. Reference Documentation & Upstream Ground Truth
 
-- [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Baseline instruction execution times and memory bus cycle references.
+- [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../../Reference/68000%20User%27s%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Baseline instruction execution times and memory bus cycle references.
 - [CPU Instruction Benchmark Catalog](CPU%20Instruction%20Benchmark%20Catalog.md): Comprehensive catalog of 108 benchmarked instruction variants.
 - [CPU Instruction Benchmark Strategies](CPU%20Instruction%20Benchmark%20Strategies.md): Strategy matrix for PRNG, cascading stacks, and pointer management.
 - [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md): Operational guide for interpreting host performance metrics and anomalies.
-- [CPU Motorola M68000 Architecture](CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
-- [CPU Micro-Step State Machine Specification](CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
-- [Benchmark Harness Implementation](../../../crates/test_runner/src/benchmark/): Living Rust benchmark harness, runners, and profiler models.
-- [Benchmark CSV Validation Suite](../../../crates/test_runner/tests/test_benchmark_csv.rs): Direct reference comparison for benchmark data consistency.
+- [CPU Motorola M68000 Architecture](../CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
+- [CPU Micro-Step State Machine Specification](../CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
+- [Benchmark Harness Implementation](../../../../crates/test_runner/src/benchmark): Living Rust benchmark harness, runners, and profiler models.
+- [Benchmark CSV Validation Suite](../../../../crates/test_runner/tests/test_benchmark_csv.rs): Direct reference comparison for benchmark data consistency.
 
 
 

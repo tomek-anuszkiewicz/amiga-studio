@@ -7,7 +7,7 @@ subsystem: "test_runner"
 status: "active"
 created: 2026-09-14
 updated: 2026-10-10
-related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[General Architecture.md](General%20Architecture.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
+related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[General Architecture.md](../General%20Architecture.md)", "[Machine Loop.md](../Machine%20Loop.md)"]
 tracked_paths:
   - "baselines/benchmarks"
   - ".agents/skills/profile-external"
@@ -15,10 +15,10 @@ tracked_paths:
 # Performance Profiling & Optimization Strategy
 
 > [!NOTE]
-> Architectural guidelines and machine invariants reside in [AGENTS.md](../../../AGENTS.md).
+> Architectural guidelines and machine invariants reside in [AGENTS.md](../../../../AGENTS.md).
 > The M68000 CPU instruction benchmark framework is specified in [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md).
-> Color Clock execution phases ($CCK1/CCK2$) and bus arbitration are specified in [General Architecture.md](General%20Architecture.md) and [Main loop A500.md](Main%20loop%20A500.md).
-> Implementation resides in [`crates/test_runner`](../../../crates/test_runner) and the dedicated agent skill [`.agents/skills/profile-external`](../../../.agents/skills/profile-external).
+> Color Clock execution phases ($CCK1/CCK2$) and bus arbitration are specified in [General Architecture.md](../General%20Architecture.md) and [Machine Loop.md](../Machine%20Loop.md).
+> Implementation resides in [`crates/test_runner`](../../../../crates/test_runner) and the dedicated agent skill [`.agents/skills/profile-external`](../../../../.agents/skills/profile-external).
 
 ---
 
@@ -154,6 +154,6 @@ Whenever refactoring for performance (such as *Dynamic Agnus DMA Slot Arbitratio
 ## 5. Reference Documentation & Upstream Ground Truth
 
 - [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md): Golden CSV/JSON baseline infrastructure and anomaly detection algorithms.
-- [General Architecture.md](General%20Architecture.md): Physical Color Clock synchronization model ($CCK1/CCK2$).
-- [Main loop A500.md](Main%20loop%20A500.md): Master machine coordination loop and borrow-split dispatch architecture.
-- [vAmiga Core Architecture Reference](../../../ref_src/vAmiga-4.5/Core/VAmiga.cpp): Reference C++ main emulation loop and frame timing model.
+- [General Architecture.md](../General%20Architecture.md): Physical Color Clock synchronization model ($CCK1/CCK2$).
+- [Machine Loop.md](../Machine%20Loop.md): Master machine coordination loop and borrow-split dispatch architecture.
+- [vAmiga Core Architecture Reference](../../../../ref_src/vAmiga-4.5/Core/VAmiga.cpp): Reference C++ main emulation loop and frame timing model.

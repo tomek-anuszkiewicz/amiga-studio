@@ -2563,3 +2563,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Scoped design review covered eight specifications with no unmapped crate paths
   - Vault audit passed 42 specifications and 1049 links
   - No roadmap milestone closure or reference baseline changes
+---
+
+### [2026-10-10 17:54 CEST] — DESIGN-ORGANIZATION: organize design specifications and authoring guidance
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design`
+  - `agent rules and skills`
+  - `verification tooling`
+  - `test_runner documentation references`
+- **What Was Changed (The Concrete Reality)**:
+  - Keep system hardware and peripheral specifications plus Frame Buffer in the Design root
+  - Move 11 application verification and performance documents into three subdirectories and update incoming links
+  - Combine machine-loop specifications under Machine Loop.md with crate ownership and execution details
+  - Replace PowerShell Guidelines with the write-powershell skill and remove the vAmigaTS scorecard and its maintenance requirements
+  - Make link and metadata audits recursive and resolve links from each source directory with regression coverage
+  - Apply the user-approved wording correction in the PowerShell skill
+- **Architectural Rationale & Trade-Offs**:
+  - Group specifications by responsibility while preserving existing hardware content
+  - Keep authoring procedures with their owning skill and preserve simple no-argument PowerShell execution
+  - Retain the unresolved DMA slot-description discrepancy without changing hardware expectations or protected references
+- **Verification & Test Results**:
+  - Commit verification passed ordinary crate tests with coverage and all quality gates including the full English audit
+  - Standard harness suites and all five Python contract directories passed
+  - Vault audit passed 39 specifications and 1026 links
+  - Scoped pre-commit design review found no unmapped changed crate paths and confirmed 37 documents changed only in their links
+  - All 19 architecture contract tests passed including nested-note regressions
+  - Skill validation passed and the code graph was refreshed
+  - Milestone verification and full SingleStepTests and DMA sets were not required or run for this documentation change

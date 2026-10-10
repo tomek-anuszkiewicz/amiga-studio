@@ -17,7 +17,7 @@ transferred, and how other hardware activity affects it. Timing is part of the
 behavior being modeled: a correct final register value can still be wrong if a
 read or write happens at the wrong time.
 
-The [main-loop specification](../Obsidian/Amiga/Design/Main%20loop%20A500.md)
+The [main-loop specification](../Obsidian/Amiga/Design/Machine%20Loop.md)
 describes how these phases are scheduled.
 
 ## The CPU and Custom Chips Share Memory

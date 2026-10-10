@@ -1,7 +1,7 @@
 //! Chipset Execution Benchmarking & Performance Regression Sentinel
 //!
 //! Provides automated throughput measurement, golden baseline persistence, and regression detection
-//! across representative custom chipset workloads per Obsidian/Amiga/Design/Performance Profiling and Optimization Strategy.md.
+//! across representative custom chipset workloads per Obsidian/Amiga/Design/Performance/Performance Profiling and Optimization Strategy.md.
 
 use config::A500Config;
 use machine_loop::A500Machine;

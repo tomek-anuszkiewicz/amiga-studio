@@ -218,7 +218,7 @@ class ArchitectureChecks(unittest.TestCase):
     def test_obsidian_design_docs_links_integrity(self):
         directory = self.root / "Obsidian/Amiga/Design"
         self.assertTrue(directory.is_dir(), "Obsidian design directory does not exist")
-        files = sorted(path for path in directory.glob("*.md") if path.suffix == ".md")
+        files = sorted(path for path in directory.rglob("*.md") if path.suffix == ".md")
         self.assertGreaterEqual(len(files), 25, f"Expected at least 25 design documents, found {len(files)}")
         violations = []
         count = 0
@@ -236,8 +236,8 @@ class ArchitectureChecks(unittest.TestCase):
                 if not target:
                     continue
                 count += 1
-                if not (directory / unquote(target)).exists():
-                    violations.append(f"[{path.name}] Broken link '{link}'")
+                if not (path.parent / unquote(target)).exists():
+                    violations.append(f"[{path.relative_to(directory).as_posix()}] Broken link '{link}'")
         self.assertGreaterEqual(count, 300, f"Expected at least 300 links across design docs, found {count}")
         self.no_violations(violations, "Architecture Rule Violation: Broken design document links")
 

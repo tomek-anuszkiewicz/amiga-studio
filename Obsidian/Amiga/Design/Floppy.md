@@ -7,7 +7,7 @@ subsystem: "paula"
 status: "active"
 created: 2026-09-06
 updated: 2026-09-13
-related: ["[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Agnus.md](Agnus.md)"]
+related: ["[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Agnus.md](Agnus.md)"]
 tracked_paths:
   - "crates/floppy"
 ---
@@ -16,7 +16,7 @@ tracked_paths:
 > [!NOTE]
 > Global system ownership principles, zero-allocation rules, and WASM constraints are defined in [AGENTS.md](../../../AGENTS.md).
 > Custom chip register mappings are defined in [Paula.md](Paula.md) (`DSKPTH/L`, `DSKLEN`, `DSKSYN`, `DSKBYTR`) and [CIA.md](CIA.md) (`CIAAPRA`, `CIABPRB`).
-> Memory bus DMA contention and 2-phase Color Clock slot timing are defined in [MemoryBus.md](MemoryBus.md), [Main loop A500.md](Main%20loop%20A500.md), and [Agnus.md](Agnus.md). Save state serialization is specified in [SaveState.md](SaveState.md).
+> Memory bus DMA contention and 2-phase Color Clock slot timing are defined in [MemoryBus.md](MemoryBus.md), [Machine Loop.md](Machine%20Loop.md), and [Agnus.md](Agnus.md). Save state serialization is specified in [SaveState.md](Application/SaveState.md).
 
 ---
 

@@ -18,4 +18,4 @@ Applies to `tools/bootstrap/conversion/`, `tools/bootstrap/pdf-to-markdown/` and
 - Fragment conversion runs occur at the user's request. The user selects the source fragment and evaluates the generated content; report execution failures and output locations. Do not independently choose samples, expand to the full book/crawl, compare models or tune quality. Runtime input/output/schema validation remains part of converter execution.
 - Required repository per-commit checks still apply. Report their actual results separately from fragment conversion and user quality assessment.
 
-The broader model is in [Testing Strategy and Quality Assurance](../../Obsidian/Amiga/Design/Testing%20Strategy%20and%20Quality%20Assurance.md).
+The broader model is in [Testing Strategy and Quality Assurance](../../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md).

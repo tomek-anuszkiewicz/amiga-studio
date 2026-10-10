@@ -62,12 +62,19 @@ Every design specification must conclude with a dedicated reference section:
 - Does every entry include a concise 1-sentence analytical rationale?
 
 ### Step 4: Verify Path Depth & Zero Broken Links
-Verify that all relative paths strictly adhere to the depth matrix:
+Scan all design notes recursively, including organizational subdirectories.
+Resolve each relative link from the parent directory of its source document.
+The following examples apply to a note directly in the Design root:
 - Sibling Design Doc: `[File.md](File.md)`
 - Reference Manual: `[Title](../Reference/<Folder>/<File>.md)`
 - Workspace Crates: `[`crates/<crate>/...`](../../../crates/<crate>/...)`
 - Operational Rules: `[`rule.md`](../../../.agents/rules/<rule>.md)`
 - Reference Sources: `[`ref_src/...`](../../../ref_src/<path>)`
+
+For a note in `Design/Application/`, `Design/Verification/`, or
+`Design/Performance/`, add one `../` when linking to the repository or Reference
+roots. Link sibling notes using their actual relative position; for example,
+`[MemoryBus.md](../MemoryBus.md)` or `[CPU SingleStepTests.md](../Verification/CPU%20SingleStepTests.md)`.
 
 Run automated verification:
 ```powershell

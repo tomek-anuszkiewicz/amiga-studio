@@ -92,7 +92,7 @@ When auditing a subsystem, inspect its corresponding Rust crate and Obsidian des
 | **Memory Bus & Gary** | `crates/memory_bus` | `Obsidian/Amiga/Design/MemoryBus.md` |
 | **CIA Timers & Ports**| `crates/cia` | `Obsidian/Amiga/Design/CIA.md` |
 | **M68000 CPU Core** | `crates/cpu` | `Obsidian/Amiga/Design/CPU Motorola M68000.md` |
-| **Motherboard Loop** | `crates/machine_loop` | `Obsidian/Amiga/Design/Main loop A500.md` |
+| **Motherboard Loop** | `crates/machine_loop` | `Obsidian/Amiga/Design/Machine Loop.md` |
 
 ---
 

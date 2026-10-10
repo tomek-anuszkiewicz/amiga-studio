@@ -7,16 +7,16 @@ subsystem: "frame_builder"
 status: "active"
 created: 2026-09-19
 updated: 2026-09-19
-related: ["[Denise.md](Denise.md)", "[Sprites.md](Sprites.md)", "[Agnus.md](Agnus.md)", "[GUI.md](GUI.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
+related: ["[Denise.md](Denise.md)", "[Sprites.md](Sprites.md)", "[Agnus.md](Agnus.md)", "[GUI.md](Application/GUI.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/frame_builder"
 ---
 # Denise Frame Builder, Raster Compositor & Video Signal Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Machine Loop.md](Machine%20Loop.md).
 > Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
-> Display mode decoding, bitplanes, and color registers are defined in [Denise.md](Denise.md). Hardware sprite channels are documented in [Sprites.md](Sprites.md), and GUI texture presentation is specified in [GUI.md](GUI.md).
+> Display mode decoding, bitplanes, and color registers are defined in [Denise.md](Denise.md). Hardware sprite channels are documented in [Sprites.md](Sprites.md), and GUI texture presentation is specified in [GUI.md](Application/GUI.md).
 
 ---
 
@@ -138,4 +138,4 @@ At the completion of each video frame (vertical blanking reached):
 
 - [Amiga Hardware Reference Manual: Chapter 3 (Playfield Hardware - Display Window)](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md): Hardware specification for `DIWSTRT`, `DIWSTOP`, and screen overscan boundaries.
 - [Denise Architecture Specification](Denise.md): Video display controller, bitplane serializer, palette registers, and collision logic.
-- [GUI Specification](GUI%20Specification.md): Immediate-mode Developer Studio, frame rendering, and viewport presentation.
+- [GUI Specification](Application/GUI%20Specification.md): Immediate-mode Developer Studio, frame rendering, and viewport presentation.

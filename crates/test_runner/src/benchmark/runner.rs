@@ -2,7 +2,7 @@
 //!
 //! Executes the inner unrolled instruction block (K = 700) and outer multi-pass
 //! statistical loop with compiler optimization defenses and NOP baseline subtraction
-//! per Obsidian/Amiga/Design/CPU Instruction Benchmarking.md.
+//! per Obsidian/Amiga/Design/Performance/CPU Instruction Benchmarking.md.
 
 use cpu::Cpu;
 use physical_memory::PhysicalMemory;

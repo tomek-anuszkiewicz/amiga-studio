@@ -7,16 +7,16 @@ subsystem: "paula"
 status: "active"
 created: 2026-09-06
 updated: 2026-09-19
-related: ["[Audio.md](Audio.md)", "[Floppy.md](Floppy.md)", "[Interrupts.md](Interrupts.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CIA.md](CIA.md)", "[SaveState.md](SaveState.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
+related: ["[Audio.md](Audio.md)", "[Floppy.md](Floppy.md)", "[Interrupts.md](Interrupts.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[CIA.md](CIA.md)", "[SaveState.md](Application/SaveState.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/paula"
 ---
 # Paula (MOS 8364) Architecture & Hardware Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Machine Loop.md](Machine%20Loop.md).
 > Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
-> Save state structures for Paula are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt priority arbitration (IPL 1–6) are coordinated with [Main loop A500.md](Main%20loop%20A500.md) and [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md). Disk controller interaction is detailed in [Floppy.md](Floppy.md), and DMA channel arbitration is handled by [Agnus.md](Agnus.md) and [DMA.md](DMA.md).
+> Save state structures for Paula are specified in [SaveState.md](Application/SaveState.md). Machine stepping and interrupt priority arbitration (IPL 1–6) are coordinated with [Machine Loop.md](Machine%20Loop.md) and [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md). Disk controller interaction is detailed in [Floppy.md](Floppy.md), and DMA channel arbitration is handled by [Agnus.md](Agnus.md) and [DMA.md](DMA.md).
 > 4-channel audio sample streaming is specified in [Audio.md](Audio.md), and central interrupt encoding in [Interrupts.md](Interrupts.md).
 
 ---

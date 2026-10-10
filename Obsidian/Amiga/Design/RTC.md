@@ -7,15 +7,15 @@ subsystem: "rtc"
 status: "active"
 created: 2026-09-06
 updated: 2026-09-12
-related: ["[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)"]
+related: ["[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[Machine Loop.md](Machine%20Loop.md)", "[SaveState.md](Application/SaveState.md)"]
 tracked_paths:
   - "crates/rtc"
 ---
 # Amiga 500 Real-Time Clock (RTC) Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
-> Save state structures for RTC are specified in [SaveState.md](SaveState.md). Hardware presets and active RTC model configurations are defined in [Configuration.md](Configuration.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Machine Loop.md](Machine%20Loop.md).
+> Save state structures for RTC are specified in [SaveState.md](Application/SaveState.md). Hardware presets and active RTC model configurations are defined in [Configuration.md](Configuration.md).
 > Implementation resides in the dedicated foundational crate [`crates/rtc`](../../../crates/rtc).
 
 ---
@@ -151,7 +151,7 @@ To support both interactive real-time emulation and headless benchmark/warp exec
 
 ## 6. Save State Architecture (`RtcState`)
 
-Per [SaveState.md](SaveState.md), RTC state is serialized as an independent, decoupled snapshot defined in [`RtcMsm6242b`](../../../crates/rtc/src/rtc.rs):
+Per [SaveState.md](Application/SaveState.md), RTC state is serialized as an independent, decoupled snapshot defined in [`RtcMsm6242b`](../../../crates/rtc/src/rtc.rs):
 - **`model` (`RtcModel`)**: Active RTC hardware configuration (`None` or `Msm6242b`).
 - **`registers` (`[u8; 16]`)**: 16 4-bit register latches (`$0..$F`) holding BCD digits.
 - **`control_d` (`u8`)**: Latched value of Control Register D (Hold, Busy, IRQ, 30s adjustment).

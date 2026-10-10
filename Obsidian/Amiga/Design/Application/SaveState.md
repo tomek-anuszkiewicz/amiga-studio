@@ -7,16 +7,16 @@ subsystem: "general"
 status: "active"
 created: 2026-08-31
 updated: 2026-09-14
-related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Agnus.md](Agnus.md)"]
+related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)"]
 tracked_paths:
   - "crates/machine_loop/src/save_state.rs"
 ---
 # Amiga 500 Save State Architecture & Serialization Specification
 
 > [!NOTE]
-> System ownership principles and decoupling constraints are defined in [AGENTS.md](../../../AGENTS.md) and [General Architecture.md](General%20Architecture.md).
-> Master clock synchronization is detailed in [Main loop A500.md](Main%20loop%20A500.md).
-> Memory layout and low-memory overlay rules are specified in [MemoryBus.md](MemoryBus.md). Machine state serialization is driven by [Main loop A500.md](Main%20loop%20A500.md). Subsystem state schemas are defined in [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md), [Agnus.md](Agnus.md), [Denise.md](Denise.md), [Paula.md](Paula.md), [CIA.md](CIA.md), and [RTC.md](RTC.md).
+> System ownership principles and decoupling constraints are defined in [AGENTS.md](../../../../AGENTS.md) and [General Architecture.md](../General%20Architecture.md).
+> Master clock synchronization is detailed in [Machine Loop.md](../Machine%20Loop.md).
+> Memory layout and low-memory overlay rules are specified in [MemoryBus.md](../MemoryBus.md). Machine state serialization is driven by [Machine Loop.md](../Machine%20Loop.md). Subsystem state schemas are defined in [CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md), [Agnus.md](../Agnus.md), [Denise.md](../Denise.md), [Paula.md](../Paula.md), [CIA.md](../CIA.md), and [RTC.md](../RTC.md).
 
 ---
 
@@ -509,5 +509,5 @@ flowchart TD
 
 ## 5. Reference Documentation & Upstream Ground Truth
 
-- [vAmiga Snapshot Component Implementation](../../../ref_src/vAmiga-4.5/Core/Media/Snapshot.cpp): Snapshot serializer for Amiga hardware state, block headers, and uncompressed RAM payloads.
-- [CPU State Snapshot Implementation Source](../../../crates/cpu/src/state.rs): Living Rust `CpuState` data structures implementing Serde serialization and deserialization.
+- [vAmiga Snapshot Component Implementation](../../../../ref_src/vAmiga-4.5/Core/Media/Snapshot.cpp): Snapshot serializer for Amiga hardware state, block headers, and uncompressed RAM payloads.
+- [CPU State Snapshot Implementation Source](../../../../crates/cpu/src/state.rs): Living Rust `CpuState` data structures implementing Serde serialization and deserialization.

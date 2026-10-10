@@ -13,7 +13,7 @@ This skill guides the validation and debugging of the M68000 CPU implementation 
 ## 1. Test Suite Locations & Structure
 
 - **Path:** `ref_src/SingleStepTests-680x0/68000/v1/<INSTRUCTION>.<size>.json`
-- **Specification Document:** Complete architecture, comparative matrix, and Rust data structures are in [CPU SingleStepTests.md](../../../Obsidian/Amiga/Design/CPU%20SingleStepTests.md).
+- **Specification Document:** Complete architecture, comparative matrix, and Rust data structures are in [CPU SingleStepTests.md](../../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md).
 
 ---
 

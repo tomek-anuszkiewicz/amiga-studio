@@ -32,7 +32,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
 
 - **2.2: Sampling and Counter Profiling Feasibility**
   - Try `cargo flamegraph` on headless execution; use the [external profiling workflow](.agents/skills/profile-external/SKILL.md) and `samply` when host constraints require it. Evaluate `cargo-profiler`/Callgrind/Cachegrind or `perf` as complementary tools and compare available hot-symbol results.
-  - **Gate:** Record a working manual invocation, post-processing, baseline throughput, and available flamegraph output in `Obsidian/Amiga/Design/CPU Instruction Benchmarking.md`; document host/WASM limitations and a suitable alternative platform for unavailable tools.
+  - **Gate:** Record a working manual invocation, post-processing, baseline throughput, and available flamegraph output in `Obsidian/Amiga/Design/Performance/CPU Instruction Benchmarking.md`; document host/WASM limitations and a suitable alternative platform for unavailable tools.
 
 ## Step 3: HRM-Aligned Custom Chipset Reconstruction
 
@@ -143,7 +143,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - `python tools/verification/verify.py test rust crate test_runner suite test_vamiga_runner case test_vamiga_deferred_reasons_audit`
 
 - **5.2: Targeted Subsystem Verification Sub-Suites Execution Track (1,468 Active Baseline Tests)**
-  - **Objective:** Progressively execute and pass the 1,468 active baseline vAmigaTS tests in strict substrate-first causal order (Layer 0 $\to$ Layer 4), tracking progress in [vAmigaTS Verification Scorecard](Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md).
+  - **Objective:** Progressively execute and pass the 1,468 active baseline vAmigaTS tests in strict substrate-first causal order (Layer 0 $\to$ Layer 4). Re-establish the reporting format when this verification track resumes.
   - **Actionable Scope:**
     - **Sub-Suite 5.2.1: Agnus Master DMA Contention & Bus Arbitration (Layer 0 Substrate, 225 tests):** `Agnus/` (`DMACON/`, `BplDma/`, `DIW/`, `DDF/`, `bususage/`), verifying Color Clock phase allocation (odd/even), refresh cycles, CPU wait-state generation, and Blitter Nasty (`BLTPRI`).
     - **Sub-Suite 5.2.2: Agnus Blitter & Copper Coprocessor Engines (Layer 1 Coprocessors, 364 tests):** `Agnus/Blitter/` (250 tests: `line/`, `fill/`, `sblit/`, `timing/`, `bbusy/`, `bltint/`) and `Agnus/Copper/` (114 tests: `Wait/`, `Skip/`, `coptim/`, `coprace/`, `copvbl/`), verifying autonomous bus master operations, 256-minterm ALU, barrel shifts, modulos, and Copper 4-CCK timing.
@@ -153,7 +153,6 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - **Sub-Suite 5.2.6: Mainboard, Memory & Peripheral Assertions (Layer 4 System, 58 visual + 193 non-visual tests):** `Mainboard/`, `Memory/`, `Misc/`, verifying address decoding, port registers, and RAM expansion configurations.
     - **Sub-Suite 5.2.7: M68000 CPU Silicon Pipeline (Layer 4 System Integration, 503 tests):** `CPU/` (ALU, bitwise, shifts, exceptions, traps, IPL autovectors).
   - **Verification Gate:**
-    - Scorecard synchronization in `Obsidian/Amiga/Design/vAmigaTS Verification Scorecard.md`.
     - `cargo run -p test_runner -- vamiga --category <CAT> --summary`
 
 - **5.3: Dynamic Agnus DMA Slot Arbitration Optimization (Deferred Performance Track)**

@@ -7,13 +7,13 @@ subsystem: "general"
 status: "active"
 created: 2026-09-10
 updated: 2026-10-10
-related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[PowerShell Guidelines.md](PowerShell%20Guidelines.md)"]
+related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[PowerShell tooling skill](../../../.agents/skills/write-powershell/SKILL.md)"]
 ---
 
 # Amiga 500 Rust Engineering Guidelines & Best Practices
 
 - **Parent Specification:** [General Architecture.md](General%20Architecture.md)
-- **Frontend Guidelines:** [egui Guidelines.md](egui%20Guidelines.md) | **Tooling Guidelines:** [PowerShell Guidelines.md](PowerShell%20Guidelines.md)
+- **Frontend Guidelines:** [egui Guidelines.md](egui%20Guidelines.md) | **Tooling Guidelines:** [PowerShell tooling skill](../../../.agents/skills/write-powershell/SKILL.md)
 - **Rules & Policies:** [performance-and-readability.md](../../../.agents/rules/performance-and-readability.md) | [rust-best-practices.md](../../../.agents/rules/rust-best-practices.md) | [unit-testing-policy.md](../../../.agents/rules/unit-testing-policy.md)
 - **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
 

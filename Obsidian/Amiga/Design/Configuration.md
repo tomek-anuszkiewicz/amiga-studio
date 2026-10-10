@@ -7,7 +7,7 @@ subsystem: "config"
 status: "active"
 created: 2026-09-05
 updated: 2026-10-10
-related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
+related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/config"
 ---
@@ -16,7 +16,7 @@ tracked_paths:
 > [!NOTE]
 > All ROM binaries, disk images, and memory configurations are injected into the core externally as raw byte slices (`&[u8]`), preserving WASM portability and system independence (see [AGENTS.md](../../../AGENTS.md)).
 > Implementation resides in the dedicated foundational crate [`crates/config`](../../../crates/config).
-> Physical memory layout is applied in [MemoryBus.md](MemoryBus.md), RTC models in [RTC.md](RTC.md), chipset variants in [Agnus.md](Agnus.md) and [Denise.md](Denise.md), and system coordinator setup in [Main loop A500.md](Main%20loop%20A500.md).
+> Physical memory layout is applied in [MemoryBus.md](MemoryBus.md), RTC models in [RTC.md](RTC.md), chipset variants in [Agnus.md](Agnus.md) and [Denise.md](Denise.md), and system coordinator setup in [Machine Loop.md](Machine%20Loop.md).
 
 ---
 

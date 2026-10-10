@@ -1,7 +1,7 @@
 //! Results Persistence: JSON & CSV Output Serialization
 //!
 //! Writes structured benchmark reports and flat CSV tables to `.agent/tmp/benchmarks/`
-//! per Obsidian/Amiga/Design/CPU Instruction Benchmarking.md.
+//! per Obsidian/Amiga/Design/Performance/CPU Instruction Benchmarking.md.
 
 use serde::{Deserialize, Serialize};
 use std::fs;

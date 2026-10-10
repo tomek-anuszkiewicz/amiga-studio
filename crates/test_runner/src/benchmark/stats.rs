@@ -2,7 +2,7 @@
 //!
 //! Implements Tukey's fences outlier rejection, jitter analysis (CV < 3%),
 //! environmental cooldown pauses ("Wait Out the Storm"), and robust metrics
-//! per Obsidian/Amiga/Design/CPU Instruction Benchmarking.md.
+//! per Obsidian/Amiga/Design/Performance/CPU Instruction Benchmarking.md.
 
 use serde::{Deserialize, Serialize};
 

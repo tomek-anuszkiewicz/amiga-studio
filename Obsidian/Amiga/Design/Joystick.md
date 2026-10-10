@@ -17,7 +17,7 @@ tracked_paths:
 This document specifies the hardware registers, electrical interface, extended adapter standards, and cross-platform host input abstraction for digital and proportional joysticks in the Amiga 500 emulator.
 
 > [!NOTE]
-> For dual game port bus routing, see [Game Ports.md](Game%20Ports.md). For top-level machine coordination, see [General Architecture.md](General%20Architecture.md). For game port switching and configuration, see [Configuration.md](Configuration.md). For frontend UI input routing, see [GUI.md](GUI.md).
+> For dual game port bus routing, see [Game Ports.md](Game%20Ports.md). For top-level machine coordination, see [General Architecture.md](General%20Architecture.md). For game port switching and configuration, see [Configuration.md](Configuration.md). For frontend UI input routing, see [GUI.md](Application/GUI.md).
 
 ---
 
@@ -211,7 +211,7 @@ impl A500 {
 
 - **CIA-A Integration:** `CIAAPRA` bits 6 and 7 continuously reflect `!fire1`.
 - **Denise Integration:** Denise reads directional bits when the CPU or Copper accesses `$DFF00A` / `$DFF00C`.
-- **Save State:** `JoystickState` is fully serializable as part of `GamePortsState` in [SaveState.md](SaveState.md).
+- **Save State:** `JoystickState` is fully serializable as part of `GamePortsState` in [SaveState.md](Application/SaveState.md).
 
 ---
 

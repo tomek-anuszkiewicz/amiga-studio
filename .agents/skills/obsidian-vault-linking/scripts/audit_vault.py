@@ -54,7 +54,7 @@ def check_vault_links():
     if not design_dir.exists():
         return {"total_docs": 0, "total_links": 0, "broken_links": []}
 
-    md_files = sorted(design_dir.glob("*.md"))
+    md_files = sorted(design_dir.rglob("*.md"))
     total_links = 0
     broken_links = []
 
@@ -77,11 +77,11 @@ def check_vault_links():
 
             total_links += 1
             decoded = urllib.parse.unquote(path_part)
-            target = (design_dir / decoded).resolve()
+            target = (doc.parent / decoded).resolve()
 
             if not target.exists():
                 broken_links.append({
-                    "file": doc.name,
+                    "file": doc.relative_to(design_dir).as_posix(),
                     "link": link,
                     "target": str(target),
                 })
@@ -99,21 +99,21 @@ def check_frontmatter_compliance():
     if not design_dir.exists():
         return {"total_docs": 0, "issues": []}
 
-    md_files = sorted(design_dir.glob("*.md"))
+    md_files = sorted(design_dir.rglob("*.md"))
     issues = []
 
     for doc in md_files:
         fm, text = parse_markdown_frontmatter(doc)
         if not fm:
             issues.append({
-                "file": doc.name,
+                "file": doc.relative_to(design_dir).as_posix(),
                 "message": f"Document `{doc.name}` lacks YAML frontmatter (`---`). Line 1 properties are required.",
             })
             continue
 
         if "tags" not in fm or not fm["tags"]:
             issues.append({
-                "file": doc.name,
+                "file": doc.relative_to(design_dir).as_posix(),
                 "message": f"Document `{doc.name}` is missing `tags` property in frontmatter (e.g. `tags: [spec, ...]`).",
             })
 

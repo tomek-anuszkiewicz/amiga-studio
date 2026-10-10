@@ -10,6 +10,9 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "checks"))
 import check_architecture as architecture
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/skills/obsidian-vault-linking/scripts"))
+import audit_vault as vault
+
 
 class ArchitectureContracts(unittest.TestCase):
     def setUp(self):
@@ -142,15 +145,38 @@ class ArchitectureContracts(unittest.TestCase):
         name = "test_obsidian_design_docs_links_integrity"
         directory = "Obsidian/Amiga/Design/"
         for number in range(25):
-            self.write(directory + f"document{number}.md", "[link](Target%20Note.md#heading)\n" * 12)
+            folder = "Application/" if number >= 5 else ""
+            link = "../Target%20Note.md#heading" if folder else "Target%20Note.md#heading"
+            self.write(directory + folder + f"document{number}.md", f"[link]({link})\n" * 12)
         target = self.write(directory + "Target Note.md", "[external](https://example.com)\n[anchor](#heading)\n")
         self.check(name, True)
         target.unlink()
         self.check(name, False, "Broken link")
         self.write(directory + "Target Note.md", "")
-        for path in (self.root / directory).glob("document*.md"):
+        for path in (self.root / directory).rglob("document*.md"):
             path.write_text("", encoding="utf-8")
         self.check(name, False, "at least 300 links")
+
+    def test_vault_audit_covers_nested_notes_and_resolves_links_from_their_parent(self):
+        directory = "Obsidian/Amiga/Design/"
+        properties = '---\nsubsystem: "gui"\ntags: [design, gui]\n---\n'
+        target = self.write(directory + "Target Note.md", properties + "[GUI](Application/GUI.md)\n")
+        self.write(directory + "Application/GUI.md", properties + "[target](../Target%20Note.md#heading)\n")
+        with patch.object(vault, "REPO_ROOT", self.root):
+            links = vault.check_vault_links()
+            self.assertEqual(links["total_docs"], 2)
+            self.assertEqual(links["total_links"], 2)
+            self.assertEqual(links["broken_links"], [])
+            self.assertEqual(vault.check_frontmatter_compliance()["total_docs"], 2)
+            self.assertEqual(vault.check_frontmatter_compliance()["issues"], [])
+            target.unlink()
+            broken = vault.check_vault_links()["broken_links"]
+            self.assertEqual(len(broken), 1)
+            self.assertEqual(broken[0]["file"], "Application/GUI.md")
+            self.write(directory + "Application/GUI.md", "# Missing properties\n")
+            issues = vault.check_frontmatter_compliance()["issues"]
+            self.assertEqual(len(issues), 1)
+            self.assertEqual(issues[0]["file"], "Application/GUI.md")
 
     def test_inline_tests_include_nested_sources_but_ignore_external_tests(self):
         name = "test_zero_inline_tests_in_crates_src"

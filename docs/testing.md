@@ -53,7 +53,7 @@ Performance also needs separate evidence. A benchmark measures host execution
 time, whereas a cycle assertion measures emulated time. Stored benchmark results
 can detect regressions in analysis or fixtures, but they are not a new measurement
 of the current build. Fresh throughput measurements and sampling profiles are
-run explicitly. The [benchmark design](../Obsidian/Amiga/Design/CPU%20Instruction%20Benchmarking.md)
+run explicitly. The [benchmark design](../Obsidian/Amiga/Design/Performance/CPU%20Instruction%20Benchmarking.md)
 explains the measurement model.
 
 <a id="completion-verification"></a>
@@ -80,4 +80,4 @@ When assessing a result, check which suites actually ran, whether they used full
 or sampled inputs, and whether failures or unavailable assets limited the run.
 A pass applies to the executed cases and assertions. For the broader design and
 verification strategy, follow the
-[testing specification](../Obsidian/Amiga/Design/Testing%20Strategy%20and%20Quality%20Assurance.md).
+[testing specification](../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md).

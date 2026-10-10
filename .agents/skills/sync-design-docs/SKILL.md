@@ -48,7 +48,7 @@ an arbitrary earlier commit, or the complete repository history.
 ## 2. Select Documents by Path Ownership
 
 Read only YAML frontmatter from specifications under
-`Obsidian/Amiga/Design/` to collect their `tracked_paths`. Keep this mapping in
+`Obsidian/Amiga/Design/`, including its subdirectories, to collect their `tracked_paths`. Keep this mapping in
 the documents; do not maintain a second crate-to-document table here.
 
 Normalize repository-relative paths to forward slashes. A tracked path matches

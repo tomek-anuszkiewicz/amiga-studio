@@ -7,19 +7,19 @@ subsystem: "gui"
 status: "active"
 created: 2026-09-05
 updated: 2026-09-12
-related: ["[GUI Specification.md](GUI%20Specification.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](General%20Architecture.md)"]
+related: ["[GUI Specification.md](GUI%20Specification.md)", "[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)"]
 tracked_paths:
   - "crates/gui"
 ---
 # Amiga 500 GUI & Frontend Architecture
 
-- **Parent Specification:** [General Architecture.md](General%20Architecture.md)
+- **Parent Specification:** [General Architecture.md](../General%20Architecture.md)
 - **Detailed Layout Specification:** [GUI Specification.md](GUI%20Specification.md)
 - **Debugger Engine Companion:** [Debugger.md](Debugger.md)
-- **Peripheral Specifications:** [Keyboard.md](Keyboard.md) | [Mouse.md](Mouse.md) | [Joystick.md](Joystick.md)
-- **Frontend Guidelines:** [egui Guidelines.md](egui%20Guidelines.md) | [Rust Guidelines.md](Rust%20Guidelines.md)
+- **Peripheral Specifications:** [Keyboard.md](../Keyboard.md) | [Mouse.md](../Mouse.md) | [Joystick.md](../Joystick.md)
+- **Frontend Guidelines:** [egui Guidelines.md](../egui%20Guidelines.md) | [Rust Guidelines.md](../Rust%20Guidelines.md)
 - **Module Location:** `crates/gui/`
-- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../../AGENTS.md).
 
 > [!NOTE]
 > The GUI is an external consumer of the emulator core. The core exposes pure frame buffers (`&[u32]`), audio sample ring buffers (`&[i16]`), and input event queues. The core has zero direct dependencies on UI frameworks or windowing APIs.
@@ -85,23 +85,23 @@ Translates host input devices into Amiga hardware register events:
 1. **Host Keyboard -> Amiga Keyboard Matrix:**
    - Translates physical host keys (`KeyCode`) into raw Amiga 8-bit scancodes transmitted to CIA-A `SDR`.
    - Maps host shortcuts (e.g. `Ctrl+Alt+Delete` or `F12`) to the Amiga `Ctrl-Amiga-Amiga` reset sequence.
-   - *Detailed Specification:* See [Keyboard.md](Keyboard.md).
+   - *Detailed Specification:* See [Keyboard.md](../Keyboard.md).
 2. **Host Mouse -> Game Port 1 (`JOY0DAT` & CIA-A):**
    - Accumulates host cursor delta into Denise 8-bit quadrature counters (`JOY0DAT`).
    - Maps left, right, and middle mouse buttons to CIA-A `PRA` bit 6 and Paula `POTGO`.
    - Supports viewport pointer lock and mobile/touchscreen trackpad modes.
-   - *Detailed Specification:* See [Mouse.md](Mouse.md).
+   - *Detailed Specification:* See [Mouse.md](../Mouse.md).
 3. **Host Gamepad -> Game Port 2 (`JOY1DAT` & CIA-A):**
    - Maps D-Pad / Analog stick to digital directional bits in `JOY1DAT`.
    - Maps gamepad buttons to CIA-A `PRA` bit 7 (Fire 1) and `POTGO` (Fire 2).
    - Supports keyboard-to-joystick mapping, autofire, and mobile virtual D-pad.
-   - *Detailed Specification:* See [Joystick.md](Joystick.md).
+   - *Detailed Specification:* See [Joystick.md](../Joystick.md).
 
 ---
 
 ## 5. Developer GUI & Debugger Integration
 
-The GUI incorporates an integrated developer studio and debugger implemented in [`crates/gui`](../../../crates/gui):
+The GUI incorporates an integrated developer studio and debugger implemented in [`crates/gui`](../../../../crates/gui):
 - **Dual Execution Modes:**
   - **Full Developer GUI (`ViewMode::Developer`):** Complete studio layout with register inspector, microcode visualizer, disassembly view, memory hex/search, breakpoints manager, execution trace log, and temporal rewind scrubber.
   - **Clean Screen / Game Mode (`ViewMode::ScreenOnly`):** Distraction-free 4:3 CRT monitor viewport with retro bezel, ideal for standalone game execution.
@@ -124,7 +124,7 @@ The GUI incorporates an integrated developer studio and debugger implemented in 
   - Native Desktop (`cargo run -p gui`) defaults to Developer GUI, or starts in Game Mode via `--game` or `AMIGA_DEV_GUI=0`.
   - WebAssembly (`trunk serve crates/gui/index.html`) defaults to Game Mode.
 - **High-Capacity Temporal Debugging (>=1.0s PAL Execution):**
-  - High-capacity ring buffer (default 250,000 frames) in headless [`crates/debugger/src/temporal.rs`](../../../crates/debugger/src/temporal.rs) capturing cycle-exact snapshots with zero heap allocations.
+  - High-capacity ring buffer (default 250,000 frames) in headless [`crates/debugger/src/temporal.rs`](../../../../crates/debugger/src/temporal.rs) capturing cycle-exact snapshots with zero heap allocations.
   - Dynamic capacity presets (`25k`, `50k`, `100k`, `250k`, `500k`) resizable on the fly.
   - Live recording toggle (`[⏺ Rec: ON]` / `[⏸ Rec: OFF]`, `Alt+T`).
   - Multi-granularity navigation: `[⏮ First]`, `[◀◀ Frame]` (70,824 CCKs), `[-10]`, `[◀ -1]`, `[+1 ▶]`, `[+10]`, `[Frame ▶▶]`, and `[Live Head ⏭]`.
@@ -182,8 +182,8 @@ The UI adapts to host OS and browser appearance preferences:
 ## 8. Reference Documentation & Upstream Ground Truth
 
 - [GUI Detailed Layout & Panel Specification](GUI%20Specification.md): Pixel-perfect dock geometries, keyboard shortcuts, and component structures.
-- [egui Guidelines & Frontend Best Practices](egui%20Guidelines.md): Immediate-mode UI patterns, bounded execution, and headless testing rules.
+- [egui Guidelines & Frontend Best Practices](../egui%20Guidelines.md): Immediate-mode UI patterns, bounded execution, and headless testing rules.
 - [Debugger Architecture & Inspection Engine](Debugger.md): Breakpoint traps, stepping controls, and disassembler facade.
-- [GUI Crate Implementation](../../../crates/gui/src/gui.rs): Living Rust implementation of eframe app, views, docks, and modals.
-- [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
-- [vAmiga Desktop Reference](../../../ref_src/vAmiga-4.5/): Reference emulator GUI layout and presentation architecture.
+- [GUI Crate Implementation](../../../../crates/gui/src/gui.rs): Living Rust implementation of eframe app, views, docks, and modals.
+- [GUI Interaction Test Suite](../../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
+- [vAmiga Desktop Reference](../../../../ref_src/vAmiga-4.5): Reference emulator GUI layout and presentation architecture.

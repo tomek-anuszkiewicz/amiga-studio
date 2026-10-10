@@ -7,7 +7,7 @@ subsystem: "testing"
 status: "active"
 created: 2026-09-14
 updated: 2026-10-10
-related: ["[General Architecture.md](General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
+related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
   - "tools/verification"
@@ -20,13 +20,13 @@ tracked_paths:
 # Amiga 500 Testing Strategy and Quality Assurance
 
 > [!NOTE]
-> Project-wide engineering constraints, Rust coding guidelines, and constitutional rules are defined in [AGENTS.md](../../../AGENTS.md) and [.agents/rules/unit-testing-policy.md](../../../.agents/rules/unit-testing-policy.md).
+> Project-wide engineering constraints, Rust coding guidelines, and constitutional rules are defined in [AGENTS.md](../../../../AGENTS.md) and [.agents/rules/unit-testing-policy.md](../../../../.agents/rules/unit-testing-policy.md).
 
 ---
 
 ## Completion entry point
 
-Completion uses [verify.py](../../../tools/verification/verify.py) with `commit` for standard verification and separate `milestone` for the full language audit. vAmigaTS Cargo suites and automatic capture/chipset workload runs have been removed during test reorganization; their reference assets and manual CLI remain available. Stage closure requires both commands once for the same snapshot. The [selection implementation](../../../tools/verification/commands.py) owns the fixed profile and the two expensive CPU-suite trigger maps; [test execution reference](../../../tools/verification/README.md#completion-verification) describes working-tree verification and the environment map. All sets can run without staging, even with no changes; completion evidence must match the final committed source. All ordinary crate tests, standard harness suites, and Python contracts run on every commit. Python contracts live in the owning tools' test directories for bootstrap, shared conversion, PDF conversion, the RAG MCP adapter and the verification CLI; the verifier discovers each directory separately. Both commit and milestone profiles also scan all repository-owned text against the English dictionary and approved vocabulary, including unchanged and nonignored new files; scope exclusions and handling of unknown words follow the [language policy](../../../.agents/rules/language-policy.md). Only synthetic SingleStep/DMA suites have change triggers because they use TestMemoryBus rather than the production machine; `test runner singlestep` and `test runner dma` select independent sets that may run alone on the current working tree or alongside a completion profile. Milestone does not implicitly include commit or either CPU set. Milestone runs only the language audit unless CPU sets are explicitly added; scoped pre-commit design review and the vault, semantic and workflow checks run through their owning skills. The milestone semantic-review obligation is defined in [audit-semantic-parity](../../../.agents/skills/audit-semantic-parity/SKILL.md), not in the verifier. Manual tier commands below are diagnostic entry points, not additional completion obligations.
+Completion uses [verify.py](../../../../tools/verification/verify.py) with `commit` for standard verification and separate `milestone` for the full language audit. vAmigaTS Cargo suites and automatic capture/chipset workload runs have been removed during test reorganization; their reference assets and manual CLI remain available. Stage closure requires both commands once for the same snapshot. The [selection implementation](../../../../tools/verification/commands.py) owns the fixed profile and the two expensive CPU-suite trigger maps; [test execution reference](../../../../tools/verification/README.md#completion-verification) describes working-tree verification and the environment map. All sets can run without staging, even with no changes; completion evidence must match the final committed source. All ordinary crate tests, standard harness suites, and Python contracts run on every commit. Python contracts live in the owning tools' test directories for bootstrap, shared conversion, PDF conversion, the RAG MCP adapter and the verification CLI; the verifier discovers each directory separately. Both commit and milestone profiles also scan all repository-owned text against the English dictionary and approved vocabulary, including unchanged and nonignored new files; scope exclusions and handling of unknown words follow the [language policy](../../../../.agents/rules/language-policy.md). Only synthetic SingleStep/DMA suites have change triggers because they use TestMemoryBus rather than the production machine; `test runner singlestep` and `test runner dma` select independent sets that may run alone on the current working tree or alongside a completion profile. Milestone does not implicitly include commit or either CPU set. Milestone runs only the language audit unless CPU sets are explicitly added; scoped pre-commit design review and the vault, semantic and workflow checks run through their owning skills. The milestone semantic-review obligation is defined in [audit-semantic-parity](../../../../.agents/skills/audit-semantic-parity/SKILL.md), not in the verifier. Manual tier commands below are diagnostic entry points, not additional completion obligations.
 
 ## 1. Architectural Purpose & Testing Pyramid
 
@@ -74,19 +74,19 @@ graph TD
 - **Execution Command**: `python tools/verification/verify.py test rust unit`
 - **Responsibilities**:
   - Bitwise operations, register reads/writes, wrapping arithmetic, and state transitions.
-  - Bresenham line drawer math, octants, and 256-minterm Boolean truth tables ([`crates/blitter/tests/`](../../../crates/blitter/tests/)).
-  - MFM encoding, sector decoding, track sync words, and checksums ([`crates/floppy/tests/`](../../../crates/floppy/tests/)).
-  - Disassembler opcode parsing, effective address modes, and Fibonacci branch heuristics ([`crates/disassembler/tests/`](../../../crates/disassembler/tests/)).
-  - MOS 8520 CIA cascaded timers, TOD clock, and shift register transfers ([`crates/cia/tests/`](../../../crates/cia/tests/)).
-  - Paula audio period division and volume scaling ([`crates/audio/tests/`](../../../crates/audio/tests/)).
-  - Micro-benchmark statistical variance, anomaly classification, and PRNG domain clamping ([`crates/test_runner/tests/`](../../../crates/test_runner/tests/)).
+  - Bresenham line drawer math, octants, and 256-minterm Boolean truth tables ([`crates/blitter/tests/`](../../../../crates/blitter/tests)).
+  - MFM encoding, sector decoding, track sync words, and checksums ([`crates/floppy/tests/`](../../../../crates/floppy/tests)).
+  - Disassembler opcode parsing, effective address modes, and Fibonacci branch heuristics ([`crates/disassembler/tests/`](../../../../crates/disassembler/tests)).
+  - MOS 8520 CIA cascaded timers, TOD clock, and shift register transfers ([`crates/cia/tests/`](../../../../crates/cia/tests)).
+  - Paula audio period division and volume scaling ([`crates/audio/tests/`](../../../../crates/audio/tests)).
+  - Micro-benchmark statistical variance, anomaly classification, and PRNG domain clamping ([`crates/test_runner/tests/`](../../../../crates/test_runner/tests)).
 
 ### Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)
 - **Scope**: Multi-crate interaction, bus routing, and system loop orchestration.
 - **Execution Speed**: 3 to 15 seconds.
 - **Execution Command**: `python tools/verification/verify.py test rust integration`
 - **Primary Integration Hubs**:
-  1. **Machine Loop Nexus ([`crates/machine_loop/tests/`](../../../crates/machine_loop/tests/))**:
+  1. **Machine Loop Nexus ([`crates/machine_loop/tests/`](../../../../crates/machine_loop/tests))**:
      - `test_machine_loop.rs`: Top-level A500 state machine loop step progression, monotonic CCK clock progression, CPU bus wait-states.
      - `test_copper_machine_integration.rs`: Copper list execution, raster beam WAIT synchronization, palette mutation, and Level 3 IRQ.
      - `test_blitter_machine_integration.rs`: Blitter 2D memory operations (copy, fill), Chip RAM mutation, and Level 3 `_BLITINT` signaling.
@@ -131,30 +131,30 @@ If the answer to **any** question is **YES**, authoring a Tier 2 integration tes
 | **CIAs** | `test_cia_keyboard_integration.rs`, `test_cia_machine_integration.rs` | Keyboard serial shift to CIA-A `SDR`, Timer A/B underflow Level 2/6 IRQs, horizontal TOD (CIA-B), vertical TOD 50 Hz tick (CIA-A) |
 
 
-  2. **Debugger & Tooling Nexus ([`crates/debugger/tests/`](../../../crates/debugger/tests/))**:
+  2. **Debugger & Tooling Nexus ([`crates/debugger/tests/`](../../../../crates/debugger/tests))**:
      - `test_debugger.rs` & `test_stepping_and_session.rs`: Debugger session stepping `machine_loop` and CPU core.
      - `test_sample_binaries.rs`: Injecting compiled M68000 test binaries into RAM and executing instructions.
      - `test_temporal_and_trace.rs`: Time-travel rewind buffer tracking full machine state history.
-  3. **Headless Developer Studio UI ([`crates/gui/tests/`](../../../crates/gui/tests/))**:
+  3. **Headless Developer Studio UI ([`crates/gui/tests/`](../../../../crates/gui/tests))**:
      - `test_interactions.rs`: 36 headless UI interaction tests simulating mouse clicks, keyboard shortcuts, memory edits, time-travel scrubbing, view switching.
      - `test_gui.rs` & `test_persistence.rs`: Immediate-mode UI layout, theme loading, dock splits, and window state.
-  4. **Motherboard Bus Routing ([`crates/memory_bus/tests/`](../../../crates/memory_bus/tests/))**:
+  4. **Motherboard Bus Routing ([`crates/memory_bus/tests/`](../../../../crates/memory_bus/tests))**:
      - `test_router.rs` & `test_register_wiring.rs`: Routing 24-bit physical addresses across chips and storage.
 
 ### Tier 3: Silicon Ground Truth & Verification Harness (L3 — Physical Vectors)
 - **Scope**: External reference validation against real Commodore hardware silicon captures and benchmarks.
 - **Execution Command**: `python tools/verification/verify.py test runner harness` or targeted test runners.
 - **Key Verification Suites**:
-  - **Tom Harte SingleStepTests ([`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs))**: 45,565 valid opcodes tested cycle-by-cycle against physical silicon captures (see [CPU SingleStepTests.md](CPU%20SingleStepTests.md)).
-  - **Cartesian DMA Contention ([`crates/test_runner/tests/test_dma_cartesian.rs`](../../../crates/test_runner/tests/test_dma_cartesian.rs))**: Full $2^k \times 2^M$ permutation sweep verifying cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity.
-  - **Opcode Micro-Benchmarks ([`crates/test_runner/tests/test_benchmark_*.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs))**: Direct CSV reference comparisons (see [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)).
+  - **Tom Harte SingleStepTests ([`crates/test_runner/tests/test_singlestep.rs`](../../../../crates/test_runner/tests/test_singlestep.rs))**: 45,565 valid opcodes tested cycle-by-cycle against physical silicon captures (see [CPU SingleStepTests.md](CPU%20SingleStepTests.md)).
+  - **Cartesian DMA Contention ([`crates/test_runner/tests/test_dma_cartesian.rs`](../../../../crates/test_runner/tests/test_dma_cartesian.rs))**: Full $2^k \times 2^M$ permutation sweep verifying cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity.
+  - **Opcode Micro-Benchmarks ([`crates/test_runner/tests/test_benchmark_*.rs`](../../../../crates/test_runner/tests/test_benchmark_csv.rs))**: Direct CSV reference comparisons (see [CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)).
 
 Repository architecture checks are a separate gate, implemented in
-[`tools/verification/checks/check_architecture.py`](../../../tools/verification/checks/check_architecture.py).
+[`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py).
 `verify.py check architecture [case FILTER]` runs source and repository inspection
 without compiling Rust. Commit verification always includes all 17 controls.
 The compiled opcode descriptor coverage check remains in
-[`crates/cpu/tests/test_visibility.rs`](../../../crates/cpu/tests/test_visibility.rs)
+[`crates/cpu/tests/test_visibility.rs`](../../../../crates/cpu/tests/test_visibility.rs)
 and runs with ordinary CPU tests.
 
 ---
@@ -207,10 +207,10 @@ graph TD
 4. **Iteration 4: Final Validation Sweep & Regression Lock**:
    - Re-run the global suite (`--category all`) to capture the updated pass rate.
    - Verify that earlier passing tests have not regressed.
-   - Log all newly passed tests and quantitative pass rates in [DIARY.md](../../../DIARY.md).
+   - Log all newly passed tests and quantitative pass rates in [DIARY.md](../../../../DIARY.md).
 
 > [!TIP]
-> **Interactive Sprint Skill:** The 4-iteration cascading protocol is driven via [`$integration-test-sprint`](../../../.agents/skills/integration-test-sprint/SKILL.md), using [`$test-runner`](../../../.agents/skills/test-runner/SKILL.md) for execution telemetry and automated regression diffs.
+> **Interactive Sprint Skill:** The 4-iteration cascading protocol is driven via [`$integration-test-sprint`](../../../../.agents/skills/integration-test-sprint/SKILL.md), using [`$test-runner`](../../../../.agents/skills/test-runner/SKILL.md) for execution telemetry and automated regression diffs.
 
 ---
 
@@ -253,7 +253,7 @@ To isolate the common denominator without getting lost in granular file diffs, p
    - Re-verify that all passing tests continue to pass without a single special-case conditional.
 
 > [!TIP]
-> **Interactive Synthesis Skill:** The Anti-Patchwork Protocol and 3-column matrix synthesis are performed with [`$synthesize-test-fixes`](../../../.agents/skills/synthesize-test-fixes/SKILL.md).
+> **Interactive Synthesis Skill:** The Anti-Patchwork Protocol and 3-column matrix synthesis are performed with [`$synthesize-test-fixes`](../../../../.agents/skills/synthesize-test-fixes/SKILL.md).
 
 ---
 
@@ -296,18 +296,18 @@ When building, extending, or refactoring any part of the emulator, execute tests
 
 | Tool / Script | Purpose | Enforcement Layer |
 | :--- | :--- | :--- |
-| [`tools/verification/verify.py`](../../../tools/verification/verify.py) | Canonical commit/milestone quality gate, change-aware CPU-suite selector, and diagnostic frontend (`test rust`, `test python`, `test runner`, `check`, `runner`). | Explicit agent/developer command & CI |
-| [`tools/verification/checks/check_architecture.py`](../../../tools/verification/checks/check_architecture.py) | 17 Python checks validating architectural rules, test naming, and multi-module parity. | `verify.py check architecture` & commit verification gate |
-| [`$test-runner`](../../../.agents/skills/test-runner/SKILL.md) | Standardized execution runner across tiers, writing snapshots to `.agent/tmp/singlestep/` and diffing regressions. | Codex skill |
-| [`$integration-test-sprint`](../../../.agents/skills/integration-test-sprint/SKILL.md) | Orchestrates the 4-iteration cascading verification sweep and failure cluster triage. | Codex skill |
-| [`$synthesize-test-fixes`](../../../.agents/skills/synthesize-test-fixes/SKILL.md) | Audits recent test patches, builds the 3-column diagnostic matrix, and synthesizes root causes into upstream crates. | Codex skill |
+| [`tools/verification/verify.py`](../../../../tools/verification/verify.py) | Canonical commit/milestone quality gate, change-aware CPU-suite selector, and diagnostic frontend (`test rust`, `test python`, `test runner`, `check`, `runner`). | Explicit agent/developer command & CI |
+| [`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py) | 17 Python checks validating architectural rules, test naming, and multi-module parity. | `verify.py check architecture` & commit verification gate |
+| [`$test-runner`](../../../../.agents/skills/test-runner/SKILL.md) | Standardized execution runner across tiers, writing snapshots to `.agent/tmp/singlestep/` and diffing regressions. | Codex skill |
+| [`$integration-test-sprint`](../../../../.agents/skills/integration-test-sprint/SKILL.md) | Orchestrates the 4-iteration cascading verification sweep and failure cluster triage. | Codex skill |
+| [`$synthesize-test-fixes`](../../../../.agents/skills/synthesize-test-fixes/SKILL.md) | Audits recent test patches, builds the 3-column diagnostic matrix, and synthesizes root causes into upstream crates. | Codex skill |
 
 ---
 
 ## 8. Related Architecture Specifications
 
-- [General Architecture.md](General%20Architecture.md): Amiga 500 system block diagram and crate dependencies.
-- [Main loop A500.md](Main%20loop%20A500.md): Machine loop cycle stepping, reset sequencing, and interrupt arbitration.
+- [General Architecture.md](../General%20Architecture.md): Amiga 500 system block diagram and crate dependencies.
+- [Machine Loop.md](../Machine%20Loop.md): Machine loop cycle stepping, reset sequencing, and interrupt arbitration.
 - [CPU SingleStepTests.md](CPU%20SingleStepTests.md): Verification against physical silicon instruction test vectors.
-- [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md): Cycle-exact benchmarking framework and direct CSV reference comparisons.
-- [Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md): Centralized master catalog of hardware idiosyncrasies and anti-tamper invariants.
+- [CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md): Cycle-exact benchmarking framework and direct CSV reference comparisons.
+- [Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md): Centralized master catalog of hardware idiosyncrasies and anti-tamper invariants.

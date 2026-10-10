@@ -7,16 +7,16 @@ subsystem: "agnus"
 status: "active"
 created: 2026-09-06
 updated: 2026-09-19
-related: ["[Copper.md](Copper.md)", "[Blitter.md](Blitter.md)", "[DMA.md](DMA.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
+related: ["[Copper.md](Copper.md)", "[Blitter.md](Blitter.md)", "[DMA.md](DMA.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[SaveState.md](Application/SaveState.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/agnus"
 ---
 # Agnus (MOS 8370 / 8371 / 8372A) Architecture & Hardware Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Machine Loop.md](Machine%20Loop.md).
 > Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
-> Save state structures for Agnus are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt delivery are governed by [Main loop A500.md](Main%20loop%20A500.md). Video synchronization is coordinated with [Denise.md](Denise.md) and DMA audio/disk cycles with [Paula.md](Paula.md).
+> Save state structures for Agnus are specified in [SaveState.md](Application/SaveState.md). Machine stepping and interrupt delivery are governed by [Machine Loop.md](Machine%20Loop.md). Video synchronization is coordinated with [Denise.md](Denise.md) and DMA audio/disk cycles with [Paula.md](Paula.md).
 > Subordinate coprocessors and scheduling are specified in dedicated companion documents: [Copper.md](Copper.md), [Blitter.md](Blitter.md), and [DMA.md](DMA.md).
 
 ---
@@ -257,7 +257,7 @@ During active DMA scanlines, Agnus evaluates the 8-tier priority arbiter ([DMA.m
 
 1. **Bitplane DMA (`pending_bpl_dma`)**:
    - Fetches 16-bit word from `chip_ram[bplpt[p]]`.
-   - Stages word in `pending_bpl_dma: Option<(u8, u16)>`, polled by [Main loop A500.md](Main%20loop%20A500.md) and transferred to Denise `BPLxDAT`.
+   - Stages word in `pending_bpl_dma: Option<(u8, u16)>`, polled by [Machine Loop.md](Machine%20Loop.md) and transferred to Denise `BPLxDAT`.
    - Advances pointer by 2 bytes: `bplpt[p] = (bplpt[p] + 2) & 0x0007_FFFE`.
    - On the last bitplane block of the line (`is_last_bpl_block`), adds signed modulo (`bpl1mod` for odd planes, `bpl2mod` for even planes).
 2. **Hardware Sprites (`sprpt`)**:
@@ -272,7 +272,7 @@ During active DMA scanlines, Agnus evaluates the 8-tier priority arbiter ([DMA.m
 
 ## 6. Physical Cross-Chip Signals & Machine Loop Interconnect
 
-Per [Hardware Bus Topology](../../../.agents/rules/hardware-bus-topology.md), Agnus holds zero direct references to peer chips. All inter-chip coordination occurs through explicit polling interfaces evaluated by [Main loop A500.md](Main%20loop%20A500.md):
+Per [Hardware Bus Topology](../../../.agents/rules/hardware-bus-topology.md), Agnus holds zero direct references to peer chips. All inter-chip coordination occurs through explicit polling interfaces evaluated by [Machine Loop.md](Machine%20Loop.md):
 
 ```mermaid
 flowchart TD

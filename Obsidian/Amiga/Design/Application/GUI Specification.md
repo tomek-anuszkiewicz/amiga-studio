@@ -7,20 +7,20 @@ subsystem: "gui"
 status: "active"
 created: 2026-09-10
 updated: 2026-10-10
-related: ["[GUI.md](GUI.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](General%20Architecture.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
+related: ["[GUI.md](GUI.md)", "[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)", "[Rust Guidelines.md](../Rust%20Guidelines.md)"]
 tracked_paths:
   - "crates/gui"
 ---
 # Amiga 500 Developer GUI & Debugger Layout Specification
 
-- **Parent Specification:** [GUI.md](GUI.md) | [General Architecture.md](General%20Architecture.md)
+- **Parent Specification:** [GUI.md](GUI.md) | [General Architecture.md](../General%20Architecture.md)
 - **Debugger Engine Companion:** [Debugger.md](Debugger.md)
-- **Frontend Guidelines:** [egui Guidelines.md](egui%20Guidelines.md) | [Rust Guidelines.md](Rust%20Guidelines.md)
+- **Frontend Guidelines:** [egui Guidelines.md](../egui%20Guidelines.md) | [Rust Guidelines.md](../Rust%20Guidelines.md)
 - **Module Location:** `crates/gui/`
-- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../../AGENTS.md).
 
 > [!NOTE]
-> Living architectural specification for the Amiga 500 Developer GUI & Interactive Debugger Studio implemented under [`crates/gui`](../../../crates/gui).
+> Living architectural specification for the Amiga 500 Developer GUI & Interactive Debugger Studio implemented under [`crates/gui`](../../../../crates/gui).
 > For high-level frontend architecture, CRT shaders, and audio sinks, see [GUI.md](GUI.md).
 
 ---
@@ -51,25 +51,25 @@ The physical arrangement on screen strictly maps 1:1 to the Rust source code hie
 ```
 
 ### Living Source File Tree & Implementation Links:
-- [`crates/gui/Cargo.toml`](../../../crates/gui/Cargo.toml): Package configuration and UI dependencies (`eframe`, `egui`, `rfd`, `m68000`, `physical_memory`, `debugger`, `config`, `rtc`).
-- [`Trunk.toml`](../../../Trunk.toml): Root Trunk configuration enabling `trunk serve --open` and `trunk build` directly from workspace root.
-- [`crates/gui/index.html`](../../../crates/gui/index.html): HTML5 canvas runner template for WebAssembly browser execution.
-- [`crates/gui/src/gui.rs`](../../../crates/gui/src/gui.rs): WebAssembly entrypoint (`eframe::WebRunner`) and shared re-exports.
-- [`crates/gui/src/main.rs`](../../../crates/gui/src/main.rs): Desktop native entrypoint (`eframe::run_native`) with 1600x840 default viewport (optimized for 16:9 displays at 100-125% DPI scaling).
-- [`crates/gui/src/app.rs`](../../../crates/gui/src/app.rs): Central `EmulatorApp` orchestrator, 4-column dock orchestration, bounded time-slicing execution, and event loop.
-- [`crates/gui/src/theme.rs`](../../../crates/gui/src/theme.rs): Dark, Light, and Classic Amiga Workbench color palettes.
-- [`crates/debugger/src/loader.rs`](../../../crates/debugger/src/loader.rs): Raw binary injection, boot overlay disengagement, and prefetch priming.
-- [`crates/debugger/src/temporal.rs`](../../../crates/debugger/src/temporal.rs): High-capacity (250,000-frame, >=1.0s PAL) circular time-travel execution history ring buffer.
-- [`crates/gui/src/layout/top_menu_bar.rs`](../../../crates/gui/src/layout/top_menu_bar.rs): [TOP] File loading, cold/warm reset, run/pause, step controls, telemetry, theme, and zoom.
-- [`crates/gui/src/layout/main_viewport/amiga_screen.rs`](../../../crates/gui/src/layout/main_viewport/amiga_screen.rs): [CENTER] 4:3 aspect-locked CRT monitor canvas ($320 \times 256$) with retro bezel.
-- [`crates/gui/src/layout/main_viewport/temporal_bar.rs`](../../../crates/gui/src/layout/main_viewport/temporal_bar.rs): [CENTER-BOTTOM] History scrubber slider, timing/CCK deltas, multi-granularity navigation (`-10`, `+10`, `-1 Frame`, `+1 Frame`), record toggle, and direct cycle jump.
-- [`crates/gui/src/layout/left_dock/registers.rs`](../../../crates/gui/src/layout/left_dock/registers.rs): [LEFT-TOP] Live D0-D7, A0-A7, USP/SSP, 2-column Execution Status & CCR clickable LED badges, and diff highlighting.
-- [`crates/gui/src/layout/left_dock/microcode.rs`](../../../crates/gui/src/layout/left_dock/microcode.rs): [LEFT-BOT] Compact Micro-step counter ($K / N$), CCK1/CCK2 phase badge, dense 4-column staging registers (`addr1`, `addr2`, `ea_addr`), and bus lock state.
-- [`crates/gui/src/layout/left_dock/disassembly.rs`](../../../crates/gui/src/layout/left_dock/disassembly.rs): [COL 3] Dedicated full-height Disassembly listing, luminous execution cursor highlight, breakpoint margin toggles (`●`), double-click in-place assembler editor, right-click options menu, and quick loop rewind (`⏪`).
-- [`crates/gui/src/layout/right_dock/memory_hex.rs`](../../../crates/gui/src/layout/right_dock/memory_hex.rs): [RIGHT-TOP] 16-byte hex + ASCII editor with virtual scrolling and fast chunk quick-jump buttons.
-- [`crates/gui/src/layout/right_dock/breakpoints_panel.rs`](../../../crates/gui/src/layout/right_dock/breakpoints_panel.rs): [RIGHT-MID2] Interactive PC execution breakpoints, conditional expressions, and memory watchpoints manager.
-- [`crates/gui/src/layout/right_dock/trace_log.rs`](../../../crates/gui/src/layout/right_dock/trace_log.rs): [RIGHT-BOT] 1024-entry execution trace table with zero-allocation virtual scrolling.
-- [`crates/gui/tests/test_gui.rs`](../../../crates/gui/tests/test_gui.rs): Headless integration and unit test suite.
+- [`crates/gui/Cargo.toml`](../../../../crates/gui/Cargo.toml): Package configuration and UI dependencies (`eframe`, `egui`, `rfd`, `m68000`, `physical_memory`, `debugger`, `config`, `rtc`).
+- [`Trunk.toml`](../../../../Trunk.toml): Root Trunk configuration enabling `trunk serve --open` and `trunk build` directly from workspace root.
+- [`crates/gui/index.html`](../../../../crates/gui/index.html): HTML5 canvas runner template for WebAssembly browser execution.
+- [`crates/gui/src/gui.rs`](../../../../crates/gui/src/gui.rs): WebAssembly entrypoint (`eframe::WebRunner`) and shared re-exports.
+- [`crates/gui/src/main.rs`](../../../../crates/gui/src/main.rs): Desktop native entrypoint (`eframe::run_native`) with 1600x840 default viewport (optimized for 16:9 displays at 100-125% DPI scaling).
+- [`crates/gui/src/app.rs`](../../../../crates/gui/src/app.rs): Central `EmulatorApp` orchestrator, 4-column dock orchestration, bounded time-slicing execution, and event loop.
+- [`crates/gui/src/theme.rs`](../../../../crates/gui/src/theme.rs): Dark, Light, and Classic Amiga Workbench color palettes.
+- [`crates/debugger/src/loader.rs`](../../../../crates/debugger/src/loader.rs): Raw binary injection, boot overlay disengagement, and prefetch priming.
+- [`crates/debugger/src/temporal.rs`](../../../../crates/debugger/src/temporal.rs): High-capacity (250,000-frame, >=1.0s PAL) circular time-travel execution history ring buffer.
+- [`crates/gui/src/layout/top_menu_bar.rs`](../../../../crates/gui/src/layout/top_menu_bar.rs): [TOP] File loading, cold/warm reset, run/pause, step controls, telemetry, theme, and zoom.
+- [`crates/gui/src/layout/main_viewport/amiga_screen.rs`](../../../../crates/gui/src/layout/main_viewport/amiga_screen.rs): [CENTER] 4:3 aspect-locked CRT monitor canvas ($320 \times 256$) with retro bezel.
+- [`crates/gui/src/layout/main_viewport/temporal_bar.rs`](../../../../crates/gui/src/layout/main_viewport/temporal_bar.rs): [CENTER-BOTTOM] History scrubber slider, timing/CCK deltas, multi-granularity navigation (`-10`, `+10`, `-1 Frame`, `+1 Frame`), record toggle, and direct cycle jump.
+- [`crates/gui/src/layout/left_dock/registers.rs`](../../../../crates/gui/src/layout/left_dock/registers.rs): [LEFT-TOP] Live D0-D7, A0-A7, USP/SSP, 2-column Execution Status & CCR clickable LED badges, and diff highlighting.
+- [`crates/gui/src/layout/left_dock/microcode.rs`](../../../../crates/gui/src/layout/left_dock/microcode.rs): [LEFT-BOT] Compact Micro-step counter ($K / N$), CCK1/CCK2 phase badge, dense 4-column staging registers (`addr1`, `addr2`, `ea_addr`), and bus lock state.
+- [`crates/gui/src/layout/left_dock/disassembly.rs`](../../../../crates/gui/src/layout/left_dock/disassembly.rs): [COL 3] Dedicated full-height Disassembly listing, luminous execution cursor highlight, breakpoint margin toggles (`●`), double-click in-place assembler editor, right-click options menu, and quick loop rewind (`⏪`).
+- [`crates/gui/src/layout/right_dock/memory_hex.rs`](../../../../crates/gui/src/layout/right_dock/memory_hex.rs): [RIGHT-TOP] 16-byte hex + ASCII editor with virtual scrolling and fast chunk quick-jump buttons.
+- [`crates/gui/src/layout/right_dock/breakpoints_panel.rs`](../../../../crates/gui/src/layout/right_dock/breakpoints_panel.rs): [RIGHT-MID2] Interactive PC execution breakpoints, conditional expressions, and memory watchpoints manager.
+- [`crates/gui/src/layout/right_dock/trace_log.rs`](../../../../crates/gui/src/layout/right_dock/trace_log.rs): [RIGHT-BOT] 1024-entry execution trace table with zero-allocation virtual scrolling.
+- [`crates/gui/tests/test_gui.rs`](../../../../crates/gui/tests/test_gui.rs): Headless integration and unit test suite.
 
 ---
 
@@ -84,7 +84,7 @@ The GUI and the emulator core interact through a strictly **synchronous, pull-ba
 4. **Synchronous Mutation on Interaction:**
    - When stepping (`F10`), `debugger.step_instruction(&mut cpu, &mut bus)` executes immediately, appends to `temporal`, advances `bus.step_cck(clocks / 2)` to synchronize RTC/timers, and redraws immediately.
    - When editing memory, `bus.write_byte_debug(addr, val)` updates the physical RAM buffer instantly.
-   - When loading binary code, [`loader::inject_binary`](../../../crates/debugger/src/loader.rs) disengages Kickstart low-memory boot overlay (`bus.map_chip_ram_to_low_memory()`), initializes SP to top of 512 KB Chip RAM ($080000) if unset, and primes prefetch with `cpu.set_pc_and_prime_prefetch(target_pc, bus)`.
+   - When loading binary code, [`loader::inject_binary`](../../../../crates/debugger/src/loader.rs) disengages Kickstart low-memory boot overlay (`bus.map_chip_ram_to_low_memory()`), initializes SP to top of 512 KB Chip RAM ($080000) if unset, and primes prefetch with `cpu.set_pc_and_prime_prefetch(target_pc, bus)`.
 
 ---
 
@@ -106,7 +106,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
 
 ## 4. Panel-by-Panel Specification
 
-### 3.1 Top Menu Bar ([`layout/top_menu_bar.rs`](../../../crates/gui/src/layout/top_menu_bar.rs))
+### 3.1 Top Menu Bar ([`layout/top_menu_bar.rs`](../../../../crates/gui/src/layout/top_menu_bar.rs))
 - **File Actions:**
   - `Load Binary...` (`Ctrl+O`): Opens file dialog (`rfd`). Prompts for Target Address (defaults to `$001000`) and a checkbox `Auto-set PC & prime prefetch`. Injects binary slice directly into RAM.
   - `Reset Cold` (`Ctrl+R`): Cold-resets CPU, clears RAM via `bus.reset_cold()`, and resets temporal trace buffers.
@@ -126,7 +126,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
   - Theme Selector: `Dark (Default)`, `Light`, `Classic Workbench`.
   - Zoom Selector: `100%`, `125%`, `150%`, `200%`.
 
-### 3.2 Main Viewport: Amiga Screen ([`layout/main_viewport/amiga_screen.rs`](../../../crates/gui/src/layout/main_viewport/amiga_screen.rs))
+### 3.2 Main Viewport: Amiga Screen ([`layout/main_viewport/amiga_screen.rs`](../../../../crates/gui/src/layout/main_viewport/amiga_screen.rs))
 - **Display Container:**
   - Strict 4:3 aspect ratio framing centered in the panel.
   - Canvas resolution: $320 \times 256$ (PAL baseline) / $320 \times 200$ (NTSC).
@@ -140,7 +140,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
     - `"Press F12 for Developer Studio / Debugger"`
 - **Scaling:** Crisp integer prescaling (1x, 2x, 3x) based on available panel geometry.
 
-### 3.3 Main Viewport: Temporal Rewind Scrubber ([`layout/main_viewport/temporal_bar.rs`](../../../crates/gui/src/layout/main_viewport/temporal_bar.rs))
+### 3.3 Main Viewport: Temporal Rewind Scrubber ([`layout/main_viewport/temporal_bar.rs`](../../../../crates/gui/src/layout/main_viewport/temporal_bar.rs))
 - Located immediately below the Amiga display viewport.
 - **Lean Circular Buffer (Default 25,000 frames / ~7.5 MB):**
   - Starts **inactive / paused by default** (`is_recording == false`) to eliminate startup CPU/memory overhead.
@@ -160,7 +160,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
   - Input field `[ Jump to CCK: #_______ ] [ Go ]` for jumping directly to any exact processor clock cycle.
   - Slider displaying `[Index / Total]`, relative millisecond offset (e.g. `-245.3 ms`), and CCK deltas.
 
-### 3.4 Left Dock: CPU Registers ([`layout/left_dock/registers.rs`](../../../crates/gui/src/layout/left_dock/registers.rs))
+### 3.4 Left Dock: CPU Registers ([`layout/left_dock/registers.rs`](../../../../crates/gui/src/layout/left_dock/registers.rs))
 - **Data Registers ($D_0 - D_7$):**
   - Displays each register in hexadecimal (`$00000000`) and signed decimal via public accessor `state.d_long(i)`.
   - **Interactive Inline Editing:** Clicking any register value switches to an inline text box with immediate focus. Pressing Enter or clicking outside commits; Escape cancels.
@@ -175,7 +175,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
   - Supervisor mode badge (`[SUPERVISOR]` vs `[USER]`), IPL mask (0-7).
   - Interactive high-contrast LED badges for $X, N, Z, V, C$ (emerald `#059669` fill with white text for active; dark slate `#2A3241` fill with `#E2E8F0` text for inactive per `ColorTokens`). Clicking toggles bits in `cpu.state.sr`.
 
-### 3.5 Left Dock: Microcode State Inspector ([`layout/left_dock/microcode.rs`](../../../crates/gui/src/layout/left_dock/microcode.rs))
+### 3.5 Left Dock: Microcode State Inspector ([`layout/left_dock/microcode.rs`](../../../../crates/gui/src/layout/left_dock/microcode.rs))
 - **Collapsible Card:** Header `▼ Microcode Inspector` toggleable locally or globally via `F8`.
 - **Live Cycle & Timing Metrics:**
   - Active micro-step remaining clocks (`state.micro.clocks_remaining` / `base_clocks`).
@@ -186,7 +186,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
   - Compact 4-column staging registers: `addr1` ($X_1$), `addr2` ($X_2$), `source`, `destination`, `ea_addr`.
   - Chip RAM DMA arbitration: indicates whether bus is free or blocked by Agnus/Denise DMA with wait states.
 
-### 3.6 Column 3: Disassembly View ([`layout/left_dock/disassembly.rs`](../../../crates/gui/src/layout/left_dock/disassembly.rs))
+### 3.6 Column 3: Disassembly View ([`layout/left_dock/disassembly.rs`](../../../../crates/gui/src/layout/left_dock/disassembly.rs))
 - **Live Disassembly Table & Infinite Scroll:**
   - Full-height layout without nested `ScrollArea` wrappers: calculates visible rows directly from available height (`(ui.available_height() / 19.0).floor() as usize`).
   - Continuous memory browsing: Mouse-wheel scrolling up or down freely streams disassembly across 24-bit memory space without snapping back to PC, maintaining valid 16-bit instruction alignment. Supports Ctrl (10x) and Shift (5x) acceleration and consumes scroll deltas to prevent parent container fighting.
@@ -207,7 +207,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
 - **In-Place Instruction Editing with Byte Size Invariance:**
   - Inline editor matches row height with zero column shift. Rejects writes if replacement size differs from original, preserving memory alignment.
 
-### 3.7 Right Dock: Memory Hex Editor ([`layout/right_dock/memory_hex.rs`](../../../crates/gui/src/layout/right_dock/memory_hex.rs))
+### 3.7 Right Dock: Memory Hex Editor ([`layout/right_dock/memory_hex.rs`](../../../../crates/gui/src/layout/right_dock/memory_hex.rs))
 - **16-Byte Row Hex + ASCII Grid:**
   - 510px default dock width with uniform 19px fixed-width cell slot allocations (`allocate_ui_with_layout`).
   - **Dynamic Fill & Automatic Bottom-Docking:** Memory Hex Editor dynamically docks to the top and automatically expands to fill 100% of all available vertical height above bottom-docked tool panels via natural bottom-up layout (`Layout::bottom_up`), displaying 35–48 rows on Full HD displays ($000000..=$000220+) with in-place memory scrolling.
@@ -233,14 +233,14 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
   - **Zero Horizontal Splitter in Right Dock:** The manual draggable splitter has been removed in favor of automatic bottom-docking and reactive top hex editor expansion.
   - Active dimensions are persisted across application restarts via `UserPreferences` in `eframe::Storage`.
 
-### 3.8 Right Dock: Memory Search ([`layout/right_dock/memory_search.rs`](../../../crates/gui/src/layout/right_dock/memory_search.rs))
+### 3.8 Right Dock: Memory Search ([`layout/right_dock/memory_search.rs`](../../../../crates/gui/src/layout/right_dock/memory_search.rs))
 - Pattern searching across memory with full-width stretching (`ui.set_width(ui.available_width())`):
   - Hex mode: e.g. `4E 71 32 00`.
   - ASCII mode: e.g. `DOS\0`, `Kickstart`.
   - Stretched singleline text input with right-aligned `[🔍 Find Next]` button eliminating any right-side gap.
   - Jump-to-match buttons (`Prev Match`, `Next Match`) that synchronize the Hex Editor view.
 
-### 3.9 Right Dock: Breakpoints & Watchpoints Manager ([`layout/right_dock/breakpoints_panel.rs`](../../../crates/gui/src/layout/right_dock/breakpoints_panel.rs))
+### 3.9 Right Dock: Breakpoints & Watchpoints Manager ([`layout/right_dock/breakpoints_panel.rs`](../../../../crates/gui/src/layout/right_dock/breakpoints_panel.rs))
 - Full-width card containers (`ui.set_width(ui.available_width())`) docked at the bottom of Right Dock:
   - **PC Breakpoints:** Active breakpoint list with enable checkboxes, address formatting, and right-aligned delete `[✕]` buttons.
   - Attached register conditions: e.g. `[IF D0 == $2A]`, `[IF PC == $1004]`.
@@ -248,7 +248,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
   - **Memory Watchpoints:** Address range monitor with access badges (`READ`, `WRITE`, `ANY`) and right-aligned delete `[✕]` buttons.
   - Enable checkboxes and remove buttons.
 
-### 3.10 Right Dock: Trace History Log ([`layout/right_dock/trace_log.rs`](../../../crates/gui/src/layout/right_dock/trace_log.rs))
+### 3.10 Right Dock: Trace History Log ([`layout/right_dock/trace_log.rs`](../../../../crates/gui/src/layout/right_dock/trace_log.rs))
 - Fixed 1024-entry execution trace table backed by `debugger::TraceRingBuffer`.
 - Chronological table showing Cycle (CCK), PC, Opcode, Disassembly, and Register state.
 - Clicking any historical entry synchronizes the temporal debugger to that moment.
@@ -257,7 +257,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
 
 ## 5. Semantic Design Tokens & Theme Palettes (`ColorTokens`)
 
-To guarantee that the visual presentation can be reconstructed from specifications alone with 100% fidelity, all UI surfaces, typography, accents, and condition badges are governed by centralized immutable design tokens implemented in [`crates/gui/src/theme/tokens.rs`](../../../crates/gui/src/theme/tokens.rs).
+To guarantee that the visual presentation can be reconstructed from specifications alone with 100% fidelity, all UI surfaces, typography, accents, and condition badges are governed by centralized immutable design tokens implemented in [`crates/gui/src/theme/tokens.rs`](../../../../crates/gui/src/theme/tokens.rs).
 
 ### 5.1 Palette Matrix & Exact Color Definitions
 
@@ -289,7 +289,7 @@ To guarantee that the visual presentation can be reconstructed from specificatio
 
 ## 6. Keyboard Shortcuts & Interactive Bindings Matrix
 
-All keyboard shortcuts are centralized and dispatched in [`crates/gui/src/app.rs`](../../../crates/gui/src/app.rs) (`handle_keyboard_shortcuts`) and interactive panels:
+All keyboard shortcuts are centralized and dispatched in [`crates/gui/src/app.rs`](../../../../crates/gui/src/app.rs) (`handle_keyboard_shortcuts`) and interactive panels:
 
 | Domain | Key Binding | Action / Behavior | UI Origin & Target |
 | :--- | :--- | :--- | :--- |
@@ -325,9 +325,9 @@ All keyboard shortcuts are centralized and dispatched in [`crates/gui/src/app.rs
 ## 7. Reference Documentation & Upstream Ground Truth
 
 - [GUI Frontend Architecture & Overview](GUI.md): High-level frontend architecture, CRT shaders, aspect ratios, and input mapping.
-- [egui Guidelines & Frontend Best Practices](egui%20Guidelines.md): Immediate-mode UI patterns, layout invariants, and headless testing rules.
+- [egui Guidelines & Frontend Best Practices](../egui%20Guidelines.md): Immediate-mode UI patterns, layout invariants, and headless testing rules.
 - [Debugger Architecture & Inspection Engine](Debugger.md): Breakpoint traps, stepping controls, and disassembler facade.
-- [Binary Injection & Loader Implementation](../../../crates/debugger/src/loader.rs): Kickstart overlay disengagement, RAM injection, and prefetch priming.
-- [Temporal Debugger Ring Buffer](../../../crates/debugger/src/temporal.rs): High-capacity zero-allocation execution history ring buffer.
-- [GUI Crate Implementation](../../../crates/gui/src/gui.rs): Living Rust implementation of eframe app, views, docks, and modals.
-- [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
+- [Binary Injection & Loader Implementation](../../../../crates/debugger/src/loader.rs): Kickstart overlay disengagement, RAM injection, and prefetch priming.
+- [Temporal Debugger Ring Buffer](../../../../crates/debugger/src/temporal.rs): High-capacity zero-allocation execution history ring buffer.
+- [GUI Crate Implementation](../../../../crates/gui/src/gui.rs): Living Rust implementation of eframe app, views, docks, and modals.
+- [GUI Interaction Test Suite](../../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.

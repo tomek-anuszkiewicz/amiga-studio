@@ -7,15 +7,15 @@ subsystem: "m68000"
 status: "active"
 created: 2026-09-12
 updated: 2026-10-10
-related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
+related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)"]
 ---
 
 # CPU Benchmark Analysis Guide & Empirical Evaluation
 
-- **Parent Specification:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)
+- **Parent Specification:** [CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)
 - **Execution Architecture:** [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)
 - **Companion Specifications:** [CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md) | [CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)
-- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../../AGENTS.md).
 
 This document establishes the evaluation guide for interpreting M68000 instruction benchmarking datasets (`.agent/tmp/benchmarks/**/*.csv` and `.json`), detailing the mathematical metrics, hardware-to-host correlation models, and empirical findings from the 108-instruction `--thorough` baseline.
 
@@ -159,7 +159,7 @@ Analyzing high-cycle system and multicycle operations to determine whether large
 
 ## 4. How to Run the Automated Analysis Tool
 
-To analyze any benchmark CSV report and generate markdown analysis tables using [`crates/test_runner/src/analyze_benchmarks.py`](../../../crates/test_runner/src/analyze_benchmarks.py):
+To analyze any benchmark CSV report and generate markdown analysis tables using [`crates/test_runner/src/analyze_benchmarks.py`](../../../../crates/test_runner/src/analyze_benchmarks.py):
 
 ```powershell
 # Analyze the thorough benchmark run:
@@ -212,7 +212,7 @@ Benchmark CSV Table (14 Columns)
 
 To confirm that a benchmark run on disk is 100% valid and regression-free:
 
-1. **Direct Reference CSV Comparison ([`test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs)):**
+1. **Direct Reference CSV Comparison ([`test_benchmark_csv.rs`](../../../../crates/test_runner/tests/test_benchmark_csv.rs)):**
    Run `python tools/verification/verify.py test rust crate test_runner suite test_benchmark_csv`.
    - Compares columns 1..=6 of all 108 rows with `baselines/benchmarks/m68k_benchmark_baseline.csv` and checks nominal instruction totals for each profile: Quick 31,500; Standard 6,997,200; Thorough 149,992,500.
    - Reports the differing row with expected and actual values. Generated fixtures use `.agent/tmp/benchmark-csv/<profile>/`.
@@ -226,12 +226,12 @@ To confirm that a benchmark run on disk is 100% valid and regression-free:
 
 ## 7. Reference Documentation & Upstream Ground Truth
 
-- [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Standard instruction timings and bus operation counts.
+- [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../../Reference/68000%20User%27s%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Standard instruction timings and bus operation counts.
 - [CPU Instruction Benchmarking Architecture](CPU%20Instruction%20Benchmarking.md): Benchmark harness execution hierarchy and anomaly detection formulas.
 - [CPU Instruction Benchmark Catalog](CPU%20Instruction%20Benchmark%20Catalog.md): Comprehensive catalog of 108 benchmarked instruction variants.
 - [CPU Instruction Benchmark Strategies](CPU%20Instruction%20Benchmark%20Strategies.md): Strategy matrix for cascading stacks and data generators.
-- [CPU Motorola M68000 Architecture](CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
-- [CPU Micro-Step State Machine Specification](CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
-- [Benchmark Analysis Python CLI](../../../crates/test_runner/src/analyze_benchmarks.py): Telemetry parser and markdown analysis generator.
-- [Benchmark CSV Validation Suite](../../../crates/test_runner/tests/test_benchmark_csv.rs): Direct reference comparison for benchmark data consistency.
+- [CPU Motorola M68000 Architecture](../CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
+- [CPU Micro-Step State Machine Specification](../CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
+- [Benchmark Analysis Python CLI](../../../../crates/test_runner/src/analyze_benchmarks.py): Telemetry parser and markdown analysis generator.
+- [Benchmark CSV Validation Suite](../../../../crates/test_runner/tests/test_benchmark_csv.rs): Direct reference comparison for benchmark data consistency.
 

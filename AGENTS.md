@@ -27,6 +27,7 @@ Read applicable domain rules before editing that domain. Use [Graphify](.agents/
 | GUI | [egui practices and visual verification](.agents/rules/egui-best-practices.md) |
 | Documentation | [Documentation maintenance](.agents/rules/docs-maintenance.md), [vault links](.agents/rules/vault-linking-and-graph-integrity.md), [information hierarchy](.agents/rules/information-hierarchy.md), [writing style](.agents/rules/practitioner-voice-and-tone.md) |
 | Repository skills | [Instruction hierarchy and skill ownership](.agents/rules/information-hierarchy.md) |
+| PowerShell tooling | Use [write-powershell](.agents/skills/write-powershell/SKILL.md) for invocation behavior, parameter descriptions, and validation. |
 | Commit or milestone | [Diary](.agents/rules/diary-maintenance.md), [roadmap](.agents/rules/roadmap-maintenance.md), [design maintenance](.agents/rules/docs-maintenance.md) |
 | Merge or worktree | [Merge policy and required procedures](.agents/rules/git-merge-commits.md) |
 | Reference conversion bootstrap | [Conversion programs](.agents/references/developer-setup.md#processing-raw-documents-into-markdown), [developer-led workflow](tools/bootstrap/reference-conversion-contract.md#development-workflow), [converter testing scope](.agents/rules/unit-testing-policy.md#bootstrap-converter-scope) |

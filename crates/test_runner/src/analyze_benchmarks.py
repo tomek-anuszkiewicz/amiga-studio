@@ -3,7 +3,7 @@
 M68000 CPU Instruction Benchmark Analysis & Reporting Tool
 
 Performs deep comparative analysis across benchmark results per
-Obsidian/Amiga/Design/CPU Benchmark Analysis Guide.md:
+Obsidian/Amiga/Design/Performance/CPU Benchmark Analysis Guide.md:
 1. Functional Family Symmetry (ADD vs SUB vs AND vs OR vs EOR vs CMP)
 2. Addressing Mode Latency Ladder & Decomposition (AGU + Bus delta)
 3. Operand Size Scaling (.B vs .W vs .L)

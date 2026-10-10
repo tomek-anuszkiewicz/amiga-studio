@@ -7,7 +7,7 @@ subsystem: "physical_memory"
 status: "active"
 created: 2026-08-31
 updated: 2026-09-19
-related: ["[Agnus.md](Agnus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[RTC.md](RTC.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
+related: ["[Agnus.md](Agnus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[RTC.md](RTC.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/memory_bus"
   - "crates/physical_memory"
@@ -16,7 +16,7 @@ tracked_paths:
 
 > [!NOTE]
 > Global endianness rules, wrapping arithmetic, and WASM constraints are defined in [AGENTS.md](../../../AGENTS.md).
-> Color Clock timing is defined in [Main loop A500.md](Main%20loop%20A500.md). DMA contention and cycle stealing are coordinated with [Agnus.md](Agnus.md). Machine stepping and reset cycles are driven by [Main loop A500.md](Main%20loop%20A500.md), and CPU bus transactions are executed in [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md).
+> Color Clock timing is defined in [Machine Loop.md](Machine%20Loop.md). DMA contention and cycle stealing are coordinated with [Agnus.md](Agnus.md). Machine stepping and reset cycles are driven by [Machine Loop.md](Machine%20Loop.md), and CPU bus transactions are executed in [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md).
 
 ---
 

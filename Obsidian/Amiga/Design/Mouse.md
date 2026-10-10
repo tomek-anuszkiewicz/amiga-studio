@@ -7,7 +7,7 @@ subsystem: "denise"
 status: "active"
 created: 2026-09-04
 updated: 2026-09-12
-related: ["[Game Ports.md](Game%20Ports.md)", "[Joystick.md](Joystick.md)", "[Denise.md](Denise.md)", "[CIA.md](CIA.md)", "[GUI.md](GUI.md)", "[General Architecture.md](General%20Architecture.md)"]
+related: ["[Game Ports.md](Game%20Ports.md)", "[Joystick.md](Joystick.md)", "[Denise.md](Denise.md)", "[CIA.md](CIA.md)", "[GUI.md](Application/GUI.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/mouse"
   - "crates/game_ports"
@@ -17,7 +17,7 @@ tracked_paths:
 This document specifies the hardware registers, quadrature counter mechanics, button sensing, and cross-platform host mouse/touchscreen input abstraction for the Amiga 500 emulator.
 
 > [!NOTE]
-> For dual game port bus routing, see [Game Ports.md](Game%20Ports.md). For top-level machine coordination, see [General Architecture.md](General%20Architecture.md). For game port configurations, see [Configuration.md](Configuration.md). For digital joysticks, see [Joystick.md](Joystick.md). For GUI pointer locking, see [GUI.md](GUI.md).
+> For dual game port bus routing, see [Game Ports.md](Game%20Ports.md). For top-level machine coordination, see [General Architecture.md](General%20Architecture.md). For game port configurations, see [Configuration.md](Configuration.md). For digital joysticks, see [Joystick.md](Joystick.md). For GUI pointer locking, see [GUI.md](Application/GUI.md).
 
 ---
 
@@ -221,7 +221,7 @@ impl MouseDevice {
 - **CIA-A Integration:** `CIAAPRA` bit 6 reads `0` if `left_button == true`, `1` otherwise.
 - **Paula Integration:** `POTINP` bit 10 reads `0` if `right_button == true`, bit 8 reads `0` if `middle_button == true`.
 - **Denise Integration:** Denise returns `read_joy0dat()` whenever `$DFF00A` is accessed.
-- **Save State:** `MouseState` (counters and button states) is fully serialized in [SaveState.md](SaveState.md).
+- **Save State:** `MouseState` (counters and button states) is fully serialized in [SaveState.md](Application/SaveState.md).
 
 ---
 

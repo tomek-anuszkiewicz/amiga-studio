@@ -1,7 +1,7 @@
 //! Anomaly Detection & Regression Diffing Engine
 //!
 //! Evaluates normalized cycle ratio (R_norm = Host ns / Amiga CCK), detects Type A/B/C anomalies,
-//! and compares against historical baseline files per Obsidian/Amiga/Design/CPU Instruction Benchmarking.md.
+//! and compares against historical baseline files per Obsidian/Amiga/Design/Performance/CPU Instruction Benchmarking.md.
 
 use serde::{Deserialize, Serialize};
 

@@ -30,7 +30,7 @@ Use this procedure when reorganizing [ROADMAP.md](../../../ROADMAP.md), reviewin
   ```powershell
   python .agents/skills/roadmap-maintenance/scripts/check_roadmap.py
   ```
-- Update the [vAmigaTS Verification Scorecard](../../../Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md) when the policy's scorecard triggers apply.
+- Follow the policy's reporting requirements when the vAmigaTS verification track resumes; the previous scorecard has been removed.
 
 ## Verify and Report
 

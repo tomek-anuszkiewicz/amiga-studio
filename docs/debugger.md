@@ -68,6 +68,6 @@ Live memory viewer displaying memory banks across Chip RAM, Slow RAM, and Fast R
 ## 4. Architecture & Upstream References
 
 For complete data structure definitions, temporal trace buffer schemas, and integration details, consult:
-- **Obsidian Design Spec:** [`Obsidian/Amiga/Design/Debugger.md`](../Obsidian/Amiga/Design/Debugger.md)
+- **Obsidian Design Spec:** [`Obsidian/Amiga/Design/Application/Debugger.md`](../Obsidian/Amiga/Design/Application/Debugger.md)
 - **Frontend Guidelines:** [`Obsidian/Amiga/Design/egui Guidelines.md`](../Obsidian/Amiga/Design/egui%20Guidelines.md)
 - **Source Crates:** [`crates/debugger/`](../crates/debugger/) and [`crates/disassembler/`](../crates/disassembler/)

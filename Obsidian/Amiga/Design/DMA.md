@@ -7,14 +7,14 @@ subsystem: "dma"
 status: "active"
 created: 2026-09-19
 updated: 2026-09-19
-related: ["[Agnus.md](Agnus.md)", "[Copper.md](Copper.md)", "[Blitter.md](Blitter.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)"]
+related: ["[Agnus.md](Agnus.md)", "[Copper.md](Copper.md)", "[Blitter.md](Blitter.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/dma"
 ---
 # Agnus DMA Architecture, Slot Scheduling & Bus Arbitration Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Machine Loop.md](Machine%20Loop.md).
 > Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
 > Coprocessor execution is documented in [Copper.md](Copper.md) and [Blitter.md](Blitter.md). Video display fetching is coordinated with [Denise.md](Denise.md), and audio/floppy streaming with [Paula.md](Paula.md).
 

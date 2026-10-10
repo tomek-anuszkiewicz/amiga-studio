@@ -7,14 +7,14 @@ subsystem: "sprites"
 status: "active"
 created: 2026-09-19
 updated: 2026-09-19
-related: ["[Denise.md](Denise.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
+related: ["[Denise.md](Denise.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/sprites"
 ---
 # Denise Hardware Sprites Architecture & Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Machine Loop.md](Machine%20Loop.md).
 > Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
 > Video frame compositing and pixel DAC output are documented in [Frame Buffer.md](Frame%20Buffer.md). Denise display modes and collision detection are governed by [Denise.md](Denise.md), and DMA slot allocation by [DMA.md](DMA.md).
 

@@ -1,7 +1,7 @@
 //! M68000 Instruction Benchmark Catalog
 //!
 //! Exhaustive catalog of representative instruction variants, sizes, addressing modes,
-//! expected Amiga CCK cycles, and category tags per Obsidian/Amiga/Design/CPU Instruction Benchmark Catalog.md.
+//! expected Amiga CCK cycles, and category tags per Obsidian/Amiga/Design/Performance/CPU Instruction Benchmark Catalog.md.
 
 use serde::{Deserialize, Serialize};
 
