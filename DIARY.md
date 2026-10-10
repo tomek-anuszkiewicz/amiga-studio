@@ -2698,3 +2698,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Scoped design review selected six specifications with no unmapped crate paths and left the CPU programmer model unchanged
   - python tools/verification/verify.py commit passed ordinary crate tests with coverage all quality gates the full English audit the transaction checker and all five Python contract directories
   - No milestone closure full final CPU run hardware capture performance measurement reference change or human acceptance is claimed
+---
+
+### [2026-10-11 01:49 CEST] — Centralize the hardware-derived DMA schedule
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design`
+  - `tools/verification/checks/english_words`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the duplicate DMA timetable and arbitration narrative from Machine Loop and the cross-chip catalog
+  - Rebuild DMA.md from HRM allocation diagrams and Fat Agnus signal descriptions with explicit coordinate and phase limits
+  - Record the observed fifth refresh allocation on long NTSC lines without changing runtime behavior
+  - Add user-approved RAS CAS and unrequested vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Keep scheduling in the DMA specification and signal routing in the coordinator and connection catalog
+  - Treat the existing scheduler as implementation evidence rather than hardware authority
+  - Preserve the unresolved refresh boundary and whole-machine verification limits
+- **Verification & Test Results**:
+  - Scoped design review selected the three changed design notes and Testing Strategy by tracked_paths with no missing ownership and no further corrections
+  - Vault frontmatter and link audit passed 39 specifications and 1048 links
+  - Focused DMA and Agnus tests passed 10 and 24 tests
+  - Production Agnus observation covered eight complete PAL and NTSC lines with forced disk requests and the existing audio request path and observed five refresh selections on long NTSC lines
+  - python tools/verification/verify.py commit passed ordinary crate tests with coverage standard transaction tests all quality gates the full English audit and all five Python contract directories
+  - Full SingleStepTests Cartesian DMA hardware captures and milestone closure were not run or claimed

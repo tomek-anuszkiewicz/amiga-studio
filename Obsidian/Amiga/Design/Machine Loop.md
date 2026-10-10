@@ -6,8 +6,8 @@ category: "Design"
 subsystem: "machine_loop"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-10
-related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Agnus.md](Agnus.md)"]
+updated: 2026-10-11
+related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)"]
 tracked_paths:
   - "crates/machine_loop"
 ---
@@ -323,13 +323,14 @@ require a generic array of matured register/value pairs from each chip. Instead,
 - Blitter, VBlank, disk, audio restart, and CIA outputs are sampled and routed to
   their destination interrupt or pointer inputs.
 
+DMA requests, data-bus latches, and contention outputs are routed between the
+connected components. Agnus owns transfer scheduling and arbitration, specified
+in [DMA.md](DMA.md); the coordinator does not select DMA slots. Signal directions
+are recorded in the [cross-chip catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md).
+
 The following register and signal requirements describe the coordination contract;
 individual register decoding and mutation pipelines remain in their owning chips:
 
-  - **`DMACON` ($096) Master & Channel Routing:**
-    - Routes individual DMA enables to `Audio` (channels 0..3), `FloppyController` (`dma_enabled`), `Sprites` (`dma_enabled`), `Blitter` (`dma_enabled`), `Copper` (`dma_enabled`), and `FrameBuilder` (`dma_enabled`).
-    - Gated by master enable: channel DMA is only active when both master `DMAEN` (bit 9) and the channel enable bit are asserted.
-    - Updates `BLTPRI` (bit 10, Blitter Nasty mode) on `Blitter`.
   - **`Copper` Strobes & Latches:**
     - `COP1LC` ($080/$082) & `COP2LC` ($084/$086) update Copper pointer latches.
     - `COPJMP1` ($088) & `COPJMP2` ($08A) strobes reload the active Copper Program Counter (`cop_pc`) and assert `is_running = true`.
@@ -345,39 +346,7 @@ individual register decoding and mutation pipelines remain in their owning chips
 
 ---
 
-## 7. Baseline Agnus DMA Bus Contention Arbitration & Transfer Architecture
-
-> [!WARNING]
-> **Unresolved slot-description discrepancy:** The baseline schedule below and
-> [Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)
-> use refresh slots 0..3, disk slot 4, and audio slots 5..8. [DMA.md](DMA.md) describes
-> disk CCKs 7, 9, 11 and audio CCKs 13, 15, 17, 19. The former architecture review
-> also assigned even CCKs to DMA and odd CCKs to CPU, opposite to the allocation
-> described in DMA.md. Their numbering and phase definitions require hardware
-> evidence and an explicit specification decision; merging these documents does
-> not validate or resolve those timing claims.
-
-On each CCK step, Agnus evaluates the horizontal scanline slot schedule ($227.5$ CCKs per PAL line):
-1. **DMA Slot Allocation**:
-   - CCK 0..3: DRAM Refresh
-   - CCK 4: Floppy Disk DMA
-   - CCK 5..8: Audio DMA (Channels 0–3)
-   - CCK 12..27: Sprite DMA (Sprites 0–7)
-   - Dynamic: Bitplane DMA according to display depth (`BPLCON0`)
-2. **Contention Flag Exposure**:
-   - Agnus drives `memory_bus.set_chip_ram_blocked(blocked)` based on the active DMA slot and `DMACON` bit 10 (`BLTPRI` Blitter Nasty mode).
-   - Even before individual custom chip internal logic (e.g. bitplane pixel serializer, audio BLEP synthesis, Blitter minterm ALU) is fully implemented, this baseline arbiter allows the CPU, Copper, and memory bus to observe bus contention and stall with `MemoryBusResult::Blocked`, establishing realistic bus timing from day one.
-3. **DMA Word Transfer Flow via Machine Loop**:
-   - During active DMA slots, Agnus generates the physical Chip RAM address from its pointer registers (`audpt[ch]`, `dskpt`, `sprpt[i]`, `bplpt[i]`).
-   - `machine_loop` reads the 16-bit word from `PhysicalMemory` and routes it into the destination holding latch:
-     - Audio DMA: `paula.audio.set_dat(ch, word)` (loaded into `AUDxDAT`).
-     - Floppy DMA: `paula.dskdat = word` (read mode) or fetched from `paula.dskdat` into RAM (write mode).
-     - Sprites & Bitplanes: Loaded into Denise line serializers.
-   - When Paula's audio channel length reaches completion, Paula signals `AUDxDSR`, which `machine_loop` detects to reload Agnus pointer `audpt[ch] = audlc[ch]` and assert Paula `INTREQ` Level 4 interrupt.
-
----
-
-## 8. Host Interfaces & Persistence
+## 7. Host Interfaces & Persistence
 
 - **Video Frame Retrieval:** Returns current frame buffer slice (`&[u32]` ARGB, $720 \times 576$ max PAL).
 - **Audio Sample Retrieval:** Decouples stereo audio ring buffers (`&[i16]`).
@@ -385,12 +354,13 @@ On each CCK step, Agnus evaluates the horizontal scanline slot schedule ($227.5$
 
 ---
 
-## 9. Reference Documentation & Upstream Ground Truth
+## 8. Reference Documentation & Upstream Ground Truth
 
 - [`machine_loop` Cargo manifest](../../../crates/machine_loop/Cargo.toml): Crate name, dependencies, and library entry point.
 - [`A500Machine implementation`](../../../crates/machine_loop/src/machine_loop.rs): Living ownership, CCK sequence, reset domains, and peripheral routing.
 - [`Machine snapshot records`](../../../crates/machine_loop/src/save_state.rs): Serializable machine state and validation types.
 - [MemoryBus.md](MemoryBus.md): Transient address routing and CPU contention contract.
+- [DMA.md](DMA.md): Agnus transfer scheduling and arbitration; the machine loop routes the resulting signals.
 - [Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md): Signal directions and propagation requirements.
 - [SaveState.md](Application/SaveState.md): Snapshot and differential rewind specification.
 

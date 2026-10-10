@@ -74,6 +74,7 @@ btst
 bvc
 bvs
 bzero
+cas
 cc
 cck
 ccks
@@ -247,6 +248,7 @@ prescaler
 prescaling
 pth
 ptl
+ras
 rdy
 resync
 rga

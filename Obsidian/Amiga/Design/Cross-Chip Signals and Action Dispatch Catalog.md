@@ -6,8 +6,8 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-09-14
-updated: 2026-09-19
-related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
+updated: 2026-10-11
+related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)", "[DMA.md](DMA.md)"]
 ---
 
 # Cross-Chip Signals and Action Dispatch Catalog
@@ -44,6 +44,11 @@ Emulation code must strictly adhere to the physical bus and signal model:
    - The top-level machine loop (`MachineLoop`) acts as the physical motherboard PCB simulator.
    - After each Color Clock, `MachineLoop` queries subsystem output pins using explicit `poll_*` methods (e.g. `agnus.poll_blitter_irq()`, `agnus.poll_copper_write()`, `agnus.poll_bpl_dma()`, `paula.poll_audio_restart()`, `floppy.poll_dskblk_irq()`, `cia_a.irq_pending()`).
    - `MachineLoop` then routes the sampled events directly to target subsystem input handlers (e.g. `paula.set_interrupt_request()`, `denise.write_bpldat()`, `agnus.reload_audio_ptr()`). No chip ever reaches outside its struct.
+
+DMA request lines, the shared data bus, and RGA strobes belong in this catalog
+because they connect chips. Slot allocation, channel request conditions, pointer
+updates, and bus arbitration belong in [DMA.md](DMA.md). The
+[machine loop](Machine%20Loop.md) routes the modeled connections.
 
 This catalog establishes the definitive inventory of cross-chip boundary signals, their calibrated propagation latencies, conflict resolution behavior during in-flight writes, and their target action methods.
 
@@ -113,28 +118,9 @@ The following table documents every cross-chip signal in the Amiga 500:
 
 ---
 
-## 4. Scanline Fixed DMA Slot Allocation Schedule
+## 4. Reference Documentation & Upstream Ground Truth
 
-Outside of CPU-driven register writes, Agnus drives autonomous hardware DMA transfers during dedicated horizontal Color Clock slots on every scanline:
-
-```
-CCK Slot:   0   1   2   3   4   5   6   7   8   ...  12  ...  27  ... 227.5
-Channel:  [ DRAM Refresh ] [DSK] [AUD0] [AUD1] [AUD2] [AUD3] ... [ Sprites 0..7 ] ... [ Bitplanes / Free ]
-Target:    Physical DRAM    Floppy     Paula Audio Engine           Denise Video            Denise / Blitter
-```
-
-1. **Slots 0..3 (DRAM Refresh):** Agnus refreshes dynamic RAM banks.
-2. **Slot 4 (Floppy Disk DMA):** If `DSKEN` and `DMAEN` are active in `DMACON`, Agnus fetches/stores 1 word from `dskpt` and advances pointer.
-3. **Slots 5..8 (Audio Channels 0..3):** If `AUDxEN` is active and Paula has requested data:
-   - Agnus reads Chip RAM at `audpt[ch]` and increments `audpt[ch] += 2`.
-   - Paula latches the word into `auddat[ch]`, decrements `audlen[ch]`.
-   - If length counter finishes ($1$), Paula asserts `AUDxDSR` to reload Agnus `audpt[ch] = audlc[ch]` and sets `INTREQ` audio interrupt.
-4. **Slots 12..27 (Hardware Sprites 0..7):** Agnus reads sprite position and image data words directly into Denise sprite line buffers.
-
----
-
-## 5. Reference Documentation & Upstream Ground Truth
-
+- [DMA.md](DMA.md): Owns the transfer schedule and arbitration rules for the signals cataloged here.
 - **Commodore Amiga Hardware Reference Manual**:
   - [Hardware Reference Manual](../Reference/Hardware%20Reference%20Manual): Primary reference for custom chip register addresses, bit allocations, and DMA channel priorities.
   - [Chapter 1 - Introduction to the Amiga Architecture](../Reference/Hardware%20Reference%20Manual/01%20-%20Chapter%201%20-%20Introduction.md): Custom chip physical bus layout, shared Chip RAM arbitration, and system bus timing.
