@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-08
-updated: 2026-09-16
+updated: 2026-10-11
 related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU SingleStepTests.md](Verification/CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/cpu/src/micro"
@@ -656,6 +656,25 @@ The table below catalogs representative micro-step sequences for each fundamenta
 | :---: | :--- | :---: | :--- |
 | **0** | `PREFETCH_NEXT_READ` + `alu_fn` | 2 (CCK1) | Initiates bus read from `PC` into `irc`. Fused ALU computes `D0 = D0 + D1`, sets CCR flags ($X, N, Z, V, C$). |
 | **1** | `BUS_READ_IDLE` | 2 (CCK2) | Bus read finishes (bus free for Agnus DMA). Retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
+
+#### Long Register Addition: `ADD.L Dn, Dn` and `ADD.L An, Dn`
+
+Long register ADD takes eight CPU clocks (four CCKs). Its bus timeline is a
+four-clock prefetch followed by four internal clocks. The internal delay must
+follow the read/idle pair; placing it before prefetch preserves the total time
+but violates the transaction order in the unchanged
+[ADD.l silicon vectors](../../../ref_src/SingleStepTests-680x0/68000/v1/ADD.l.json).
+The two variants are implemented in [add.rs](../../../crates/cpu/src/instructions/add.rs).
+
+| CCK | Microprogram action | CPU clocks | Observable bus activity |
+| --- | --- | --- | --- |
+| 1 | `PREFETCH_NEXT_READ` with the register-add ALU callback | 2 | Read callback within the first half of the prefetch interval |
+| 2 | `BUS_READ_IDLE` | 2 | Second half of the same four-clock read interval |
+| 3-4 | `ALU_IDLE_4CLK` | 4 | No bus transaction; retire after the internal interval |
+
+The JSON constrains bus activity and final state; it does not independently
+locate the internal ALU calculation. The implementation fuses addition and CCR
+updates into the first prefetch CCK, and advances the prefetch queue at retirement.
 
 ---
 

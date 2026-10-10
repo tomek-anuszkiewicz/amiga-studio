@@ -2666,3 +2666,35 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Full SingleStepTests Cartesian DMA performance measurements and milestone checks were not selected for the final source snapshot
   - Graphify code graph refreshed
   - No roadmap milestone closure performance recording or baseline update
+---
+
+### [2026-10-11 01:26 CEST] — SINGLESTEP-FULL-01 and CPU-CYCLE-01: enforce timed comparison and repair register ADD.l
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/test_runner`
+  - `agent rules and skills`
+  - `design specifications`
+  - `docs/testing.md`
+  - `tools/verification/README.md`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove weaker SingleStep comparison modes and require state clocks and timed bus callbacks for every executed vector
+  - Preserve internal intervals in the reference clock sequence and record observed CCK callback clocks
+  - Add missing MOVEP suites remove the redundant PEA sample and execute formerly skipped ASL cases
+  - Add a comparator regression that rejects a shifted read with unchanged data and total clocks
+  - Move the four internal clocks after prefetch in ADD.l Dn,Dn and ADD.l An,Dn
+  - Correct retired capture and benchmark commands and document synthetic fixture and comparison limits
+- **Architectural Rationale & Trade-Offs**:
+  - A correct result and total clock count do not prove the correct bus phase
+  - Keep silicon references unchanged and sampling limited to input count
+  - Repair CPU behavior in small batches with review evidence under CPU-CYCLE-01
+  - Earlier state-focused results are not a current complete-comparison baseline
+- **Verification & Test Results**:
+  - The pre-repair exhaustive run selected 124 files and 978542 vectors with 519902 failures under stronger comparison
+  - Batch 01 now passes all 787 register ADD.l vectors and all 10042 selected vectors including NOP and register ADD.b and ADD.w controls
+  - Extra batch diagnostics checked final prefetch and formal PC
+  - The full containing ADD.l file gains exactly 787 passes with no regressions and still fails 6757 of 8065 cases outside batch 01
+  - Focused ADD and ADDX Cartesian tests full NOP comparator regression formatting architecture Clippy and vault checks passed
+  - Scoped design review selected six specifications with no unmapped crate paths and left the CPU programmer model unchanged
+  - python tools/verification/verify.py commit passed ordinary crate tests with coverage all quality gates the full English audit the transaction checker and all five Python contract directories
+  - No milestone closure full final CPU run hardware capture performance measurement reference change or human acceptance is claimed

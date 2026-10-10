@@ -15,6 +15,8 @@ pub enum BusAccessSize {
 /// Simplified recorded CPU bus cycle transaction for test validation
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RecordedTransaction {
+    /// Observed CPU clock at the memory callback: reads in CCK1, writes in CCK2.
+    pub clock: u32,
     pub is_read: bool,
     pub addr: u32,
     pub size: BusAccessSize,
@@ -120,11 +122,27 @@ pub fn match_transactions(
 ) -> Result<(), Vec<String>> {
     let mut diffs = Vec::new();
 
-    // Filter out internal / non-bus operations ("n") from expected test vectors
-    let expected_bus: Vec<&ExpectedTransaction> = expected
-        .iter()
-        .filter(|tx| matches!(tx, ExpectedTransaction::Bus { .. }))
-        .collect();
+    // Internal events advance the reference timeline even though they have no bus callback.
+    let mut clock = 0u32;
+    let mut expected_bus = Vec::new();
+    for transaction in expected {
+        match transaction {
+            ExpectedTransaction::Internal { duration } => clock = clock.wrapping_add(*duration),
+            ExpectedTransaction::Bus {
+                is_read,
+                is_tas,
+                duration,
+                ..
+            } => {
+                // The core calls reads at the end of CCK1 and commits writes at CCK2.
+                // Compare that observed phase to the reference bus interval.
+                let callback_clock =
+                    clock.wrapping_add(if *is_read || *is_tas { 2 } else { *duration });
+                expected_bus.push((callback_clock, transaction));
+                clock = clock.wrapping_add(*duration);
+            }
+        }
+    }
 
     if recorded.len() != expected_bus.len() {
         diffs.push(format!(
@@ -147,8 +165,14 @@ pub fn match_transactions(
             uds: exp_uds,
             lds: exp_lds,
             ..
-        } = expected_bus[i]
+        } = expected_bus[i].1
         {
+            if rec.clock != expected_bus[i].0 {
+                diffs.push(format!(
+                    "Transaction [{}]: Callback clock mismatch: actual {}, expected {} CPU clocks",
+                    i, rec.clock, expected_bus[i].0
+                ));
+            }
             let exp_read = *exp_r || *exp_tas;
             if rec.is_read != exp_read {
                 diffs.push(format!(

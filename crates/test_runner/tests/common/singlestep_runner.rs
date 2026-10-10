@@ -8,18 +8,6 @@ use flate2::read::GzDecoder;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-/// Verification mode for SingleStepTests
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum VerifyMode {
-    /// Verify CPU registers and RAM contents (baseline for opcodes awaiting cycle migration)
-    #[default]
-    StateOnly,
-    /// Verify CPU registers, RAM contents, and instruction clock cycles (actual_clocks == test.length)
-    StateAndCycles,
-    /// Full verification: registers, RAM, cycle count, and complete bus transaction sequence
-    Full,
-}
-
 /// Identifies whether an opcode word is a `CMPM (Ay)+, (Ax)+` instruction.
 ///
 /// Binary opcode format: `1011 [Ax:3] 1 [Size:2] 001 [Ay:3]`
@@ -32,39 +20,24 @@ pub fn is_cmpm_postinc_opcode(op: u32) -> bool {
     (op as u16 & 0xF138) == 0xB108
 }
 
-/// Runs a single SingleStepTest returning a concise string error on mismatch
-pub fn run_single_test(test: &SingleStepTest) -> Result<(), String> {
-    run_single_test_detail(test, "unspecified", 0, VerifyMode::StateOnly)
-        .map_err(|err| err.to_string())
-}
-
 /// Runs a single SingleStepTest against the CPU and MemoryBus, returning detailed diagnostics
 pub fn run_single_test_detail(
     test: &SingleStepTest,
     file_path: &str,
     test_index: usize,
-    mode: VerifyMode,
 ) -> Result<(), TestFailure> {
     let mut bus = TestMemoryBus::new_flat();
-    run_single_test_detail_with_bus(test, &mut bus, file_path, test_index, mode)
+    run_single_test_detail_with_bus(test, &mut bus, file_path, test_index)
 }
 
-/// Runs a single SingleStepTest reusing an existing TestMemoryBus instance for zero-allocation execution
+/// Runs a single SingleStepTest reusing the flat TestMemoryBus storage
 pub fn run_single_test_detail_with_bus(
     test: &SingleStepTest,
     bus: &mut TestMemoryBus,
     file_path: &str,
     test_index: usize,
-    mode: VerifyMode,
 ) -> Result<(), TestFailure> {
     let is_harte = test.name.contains('[');
-    // Tom Harte Real68k test vectors #1582 and #1760 in ASL.b.json contain corrupted upper bits in D2 (hardware capture glitch)
-    let is_corrupted_capture =
-        is_harte && file_path.contains("ASL.b") && matches!(test_index, 1582 | 1760);
-    if is_corrupted_capture {
-        return Ok(());
-    }
-
     let mut failure = TestFailure::new(&test.name, file_path, test_index, test.length);
 
     bus.clear();
@@ -73,11 +46,7 @@ pub fn run_single_test_detail_with_bus(
     bus.load_test_ram(&test.initial.ram);
 
     let mut cpu = Cpu::new();
-    if mode == VerifyMode::Full {
-        bus.enable_transaction_recording(true);
-    } else {
-        bus.enable_transaction_recording(false);
-    }
+    bus.enable_transaction_recording(true);
     cpu.state.set_d_long(0, test.initial.d0);
     cpu.state.set_d_long(1, test.initial.d1);
     cpu.state.set_d_long(2, test.initial.d2);
@@ -107,7 +76,19 @@ pub fn run_single_test_detail_with_bus(
     cpu.state.prefetch = (test.initial.prefetch[1] & 0xFFFF) as u16;
 
     // Execute instruction
-    let actual_clocks = cpu.step_instruction(bus);
+    let start_clocks = cpu.cycle_counter();
+    let execution_limit = test.length.saturating_mul(4).max(1024);
+    loop {
+        // Each CCK advances two CPU clocks before the memory callback executes.
+        bus.callback_clock =
+            (cpu.cycle_counter().wrapping_sub(start_clocks) as u32).wrapping_add(2);
+        let completed = cpu.step_cck(bus);
+        let elapsed = cpu.cycle_counter().wrapping_sub(start_clocks) as u32;
+        if completed || cpu.state.halted || cpu.state.stopped || elapsed >= execution_limit {
+            break;
+        }
+    }
+    let actual_clocks = cpu.cycle_counter().wrapping_sub(start_clocks) as u32;
 
     // Verify Data Registers
     let expected_d = [
@@ -226,8 +207,7 @@ pub fn run_single_test_detail_with_bus(
     }
 
     // Verify Cycle Length
-    let should_verify_cycles = matches!(mode, VerifyMode::StateAndCycles | VerifyMode::Full);
-    if should_verify_cycles && actual_clocks != test.length {
+    if actual_clocks != test.length {
         failure.diffs.push(StateDiff::CycleLength {
             actual: actual_clocks,
             expected: test.length,
@@ -235,25 +215,23 @@ pub fn run_single_test_detail_with_bus(
     }
 
     // Verify Bus Transactions
-    if mode == VerifyMode::Full {
-        match super::transactions::parse_transactions(&test.transactions) {
-            Ok(expected_txs) => {
-                let recorded = bus.recorded_transactions().unwrap_or(&[]);
-                if let Err(tx_diffs) =
-                    super::transactions::match_transactions(recorded, &expected_txs, is_harte)
-                {
-                    for diff in tx_diffs {
-                        failure
-                            .diffs
-                            .push(StateDiff::TransactionMismatch { details: diff });
-                    }
+    match super::transactions::parse_transactions(&test.transactions) {
+        Ok(expected_txs) => {
+            let recorded = bus.recorded_transactions().unwrap_or(&[]);
+            if let Err(tx_diffs) =
+                super::transactions::match_transactions(recorded, &expected_txs, is_harte)
+            {
+                for diff in tx_diffs {
+                    failure
+                        .diffs
+                        .push(StateDiff::TransactionMismatch { details: diff });
                 }
             }
-            Err(parse_err) => {
-                failure.diffs.push(StateDiff::TransactionMismatch {
-                    details: format!("Failed to parse test transactions: {}", parse_err),
-                });
-            }
+        }
+        Err(parse_err) => {
+            failure.diffs.push(StateDiff::TransactionMismatch {
+                details: format!("Failed to parse test transactions: {}", parse_err),
+            });
         }
     }
 
@@ -283,19 +261,10 @@ fn resolve_test_path(path: &str) -> std::path::PathBuf {
     p.to_path_buf()
 }
 
-/// Loads and executes tests from a plain JSON or gzip (.json.gz) test suite file in StateOnly mode
+/// Loads silicon vectors and compares state, clocks and timed bus transactions.
 pub fn run_test_file(
     path: &str,
     limit: Option<usize>,
-) -> Result<(usize, usize), Box<dyn std::error::Error>> {
-    run_test_file_with_mode(path, limit, VerifyMode::StateOnly)
-}
-
-/// Loads and executes tests from a plain JSON or gzip (.json.gz) test suite file with specified verification mode
-pub fn run_test_file_with_mode(
-    path: &str,
-    limit: Option<usize>,
-    mode: VerifyMode,
 ) -> Result<(usize, usize), Box<dyn std::error::Error>> {
     let resolved = resolve_test_path(path);
     let file = File::open(&resolved)?;
@@ -322,7 +291,7 @@ pub fn run_test_file_with_mode(
     let mut bus = TestMemoryBus::new_flat();
 
     for (idx, test) in tests.iter().take(count).enumerate() {
-        match run_single_test_detail_with_bus(test, &mut bus, path, idx, mode) {
+        match run_single_test_detail_with_bus(test, &mut bus, path, idx) {
             Ok(()) => {
                 passed += 1;
                 passed_names.push(test.name.clone());
@@ -359,11 +328,10 @@ pub fn run_test_file_with_mode(
     Ok((passed, failed))
 }
 
-/// Loads and executes filtered tests from a plain JSON or gzip (.json.gz) test suite file with specified verification mode
-pub fn run_test_file_filtered_with_mode<F>(
+/// Loads and executes filtered tests from a plain JSON or gzip (.json.gz) test suite file with complete verification
+pub fn run_test_file_filtered<F>(
     path: &str,
     limit: Option<usize>,
-    mode: VerifyMode,
     filter: F,
 ) -> Result<(usize, usize), Box<dyn std::error::Error>>
 where
@@ -396,7 +364,7 @@ where
     let mut bus = TestMemoryBus::new_flat();
 
     for (idx, test) in filtered_tests.into_iter().take(count).enumerate() {
-        match run_single_test_detail_with_bus(test, &mut bus, path, idx, mode) {
+        match run_single_test_detail_with_bus(test, &mut bus, path, idx) {
             Ok(()) => {
                 passed += 1;
                 passed_names.push(test.name.clone());

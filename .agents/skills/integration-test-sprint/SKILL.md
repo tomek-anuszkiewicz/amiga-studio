@@ -5,7 +5,7 @@ description: Execute the 4-iteration cascading verification protocol and post-di
 
 # Recipe: Integration Test Sprint & Anti-Patchwork Protocol
 
-This skill guides the systematic execution, triage, and convergence of multi-chip integration test suites (Tier 2 `machine_loop` tests and Tier 4 `vAmigaTS` system captures) following the **4-Iteration Cascading Verification Protocol** and the **Post-Discovery Architecture Cleanup ("Anti-Patchwork" Protocol)** defined in [`Testing Strategy and Quality Assurance.md`](../../../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md).
+This skill owns the requested integration sprint procedure for Tier 2 `machine_loop` tests. Tier 4 vAmigaTS captures require a future execution entry point; reference assets alone do not make that branch runnable. Evidence boundaries are described in [`Testing Strategy and Quality Assurance.md`](../../../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md).
 
 ---
 
@@ -13,13 +13,13 @@ This skill guides the systematic execution, triage, and convergence of multi-chi
 
 1. **Cascading Over Individual Tweaks:**
    - An Amiga is a tightly synchronized multi-chip system. A 1-cycle offset in a central register can manifest as thousands of pixel mismatches across unrelated coprocessors.
-   - Never attempt to fix individual failing test cases in isolation. Address central bus/clock/interrupt signals upstream to unlock cascading passes across multiple chips.
+   - Use an isolated failing case to establish the mechanism before scaling the fix. Investigate shared bus, clock or interrupt causes when evidence connects failures; do not assume every cluster has one cause.
 2. **The 2–3 Attempt Rule (Cluster Time-Boxing):**
    - Never spend more than 2–3 calibration attempts on a single failing test cluster during Iteration 3.
    - If an issue requires deep analog modeling, unmapped hardware features, or extensive rewrites, document it and move on to preserve momentum.
 3. **The Anti-Patchwork Protocol (Finding the Common Denominator):**
    - Exploratory debugging often accumulates temporary local `if`-statements, coordinate nudges ($\pm 1$), and special-case flags.
-   - Every sprint must conclude by extracting the sprint `git diff`, grouping changes by subsystem, identifying the single first-principles hardware law (the common denominator) explaining all discrepancies, and eliminating all temporary ad-hoc patches.
+   - Review the sprint diff by subsystem and remove temporary compensating changes. Consolidate fixes into a shared mechanism only when the observed failures establish that relationship.
 
 ---
 
@@ -55,13 +55,11 @@ graph TD
 ```
 
 ### Iteration 1: Global Discovery Sweep & Test Selection
-1. **Build the Runner:**
-   ```powershell
-   python tools/verification/verify.py runner build
-   ```
-2. **Run Baseline Sweep:**
-   - For vAmigaTS: `python tools/verification/verify.py runner vamiga category all`
+1. **Check Execution Availability:**
+   - Machine Loop integration tests are available through Cargo. A vAmigaTS capture sprint requires a new executable capture workflow; report that missing prerequisite rather than recreating the retired harness during test diagnosis.
+2. **Run the Agreed Baseline Sweep:**
    - For Machine Loop: `python tools/verification/verify.py test rust crate machine_loop`
+   - Use an existing suite or case filter when the requested sprint is scoped to one behavior.
 3. **Filter Out Non-Runnable Tests:**
    Do not waste cycles debugging tests that expect hardware outside the current phase:
    - **AGA / 2 MB Chip RAM:** Tests exercising AGA-only registers (`BPLCON3`, 32-bit burst).
@@ -72,7 +70,7 @@ graph TD
 4. **Cluster Failures:**
    Group failing tests by symptom:
    - Frozen loops waiting on unasserted interrupts (e.g. Level 3 Copper/Blitter or Level 4 Audio).
-   - Uniform pixel coordinate shifts across multiple tests (e.g. beam lead offset `hpos + 4`).
+   - Uniform pixel coordinate shifts across multiple tests, when a capture workflow is available. Investigate the physical phase rather than prescribing a beam offset.
    - Constant color register mismatches.
 
 ### Iteration 2: Low-Hanging Systemic Cascades
@@ -105,9 +103,9 @@ Before committing sprint results, execute the anti-patchwork cleanup to ensure c
 
 ### Step 1: Extract Sprint Diff
 ```powershell
-git diff <baseline_commit>..HEAD > sprint_diff.patch
+git diff <baseline_commit>..HEAD > .agent/tmp/sprint_diff.patch
 # Or for unstaged work:
-git diff > sprint_diff.patch
+git diff > .agent/tmp/sprint_diff.patch
 ```
 
 ### Step 2: Subsystem Decomposition
@@ -126,9 +124,9 @@ Review all modifications across the diff and ask:
   - Example: DMA slot allocation parity (even vs odd cycles).
 
 ### Step 4: Patchwork Elimination & Model Unification
-1. Delete all ad-hoc `if` conditions, hardcoded test name checks, and coordinate nudges ($\pm 1$).
-2. Implement the identified hardware law cleanly in the core substrate crate.
-3. Re-verify the test suite to confirm 100% of the fixes hold under the unified model.
+1. Remove temporary workarounds, hardcoded test name checks and coordinate nudges. Preserve conditions that represent demonstrated hardware state.
+2. Implement the established shared mechanism in its owning crate; keep unrelated causes separate.
+3. Re-run the affected regression protection and report actual results for the final source snapshot.
 
 ---
 
@@ -138,7 +136,7 @@ Review all modifications across the diff and ask:
 - [ ] No test cluster received more than 2–3 ad-hoc calibration attempts.
 - [ ] Sprint diff extracted and reviewed across subsystems.
 - [ ] All exploratory ad-hoc `if` branches and $\pm 1$ coordinate nudges eliminated.
-- [ ] Unified physical hardware law implemented in the appropriate substrate crate.
+- [ ] Shared mechanisms consolidated where demonstrated; independent causes remain separate.
 - [ ] Full regression check passed cleanly with zero regressions.
 - [ ] Commit timing follows [`.agents/rules/git-commits.md`](../../rules/git-commits.md): leave validated changes uncommitted unless the user requests a commit or a minor roadmap point completes; authorized commits are atomic.
 - [ ] Quantitative results recorded in [`DIARY.md`](../../../DIARY.md).

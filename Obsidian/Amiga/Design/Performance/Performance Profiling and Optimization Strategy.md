@@ -6,154 +6,111 @@ category: "Design"
 subsystem: "test_runner"
 status: "active"
 created: 2026-09-14
-updated: 2026-10-10
+updated: 2026-10-11
 related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[General Architecture.md](../General%20Architecture.md)", "[Machine Loop.md](../Machine%20Loop.md)"]
 tracked_paths:
   - "baselines/benchmarks"
   - ".agents/skills/profile-external"
+  - "tools/verification/profile_benchmark.py"
+  - "crates/test_runner/benches/bench_instructions"
 ---
 # Performance Profiling & Optimization Strategy
 
-> [!NOTE]
-> Architectural guidelines and machine invariants reside in [AGENTS.md](../../../../AGENTS.md).
-> The M68000 CPU instruction benchmark framework is specified in [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md).
-> Color Clock execution phases ($CCK1/CCK2$) and bus arbitration are specified in [General Architecture.md](../General%20Architecture.md) and [Machine Loop.md](../Machine%20Loop.md).
-> Implementation resides in [`crates/test_runner`](../../../../crates/test_runner) and the dedicated agent skill [`.agents/skills/profile-external`](../../../../.agents/skills/profile-external).
+Performance evidence combines fresh workload measurements with sampling profiles.
+Measurements answer how much host time a workload consumes; profiles help explain
+where it is spent. Neither establishes emulated timing correctness, which belongs
+to behavioral and silicon assertions. Shared obligations are in
+[AGENTS.md](../../../../AGENTS.md).
 
----
+## Available Workloads and Boundaries
 
-## 1. Core Performance Goals & Architecture
+CPU instruction measurements use the Cargo benchmark target in
+[`crates/test_runner/benches/bench_instructions`](../../../../crates/test_runner/benches/bench_instructions).
+Program generation, timing, statistics and report persistence follow
+[CPU Instruction Benchmarking](CPU%20Instruction%20Benchmarking.md).
+The retained CSV and JSON baselines in `baselines/benchmarks/` provide historical
+comparison data; they are not fresh measurements of the current build.
 
-Maintaining cycle-exact hardware fidelity at high execution speeds requires strict performance discipline. However, inserting synthetic timing probes into hot emulation loops distorts host CPU execution pipelines, flushes compiler instruction caches, and introduces artificial timing divergence.
+The previous vAmigaTS execution harness, dependent chipset benchmark and chipset
+baseline have been removed. There is currently no executable chipset throughput
+comparison or recording command, and no automatic throughput gate in commit or
+milestone verification. Whole-machine performance investigation first needs a
+representative executable workload that reaches the subsystem being optimized.
+CPU-only measurements cannot establish production chipset throughput or FPS.
 
-This specification establishes a **Two-Tier Performance Monitoring Architecture**:
-1. **Tier 1 — Automated Regression Sentinel (Harness Gate):** Continuous, deterministic throughput tracking using Git-tracked golden baselines (`baselines/benchmarks/chipset_benchmark_baseline.json`) executing uninstrumented release code.
-2. **Tier 2 — External Statistical Sampling Profiler (`samply`):** Deep, method-level call tree and flamegraph inspection using non-invasive OS performance counters on demand.
+## Measurement and Sampling Architecture
 
 ```mermaid
 graph TD
-    subgraph "Tier 1: Continuous Regression Sentinel"
-        RUN["python tools/verification/verify.py runner chipset compare"]
-        GOLDEN["baselines/benchmarks/chipset_benchmark_baseline.json<br/>(Git-Tracked Golden Baselines)"]
-        DELTA{"Throughput Delta < -5.0%?"}
-
-        RUN --> DELTA
-        GOLDEN --> DELTA
-        DELTA -->|No: Passed| OK["Green Build (Throughput Verified)"]
-        DELTA -->|Yes: Regression| FAIL["Flag Performance Regression"]
-    end
-
-    subgraph "Tier 2: Deep Root-Cause Profiler"
-        FAIL --> PROFILE["python tools/verification/verify.py runner profile bench"]
-        PROFILE --> FLAME["Interactive Flamegraph (Firefox Profiler UI)"]
-        FLAME --> HOTSPOT["Identify Hot Function / Cache Bottleneck"]
-    end
+    WORKLOAD["Available representative workload"] --> MEASURE["Fresh optimized measurements"]
+    WORKLOAD --> PROFILE["External sampling profile"]
+    BASELINE["Retained comparison baseline"] --> COMPARE["Compare cost under comparable conditions"]
+    MEASURE --> COMPARE
+    PROFILE --> HOTSPOT["Inspect call paths and self-time"]
+    HOTSPOT --> CHANGE["Focused optimization"]
+    CHANGE --> REPEAT["Repeat measurement and relevant behavioral checks"]
 ```
 
----
+The profiling launcher builds the optimized Cargo benchmark without execution,
+selects the executable reported by that build, and runs it under `samply`.
+It stops on build failure or a missing artifact. The launcher is
+[profile_benchmark.py](../../../../tools/verification/profile_benchmark.py);
+commands and interpretation belong to the
+[profile-external skill](../../../../.agents/skills/profile-external/SKILL.md).
+Profiling runs explicitly for a requested investigation or optimization rather
+than after ordinary edits or as an additional milestone obligation.
 
-## 2. Prohibition of Intrusive Hot-Path Probes
+## Preserve the Production Execution Path
 
-- **The Observer Effect in Emulation:** Calling host timer APIs (`std::time::Instant::now()`, `QueryPerformanceCounter`) inside per-CCK execution loops (`step_cck`, `step_subsystems_cck`) incurs a severe measurement penalty (~20–80 ns per call). On a 3.54 MHz Color Clock model, probes alter instruction scheduling and prevent LLVM from performing cross-function inlining optimizations.
-- **Architectural Policy:** Core emulation crates (`crates/agnus`, `crates/denise`, `crates/paula`, `crates/cpu`, `crates/memory_bus`) must remain **100% free of measurement probes**. Profiling must never alter the production execution path.
+Core emulation has no host wall-clock I/O. Keep host timers and profiling probes
+outside per-CCK CPU, bus and chip execution. Sampling observes the optimized host
+program without adding measurement code to those paths. Its own overhead and
+sampling variation remain part of interpreting the profile.
 
----
+Color Clock phases and machine coordination follow
+[General Architecture](../General%20Architecture.md) and
+[Machine Loop](../Machine%20Loop.md). A host profile cannot prove those phases.
 
-## 3. Tier 1: Git-Tracked Chipset Benchmark Baseline
+## Interpret Cost and Validate Improvements
 
-Modeled after the proven M68000 instruction benchmarking system ([CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)), the test runner maintains an authoritative golden baseline dataset:
+Record the source snapshot, host, workload, measurement profile and relevant
+settings. Use the same workload and comparable conditions before and after a
+change. Confirm that the workload exercises the target subsystem before treating
+its results as evidence for that optimization.
 
-- **Location:** `baselines/benchmarks/chipset_benchmark_baseline.json`
-- **Schema:**
-  ```json
-  {
-    "version": 1,
-    "recorded_at": "2026-09-14",
-    "results": [
-      {
-        "name": "coptim1",
-        "category": "Copper Coprocessor",
-        "frames": 50,
-        "cck_count": 3556800,
-        "elapsed_ms": 459.0,
-        "fps": 108.9,
-        "cck_mhz": 7.75,
-        "methods": {
-          "Cpu::step_cck": { "percent": 31.4, "module": "cpu" },
-          "Agnus::step_cck_ram": {
-            "percent": 32.8,
-            "module": "agnus",
-            "submethods": {
-              "Copper::step_cck": 21.6,
-              "Blitter::step_cck_ram": 0.0,
-              "DmaScheduler::arbitrate": 11.2
-            }
-          },
-          "Denise::step_cck": {
-            "percent": 26.5,
-            "module": "denise",
-            "submethods": {
-              "FrameBuilder::set_cck_pixels": 25.1,
-              "SpriteEngine::step_cck": 1.4
-            }
-          },
-          "Paula::step_cck": { "percent": 3.8, "module": "paula", "submethods": { "Audio::step_cck": 3.8 } },
-          "Cia::step_cck": { "percent": 4.2, "module": "cia" },
-          "FloppyController::step_cck": { "percent": 0.8, "module": "floppy" },
-          "Rtc::step_cck": { "percent": 0.5, "module": "rtc" }
-        }
-      }
-    ]
-  }
-  ```
+Filter sample call paths by symbols present in the profile. Crate boundaries
+help locate CPU execution, Agnus coprocessors, Denise video, Paula peripherals
+and CIA activity when the workload executes them. Flamegraph width describes
+sample share; inverted call trees help separate self-time from caller costs.
+The retained method aggregator provides a configured mapping of emulator entry
+methods, not automatic coverage of every function. Inspect unmatched samples.
 
-### 3.1 Method-Level Profile Aggregation (`.agents/skills/profile-external/scripts/aggregate_profile.py`)
-To obtain method and module time distribution without intrusive runtime probes:
-1. Run external sampling profiler (`samply record ...` or `perf record ...`).
-2. Aggregate samples by canonical entry method:
-   - `python .agents/skills/profile-external/scripts/aggregate_profile.py <profile_file> --target coptim1 --update-baseline baselines/benchmarks/chipset_benchmark_baseline.json`
-3. Canonical entry methods:
-   - `Cpu::step_cck` (`cpu`)
-   - `Agnus::step_cck_ram` (`agnus` -> `Copper::step_cck`, `Blitter::step_cck_ram`, `DmaScheduler::arbitrate`)
-   - `Denise::step_cck` (`denise` -> `FrameBuilder::set_cck_pixels`, `SpriteEngine::step_cck`)
-   - `Paula::step_cck` (`paula` -> `Audio::step_cck`)
-   - `Cia::step_cck` (`cia`)
-   - `FloppyController::step_cck` (`floppy`)
-   - `Rtc::step_cck` (`rtc`)
+For a measured throughput comparison, the relative change is:
 
-### 3.2 Regression Evaluation Protocol
-The sentinel executes representative benchmark targets for a fixed frame count ($N = 50$) in release mode:
-$$\Delta\% = \frac{\text{FPS}_{\text{active}} - \text{FPS}_{\text{baseline}}}{\text{FPS}_{\text{baseline}}} \times 100$$
-- If $\Delta\% \ge -5.0\%$, the audit passes.
-- If $\Delta\% < -5.0\%$, the runner exits with code 1, blocking regression integration.
+$$\Delta\% = \frac{T_{current} - T_{reference}}{T_{reference}} \times 100$$
 
----
+Here $T$ is throughput measured for the same workload. A lower percentage share
+in a profile is insufficient to establish a gain: compare fresh elapsed cost or
+throughput and account for variation. Thresholds and baseline normalization for
+CPU measurements belong to the CPU benchmark design; the retired chipset
+threshold is not an active gate.
 
-## 4. Tier 2: External Sampling Profiling (`samply`)
+After a focused optimization, repeat the measurements and relevant behavioral
+checks. Commit and milestone profiles follow the existing testing policy; they
+do not automatically run performance measurements or unavailable capture suites.
+Report the measured outcome, checked behavior and remaining workload limits.
 
-When investigating bottlenecks or validating proposed optimizations:
+Baseline replacement is a separate reference change requiring evidence and
+explicit approval under
+[spec-compliance.md](../../../../.agents/rules/spec-compliance.md).
+The aggregator's retained legacy writing option does not recreate the removed
+chipset runner or its baseline. Keep ordinary analysis outputs in ignored
+artifact directories.
 
-### 4.1 Subsystem Mapping via Crate Boundaries
-Because each Amiga subsystem is isolated in its own workspace crate, the profiler automatically groups execution time by chip:
-- `agnus::*` / `copper::*` / `blitter::*` / `dma::*` $\to$ Agnus Coprocessors & Bus Arbiter
-- `denise::*` / `frame_builder::*` / `sprites::*` $\to$ Denise Video Pipeline
-- `paula::*` / `audio::*` / `floppy::*` $\to$ Paula Audio & Storage
-- `m68000::*` / `memory_bus::*` $\to$ CPU Microcode Dispatch & Physical Memory
-- `cia::*` / `keyboard::*` / `rtc::*` $\to$ Peripheral Timers & I/O
+## Reference Documentation & Upstream Ground Truth
 
-### 4.2 Optimization Verification Protocol
-Whenever refactoring for performance (such as *Dynamic Agnus DMA Slot Arbitration*):
-1. **Pre-Optimization Profile:** Record a baseline flamegraph with `samply` to capture exact percentage share.
-2. **Implement Minimal Code Change:** Implement the focused optimization while preserving code readability and architectural simplicity.
-3. **Verification Gate:** Pass all automated unit tests, SingleStepTests, and vAmigaTS verification suites.
-4. **Post-Optimization Profile:** Re-run `samply` to verify that target self-time decreased.
-5. **Update Baseline:** Re-record golden metrics via `chipset record` and commit atomically.
-
----
-
-## 5. Reference Documentation & Upstream Ground Truth
-
-- [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md): Golden CSV/JSON baseline infrastructure and anomaly detection algorithms.
-- [General Architecture.md](../General%20Architecture.md): Physical Color Clock synchronization model ($CCK1/CCK2$).
-- [Machine Loop.md](../Machine%20Loop.md): Master machine coordination loop and borrow-split dispatch architecture.
-- [vAmiga Core Architecture Reference](../../../../ref_src/vAmiga-4.5/Core/VAmiga.cpp): Reference C++ main emulation loop and frame timing model.
+- [CPU Instruction Benchmarking](CPU%20Instruction%20Benchmarking.md): Measurement engine, CPU comparison baselines, statistics and report formats.
+- [General Architecture](../General%20Architecture.md): Physical Color Clock synchronization and crate boundaries.
+- [Machine Loop](../Machine%20Loop.md): Production machine coordination and execution phases.
+- [Profiling Skill](../../../../.agents/skills/profile-external/SKILL.md): Available commands and external profile interpretation.
+- [vAmiga Core Architecture Reference](../../../../ref_src/vAmiga-4.5/Core/VAmiga.cpp): Reference machine loop for future whole-machine workload analysis.

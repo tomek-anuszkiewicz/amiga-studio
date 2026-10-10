@@ -1,142 +1,94 @@
 ---
 name: profile-external
-description: Profile Amiga 500 emulator execution hot paths using external sampling profilers (samply) and verify throughput against Git-tracked baselines.
+description: Profile an available emulator workload with samply and compare fresh CPU benchmark measurements with retained baselines; whole-machine profiling requires an executable workload.
 ---
 
 # External Sampling Profiler & Performance Runbook
 
-This skill guides the collection, analysis, and verification of emulator execution performance using external statistical sampling profilers (`samply` / Firefox Profiler) and Git-tracked benchmark baselines.
+Use the current CPU benchmark target for measurements and sampling profiles.
+The old vAmigaTS runner, chipset workload and chipset baseline have been removed.
+CPU measurements describe the instruction workload; they do not measure the
+production chipset scheduler or whole-machine FPS. A requested chipset profile
+requires a runnable representative workload before measurements can begin.
 
----
+For measurement design and limitations, read
+[Performance Profiling and Optimization Strategy](../../../Obsidian/Amiga/Design/Performance/Performance%20Profiling%20and%20Optimization%20Strategy.md).
+For inlining decisions, read [inlining-examples](references/inlining-examples.md)
+alongside measured profiles. Commit and milestone triggers follow
+[AGENTS.md](../../../AGENTS.md); profiling is not an automatic completion gate.
 
+## Select the Workload
 
-For inlining decisions, read [inlining-examples](references/inlining-examples.md) alongside measured profiles.
+Profile when investigating a demonstrated performance problem or evaluating a
+requested optimization. Use the same workload and settings before and after the
+change. Record the source snapshot, host, measurement profile and relevant
+execution settings. Check the workload actually reaches the target function;
+CPU-only benchmarks cannot establish a chipset optimization's value.
 
+The current launcher supports `quick`, `standard` and `thorough` CPU profiles.
+Use `--plan` to inspect commands without starting measurements. Running without
+a profile prints benchmark help and does not measure execution.
 
-## 1. Core Architecture: Two-Tier Performance Monitoring
+## Measure and Profile
 
-The emulator employs a two-tier performance monitoring strategy:
-1. **Tier 1 — Automated Regression Sentinel (`chipset_benchmark_baseline.json`):**
-   - Fast, deterministic benchmark suite running uninstrumented release code.
-   - Compares active execution throughput (FPS and CCK frequency) against Git-tracked golden baselines (`baselines/benchmarks/chipset_benchmark_baseline.json`).
-   - Flags regressions exceeding the $-5.0\%$ threshold.
-2. **Tier 2 — Deep Root-Cause Profiler (`samply`):**
-   - External sampling profiler using OS thread timers and hardware counters.
-   - Generates interactive, web-based flamegraphs in the Firefox Profiler UI.
-   - Enables method-level and instruction-level drill-down with zero code instrumentation.
-
----
-
-## 2. When to Profile & Collect Data
-
-Execute profiling sessions under three explicit operational conditions:
-- **Milestone Baseline Gates:** Run a benchmark audit before declaring major roadmap milestones complete.
-- **Pre-Optimization Investigation:** When planning an optimization (e.g. Agnus DMA slot arbitration), run a profiling session first to record the exact percentage share and hot instructions before modifying code.
-- **Post-Optimization Anti-Regression:** Profile immediately after an optimization to verify that the targeted function shrunk in the call tree and overall throughput improved.
-- **Interactive Sluggishness Investigation:** If emulation dips below real-time 50 FPS (PAL) / 60 FPS (NTSC), record a trace to isolate the bottleneck.
-
----
-
-## 3. Tool Installation (`samply`)
-
-`samply` is a modern sampling profiler for Rust on Windows, Linux, and macOS:
+Install `samply` once when needed:
 
 ```powershell
-# Install samply once via Cargo
 cargo install samply
 ```
 
----
-
-## 4. Profiling Execution Runbook
-
-### Step 1: Build the Release Binary
-Always profile the optimized release build. Debug builds introduce artificial function call and un-inlined method overhead:
+Run fresh uninstrumented measurements separately from sampling:
 
 ```powershell
-python tools/verification/verify.py runner build
+python tools/verification/verify.py runner bench quick
+python tools/verification/verify.py runner profile bench quick
 ```
 
-### Step 2: Record a Profiling Session with Samply
-Run `samply record` targeting a representative workload or vAmigaTS test case:
+The measurement command runs `cargo bench` and analyzes its generated CSV.
+The profiling command builds the optimized benchmark without running it, selects
+the exact executable from Cargo artifact messages, and launches it under
+`samply`. Build failure or a missing artifact stops the launcher. Its implementation
+is [profile_benchmark.py](../../../tools/verification/profile_benchmark.py).
+The profiler provides an interactive Firefox Profiler view; its samples are
+observations of host execution, not emulated clock timing assertions.
+
+Reports belong under `.agent/tmp/`. For an existing CSV:
 
 ```powershell
-# Profile a Copper test over 100 frames
-python tools/verification/verify.py runner profile vamiga test coptim1 frames 100
-
-# Profile the standard chipset benchmark suite
-python tools/verification/verify.py runner profile chipset frames 100
+python tools/verification/verify.py runner analyze .agent/tmp/benchmarks/quick/m68k_benchmark.csv report .agent/tmp/benchmarks/quick/analysis_report.md
 ```
 
-`samply` will launch a local server and automatically open the interactive Firefox Profiler UI in the default browser.
+## Interpret the Profile
 
----
+Use the flamegraph to locate expensive call paths and the inverted call tree to
+inspect self-time. Filter by Rust crate or method names actually present in the
+profile. A smaller percentage share alone does not prove faster execution:
+compare elapsed cost or throughput from fresh measurements under comparable
+conditions. Do not attribute absent chipset symbols to a measured speedup.
 
-## 5. Analyzing Results in Firefox Profiler UI
-
-In the Firefox Profiler web interface:
-
-### A. Subsystem & Crate Filtering
-Because Rust symbols retain their fully qualified crate and module hierarchy, you can filter by subsystem name in the search/filter box:
-- `agnus` or `copper` or `blitter` or `dma`: Isolates all cycles consumed by Agnus coprocessors and bus arbitration.
-- `denise` or `frame_builder` or `sprites`: Isolates rasterization, bitplane serialization, and pixel compositing.
-- `paula` or `audio` or `floppy`: Isolates audio synthesis and disk controller processing.
-- `m68000` or `memory_bus`: Isolates CPU micro-step execution and bank-mapped memory routing.
-
-### B. View Options
-1. **Flamegraph View:**
-   - Visualizes horizontal stack width proportional to CPU time.
-   - Wide rectangular bars indicate functions consuming the most execution time.
-2. **Inverted Call Tree View (Bottom-Up):**
-   - Shows the "self-time" of leaf functions.
-   - Ranks the most expensive individual functions regardless of where they were called from.
-3. **Marker Chart:**
-   - Visualizes frame boundaries and vertical blanking intervals over time.
-
----
-
-## 6. Extracting Method-Level Profile Breakdowns (`.agents/skills/profile-external/scripts/aggregate_profile.py`)
-
-To track the exact percentage of time spent across individual chips and modules without adding invasive runtime probes, use `.agents/skills/profile-external/scripts/aggregate_profile.py`.
-
-The aggregator inspects external sampling profiler traces (Samply / Firefox Gecko JSON or folded stack traces) and matches call frames against canonical entry methods:
-- **CPU:** `Cpu::step_cck` (`cpu`)
-- **Agnus:** `Agnus::step_cck_ram` (`agnus`)
-  - `Copper::step_cck` (`copper`)
-  - `Blitter::step_cck_ram` (`blitter`)
-  - `DmaScheduler::arbitrate` (`dma`)
-- **Denise:** `Denise::step_cck` (`denise`)
-  - `FrameBuilder::set_cck_pixels` (`frame_builder`)
-  - `SpriteEngine::step_cck` (`sprites`)
-- **Paula:** `Paula::step_cck` (`paula`)
-  - `Audio::step_cck` (`audio`)
-- **CIAs:** `Cia::step_cck` (`cia`)
-- **Floppy:** `FloppyController::step_cck` (`floppy`)
-- **RTC:** `Rtc::step_cck` (`rtc`)
-
-### Aggregation Command:
-```powershell
-# Parse a profile and view method breakdown table in terminal
-python .agents/skills/profile-external/scripts/aggregate_profile.py profile.json --target coptim1
-
-# Ingest profile results directly into the golden benchmark baseline
-python .agents/skills/profile-external/scripts/aggregate_profile.py profile.json --target coptim1 --update-baseline baselines/benchmarks/chipset_benchmark_baseline.json
-```
-
----
-
-## 7. Tier 1 Regression Sentinel: Baseline Verification
-
-Before modifying code, check active performance against the Git-tracked baseline:
+For a supported Gecko JSON or folded-stack file, the retained aggregator reports
+samples matched to its configured emulator method names:
 
 ```powershell
-# Run the automated regression audit
-python tools/verification/verify.py runner chipset compare
+python .agents/skills/profile-external/scripts/aggregate_profile.py .agent/tmp/profile.json --target cpu-bench
 ```
 
-The comparison audit verifies overall FPS throughput against golden limits and prints the recorded baseline method profile breakdown.
+Its matcher covers CPU, Agnus, Copper, Blitter, DMA, Denise, FrameBuilder, sprites,
+Paula, audio, CIA, floppy and RTC entry methods. Inspect matched and unmatched
+samples before using these percentages as an explanation. The aggregator's
+legacy baseline-writing option does not restore the removed chipset workload or
+baseline; ordinary profile analysis does not update references.
 
-### Updating the Golden Baseline
-Chipset baseline recording through `test_runner` is unavailable: the crate has no application binary. A separate workload and recording entry point must be implemented before an approved hardware optimization can update this reference artifact.
+## Validate an Optimization
 
-When a commit is authorized by [git-commits.md](../../rules/git-commits.md), include `baselines/benchmarks/chipset_benchmark_baseline.json` in the atomic commit for the optimization task.
+Confirm that the target is represented in the selected workload. Compare fresh
+measurements and profiles before and after the focused change, and run relevant
+behavioral tests under [unit-testing-policy.md](../../rules/unit-testing-policy.md).
+Report workload limits, measurement variation and checks not run. Preserve
+production hot paths without host timers or profiling probes.
+
+The retained CPU baselines are comparison inputs in `baselines/benchmarks/`.
+Reference changes require evidence and explicit approval under
+[spec-compliance.md](../../rules/spec-compliance.md). Include an approved update
+only in its authorized atomic commit; analysis alone does not authorize baseline
+replacement or a commit.

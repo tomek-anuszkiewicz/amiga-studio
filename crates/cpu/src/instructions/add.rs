@@ -490,23 +490,24 @@ pub static STEPS_ADD_W_IMM_DN: [MicroStep; 4] = [
 ];
 
 // Long: <ea>, Dn
+// Register operands prefetch first, then spend four internal clocks on the long operation.
 pub static STEPS_ADD_L_DN_DN: [MicroStep; 3] = [
-    common::ALU_IDLE_4CLK,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_l_dn_dn),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 pub static STEPS_ADD_L_AN_DN: [MicroStep; 3] = [
-    common::ALU_IDLE_4CLK,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_l_an_dn),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 pub static STEPS_ADD_L_AI_DN: [MicroStep; 6] = [
     MicroStep {

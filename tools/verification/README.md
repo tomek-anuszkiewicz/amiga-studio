@@ -17,7 +17,7 @@ execution. `case` is a substring filter, including Python qualified test names.
 | `test rust crate NAME [suite NAME] [case FILTER]` | One Cargo package, optionally one integration target and filter |
 | `test python` | Tool contracts affected by changed owning inputs and shared dependencies |
 | `test python directory PATH [file PATTERN] [case FILTER]` | One Python test directory and optional discovery filters |
-| `test runner [standard|harness|silicon]` | Standard harness by default, diagnostic harness or both full CPU sets |
+| `test runner [standard|harness|silicon]` | Standard harness by default (transaction checker regressions), Cartesian DMA, or both full CPU sets |
 | `test runner singlestep [case FILTER] [full|sample N]` | Full vectors by default; explicit positive sampling limit overrides inherited environment |
 | `test runner dma [case FILTER]` | Cartesian DMA, optionally filtered |
 | `check all` | All commit quality gates without crate coverage or ordinary tests |
@@ -28,7 +28,7 @@ execution. `case` is a substring filter, including Python qualified test names.
 | `runner build` | Compile release test and benchmark targets without running them |
 | `runner bench [quick\|standard\|thorough]` | CPU benchmark |
 | `runner gui -- OPTIONS` | GUI inspector capture |
-| `runner profile bench SELECTORS` | CPU benchmark followed by external samply recording |
+| `runner profile bench [quick\|standard\|thorough]` | Build the CPU benchmark and run it under samply; no profile prints benchmark help |
 | `runner analyze CSV [report MARKDOWN]` | Analyze an existing benchmark CSV |
 
 `--plan` previews the exact child commands and environment. `--log-level
@@ -156,7 +156,7 @@ manually. Passing command-line arguments is rejected.
 
 The hardware-quality auditor accepts no arguments and always checks hardware
 bus topology and DMA mastership patterns. Commit verification runs it once;
-milestone verification and the hardware-review skill do not repeat it. It does
+milestone verification does not repeat it. It does
 not check CCK timing, open-bus values or test-file presence.
 
 There is no shared documentation-governance script in the verifier. Instruction
@@ -194,11 +194,12 @@ python tools/verification/verify.py test runner harness
 python tools/verification/verify.py test rust all --plan
 ```
 
-`test rust unit` runs isolated crates and golden-row fixtures;
+`test rust unit` runs the configured ordinary crate tests;
 `test rust integration` runs memory_bus, machine_loop, debugger and GUI tests;
 `test rust all` combines those two tiers. `test runner harness` runs
-benchmark smoke and Cartesian DMA. `test runner standard` selects ordinary harness
-suites; `test runner silicon` selects full SingleStepTests and Cartesian DMA.
+Cartesian DMA. `test runner standard` selects ordinary harness suites, currently
+the transaction checker regressions;
+`test runner silicon` selects full SingleStepTests and Cartesian DMA.
 Focused commands do not run coverage or completion gates. With no arguments,
 the entry point displays help without executing commands.
 
@@ -213,7 +214,7 @@ The two expensive environments use CPU + synthetic TestMemoryBus, not production
 
 Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory. The separate milestone set runs the full language audit and both full CPU suites; vAmigaTS Cargo suites and automatic chipset/capture runs have been removed.
 
-Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks and external sampling profiles remain manual measurement tools: the verifier retains CPU benchmark regression fixtures. The chipset throughput comparison is available only as an explicit manual command. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
+Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks and external sampling profiles run explicitly. CPU benchmark regression test targets, the old chipset throughput workload and capture execution commands have been removed. Retained CPU baselines are measurement comparison inputs. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
 
 ---
 
@@ -224,10 +225,10 @@ The CPU core is validated against **Tom Harte's `SingleStepTests-680x0`** suite 
 ### Execution Modes
 
 #### A. Fast Smoke Test (Sampled)
-By default, each instruction suite evaluates a sampled subset of 50 test cases (~5 seconds total):
+For an explicit sample of up to 50 cases per ordinary instruction test:
 ```powershell
 # Run sampled SingleStepTests across all implemented opcodes
-python tools/verification/verify.py test rust crate test_runner suite test_singlestep
+python tools/verification/verify.py test runner singlestep sample 50
 
 # Run tests for a specific instruction or family
 python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_nop
@@ -236,7 +237,14 @@ python tools/verification/verify.py test rust crate test_runner suite test_singl
 ```
 
 #### B. Full Exhaustive Verification (`SINGLESTEP_FULL`)
-Setting `SINGLESTEP_FULL=1` disables sampling limits and executes **100% of all ~1,000,000 test vectors** across all suites in parallel (typically completes in ~5–6 seconds):
+Setting `SINGLESTEP_FULL=1` removes the ordinary per-suite sample limit. Every
+executed vector always compares CPU state, listed RAM, instruction clocks and
+transaction callback times, direction, address, size and data. Internal delays
+remain part of the expected timeline. There is no weaker assertion mode. All
+124 JSON files are selected by the named tests; filtered CMPM tests additionally
+exercise subsets of the CMP files. Existing pipeline allowances, RAM masks and
+unobserved electrical signals remain documented in the
+[CPU verification specification](../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification).
 
 - **PowerShell (Windows):**
   ```powershell
@@ -260,14 +268,19 @@ Running `.\tools\bootstrap\bootstrap.ps1 -Sources` automatically scans for compr
 
 ## 2. Cartesian DMA Contention Verification
 
-Validates cycle-exact M68000 micro-stepping and wait-state handling under Agnus DMA bus contention across the full combinatorial Cartesian product:
+Checks CPU waiting with a synthetic `TestMemoryBus`, not production Agnus DMA
+arbitration. The suite samples 5% of vectors and enumerates the following
+combinations for each selected case:
 
 - **Address Permutations ($2^k$):** Sweeps all role assignments of memory cells touched by the instruction (`ChipRam` vs `FastRam`).
-- **DMA Schedule Permutations ($2^M$):** Sweeps every bit pattern of stalled vs free CCK slots across the execution window.
+- **DMA Schedule Permutations ($2^M$):** Enumerates stalled/free patterns in a window of at most six CCKs. For longer instructions the window position is selected deterministically; this is not every schedule across their entire execution.
 - **Asserted State Constraints:**
   1. *Cycle Invariance:* $C = C_0 + 2 \times \text{wait\_states}$
   2. *Fast RAM Immunity:* $C = C_0$ with zero wait states when memory addresses point to Fast RAM.
   3. *State Invariance:* Register values and RAM contents are 100% bit-identical to the uncontended golden run.
+
+The uncontended run is produced by the same emulator. It establishes a relative
+invariance property under contention, not independent absolute CPU correctness.
 
 ```powershell
 # Run full Cartesian DMA contention test suite
@@ -300,9 +313,10 @@ It runs with ordinary CPU tests. Formatting remains a separate `check formatting
 
 ## 4. Automatic Reports & Regression Tracking
 
-The `test_runner` library saves `summary.md` and `diff.md` in
+The SingleStep test helpers save `summary.md` and `diff.md` in
 `.agent/tmp/singlestep/` automatically with suite results. Open these files for
-coverage statistics and regression status.
+saved suite totals and regression status. Filtered runs can leave older suite
+results in these reports; compare scope and freshness before interpreting totals.
 
 ```powershell
 # Run sampled SingleStep tests for one opcode with live failure diagnostics
@@ -325,44 +339,30 @@ For interactive pair-programming sessions with the AI Agent in the IDE chat, thr
 | [`$synthesize-test-fixes`](../../.agents/skills/synthesize-test-fixes/SKILL.md) | **Root-Cause Consolidation** | Audit recent commits or git diff, construct the 3-column diagnostic matrix (`[Symptom] \| [Location] \| [Mechanism]`), find the shared hardware law (common denominator), and strip local ad-hoc patches. |
 
 
-## Hardware Capture Diagnostics
+## Hardware Capture References and Availability
 
+The vAmigaTS reference assets remain under `ref_src/vAmigaTS/`. Tests can include
+an ADF image or binary payload, a `test.retrosh` script describing configuration
+and frame count, and a hardware reference capture. The former comparator used
+716 x 285 RGB24 viewport captures (612,180 bytes).
 
-The emulator features a dedicated verification harness and execution runner for the **vAmiga Test Suite (vAmigaTS)** (`ref_src/vAmigaTS/`, 2,077 test directories), providing cycle-exact chipset verification against golden 716×285 24-bit RGB `.raw` viewport captures recorded from real Amiga 500 hardware.
+The execution runner, script handling, payload injection, viewport extraction,
+comparison commands and dependent chipset throughput benchmark have been
+removed. Neither commit nor milestone runs captures, and there is currently no
+manual capture CLI. A future capture workflow needs an executable workload and
+validated comparison path before the reference assets can establish current
+whole-machine behavior. Retained assets and historical results are not fresh
+execution evidence.
 
-### 1. How vAmigaTS Verification Works
-Each test under `ref_src/vAmigaTS/<Category>/<Subcategory>/<TestName>/` encapsulates a complete hardware test scenario:
-- **Test Binary / ADF:** A bootable floppy disk image (`.adf`) or raw M68000 binary payload injected into Chip RAM at entry point `$1000`.
-- **Test Script (`test.retrosh`):** Declarative shell script specifying memory configuration, initial register values, frames to simulate, and optional viewport cutouts.
-- **Golden Reference Viewport (`screenshot.raw`):** Exact 24-bit RGB uncompressed pixel capture (716 × 285 pixels = 612,180 bytes) produced by clean silicon.
-- **Verification Pipeline:**
-  1. Sets up minimal OS stub interrupt and library vectors (`ExecBase` at `$0004`, `GfxBase`).
-  2. Steps the machine loop for the scripted number of PAL frames (default: 8–16 frames).
-  3. Extracts Denise's 24-bit RGB frame buffer and compares it pixel-by-pixel against `screenshot.raw`.
-  4. Reports matching pixel count, mismatch coordinates, and actual vs expected RGB values.
+External source provisioning remains available:
 
-### 2. Provisioning Prerequisite
-Ensure reference assets are extracted prior to running vAmigaTS suites:
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Sources
 ```
 
-### 3. Automatic Verification Scope
-
-vAmigaTS Cargo test suites and chipset workload tests have been removed during test reorganization. Neither commit nor milestone verification runs vAmigaTS captures or chipset throughput comparisons. Reference assets remain available; there is no manual capture CLI.
-
-### 4. Capture Runner Availability
-
-The former `test_runner` application and its vAmigaTS execution commands have
-been removed. Reference assets remain available for future capture tooling.
-
-### 5. Diagnostic Diff Reporting & Root-Cause Guidelines
-When a test fails, the runner outputs a structured mismatch summary:
-```text
-❌ FAIL: 5500/204060 mismatched pixels (2.69%)
-    Mismatch at (128, 42): actual=(0, 0, 0), expected=(255, 128, 0)
-    Mismatch at (129, 42): actual=(0, 0, 0), expected=(255, 128, 0)
-```
-
-> [!IMPORTANT]
-> **Zero Coordinate Nudging:** Per [`.agents/rules/structural-root-cause.md`](../../.agents/rules/structural-root-cause.md), never fix pixel mismatches by nudging display coordinates ($\pm 1$ offset hacks). Investigate the underlying silicon timing: Color Clock phase alignment (`CCK1` vs `CCK2`), Copper instruction strobe delay, DMA slot contention, or display window (`DIWSTRT`/`DIWSTOP`) clipping.
+Provisioning does not restore execution or certify a capture comparison.
+For future investigations, follow
+[structural-root-cause.md](../../.agents/rules/structural-root-cause.md): reproduce
+the observed failure, establish the relevant clock or state transition, and
+repair its demonstrated mechanism. Coordinate or timing adjustments made solely
+to fit an image do not establish hardware behavior.

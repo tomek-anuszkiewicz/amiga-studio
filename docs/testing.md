@@ -16,7 +16,7 @@ wrong clock phase. Verification therefore uses several complementary approaches:
 | --- | --- |
 | Crate tests | Does an individual component behave as expected? |
 | Integration tests | Do the CPU, bus, machine loop and peripherals coordinate correctly? |
-| 68000 silicon vectors | Does an instruction match the captured CPU state and bus behavior? |
+| 68000 silicon vectors | Does an instruction match captured state, instruction clocks and the timed bus callback sequence? |
 | Synthetic DMA contention | Does the CPU wait correctly when bus access is blocked? |
 | Whole-machine captures | Does a selected hardware program produce the expected visible result? |
 | Performance measurements | How much host time does an emulated workload consume? |
@@ -27,14 +27,19 @@ constraints. They do not establish hardware timing by themselves.
 ## CPU Accuracy and Bus Waiting
 
 The CPU harness uses Tom Harte's SingleStepTests, a large collection of instruction
-cases captured from physical 68000 hardware. These compare registers, memory and
-bus execution against external evidence. Sampling is useful during diagnosis;
-the exhaustive suite is needed when claiming that all available vectors pass.
+cases captured from physical 68000 hardware. Every executed vector compares
+registers, listed RAM bytes, instruction clocks and timed bus callbacks with its
+JSON reference. Sampling limits the number of inputs and never weakens those
+comparisons. Internal delays advance the expected transaction timeline, so correct
+total clocks do not conceal an early or late read or write. Existing state masks
+and the callback interface's signal limits are documented in the
+[CPU verification specification](../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification).
 
 A separate contention harness varies memory placement and synthetic schedules of
 blocked and available bus slots. It checks that waiting adds the expected cycles
 without changing the instruction's result, and that noncontended memory access
-remains unaffected. Both harnesses use a synthetic test bus. Their success does
+remains unaffected. It samples vectors and limits schedule permutations to a
+bounded CCK window. Both harnesses use a synthetic test bus. Their success does
 not by itself verify the production memory bus or the complete chipset scheduler;
 those relationships need integration tests.
 
@@ -45,21 +50,21 @@ and the [silicon verification skill](../.agents/skills/m68k-singlestep-test/SKIL
 
 External hardware programs and reference captures provide another view: the
 combined effect of instruction timing, DMA, video and peripheral behavior.
-The available vAmigaTS captures support manual investigation and comparison.
-They are separate from the standard automatic completion checks; a passing
-completion report does not imply that every capture program was executed.
+The available vAmigaTS reference captures support investigation, but the previous
+capture runner has been removed. There is currently no executable capture
+comparison entry point. Whole-machine capture verification remains future work.
 
 Performance also needs separate evidence. A benchmark measures host execution
 time, whereas a cycle assertion measures emulated time. Stored benchmark results
-can detect regressions in analysis or fixtures, but they are not a new measurement
-of the current build. Fresh throughput measurements and sampling profiles are
-run explicitly. The [benchmark design](../Obsidian/Amiga/Design/Performance/CPU%20Instruction%20Benchmarking.md)
+provide a comparison reference; fresh measurements and sampling profiles run
+explicitly. Benchmark regression test targets and the old chipset throughput
+runner have been removed. The [benchmark design](../Obsidian/Amiga/Design/Performance/CPU%20Instruction%20Benchmarking.md)
 explains the measurement model.
 
 <a id="completion-verification"></a>
 ## Run Verification and Read the Result
 
-From the repository root, the normal completion entry point is:
+For an authorized commit, run from the repository root:
 
 ```powershell
 python tools/verification/verify.py commit
@@ -67,8 +72,10 @@ python tools/verification/verify.py commit
 
 It runs standard tests and quality checks on the current working tree, including
 unchanged files where the check's scope requires them. Staging is not required,
-and the command does not create a commit. The expensive silicon and contention
-suites are selected by relevant changes or explicit requests. Use
+and the command does not create a commit. Ordinary task completion uses relevant
+focused checks. The full silicon and contention suites run automatically at
+milestone closure or explicitly for diagnosis; changes alone do not select them
+in the commit profile. Use
 `python tools/verification/verify.py --help` for the available profiles and
 [tools/verification/README.md](../tools/verification/README.md#completion-verification) for execution details.
 

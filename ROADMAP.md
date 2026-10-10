@@ -28,7 +28,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
 
 - **2.1: Test Suite Review and Structural Orientation**
   - Review `test_runner` and per-crate tests: execution commands, fixtures, golden references, L1/L2/L3 boundaries, and subsystem coverage. Identify obsolete tests, behavioral gaps, missing regression evidence, and any harness/layout changes needed before the HRM test sprint.
-  - **Gate:** A gap matrix in `Obsidian/Amiga/Design/Test Coverage Matrix.md` explains the test paths and priorities, supported by `python tools/verification/verify.py check code`.
+  - **Gate:** Record the reviewed fixture boundaries, assertion modes, observed gaps and priorities in the [testing specification](Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md). Static code audits do not establish behavioral coverage; record executed evidence and remaining work separately.
 
 - **2.2: Sampling and Counter Profiling Feasibility**
   - Try `cargo flamegraph` on headless execution; use the [external profiling workflow](.agents/skills/profile-external/SKILL.md) and `samply` when host constraints require it. Evaluate `cargo-profiler`/Callgrind/Cachegrind or `perf` as complementary tools and compare available hot-symbol results.
@@ -53,7 +53,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - **Special inter-chip signal lines:** Verify documentation for DMA request/grant (`RGA` bus), interrupt lines (`_IPL0`–`_IPL2`, `_INTREQ`/`_INTENA` propagation through Paula → CIA → CPU), and any other active signal paths (e.g. blitter busy, disk DMA, copper WAIT/SKIP). Ensure polling methods and timing are documented with cycle-phase precision.
     - Sync any divergence between documentation and actual `MachineLoop` poll-and-route implementation found in Step 2.1.
   - **Verification Gate:**
-    - `python tools/verification/verify.py milestone` (Docs Quality pillar).
+    - Run the scoped specification review and [vault link/frontmatter audit](.agents/skills/obsidian-vault-linking/SKILL.md); the milestone command does not execute documentation maintenance. At point closure, run commit and milestone profiles at their existing triggers.
     - The intended commit changes were reviewed against documents selected by `tracked_paths`; real corrections are included, and accurate documents remain untouched.
 
 - **3.3: HRM-Aligned Subsystem Test Suite Authoring**
@@ -138,9 +138,9 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
   - **Objective:** Enforce strict gating and categorization for tests requiring hardware beyond the baseline A500 OCS configuration.
   - **Actionable Scope:**
     - Maintain and audit formal gate categories: FPU Coprocessors (206 tests deferred to the scope decision in Step 11.2), ECS & AGA Silicon (112 tests deferred to Steps 11.1 and 11.2), 68010 CPU Architecture (91 tests deferred to Step 11.2), AmigaOS Floppy MFM Bootblock (7 tests deferred to Step 9.1), and Non-Visual Register Assertions (193 tests deferred to Step 5.2.6).
-    - Ensure test runner automatically filters deferred tests when executing baseline OCS suites.
+    - A future capture entry point must classify supported and deferred tests before executing baseline OCS suites; the previous runner has been removed.
   - **Verification Gate:**
-    - `python tools/verification/verify.py test rust crate test_runner suite test_vamiga_runner case test_vamiga_deferred_reasons_audit`
+    - Demonstrate supported/deferred selection through the future capture entry point before executing its baseline; no current Cargo suite provides this gate.
 
 - **5.2: Targeted Subsystem Verification Sub-Suites Execution Track (1,468 Active Baseline Tests)**
   - **Objective:** Progressively execute and pass the 1,468 active baseline vAmigaTS tests in strict substrate-first causal order (Layer 0 $\to$ Layer 4). Re-establish the reporting format when this verification track resumes.
@@ -160,7 +160,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
   - **Actionable Scope:**
     - Localize optimization strictly within the Agnus DMA scheduler (`crates/dma/` / `crates/agnus/src/dma/`).
     - Preserve code simplicity and readability, with zero complex asynchronous event wheels or timing skips.
-    - Re-evaluate with `--profile` across vAmigaTS suites to measure empirical throughput gains.
+    - Once a representative whole-machine workload is executable, compare fresh throughput and external sampling profiles before and after the optimization; CPU-only benchmarks do not measure Agnus scheduling.
   - **Verification Gate:**
     - Zero regression across all active baseline OCS vAmigaTS suites.
     - `python tools/verification/verify.py test rust crate test_runner suite test_dma_cartesian`

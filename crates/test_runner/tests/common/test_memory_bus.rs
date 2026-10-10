@@ -42,6 +42,8 @@ pub struct TestMemoryBus {
     pub storage: TestMemoryStorage,
     /// Optional cycle-exact transaction log for instruction verification
     pub transaction_log: Option<Vec<RecordedTransaction>>,
+    /// Elapsed CPU clocks at the current CCK callback, set by the SingleStep driver.
+    pub callback_clock: u32,
     /// Value returned when reading unpopulated memory (defaults to 0xFF, configurable to 0x00)
     pub unmapped_byte: u8,
     /// Flag simulating custom chip (Agnus DMA) contention stalling CPU Chip RAM access
@@ -64,6 +66,7 @@ impl TestMemoryBus {
         Self {
             storage: TestMemoryStorage::Sparse(HashMap::with_capacity(64)),
             transaction_log: None,
+            callback_clock: 0,
             unmapped_byte: 0xFF,
             chip_ram_blocked: false,
             address_classification: HashMap::new(),
@@ -79,6 +82,7 @@ impl TestMemoryBus {
                 dirty: Vec::with_capacity(128),
             },
             transaction_log: None,
+            callback_clock: 0,
             unmapped_byte: 0x00,
             chip_ram_blocked: false,
             address_classification: HashMap::new(),
@@ -104,6 +108,7 @@ impl TestMemoryBus {
         self.address_classification.clear();
         self.chip_ram_blocked = false;
         self.stall_write_attempts = 0;
+        self.callback_clock = 0;
     }
 
     /// Enables or disables transaction recording
@@ -301,6 +306,7 @@ impl AddressBus for TestMemoryBus {
         };
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction {
+                clock: self.callback_clock,
                 is_read: true,
                 addr,
                 size: BusAccessSize::Byte,
@@ -330,6 +336,7 @@ impl AddressBus for TestMemoryBus {
         let val = u16::from_be_bytes([b0, b1]);
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction {
+                clock: self.callback_clock,
                 is_read: true,
                 addr,
                 size: BusAccessSize::Word,
@@ -357,6 +364,7 @@ impl AddressBus for TestMemoryBus {
         }
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction {
+                clock: self.callback_clock,
                 is_read: false,
                 addr,
                 size: BusAccessSize::Byte,
@@ -389,6 +397,7 @@ impl AddressBus for TestMemoryBus {
         }
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction {
+                clock: self.callback_clock,
                 is_read: false,
                 addr,
                 size: BusAccessSize::Word,

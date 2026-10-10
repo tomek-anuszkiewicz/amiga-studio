@@ -4,9 +4,7 @@ mod common;
 
 use common::schema::SingleStepTest;
 use common::singlestep_runner::is_cmpm_postinc_opcode;
-use common::singlestep_runner::{
-    run_test_file_filtered_with_mode, run_test_file_with_mode, VerifyMode,
-};
+use common::singlestep_runner::{run_test_file, run_test_file_filtered};
 
 /// Default number of test cases to run per opcode from each test suite
 const DEFAULT_SAMPLE_LIMIT: usize = 50;
@@ -31,15 +29,10 @@ fn resolve_limit(explicit: usize) -> Option<usize> {
 
 /// Helper function to execute a test against Real 68k (Tom Harte) hardware test suite
 fn run_test(name: &str, limit: usize) {
-    run_test_with_mode(name, limit, VerifyMode::StateOnly);
-}
-
-/// Helper function to execute a test against Tom Harte hardware suite with specified verification mode
-fn run_test_with_mode(name: &str, limit: usize, mode: VerifyMode) {
     let effective = resolve_limit(limit);
     let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json", name);
 
-    let harte_res = run_test_file_with_mode(&harte_path, effective, mode).unwrap_or_else(|err| {
+    let harte_res = run_test_file(&harte_path, effective).unwrap_or_else(|err| {
         panic!(
             "Failed to open/parse Real 68k test '{}': {}",
             harte_path, err
@@ -70,14 +63,12 @@ where
     let effective = resolve_limit(limit);
     let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json", name);
 
-    let harte_res =
-        run_test_file_filtered_with_mode(&harte_path, effective, VerifyMode::StateOnly, filter)
-            .unwrap_or_else(|err| {
-                panic!(
-                    "Failed to open/parse Real 68k test '{}': {}",
-                    harte_path, err
-                )
-            });
+    let harte_res = run_test_file_filtered(&harte_path, effective, filter).unwrap_or_else(|err| {
+        panic!(
+            "Failed to open/parse Real 68k test '{}': {}",
+            harte_path, err
+        )
+    });
     let (passed, failed) = harte_res;
     assert!(
         passed > 0,
@@ -101,7 +92,7 @@ where
 
 #[test]
 fn test_nop() {
-    run_test_with_mode("NOP", 100, VerifyMode::Full);
+    run_test("NOP", 100);
 }
 
 #[test]
@@ -111,7 +102,7 @@ fn test_rts() {
 
 #[test]
 fn test_trap() {
-    run_test_with_mode("TRAP", DEFAULT_SAMPLE_LIMIT, VerifyMode::Full);
+    run_test("TRAP", DEFAULT_SAMPLE_LIMIT);
 }
 
 #[test]
@@ -138,45 +129,6 @@ fn test_jsr() {
 fn test_pea() {
     run_test("PEA", DEFAULT_SAMPLE_LIMIT);
 }
-
-#[test]
-fn test_pea_an_full_verification() {
-    let base_path = "ref_src/SingleStepTests-680x0/68000/v1/PEA.json";
-    let harte_path = if std::path::Path::new(base_path).exists() {
-        std::path::PathBuf::from(base_path)
-    } else {
-        std::path::Path::new("../..").join(base_path)
-    };
-    let file = std::fs::File::open(&harte_path).expect("Failed to open PEA test file");
-    let tests: Vec<common::schema::SingleStepTest> =
-        serde_json::from_reader(std::io::BufReader::new(file)).expect("Failed to parse PEA tests");
-
-    let an_tests: Vec<_> = tests
-        .into_iter()
-        .filter(|t| t.name.contains("[PEA (A") && t.name.contains(")]"))
-        .take(50)
-        .collect();
-
-    assert!(!an_tests.is_empty(), "No PEA (An) tests found");
-    for (idx, test) in an_tests.iter().enumerate() {
-        if let Err(failure) = common::singlestep_runner::run_single_test_detail(
-            test,
-            harte_path.to_str().unwrap(),
-            idx,
-            VerifyMode::Full,
-        ) {
-            panic!(
-                "PEA (An) Full Verification Failed on {}:\n{}",
-                test.name,
-                failure.format_diagnostic()
-            );
-        }
-    }
-}
-
-// ============================================================================
-// Data Movement (MOVE.W, MOVEA, MOVEQ, MOVEM Archetypes)
-// ============================================================================
 
 #[test]
 fn test_move_w() {
@@ -844,4 +796,15 @@ fn test_eori_to_ccr() {
 #[test]
 fn test_eori_to_sr() {
     run_test("EORItoSR", DEFAULT_SAMPLE_LIMIT);
+}
+
+// Both MOVEP reference files were previously absent from the silicon suite.
+#[test]
+fn test_movep_w() {
+    run_test("MOVEP.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_movep_l() {
+    run_test("MOVEP.l", DEFAULT_SAMPLE_LIMIT);
 }

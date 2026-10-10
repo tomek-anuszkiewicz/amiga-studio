@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-10-10
+updated: 2026-10-11
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -29,7 +29,7 @@ tracked_paths:
 Completion uses [verify.py](../../../../tools/verification/verify.py) with
 `commit` for ordinary crate tests with coverage, quality gates, all available
 standard harness suites, all Python tool contracts and the full English audit.
-Standard harness selection excludes SingleStep and Cartesian DMA; when no
+Standard harness selection excludes SingleStep and Cartesian DMA; the transaction checker regressions are standard suites. If no
 standard suites remain, it schedules no Cargo test command. Python contracts
 are discovered separately for bootstrap, shared conversion, PDF conversion,
 the RAG MCP adapter and verification tooling.
@@ -57,7 +57,7 @@ not additional completion obligations.
 
 ## 1. Architectural Purpose & Testing Pyramid
 
-To guarantee hardware fidelity, zero regressions, and complete opcode support, the Amiga 500 emulator enforces a strict **Four-Tier Verification Architecture** across all 27 workspace crates. Every crate maintains an external `tests/` directory with zero inline tests in `src/`, providing clean separation between runtime production logic and test harnesses:
+The four tiers describe different evidence boundaries. Ordinary crate and integration tests, external CPU vectors and synthetic contention checks are available. Whole-machine capture execution is deferred until a new entry point exists. Passing one tier establishes only the properties its fixtures and assertions check. Runtime code and external test suites remain separate:
 
 ```mermaid
 graph TD
@@ -67,7 +67,7 @@ graph TD
 
     subgraph Tier1["Tier 1: Isolated Unit Tests (L1 — Fast, Microsecond Scope)"]
         U1["Single-Module Crates<br/><code>crates/*/tests/test_&lt;crate&gt;.rs</code>"]:::t1
-        U2["Multi-Module 1:1 Parity<br/><code>crates/disassembler/tests/test_*.rs</code><br/><code>crates/blitter/tests/test_*.rs</code><br/><code>crates/floppy/tests/test_*.rs</code>"]:::t1
+        U2["Existing Module Suites<br/><code>crates/disassembler/tests/test_*.rs</code><br/><code>crates/blitter/tests/test_*.rs</code><br/><code>crates/floppy/tests/test_*.rs</code>"]:::t1
         U3["Crate Internals & ALU / Math<br/>Bit manipulation, BCD, MFM, Copper decoding"]:::t1
     end
 
@@ -78,13 +78,12 @@ graph TD
         I4["Motherboard Bus Routing<br/><code>crates/memory_bus/tests/</code><br/>(Address dispatch & register wiring)"]:::t2
     end
 
-    subgraph Tier3["Tier 3: Silicon Ground Truth, Benchmarks & Gates (L3 — Verification Harness)"]
+    subgraph Tier3["Tier 3: CPU Silicon and Synthetic Contention (L3)"]
         V1["Silicon SingleStepTests<br/><code>crates/test_runner/tests/test_singlestep.rs</code>"]:::t3
         V2["Cartesian DMA Permutations<br/><code>crates/test_runner/tests/test_dma_cartesian.rs</code>"]:::t3
-        V4["Benchmark Smoke & Golden Rows<br/><code>crates/test_runner/tests/</code>"]:::t3
     end
 
-    V3["Tier 4: vAmigaTS Whole-Machine Captures<br/><code>test_runner vamiga (manual only)</code>"]:::t3
+    V3["Tier 4: vAmigaTS Whole-Machine Captures<br/><code>Execution entry point unavailable</code>"]:::t3
     A1["Repository Architecture Gate<br/><code>tools/verification/checks/check_architecture.py</code>"]:::t1
     Tier1 --> Tier2
     Tier2 --> Tier3
@@ -106,7 +105,6 @@ graph TD
   - Disassembler opcode parsing, effective address modes, and Fibonacci branch heuristics ([`crates/disassembler/tests/`](../../../../crates/disassembler/tests)).
   - MOS 8520 CIA cascaded timers, TOD clock, and shift register transfers ([`crates/cia/tests/`](../../../../crates/cia/tests)).
   - Paula audio period division and volume scaling ([`crates/audio/tests/`](../../../../crates/audio/tests)).
-  - Micro-benchmark statistical variance, anomaly classification, and PRNG domain clamping ([`crates/test_runner/tests/`](../../../../crates/test_runner/tests)).
 
 ### Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)
 - **Scope**: Multi-crate interaction, bus routing, and system loop orchestration.
@@ -137,7 +135,7 @@ Whenever any custom chip, coprocessor, peripheral device, or interrupt line is a
 3. **Cross-Chip Signal & Interrupt Routing:** Does the subsystem raise an interrupt line, latch status, or send electronic signals to other chips (Paula -> CPU, Agnus -> Denise, CIAs -> CPU)?
 4. **Hardware Contention & Wait States:** Does the subsystem compete for Chip RAM slots or stall the CPU?
 
-If the answer to **any** question is **YES**, authoring a Tier 2 integration test in `crates/machine_loop/tests/` is mandatory.
+If any answer is **YES**, identify integration protection for that coordination. Reuse or extend an existing production fixture; add a test only for a demonstrated gap. A module change does not by itself require another test file. Expected results and runtime observation interfaces follow [unit-testing-policy.md](../../../../.agents/rules/unit-testing-policy.md).
 
 #### The 4 Standardized Integration Test Archetypes
 
@@ -148,7 +146,7 @@ If the answer to **any** question is **YES**, authoring a Tier 2 integration tes
 
 #### Custom Chip Whole-Machine Verification Matrix
 
-| Custom Chip | Primary Integration Test File | Verified Operational Capabilities |
+| Custom Chip | Primary Integration Test File | Behavior Exercised by Integration Fixtures |
 | :--- | :--- | :--- |
 | **Copper** | `test_copper_machine_integration.rs`, `test_copper_control_flow_integration.rs` | List execution, beam `WAIT`, `MOVE` to `COLOR00`, DMACON enable/disable, Level 3 IRQ, `SKIP` condition, `CDANG` danger mode |
 | **Blitter** | `test_blitter_machine_integration.rs`, `test_blitter_nasty_contention_integration.rs` | 2D copy & fill in Chip RAM, `BLTSIZE` start, Level 3 `_BLITINT` assertion, CPU bus lockout, Blitter Nasty vs Fast RAM immunity |
@@ -163,17 +161,17 @@ If the answer to **any** question is **YES**, authoring a Tier 2 integration tes
      - `test_sample_binaries.rs`: Injecting compiled M68000 test binaries into RAM and executing instructions.
      - `test_temporal_and_trace.rs`: Time-travel rewind buffer tracking full machine state history.
   3. **Headless Developer Studio UI ([`crates/gui/tests/`](../../../../crates/gui/tests))**:
-     - `test_interactions.rs`: 36 headless UI interaction tests simulating mouse clicks, keyboard shortcuts, memory edits, time-travel scrubbing, view switching.
+     - `test_interactions.rs`: Headless UI interaction tests simulating mouse clicks, keyboard shortcuts, memory edits, time-travel scrubbing, view switching.
      - `test_gui.rs` & `test_persistence.rs`: Immediate-mode UI layout, theme loading, dock splits, and window state.
   4. **Motherboard Bus Routing ([`crates/memory_bus/tests/`](../../../../crates/memory_bus/tests))**:
      - `test_router.rs` & `test_register_wiring.rs`: Routing 24-bit physical addresses across chips and storage.
 
 ### Tier 3: Silicon Ground Truth & Verification Harness (L3 — Physical Vectors)
-- **Scope**: External reference validation against real Commodore hardware silicon captures and benchmarks.
-- **Execution Command**: `python tools/verification/verify.py test runner harness` or targeted test runners.
+- **Scope**: CPU state and selected timing comparisons against external 68000 vectors, plus synthetic waiting invariants.
+- **Execution Commands**: `python tools/verification/verify.py test runner singlestep` and `python tools/verification/verify.py test runner dma` for explicit diagnosis; automatic full-suite selection occurs at milestones.
 - **Key Verification Suites**:
-  - **Tom Harte SingleStepTests ([`crates/test_runner/tests/test_singlestep.rs`](../../../../crates/test_runner/tests/test_singlestep.rs))**: 45,565 valid opcodes tested cycle-by-cycle against physical silicon captures (see [CPU SingleStepTests.md](CPU%20SingleStepTests.md)).
-  - **Cartesian DMA Contention ([`crates/test_runner/tests/test_dma_cartesian.rs`](../../../../crates/test_runner/tests/test_dma_cartesian.rs))**: Full $2^k \times 2^M$ permutation sweep verifying cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity.
+  - **Tom Harte SingleStepTests ([`crates/test_runner/tests/test_singlestep.rs`](../../../../crates/test_runner/tests/test_singlestep.rs))**: Every executed vector compares state, instruction clocks and timed bus callbacks. Sampling changes input count only; abstract callback and state-comparison limits remain explicit (see [CPU SingleStepTests.md](CPU%20SingleStepTests.md#12-input-scope-and-complete-verification)).
+  - **Cartesian DMA Contention ([`crates/test_runner/tests/test_dma_cartesian.rs`](../../../../crates/test_runner/tests/test_dma_cartesian.rs))**: Samples 5% of vectors and enumerates memory classifications and stalled/free patterns in a window of at most six CCKs. It checks $C = C_0 + 2 \times \text{wait\_states}$, Fast RAM immunity and state invariance against an uncontended run of the same emulator. It does not execute production Agnus arbitration.
 
 Repository architecture checks are a separate gate, implemented in
 [`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py).
@@ -185,115 +183,53 @@ and runs with ordinary CPU tests.
 
 ---
 
-## 3. Tier 4: vAmigaTS Whole-System Visual & Hardware Verification (L4)
+## 3. Tier 4: Whole-Machine Hardware Capture Verification
 
-This is retained manual tooling, outside commit and milestone verification. Its Cargo regression suites have been removed. The following protocol applies only when a vAmigaTS investigation is explicitly requested.
+vAmigaTS reference assets remain available, but the former runner, injection,
+script execution, viewport extraction and comparison commands have been removed.
+Neither completion profile executes captures or chipset throughput measurements.
+The old capture path compared a rendered 716 x 285 RGB24 viewport with hardware
+reference images after running the selected program for scripted frames. A future
+workflow must establish executable workload setup and a validated comparison path
+before those assets can certify current whole-machine output.
 
-vAmigaTS provides full-system integration verification by booting test payloads from ADF floppy images, stepping the machine for $N$ vertical blank frames, and comparing rendered video output (716 × 285 RGB24 viewport, 204,060 pixels) against physical silicon frame captures.
+A requested integration sprint uses the available production machine tests.
+The [integration-test-sprint skill](../../../../.agents/skills/integration-test-sprint/SKILL.md)
+owns discovery, failure clustering, scoped repair and final validation. Its capture
+branch requires an executable entry point first. A passing crate or CPU suite
+cannot substitute for that missing hardware comparison.
 
-### The 4-Iteration Cascading Verification Protocol
+## 4. Diagnose Mechanisms Before Consolidating Fixes
 
-Because an Amiga is a tightly coupled multi-chip system where one clock cycle offset in a central register can manifest as thousands of pixel mismatches across unrelated coprocessors, autonomous agents must never attempt to fix failing tests individually. Instead, verification must follow a structured **4-Iteration Cascading Protocol**:
+A timing offset or local condition that makes one test pass can conceal the
+wrong bus phase, signal propagation or state transition. Reproduce an isolated
+failure and establish its mechanism before scaling a fix. Investigate a shared
+cause when the evidence connects failures; unrelated defects need not collapse
+into one hardware law. Preserve justified state-machine conditions while removing
+temporary compensating patches.
 
-```mermaid
-graph TD
-    classDef step fill:#1e3a5f,stroke:#4f9da6,stroke-width:2px,color:#ffffff;
-    classDef synth fill:#2d1b4e,stroke:#9d4edd,stroke-width:2px,color:#ffffff;
-
-    I1["<b>Iteration 1: Global Discovery Sweep</b><br/>Run all active baseline tests (1,468)<br/>Isolate shared systemic failure patterns"]:::step
-    I2["<b>Iteration 2: Low-Hanging Systemic Cascades</b><br/>Fix central bus/interrupt/pipeline causes<br/>Verify multi-subsystem pass cascades"]:::step
-    I3["<b>Iteration 3: Geometry & Video Convergence</b><br/>Tune DIW/DDF window, bitplanes, and palettes<br/>Strict 2–3 attempt limit per cluster"]:::step
-    I4["<b>Iteration 4: Final Validation Sweep</b><br/>Run complete baseline suite<br/>Record pass totals in DIARY.md and commit"]:::step
-    SYNTH["<b>Post-Discovery Architecture Cleanup</b><br/>Diff extraction per subsystem<br/>Eliminate ad-hoc if-statements<br/>Unify into single physical hardware law"]:::synth
-
-    I1 --> I2 --> I3 --> I4 --> SYNTH
-```
-
-1. **Iteration 1: Global Discovery Sweep & Baseline Auditing**:
-   - Compile the test runner in release mode (`python tools/verification/verify.py runner build`).
-   - Run the entire active baseline (`python tools/verification/verify.py runner vamiga category all`) across all 1,468 runnable tests in Phase 1 Baseline.
-   - Categorize by subsystem (Copper, Agnus, Blitter, CPU, Denise, Paula, Mainboard, Memory).
-   - Filter out and defer non-runnable tests:
-     - **AGA / ECS Enhanced**: Tests requiring 2 MB Chip RAM or AGA registers (`BPLCON3`, 32-bit burst).
-     - **High CPU / FPU (68020+, 68881/2)**: 32-bit instructions and floating-point math.
-     - **Photo-only tests (CIA)**: Tests lacking 24-bit `.raw` captures.
-     - **Analog Waveform / Stepper Mechanics**: Audio waveform captures without visual frame buffers.
-     - **Interactive scripts (`.retrosh`)**: Real-time mouse and joystick motion scripts.
-   - Identify common, shared failure patterns (e.g. constant mismatch coordinates like `(676, 22)`, frozen loops waiting on interrupts).
-
-2. **Iteration 2: Low-Hanging Systemic Cascades**:
-   - Fix core machine loop and test harness bottlenecks (e.g. unmasking CPU status register `sr = 0x2000` to enable Level 1..6 interrupts; calibrating Agnus raster beam register lead `self.hpos + 4`).
-   - Observe automatic cross-subsystem cascading passes (e.g. Paula interrupts, Mainboard pot counters, Copper halts resolving simultaneously).
-
-3. **Iteration 3: Subsystem Geometry & Video Window Convergence**:
-   - Target near-match test clusters ($< 1\%$ diffs, e.g. Copper `cross1`/`cross2` at 99.94%).
-   - Investigate Denise display window boundaries (`DIWSTRT`/`DIWSTOP`), data fetch windows (`DDFSTRT`/`DDFSTOP`), and bitplane DAC color quantization.
-   - **Enforce the 2–3 Attempt Rule per Cluster**: Never spend more than 2–3 calibration attempts on a single cluster. If an issue requires deep architectural rewrites or analog simulation, document it and proceed to maintain momentum.
-
-4. **Iteration 4: Final Validation Sweep & Regression Lock**:
-   - Re-run the global suite (`category all`) to capture the updated pass rate.
-   - Verify that earlier passing tests have not regressed.
-   - Log all newly passed tests and quantitative pass rates in [DIARY.md](../../../../DIARY.md).
-
-> [!TIP]
-> **Interactive Sprint Skill:** The 4-iteration cascading protocol is driven via [`$integration-test-sprint`](../../../../.agents/skills/integration-test-sprint/SKILL.md), using [`$test-runner`](../../../../.agents/skills/test-runner/SKILL.md) for execution telemetry and automated regression diffs.
+Use [synthesize-test-fixes](../../../../.agents/skills/synthesize-test-fixes/SKILL.md)
+when a requested review or accumulated exploratory changes need synthesis. Its
+symptom, patch location and applied mechanism matrix exposes whether changes
+share an upstream cause. This procedure does not add a mandatory review campaign
+after every edit. Scope, reproduction and reference conflicts follow
+[structural-root-cause.md](../../../../.agents/rules/structural-root-cause.md),
+[repro-first.md](../../../../.agents/rules/repro-first.md) and
+[spec-compliance.md](../../../../.agents/rules/spec-compliance.md).
 
 ---
 
-## 4. Post-Discovery Architecture Cleanup (The "Anti-Patchwork" Protocol)
+## 5. Select Evidence for the Changed Behavior
 
-A critical failure mode in autonomous AI emulation development is **ad-hoc patch creep**: accumulating local `if`-statements, artificial cycle offsets, and special-case branches to force individual tests to pass. This destroys code readability, degrades host CPU branch predictability, and breaks adjacent test cases.
-
-To ensure clean, maintainable architecture, every verification phase must conclude with the **Post-Discovery Architecture Cleanup**:
-
-### The 3-Column Diagnostic Matrix
-
-To isolate the common denominator without getting lost in granular file diffs, populate the 3-column diagnostic matrix across all modified areas:
-
-| 1. Test / Symptom Verified | 2. Patch Location | 3. Mechanism Applied (Local Workaround) |
-| :--- | :--- | :--- |
-| *e.g. Copper WAIT triggered 1 cycle early* | `crates/copper/src/copper.rs` | *Added artificial offset +1 CCK to comparator* |
-| *e.g. Background color changed 1 pixel early* | `crates/denise/src/denise.rs` | *Added 1-cycle holding latch on COLOR00 write* |
-| *e.g. Audio DMA interrupt fired before fetch ended* | `crates/paula/src/audio.rs` | *Added delay cycle to AUDxDSR assertion* |
-
-### Step-by-Step Cleanup Workflow:
-
-1. **Diff Extraction Across the Sprint**:
-   - Extract the full git changeset from the baseline commit before the test sprint:
-     ```powershell
-     git diff <baseline_commit>..HEAD > sprint_diff.patch
-     ```
-2. **Subsystem Decomposition**:
-   - Partition the diff into independent architectural concerns:
-     - `crates/copper/`: WAIT/SKIP comparators, DMA slot allocation, IR1/IR2 fetch timing.
-     - `crates/agnus/`: Raster beam counters, LOF/LOL interlacing, mutation pipeline delays.
-     - `crates/denise/`: Palette write latency, DIW/DDF window logic, bitplane serialization.
-     - `crates/memory_bus/`: Chip RAM contention, wait-states, open bus floating behavior.
-3. **First-Principles Hardware Law Identification (Common Denominator)**:
-   - Review all modified lines across the diff from an end-to-end architectural perspective:
-     - *Why were these separate adjustments needed?*
-     - *Is there a single physical hardware reality (e.g. bus sampling on the falling edge of CCK2, synchronous signal latching, DMA slot parity) that explains all observed discrepancies?*
-4. **Patchwork Elimination & Model Unification**:
-   - Eliminate every ad-hoc `if` condition added during test exploration.
-   - Implement the identified underlying physical hardware rule cleanly in the appropriate core crate (`memory_bus`, `machine_loop`, `agnus`).
-   - Re-verify that all passing tests continue to pass without a single special-case conditional.
-
-> [!TIP]
-> **Interactive Synthesis Skill:** The Anti-Patchwork Protocol and 3-column matrix synthesis are performed with [`$synthesize-test-fixes`](../../../../.agents/skills/synthesize-test-fixes/SKILL.md).
-
----
-
-## 5. The 5-Level Verification Ladder
-
-When building, extending, or refactoring any part of the emulator, execute tests along the 5-rung verification ladder:
+Select existing checks for the actual change. The following categories describe available evidence and remaining prerequisites; they are not a sequence to execute after every edit. Commit and milestone profiles use the triggers above.
 
 | Level | Verification Tier | Primary Tool / Command | Pass Criteria |
 | :---: | :--- | :--- | :--- |
-| **L1** | **Isolated Unit Tests** | `python tools/verification/verify.py test rust crate <crate>` | 100% pass; $< 1$s runtime; zero allocations |
-| **L2** | **Multi-Crate Integration** | `python tools/verification/verify.py test rust crate machine_loop` | 100% pass; 4-question checklist satisfied |
-| **L3** | **Silicon Ground Truth** | `python tools/verification/verify.py test rust crate test_runner suite test_singlestep` | Physical silicon opcode match; Cartesian cycle invariance |
-| **L4** | **vAmigaTS Visual Harness** | `python tools/verification/verify.py runner vamiga category <cat>` | 4-iteration cascading protocol; RGB24 pixel exact |
-| **L5** | **Architecture Cleanup** | `git diff` review & `python tools/verification/verify.py commit` | Zero ad-hoc `if` patches; 100% physical hardware model |
+| **L1** | **Crate Behavior** | `python tools/verification/verify.py test rust crate <crate>` | Selected behavior and failure-mode assertions pass |
+| **L2** | **Production Integration** | `python tools/verification/verify.py test rust crate machine_loop` | Existing or extended fixtures protect the affected coordination |
+| **L3** | **CPU Vectors and Synthetic Contention** | `python tools/verification/verify.py test runner silicon` | Selected vectors pass state, clocks and timed bus comparisons; limits reported |
+| **L4** | **Whole-Machine Captures** | Unavailable; needs a future execution and comparison entry point | Hardware workload and expected capture comparison |
+| **Separate gate** | **Architecture and Quality** | Relevant `check` command; full profile before an authorized commit | Static constraints pass; source review remains necessary |
 
 ---
 
@@ -306,8 +242,8 @@ When building, extending, or refactoring any part of the emulator, execute tests
    - In Cargo workspaces, every `.rs` file directly inside `crates/<crate>/tests/` compiles into an independent test binary.
    - All test files must strictly start with `test_` (e.g. `test_line.rs`, `test_singlestep.rs`).
    - Shared non-test helper modules must reside inside subdirectories (e.g. `tests/common/mod.rs`).
-3. **1:1 Multi-Module Parity**:
-   - Multi-module crates must maintain dedicated 1:1 unit test files mirroring each major computational submodule:
+3. **Existing Module Suite Layout**:
+   - The architecture gate retains required module-suite filenames for selected crates. Their presence does not prove behavioral coverage or require a new test file for every added submodule. Current examples:
      - `crates/blitter`: `test_blitter.rs`, `test_line.rs`, `test_minterm.rs`.
      - `crates/disassembler`: `test_align.rs`, `test_alu.rs`, `test_branch.rs`, `test_data.rs`, `test_ea.rs`, `test_disassembler_facade.rs`.
      - `crates/floppy`: `test_floppy.rs`, `test_mfm.rs`.
@@ -322,8 +258,8 @@ When building, extending, or refactoring any part of the emulator, execute tests
 
 | Tool / Script | Purpose | Enforcement Layer |
 | :--- | :--- | :--- |
-| [`tools/verification/verify.py`](../../../../tools/verification/verify.py) | Canonical commit/milestone quality gate, change-aware CPU-suite selector, and diagnostic frontend (`test rust`, `test python`, `test runner`, `check`, `runner`). | Explicit agent/developer command & CI |
-| [`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py) | 17 Python checks validating architectural rules, test naming, and multi-module parity. | `verify.py check architecture` & commit verification gate |
+| [`tools/verification/verify.py`](../../../../tools/verification/verify.py) | Canonical commit/milestone quality gate and diagnostic frontend (`test rust`, `test python`, `test runner`, `check`, `runner`). | Explicit agent/developer command & CI |
+| [`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py) | Python checks validating source constraints, test naming and required suite files; passing them does not prove behavioral coverage. | `verify.py check architecture` & commit verification gate |
 | [`$test-runner`](../../../../.agents/skills/test-runner/SKILL.md) | Standardized execution runner across tiers, writing snapshots to `.agent/tmp/singlestep/` and diffing regressions. | Codex skill |
 | [`$integration-test-sprint`](../../../../.agents/skills/integration-test-sprint/SKILL.md) | Orchestrates the 4-iteration cascading verification sweep and failure cluster triage. | Codex skill |
 | [`$synthesize-test-fixes`](../../../../.agents/skills/synthesize-test-fixes/SKILL.md) | Audits recent test patches, builds the 3-column diagnostic matrix, and synthesizes root causes into upstream crates. | Codex skill |
@@ -335,5 +271,5 @@ When building, extending, or refactoring any part of the emulator, execute tests
 - [General Architecture.md](../General%20Architecture.md): Amiga 500 system block diagram and crate dependencies.
 - [Machine Loop.md](../Machine%20Loop.md): Machine loop cycle stepping, reset sequencing, and interrupt arbitration.
 - [CPU SingleStepTests.md](CPU%20SingleStepTests.md): Verification against physical silicon instruction test vectors.
-- [CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md): Cycle-exact benchmarking framework and direct CSV reference comparisons.
+- [CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md): Host performance measurement framework and retained comparison baselines.
 - [Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md): Centralized master catalog of hardware idiosyncrasies and anti-tamper invariants.

@@ -5,7 +5,7 @@ description: Execute test suites across tiers, snapshot results to disk, and tra
 
 # Recipe: Test Runner & Regression Tracker
 
-This skill standardizes test execution across the 4 testing tiers, persists execution snapshots into `.agent/tmp/singlestep/`, and automatically computes regression diffs (🔴 newly failing tests vs 🟢 newly passing tests).
+Use this skill to select relevant existing tests and report their evidence. SingleStep execution saves snapshots and regression reports in `.agent/tmp/singlestep/`; ordinary crate tests and Cartesian DMA do not create those reports.
 
 ---
 
@@ -16,7 +16,7 @@ This skill standardizes test execution across the 4 testing tiers, persists exec
 | **Tier 1** | Unit tests (isolated crates) | `python tools/verification/verify.py test rust unit` | $< 2$s |
 | **Tier 2** | Machine loop integration | `python tools/verification/verify.py test rust integration` | $3$–$15$s |
 | **Tier 3** | SingleStep CPU silicon vectors | `python tools/verification/verify.py test runner singlestep` | $6$–$15$s |
-| **Tier 4** | vAmigaTS whole-machine captures | `python tools/verification/verify.py runner vamiga category <cat>` | $10$–$60$s |
+| **Tier 4** | vAmigaTS whole-machine captures | Unavailable; requires a future capture execution entry point | Not measured |
 | **Arch** | Architecture rules & gates | `python tools/verification/verify.py check architecture` | $< 2$s |
 
 ---
@@ -25,7 +25,7 @@ This skill standardizes test execution across the 4 testing tiers, persists exec
 
 Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
 
-1. Identify an existing isolated regression or add a focused test in the owning suite. For Rust, use `crates/<crate>/tests/`; Python tool contracts use the owning tool's `tests/` directory, listed in [tools/verification/README.md](../../../tools/verification/README.md).
+1. Identify existing regression protection, including authoritative vectors. Extend it or add a focused test only for a demonstrated gap. State the checked behavior and expected-result source under [unit-testing-policy.md](../../rules/unit-testing-policy.md). For Rust, use `crates/<crate>/tests/`; Python tool contracts use the owning tool's `tests/` directory, listed in [tools/verification/README.md](../../../tools/verification/README.md).
 2. Run it before the repair and confirm the expected failure, rather than a missing fixture or unrelated setup error:
    ```powershell
    python tools/verification/verify.py test rust crate <crate> suite <suite> case <filter>
@@ -52,10 +52,10 @@ Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
 
 ## 2. Directory Structure for Snapshots (`.agent/tmp/singlestep/`)
 
-Test executions maintain rotating state to detect regressions across runs:
+SingleStep executions maintain rotating state to detect regressions across runs:
 - `.agent/tmp/singlestep/latest/<suite_name>.json`: Machine-readable results of the most recent run.
 - `.agent/tmp/singlestep/previous/<suite_name>.json`: Results from the previous baseline for differential comparison.
-- `.agent/tmp/singlestep/summary.json`: Global repository-wide pass/fail matrix, totals, and percentages.
+- `.agent/tmp/singlestep/summary.json`: Saved SingleStep suite totals and percentages, which may include results from earlier runs.
 - `.agent/tmp/singlestep/summary.md`: Automatically generated readable summary and all failing cases.
 - `.agent/tmp/singlestep/diff.md`: Automatically generated regressions, improvements, and missing baselines.
 
@@ -95,10 +95,10 @@ When comparing the current run against the previous baseline:
 
 ## 5. Output Contract
 
-Conclude every test run with a concise executive summary:
-- **Suite Run:** `<tier_or_suite_name>`
-- **Total Tests:** `<total_run>`
-- **Pass Rate:** `<passed> / <total> (<percentage>%)`
-- **Diff vs Baseline:** `+<fixed> improved, -<broken> regressions`
-- **Regression Alert:** Identify newly failing tests immediately.
-- **Action Required:** `[CLEAN | REGRESSIONS NEED TRIAGE]`
+Report the executed command, result, fixture scope and material limitations.
+For SingleStep, sampling changes input count only: every executed vector compares
+state, instruction clocks and timed bus callbacks. Older saved results from weaker
+verification are not a comparable regression baseline.
+Use the [CPU verification specification](../../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md)
+for current comparison limits. Report saved diffs only when their input scope and
+freshness are comparable; do not present old suite totals as the current run.

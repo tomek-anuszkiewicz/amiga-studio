@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-10
+updated: 2026-10-11
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -39,7 +39,7 @@ To ensure robust, ground-truth verification, the M68000 CPU emulator is validate
 | **Test Scale** | ~8,000+ tests per file (~1,000,000 total) |
 | **Origin** | Tom Harte's CLK processor test generator captured on physical 68000 silicon pins |
 | **Unique Strengths** | Massive randomized test coverage; independently verified against real hardware |
-| **`TAS` Indivisible RMW** | ✅ Fully modeled via explicit `"t"` bus transactions |
+| **`TAS` Indivisible RMW** | Recorded as explicit `"t"` bus intervals in the reference |
 | **`TRAPV` $S$-bit** | ✅ Standard 68000 behavior |
 | **Mode Coverage** | 99% Supervisor mode, 1% User mode |
 
@@ -47,7 +47,51 @@ To ensure robust, ground-truth verification, the M68000 CPU emulator is validate
 In the test suite, there are **no separate `CMPM.b.json`, `CMPM.w.json`, or `CMPM.l.json` files**. Instead, all `CMPM (Ay)+, (Ax)+` test cases are bundled together inside `CMP.b.json`, `CMP.w.json`, and `CMP.l.json` alongside standard `CMP <ea>, Dn`.
 
 - The test runner provides [`is_cmpm_postinc_opcode`](../../../../crates/test_runner/tests/common/singlestep_runner.rs) (`(op & 0xF138) == 0xB108`) to isolate `CMPM` cases when specific post-increment testing is required.
-- **Batch 1.3 Complete:** Standard `CMP`, `CMPA`, and `CMPI` are fully implemented and verified. Both isolated `CMPM` tests and exhaustive full-suite `CMP.<size>.json` integration tests run in [`crates/test_runner/tests/test_singlestep.rs`](../../../../crates/test_runner/tests/test_singlestep.rs) and [`crates/test_runner/tests/test_dma_cartesian.rs`](../../../../crates/test_runner/tests/test_dma_cartesian.rs).
+- Standard `CMP`, `CMPA`, `CMPI` and isolated `CMPM` cases have tests in [`crates/test_runner/tests/test_singlestep.rs`](../../../../crates/test_runner/tests/test_singlestep.rs) and [`crates/test_runner/tests/test_dma_cartesian.rs`](../../../../crates/test_runner/tests/test_dma_cartesian.rs). Their presence and earlier state-focused results do not establish a passing result under the current complete comparison path.
+
+### 1.2 Input Scope and Complete Verification
+
+Every executed vector uses one complete comparison path: CPU registers and listed
+RAM bytes, instruction clock total and timed bus transactions. The former mode
+selector has been removed. Sampling controls input count only; full input selection
+removes the ordinary per-suite limit. All 124 JSON files have named tests, including
+MOVEP word and long. The old PEA-only stronger-mode sample is redundant and removed.
+No vector is counted as passed without execution, including the formerly skipped
+ASL byte cases.
+
+The driver steps `Cpu::step_cck` and timestamps memory callbacks from observed CPU
+clock progress. Read callbacks occur at the end of CCK1, writes at CCK2 in the core
+bus model. Reference internal events advance the expected timeline rather than
+being discarded. The matcher checks each callback's phase, direction, address,
+size and data; instruction clocks are compared independently with JSON `length`.
+Correct total clocks cannot compensate for a misplaced internal delay.
+
+These timestamps observe the existing AddressBus callbacks at CCK resolution.
+They do not capture electrical pin edges or function-code signals, which this
+interface does not expose. Word/byte strobes are derived from access size and
+address; TAS-specific pins and error-cycle pin activity are not independently
+observed. Report these boundaries rather than equating the abstract callbacks
+with a full hardware pin trace.
+
+The shared comparator primes the initial prefetch state but does not independently
+compare final prefetch words. PC can match directly or with the current
+four-byte pipeline allowance. Existing RAM exceptions include masked stack-frame
+fields and skipped bytes around `SSP`; some address-based exceptions lack a guard
+for the specific exception frame. These are current comparison limits, not proof
+that differences in all those situations are valid hardware variation. Review
+and narrow them only with a focused reproduction and the reference-conflict
+procedure in [spec-compliance.md](../../../../.agents/rules/spec-compliance.md).
+The implementation is
+[`singlestep_runner.rs`](../../../../crates/test_runner/tests/common/singlestep_runner.rs).
+
+Cartesian DMA is a separate relative invariance test using CPU plus
+`TestMemoryBus`. It samples 5% of vectors and enumerates memory classifications
+and stalled/free schedules in a window of at most six CCKs, with a deterministic
+window position for longer instructions. Its uncontended reference is produced
+by the same emulator. This checks that contention preserves results and adds the
+expected waiting cost; it does not establish absolute CPU correctness, production
+MemoryBus behavior or Agnus arbitration. Report the selected input scope, modes,
+comparison limits and source snapshot when describing a passing run.
 
 ---
 
@@ -225,15 +269,15 @@ flowchart TD
 
 ## 5. Rust Test Harness Implementation (`crates/test_runner`)
 
-The test harness lives in `tests/common/`, shared by the integration test targets of the dedicated workspace package [`crates/test_runner`](../../../../crates/test_runner). It executes test vectors directly against `m68000::Cpu` and a dedicated test bus (`TestMemoryBus::new()`):
+The test harness lives in `tests/common/`, shared by the integration test targets of the dedicated workspace package [`crates/test_runner`](../../../../crates/test_runner). It executes test vectors directly against `cpu::Cpu` and a dedicated flat test bus (`TestMemoryBus::new_flat()`):
 
 ### 5.1 Module Structure
-- **[`schema.rs`](../../../../crates/test_runner/tests/common/schema.rs):** Strict deserialization of `SingleStepTest` and `CpuTestState` using `#[serde(deny_unknown_fields)]`.
+- **[`schema.rs`](../../../../crates/test_runner/tests/common/schema.rs):** Deserialization of the expected `SingleStepTest` and `CpuTestState` fields from reference JSON.
 - **[`singlestep_runner.rs`](../../../../crates/test_runner/tests/common/singlestep_runner.rs):** Test execution loop, CPU prefetch priming, state comparison, cycle count validation, and RAM byte validation:
-  - `run_single_test_detail(test, file_path, index, mode) -> Result<(), TestFailure>`: Executes a single test case with configurable `VerifyMode` (`StateOnly`, `StateAndCycles`, `Full`).
-  - `run_test_file(path, limit) -> Result<(usize, usize), Box<dyn Error>>`: Reads plain `.json` test suites, running up to `limit` test cases in `StateOnly` mode.
-  - `run_test_file_with_mode(path, limit, mode)`: Configurable execution mode enabling cycle-exact and bus transaction verification.
-- **[`transactions.rs`](../../../../crates/test_runner/tests/common/transactions.rs):** Deserializes and parses Tom Harte transaction logs, matching recorded bus transactions (read/write/TAS direction, 24-bit address, size, bus value, FC lines) against physical silicon logs.
+  - `run_single_test_detail(test, file_path, index) -> Result<(), TestFailure>`: Executes a single case with complete state, clock and timed transaction verification.
+  - `run_test_file(path, limit) -> Result<(usize, usize), Box<dyn Error>>`: Reads plain `.json` test suites, running up to `limit` cases with the same complete comparison path.
+  - `run_test_file_filtered(path, limit, filter)`: Filters input cases without weakening complete verification.
+- **[`transactions.rs`](../../../../crates/test_runner/tests/common/transactions.rs):** Parses Tom Harte logs and compares timed memory callbacks, direction, address, size and data. Function codes are parsed but not compared; special TAS and electrical signal limits follow Section 1.2.
 - **[`diagnostic.rs`](../../../../crates/test_runner/tests/common/diagnostic.rs):** Human-readable failure reporting, full CCR flag decomposition ($T, S, I, X, N, Z, V, C$), clock/CCK cycle metrics, and transaction diff formatting.
 - **[`reporter.rs`](../../../../crates/test_runner/tests/common/reporter.rs):** Persistent results recording in `.agent/tmp/singlestep/`, differential regression detection, and global summary generation.
 - **[`benchmark/`](../../../../crates/test_runner/benches/bench_instructions):** Automated per-opcode instruction micro-benchmarking engine, programmatic unrolled block synthesis ($K = 700$), P-core affinity pinning, and anomaly classifier (see [CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)).
@@ -244,7 +288,7 @@ Implemented directly in [`crates/test_runner/tests/common/singlestep_runner.rs`]
 - Primes CPU registers $D_0-D_7$, $A_0-A_6$, $USP$, $SSP$, $SR$, and Program Counter (accounting for Tom Harte's $+4$ prefetch offset).
 - Initializes `instruction_pc` to the opcode address (`pc - 4` after priming) in both SingleStep and DMA fixtures, so exception frames preserve the instruction address even on the first executed instruction.
 - Primes prefetch queue registers `ir` and `prefetch`.
-- Drives instruction stepping via `cpu.step_instruction(&mut bus)` or CCK-by-CCK via `cpu.step_cck(&mut bus)`.
+- Drives SingleStep execution CCK-by-CCK via `cpu.step_cck(&mut bus)` to record observed callback clocks.
 
 ---
 
@@ -264,13 +308,13 @@ Tests are grouped into cohesive categories within `test_singlestep.rs`:
 
 ## 7. Running Tests & CLI Commands
 
-Tests are executed via standard Cargo commands or through the dedicated `test_runner` CLI:
+Tests execute through Cargo test targets or the verification frontend; the package has no application CLI:
 
 ```powershell
 # Run all single-step integration tests with default fast sample limit (50 vectors per suite)
 python tools/verification/verify.py test rust crate test_runner suite test_singlestep
 
-# Run exhaustive full validation across all ~300,000 vectors in parallel
+# Run every vector from all 124 reference files
 python tools/verification/verify.py test runner singlestep full
 
 # Run tests with a custom vector limit per suite
@@ -295,7 +339,7 @@ python tools/verification/verify.py test runner singlestep case test_add_b sampl
 
 ## 8. In-Code Test Mutation Strategy (Chip/Fast RAM & DMA Contention)
 
-To verify the CPU's bus arbitration and wait-state handling under real Amiga hardware conditions, we do **not** generate duplicate JSON files on disk. Instead, the test runner applies **programmatic test mutations in memory**:
+To test CPU waiting with synthetic contended and free memory, the test runner applies programmatic mutations in memory without generating duplicate JSON files. This fixture does not execute production Agnus arbitration:
 
 ### 8.1 Memory Classification & Gary Bus Equivalence
 The test harness classifies accessed memory addresses using `MemoryType`:
@@ -305,7 +349,7 @@ The test harness classifies accessed memory addresses using `MemoryType`:
 ### 8.2 Full Cartesian Permutation Engine (`run_dma_full_cartesian_permutation`)
 Rather than testing a small subset of arbitrary schedules, the test harness evaluates the full combinatorial Cartesian product across both dimensions:
 1. **Address Permutation Space ($2^k$):** Memory cells accessed by the instruction are dynamically discovered during an uncontended pre-flight pass (`run_preflight`) and clustered into up to $k \le 4$ functional roles (`cluster_contacts`). Every combination of `ChipRam` vs `FastRam` is swept.
-2. **DMA Schedule Permutation Space ($2^M$):** Each CCK cycle $t \in [0, M)$ of the instruction execution window is evaluated across all $2^M$ bit patterns (every possible combination of stalled vs free CCK slots).
+2. **DMA Schedule Permutation Space ($2^M$):** A window of at most six CCKs is evaluated across all $2^M$ stalled/free patterns. Longer instructions use a deterministic window position rather than every schedule across the whole instruction.
 3. **Hardware Invariants Verified per Run:**
    - **State Invariance:** CPU registers ($D_0-D_7$, $A_0-A_6$, $USP$, $SSP$, $SR$, $PC$, prefetch) and RAM contents match the golden uncontended run 100% bit-identically across all permutations.
    - **Cycle Invariance:** Contended execution total CPU clocks satisfy $C = C_0 + 2 \times \text{wait\_cycles}$, where wait cycles only accumulate when contested `ChipRam` cells are accessed during an active DMA stall.
@@ -318,7 +362,7 @@ During stalled CCK cycles, the test bus temporarily inverts contested Chip RAM c
 
 ## 9. Physical Hardware Silicon Verification & Discrepancy Diagnosis
 
-Validating against physical 68000 silicon captures guarantees cycle-exact behavior across all edge cases:
+Physical captures provide independent expected states and bus intervals. Passing selected vectors establishes only the properties and cases actually compared; the observation and assertion limits in Section 1.2 remain applicable:
 
 ### 9.1 Key Hardware Invariants Verified by Tom Harte Vectors
 | Subsystem / Operation | Physical Silicon Hardware Behavior |
@@ -338,7 +382,7 @@ When diagnosing a single-step test failure:
 3. **Cycle Timing Mismatch:** Cross-reference micro-step durations against [CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md).
 
 ### 9.3 Automated Single-Step Integration Test Matrix
-The integration test suite in [`crates/test_runner/tests/test_singlestep.rs`](../../../../crates/test_runner/tests/test_singlestep.rs) executes hardware cross-validation on every `cargo test` run. Each opcode test invokes `run_test("<OPCODE>", limit)`, validating vectors against:
+The integration suite in [`crates/test_runner/tests/test_singlestep.rs`](../../../../crates/test_runner/tests/test_singlestep.rs) compares hardware vectors when this target is selected. Commit verification excludes it; milestone and explicit diagnostic commands select it. Each ordinary opcode test invokes `run_test("<OPCODE>", limit)` against:
 - **Tom Harte Real 68k Suite** (`ref_src/SingleStepTests-680x0/68000/v1/<OPCODE>.json`)
 
 Currently active tests cover all implemented instructions:

@@ -1,6 +1,6 @@
 ---
 name: m68k-singlestep-test
-description: Run and diagnose M68000 instructions against cycle-exact Tom Harte physical silicon SingleStepTests test vectors.
+description: Run and diagnose M68000 instructions against Tom Harte silicon vectors, always comparing state, instruction clocks and timed bus callbacks; sampling limits input count only.
 ---
 
 # M68000 SingleStepTests Verification & Debugging Runbook
@@ -37,10 +37,10 @@ Each test case contains:
 
 ### Running SingleStepTests via Cargo Test Runner
 ```powershell
-# Fast sample run (default: 50 cases per suite, ~5.8s):
-python tools/verification/verify.py test rust crate test_runner suite test_singlestep
+# Explicit sample run (50 cases per ordinary suite):
+python tools/verification/verify.py test runner singlestep sample 50
 
-# Full exhaustive verification (~300,000 cases across all 77 suites, ~14s):
+# Run all ordinary suite inputs with complete verification:
 python tools/verification/verify.py test runner singlestep full
 
 # Full exhaustive run for a single instruction:
@@ -49,6 +49,14 @@ python tools/verification/verify.py test runner singlestep case test_add_b full
 # Custom sample limit (e.g. 500 cases):
 python tools/verification/verify.py test runner singlestep case test_move_w sample 500
 ```
+
+Every executed vector compares state, instruction clocks and timed bus callbacks.
+There are no weaker modes. Sampling limits only how many vectors execute. The
+matcher retains internal delays in the expected timeline, and the driver records
+observed callback clocks while stepping CPU CCKs. Inspect existing state masks and
+unobserved signal boundaries in [CPU SingleStepTests.md](../../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification).
+A new comparison rule can reveal a pre-existing divergence; older saved results
+from weaker verification are not a comparable regression baseline.
 
 ---
 
@@ -73,7 +81,7 @@ When a test fails, follow this systematic diagnostic checklist:
 - Remember the M68000 two-word prefetch pipeline:
   - `IR` (Instruction Register): holds the opcode being executed.
   - `IRC` (Prefetch Queue): holds the next prefetched 16-bit word.
-- At instruction completion, the test asserts that `pc` and `prefetch: [pf0, pf1]` match the expected post-instruction state.
+- The fixture primes the prefetch state. The shared comparator checks PC with a four-byte pipeline allowance; it does not independently compare the final prefetch words. Inspect these fields explicitly when diagnosing a pipeline failure.
 - If `pc` is 2 or 4 bytes ahead or behind:
   - Verify that immediate operands or extension words (`.w` / `.l`) were fetched from the prefetch queue and refilled from memory.
   - Verify whether the final instruction prefetch step occurred before instruction retirement.
@@ -109,7 +117,7 @@ The test harness automatically tracks test outcomes, diffs, and regressions acro
 - `.agent/tmp/singlestep/diff.md`: Automatically generated status changes and missing baselines.
 
 ### B. Automated Regression & Progress Alerts
-When running tests via `python tools/verification/verify.py test rust crate test_runner`, the test runner automatically compares the current run against the previous run:
+SingleStep suite execution saves results and compares them with previous saved results. Saved reports can contain suites not executed by the current filtered run; distinguish current evidence from older snapshots:
 - 🔴 **Regressions**: Tests that previously passed but failed after your changes:
   ```text
   ⚠️  [REGRESSION DETECTED] Suite 'Real68k::ADD.b': 1 test(s) that previously PASSED now FAILED!

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-10
-updated: 2026-10-10
+updated: 2026-10-11
 related: ["[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)"]
 tracked_paths:
   - "crates/test_runner/Cargo.toml"
@@ -355,7 +355,7 @@ For post-increment `(An)+` and pre-decrement `-(An)` modes:
 Upon completion of a benchmark run, results are serialized to disk into profile-isolated directories under `.agent/tmp/benchmarks/<profile>/`. To maintain a clean, deterministic repository without accumulating unbounded timestamped files, the harness implements **two-tier rotation**: before writing the new benchmark results, existing reports are automatically rotated to `_previous`:
 
 1. `.agent/tmp/benchmarks/<profile>/m68k_benchmark.json` (Active structured dataset with environment metadata).
-2. `.agent/tmp/benchmarks/<profile>/m68k_benchmark.csv` (Active flat tabular format for spreadsheet analysis and automated regression testing).
+2. `.agent/tmp/benchmarks/<profile>/m68k_benchmark.csv` (Active flat tabular format for spreadsheet analysis and measurement comparisons).
 3. `.agent/tmp/benchmarks/<profile>/m68k_benchmark_latest.json` / `.csv` (Active run copy for automated regression diffing).
 4. `.agent/tmp/benchmarks/<profile>/m68k_benchmark_previous.json` / `.csv` (Immediately preceding run preserved before rotation).
 
@@ -562,12 +562,10 @@ artifact selection and external profiler invocation.
 
 #### 8.4.3 Practical CLI Execution Examples
 ```powershell
-# 1. Quick sanity check across all 108 benchmark specifications (~2–5 seconds):
+# 1. Quick measurement profile:
 python tools/verification/verify.py runner bench quick
 
-# 2. Standard benchmark run (default profile, ~1–2 minutes, full suite):
-python tools/verification/verify.py runner bench
-# Or explicitly:
+# 2. Standard measurement profile (no profile prints help without measuring):
 python tools/verification/verify.py runner bench standard
 
 # 3. Sampled SingleStep tests for one opcode (reports are saved automatically):
