@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-12
-updated: 2026-10-09
+updated: 2026-10-10
 related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
 ---
 
@@ -17,7 +17,7 @@ related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md
 - **Companion Specifications:** [CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md) | [CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)
 - **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
 
-This document establishes the evaluation guide for interpreting M68000 instruction benchmarking datasets (`tests/benchmarks/**/*.csv` and `.json`), detailing the mathematical metrics, hardware-to-host correlation models, and empirical findings from the 108-instruction `--thorough` baseline.
+This document establishes the evaluation guide for interpreting M68000 instruction benchmarking datasets (`.agent/tmp/benchmarks/**/*.csv` and `.json`), detailing the mathematical metrics, hardware-to-host correlation models, and empirical findings from the 108-instruction `--thorough` baseline.
 
 ---
 
@@ -163,10 +163,10 @@ To analyze any benchmark CSV report and generate markdown analysis tables using 
 
 ```powershell
 # Analyze the thorough benchmark run:
-python crates/test_runner/src/analyze_benchmarks.py tests/benchmarks/thorough/m68k_benchmark.csv
+python crates/test_runner/src/analyze_benchmarks.py .agent/tmp/benchmarks/thorough/m68k_benchmark.csv
 
 # Analyze and export directly to a markdown report:
-python crates/test_runner/src/analyze_benchmarks.py tests/benchmarks/thorough/m68k_benchmark.csv --output tests/benchmarks/thorough/analysis_report.md
+python crates/test_runner/src/analyze_benchmarks.py .agent/tmp/benchmarks/thorough/m68k_benchmark.csv --output .agent/tmp/benchmarks/thorough/analysis_report.md
 ```
 
 ---
@@ -191,13 +191,13 @@ Direct full-file checksums or diffs fail because host operating systems introduc
 ```
 Benchmark CSV Table (14 Columns)
 ├── Deterministic Emulation Invariants (Columns 1..=7)
-│   ├── [1] mnemonic                    (ADD, MOVE, etc.)             --> 100% Deterministic (Golden Hash)
-│   ├── [2] variant                     (ADD.W D1 D0)                 --> 100% Deterministic (Golden Hash)
-│   ├── [3] addressing_mode             (DataRegDirect, etc.)         --> 100% Deterministic (Golden Hash)
-│   ├── [4] category                    (Arithmetic, etc.)            --> 100% Deterministic (Golden Hash)
-│   ├── [5] opcode_hex                  (D041, etc.)                  --> 100% Deterministic (Golden Hash)
-│   ├── [6] amiga_cck_cycles            (4, 8, 34 cycles)             --> 100% Deterministic (Golden Hash)
-│   └── [7] total_guest_instructions    (Nominal pass formula)        --> 100% Deterministic (Golden Hash)
+│   ├── [1] mnemonic                    (ADD, MOVE, etc.)             --> 100% Deterministic (Reference CSV)
+│   ├── [2] variant                     (ADD.W D1 D0)                 --> 100% Deterministic (Reference CSV)
+│   ├── [3] addressing_mode             (DataRegDirect, etc.)         --> 100% Deterministic (Reference CSV)
+│   ├── [4] category                    (Arithmetic, etc.)            --> 100% Deterministic (Reference CSV)
+│   ├── [5] opcode_hex                  (D041, etc.)                  --> 100% Deterministic (Reference CSV)
+│   ├── [6] amiga_cck_cycles            (4, 8, 34 cycles)             --> 100% Deterministic (Reference CSV)
+│   └── [7] total_guest_instructions    (Nominal pass formula)        --> 100% Deterministic (Reference CSV)
 │
 └── Stochastic Host Telemetry (Columns 8..=13)
     ├── [8] host_duration_median_ms     (Duration in milliseconds)    --> Evaluated via Tukey IQR / CV < 3%
@@ -212,26 +212,12 @@ Benchmark CSV Table (14 Columns)
 
 To confirm that a benchmark run on disk is 100% valid and regression-free:
 
-1. **Deterministic Invariant Hash Verification ([`test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs)):**
-   Run the automated invariant verification test:
-   ```powershell
-   cargo test -p test_runner --test test_benchmark_csv
-   ```
-   - **What it verifies:** It extracts columns 1..=7 and computes a 64-bit FNV-1a hash over all 108 specifications. If any opcode word, addressing mode name, cycle count, or operation count is corrupted, the test immediately panics and prints the exact divergent row:
-     `Row X: Expected [m], Found in CSV [d]`.
-   - **Golden Hashes:**
-     - Catalog Structure (columns 1..=6): `0x3972F381CE69D98F`
-     - Quick (columns 1..=7, `total_guest_instructions = 31500`): `0xB699CBA7E6ADD635`
-     - Standard (columns 1..=7, `total_guest_instructions = 6997200`): `0x9FE3956BC57151D1`
-     - Thorough (columns 1..=7, `total_guest_instructions = 149992500`): `0xDB747B4AC9321D39`
+1. **Direct Reference CSV Comparison ([`test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs)):**
+   Run `cargo test -p test_runner --test test_benchmark_csv`.
+   - Compares columns 1..=6 of all 108 rows with `tests/benchmarks/m68k_benchmark_baseline.csv` and checks nominal instruction totals for each profile: Quick 31,500; Standard 6,997,200; Thorough 149,992,500.
+   - Reports the differing row with expected and actual values. Generated fixtures use `.agent/tmp/benchmark-csv/<profile>/`.
 
-2. **Single-Pass Step Trace Audit ([`test_benchmark_trace.rs`](../../../crates/test_runner/tests/test_benchmark_trace.rs)):**
-   ```powershell
-   cargo test -p test_runner --test test_benchmark_trace
-   ```
-   - Asserts that executing every benchmark program step-by-step produces the exact expected disassembly, instruction cycle counts, register side-effects, and terminates cleanly at `BENCH_EXIT_PC = $004FFE` (`STOP #$2700`).
-
-3. **Telemetry Plausibility (Statistical Bounds):**
+2. **Telemetry Plausibility (Statistical Bounds):**
    - Confirm that pass jitter is low (`host_jitter_pct < 3.0%`).
    - Confirm that 16-bit register ALU operations (`ADD.W`, `SUB.W`, `AND.W`, `OR.W`) cluster within $\pm 5\%$ of each other.
    - Confirm that memory addressing modes scale monotonically ($\Delta T_{\text{mode}} > 0$).
@@ -247,6 +233,5 @@ To confirm that a benchmark run on disk is 100% valid and regression-free:
 - [CPU Motorola M68000 Architecture](CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
 - [CPU Micro-Step State Machine Specification](CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
 - [Benchmark Analysis Python CLI](../../../crates/test_runner/src/analyze_benchmarks.py): Telemetry parser and markdown analysis generator.
-- [Benchmark CSV Validation Suite](../../../crates/test_runner/tests/test_benchmark_csv.rs): Golden hash regression test for benchmark data consistency.
-- [Benchmark Single-Pass Trace Suite](../../../crates/test_runner/tests/test_benchmark_trace.rs): Deterministic execution trace validation.
+- [Benchmark CSV Validation Suite](../../../crates/test_runner/tests/test_benchmark_csv.rs): Direct reference comparison for benchmark data consistency.
 

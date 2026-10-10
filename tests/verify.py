@@ -150,7 +150,7 @@ TIER1_UNIT_CRATES = [
     "joystick", "keyboard", "cpu", "mouse", "paula", "physical_memory", "rtc", "sprites",
 ]
 
-TIER1_TEST_RUNNER_TESTS = ['test_golden_row_hashes']
+TIER1_TEST_RUNNER_TESTS = ['test_benchmark_csv']
 
 TIER2_INTEGRATION_CRATES = ['memory_bus', 'machine_loop', 'debugger', 'gui']
 
@@ -324,7 +324,7 @@ def main(argv=None):
 
   --unit / --integration / --harness / --all
     Focused diagnostics without completion gates or coverage instrumentation.
-    --unit: isolated crate tests and golden-row fixtures.
+    --unit: isolated crate tests and benchmark CSV fixtures.
     --integration: memory_bus, machine_loop, debugger and GUI tests.
     --harness: architecture, benchmark smoke and Cartesian DMA tests.
     --all: unit + integration (the former tier runner's scope).
@@ -354,7 +354,7 @@ Examples:
     mode.add_argument("--milestone", action="store_true", help="Run only the milestone language audit")
     parser.add_argument("--verify-dma", action="store_true", help="Run the Cartesian DMA set, alone or alongside a completion profile")
     parser.add_argument("--verify-singlestep", action="store_true", help="Run the full SingleStepTests set, alone or alongside a completion profile")
-    parser.add_argument("--unit", "-u", action="store_true", help="Run isolated crate tests and golden-row fixtures")
+    parser.add_argument("--unit", "-u", action="store_true", help="Run isolated crate tests and benchmark CSV fixtures")
     parser.add_argument("--integration", "-i", action="store_true", help="Run machine, bus, debugger and GUI integration tests")
     parser.add_argument("--harness", "-H", action="store_true", help="Run architecture, benchmark smoke and Cartesian DMA tests")
     parser.add_argument("--all", "-a", action="store_true", help="Run unit and integration diagnostic tiers")

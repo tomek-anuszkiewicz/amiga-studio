@@ -73,7 +73,7 @@ command above once for the final snapshot, followed by
 procedures from the routed roadmap, design-maintenance and diary rules before
 claiming closure. The verifier does not invoke these skills, and passing its gates
 alone does not establish stage completion. Revalidate affected checks if a procedure
-changes their inputs. Do not claim unrun checks passed. **Prohibition of Blind Golden Hash Modifications:** Never silently change golden hashes or cycle references; follow the conflict and approval procedure in specification-compliance rules.
+changes their inputs. Do not claim unrun checks passed. **Reference Artifact Integrity:** Never silently change reference traces, expected cycle totals, or silicon vectors to make a failing test pass; follow the conflict and approval procedure in specification-compliance rules.
 
 ## Authoritative References
 

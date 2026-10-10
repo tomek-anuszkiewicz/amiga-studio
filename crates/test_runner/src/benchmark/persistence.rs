@@ -1,6 +1,6 @@
 //! Results Persistence: JSON & CSV Output Serialization
 //!
-//! Writes structured benchmark reports and flat CSV tables to `tests/benchmarks/`
+//! Writes structured benchmark reports and flat CSV tables to `.agent/tmp/benchmarks/`
 //! per Obsidian/Amiga/Design/CPU Instruction Benchmarking.md.
 
 use serde::{Deserialize, Serialize};
@@ -152,7 +152,7 @@ pub fn load_previous_report(out_dir: &Path) -> Option<BenchmarkSuiteReport> {
 }
 
 /// Attempts to load the historical baseline report from `out_dir/m68k_benchmark_baseline.json`,
-/// or if not found, checks the parent directory (`out_dir/../m68k_benchmark_baseline.json`).
+/// its parent directory, or the tracked reference directory.
 pub fn load_historical_baseline(out_dir: &Path) -> Option<BenchmarkSuiteReport> {
     let baseline_path = out_dir.join("m68k_benchmark_baseline.json");
     if baseline_path.exists() {
@@ -166,5 +166,8 @@ pub fn load_historical_baseline(out_dir: &Path) -> Option<BenchmarkSuiteReport> 
             return serde_json::from_str(&content).ok();
         }
     }
-    None
+    let reference =
+        super::runner::resolve_benchmark_reference_dir().join("m68k_benchmark_baseline.json");
+    let content = fs::read_to_string(reference).ok()?;
+    serde_json::from_str(&content).ok()
 }

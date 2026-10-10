@@ -66,25 +66,14 @@ pub struct BenchmarkConfig {
     pub verbose: bool,
 }
 
-/// Resolves the benchmark output root directory path (`tests/benchmarks`)
+/// Resolves the ignored output directory for generated benchmark reports.
 pub fn resolve_benchmarks_dir() -> PathBuf {
-    let candidates = [
-        PathBuf::from("tests/benchmarks"),
-        PathBuf::from("../../tests/benchmarks"),
-    ];
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.agent/tmp/benchmarks")
+}
 
-    for candidate in &candidates {
-        if candidate.exists() {
-            return candidate.clone();
-        }
-    }
-
-    if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        let p = Path::new(&manifest_dir).join("../../tests/benchmarks");
-        return p;
-    }
-
-    PathBuf::from("tests/benchmarks")
+/// Resolves tracked reference artifacts independently of generated reports.
+pub(crate) fn resolve_benchmark_reference_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/benchmarks")
 }
 
 impl Default for BenchmarkConfig {

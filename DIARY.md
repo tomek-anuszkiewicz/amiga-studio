@@ -2445,3 +2445,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify updated
   - Milestone verification not run
   - No indexing or golden changes
+---
+
+### [2026-10-10 13:15 CEST] — Remove benchmark trace regressions and hash fixtures
+- **Affected Subsystems**:
+  - `test_runner`
+  - `benchmark documentation`
+  - `verification policy`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed benchmark tracing APIs and CLI option plus all 108 reference traces
+  - Removed golden hash tables and checks in favor of direct CSV reference comparisons
+  - Moved generated benchmark reports into ignored .agent/tmp directories while preserving tracked performance baseline lookup
+  - Updated selected specifications and reference-integrity rules
+- **Architectural Rationale & Trade-Offs**:
+  - Microbenchmarks retain program generation and execution without comparing historical diagnostic output
+  - Authoritative SingleStep and DMA suites remain the CPU and contention correctness checks
+- **Verification & Test Results**:
+  - Final-source verification passed ordinary Rust tests and quality gates plus benchmark tests
+  - Full SingleStepTests passed 127/127 and Cartesian DMA passed 20/20
+  - Vault link and frontmatter audit passed
+  - Commit verification remains failing solely on the pre-existing test_validated_pdf_resume_publishes_workspace_output Python contract

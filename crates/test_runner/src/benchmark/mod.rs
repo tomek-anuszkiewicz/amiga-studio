@@ -15,7 +15,6 @@ pub mod platform;
 pub mod prng;
 pub mod runner;
 pub mod stats;
-pub mod tracer;
 
 pub use anomaly::{
     evaluate_anomaly, evaluate_historical_diff, AnomalyType, AnomalyVerdict, RegressionStatus,
@@ -40,4 +39,3 @@ pub use runner::{
     BenchmarkExecutionResult, BenchmarkProfile,
 };
 pub use stats::{analyze_pass_samples, BenchmarkMetrics};
-pub use tracer::{dump_benchmark_traces, trace_program, BenchmarkTraceLog, StepTraceRecord};

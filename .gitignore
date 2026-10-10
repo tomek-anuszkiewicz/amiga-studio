@@ -37,7 +37,7 @@ target/
 # ------------------------------------------------------------------------------
 # 6. Local Test & Benchmark Execution Outputs (Regenerated on test runs)
 # ------------------------------------------------------------------------------
-# Run artifacts, CSV results, and execution traces produced by local benchmark
+# Run artifacts and CSV results produced by local benchmark
 # and SingleStep test harness invocations.
 tests/benchmarks/quick/
 tests/benchmarks/standard/

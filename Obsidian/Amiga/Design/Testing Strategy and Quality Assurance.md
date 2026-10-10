@@ -144,8 +144,8 @@ If the answer to **any** question is **YES**, authoring a Tier 2 integration tes
 - **Key Verification Suites**:
   - **Tom Harte SingleStepTests ([`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs))**: 45,565 valid opcodes tested cycle-by-cycle against physical silicon captures (see [CPU SingleStepTests.md](CPU%20SingleStepTests.md)).
   - **Cartesian DMA Contention ([`crates/test_runner/tests/test_dma_cartesian.rs`](../../../crates/test_runner/tests/test_dma_cartesian.rs))**: Full $2^k \times 2^M$ permutation sweep verifying cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity.
-  - **Opcode Micro-Benchmarks ([`crates/test_runner/tests/test_benchmark_*.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs))**: Cycle throughput vs golden baseline hashes (see [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)).
-  - **Automated Architecture Rules ([`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs))**: 19 automated guardrail tests verifying zero unwraps, file size limits, macro prohibitions, test naming, and 1:1 test parity.
+  - **Opcode Micro-Benchmarks ([`crates/test_runner/tests/test_benchmark_*.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs))**: Direct CSV reference comparisons (see [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)).
+  - **Automated Architecture Rules ([`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs))**: Automated guardrail tests verifying zero unwraps, file size limits, macro prohibitions, test naming, and 1:1 test parity.
 
 ---
 
@@ -268,7 +268,7 @@ When building, extending, or refactoring any part of the emulator, execute tests
    - Keeps runtime production code clean, uncluttered, and $\le 800$ lines.
 2. **Canonical Test Naming (`test_<name>.rs`)**:
    - In Cargo workspaces, every `.rs` file directly inside `crates/<crate>/tests/` compiles into an independent test binary.
-   - All test files must strictly start with `test_` (e.g. `test_line.rs`, `test_benchmark_trace.rs`).
+   - All test files must strictly start with `test_` (e.g. `test_line.rs`, `test_benchmark_csv.rs`).
    - Shared non-test helper modules must reside inside subdirectories (e.g. `tests/common/mod.rs`).
 3. **1:1 Multi-Module Parity**:
    - Multi-module crates must maintain dedicated 1:1 unit test files mirroring each major computational submodule:
@@ -299,5 +299,5 @@ When building, extending, or refactoring any part of the emulator, execute tests
 - [General Architecture.md](General%20Architecture.md): Amiga 500 system block diagram and crate dependencies.
 - [Main loop A500.md](Main%20loop%20A500.md): Machine loop cycle stepping, reset sequencing, and interrupt arbitration.
 - [CPU SingleStepTests.md](CPU%20SingleStepTests.md): Verification against physical silicon instruction test vectors.
-- [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md): Cycle-exact benchmarking framework and golden CSV/JSON row hashes.
+- [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md): Cycle-exact benchmarking framework and direct CSV reference comparisons.
 - [Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md): Centralized master catalog of hardware idiosyncrasies and anti-tamper invariants.

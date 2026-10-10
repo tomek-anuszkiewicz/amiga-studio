@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-10
-updated: 2026-09-12
+updated: 2026-10-10
 related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
 ---
 
@@ -233,9 +233,9 @@ Every instruction family exercises all addressing modes permitted by the M68000 
 
 ---
 
-## 3. Benchmark Catalog Execution Filtering & Trace Dumps
+## 3. Benchmark Catalog Execution Filtering
 
-The programmatic runner exposes `--filter <TAG>` / `BENCH_FILTER=<TAG>` to isolate specific subsets during profiling, and `--dump-traces` to produce single-pass audit files:
+The programmatic runner exposes `--filter <TAG>` / `BENCH_FILTER=<TAG>` to isolate specific subsets during profiling:
 
 ```powershell
 # Run only data register moves and memory moves:
@@ -247,8 +247,6 @@ cargo bench -p test_runner --bench bench_instructions -- --filter "arith_mul|ari
 # Run only subroutine returns and branching:
 cargo bench -p test_runner --bench bench_instructions -- --filter "flow_"
 
-# Dump single-pass execution traces for LLM / human audit verification:
-cargo run -p test_runner --release -- bench --dump-traces --filter "arith_|move_"
 ```
 
 ---
@@ -265,6 +263,4 @@ cargo run -p test_runner --release -- bench --dump-traces --filter "arith_|move_
 - [Benchmark Catalog Part A](../../../crates/test_runner/src/benchmark/catalog_data_a.rs): Categories 0–3 specifications.
 - [Benchmark Catalog Part B](../../../crates/test_runner/src/benchmark/catalog_data_b.rs): Categories 4–8 specifications.
 - [Benchmark Program Builder](../../../crates/test_runner/src/benchmark/builder.rs): Programmatic instruction sequence synthesis.
-- [Benchmark Single-Pass Tracer](../../../crates/test_runner/src/benchmark/tracer.rs): Trace execution and state-delta recording.
-- [Benchmark State-Delta Verification Suite](../../../crates/test_runner/tests/test_benchmark_trace.rs): Regression tests for trace generation.
 

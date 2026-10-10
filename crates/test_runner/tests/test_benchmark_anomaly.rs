@@ -29,11 +29,11 @@ fn find_thorough_csv(repo_root: &Path) -> Option<PathBuf> {
     if baseline.exists() {
         return Some(baseline);
     }
-    let latest = repo_root.join("tests/benchmarks/thorough/m68k_benchmark_latest.csv");
+    let latest = repo_root.join(".agent/tmp/benchmarks/thorough/m68k_benchmark_latest.csv");
     if latest.exists() {
         return Some(latest);
     }
-    let canonical = repo_root.join("tests/benchmarks/thorough/m68k_benchmark.csv");
+    let canonical = repo_root.join(".agent/tmp/benchmarks/thorough/m68k_benchmark.csv");
     if canonical.exists() {
         return Some(canonical);
     }

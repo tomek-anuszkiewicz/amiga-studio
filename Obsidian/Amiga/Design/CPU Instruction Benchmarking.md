@@ -9,6 +9,8 @@ created: 2026-09-10
 updated: 2026-10-10
 related: ["[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
 tracked_paths:
+  - "crates/test_runner/Cargo.toml"
+  - "crates/test_runner/src/main.rs"
   - "crates/test_runner/src/benchmark"
   - "crates/test_runner/src/analyze_benchmarks.py"
 ---
@@ -170,36 +172,6 @@ To ensure synthesized machine code terminates cleanly and deterministically with
      $$\text{max\_cycles} = \max(C_{\text{expected\_per\_pass}}, 1000) \times 10$$
    - When `elapsed_cycles >= max_cycles`, the runner halts execution, marks `timed_out = true`, and flags the result with `AnomalyType::ExecutionTimeoutOrInfiniteLoop`.
 
-### 2.6 Golden Master Trace Hash Verification (`test_benchmark_trace.rs`)
-
-Prior to high-iteration performance profiling, synthesized benchmark programs undergo automated regression verification against deterministic **Golden Master Hashes**:
-1. **Zero Fragile String Assertions:**
-   - Rather than fragile string scraping on disassembler lines, the test suite verifies all 108 benchmark specifications by calculating a normalized 64-bit FNV-1a hash over each program's single-pass execution log and comparing it against [`GOLDEN_TRACE_HASHES`](../../../crates/test_runner/tests/test_benchmark_trace.rs).
-2. **Instant Cross-Platform Regression Detection:**
-   - Evaluates in-memory execution traces in **< 0.08 seconds** across all 108 specifications.
-   - Any modification to CPU microcode, ALU flag calculations, instruction cycle duration, addressing mode pointer arithmetic, or disassembly output immediately alters the computed hash.
-3. **Actionable Failure Diagnostics:**
-   - On hash mismatch, the test runner outputs explicit diagnostic guidance instructing the developer or review agent to inspect the generated trace file (`tests/benchmarks/traces/<SPEC_ID>.trace`) manually or with an LLM, verify whether the behavior change is intentional, and update the golden hash.
-
-### 2.7 Persistent Execution Audit Traces (`--dump-traces` for LLM & Human Double-Check)
-
-To enable comprehensive semantic verification by AI agents (LLMs) or human auditors, the benchmark runner includes the `--dump-traces` option:
-```powershell
-cargo run -p test_runner --release -- bench --dump-traces --filter "ARITH|MOV|FLOW"
-```
-
-1. **Dedicated Trace Directory (`tests/benchmarks/traces/<SPEC_ID>.trace`):**
-   - For every benchmark program matching the filter, the engine executes a single pass and writes a standalone, human- and LLM-readable audit trace file.
-2. **Standard Audit File Structure:**
-   - **Specification Metadata:** Opcode ID, instruction syntax, category, addressing mode, expected Amiga CCK cycles.
-   - **Initial State Snapshot:** Full register dump ($D_0..D_7$, $A_0..A_7$, $SR$, $SSP$) and memory buffer base addresses ($A_0 = \$006000$, $A_1 = \$007000$).
-   - **Step-by-Step Log:** 1 line per instruction showing step index, Program Counter, opcode hex, disassembler text, CCK duration, register deltas, and memory write destinations:
-     ```text
-     [001] 00001000: 32D8  MOVE.W (A0)+, (A1)+ | 12 CCK | ΔRegs: A0: 0x006000 -> 0x006002, A1: 0x007000 -> 0x007002 | Mem: Mem[0x007000] <= 0x4837
-     ```
-   - **Summary & Verification Footer:** Total instructions executed, total guest cycles, clean sentinel termination confirmation, and final register dump.
-3. **LLM Verification Workflow:**
-   - Reviewing agents can read `<SPEC_ID>.trace` files directly via `view_file` to perform a non-strict, semantic "double-check", ensuring that the synthesized machine code actually targets the intended hardware circuitry and behaves as expected before running millions of benchmark iterations.
 
 ---
 
@@ -263,7 +235,7 @@ The runner exposes fine-grained overrides:
 - `BENCH_UNROLL`: Overrides the unroll block factor $K$ (e.g. `BENCH_UNROLL=500` or `BENCH_UNROLL=1000`). Default: `700`.
 - `BENCH_PASSES`: Number of outer loop statistical passes. Default: `7`.
 - `BENCH_FILTER`: Regex or substring filter to benchmark specific instruction families (e.g. `BENCH_FILTER="ADD|SUB"` or `BENCH_FILTER="RTS"`).
-- `BENCH_OUT_DIR`: Target directory for JSON and CSV output files (defaults to `tests/benchmarks/`).
+- `BENCH_OUT_DIR`: Target directory for JSON and CSV output files (defaults to `.agent/tmp/benchmarks/`).
 - `BENCH_PIN_CORE`: Pin benchmark thread to a specific host logical core index (e.g. `BENCH_PIN_CORE=2`). Defaults to auto-detected P-core.
 - `BENCH_PARALLEL`: Number of parallel test workers (`-j <N>`). Default: `1` (sequential).
 
@@ -383,12 +355,12 @@ For post-increment `(An)+` and pre-decrement `-(An)` modes:
 
 ## 6. Results Persistence & Output Schema
 
-Upon completion of a benchmark run, results are serialized to disk into profile-isolated directories under `tests/benchmarks/<profile>/`. To maintain a clean, deterministic repository without accumulating unbounded timestamped files, the harness implements **two-tier rotation**: before writing the new benchmark results, existing reports are automatically rotated to `_previous`:
+Upon completion of a benchmark run, results are serialized to disk into profile-isolated directories under `.agent/tmp/benchmarks/<profile>/`. To maintain a clean, deterministic repository without accumulating unbounded timestamped files, the harness implements **two-tier rotation**: before writing the new benchmark results, existing reports are automatically rotated to `_previous`:
 
-1. `tests/benchmarks/<profile>/m68k_benchmark.json` (Active structured dataset with environment metadata).
-2. `tests/benchmarks/<profile>/m68k_benchmark.csv` (Active flat tabular format for spreadsheet analysis and automated regression testing).
-3. `tests/benchmarks/<profile>/m68k_benchmark_latest.json` / `.csv` (Active run copy for automated regression diffing).
-4. `tests/benchmarks/<profile>/m68k_benchmark_previous.json` / `.csv` (Immediately preceding run preserved before rotation, accessible via `load_previous_report()`).
+1. `.agent/tmp/benchmarks/<profile>/m68k_benchmark.json` (Active structured dataset with environment metadata).
+2. `.agent/tmp/benchmarks/<profile>/m68k_benchmark.csv` (Active flat tabular format for spreadsheet analysis and automated regression testing).
+3. `.agent/tmp/benchmarks/<profile>/m68k_benchmark_latest.json` / `.csv` (Active run copy for automated regression diffing).
+4. `.agent/tmp/benchmarks/<profile>/m68k_benchmark_previous.json` / `.csv` (Immediately preceding run preserved before rotation, accessible via `load_previous_report()`).
 
 ### 6.1 JSON Data Schema
 ```json
@@ -503,9 +475,9 @@ For the comprehensive evaluation framework and analysis techniques (Functional S
 
 ---
 
-## 8. CLI Execution Guide: Quick, Standard, and Thorough Runs, Tracing & Automated Baseline Diffing
+## 8. CLI Execution Guide: Quick, Standard, and Thorough Runs & Automated Baseline Diffing
 
-The benchmarking harness supports multiple operational profiles, targeted category filtering, trace dumping, and automatic differential regression comparison against a locked golden baseline.
+The benchmarking harness supports multiple operational profiles, targeted category filtering, and automatic differential regression comparison against a locked golden baseline.
 
 ### 8.1 Execution Profiles: Quick, Standard, and Thorough
 
@@ -519,41 +491,20 @@ Select an execution profile via `--quick`, `--standard`, or `--thorough`:
 
 ### 8.2 Results Output Files & Directory Structure
 
-All benchmark outputs, reports, and execution traces are persisted into `tests/benchmarks/` with automatic profile subfolder isolation:
+Tracked references and generated artifacts use separate directories:
 
-```
-tests/benchmarks/
-├── m68k_benchmark_baseline.json    <-- Master Golden Baseline [Git-Tracked]
-├── m68k_benchmark_baseline.csv     <-- Master Tabular Baseline [Git-Tracked]
-├── quick/                          <-- Isolated runs for --quick (sanity checks) [Gitignored]
-│   ├── m68k_benchmark.json         <-- Active run
-│   ├── m68k_benchmark.csv
-│   ├── m68k_benchmark_latest.json
-│   ├── m68k_benchmark_latest.csv
-│   ├── m68k_benchmark_previous.json <-- Rotated preceding run
-│   └── m68k_benchmark_previous.csv
-├── standard/                       <-- Isolated runs for --standard (PR / feature branches) [Gitignored]
-│   ├── m68k_benchmark.json
-│   ├── m68k_benchmark.csv
-│   ├── m68k_benchmark_latest.json
-│   ├── m68k_benchmark_latest.csv
-│   ├── m68k_benchmark_previous.json
-│   └── m68k_benchmark_previous.csv
-├── thorough/                       <-- Protected high-precision runs for --thorough [Gitignored]
-│   ├── m68k_benchmark.json
-│   ├── m68k_benchmark.csv
-│   ├── m68k_benchmark_latest.json
-│   ├── m68k_benchmark_latest.csv
-│   ├── m68k_benchmark_previous.json
-│   └── m68k_benchmark_previous.csv
-└── traces/                         <-- Deterministic Execution Traces [Git-Tracked]
-    ├── ARITH-01.trace              <-- Disassembly, CCK cycles, and register deltas (108 specs)
-    ├── MOVE-05.trace
-    └── FLOW-01.trace
+```text
+tests/benchmarks/                         # Git-tracked references
+    m68k_benchmark_baseline.json
+    m68k_benchmark_baseline.csv
+.agent/tmp/benchmarks/                    # Ignored CLI output
+    quick/                               # Current/latest/previous JSON and CSV
+    standard/
+    thorough/
+.agent/tmp/benchmark-csv/<profile>/       # Generated CSV validation fixtures
 ```
 
-> [!NOTE]
-> **Git Hygiene Policy:** The `quick/`, `standard/`, and `thorough/` directories are strictly excluded in `.gitignore`. Running benchmarks or test suites generates local files for developer inspection without polluting `git status`. The committed baseline (`m68k_benchmark_baseline.*`) and golden execution traces (`traces/*.trace`) remain the project's permanent sources of truth.
+Benchmark runs and tests write generated artifacts into ignored directories. Tracked baseline reports remain unchanged unless explicitly updated after review.
 
 ### 8.3 Automated Baseline Diffing & Cross-Hardware Normalization
 
@@ -570,8 +521,8 @@ The test runner features **built-in zero-configuration differential regression d
 4. **Promoting / Updating the Baseline:**
    To establish or update the golden baseline after intentional, verified optimizations:
    ```powershell
-   Copy-Item tests/benchmarks/thorough/m68k_benchmark_latest.json tests/benchmarks/m68k_benchmark_baseline.json
-   Copy-Item tests/benchmarks/thorough/m68k_benchmark_latest.csv tests/benchmarks/m68k_benchmark_baseline.csv
+   Copy-Item .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.json tests/benchmarks/m68k_benchmark_baseline.json
+   Copy-Item .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.csv tests/benchmarks/m68k_benchmark_baseline.csv
    ```
 
 ### 8.4 Command Cheat-Sheet & Comprehensive CLI Reference
@@ -594,8 +545,7 @@ cargo run -p test_runner [FLAGS] -- [COMMAND] [OPTIONS]
 | **`--filter`** | `<TAG>` | All specs | Case-insensitive regex/substring filter matching instruction mnemonics or category tags (e.g. `--filter "arith_mul\|arith_div"`, `--filter "move_"`). |
 | **`--unroll`** | `<K>` | `700` | Overrides the inner loop unroll block factor $K$. Compiles $K$ contiguous repetitions of the instruction between loop branches to amortize jump overhead to $< 0.1\%$. |
 | **`--passes`** | `<N>` | Profile default | Overrides the number of outer measurement passes (e.g. `--passes 10`). Each pass measures $K \times \text{iterations}$ operations. |
-| **`--out-dir`** | `<PATH>` | `tests/benchmarks/<profile>/` | Overrides the output directory where JSON and CSV reports are written. |
-| **`--dump-traces`** | None | Disabled | Executes a single step-by-step verification pass per specification, generating detailed disassembly, CCK cycle counts, register deltas, and bus transaction logs in `tests/benchmarks/traces/<ID>.trace`. |
+| **`--out-dir`** | `<PATH>` | `.agent/tmp/benchmarks/<profile>/` | Overrides the output directory where JSON and CSV reports are written. |
 | **`--no-pin`** | None | P-core pinned | Disables Windows thread affinity pinning (`SetThreadAffinityMask`) and process priority elevation. Useful when benchmarking inside virtual machines, WSL, or non-hybrid CPU environments. |
 
 #### 8.4.3 SingleStepTest Diagnostic Commands
@@ -616,9 +566,6 @@ cargo run -p test_runner --release -- bench --quick
 cargo run -p test_runner --release -- bench
 # Or explicitly:
 cargo run -p test_runner --release -- bench --standard
-
-# 3. Standard run with single-pass step-by-step execution trace dumping enabled:
-cargo run -p test_runner --release -- bench --standard --dump-traces
 
 # 4. Targeted profiling of arithmetic operations (multiplications and divisions):
 cargo run -p test_runner --release -- bench --quick --filter "arith_mul|arith_div"
@@ -642,7 +589,7 @@ cargo run -p test_runner -- --diff
 cargo run -p test_runner -- --suite ADD.b
 
 # 11. Full markdown comparative analysis report generation from latest thorough run:
-python crates/test_runner/src/analyze_benchmarks.py tests/benchmarks/thorough/m68k_benchmark_latest.csv --output tests/benchmarks/thorough/analysis_report.md
+python crates/test_runner/src/analyze_benchmarks.py .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.csv --output .agent/tmp/benchmarks/thorough/analysis_report.md
 ```
 
 ---
@@ -661,10 +608,8 @@ All components specified in this document are implemented without macros or cons
 | **Statistical Analysis** | [`crates/test_runner/src/benchmark/stats.rs`](../../../crates/test_runner/src/benchmark/stats.rs) | Multi-pass statistical sampling, Tukey's fences outlier rejection, jitter analysis ($\text{CV} < 3\%$), MIPS calculation. |
 | **Anomaly Classifier** | [`crates/test_runner/src/benchmark/anomaly.rs`](../../../crates/test_runner/src/benchmark/anomaly.rs) | Evaluates Type A, Type B, Type C, and `ExecutionTimeoutOrInfiniteLoop` anomalies; diffs against baseline. |
 | **Persistence Engine** | [`crates/test_runner/src/benchmark/persistence.rs`](../../../crates/test_runner/src/benchmark/persistence.rs) | Formats and saves version-controlled JSON (`m68k_benchmark.json`, `latest.json`) and tabular CSV (`m68k_benchmark.csv`). |
-| **Single-Pass Tracer** | [`crates/test_runner/src/benchmark/tracer.rs`](../../../crates/test_runner/src/benchmark/tracer.rs) | Generates step-by-step disassembly, cycle counts, register deltas, and memory write audit traces. |
 | **Smoke & Catalog Tests** | [`crates/test_runner/tests/test_benchmark_smoke.rs`](../../../crates/test_runner/tests/test_benchmark_smoke.rs) | Cascading RTS execution and a quick CPU benchmark workload. |
-| **Step Trace Verification** | [`crates/test_runner/tests/test_benchmark_trace.rs`](../../../crates/test_runner/tests/test_benchmark_trace.rs) | Exhaustive single-pass execution trace assertions across all 108 benchmark specifications. |
-| **Golden Master CSV Tests** | [`crates/test_runner/tests/test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs) | Invariant column hashing, profile-specific verification, and row diff diagnostics. |
+| **Reference CSV Tests** | [`crates/test_runner/tests/test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs) | Direct invariant-field comparison, profile-specific verification, and row diagnostics. |
 | **Benchmark Entry** | [`crates/test_runner/benches/bench_instructions.rs`](../../../crates/test_runner/benches/bench_instructions.rs) | Standard `cargo bench` entry point invoking the benchmark suite. |
 | **Analysis & Reporting Tool** | [`crates/test_runner/src/analyze_benchmarks.py`](../../../crates/test_runner/src/analyze_benchmarks.py) | Comparative analysis tool evaluating functional symmetry, addressing mode scaling, and emulation tax. |
 
@@ -672,7 +617,7 @@ All components specified in this document are implemented without macros or cons
 
 ## 10. Validating Benchmark Results & Deterministic File Invariants (`test_benchmark_csv`)
 
-A fundamental engineering challenge in micro-benchmarking is verifying that generated output files (`tests/benchmarks/**/*.csv` and `.json`) are **structurally and functionally correct**, even though physical timing metrics (`host_ns_op`, `host_mips`, `jitter_pct`) naturally vary across host CPUs, operating systems, and ambient workloads.
+A fundamental engineering challenge in micro-benchmarking is verifying that generated output files (`.agent/tmp/benchmarks/**/*.csv` and `.json`) are **structurally and functionally correct**, even though physical timing metrics (`host_ns_op`, `host_mips`, `jitter_pct`) naturally vary across host CPUs, operating systems, and ambient workloads.
 
 ### 10.1 Separating Stochastic Telemetry from Emulation Invariants
 
@@ -704,7 +649,7 @@ flowchart TD
 
 ### 10.2 Strictly Nominal `total_ops` Invariance
 
-In earlier iterations, `total_ops` was calculated from the number of passes surviving Tukey's fences outlier rejection (`instructions_per_pass * filtered_count`). Consequently, on noisy host runs where 1–2 outlier passes were dropped, `total_ops` fluctuated (e.g. 119M vs 149M), breaking deterministic file hashing.
+In earlier iterations, `total_ops` was calculated from the number of passes surviving Tukey's fences outlier rejection (`instructions_per_pass * filtered_count`). Consequently, on noisy host runs where 1–2 outlier passes were dropped, `total_ops` fluctuated (e.g. 119M vs 149M), making nominal operation counts unstable.
 
 To ensure absolute repeatability, `total_ops` is computed using **nominal pass counts** (`raw_count` in `stats.rs`):
 
@@ -718,41 +663,22 @@ $$\text{total\_ops} = K \times \text{iterations} \times \text{passes}$$
 
 All 108 benchmark specifications within a given profile have identical nominal `total_ops`.
 
-### 10.3 Golden Master 64-bit FNV-1a Hashing
+### 10.3 Direct Reference CSV Comparison
 
-To validate files without checking in gigabytes of test vectors, the test suite [`crates/test_runner/tests/test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs) maintains verified **Golden Master 64-bit FNV-1a hashes** computed over normalized LF lines:
+[`test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs) reads the tracked `tests/benchmarks/m68k_benchmark_baseline.csv` and compares all 108 rows directly. Columns 1..=6 cover mnemonic, variant, addressing mode, category, opcode, and expected cycle count. Profile checks additionally compare nominal instruction totals: Quick 31,500; Standard 6,997,200; Thorough 149,992,500. Host timing measurements are validated separately because they vary between runs.
 
-| Scope | Invariant Columns Evaluated | Expected Golden Hash | Invariance Guarantee |
-| :--- | :---: | :---: | :--- |
-| **Catalog Structure** | Columns 1..=6 (`mnemonic..amiga_cck_cycles`) | `0x3972F381CE69D98F` | Universal across all profiles (Quick, Standard, Thorough). |
-| **Quick Profile CSV** | Columns 1..=7 (includes `total_guest_instructions = 31500`) | `0xB699CBA7E6ADD635` | Invariant for all `--quick` runs on disk. |
-| **Standard Profile CSV** | Columns 1..=7 (includes `total_guest_instructions = 6997200`) | `0x9FE3956BC57151D1` | Invariant for all `--standard` runs on disk. |
-| **Thorough Profile CSV** | Columns 1..=7 (includes `total_guest_instructions = 149992500`) | `0xDB747B4AC9321D39` | Invariant for all `--thorough` runs on disk. |
+### 10.4 Row-by-Row Diagnostics
 
-### 10.4 Row-by-Row Diagnostic Failure Diffing
-
-If any instruction mnemonic, addressing mode, opcode hex word, Amiga cycle count, or pass count is altered, the test does not merely fail with an opaque checksum error. It generates an immediate, actionable **row-by-row diff**:
-
-```
-🔴 DISK BENCHMARK CSV HASH MISMATCH for profile [Thorough]: tests/benchmarks/thorough/m68k_benchmark.csv
-Expected Golden Hash: 0xDB747B4AC9321D39
-Disk File Hash:      0x3D772B37E9EBFE2B
-Divergent rows (up to 5):
-  Row 1: Expected [NOP,NOP,Implied,Baseline,4E71,4,149992500], Found in CSV [NOP,NOP,Implied,Baseline,4E71,4,119994000]
-  Row 4: Expected [MOVE,MOVE.L D1  D0,DataRegDirect,DataMovement,2001,4,149992500], Found in CSV [MOVE,MOVE.L D1  D0,DataRegDirect,DataMovement,2001,4,139993000]
-ACTION: Regenerate benchmark CSV files via 'cargo run -p test_runner --release -- bench'.
-```
-
-This immediately pinpoints the exact row and divergent field, enabling rapid diagnosis of unintentional changes.
+A differing deterministic row fails with its expected and actual field values. Generated CSV fixtures reside in `.agent/tmp/benchmark-csv/<profile>/`; tests never overwrite the tracked baseline. Investigate whether the catalog, profile configuration, or reference is incorrect before proposing a reference update.
 
 ### 10.5 Automated Test Execution Commands
 
 ```powershell
-# 1. Run the Golden Master CSV invariant regression test:
+# 1. Run the reference CSV invariant regression test:
 cargo test -p test_runner --test test_benchmark_csv
 
 # 2. Run the remaining benchmark verification test suites:
-cargo test -p test_runner --test test_benchmark_smoke --test test_benchmark_trace --test test_benchmark_csv --test test_architecture_rules
+cargo test -p test_runner --test test_benchmark_smoke --test test_benchmark_csv --test test_architecture_rules
 ```
 
 ---
@@ -766,7 +692,7 @@ cargo test -p test_runner --test test_benchmark_smoke --test test_benchmark_trac
 - [CPU Motorola M68000 Architecture](CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
 - [CPU Micro-Step State Machine Specification](CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
 - [Benchmark Harness Implementation](../../../crates/test_runner/src/benchmark/): Living Rust benchmark harness, runners, and profiler models.
-- [Benchmark CSV Validation Suite](../../../crates/test_runner/tests/test_benchmark_csv.rs): Golden hash regression test for benchmark data consistency.
+- [Benchmark CSV Validation Suite](../../../crates/test_runner/tests/test_benchmark_csv.rs): Direct reference comparison for benchmark data consistency.
 
 
 

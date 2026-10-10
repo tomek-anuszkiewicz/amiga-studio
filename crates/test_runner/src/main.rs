@@ -19,7 +19,7 @@ fn print_usage() {
     println!("  bench [OPTIONS]  Execute M68000 instruction benchmarking suite");
     println!("                   Options: --quick, --standard, --thorough");
     println!("                            --filter <TAG>, --unroll <K>, --passes <N>");
-    println!("                            --out-dir <PATH>, --no-pin, --dump-traces");
+    println!("                            --out-dir <PATH>, --no-pin");
     println!("  benchmark-chipset [OPTIONS] Run chipset throughput benchmark & regression check");
     println!(
         "                   Options: --record (record golden baseline), --compare, --frames <N>"
@@ -193,12 +193,9 @@ fn run_specific_suite(opcode: &str) {
 
 fn run_benchmarks_cli(args: &[String]) {
     use std::path::PathBuf;
-    use test_runner::benchmark::{
-        dump_benchmark_traces, filter_specs, run_benchmark_suite, BenchmarkConfig, BenchmarkProfile,
-    };
+    use test_runner::benchmark::{run_benchmark_suite, BenchmarkConfig, BenchmarkProfile};
 
     let mut config = BenchmarkConfig::default();
-    let mut dump_traces = false;
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
@@ -248,32 +245,11 @@ fn run_benchmarks_cli(args: &[String]) {
             "--no-pin" => {
                 config.pin_core = false;
             }
-            "--dump-traces" => {
-                dump_traces = true;
-            }
             other => {
                 eprintln!("Unknown benchmark flag: {}", other);
             }
         }
         i += 1;
-    }
-
-    if dump_traces {
-        let pattern = config.filter.as_deref().unwrap_or("*");
-        let specs = filter_specs(pattern);
-        let unroll = config.unroll_k.min(20);
-        match dump_benchmark_traces(&specs, &config.out_dir, unroll) {
-            Ok(n) => {
-                println!(
-                    "[*] Successfully generated {} execution audit traces in: {}/traces/",
-                    n,
-                    config.out_dir.display()
-                );
-            }
-            Err(e) => {
-                eprintln!("Error dumping traces: {}", e);
-            }
-        }
     }
 
     if let Err(e) = run_benchmark_suite(&config) {
