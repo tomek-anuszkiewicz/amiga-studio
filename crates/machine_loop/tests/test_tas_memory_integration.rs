@@ -78,3 +78,41 @@ fn test_tas_slow_ram_discards_write_and_updates_flags() {
 fn test_tas_fast_ram_sets_bit_seven_and_updates_flags() {
     check_tas_memory_region(0x202000, false);
 }
+
+#[test]
+fn test_tas_platform_write_obeys_waits_without_affecting_ordinary_stores() {
+    for addr in [0x2000, 0x2001, 0xc02000, 0xc02001, 0x202000, 0x202001] {
+        let mut harness = MachineHarness::new_with_preset(A500Preset::ExpandedPowerUser);
+        harness.machine.physical_memory.write_byte_debug(addr, 0x35);
+        harness.machine.physical_memory.chip_ram_blocked = true;
+        let fast = addr >= 0x200000 && addr < 0x600000;
+        for _ in 0..3 {
+            assert_eq!(
+                harness.machine.memory_bus().write_tas_byte(addr, 0xb5),
+                if fast {
+                    BusResult::Ready(())
+                } else {
+                    BusResult::WaitState
+                }
+            );
+            assert_eq!(
+                harness.machine.physical_memory.read_byte_debug(addr),
+                if fast { 0xb5 } else { 0x35 }
+            );
+        }
+        harness.machine.physical_memory.chip_ram_blocked = false;
+        assert_eq!(
+            harness.machine.memory_bus().write_tas_byte(addr, 0xb5),
+            BusResult::Ready(())
+        );
+        assert_eq!(
+            harness.machine.physical_memory.read_byte_debug(addr),
+            if fast { 0xb5 } else { 0x35 }
+        );
+        assert_eq!(
+            harness.machine.memory_bus().write_byte(addr, 0x42),
+            BusResult::Ready(())
+        );
+        assert_eq!(harness.machine.physical_memory.read_byte_debug(addr), 0x42);
+    }
+}

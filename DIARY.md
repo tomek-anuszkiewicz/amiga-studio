@@ -3132,3 +3132,36 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - python tools/verification/verify.py commit fails only on the two existing TAS Chip and Slow RAM integration tests. All other ordinary tests and all quality gates standard harness tests and Python contracts pass.
   - Existing TAS Chip and Slow RAM integration failures remain unresolved and are documented in the preceding diary entry
   - Full SingleStep and milestone profiles are not run
+---
+
+---
+
+### [2026-10-11 22:08 CEST] — CPU-CYCLE-01, CPU-PC-01, CPU-DOCS-01: close supported CPU reconciliation
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/memory_bus`
+  - `crates/physical_memory/src/address_bus.rs`
+  - `crates/machine_loop/tests`
+  - `CPU specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Implement Illegal and Line A/F exceptions with rejected opcode PC
+  - Sample T at instruction entry and process Trace before accepted IRQ, including STOP and RTE
+  - Retain the accepted interrupt level independently of live IPL
+  - Route TAS write context to MemoryBus and suppress Chip/Slow writes while preserving waits and ordinary stores
+  - Reconstruct CPU and micro-step specifications and clarify PC phases
+  - Close CPU-CYCLE-01, CPU-PC-01 and CPU-DOCS-01 after the closure commit, then remove only their execution plans
+- **Architectural Rationale & Trade-Offs**:
+  - Retain the phase-dependent PC model without another global frame-PC register
+  - Follow original Motorola PDF Section 6.3.8 where converted Trace prose differs, leaving imported references untouched
+  - At the user request exclude external level-seven NMI from A500 implementation scope, removing sampled_ipl and nmi_pending while retaining SR mask 7 and trace_pending
+  - Keep silicon vectors, approved overrides and comparison rules unchanged
+  - Retain redirected snapshot restoration in roadmap Save State scope and keep CPU-BENCH-01, CPU-CONTINUE-01, CPU-MICRO-STRUCTURE-01, SINGLESTEP-MUTATION-01 and SINGLESTEP-RAM-01 active
+- **Verification & Test Results**:
+  - Final-source exact PC and both prefetch words pass for all 1000060 vectors across 124 files, including 178087 Address Error entries
+  - All 124 original reference hashes remain unchanged
+  - Synthetic exception, trace and IRQ fixtures do not establish production interrupt or electrical pin correctness
+  - BERR/device IACK, timed host reset, electrical locking and existing RAM masks remain explicit limits
+  - Final commit profile passes all ordinary workspace tests, standard harness tests, five Python contract suites, quality gates and the full repository English audit
+  - Final milestone profile passes: full SingleStep completes 128 of 128 groups with zero failures, 1002737 reported current executions plus the two-record override control
+  - Static semantic consistency, roadmap structure, diary ordering and vault metadata/link checks pass for 39 documents and 1089 links
+  - Scoped design ownership review has no unmapped code paths

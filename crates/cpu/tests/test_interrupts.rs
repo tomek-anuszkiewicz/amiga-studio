@@ -2,8 +2,8 @@
 
 //! Motorola 68000 Autovector Interrupts & Exception Processing Tests
 //!
-//! Validates cycle-exact autovector interrupts (Levels 1..7, vectors 25..31),
-//! interrupt mask filtering, Level 7 NMI behavior, supervisor state transition,
+//! Validates cycle-exact A500 autovector interrupts (Levels 1..6, vectors 25..30),
+//! interrupt mask filtering, unsupported Level 7 input, supervisor state transition,
 //! trace mode clearing, stack frame layout, STOP awakening, and RTE restoration.
 
 use cpu::Cpu;
@@ -123,28 +123,25 @@ fn test_interrupt_mask_filtering() {
 }
 
 #[test]
-fn test_level_7_nmi_fires_even_with_mask_7() {
-    let (mut cpu, mut bus) = setup_test_machine();
-    // Level 7 autovector is Vector 31 ($00007C)
-    set_vector(&mut bus, 31, 0x007000);
-    load_code(&mut bus, 0x001000, &[0x4E71]);
-    load_code(&mut bus, 0x007000, &[0x4E73]);
-    cpu.set_pc_and_prime_prefetch(0x001000, &mut bus);
+fn test_level_7_input_is_ignored_in_a500_scope() {
+    for mask in [0, 7] {
+        let (mut cpu, mut bus) = setup_test_machine();
+        load_code(&mut bus, 0x001000, &[0x4E71, 0x4E71, 0x4E71]);
+        cpu.set_pc_and_prime_prefetch(0x001000, &mut bus);
+        cpu.state.set_interrupt_mask(mask);
+        cpu.state.ipl = 7;
 
-    // Set SR mask to Level 7 (SR = $2700)
-    cpu.state.set_interrupt_mask(7);
-    assert_eq!(cpu.state.interrupt_mask(), 7);
+        assert_eq!(cpu.state.is_interrupt_pending(), None);
+        assert_eq!(cpu.step_instruction(&mut bus), 4);
+        assert_eq!(cpu.step_instruction(&mut bus), 4);
+        assert_eq!(cpu.state.instruction_pc, 0x001004);
+        assert_eq!(cpu.state.ssp(), 0x070000);
+        assert_eq!(cpu.state.interrupt_mask(), mask);
 
-    // Assert Level 7 NMI
-    cpu.state.ipl = 7;
-    // Step NOP:
-    cpu.step_instruction(&mut bus);
-    // Step Level 7 Interrupt:
-    cpu.step_instruction(&mut bus);
-
-    // Must have taken Level 7 interrupt
-    assert_eq!(cpu.state.instruction_pc, 0x007000);
-    assert_eq!(cpu.state.interrupt_mask(), 7);
+        cpu.state.stopped = true;
+        assert_eq!(cpu.step_instruction(&mut bus), 0);
+        assert!(cpu.state.stopped);
+    }
 }
 
 #[test]

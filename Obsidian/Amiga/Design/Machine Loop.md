@@ -189,7 +189,7 @@ All peripheral interrupt requests are latched in Paula's `INTREQ` register (`$DF
    - Directly drives `cpu.state.ipl` with the resulting priority ($0..6$).
 2. **CPU Delivery & Exception Entry:**
    - Evaluated at instruction retirement (`retire_current_instruction()`) or upon waking from `STOP` mode.
-   - If `ipl > interrupt_mask` (or `ipl == 7` for NMI), the CPU immediately initiates the 44-clock `STEPS_INTERRUPT` pipeline, pushes the standard 3-word exception frame ($PC_{\text{low}}, SR, PC_{\text{high}}$) to $SSP$, fetches the autovector from physical memory, and redirects execution to the ISR.
+   - If `ipl > interrupt_mask` for a supported level 1-6, the CPU initiates the 44-clock `STEPS_INTERRUPT` pipeline, pushes the standard 3-word exception frame ($PC_{\text{low}}, SR, PC_{\text{high}}$) to $SSP$, fetches the autovector from physical memory, and redirects execution to the ISR. Pending Trace is processed first. The standard A500 generates no level-seven NMI; external NMI hardware is outside the [CPU implementation scope](CPU%20Motorola%20M68000.md#712-autovector-interrupt-processing--stop-instruction-awakening).
 
 ---
 

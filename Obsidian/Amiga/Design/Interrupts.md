@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "paula"
 status: "active"
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-10-11
 related: ["[Paula.md](Paula.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[CIA.md](CIA.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/interrupts"
@@ -39,7 +39,7 @@ tracked_paths:
 
 ## 2. Priority Level Encoding & Interrupt Sources Matrix
 
-The Amiga custom chipset and peripherals define 14 hardware interrupt sources mapped into 6 prioritized levels ($IPL 1..6$). Level 7 is reserved for external non-maskable interrupts (NMI):
+The Amiga custom chipset and peripherals define 14 hardware interrupt sources mapped into 6 prioritized levels ($IPL 1..6$). The standard A500 motherboard does not generate level 7. The physical 68000 supports level-seven NMI through its encoded IPL inputs, available to external debugging hardware through the expansion connector. Such hardware is outside the supported A500 scope; the [CPU implementation](CPU%20Motorola%20M68000.md#712-autovector-interrupt-processing--stop-instruction-awakening) ignores IPL=7 and does not require NMI handling.
 
 | Level | Bit | Symbol | Triggering Subsystem | Description & Silicon Mechanics |
 | :---: | :---: | :--- | :--- | :--- |

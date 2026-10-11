@@ -543,6 +543,10 @@ fn test_read_handlers_retain_latches_until_ready() {
 fn test_write_handlers_commit_once_after_release() {
     let cases: &[(Handler, Access)] = &[
         (
+            Cpu::step_bus_write_tas_byte,
+            Access::WriteByte(0x2000, 0x88),
+        ),
+        (
             Cpu::step_bus_write_dst_byte,
             Access::WriteByte(0x2000, 0x88),
         ),

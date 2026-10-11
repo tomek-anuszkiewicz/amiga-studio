@@ -174,6 +174,13 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
 - **Fast RAM (`$200000-$5FFFFF`):**
   - Read succeeds, and write succeeds (bit 7 is set to 1).
 
+The CPU marks the TAS write through `AddressBus::write_tas_byte`. Its default
+implementation performs an ordinary byte write for generic CPU fixtures.
+[MemoryBus](../../../crates/memory_bus/src/memory_bus.rs) uses the active bank
+classification to suppress Chip/Slow RAM writes, preserving WaitState retries
+while the bank is blocked; other banks use the ordinary write path. This models
+the platform write result without claiming continuous electrical AS or bus locking.
+
 ### Low-Memory Boot Overlay Control via CIA-A Port A Bit 0
 - At hardware reset (cold or warm), Gary initializes with low-memory overlay active (`low_memory_overlay = true`), routing `$000000-$07FFFF` accesses to Kickstart ROM.
 - Software explicitly controls this mapping via **CIA-A Port A bit 0 (`_OVL`)** at address `$BFE001`:

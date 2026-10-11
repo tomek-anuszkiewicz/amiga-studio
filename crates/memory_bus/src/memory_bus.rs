@@ -9,7 +9,7 @@ use cia::Cia;
 use config::custom_reg;
 use denise::Denise;
 use paula::Paula;
-use physical_memory::{AddressBus, BusResult, PhysicalMemory};
+use physical_memory::{AddressBus, BusResult, MemoryBank, PhysicalMemory};
 use rtc::RtcMsm6242b;
 
 pub use physical_memory;
@@ -315,6 +315,21 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 BusResult::Ready(())
             }
             _ => self.mem.write_byte(addr, val),
+        }
+    }
+
+    #[inline]
+    fn write_tas_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
+        let addr = addr & 0x00FF_FFFF;
+        let bank = self.mem.bank_map[(addr >> 16) as usize].bank;
+        if matches!(bank, MemoryBank::ChipRam | MemoryBank::SlowRam) {
+            if self.mem.chip_ram_blocked {
+                BusResult::WaitState
+            } else {
+                BusResult::Ready(())
+            }
+        } else {
+            self.write_byte(addr, val)
         }
     }
 

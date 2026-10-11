@@ -364,6 +364,7 @@ pub const POP_STACK_CCR_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_sta
 
 /// Initial setup for Privilege Violation exception: saves old SR, switches to supervisor
 pub fn alu_privilege_violation_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    state.trace_pending = false;
     let vector_addr = vector::addr(vector::PRIVILEGE_VIOLATION);
     let return_pc = state.instruction_pc;
     let old_sr = state.sr();
@@ -445,14 +446,14 @@ pub fn trigger_divide_by_zero(state: &mut CpuState) {
 // ============================================================================
 
 /// Initial setup for Autovector Interrupt exception:
-/// - Samples active level from `state.ipl` (1..7).
+/// - Uses the accepted A500 level retained in `state.micro.reg_src` (1..6).
 /// - Determines return PC (current `state.pc` if waking from STOP, otherwise `state.instruction_pc`).
 /// - Stashes return PC in `source`, old SR in `destination`.
 /// - Switches to supervisor mode, clears trace bit, and raises interrupt mask to `level`.
 /// - Computes autovector address: `vector::addr(vector::AUTOVECTOR_BASE + level as u32)`.
 /// - Clears stopped flag.
 pub fn alu_interrupt_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let level = state.ipl.clamp(1, 7);
+    let level = state.micro.reg_src.clamp(1, 6);
     let vector_addr = vector::addr(vector::AUTOVECTOR_BASE + level as u32);
     let return_pc = if state.stopped {
         state.pc
@@ -499,3 +500,44 @@ pub static STEPS_INTERRUPT: [MicroStep; 19] = [
     PREFETCH_TARGET_READ,      // 2 clocks
     PREFETCH_TARGET_FINISH,    // 2 clocks
 ];
+
+/// Decode exceptions save the rejected opcode PC; the shared frame/refill follows.
+pub fn alu_decode_exception_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    alu_privilege_violation_init(state, 0, 0);
+    let number = match state.ir >> 12 {
+        0xa => vector::LINE_1010,
+        0xf => vector::LINE_1111,
+        _ => vector::ILLEGAL_INSTRUCTION,
+    };
+    state.micro.ea_addr = vector::addr(number);
+}
+
+pub static STEPS_DECODE_EXCEPTION: [MicroStep; 17] = {
+    let mut steps = STEPS_PRIVILEGE_VIOLATION;
+    steps[0] = MicroStep {
+        bus_fn: None,
+        alu_fn: Some(alu_decode_exception_init),
+        base_clocks: 2,
+    };
+    steps
+};
+
+/// Trace captures the completed instruction boundary before changing SR.
+pub fn alu_trace_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let old_sr = state.sr();
+    state.micro.source = state.instruction_pc;
+    state.micro.destination = u32::from(old_sr);
+    state.micro.ea_addr = vector::addr(vector::TRACE);
+    state.set_supervisor(true);
+    state.clear_trace();
+}
+
+pub static STEPS_TRACE: [MicroStep; 17] = {
+    let mut steps = STEPS_PRIVILEGE_VIOLATION;
+    steps[0] = MicroStep {
+        bus_fn: None,
+        alu_fn: Some(alu_trace_init),
+        base_clocks: 2,
+    };
+    steps
+};

@@ -1153,6 +1153,14 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         op += 1;
     }
 
+    // All unassigned encodings enter Illegal or the corresponding emulator line.
+    let mut op = 0;
+    while op < table.len() {
+        if table[op].steps.is_empty() {
+            table[op].steps = &super::common::STEPS_DECODE_EXCEPTION;
+        }
+        op += 1;
+    }
     table
 }
 

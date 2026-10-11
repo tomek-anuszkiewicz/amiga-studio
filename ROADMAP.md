@@ -262,6 +262,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Visual snapshot cards containing embedded thumbnail screenshots captured at the moment of saving.
     - Formatted creation date and time timestamps and user-defined state labels/descriptions.
     - Configuration integrity guard verifying matching hardware profiles before restoring state to prevent guest crashes.
+    - Preserve the active CPU execution path when restoring a snapshot during a redirected branch or exception; opcode-only slice reconstruction does not establish this. Gate with interrupted execution and identical continuation after serialization.
   - **Verification Gate:**
     - Save state serialization unit tests and UI state manager tests in `crates/gui/tests/`.
 

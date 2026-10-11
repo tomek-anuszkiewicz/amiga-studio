@@ -80,8 +80,12 @@ pub struct CpuState {
     /// Instruction Register (active 16-bit instruction being executed)
     pub ir: u16,
 
-    /// Interrupt Priority Level pending from motherboard/custom chips (IPL 1-6)
+    /// Encoded A500 interrupt input (IPL 0-6); external level-seven NMI is unsupported.
     pub ipl: u8,
+
+    /// T sampled at instruction entry, retained through instruction-generated traps.
+    #[serde(default)]
+    pub(crate) trace_pending: bool,
 
     /// Program counter at the start of the current instruction (used for PC-relative EA & exceptions)
     #[serde(default)]
@@ -118,6 +122,7 @@ impl Default for CpuState {
             prefetch: 0,
             ir: 0,
             ipl: 0,
+            trace_pending: false,
             instruction_pc: 0,
             stopped: false,
             halted: false,
@@ -307,13 +312,11 @@ impl CpuState {
         self.sr = (self.sr & !0x0700) | (((mask as u16) & 0x07) << 8);
     }
 
-    /// Checks whether the currently sampled `ipl` qualifies as a pending interrupt
-    /// according to M68000 priority rules (ipl > mask || ipl == 7 for NMI).
+    /// Checks whether an A500 interrupt level (1-6) exceeds the SR mask.
+    /// External level-seven NMI is outside the supported motherboard scope.
     #[inline(always)]
     pub fn is_interrupt_pending(&self) -> Option<u8> {
-        let has_unmasked_interrupt = self.ipl > self.interrupt_mask() && self.ipl > 0;
-        let is_nonmaskable_interrupt = self.ipl == 7;
-        if has_unmasked_interrupt || is_nonmaskable_interrupt {
+        if self.ipl > self.interrupt_mask() && self.ipl < 7 {
             Some(self.ipl)
         } else {
             None

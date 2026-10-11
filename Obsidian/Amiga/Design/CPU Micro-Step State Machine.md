@@ -13,133 +13,96 @@ tracked_paths:
 ---
 # Architecture Specification: M68000 Cycle-Exact Micro-Step State Machine
 
-- **Parent Specification:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)
-- **Module Location:** `crates/cpu/`
-- **Execution Model:** Cycle-exact micro-operations mapped to Color Clock phases (**CCK1** and **CCK2**).
-- **Bus Interface:** Interacts with memory strictly via [MemoryBus.md](MemoryBus.md), handling `BusResult::WaitState` and executing direct 2-phase CCK read/write transactions (`step_bus_read_src_word`, `step_bus_write_dst_word`, etc.).
-- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md) (zero custom macros, zero const-generic handlers, wrapping arithmetic, Big-Endian decoding, zero panics).
-- **Test Validation:** Verified via [CPU SingleStepTests.md](Verification/CPU%20SingleStepTests.md) and skill `m68k-singlestep-test`.
+The emulator executes a static opcode descriptor as a sequence of phase actions.
+One active `step_cck` call consumes two CPU clocks. An AddressBus refusal retains
+the active transfer and retries it on a later CCK; it does not repeat its entry
+ALU callback or commit a refused access. Dynamic branches and exceptions select
+another static slice, while MOVEM maintains an explicit transfer-loop state.
 
----
+This is the project's execution contract. It does not identify a hardware
+microrom/nanorom circuit or expose all electrical pins. The
+[CPU specification](CPU%20Motorola%20M68000.md) owns instruction semantics,
+registers, prefetch/PC and exception requirements. The
+[silicon verification specification](Verification/CPU%20SingleStepTests.md)
+owns comparator strength and limits. [MemoryBus](MemoryBus.md) and
+[Machine Loop](Machine%20Loop.md) own physical routing and coordination.
 
 ## 1. Core Architecture & Execution Model
 
-This document defines the architectural blueprint for the cycle-exact Motorola 68000 CPU emulator core based on the **Micro-Step State Machine Engine**.
+The [dispatch table](../../../crates/cpu/src/micro/dispatch_table.rs) contains
+65,536 descriptors with a static slice and source/destination register parameters.
+Compile-time decoding specializes transfer sizes and addressing forms. Every
+unassigned encoding receives the common decode-exception slice; high nibbles A/F
+select emulator-line vectors. Table coverage is not proof of every undocumented
+instruction/fault behavior.
 
-The architecture mirrors the physical two-level microcode design of the Motorola 68000 silicon (the Stritter & Tredennick microcode patent):
-1. **Instruction Sequencer (Macro-Level / Microrom)**: The 16-bit opcode word (`IR`) selects a static, compile-time blueprint of atomic micro-steps.
-2. **Execution Unit & Bus Controller (Micro-Level / Nanorom)**: Drives the physical bus lines (`_AS`, `_UDS`, `_LDS`), Color Clock phases (**CCK1** and **CCK2**), dynamic ALU calculation delays, memory write decomposition, two-word pipeline refills, and Agnus DMA wait-state contention.
+`Cpu::initiate_current_instruction` caches the selected slice and samples T.
+The [CCK engine](../../../crates/cpu/src/cpu.rs) indexes that slice until
+retirement or a dynamic redirect. All runtime temporaries have fixed storage;
+hot stepping does not allocate. Indirect calls, readiness checks and dynamic
+conditions remain. Throughput claims require profiling, not descriptor shape.
 
-### Core Architecture Invariants
-1. **The 65,536 Static Table**:
-   Because immediate values, displacements, and 32-bit addresses are fetched dynamically from memory during execution, **the micro-step sequence is a pure, immutable function of the 16-bit opcode word (`IR`)**. Exactly 65,536 static entries cover 100% of the instruction set.
-2. **Zero Runtime Heap Allocation**:
-   The entire micro-step table is static `const` data embedded in the host binary (`.rodata`). It requires **0 bytes of dynamic heap allocation** (`Vec`, `Box`, `malloc`) during runtime.
-3. **Specialized Atomic Micro-Step Handlers (Zero-Branch Direct Dispatch)**:
-   Transfer size (Byte vs. Word vs. 32-bit Long decomposition) is **specialized directly into atomic `BusFn` function pointers** (`Cpu::step_bus_read_byte`, `Cpu::step_bus_read_word`, `Cpu::step_bus_write_byte`, `Cpu::step_bus_write_word`, `Cpu::step_bus_write_long_high`, `Cpu::step_bus_write_long_low`). This eliminates nested `match size` branches and dynamic `match step.action` switches in the hot CCK execution loop, maximizing host CPU execution throughput.
-4. **Pre-Allocated CPU-Level Prefetch Registers**:
-   `prefetch: u16` and `ir: u16` are fixed fields inside `CpuState` (modeling hardware registers `IR` and `IRD`), paired with `irc: u16` in `CpuMicroState` (hardware `IRC`). Zero dynamic queues.
-5. **Parametric, Bus-Free ALU Function Pointers (`AluFn`)**:
-   ALU steps do **not** take `MemoryBus`. By the time the ALU executes, all operands have already arrived in `CpuState` (`prefetch`, `d[]/a[]`) or `CpuMicroState` (`source`, `destination`, `addr1`, `addr2`). ALU functions take `(&mut CpuState, reg_src: u8, reg_dst: u8)`. This parameterization collapses 8–64 repetitive opcode functions into **one shared, elegant function per operation**.
-6. **Fused CCK ALU Micro-Operations (Zero-Overhead Internal Operations)**:
-   ALU calculations, condition code flag updates, and Effective Address arithmetic are fused directly onto native 2-clock Color Clock phases (`MicroStep.alu_fn`) where operand data has arrived (e.g. CCK2 read idle `BUS_READ_IDLE`, CCK1 extension fetch, or internal 2-clock processing phases). This eliminates separate 0-clock dispatch steps and redundant state machine iterations while guaranteeing 100% cycle-exact execution, Address Error verification, and Chip RAM DMA contention timing. Standalone 0-clock micro-steps (`base_clocks: 0`) are reserved exclusively for dynamic countdown delay loops (`clocks_remaining`) or single-instruction branch slice trampolines (`Bcc`/`DBcc`/`Scc`).
-7. **Data Output Buffer (`state.micro.destination: u32`) & Exact Write Strobe Preservation**:
-   Results destined for memory are held in `state.micro.destination: u32` (hardware `DOB`). Memory writes strictly respect 68000 bus widths:
-   - **`WRITE_DST_BYTE`** (`Cpu::step_bus_write_dst_byte`): Drives $\overline{\text{UDS}}$ (even address, high byte) or $\overline{\text{LDS}}$ (odd address, low byte). The unaddressed byte in the 16-bit memory cell is **strictly preserved**.
-   - **`WRITE_DST_WORD`** (`Cpu::step_bus_write_dst_word`): Drives both $\overline{\text{UDS}}$ and $\overline{\text{LDS}}$ simultaneously on even address boundaries.
-   - **`WRITE_DST_LONG_HIGH` & `WRITE_DST_LONG_LOW`**: Two 16-bit Word bus write cycles; their order follows the instruction class.
-8. **Two-Word Pipeline Refill for Control Flow (`JMP`, `JSR`, `RTS`, `Bcc`)**:
-   When program execution flow changes, the prefetch stream is flushed and refilled from the target address via two sequential program-space read bus cycles (`Cpu::step_bus_read_target_opcode_read` and `Cpu::step_prefetch_target_finish`).
-9. **Decoupled Internal Delay Countdown**:
-   Variable-cycle operations calculate their result instantly, compute the hardware cycle penalty, and set `cpu.state.micro.clocks_remaining`. The host ticks down this counter by 2 clocks per CCK, leaving the external bus completely idle for Amiga custom chips (Copper, Blitter, Denise).
-10. **Automatic Self-Modifying Code (SMC) Immunity**:
-    Because opcodes directly index the static 65,536 table upon prefetch, and operands are read live from memory, **the engine requires zero bus snooping, zero page dirty tracking, and zero cache invalidation**.
-11. **Cached Slice Pointer Dispatch (`current_steps: &'static [MicroStep]`)**:
-    Upon opcode prefetch and retirement, `state.micro.current_steps` caches the slice pointer directly from `OPCODE_DESCRIPTOR_TABLE[ir]`. All subsequent CCK ticks during the instruction index `current_steps[micro_step]` directly, completely eliminating 65,536-entry table lookups in the hot execution loop.
-12. **Dynamic Transfer Loop for Block Operations (`MOVEM`)**:
-    `MOVEM` register count (0 to 16) is dynamically driven by the 16-bit extension mask in `state.micro.movem_mask` via `crate::instructions::movem::execute_movem_transfer`. Each set bit performs an atomic bus cycle and advances the mask, looping with 0 heap allocation and exact cycle timing.
-13. **Cycle-Exact Hardware Exception Stacking**:
-    Group 0 (Address/Bus Error) and Group 1/2 (Interrupts/Traps) exception stacking are modeled as dedicated compiled micro-sequences (`STEPS_ADDRESS_ERROR`, `STEPS_INTERRUPT`, `STEPS_PRIVILEGE_VIOLATION`, `STEPS_ZERO_DIVIDE`). Stack writes and vector reads interact with `dyn AddressBus` and experience Chip RAM DMA wait states identical to real hardware.
+The ALU callback runs once when its step starts. It can be fused into a timed
+CCK, consume no clocks in a fall-through step, or establish a dynamic countdown.
+Fusing internal work changes dispatch placement without asserting the same
+arithmetic instant on silicon. Operand ordering and fault-visible side effects
+remain constrained by the accepted observations.
 
-### 1.1 The Microcode Archetype Baseline Architecture
-
-To accelerate core refactoring, DMA contention modeling, and machine loop integration, the M68000 microcode engine is structured around **Microcode Archetypes**.
-
-Instead of maintaining dozens of isomorphic instruction duplicates (such as `SUB` which mirrors `ADD`, `OR`/`AND`/`EOR` which share identical addressing and bus structures, or bit manipulation/shift variants), the core maintains 16 primary archetype modules that provide **100% structural representation** of all M68000 hardware bus cycles, addressing modes, and internal execution flows:
-
-| Archetype Domain | Active Representative Modules | Hardware Mechanics Covered |
-| :--- | :--- | :--- |
-| **ALU & Arithmetic** | `add.rs`, `adda.rs`, `addi.rs`, `addq.rs`, `addx.rs`, `sub.rs`, `suba.rs`, `subi.rs`, `subq.rs`, `subx.rs`, `not.rs` | 2-phase operand read, RMW memory write-back, address register sign-extension, immediate latching, multi-precision extend (`X`) flag propagation, subtractive borrow/overflow evaluation, and bitwise complement. |
-| **Bit & Shifts** | `bset.rs`, `asl.rs` | Read-Modify-Write bit cycles (static immediate & dynamic register-addressed), memory word shifts, register count-dependent loop delays, and condition evaluation. |
-| **Data Movement** | `move_w.rs`, `movea.rs`, `moveq.rs`, `movem.rs` | Standard word transfers, address register loading, quick sign-extended immediates, and dynamic multi-register block transfers across arbitrary register lists. |
-| **Memory Comparison** | `cmpm.rs` | Dual postincrement memory operand sequencing without destination write-back. |
-| **Branch & Stack** | `bra.rs`, `bsr.rs`, `bcc.rs`, `pea.rs`, `jmp.rs`, `jsr.rs`, `rts.rs` | Short/long branches, subroutine return address stacking, stack popping, and 2-word pipeline refill across non-sequential Program Space addresses. |
-| **Exceptions & System** | `nop.rs`, `trap.rs`, `system.rs` | Pipeline idling, software vector traps, supervisor stack frame generation, and status register manipulation. |
-
-Derived and isomorphic instructions (`SUB*` [completed in Batch 1.1], `AND*`, `OR*`, `EOR*`, `CMP*`, `ASR`/`LS*`/`RO*`, `BTST`/`BCLR`/`BCHG`, `MOVE.B`/`MOVE.L`) inherit their micro-step sequences directly from these blueprints and are re-introduced in distinct, test-validated batches (see `ROADMAP.md` Step 1).
-
----
 ## 2. Data Structures & Type Definitions
 
-The microcode data structures and static lookup tables are implemented in [`crates/cpu/src/micro/`](../../../crates/cpu/src/micro/).
+### 2.1 The AluFn Function Pointer
 
-### 2.1 The `AluFn` Function Pointer (Pure Internal CPU Operation)
+AluFn receives CpuState and decoded source/destination indices. It never reads
+the bus: registers and staged memory/immediate operands supply its inputs.
+It writes results, CCR, effective addresses or a selected execution path.
+Zero-clock callbacks continue within the current CCK; timed callbacks run once
+before the first transfer attempt and are not repeated after a wait.
 
-Because all memory operands are already latched into `CpuState` (`prefetch`, `d[]/a[]`) or `CpuMicroState` (`source`, `destination`, `addr1`, `addr2`) before the ALU step runs, `AluFn` does **not** take `MemoryBus`. ALU handlers execute purely internally, operating directly on `CpuState` with pre-decoded register indices:
-- Signature: `fn(state: &mut CpuState, reg_src: u8, reg_dst: u8)`
-- Implementation: [`crates/cpu/src/micro/engine.rs`](../../../crates/cpu/src/micro/engine.rs) and [`crates/cpu/src/micro/types.rs`](../../../crates/cpu/src/micro/types.rs).
+### 2.2 The MicroStep Descriptor
 
-### 2.2 The `MicroStep` Descriptor (Stateless & Cache-Dense)
+[`MicroStep`](../../../crates/cpu/src/micro/types.rs) contains optional BusFn and
+AluFn pointers plus base_clocks. A CCK action normally has two base clocks.
+An internal idle can count several CCKs. A zero-clock ALU action has no bus
+transfer; a dynamic transfer handler with zero base clocks explicitly manages
+its own progress. The engine distinguishes these cases rather than treating
+every descriptor as exactly one CCK.
 
-Each micro-step is an immutable, cache-dense `Copy` struct in `.rodata`:
-- `bus_fn`: Optional direct atomic execution function pointer (`Option<BusFn>`, where `BusFn = fn(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()>`). When `None`, the CPU loop directly executes `BusResult::Ready(())` with zero function pointer call overhead or BTB branch misprediction penalty.
-- `alu_fn`: Optional function pointer to pure internal ALU logic (`Option<AluFn>`).
-- `base_clocks`: Base CPU clocks consumed (2 for 1 CCK micro-steps, 0 for instantaneous ALU / branch evaluation).
+### 2.3 Specialized 2-Clock Atomic Micro-Step Handlers (BusFn)
 
-Pre-decoded register indices (`reg_src`, `reg_dst`) are held once per opcode in `OpcodeDescriptor` and cached into `state.micro.reg_src` / `reg_dst`.
+BusFn receives Cpu and AddressBus and returns Ready or WaitState. Size-specific
+functions avoid decoding operand size at each transfer. Operand and prefetch
+handlers live in [step_execution](../../../crates/cpu/src/micro/step_execution.rs);
+stack/vector/target handlers live in [step_control](../../../crates/cpu/src/micro/step_control.rs).
+The [shared constants](../../../crates/cpu/src/micro/common.rs) name their
+phase roles and are reused by instruction-class sequences.
 
-### 2.3 Specialized 2-Clock Atomic Micro-Step Handlers (`BusFn`)
+### 2.4 CPU Micro-State Storage (CpuMicroState)
 
-By decomposing 4-clock bus cycles into native 2-clock slices ($1\ \text{MicroStep} = 1\ \text{Color Clock / CCK} = 2\ \text{CPU clocks}$), the execution core eliminates runtime size checks (`match size`) and dynamic action matching:
+| Fields | Role |
+| --- | --- |
+| source, destination | Decoded operands/results, reused for captured PC/SR during frame writes. |
+| irc | Incoming prefetch/target opcode, separate from the active descriptor. |
+| ea_addr, ea_high | Resolved operand/target address and high-word assembly. |
+| addr1, addr2 | Separate addresses for paired operands and partial transfers. |
+| reg_src, reg_dst | Decoded register indices; interrupt entry reuses reg_src for its accepted level. |
+| current_steps, micro_step | Active static slice and position. |
+| clocks_remaining | Remaining clocks in the active phase/countdown; wait does not decrement it. |
+| target_refill, prefetch_retired | Mutually interpreted retirement state for target or already advanced sequential refill. |
+| movem_mask, movem_state | Immutable register mask and cursor/phase/dummy-read progress. |
+| fault_addr, info_word, ssp_base | Address Error capture and original supervisor-stack base. |
 
-| Category | Primitives (CCK1 / CCK2 Slices) | Hardware Operation & Bus Semantics |
-| :--- | :--- | :--- |
-| **Operand Reads (Data Space)** | `step_bus_read_src_word`, `step_bus_read_src_byte`, `step_bus_read_dst_word`, `step_bus_read_dst_byte`, `step_bus_read_src_long_high`, `step_bus_read_src_long_low`, `step_bus_read_dst_long_high`, `step_bus_read_dst_long_low` | **CCK1**: Reads from `ea_addr`. Stalls if Chip RAM blocked. Latches into `source`/`destination`.<br>**CCK2** (`BUS_READ_IDLE`): Physical bus free for Agnus DMA (`bus_fn: None`). |
-| **Dual Staged Operands (Data Space)** | `step_bus_read_addr1_byte`, `step_bus_read_addr1_word`, `step_bus_read_addr1_long_high`, `step_bus_read_addr1_long_low`, `step_bus_read_addr2_byte`, `step_bus_read_addr2_word`, `step_bus_read_addr2_long_high`, `step_bus_read_addr2_long_low`, `step_bus_write_addr2_byte`, `step_bus_write_addr2_word` | Dedicated 2-clock bus handlers operating directly over dual staging registers `addr1` and `addr2` for dual-memory instructions (`CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`). |
-| **Operand Writes (Data Space)** | `BUS_WRITE_IDLE`, `WRITE_DST_IDLE`, `step_bus_write_dst_word`, `step_bus_write_dst_byte`, `step_bus_write_dst_long_high`, `step_bus_write_dst_long_low` | **CCK1**: Internal setup; physical bus free for Agnus DMA. `WRITE_DST_IDLE` checks word alignment before a MOVE store and starts Address Error in the rejected setup CCK.<br>**CCK2**: Drives data from `destination` to memory. Stalls if wait states asserted. Retires if final step. |
-| **Stack Operations (Data Space)** | `step_bus_push_stack_high_idle`, `step_bus_push_stack_high_write`, `step_bus_push_stack_low_write`, `step_bus_pop_stack_high_read`, `step_bus_pop_stack_high_finish`, `step_bus_pop_stack_low_read`, `step_bus_pop_stack_low_finish` | Stack reads and pushes over `SP` ($A_7$). Validates address alignment, adjusts SP, and transfers high/low words across CCK1/CCK2 phases. |
-| **Prefetch & Refill (Program Space)** | `step_fetch_extension_read`, `step_fetch_extension_finish`, `step_prefetch_irc_read`, `step_prefetch_irc_finish`, `step_prefetch_next_read`, `BUS_READ_IDLE`, `step_bus_read_target_opcode_read`, `step_prefetch_target_read`, `step_prefetch_target_finish` | Reads from `pc` or branch target in Program Space ($FC_2$ / $FC_6$). Refills pipeline across 2-clock phases and manages standard or target retirement. |
-| **Internal & Exceptions** | ALU callbacks (`AluFn`), `ALU_IDLE_*`, `step_bus_write_trap_*`, `step_bus_write_aerr_*`, `step_bus_read_vector_*` | Instantaneous (0 CCK) internal operations, CCR updates, condition evaluation, and 2-phase CCK bus primitives for exception processing. Pure ALU steps utilize `bus_fn: None`. |
+The [micro-state definition](../../../crates/cpu/src/micro/engine.rs) is serialized
+except current_steps, which is a runtime static pointer. The present restore API
+reconstructs the opcode slice from IR. It does not encode an arbitrary redirected
+branch/exception slice; restoring a snapshot halfway through such a sequence is
+a known capability gap, distinct from instruction-boundary state restoration.
 
-Handlers are organized cleanly across [`crates/cpu/src/micro/step_execution.rs`](../../../crates/cpu/src/micro/step_execution.rs) and [`crates/cpu/src/micro/step_control.rs`](../../../crates/cpu/src/micro/step_control.rs).
+### 2.5 The 65,536 Static Dispatch Universe
 
-### 2.4 CPU Micro-State Storage (`CpuMicroState`)
-
-Embedded in `CpuState` to track sub-cycle progress across Color Clock phases with zero intermediate buffers:
-- `source`: Explicit 32-bit storage for ALU source operand (incoming bus data is stored directly here on CCK1).
-- `destination`: Explicit 32-bit storage for ALU destination operand and write-back data (bus write cycles read directly from here).
-- `irc`: Instruction Register Capture — physical 68000 prefetch latch holding prefetched opcodes before retirement into IR.
-- `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
-- `addr1`: Dual Staging Register 1 ($X_1$) — pre-staged address for multi-phase and dual-memory transfers (e.g. source EA or high-word split EA in `CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`).
-- `addr2`: Dual Staging Register 2 ($X_2$) — pre-staged address for multi-phase transfers (e.g. destination EA or low-word split EA).
-- `ea_high`: High word of 32-bit absolute addresses (`(xxx).L`) or high address for split accesses.
-- `movem_mask`: 16-bit register transfer mask for `MOVEM`.
-- `movem_state`: Multi-cycle transfer progress state for `MOVEM` (bit 0 tracks CCK1 vs CCK2 sub-phase).
-- `clocks_remaining`: Clocks remaining for the active micro-step countdown (0 when completed or between steps, decrements by 2 on each CCK).
-- `current_steps`: Cached slice pointer to active opcode's compiled micro-step sequence (`&'static [MicroStep]`).
-- `micro_step`: Step index within the current instruction's micro-operation sequence.
-- `reg_src`, `reg_dst`: Pre-decoded register indices ($0..7$ for $D_n / A_n$).
-- `target_refill`: Indicates whether instruction retirement must perform a branch/jump target refill.
-- `prefetch_retired`: Indicates whether prefetch pipeline has already retired into IR during microcode execution.
-- `fault_addr`: Latched memory address that triggered Group 0 Address Error / Bus Error exception.
-- `info_word`: 16-bit Internal Information Word ($R/\overline{W}$, $I/N$, Function Code bits $FC_0-FC_2$) for 7-word exception frame.
-- `ssp_base`: Base supervisor stack pointer snapshot at the start of exception frame stacking.
-
-### 2.5 The 65,536 Static Dispatch Universe (`OPCODE_DESCRIPTOR_TABLE`)
-
-- Embedded in host `.rodata` via [`crates/cpu/src/micro/dispatch_table.rs`](../../../crates/cpu/src/micro/dispatch_table.rs).
-- Exactly 65,536 `OpcodeDescriptor` entries mapping every 16-bit opcode word directly to its pre-compiled `&'static [MicroStep]` sequence and pre-decoded register indices (`reg_src`, `reg_dst`).
-- Requires **zero dynamic heap allocations** (`0` bytes allocated at runtime).
+The table is static binary data; each instruction caches its slice. No host code
+generation, guest page tracking or decoded-code invalidation is required.
+Prefetch still retains guest words already read before a self-modifying store.
+CCR and arithmetic accessors use explicit wrapping and decoded big-endian values.
 
 ### 2.6 Addressing Mode Naming Convention & Canonical Module Layout
 
@@ -177,122 +140,72 @@ All instruction modules reuse shared atomic Color Clock micro-step primitives ra
 #### Canonical Layout for Instruction Modules
 To maintain structural consistency and clean codebase navigation across all instruction files, every module adheres to the standard sequence:
 1. **Module Doc Comment:** High-level summary of mnemonic, addressing modes, and timing.
-2. **Imports:** Imports from `crate::micro::common::*`, `crate::core::*`, `crate::micro::ea`.
+2. **Imports:** Imports from `crate::micro::common::*`, `crate::state::CpuState`, `crate::micro::ea`.
 3. **Leaf ALU Functions:** Direct arithmetic/logic helpers (`#[inline(always)] fn add_w(...)`, `sub_b(...)`) called directly by ALU callbacks to execute branchless wrapping math and CCR flag updates.
 4. **Micro-Step ALU Callbacks (`AluFn`):** Functor callbacks (`fn alu_...`) stored as function pointers in `MicroStep.alu_fn`, dispatched dynamically via the micro-step engine.
 5. **Specialized Micro-Step Handlers (`BusFn`):** Instruction-specific bus/execution handlers (if any required).
-6. **Static Micro-Step Arrays:** `pub static STEPS_...: [MicroStep; N] = [...]`, ordered strictly by canonical addressing mode progression (`DN`, `AN`, `AI`, `PI`, `PD`, `D16_AN`, `IDX_AN`, `ABSW`, `ABSL`, `D16_PC`, `IDX_PC`, `IMM`). Internal ALU logic and effective address calculations are fused directly onto 2-clock micro-step primitives (`alu_fn`), eliminating zero-clock dispatch overhead.
+6. **Static Micro-Step Arrays:** `pub static STEPS_...: [MicroStep; N] = [...]`, ordered strictly by canonical addressing mode progression (`DN`, `AN`, `AI`, `PI`, `PD`, `D16_AN`, `IDX_AN`, `ABSW`, `ABSL`, `D16_PC`, `IDX_PC`, `IMM`). ALU and effective-address callbacks use timed fusion or zero-clock fall-through according to their operand dependencies.
 7. **Opcode Decoder:** Fast compile-time function `pub const fn decode_..._steps(...) -> Option<&'static [MicroStep]>`.
 
 ---
 
-## 3. Parametric ALU Handlers: 8x Code Reduction
+## 3. Parametric ALU Handlers
 
-Passing `reg_src` and `reg_dst` into `AluFn` collapses code duplication across all register combinations without using forbidden macros or const-generics:
-1. **Register Destinations:** The ALU reads `state.d_byte(reg_dst)` or `state.d_word(reg_dst)`, evaluates condition codes via branchless CCR setters, and writes directly back to the register.
-2. **Memory Destinations:** When targeting memory (e.g. `ORI.B #$42, (A0)`), the ALU reads `state.micro.destination`, evaluates condition codes, and stores the result directly back into `state.micro.destination` for the subsequent write bus cycle.
-3. **Effective Address Arithmetic:** Because `Alu` micro-steps consume 0 CCKs, effective address calculations (such as `(d16, An)` or `(d8, An, Xn)`) use the identical `AluFn` mechanism to compute and store addresses in `state.micro.ea_addr`.
-
-All specialized ALU and instruction handlers reside directly under [`crates/cpu/src/instructions/`](../../../crates/cpu/src/instructions/).
-
----
+Decoded register indices allow one operation callback to serve multiple register
+combinations. Register results use size-specific setters; memory results remain
+in destination until a successful write. EA callbacks use the same entry
+mechanism. This reduces duplication without a claimed fixed reduction ratio.
+Both timed fused callbacks and zero-clock callbacks are supported by the engine;
+instructions use the form matching operand arrival and execution structure.
 
 ## 4. Memory Bus Operations & Strobe Semantics
 
 ### 4.1 Direct 2-Phase Bus Architecture (Zero Dynamic Strobe Boilerplate)
 
-On the Amiga 500, the 4-clock M68000 bus cycle maps to **two Color Clock phases (CCK1 and CCK2)**. Amiga Chip DRAM accesses complete in 1 CCK (280 ns), interleaving bus access 50/50 between the CPU and Agnus DMA:
+| Phase | CPU callback | Success | Refusal |
+| --- | --- | --- | --- |
+| Read CCK1 | read_byte/read_word | Latch data, then advance to finish. | Preserve active phase and pending state. |
+| Read CCK2 | Finish/idle | Apply defined deferred pointer/PC updates; no second read. | No memory callback in an ordinary finish. |
+| Write CCK1 | Setup/alignment | Establish address/result and check odd word address; no write. | No memory callback in ordinary setup. |
+| Write CCK2 | write_byte/write_word | Commit data and any success-dependent update. | Retain address, data, phase and countdown. |
 
-```
-            ┌──────────────────────┬──────────────────────┐
-            │     CCK1 (S0–S3)     │     CCK2 (S4–S7)     │
-────────────┼──────────────────────┼──────────────────────┤
- READ Cycle │ Read to target reg   │ CPU idle / DMA slot  │
-────────────┼──────────────────────┼──────────────────────┤
- WRITE Cycle│ CPU setup (idle bus) │ Write to DRAM / Wait │
-────────────┴──────────────────────┴──────────────────────┘
-```
-
-- **READ Cycles (`READ_SRC_BYTE`, `READ_SRC_WORD`, `READ_SRC_LONG_HIGH`, `READ_SRC_LONG_LOW`, `FETCH_EXT_READ`, `PREFETCH_NEXT_READ`):**
-  - **CCK1 (S0–S3):** Bus read attempt via `bus.read_word(addr)` or `bus.read_byte(addr)`. If `BusResult::WaitState` $\to$ insert wait state (CPU stalls in CCK1). If `BusResult::Ready(data)` $\to$ stores data directly into `source`, `destination`, `prefetch`, or `irc`, advancing `phase = CCK2`.
-  - **CCK2 (S4–S7):** **Do nothing on the bus!** Physical Chip RAM is already released for custom chip DMA (Blitter, Copper). The CPU records the transaction directly from the target register, finishes the 4-clock cycle (or prefetch retirement), and advances to the next micro-step (`phase = CCK1`).
-- **WRITE Cycles (`WRITE_DST_BYTE`, `WRITE_DST_WORD`, `WRITE_DST_LONG_HIGH`, `WRITE_DST_LONG_LOW`, `PUSH_STACK_HIGH_WRITE`, `PUSH_STACK_LOW_WRITE`):**
-  - **CCK1 (S0–S3):** **CPU does not touch the bus!** Internal address propagation only. Chip RAM remains completely free for Agnus DMA. Advances `phase = CCK2`.
-  - **CCK2 (S4–S7):** Bus write attempt via `bus.write_word(addr, val)` or `bus.write_byte(addr, val)` reading directly from `state.micro.destination`. If `BusResult::WaitState` (Gary withholds $\overline{\text{DTACK}}$) $\to$ insert wait state (CPU stalls in CCK2). Once `BusResult::Ready(())` $\to$ write is committed to `bus`, recording the transaction and advancing to the next micro-step (`phase = CCK1`).
-
-Byte strobes ($\overline{\text{UDS}}$ / $\overline{\text{LDS}}$) are derived natively by `bus.read_byte(addr)` / `bus.write_byte(addr, val)` from `addr & 1`. **The CPU core eliminates all manual strobe calculations, `BusCycle` allocations, and intermediate latch buffering.**
-
-#### Execution Dispatch Implementation
-The 2-phase Color Clock stepping logic is implemented via dedicated, single-purpose helper functions (`step_bus_read_byte`, `step_bus_read_word`, `step_bus_write_byte`, `step_bus_write_word`, etc.) in [`crates/cpu/src/micro/engine.rs`](../../../crates/cpu/src/micro/engine.rs). Each helper executes the exact CCK1/CCK2 protocol with zero branch cascading and zero heap allocation.
+Each refused active CCK adds two clocks. Entry ALU is not repeated because its
+countdown remains initialized. A redirected fault starts its exception sequence
+in the rejected CCK, with no extra clock increment or rejected memory callback.
+The callback convention corresponds to the vector matcher at CCK resolution;
+it is not electrical data sampling at S6/S7 or proof of pin-level DMA ownership.
 
 ### 4.2 Byte Strobe Activation & Byte Preservation
 
-During an 8-bit Byte write operation (`BusWriteByte`):
-1. **Even Byte Address (`ea_addr & 1 == 0`)**:
-   - $\overline{\text{UDS}}$ asserts low ($0$); $\overline{\text{LDS}}$ remains negated ($1$).
-   - The data byte is driven on $D_8 \dots D_{15}$.
-   - The memory array writes **only into the high byte** of the addressed 16-bit word cell.
-   - **The low byte in the 16-bit word cell is strictly PRESERVED and unaltered.**
-2. **Odd Byte Address (`ea_addr & 1 == 1`)**:
-   - $\overline{\text{LDS}}$ asserts low ($0$); $\overline{\text{UDS}}$ remains negated ($1$).
-   - The data byte is driven on $D_0 \dots D_7$.
-   - The memory array writes **only into the low byte** of the addressed 16-bit word cell.
-   - **The high byte in the 16-bit word cell is strictly PRESERVED and unaltered.**
-3. **Hardware Pin Duplication**:
-   - In physical 68000 silicon, the CPU duplicates the byte on both bus halves ($D_{15..8} = \text{byte}$ and $D_{7..0} = \text{byte}$). The RAM chips use $\overline{\text{UDS}}/\overline{\text{LDS}}$ as write-enable qualifiers.
-4. **Zero Address Errors on Byte Accesses**:
-   - Unlike Word or Long accesses, Byte accesses **never generate an Address Error** on odd addresses. Odd byte reads and writes are 100% legal.
+Even bytes select the high lane and odd bytes the low lane; the other byte is
+preserved. Byte accesses do not raise alignment errors. Word transfers require
+even addresses. A7 byte postincrement/predecrement uses two bytes to preserve
+stack alignment. AddressBus expresses transfer width and address, not independent
+UDS/LDS or FC pin transitions.
 
-### 4.3 32-Bit Long Decomposition: Why Long Stores Decompose into Two Words
+### 4.3 32-Bit Long Decomposition
 
-On the Motorola 68000, **a 32-bit transfer physically does not exist on the external bus**. The data bus has only 16 pins ($D_0 \dots D_{15}$).
-Therefore, a 32-bit (Long) read or write is **strictly composed of two 16-bit Word bus cycles**:
-- **`WRITE_DST_LONG_HIGH`**: Writes a **16-bit Word** containing the upper 16 bits of `state.micro.destination` to `ea_addr`.
-- **`WRITE_DST_LONG_LOW`**: Writes a **16-bit Word** containing the lower 16 bits of `state.micro.destination` to `ea_addr + 2`.
-
-Each cycle is an independent 4-clock / 2-CCK bus transaction that can stall on Agnus DMA contention in Chip RAM.
-
-Word handlers select addresses; the class sequence determines transfer order.
-[Class 5 long RMW](#long-arithmetic-and-unary-read-modify-write-variants) writes
-low then high.
+Longs use two word callbacks with explicit assembly/decomposition. Ordinary
+loads acquire high then low. Instruction classes select store order: ordinary
+MOVE stores high then low; long arithmetic/logic/unary RMW and predecrement MOVE
+write low before high. Partial faults retain completed transfers and applicable
+register changes; a bulk host copy cannot replace these bus operations.
 
 ### 4.4 Operation Comparison Matrix
 
-| Action | Physical Bus Size | Target Address | Data Source / Destination | $\overline{\text{UDS}}$ / $\overline{\text{LDS}}$ | Preservation Behavior |
-| :--- | :---: | :--- | :--- | :---: | :--- |
-| **`READ_SRC_BYTE`** | 8-bit Byte | `ea_addr` | `source = byte` | Parity | Read-only |
-| **`READ_SRC_WORD`** | 16-bit Word | `ea_addr` | `source = word` | Both active | Read-only (Address error if odd) |
-| **`READ_SRC_LONG_HIGH`** | 16-bit Word | `ea_addr` | `source = word << 16` | Both active | Read-only (Address error if odd) |
-| **`READ_SRC_LONG_LOW`** | 16-bit Word | `ea_addr + 2` | `source = (source & 0xFFFF_0000) \| word` | Both active | Read-only (Address error if odd) |
-| **`WRITE_DST_BYTE`** | 8-bit Byte | `ea_addr` | `(destination & 0xFF) as u8` | Parity | **Unaddressed byte preserved!** |
-| **`WRITE_DST_WORD`** | 16-bit Word | `ea_addr` | `(destination & 0xFFFF) as u16` | Both active | Entire 16-bit cell overwritten |
-| **`WRITE_DST_LONG_HIGH`** | 16-bit Word | `ea_addr` | `((destination >> 16) & 0xFFFF) as u16` | Both active | Upper 16-bit cell overwritten |
-| **`WRITE_DST_LONG_LOW`** | 16-bit Word | `ea_addr + 2` | `(destination & 0xFFFF) as u16` | Both active | Lower 16-bit cell overwritten |
+| Operation | Read phases | Write phases | Special boundary |
+| --- | --- | --- | --- |
+| Byte/word read | CCK1 callback, CCK2 finish | None | Odd word aborts before callback. |
+| Byte/word store | None unless RMW | CCK1 setup, CCK2 callback | Deferred updates commit after success. |
+| Long | Two word pairs | Two word pairs if storing | Partial-transfer state is visible. |
+| TAS memory | Read pair, modification interval | Write pair | Ten-clock combined interval; continuous AS/locking is not exposed. |
 
-### 4.5 Function Codes (FC0–FC2) & Special Status Word (SSW) Encoding
+### 4.5 Function Codes & Information Word
 
-On physical M68000 silicon, the CPU outputs 3 Function Code lines to qualify address space on every bus cycle:
-
-| FC2 | FC1 | FC0 | Address Space Type | Usage in Emulator |
-| :---: | :---: | :---: | :--- | :--- |
-| 0 | 0 | 1 | **User Data** (`FC_UD`) | Data space read/write when `SR.S == 0` |
-| 0 | 1 | 0 | **User Program** (`FC_UP`) | Opcode/extension fetch when `SR.S == 0` |
-| 1 | 0 | 1 | **Supervisor Data** (`FC_SD`) | Data space read/write and stack pushes when `SR.S == 1` |
-| 1 | 1 | 0 | **Supervisor Program** (`FC_SP`) | Opcode/extension fetch when `SR.S == 1` |
-| 1 | 1 | 1 | **CPU Space / IACK** | Interrupt Acknowledge cycle |
-
-#### Special Status Word (SSW) Format during Group 0 Exceptions:
-When an Address Error or Bus Error occurs, word 0 of the 7-word stack frame (`SP - 2`) stores the diagnostic Special Status Word:
-```
-Bit:   15..5     4      3      2     1     0
-Field: Unused   R/W    I/N    FC2   FC1   FC0
-```
-- **Bits 0–2 (FC0–FC2)**: The Function Code of the bus cycle that faulted.
-- **Bit 3 (I/N)**: `0` if fault occurred during instruction processing; `1` if during instruction prefetch.
-- **Bit 4 (R/W)**: `1` if read cycle; `0` if write cycle.
-- **Bits 5–15**: Reserved / floating bus lines.
-
----
+The [CPU frame specification](CPU%20Motorola%20M68000.md#51-address-error-vector-3-7-word-stack-frame)
+owns R/W, I/N, FC and frame layout. Source/program flags choose the captured
+information word; they do not alone identify the execution phase or saved PC.
+Live electrical FC lines, BERR and device IACK are outside the AddressBus API.
 
 ## 5. Control Flow, Pipeline Refill & Complex Addressing
 
@@ -327,173 +240,44 @@ before this check, so the saved status and function code follow the restored mod
 `JSR` checks the target before those writes. Untaken branches retain their
 sequential stream without checking the unused branch destination.
 
-### 5.2 `JMP <ea>` (Jump to Effective Address)
+### 5.2 Control Targets and Stack Operations
 
-- **Target Address Calculation**:
-  - `(An)`: 0 internal clocks.
-  - `(d16, An)`, `(xxx).w`, `(d16, PC)`: 2 internal clocks.
-  - `(d8, An, Xn)`, `(d8, PC, Xn)`: 6 internal clocks.
-  - `(xxx).l`: 1 extension read bus cycle (`FETCH_EXT_READ` & `FETCH_EXT_FINISH`, 4 clocks).
-- **Execution Flow**:
-  1. Calculate target into `ea_addr`.
-  2. Verify `(ea_addr & 1) == 0`. If odd, trigger **Address Error (Vector 3)** immediately!
-  3. Execute `READ_CONTROL_TARGET_OPCODE_READ` at `ea_addr`.
-  4. Execute `PREFETCH_TARGET_READ` & `PREFETCH_TARGET_FINISH` at `ea_addr + 2`.
-- **Total Time**:
-  - `JMP (An)`: Exactly 8 CPU clocks (4 CCKs).
-  - `JMP (xxx).L`: Exactly 12 CPU clocks (6 CCKs).
+The [call](#class-6-subroutine-call--stack-push-jsr-ea),
+[return](#class-7-subroutine-return--stack-pop-rts),
+[jump](#class-8-unconditional-jump-jmp-ea) and
+[branch](#class-9-conditional-branching-bcc-dynamic-path-selection) classes own
+their ordering. JMP performs two target reads. JSR reads the target opcode
+before its return-address writes, then fetches target+2. BSR writes its return
+address before testing its target. RTS reads PC high then low; RTR/RTE read PC
+high, status, PC low. RTE selects stack banking only after completing the old
+supervisor-stack reads. Alignment checks occur at each actual transfer.
 
-### 5.3 `JSR <ea>` (Jump to Subroutine)
+### 5.6 Effective Address Calculation with Extension Word Prefetch
 
-- **Execution Flow**:
-  1. Calculate target into `ea_addr`. Verify `(ea_addr & 1) == 0`.
-  2. Determine return address `return_pc = base_pc + extension_words`.
-  3. Read the target opcode into `irc`, before touching the stack.
-  4. Latch `destination = return_pc`. Decrement `SP = SP - 4` and check stack alignment.
-  5. Push Return Address:
-     - `PUSH_STACK_HIGH_WRITE`: Write `(destination >> 16) as u16` to `SP` (4 clocks).
-     - `PUSH_STACK_LOW_WRITE`: Write `(destination & 0xFFFF) as u16` to `SP + 2` (4 clocks).
-  6. Complete the target refill:
-     - `PREFETCH_TARGET_READ` & `PREFETCH_TARGET_FINISH` at `ea_addr + 2` (4 clocks).
-- **Total Time**:
-  - `JSR (An)`: Exactly 16 CPU clocks (8 CCKs: 2 stack writes + 2 prefetch reads).
-  - `JSR (xxx).L`: Exactly 20 CPU clocks (10 CCKs: 1 extension read + 2 stack writes + 2 prefetch reads).
+Worked input: ADD.W D0,(d16,A0), opcode $D168, displacement already in prefetch.
+Starting with cursor A+4, A0=$2000, displacement=$0010 and D0=$0001:
 
-### 5.4 `RTS` (Return from Subroutine)
+| CPU clocks | Phase | Observable action |
+| --- | --- | --- |
+| 0-4 | Extension pair | Calculate EA=$2010 from the staged extension; read A+4 at clock 2, advance cursor at finish. |
+| 4-8 | Operand pair | Read word $2010 at clock 6 into destination. |
+| 8-12 | Prefetch pair | Compute ADD and CCR; read A+6 at clock 10, then retire staged refill before writeback. |
+| 12-16 | Store pair | Write the result to $2010 at clock 16; complete instruction. |
 
-- **Fixed Timing**: Exactly 16 CPU clocks (8 CCKs: 2 stack pop reads + 2 prefetch reads).
-- **Execution Flow**:
-  1. Pop High Word: `POP_STACK_HIGH_READ` reads word from `(SP)` into upper 16 bits of `ea_addr` (4 clocks).
-  2. Pop Low Word: `POP_STACK_LOW_READ` reads word from `(SP + 2)` into lower 16 bits of `ea_addr`, and updates `SP = SP + 4` (4 clocks).
-  3. Verify `(ea_addr & 1) == 0`. If odd, trigger **Address Error (Vector 3)**!
-  4. Execute Two-Word Refill:
-     - `READ_CONTROL_TARGET_OPCODE_READ` at `ea_addr` (4 clocks).
-     - `PREFETCH_TARGET_READ` & `PREFETCH_TARGET_FINISH` at `ea_addr + 2` (4 clocks).
+The ALU placement is an emulator decision. The four bus intervals and their
+order follow the ADD.w supplied vectors and the living ADD sequence. Shared
+read/write phase behavior is defined in Section 4.1; no extra ALU interval is
+inserted between operand acquisition and prefetch.
 
-### 5.5 `Bcc` (Conditional Branch State Machine: Taken vs Not-Taken)
+### 5.7 Indexed Addressing with Internal Calculation Clocks
 
-Conditional branches (`BEQ`, `BNE`, `BGT`, `BLT`, etc.) introduce dynamic runtime branching based on the Condition Code Register (CCR):
-
-```mermaid
-flowchart TD
-    Eval["Step 0: alu_bcc_short / alu_bcc_word (0 CCKs)<br/>eval_condition(cond)"]
-    
-    Eval -- "Taken" --> TakenPath["current_steps = &STEPS_BRANCH_TAKEN<br/>micro_step = 0"]
-    TakenPath --> Refill1["Step 0: step_alu (2 clocks)<br/>Step 1-2: READ_TARGET_OPCODE (4 clocks)"]
-    Refill1 --> Refill2["Step 3-4: PREFETCH_TARGET_READ & FINISH (4 clocks)<br/>PC = target + 4<br/>Retire! (Total: 10 clocks)"]
-    
-    Eval -- "Not Taken (Short .B)" --> NotTakenB["current_steps = &STEPS_BRANCH_NOT_TAKEN_SHORT<br/>micro_step = 0"]
-    NotTakenB --> SeqRetire["Step 0-1: step_alu idle (4 clocks)<br/>Step 2-3: PREFETCH_NEXT_READ & RETIRE (4 clocks)<br/>Retire! (Total: 8 clocks)"]
-    
-    Eval -- "Not Taken (Word .W)" --> NotTakenW["current_steps = &STEPS_BRANCH_NOT_TAKEN_WORD<br/>micro_step = 0"]
-    NotTakenW --> SkipExt["Step 0-1: step_alu idle (4 clocks)<br/>Step 2-3: READ_TARGET_OPCODE_READ & BUS_READ_IDLE at sequential PC (4 clocks)<br/>Step 4-5: PREFETCH_TARGET_READ & FINISH (4 clocks)<br/>Retire! (Total: 12 clocks)"]
-```
-
----
-
-### 5.6 Effective Address Calculation with Extension Word Prefetch (Memory RMW: `ADD.W Dn, (d16, An)`)
-
-A common architectural question is: **How does the CPU handle operations where arguments are read from memory, the address requires displacement/extension words, and the result is written back to memory?**
-
-Consider **`ADD.W D0, (d16, A0)`** (Add data register `D0` to memory operand at `(A0 + d16)`, storing result at `(A0 + d16)`).
-
-```mermaid
-flowchart TD
-    subgraph S0["Step 0: Fetch Extension & Calculate EA (4 Clocks / 2 CCKs)"]
-        EA["Address Unit (AU):<br/>ea_addr = A0 + (prefetch as i16)"]
-        FetchExt["Bus Read at PC:<br/>prefetch = next word<br/>PC += 2"]
-        EA --- FetchExt
-    end
-
-    subgraph S1["Step 1: Read Memory Argument (4 Clocks / 2 CCKs)"]
-        ReadOp["READ_SRC_WORD at ea_addr:<br/>source = Memory[ea_addr]"]
-    end
-
-    subgraph S2["Step 2: Instantaneous ALU (0 CCKs)"]
-        Exec["Alu:<br/>res = source + D0<br/>Set CCR (X,N,Z,V,C)<br/>destination = res"]
-    end
-
-    subgraph S3["Step 3: RMW Opcode Prefetch (4 Clocks / 2 CCKs)"]
-        PrefetchOp["Bus Read at PC:<br/>irc = next opcode<br/>(Class 0 RMW Quirk)"]
-    end
-
-    subgraph S4["Step 4: Write Result to Memory (4 Clocks / 2 CCKs)"]
-        WriteRes["WRITE_DST_WORD at ea_addr:<br/>Memory[ea_addr] = destination<br/>IR = irc<br/>Retire! (Total: 16 clocks)"]
-    end
-
-    S0 --> S1 --> S2 --> S3 --> S4
-```
-
-#### Detailed Clock-by-Clock Cycle Breakdown:
-1. **The Prefetch Reality at Instruction Start**:
-   - The opcode `$D168` is in `IR`.
-   - Because the *previous* instruction concluded with an opcode prefetch, **the displacement word `d16` is ALREADY resident in `state.prefetch` with 0 latency!**
-2. **Step 0: `FetchExtension` with `ea_calc_d16_an` (4 clocks / 2 CCKs)**:
-   - The AU calculates: `ea_addr = A0.wrapping_add((prefetch as i16) as u32)`.
-   - The bus controller fetches the next word from `PC` into `prefetch` (advancing `PC += 2`).
-3. **Step 1: `READ_SRC_WORD` (4 clocks / 2 CCKs)**:
-   - Reads the 16-bit word from memory at `ea_addr` into `state.micro.source`.
-4. **Step 2: `Alu` (`alu_add_rmw_w`) (0 CCKs Instantaneous)**:
-   - Computes `res = source.wrapping_add(D0)`.
-   - Evaluates and updates CCR condition code flags ($X, N, Z, V, C$).
-   - Latches `state.micro.destination = res as u32`.
-5. **Step 3: `PREFETCH_IRC_READ` & `PREFETCH_IRC_FINISH` (4 clocks / 2 CCKs)**:
-   - **Hardware Silicon Quirk (Class 0 RMW)**: The MC68000 executes the next instruction opcode prefetch *before* writing the modified operand back to memory!
-   - Fetches the next opcode from `PC` into `state.micro.irc`, advancing `PC += 2`.
-6. **Step 4: `WRITE_DST_WORD` (4 clocks / 2 CCKs)**:
-   - Drives 16-bit word `(destination & 0xFFFF)` to `ea_addr`.
-   - Overwrites the destination cell in memory.
-   - Shifts `IR = irc`, and completes instruction retirement!
-
-**Total Execution Time**: Exactly **16 CPU clocks (8 CCKs)** (matching Motorola 68000 hardware: 12 clocks base + 4 clocks for `d16` addressing mode).
-
----
-
-### 5.7 Indexed Addressing with Internal Calculation Clocks (`ADD.W (8, A0, D1.W), D0`)
-
-When an instruction uses **Address Register Indirect with Index and 8-Bit Displacement** (`(d8, An, Xn)`):
-1. The extension word specifies the 8-bit signed displacement and index register (`D1.W`).
-2. The address calculation requires a 3-input addition: `ea_addr = An + Xn + disp8`.
-3. In physical MC68000 silicon, this 3-input addition consumes **2 internal CPU clock cycles** ($N_{internal} = 2$ clocks / 1 CCK) with zero external bus activity.
-
-#### Example Execution Trace: `ADD.W (8, A0, D1.W), D0` (Opcode `$D070`)
-- **Total Duration**: Exactly **14 CPU clocks (7 CCKs)** (8 clocks base + 6 clocks for index mode: 4 bus clocks + 2 internal clocks).
-
-```mermaid
-flowchart TD
-    subgraph P["Instruction Start (Opcode in IR)"]
-        IR["IR = $D070 (Opcode)<br/>prefetch = Extension Word (8-bit disp + D1.W)"]
-    end
-
-    subgraph S0["Step 0: AU 3-Input Add Calculation (2 Clocks / 1 CCK)"]
-        EA["step_alu with ea_calc_src_idx_an:<br/>ea_addr = A0 + D1.W + 8<br/>Bus is completely idle!"]
-    end
-
-    subgraph S1["Step 1-2: Fetch Extension Word (4 Clocks / 2 CCKs)"]
-        FetchExt["FETCH_EXT_READ & FINISH:<br/>prefetch = next word (PC+4)<br/>PC += 2"]
-    end
-
-    subgraph S2["Step 3-4: Read Memory Operand (4 Clocks / 2 CCKs)"]
-        ReadOp["READ_SRC_WORD & FINISH:<br/>source = Memory[ea_addr]"]
-    end
-
-    subgraph S3["Step 5-6: Opcode Prefetch, ALU & Retirement (4 Clocks / 2 CCKs)"]
-        Prefetch["PREFETCH_NEXT_READ (alu_add_w) & RETIRE:<br/>D0 = D0 + source, set CCR<br/>Refill IR and prefetch<br/>Retire! (Total: 14 clocks / 7 CCKs)"]
-    end
-
-    P --> S0 --> S1 --> S2 --> S3
-```
-
-| Step | Action | Clocks | Description / Bus Transaction |
-| :---: | :--- | :---: | :--- |
-| **0** | `step_alu`<br/>*(with `ea_calc_src_idx_an`)* | 2 (1 CCK) | AU decodes `prefetch`: extracts `disp8 = +8`, `Xn = D1.W`, and sets `ea_addr = A0 + D1.W + 8`. Consumes 2 clocks (1 CCK) idle AU addition. |
-| **1-2** | `FETCH_EXT_READ`<br/>`FETCH_EXT_FINISH` | 4 (2 CCKs) | Reads extension word from `PC` into `prefetch`, `PC += 2`. |
-| **3-4** | `READ_SRC_WORD`<br/>`BUS_READ_IDLE` | 4 (2 CCKs) | Reads 16-bit operand from `ea_addr` into `source`. |
-| **5-6** | `PREFETCH_NEXT_READ`<br/>`BUS_READ_IDLE` | 4 (2 CCKs) | Computes `D0 = D0 + source`, sets CCR flags, refills `IR` and `prefetch`, and retires! |
-
-**Total Duration**: $2\ (\text{EA Idle}) + 4\ (\text{FETCH\_EXT}) + 4\ (\text{READ\_SRC}) + 4\ (\text{PREFETCH\_NEXT}) = \mathbf{14\ \text{CPU clocks}}\ (7\ \text{CCKs})$!
-
----
+Worked input: ADD.W (8,A0,D1.W),D0, opcode $D070, A0=$2000, D1.W=$0010,
+extension=$1008, cursor A+4. The EA is $2018. Its two-clock calculation prefix
+precedes extension refill (callback clock 4), operand read (clock 8) and final
+prefetch (clock 12), completing at clock 14. Signed word indexes extend to 32
+bits; brief MC68000 extensions have no scale/full-format interpretation.
+The prefix and callback timestamps match the indexed ADD.w sequence; do not
+infer a hidden three-input silicon adder from the emulator formula.
 
 ### 5.8 `MOVEM` Dynamic Register Transfer Engine
 
@@ -524,148 +308,58 @@ Because a static array cannot predict the number of registers at compile time, `
   - **Word (`.W`)**: Exactly **4 CPU clocks (2 CCKs)** per transferred register.
   - **Long (`.L`)**: Exactly **8 CPU clocks (4 CCKs: 2 bus cycles)** per transferred register.
 - **Example (`MOVEM.W (A0)+, D0-D2/A0-A1` — 5 registers)**:
-  $12 + 5 \times 4 = \mathbf{32\ \text{CPU clocks}}\ (16\ \text{CCKs})$, matching Motorola 68000 silicon to the exact clock!
+  $12 + 5 \times 4 = \mathbf{32\ \text{CPU clocks}}\ (16\ \text{CCKs})$, for this uncontended execution structure.
 
 ---
 
 ### 5.9 Cycle-Exact Hardware Exception Processing & Stacking
 
-When a hardware or software exception occurs (Address Error, Bus Error, Interrupt, Illegal Instruction, `TRAP`, Zero Divide), instruction execution halts, and the CPU enters **Exception Processing**.
+Frame content and PC selection belong to the [CPU specification](CPU%20Motorola%20M68000.md#5-exception-processing--vectors).
+The common three-word sequence captures PC/SR, writes PC low/SR/PC high, reads
+vector high/low, reads target opcode and target+2, then retires a target refill.
+Decode, privilege and trace reuse this structure with distinct setup callbacks.
+Interrupt adds ten clocks before the shared frame, including an internal
+four-clock IACK interval; the accepted level is held in reg_src.
 
-On the Amiga 500, exception stack pushes and vector table reads occur over the external bus and **experience Agnus Chip RAM DMA wait states identical to standard instruction cycles**.
+Address Error uses a dedicated seven-write sequence and original ssp_base;
+odd SSP or odd vector-3 handler halts. Ordinary short-frame handler faults can
+redirect to Address Error. The API has no Bus Error termination signal, so a
+BERR frame or BERR during stacking/vector/reset is outside supported execution.
 
-#### Group 0 Exceptions: Address Error (Vector 3) & Bus Error (Vector 2)
-Group 0 exceptions push a **7-word (14-byte) diagnostic stack frame** to allow the OS (or Guru Meditation handler) to diagnose the bus fault:
+### 5.10 Stack Pointer Predecrement Alignment Quirk
 
-```
-SP - 2  -->  [ Special Status Word (SSW): R/W bit, I/N bit, Function Code FC0..FC2 ]
-SP - 4  -->  [ Access Address High 16-bits ]
-SP - 6  -->  [ Access Address Low 16-bits ]
-SP - 8  -->  [ Instruction Register (IR) at time of fault ]
-SP - 10 -->  [ Status Register (SR) prior to exception ]
-SP - 12 -->  [ Program Counter (PC) High 16-bits ]
-SP - 14 -->  [ Program Counter (PC) Low 16-bits ]
-```
+A7 byte operations move by two. Word/long alignment rejection is ordered with
+the applicable address update, not an automatic rollback. Paired-memory word/
+long instructions resolve/read the source before modifying the destination
+address register. Shared code must preserve this fault-visible dependency.
 
-##### Group 0 Execution Flow:
-1. Transition CPU to Supervisor Mode: `SR.S = 1`, `SR.T = 0`.
-2. Push 7 Words onto Supervisor Stack (`SSP` / `A7'`):
-   - 7 sequential word write bus cycles (`BusPushStackHigh` / `BusPushStackLow`).
-3. Fetch Exception Vector:
-   - 2 sequential word read bus cycles at address `$000000 + VectorNum * 4` (e.g. `$00000C` for Address Error).
-4. Pipeline Refill:
-   - Two-word pipeline refill (`BusReadTargetOpcode` + `PrefetchTargetAndRetire`) from the handler address loaded from the vector.
-5. **Total Execution Duration**: Exactly **50 CPU clocks (25 CCKs)** base time + wait states.
+## 6. The Execution Engine & Stepping Model (step_cck)
 
-#### Group 1 & Group 2 Exceptions: Interrupts (IPL 1–7), TRAPs, Illegal Instructions
-Push a standard **3-word (6-byte) stack frame**:
-```
-Final SSP + 0  (old SSP - 6)  -->  [ Status Register (SR) prior to exception ]
-Final SSP + 2  (old SSP - 4)  -->  [ Program Counter (PC) High 16-bits ]
-Final SSP + 4  (old SSP - 2)  -->  [ Program Counter (PC) Low 16-bits ]
-```
+The engine increments the wrapping clock counter by two on each active CCK,
+initializes a new step countdown, runs its entry ALU once, follows any slice
+redirect in the same CCK, and executes one timed action. Ready decrements the
+countdown; WaitState returns without decrement or phase advancement. A zero-
+clock ALU continues within the same CCK. MOVEM handlers can loop within a slice
+while controlling their own word/phase state.
 
-##### Physical Bus Write Sequence for 3-Word Frame (68000 Silicon Order):
-On physical M68000 hardware, the internal ALU/bus microcode writes the 3-word frame in the following cycle order:
-1. Write PC low word to `SSP - 2` (Supervisor Data, FC 5).
-2. Write old SR to `SSP - 6` (Supervisor Data, FC 5).
-3. Write PC high word to `SSP - 4` (Supervisor Data, FC 5) and commit updated `SSP = SSP - 6`.
+Completed sequential retirement advances the queue unless an earlier step
+already did so; target retirement commits IR/cursor from the target refill.
+Then instruction_pc is set, temporaries reset, pending trace queued before an
+interrupt, or the next descriptor initiated. STOP clears its slice without
+shifting an unfilled queue; pending trace is queued at that completion boundary.
+Stopped/halted idle calls perform no CPU bus activity or CPU clock increment.
 
-##### Modular 17-Step Microcode Pipeline for `TRAP #<vector>` (34 Clocks / 17 CCKs):
-1. `Step 1 (ALU_TRAP_INIT)`: CCK1 of initial 4-clock processing. Switches to supervisor ($S=1, T=0$), computes vector address `$000080 + \text{vec} \times 4$, latches return PC into `source`, old SR into `destination`, and records 4-clock internal transaction.
-2. `Step 2 (ALU_IDLE)`: CCK2 of initial internal clocks (bus idle for Agnus DMA).
-3. `Step 3 (EXCEPTION_PUSH_PCLO_IDLE)`: CCK1 of writing return PC low word to `SSP - 2` (bus idle, alignment validation).
-4. `Step 4 (EXCEPTION_PUSH_PCLO_WRITE)`: CCK2 of writing return PC low word to `SSP - 2`.
-5. `Step 5 (EXCEPTION_PUSH_SR_IDLE)`: CCK1 of writing old SR to `SSP - 6` (bus idle, alignment validation).
-6. `Step 6 (EXCEPTION_PUSH_SR_WRITE)`: CCK2 of writing old SR to `SSP - 6`.
-7. `Step 7 (EXCEPTION_PUSH_PCHI_IDLE)`: CCK1 of writing return PC high word to `SSP - 4` (bus idle, alignment validation).
-8. `Step 8 (EXCEPTION_PUSH_PCHI_WRITE)`: CCK2 of writing return PC high word to `SSP - 4` and committing `SSP = SSP - 6`.
-9. `Step 9 (READ_VECTOR_HIGH_READ)`: CCK1 of reading vector high word from `ea_addr` into `ea_high`.
-10. `Step 10 (BUS_READ_IDLE)`: CCK2 of reading vector high word (bus free for Agnus DMA).
-11. `Step 11 (READ_VECTOR_LOW_READ)`: CCK1 of reading vector low word from `ea_addr + 2` into `source`.
-12. `Step 12 (READ_VECTOR_LOW_FINISH)`: CCK2 of reading vector low word (verifies even target address alignment).
-13. `Step 13 (READ_TARGET_OPCODE_READ)`: CCK1 of reading target opcode into `irc`.
-14. `Step 14 (BUS_READ_IDLE)`: CCK2 of reading target opcode (bus free for Agnus DMA).
-15. `Step 15 (ALU_IDLE)`: 2 internal clocks before prefetch (internal ALU delay).
-16. `Step 16 (PREFETCH_TARGET_READ)`: CCK1 of reading target + 2 into `prefetch`.
-17. `Step 17 (PREFETCH_TARGET_FINISH)`: CCK2 of reading target + 2 (sets `target_refill = true`, triggers clean instruction retirement).
-
-- **Total Duration**:
-  - `TRAP #n`: Exactly **34 CPU clocks (17 CCKs)** (3 stack writes + 2 vector reads + 2 refill reads + 6 internal clocks).
-  - Interrupt (Autovector): Exactly **44 CPU clocks (22 CCKs)** (includes 4-clock Interrupt Acknowledge `IACK` bus cycle with `FC = %111`).
-
-
----
-
-### 5.10 Stack Pointer Predecrement Alignment Quirk (`-(SP)`)
-
-In Motorola 68000 silicon, the Stack Pointer (`A7`, both `USP` and `SSP`) must **always remain on an even 16-bit word boundary**.
-- When addressing mode `-(An)` is evaluated with `An = A7` for an **8-bit Byte** operation (e.g. `MOVE.B D0, -(SP)`):
-  - In `ea_calc_predec_an`: the decrement amount is forced to **2 bytes** instead of 1 (advancing $A_7 \leftarrow A_7 - 2$).
-  - The byte is written to the high byte (even address) with $\overline{\text{UDS}}$ asserted.
-  - This ensures that stack frames and popped values never become misaligned.
-
----
-
-## 6. The Execution Engine & Stepping Model (`step_cck`)
-
-Execution is driven by the Amiga Color Clock (CCK, ~3.54 MHz). $1\ \text{M68000 bus cycle} = 4\ \text{CPU clocks} = 2\ \text{CCK phases}\ (\text{CCK1} + \text{CCK2})$.
-
-```mermaid
-flowchart TD
-    Start(["step_cck()"]) --> Adv["advance_clocks(2)"]
-    Adv --> CheckSeq["Execute Micro-Step (execute_micro_step)"]
-    
-    CheckSeq --> InitCheck{"clocks_remaining == 0?"}
-    InitCheck -- Yes --> Init["clocks_remaining = base_clocks<br/>Execute alu_fn (if any)"] --> AluRedirect{"Step sequence redirected?"}
-    AluRedirect -- Yes --> CheckSeq
-    AluRedirect -- No --> InstCheck{"clocks_remaining == 0?"}
-    InstCheck -- Yes (Instant ALU) --> InstExec["micro_step += 1<br/>continue to next step"] --> CheckSeq
-    InstCheck -- No --> ExecStep["Execute bus_fn(self, bus)"]
-    InitCheck -- No --> ExecStep
-    
-    ExecStep --> BusRedirect{"Step sequence redirected?"}
-    BusRedirect -- Yes --> Redirect["clocks_remaining = 0<br/>continue in this CCK"] --> CheckSeq
-    BusRedirect -- No --> BusRes{"BusResult?"}
-    BusRes -- WaitState --> Stall["CPU stalls (phase held)<br/>return false"]
-    BusRes -- Ready --> Dec["clocks_remaining -= 2"]
-    
-    Dec --> DoneCheck{"clocks_remaining == 0?"}
-    DoneCheck -- No --> Hold["return false (bus idle)"]
-    DoneCheck -- Yes --> Next["micro_step += 1"]
-    
-    Next --> RetCheck{"micro_step >= steps.len()?"}
-    RetCheck -- Yes --> Retire["retire_current_instruction()<br/>return true"]
-    RetCheck -- No --> RetFalse["return false"]
-```
-
-### 6.1 Concrete Implementation: The High-Throughput `step_cck()` Dispatcher
-
-The full CCK stepping engine is implemented in [`crates/cpu/src/micro/engine.rs`](../../../crates/cpu/src/micro/engine.rs) and driven via [`crates/cpu/src/cpu.rs`](../../../crates/cpu/src/cpu.rs):
-
-1. **Uniform Micro-Step Timing via `clocks_remaining: u16`:**
-   - On each CCK tick, `step_cck` advances global clocks by 2 (`self.advance_clocks(2)`).
-   - If entering a step (`clocks_remaining == 0`), initializes `clocks_remaining = step.base_clocks` and fires `alu_fn`. Dynamic shift/ALU operations directly set `clocks_remaining = duration`.
-   - On completion of a ready CCK phase, decrements `clocks_remaining = clocks_remaining.saturating_sub(2)`. When it reaches 0, concludes the micro-step and advances to the next (`micro_step += 1`).
-2. **Instantaneous Fall-Through Micro-Steps:**
-   - A fast internal loop executes zero-cycle micro-operations (`alu_fn`) when entering a step or when `base_clocks == 0` within the same host tick until encountering a bus cycle.
-   - If a subsequent bus cycle stalls due to Chip RAM contention, the ALU calculation is **never repeated**.
-   - A redirected step sequence resumes in the same CCK without advancing clocks again.
-3. **Two-Phase External Bus Execution via Atomic Micro-Steps:**
-   - **CCK1 (Phase 1):** Read steps (`step_bus_read_*`) issue `bus.read_word(addr)` / `bus.read_byte(addr)`. If `BusResult::WaitState`, the CPU stalls without advancing `micro_step` (returns `false`). If `BusResult::Ready(data)`, samples memory data into `source` / `destination` / `prefetch` / `irc` and advances to CCK2 (`micro_step += 1`). For write actions, `step_bus_write_idle` does not touch the bus (bus idle for DMA) and simply advances to CCK2 (`micro_step += 1`).
-   - **CCK2 (Phase 2):** Write steps (`step_bus_write_dst_*`) issue `bus.write_word(addr, val)` / `bus.write_byte(addr, val)`. If `BusResult::WaitState`, stalls without committing (returns `false`). If `BusResult::Ready(())`, commits data, records transaction, and advances `micro_step += 1`, completing the 4-clock bus cycle. Read finish steps (`step_bus_read_*_finish`) log the transaction, release the bus for Agnus DMA, and advance `micro_step += 1`.
-4. **Pipeline Advance & Instruction Retirement:**
-   - On retirement, shifts `ir = prefetch`, `prefetch = irc` (or target prefetch), advances `pc += 2`, updates `instruction_pc = pc - 4`, updates `current_steps`, and returns `true`. Multi-cycle instruction steps call `step_instruction(&mut self, bus: &mut dyn AddressBus) -> u32` to loop over `step_cck_internal` to retirement and return total CPU clocks consumed.
-
----
+`step_instruction` loops over active CCKs until one instruction or queued
+exception completes; its returned clocks include waits. It does not promise
+instruction plus every queued exception in one call. Debugger priming and host
+reset use debug reads and do not establish timed hardware reset behavior.
 
 ## 7. Concrete Micro-Step Traces by Architectural Class
 
-The traces below describe class ordering and structural variants. Shared bus
-phases are defined in [section 4.1](#41-direct-2-phase-bus-architecture-zero-dynamic-strobe-boilerplate);
-instruction semantics belong to the [CPU specification](CPU%20Motorola%20M68000.md).
-
----
+The classes below retain worked execution structures and their distinct
+variants. They share Section 4 phase conventions. Totals describe aligned,
+uncontended paths unless a fault is explicitly stated; silicon vectors constrain
+callback order and results, not the instant of every internal ALU operation.
 
 ### Class 1: Register-to-Register Operations (Pure Internal ALU, Zero Memory Writes)
 
@@ -721,7 +415,7 @@ and has a two-clock internal tail after prefetch.
 and no bus transfer. The first checks privilege and loads the staged immediate
 SR; the second sets `stopped`, records the following instruction PC, and clears
 the active sequence of micro-steps without shifting an unfilled prefetch queue. Rejected
-privilege redirects before the SR load. Interrupt entry refills the queue.
+privilege redirects before the SR load. Trace or interrupt entry refills the queue.
 
 [`RESET`](../../../crates/cpu/src/instructions/reset.rs) checks privilege, spends
 four internal clocks with the output released, asserts the CPU-owned output for
@@ -852,7 +546,7 @@ alignment. The compare updates CCR while preserving X.
 
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `WRITE_DST_IDLE` + `alu_fn` | 2 (CCK1) | Resolves `ea_addr = A0`, latches `destination = D0 as u32`, sets CCR flags ($N, Z, V=0, C=0$), and checks word alignment. Bus idle for Agnus DMA. |
+| **0** | `WRITE_DST_IDLE` + `alu_fn` | 2 (CCK1) | Resolves `ea_addr = A0`, latches `destination = D0 as u32`, sets CCR flags ($N, Z, V=0, C=0$), and checks word alignment. No memory callback. |
 | **1** | `WRITE_DST_WORD` | 2 (CCK2) | Drives 16-bit word `(destination & 0xFFFF)` to `ea_addr`. Both $\overline{\text{UDS}}$ and $\overline{\text{LDS}}$ assert. Stalls on Chip RAM contention. |
 | **2** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Initiates prefetch from `PC` into `irc`. |
 | **3** | `BUS_READ_IDLE` | 2 (CCK2) | Prefetch finishes. Retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
@@ -864,9 +558,9 @@ alignment. The compare updates CCR while preserving X.
 
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `WRITE_DST_IDLE` + `alu_fn` | 2 (CCK1) | Resolves `ea_addr = A0`, latches `destination = D0` (32 bits), sets CCR flags, and checks word alignment. Bus idle for Agnus DMA. |
+| **0** | `WRITE_DST_IDLE` + `alu_fn` | 2 (CCK1) | Resolves `ea_addr = A0`, latches `destination = D0` (32 bits), sets CCR flags, and checks word alignment. No memory callback. |
 | **1** | `WRITE_DST_LONG_HIGH` | 2 (CCK2) | Drives High Word `((destination >> 16) & 0xFFFF)` to `ea_addr`. Stalls if Chip RAM blocked. |
-| **2** | `BUS_WRITE_IDLE` | 2 (CCK1) | Address bus setup for low word write to `ea_addr + 2`. Bus idle for Agnus DMA. |
+| **2** | `BUS_WRITE_IDLE` | 2 (CCK1) | Address bus setup for low word write to `ea_addr + 2`. No memory callback. |
 | **3** | `WRITE_DST_LONG_LOW` | 2 (CCK2) | Drives Low Word `(destination & 0xFFFF)` to `ea_addr + 2`. Stalls if Chip RAM blocked. |
 | **4** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Initiates prefetch from `PC` into `irc`. |
 | **5** | `BUS_READ_IDLE` | 2 (CCK2) | Prefetch finishes. Retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
@@ -910,9 +604,9 @@ long-store phases rather than the call/refill structure below.
 | **0** | `READ_DST_BYTE/WORD` | 2 (CCK1) | Reads from `ea_addr` into `destination`. Indirect/postincrement resolves the address here. A stalled read does not repeat address calculation. |
 | **1** | `BUS_READ_IDLE` | 2 (CCK2) | Completes the operand read bus cycle. |
 | **2** | `PREFETCH_NEXT_READ` + `alu_fn` | 2 (CCK1) | Reads the next instruction word into `irc` before writeback. Fused ALU adds `Dn` to `destination` and updates CCR. |
-| **3** | `PREFETCH_IRC_FINISH` | 2 (CCK2) | Completes prefetch without retiring the instruction. |
+| **3** | `PREFETCH_IRC_FINISH` | 2 (CCK2) | Advances IR/prefetch/cursor and marks prefetch_retired; instruction completion still waits for writeback. |
 | **4** | `BUS_WRITE_IDLE` | 2 (CCK1) | Sets up the operand write; no bus access. |
-| **5** | `WRITE_DST_BYTE/WORD` | 2 (CCK2) | Writes the modified operand to `ea_addr` and retires: `IR = prefetch`, `prefetch = irc`. |
+| **5** | `WRITE_DST_BYTE/WORD` | 2 (CCK2) | Writes the modified operand to `ea_addr` and completes the already advanced sequential refill. |
 
 The byte/word layout also covers subtraction, logic and unary memory operations.
 `CLR` still reads its destination before prefetch and writeback.
@@ -930,6 +624,26 @@ fixed; low-word accesses use `ea_addr + 2`, high-word accesses use `ea_addr`.
 Immediate forms acquire their extension words before these operand reads, as in
 Archetype 5B below; long immediates require two extension pairs.
 
+#### Paired Predecrement Arithmetic
+
+ADDX/SUBX include X and retain cumulative Z. Byte/word paired predecrement
+uses an internal CCK, source read, destination read, prefetch and destination
+write: 18 clocks. Long paired transfers use an internal CCK, source low/high,
+destination low/high, destination low write, prefetch and destination high
+write: 30 clocks. Each word uses shared bus phases. The first low-word address
+decrements its register by two; if odd, only that decrement is retained and
+destination address calculation has not started. Completing the high-word
+phase accounts for the second decrement. These are distinct from the ordinary
+long RMW layout and use addr1/addr2 to retain their separate progress.
+
+ABCD/SBCD register forms use prefetch then an internal CCK, totaling six clocks.
+Paired byte memory forms use a source read, a destination read whose finish
+calculates the destination address, prefetch, an internal CCK and byte write.
+They have no upfront predecrement idle. NBCD memory uses the unary byte layout
+with its distinct predecrement prefix. BCD flag semantics belong to the CPU
+specification; undefined manual N/V behavior is constrained only for supplied
+silicon inputs.
+
 #### TAS memory variant
 
 [`TAS`](../../../crates/cpu/src/instructions/tas.rs) uses the shared byte address
@@ -942,7 +656,9 @@ Register TAS uses Class 1 four-clock prefetch without a memory transfer.
 The [SingleStep comparator](Verification/CPU%20SingleStepTests.md) checks both
 callbacks within the combined reference interval. These callbacks do not expose
 continuous address-strobe assertion or establish Amiga Chip/Slow RAM write
-suppression; those remain [platform bus limits](Platform%20Quirks%20and%20Invariants%20Catalog.md).
+suppression. The write handler supplies TAS context to AddressBus; MemoryBus
+implements suppression independently of generic fixture writes. Continuous
+AS and DMA bus locking remain [platform bus limits](Platform%20Quirks%20and%20Invariants%20Catalog.md).
 
 #### Archetype 5B: `ADDI.W #$1234, (d16, A0)` (Opcode `$0668` — Immediate + Displacement Memory RMW)
 - **Total Duration**: 20 CPU clocks (10 CCKs).
@@ -950,16 +666,16 @@ suppression; those remain [platform bus limits](Platform%20Quirks%20and%20Invari
 
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `FETCH_EXT_READ` | 2 (CCK1) | Initiates bus read from `PC` for immediate extension `#$1234`. |
-| **1** | `FETCH_EXT_FINISH` | 2 (CCK2) | Latches `#$1234` into `source`, advances `PC += 2`. |
-| **2** | `FETCH_EXT_READ` | 2 (CCK1) | Initiates bus read from `PC` for displacement `d16`. |
-| **3** | `FETCH_EXT_FINISH` + `ea_calc` | 2 (CCK2) | Latches `d16`, resolves `ea_addr = A0 + d16`, advances `PC += 2`. |
+| **0** | `FETCH_EXT_READ` + `latch_imm_w` | 2 (CCK1) | Saves the already staged immediate in `source`; reads the displacement word at `PC` into `prefetch`. |
+| **1** | `FETCH_EXT_FINISH` | 2 (CCK2) | Advances `PC += 2`; displacement remains staged. |
+| **2** | `FETCH_EXT_READ` + `ea_calc` | 2 (CCK1) | Resolves `ea_addr = A0 + d16` before replacing the staged displacement with the following opcode read at `PC`. |
+| **3** | `FETCH_EXT_FINISH` | 2 (CCK2) | Advances `PC += 2`; following opcode remains staged. |
 | **4** | `READ_DST_WORD` | 2 (CCK1) | Reads memory operand from `ea_addr` into `destination`. |
 | **5** | `BUS_READ_IDLE` | 2 (CCK2) | Memory read finishes into `destination`. |
 | **6** | `PREFETCH_IRC_READ` + `alu_fn` | 2 (CCK1) | **RMW Silicon Quirk:** Prefetches next opcode into `irc` *before* write! Fused ALU computes `res = destination + source`, updates CCR, sets `destination = res as u32`. |
-| **7** | `PREFETCH_IRC_FINISH` | 2 (CCK2) | Latching next opcode into `irc` completes. |
-| **8** | `BUS_WRITE_IDLE` | 2 (CCK1) | Bus write setup for `ea_addr`. Bus free for Agnus DMA. |
-| **9** | `WRITE_DST_WORD` | 2 (CCK2) | Writes `(destination & 0xFFFF)` to `ea_addr`. Commits write and retires: `IR = prefetch`, `prefetch = irc`. |
+| **7** | `PREFETCH_IRC_FINISH` | 2 (CCK2) | Advances IR/prefetch/cursor and marks the refill retired; writeback remains pending. |
+| **8** | `BUS_WRITE_IDLE` | 2 (CCK1) | Bus write setup for `ea_addr`, without a memory callback. |
+| **9** | `WRITE_DST_WORD` | 2 (CCK2) | Writes `(destination & 0xFFFF)` to `ea_addr`; completes without shifting the already advanced queue again. |
 
 ---
 
@@ -1011,7 +727,7 @@ after both stack writes and captures the target through the
 | **2** | `POP_STACK_LOW_READ` | 2 (CCK1) | Reads return PC low word from `(SP)`. |
 | **3** | `POP_STACK_LOW_FINISH` | 2 (CCK2) | Completes the assembled return PC and advances SP by two. |
 | **4** | `READ_CONTROL_TARGET_OPCODE_READ` | 2 (CCK1) | Checks target alignment and reads the new opcode into `irc`; an odd target uses the fault capture in Section 5.1. |
-| **5** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completes (bus free for Agnus DMA). |
+| **5** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completes (no additional CPU memory callback). |
 | **6** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads prefetch word at `ea_addr + 2`. |
 | **7** | `PREFETCH_TARGET_FINISH` | 2 (CCK2) | Sets `target_refill = true`, loads `IR = irc`, sets `PC = ea_addr + 4`, and completes retirement! |
 
@@ -1045,7 +761,7 @@ does not precede a failed stack read. Register semantics belong to the
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
 | **0** | `READ_CONTROL_TARGET_OPCODE_READ` + `ea_calc` | 2 (CCK1) | Resolves `ea_addr = A0`. An odd target starts Address Error with the target-PC capture in Section 5.1; an aligned target reads the opcode into `irc`. |
-| **1** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completes (bus free for Agnus DMA). |
+| **1** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completes (no additional CPU memory callback). |
 | **2** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads prefetch word at `ea_addr + 2`. |
 | **3** | `PREFETCH_TARGET_FINISH` | 2 (CCK2) | Sets `target_refill = true`, loads `IR = irc`, sets `PC = ea_addr + 4`, and completes retirement! |
 
@@ -1140,15 +856,15 @@ Count decoding and flag behavior are defined in the [CPU specification, section
 #### Archetype: Misaligned Word Access (Total Duration: Exactly 50 CPU clocks / 25 CCKs)
 - **Total Duration**: 50 CPU clocks (25 CCKs), plus completed address and extension phases.
 - **Entry CCK**: Alignment failure starts `ALU_AERR_INIT` in the rejected-access CCK, with no operand transfer.
-- **Return PC**: `trigger_address_error` latches `pc - 4` for data-access faults and `instruction_pc` for program-space faults.
-- **Physical Silicon Stacking Order**: Interleaved hardware write sequence matching Motorola M68000 PRM Figure B-9 and physical silicon captures.
-- **Double Bus Fault**: If $SSP$ is odd during exception setup or stack writes, or if the low vector address is odd, the processor halts immediately (`self.state.halted = true`).
+- **Return PC**: `trigger_address_error` latches `pc - 4` for data-access faults and `instruction_pc` for generic program-space faults; control-target handlers override it with target minus four.
+- **Physical Silicon Stacking Order**: Interleaved hardware write sequence supported by the supplied stack-write transactions; the manual defines frame layout, not every write phase.
+- **Double Bus Fault**: If $SSP$ is odd during exception setup or stack writes, or if the assembled vector-3 handler target is odd, the processor halts immediately (`self.state.halted = true`).
 - **Prefetch**: Vector fetch + two-word pipeline refill from exception handler.
 
 | Step | Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
 | **0** | `ALU_AERR_INIT` | 2 (CCK1) | S=1, T=0; checks SSP, saves `ssp_base` and old SR, retains latched return PC in `source`, sets vector `$00000C`. |
-| **1** | `ALU_IDLE` | 2 (CCK2) | Internal execution cycle completing initial 4-clock hardware delay. |
+| **1** | `ALU_IDLE` | 2 (CCK2) | Internal execution cycle completing initial 4-clock entry interval. |
 | **2** | `AERR_PUSH_PCLO_IDLE` | 2 (CCK1) | Validates SSP alignment and idles bus for return PC low word write to `SSP - 2`. |
 | **3** | `AERR_PUSH_PCLO_WRITE` | 2 (CCK2) | Writes return PC low word (`source & 0xFFFF`) to `SSP - 2`. Stalls on Chip RAM DMA contention. |
 | **4** | `AERR_PUSH_SR_IDLE` | 2 (CCK1) | Validates SSP alignment and idles bus for Status Register write to `SSP - 6`. |
@@ -1164,12 +880,12 @@ Count decoding and flag behavior are defined in the [CPU specification, section
 | **14** | `AERR_PUSH_ADDR_HI_IDLE` | 2 (CCK1) | Validates SSP alignment and idles bus for Access Address high word write to `SSP - 12`. |
 | **15** | `AERR_PUSH_ADDR_HI_WRITE` | 2 (CCK2) | Writes `(fault_addr >> 16) & 0xFFFF` to `SSP - 12` and commits `SSP = ssp_base - 14`. |
 | **16** | `READ_VECTOR_HIGH_READ` | 2 (CCK1) | Vector fetch high word read from `$00000C` into `ea_high`. |
-| **17** | `BUS_READ_IDLE` | 2 (CCK2) | Vector high word read completion (bus free for Agnus DMA). |
+| **17** | `BUS_READ_IDLE` | 2 (CCK2) | Vector high word read completion (no additional CPU memory callback). |
 | **18** | `READ_VECTOR_LOW_READ` | 2 (CCK1) | Vector fetch low word read from `$00000E` into `source`. |
 | **19** | `READ_VECTOR_LOW_FINISH` | 2 (CCK2) | Checks target alignment (halts if double fault), sets `ea_addr = handler_address`. |
 | **20** | `READ_TARGET_OPCODE_READ` | 2 (CCK1) | **Refill 1:** Reads first instruction opcode of handler from `ea_addr`. |
-| **21** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completion (bus free for Agnus DMA). |
-| **22** | `ALU_IDLE` | 2 (CCK1/2) | 2-clock internal hardware pipeline alignment delay. |
+| **21** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completion (no additional CPU memory callback). |
+| **22** | `ALU_IDLE` | 2 (CCK1/2) | 2-clock internal refill interval. |
 | **23** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads second instruction word from `ea_addr + 2` into `prefetch`. |
 | **24** | `PREFETCH_TARGET_FINISH` | 2 (CCK2) | Arms `target_refill = true`, latches `IR = irc`, sets `PC = ea_addr + 4`, retires exception! |
 
@@ -1188,9 +904,12 @@ old SR before selecting supervisor mode and clearing trace.
 | Entry | Prefix before the shared tail | Total excluding operand acquisition | Saved PC |
 | --- | --- | ---: | --- |
 | `TRAP #n` | Four internal clocks | 34 | Following instruction |
+| Illegal/Line A/Line F/privilege | Four internal clocks | 34 | Rejected opcode |
+| Trace | Four internal clocks | 34 | Next opcode after completion |
+| Interrupt | Fourteen clocks, including internal IACK | 44 | Next opcode after completion |
 | Taken `TRAPV` | Four-clock sequential prefetch pair | 34 | Following instruction |
-| `CHK`, above bound | Prefetch pair, four internal clocks | 38 | Following instruction |
-| `CHK`, negative only | Prefetch pair, six internal clocks | 40 | Following instruction |
+| `CHK`, above bound | Prefetch pair, four internal clocks | 38 | Captured instruction_pc |
+| `CHK`, negative only | Prefetch pair, six internal clocks | 40 | Captured instruction_pc |
 
 CHK tests the signed upper bound before the negative condition. A negative
 value greater than a negative bound uses above-bound timing. Normal CHK uses
@@ -1204,31 +923,22 @@ and performs no operand read. Semantics and vector selection belong to the
 
 ## 8. Architectural Quality Attributes & Systems Compliance
 
-| Requirement | Specification Implementation |
-| :--- | :--- |
-| **Host Hardware Alignment** | Static dispatch array; flat contiguous micro-steps; zero dynamic branching in inner loops; compact contiguous runtime state layout. |
-| **Cached Slice Pointer Dispatch** | Active step slice pointer `state.micro.current_steps` cached upon opcode prefetch; eliminates 64K table lookups during instruction execution. |
-| **Zero Runtime Allocations** | Complete microcode ROM is `const` in `.rodata`; zero heap allocation during emulation loops. |
-| **Zero Cascaded Size Branches** | Transfer size specialized directly into `BusFn` handlers (`step_bus_read_byte`, `step_bus_read_word`, `step_bus_write_byte`, `step_bus_write_word`, `step_bus_write_long_high`, `step_bus_write_long_low`). |
-| **Dynamic Multi-Register Transfer** | `MOVEM` dynamic register counts (0 to 16) executed cleanly via `execute_movem_transfer` sub-loop with zero heap allocation. |
-| **Byte Write Strobe Fidelity** | Strict $\overline{\text{UDS}}$ / $\overline{\text{LDS}}$ parity driving: even writes preserve low byte, odd writes preserve high byte. Zero Address Error on odd byte. |
-| **Control Flow & Refill Fidelity** | Exact two-word Program Space pipeline refill (`step_bus_read_target_opcode_read` + `step_prefetch_target_finish`) on JMP, JSR, RTS, and taken Bcc. |
-| **Cycle-Exact Exception Stacking** | Group 0 (7-word diagnostic frame) and Group 1/2 (3-word frame) stacking modeled as cycle-exact bus writes stalling on Chip RAM DMA. |
-| **Dynamic Branch Sequencing** | `step_branch_eval` handler dynamically selects between 10-clock taken and 8/12-clock not-taken micro-paths with zero heap allocation. |
-| **32-Bit Write Decomposition** | Long writes cleanly decomposed into two atomic 16-bit bus write cycles (`step_bus_write_dst_long_high` and `step_bus_write_dst_long_low`). |
-| **Cycle-Exact Wait States** | Stalling pauses directly on the active bus step; wait states accumulated in increments of 1 CCK (2 clocks). ALU step never re-run. |
-| **Fast-Path Non-Contended Access** | Single-comparison bypass (`addr < 0x200000`) for Fast RAM, Kickstart ROM, and Slow RAM, maximizing branch predictor efficiency. |
-| **Exact-Moment Data Sampling** | Read data sampled at S6 (CCK2); writes committed at S6 (CCK2), accurately modeling Gary/Agnus bus handshakes. |
-| **Self-Modifying Code (SMC)** | Zero invalidation overhead; live fetches from prefetch queue dynamically index the static table. |
-| **Code Architecture & Standards** | Zero user-defined macros (`macro_rules!` forbidden); zero const-generic functions; wrapping arithmetic; strictly $\le 800$ lines per Rust file. |
-
----
+| Property | Implemented contract and evidence limit |
+| --- | --- |
+| Static dispatch | One opcode lookup at initiation, then a cached slice; dynamic branches and indirect calls remain. |
+| Fixed runtime storage | No heap allocation in CPU execution or transfers; host/test artifacts may allocate. |
+| Wait stability | Refusals retain active address/data/phase; ordinary CPU fixtures test repeated waits and single successful commit. |
+| Endian/width discipline | Decoded big-endian word values and explicit long decomposition; no host pointer reinterpretation. |
+| Exceptions | Dedicated seven-word and shared three-word frame structures; no BERR or device-vector IACK input. |
+| Prefetch | Live bus reads with retained staged words; no host code cache. |
+| Signal fidelity | CCK callbacks and RESET output; no independent AS/FC/strobe waveform or TAS lock observation. |
+| Snapshot boundary | Serializable fields; redirected-sequence restoration remains a known limitation. |
+| Platform integration | CPU waits alone do not prove Agnus arbitration; production TAS Chip/Slow suppression is separately tested, without an electrical lock capture. |
 
 ## 9. Reference Documentation & Upstream Ground Truth
 
-- [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Cycle counts, read/write bus cycle decompositions, and effective address timing.
-- [68000 User's Manual: Section 6 (Exception Processing, Stack Frames & Reset)](../Reference/68000%20User's%20Manual/06%20-%20Section%206%20-%20Exception%20Processing,%20Stack%20Frames%20%26%20Reset.md): Diagnostic 7-word Address Error / Bus Error stack frame layout and SSW encoding.
-- [Instruction Prefetch on the Motorola 68000 Processor](../Reference/Instruction%20Prefetch%20on%20the%20Motorola%2068000%20Processor.md): 2-word prefetch refill sequencing and pipeline capture timing.
-- [M68000 Micro-Step Engine Implementation](../../../crates/cpu/src/micro/engine.rs): Living Rust micro-step state machine, phase advancement, and atomic bus helpers.
-- [M68000 Dispatch Table Implementation](../../../crates/cpu/src/micro/dispatch_table.rs): 65,536-entry static opcode descriptor universe.
-
+- [Motorola Section 8](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): aggregate clocks and transfer counts; not a complete ordering oracle.
+- [Original Motorola manual](https://www.nxp.com/docs/en/reference-manual/MC68000UM.pdf): physical bus phases, frames and trace priority; resolves disputed converted wording.
+- [CPU silicon verification](Verification/CPU%20SingleStepTests.md): timed callback comparison and retained allowances.
+- [Micro-state](../../../crates/cpu/src/micro/engine.rs), [descriptors](../../../crates/cpu/src/micro/types.rs), [dispatch](../../../crates/cpu/src/micro/dispatch_table.rs) and [stepping](../../../crates/cpu/src/cpu.rs): living project execution contracts.
+- [Ordinary phase tests](../../../crates/cpu/tests/test_cck_bus.rs), [class tests](../../../crates/cpu/tests/test_micro_archetypes.rs) and [boundary tests](../../../crates/cpu/tests/test_exception_boundaries.rs): synthetic wait/fault/exception evidence, separate from motherboard captures.

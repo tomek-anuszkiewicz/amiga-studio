@@ -69,6 +69,7 @@ impl Cpu {
         self.state.stopped = false;
         self.state.halted = false;
         self.state.reset_line_asserted = false;
+        self.state.trace_pending = false;
         self.state.micro.reset();
         self.state.cycle_counter = 0;
 
@@ -213,6 +214,9 @@ impl Cpu {
                 None => BusResult::Ready(()),
             };
             if self.state.micro.current_steps.is_empty() {
+                if self.state.trace_pending {
+                    self.trigger_trace();
+                }
                 return true;
             }
 
@@ -271,6 +275,10 @@ impl Cpu {
         }
         self.state.instruction_pc = self.state.pc.wrapping_sub(4);
         self.state.micro.reset();
+        if self.state.trace_pending {
+            self.trigger_trace();
+            return;
+        }
         if self.check_and_trigger_interrupt() {
             return;
         }
@@ -282,11 +290,12 @@ impl Cpu {
     pub(crate) fn initiate_current_instruction(&mut self) {
         let desc = &crate::micro::dispatch_table::OPCODE_DESCRIPTOR_TABLE[self.state.ir as usize];
         if !desc.steps.is_empty() {
+            self.state.trace_pending = self.state.is_trace();
             self.state.micro.initiate_instruction(desc);
         }
     }
 
-    /// Checks if an interrupt is pending according to M68000 priority rules,
+    /// Checks if a supported A500 interrupt (level 1-6) exceeds the SR mask,
     /// and if so, initiates the autovector exception processing sequence.
     #[inline(always)]
     pub fn check_and_trigger_interrupt(&mut self) -> bool {
@@ -300,12 +309,22 @@ impl Cpu {
 
     /// Triggers an Autovector Interrupt exception sequence (44 CPU clocks / 22 CCKs)
     #[inline(never)]
-    pub fn trigger_interrupt(&mut self, level: u8) {
-        self.state.ipl = level;
+    fn trigger_interrupt(&mut self, level: u8) {
+        self.state.trace_pending = false;
         self.state.micro.reset();
+        self.state.micro.reg_src = level;
         self.state.micro.current_steps = &crate::micro::common::STEPS_INTERRUPT;
         self.state.micro.micro_step = 0;
         self.state.micro.clocks_remaining = 0;
+    }
+
+    /// Queues trace before interrupt arbitration, including STOP completion.
+    #[inline(never)]
+    fn trigger_trace(&mut self) {
+        self.state.trace_pending = false;
+        self.state.stopped = false;
+        self.state.micro.reset();
+        self.state.micro.current_steps = &crate::micro::common::STEPS_TRACE;
     }
 
     /// Restores the CPU architectural and micro-state from a snapshot,
@@ -327,6 +346,7 @@ impl Cpu {
         is_read: bool,
         is_program_space: bool,
     ) {
+        self.state.trace_pending = false;
         let fc = if is_program_space {
             types::prog_fc(&self.state)
         } else {
