@@ -209,7 +209,7 @@ pub fn run_single_test_detail_with_bus(
     }
 
     // Verify Bus Transactions
-    match super::transactions::parse_transactions(&test.transactions) {
+    match super::transactions::parse_transactions(&test.transactions, &test.initial.ram) {
         Ok(expected_txs) => {
             let recorded = bus.recorded_transactions().unwrap_or(&[]);
             if let Err(tx_diffs) = super::transactions::match_transactions(recorded, &expected_txs)

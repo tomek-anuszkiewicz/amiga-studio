@@ -510,7 +510,7 @@ pub static STEPS_ADD_L_AN_DN: [MicroStep; 3] = [
     common::BUS_READ_IDLE,
     common::ALU_IDLE_4CLK,
 ];
-pub static STEPS_ADD_L_AI_DN: [MicroStep; 6] = [
+pub static STEPS_ADD_L_AI_DN: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_long_high),
         alu_fn: Some(ea::ea_calc_src_ai),
@@ -525,8 +525,9 @@ pub static STEPS_ADD_L_AI_DN: [MicroStep; 6] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
-pub static STEPS_ADD_L_PI_DN: [MicroStep; 6] = [
+pub static STEPS_ADD_L_PI_DN: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_long_high),
         alu_fn: Some(ea::ea_calc_src_pi_l),
@@ -541,8 +542,9 @@ pub static STEPS_ADD_L_PI_DN: [MicroStep; 6] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
-pub static STEPS_ADD_L_PD_DN: [MicroStep; 7] = [
+pub static STEPS_ADD_L_PD_DN: [MicroStep; 8] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_l),
@@ -558,8 +560,9 @@ pub static STEPS_ADD_L_PD_DN: [MicroStep; 7] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
-pub static STEPS_ADD_L_D16_AN_DN: [MicroStep; 8] = [
+pub static STEPS_ADD_L_D16_AN_DN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -576,8 +579,9 @@ pub static STEPS_ADD_L_D16_AN_DN: [MicroStep; 8] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
-pub static STEPS_ADD_L_IDX_AN_DN: [MicroStep; 9] = [
+pub static STEPS_ADD_L_IDX_AN_DN: [MicroStep; 10] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -595,6 +599,7 @@ pub static STEPS_ADD_L_IDX_AN_DN: [MicroStep; 9] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 pub static STEPS_ADD_L_ABSW_DN: [MicroStep; 9] = [
     MicroStep {
@@ -982,9 +987,9 @@ pub static STEPS_ADD_L_DN_AI: [MicroStep; 10] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 pub static STEPS_ADD_L_DN_PI: [MicroStep; 10] = [
     MicroStep {
@@ -1002,9 +1007,9 @@ pub static STEPS_ADD_L_DN_PI: [MicroStep; 10] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 pub static STEPS_ADD_L_DN_PD: [MicroStep; 11] = [
     MicroStep {
@@ -1023,9 +1028,9 @@ pub static STEPS_ADD_L_DN_PD: [MicroStep; 11] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 pub static STEPS_ADD_L_DN_D16_AN: [MicroStep; 12] = [
     MicroStep {
@@ -1045,9 +1050,9 @@ pub static STEPS_ADD_L_DN_D16_AN: [MicroStep; 12] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 pub static STEPS_ADD_L_DN_IDX_AN: [MicroStep; 13] = [
     MicroStep {
@@ -1068,9 +1073,9 @@ pub static STEPS_ADD_L_DN_IDX_AN: [MicroStep; 13] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 pub static STEPS_ADD_L_DN_ABSW: [MicroStep; 12] = [
     MicroStep {

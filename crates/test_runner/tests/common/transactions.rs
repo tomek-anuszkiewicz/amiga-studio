@@ -28,7 +28,6 @@ pub struct RecordedTransaction {
 pub enum ExpectedTransaction {
     Bus {
         is_read: bool,
-        is_tas: bool,
         duration: u32,
         addr: u32,
         size: BusAccessSize,
@@ -42,6 +41,7 @@ pub enum ExpectedTransaction {
 /// Parses raw JSON array of transactions from a SingleStepTest
 pub fn parse_transactions(
     values: &[serde_json::Value],
+    initial_ram: &[[u32; 2]],
 ) -> Result<Vec<ExpectedTransaction>, String> {
     let mut transactions = Vec::with_capacity(values.len());
     for (idx, val) in values.iter().enumerate() {
@@ -94,9 +94,39 @@ pub fn parse_transactions(
                 .ok_or_else(|| format!("Bus transaction [{}] missing data value", idx))?
                 as u16;
 
+            if is_tas {
+                // Motorola Section 5.1.3: S0..S7 read, S8..S11 modify,
+                // S12..S19 write. JSON reports the final byte for this interval.
+                if duration != 10 || size != BusAccessSize::Byte {
+                    return Err(format!("Unsupported TAS interval at [{}]", idx));
+                }
+                let original = initial_ram
+                    .iter()
+                    .rev()
+                    .find(|entry| (entry[0] & 0x00ff_ffff) == addr)
+                    .map(|entry| entry[1] as u16)
+                    .ok_or_else(|| {
+                        format!("TAS read byte missing from initial RAM at [{}]", idx)
+                    })?;
+                transactions.push(ExpectedTransaction::Bus {
+                    is_read: true,
+                    duration: 4,
+                    addr,
+                    size,
+                    data: original,
+                });
+                transactions.push(ExpectedTransaction::Internal { duration: 2 });
+                transactions.push(ExpectedTransaction::Bus {
+                    is_read: false,
+                    duration: 4,
+                    addr,
+                    size,
+                    data,
+                });
+                continue;
+            }
             transactions.push(ExpectedTransaction::Bus {
                 is_read,
-                is_tas,
                 duration,
                 addr,
                 size,
@@ -121,15 +151,11 @@ pub fn match_transactions(
         match transaction {
             ExpectedTransaction::Internal { duration } => clock = clock.wrapping_add(*duration),
             ExpectedTransaction::Bus {
-                is_read,
-                is_tas,
-                duration,
-                ..
+                is_read, duration, ..
             } => {
                 // The core calls reads at the end of CCK1 and commits writes at CCK2.
                 // Compare that observed phase to the reference bus interval.
-                let callback_clock =
-                    clock.wrapping_add(if *is_read || *is_tas { 2 } else { *duration });
+                let callback_clock = clock.wrapping_add(if *is_read { 2 } else { *duration });
                 expected_bus.push((callback_clock, transaction));
                 clock = clock.wrapping_add(*duration);
             }
@@ -149,7 +175,6 @@ pub fn match_transactions(
         let rec = &recorded[i];
         if let ExpectedTransaction::Bus {
             is_read: exp_r,
-            is_tas: exp_tas,
             duration: exp_dur,
             addr: exp_addr,
             size: exp_size,
@@ -163,7 +188,7 @@ pub fn match_transactions(
                     i, rec.clock, expected_bus[i].0
                 ));
             }
-            let exp_read = *exp_r || *exp_tas;
+            let exp_read = *exp_r;
             if rec.is_read != exp_read {
                 diffs.push(format!(
                     "Transaction [{}]: Direction mismatch: actual read={}, expected read={}",

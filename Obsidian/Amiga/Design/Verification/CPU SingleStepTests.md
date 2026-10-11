@@ -79,6 +79,16 @@ being discarded. The matcher checks each callback's phase, direction, address,
 size and data; instruction clocks are compared independently with JSON `length`.
 Correct total clocks cannot compensate for a misplaced internal delay.
 
+A TAS `t` record combines the byte read, modification and byte write into one
+ten-clock interval and records the written byte. The parser expands it into a
+four-clock read, two internal clocks and a four-clock write. The expected read
+byte comes from the vector's initial RAM; the expected write byte comes from
+the unchanged `t` record. Both callbacks retain exact direction, address, size,
+data and phase checks: read at interval start plus two clocks, write at interval
+end. Subsequent intervals retain their original timestamps. Motorola's
+[read-modify-write states S0–S19](../../Reference/68000%20User's%20Manual/05%20-%20Section%205%20-%2016-Bit%20Bus%20Operations%20%28Read,%20Write,%20RMW%29.md#513-read-modify-write-cycle)
+define these phases; the callbacks do not observe uninterrupted bus ownership.
+
 These timestamps observe the existing AddressBus callbacks at CCK resolution.
 They do not capture electrical pin edges or function-code signals, which this
 interface does not expose. Word/byte strobes are derived from access size and
@@ -416,7 +426,7 @@ Physical captures provide independent expected states and bus intervals. Passing
 | Subsystem / Operation | Physical Silicon Hardware Behavior |
 | :--- | :--- |
 | **Standard ALU Operations** | Cycle-exact execution across 124 opcodes (~8,000 cases each). |
-| **`TAS` Indivisible RMW** | Verified via explicit `"t"` bus transactions with uninterrupted bus ownership. |
+| **`TAS` RMW interval** | The explicit `"t"` interval constrains both timed byte callbacks; uninterrupted bus ownership is not observed by AddressBus. |
 | **`ASR` Shift Count > Width** | Shift register exhaustion forces both $C = 0$ and $X = 0$ when $count \ge width$. |
 | **`(An)+` Address Error AGU** | $A_n$ increments in AGU as read begins; unaligned read commits incremented $A_n$ before exception trap. |
 | **`-(An)` MOVE.l Write Ordering** | Low word decrements to $A_n - 2$ then high word to $A_n - 4$; unaligned write leaves $A_n - 2$. |

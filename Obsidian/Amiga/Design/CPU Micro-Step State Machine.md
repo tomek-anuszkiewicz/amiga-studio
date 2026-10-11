@@ -695,9 +695,9 @@ Other register variants differ only in their internal tail after prefetch:
 | `CLR/NEG/NEGX/NOT.b/w Dn` | 0 | 4 |
 | `CLR/NEG/NEGX/NOT.l Dn` | 2 | 6 |
 | `ABCD/SBCD Dy,Dx`; `NBCD Dn` | 2 | 6 |
-| `SUBQ.l #q,Dn`; `SUBQ.w #q,An` | 4 | 8 |
-| `SUBQ.l #q,An` | 2 | 6 |
-| `SUBA.w/l Dn/An,An` | 4 | 8 |
+| `ADDQ/SUBQ.l #q,Dn`; `ADDQ/SUBQ.w #q,An` | 4 | 8 |
+| `ADDQ/SUBQ.l #q,An` | 2 | 6 |
+| `ADDA/SUBA.w/l Dn/An,An` | 4 | 8 |
 
 Register comparisons use this prefetch-first layout with a two-clock tail for
 `CMP.l` and `CMPA.w/l`; byte/word `CMP` and all register `TST` sizes have no tail.
@@ -744,9 +744,9 @@ resets external devices without clearing the CPU output.
 | **2** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Reads the next instruction word from `PC` into `irc`. |
 | **3** | `BUS_READ_IDLE` | 2 (CCK2) | Prefetch finishes. Retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
 
-Long immediate arithmetic (`ADD/SUB/SUBI.l #imm,Dn`, `SUBA.l #imm,An`)
+Long immediate arithmetic (`ADD/SUB/ADDI/SUBI.l #imm,Dn`, `ADDA/SUBA.l #imm,An`)
 uses two extension pairs, then prefetch and a four-clock internal tail: 16 clocks.
-`SUBA.w #imm,An` uses one extension pair and the same tail: 12 clocks.
+`ADDA/SUBA.w #imm,An` uses one extension pair and the same tail: 12 clocks.
 
 Long immediate comparisons use two extension pairs, then prefetch and a
 two-clock tail. `CMP.l #imm,Dn` and `CMPI.l #imm,Dn` share this ordering;
@@ -808,9 +808,9 @@ tail after it. Costs below exclude the shared address prefix:
 
 | Variant | Operand clocks | Internal tail clocks | Total with prefetch |
 | --- | ---: | ---: | ---: |
-| `SUB.l`; absolute/PC-relative `ADD.l` | 8 | 2 | 14 |
-| `SUBA.w` | 4 | 4 | 12 |
-| `SUBA.l` | 8 | 2 | 14 |
+| `ADD/SUB.l` | 8 | 2 | 14 |
+| `ADDA/SUBA.w` | 4 | 4 | 12 |
+| `ADDA/SUBA.l` | 8 | 2 | 14 |
 
 Read-only comparisons and tests reuse this address/read/prefetch layout without
 destination write-back. Long `CMP` and both `CMPA` sizes retire after a two-clock
@@ -929,6 +929,20 @@ Long arithmetic, logic and unary RMW uses **read high -> read low -> prefetch ->
 fixed; low-word accesses use `ea_addr + 2`, high-word accesses use `ea_addr`.
 Immediate forms acquire their extension words before these operand reads, as in
 Archetype 5B below; long immediates require two extension pairs.
+
+#### TAS memory variant
+
+[`TAS`](../../../crates/cpu/src/instructions/tas.rs) uses the shared byte address
+prefix, then reads the original byte, modifies it during two internal clocks,
+writes the byte with bit 7 set, and finally prefetches. The operand interval
+is ten clocks: read pair, internal CCK, write pair. Unlike ordinary arithmetic
+RMW, prefetch follows the write. Total: 14 clocks plus the address prefix.
+Register TAS uses Class 1 four-clock prefetch without a memory transfer.
+
+The [SingleStep comparator](Verification/CPU%20SingleStepTests.md) checks both
+callbacks within the combined reference interval. These callbacks do not expose
+continuous address-strobe assertion or establish Amiga Chip/Slow RAM write
+suppression; those remain [platform bus limits](Platform%20Quirks%20and%20Invariants%20Catalog.md).
 
 #### Archetype 5B: `ADDI.W #$1234, (d16, A0)` (Opcode `$0668` — Immediate + Displacement Memory RMW)
 - **Total Duration**: 20 CPU clocks (10 CCKs).

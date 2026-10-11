@@ -3083,3 +3083,33 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Cold warm and keyboard reset tests currently stop before verified instruction continuation and no explicit test rules out repeated peripheral reset after the pulse
   - Existing RAM masks and unobserved electrical signals remain limits and full CPU SingleStep and milestone profiles are not run
   - python tools/verification/verify.py commit passes all quality gates ordinary crate and standard harness tests all Python contracts and the full repository English audit. Output remains in the local commit-profile.log
+---
+
+### [2026-10-11 20:28 CEST] — CPU-CYCLE-01: repair remaining SingleStep timing and expose TAS platform writes
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/test_runner`
+  - `crates/machine_loop`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Add missing ADD long memory and ADDA internal tails
+  - Move ADDI and ADDQ internal delays after prefetch and separate ADDQ byte predecrement
+  - Write low word before high word for ADD/ADDI/ADDQ long memory operands
+  - Expand TAS reference intervals into exact byte read and write phases with a comparator regression
+  - Add production machine TAS tests for Chip Slow and Fast RAM across 36 constructed cases
+  - Reconcile affected micro-step and SingleStep specifications
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve original silicon references and the two approved ASL byte corrections without new masks or overrides
+  - Keep TAS Chip/Slow write suppression as an exposed platform defect rather than changing expected behavior
+  - User authorized committing after the two failing platform tests were reported
+  - Scoped sync-design-docs review selects five specifications with no missing ownership and leaves already accurate documents untouched
+  - CPU-CYCLE-01 remains active and no roadmap point or milestone closes
+- **Verification & Test Results**:
+  - Full SingleStep passes all 128 selected groups across 124 original files containing 1000060 vectors
+  - Independent diagnostic passes 48390 selected vectors with exact formal PC and both final prefetch words
+  - Required python tools/verification/verify.py commit fails solely on the two TAS Chip/Slow RAM tests and all other ordinary tests pass
+  - Fast RAM TAS and flags across all 36 constructed cases pass while Chip/Slow wrongly set memory bit seven
+  - Standard harness tests all Python contracts formatting architecture Clippy hardware and code quality and full English audit pass
+  - Vault audit passes 39 specifications and 1094 links and Graphify code refresh completes
+  - Original reference hashes remain unchanged and no milestone verification is run
+  - Commit profile log is retained in .agent/tmp/CPU-CYCLE-01/remainder/commit-profile.log
