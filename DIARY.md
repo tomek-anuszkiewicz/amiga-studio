@@ -3212,3 +3212,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: scoped Clippy and English, vault links/frontmatter for 39 documents and 1098 links, configured static semantic checks, diff checks and source/reference hash integrity
   - Eight false Address Error frame RAM expectations still survive legacy allowances and belong to SINGLESTEP-RAM-01. The 49 valid FC changes have no observed signal and do not count as detection
   - The exhaustive 128-group suite and milestone profile were not run. Callback timing and four-clock bus-model checks are not independent electrical pin observations. Full field sensitivity is not claimed
+---
+
+### [2026-10-11 23:50 CEST] — SINGLESTEP-RAM-01: remove final RAM assertions from CPU vectors
+- **Affected Subsystems**:
+  - `SingleStep Harness`
+  - `CPU Verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove `final.ram` comparison, Address Error RAM allowances, exception-entry tracking used by those allowances and RAM mismatch diagnostics
+  - Retire obsolete RAM mutation probes and retain eleven passing `final.ram` controls
+  - Validate only `initial.ram` ranges and reconcile the SingleStep specification, CPU design note, testing overview and runbook
+- **Architectural Rationale & Trade-Offs**:
+  - Successful writes in the synthetic test bus commit the same data that timed callbacks report. Comparing `final.ram` against that bus checks fixture consistency rather than independently verifying CPU writes.
+  - The user explicitly removed `final.ram` from the CPU SingleStep comparison contract. Silicon vectors, reviewed overrides and CPU execution are unchanged.
+- **Verification & Test Results**:
+  - PASS: `python tools/verification/verify.py commit`, including ordinary crate and standard harness tests, full English audit, formatting, Clippy, architecture and Python contracts
+  - PASS: focused `test_singlestep_mutations` target with eleven changed-`final.ram` controls
+  - PASS: full ASL.w, MOVE.w and DIVU groups, 8065 of 8065 each
+  - PASS: 39-document vault frontmatter and 1097-link audit, diff check and Graphify source refresh
+  - Scoped design review selected CPU SingleStepTests and Testing Strategy; the latter already matched the contract. The CPU design note was corrected for its direct reference.
+  - Full SingleStep and milestone profiles were not run. Synthetic callbacks do not verify production memory commits.

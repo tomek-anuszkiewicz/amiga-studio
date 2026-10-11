@@ -13,12 +13,10 @@ fn silicon_json_mutations_check_the_shared_verification_path() {
         pilot.baseline(seed);
         state_mutations(&mut pilot, seed);
         transaction_mutations(&mut pilot, seed);
-        ram_and_input_mutations(&mut pilot, seed);
+        input_mutations(&mut pilot, seed);
         positive_controls(&mut pilot, seed);
         format_mutations(&mut pilot, seed);
     }
-    ram_mask_probes(&mut pilot, &seeds[0], false);
-    ram_mask_probes(&mut pilot, &seeds[4], true);
     pilot.finish(&seeds);
 }
 
@@ -204,7 +202,6 @@ fn transaction_mutations(pilot: &mut Pilot, seed: &Seed) {
         );
     }
 }
-
 fn paired_transactions(
     pilot: &mut Pilot,
     seed: &Seed,
@@ -226,31 +223,7 @@ fn paired_transactions(
     );
 }
 
-fn ram_and_input_mutations(pilot: &mut Pilot, seed: &Seed) {
-    let entries = seed.raw["final"]["ram"].as_array().unwrap();
-    let ssp = seed.raw["final"]["ssp"].as_u64().unwrap();
-    // Frame masks have a separate owner; ordinary RAM coverage does not hide those probes.
-    for (i, entry) in entries.iter().enumerate() {
-        let addr = entry[0].as_u64().unwrap();
-        if addr >= ssp && addr <= ssp + 13 && seed.path == "address_error" {
-            continue;
-        }
-        pilot.change(
-            seed,
-            &format!("/final/ram/{i}/1"),
-            json!(entry[1].as_u64().unwrap() ^ 1),
-            "ram",
-        );
-    }
-    if let Some(entry) = entries.first() {
-        let expected = entry[1].as_u64().unwrap() as u8;
-        pilot.baseline(seed);
-        if let Some(address) =
-            (0xEE0000..0xEE0010).find(|&a| pilot.bus.read_byte_debug(a) != expected)
-        {
-            pilot.change(seed, "/final/ram/0/0", json!(address), "ram");
-        }
-    }
+fn input_mutations(pilot: &mut Pilot, seed: &Seed) {
     let opcode = seed.raw["initial"]["prefetch"][0].as_u64().unwrap();
     if seed.path == "register" || seed.path == "quotient" {
         let source = opcode & 7;
@@ -318,6 +291,11 @@ fn positive_controls(pilot: &mut Pilot, seed: &Seed) {
         .unwrap()
         .push(json!([addr, 0xA5]));
     pilot.probe(seed, "unused_initial_ram", raw.clone(), vec![json!({"path":"/initial/ram","old":seed.raw["initial"]["ram"],"new":raw["initial"]["ram"]})], Some("pass"), "equivalent_control", &seed.suite);
+    let mut raw = seed.raw.clone();
+    if let Some(entry) = raw["final"]["ram"].as_array_mut().unwrap().first_mut() {
+        entry[1] = json!(entry[1].as_u64().unwrap() ^ 1);
+        pilot.probe(seed, "unused_final_ram", raw.clone(), vec![json!({"path":"/final/ram","old":seed.raw["final"]["ram"],"new":raw["final"]["ram"]})], Some("pass"), "equivalent_control", &seed.suite);
+    }
 }
 
 fn format_mutations(pilot: &mut Pilot, seed: &Seed) {
@@ -345,7 +323,6 @@ fn format_mutations(pilot: &mut Pilot, seed: &Seed) {
         ("/final/sr", json!(65536)),
         ("/initial/prefetch/1", json!(65536)),
         ("/initial/ram/0/1", json!(256)),
-        ("/final/ram/0/0", json!(0x1000000)),
     ] {
         if seed.raw.pointer(path).is_some() {
             pilot.change(seed, path, value, "format");
@@ -371,29 +348,5 @@ fn format_mutations(pilot: &mut Pilot, seed: &Seed) {
             value,
             "format",
         );
-    }
-}
-
-fn ram_mask_probes(pilot: &mut Pilot, seed: &Seed, exception: bool) {
-    let ssp = seed.raw["final"]["ssp"].as_u64().unwrap();
-    for offset in [0, 1, 6, 7, 10, 11, 12, 13] {
-        pilot.baseline(seed);
-        let address = ssp as u32 + offset;
-        let actual = pilot.bus.read_byte_debug(address);
-        let mut raw = seed.raw.clone();
-        let entries = raw["final"]["ram"].as_array_mut().unwrap();
-        if let Some(entry) = entries.iter_mut().find(|r| r[0] == address) {
-            entry[1] = json!(actual ^ 1);
-        } else {
-            entries.push(json!([address, actual ^ 1]));
-        }
-        let input_path = if offset == 0 || offset == 6 || offset == 7 {
-            "diagnostic/MOVE.w.json"
-        } else {
-            &seed.suite
-        };
-        pilot.probe(seed, &format!("ssp_plus_{offset}"), raw.clone(), vec![json!({"path":"/final/ram","old":seed.raw["final"]["ram"],"new":raw["final"]["ram"]})],
-            if exception { None } else { Some("ram") },
-            if exception { "owned_exception_mask_SINGLESTEP_RAM_01" } else { "ordinary_ram_expectation" }, input_path);
     }
 }

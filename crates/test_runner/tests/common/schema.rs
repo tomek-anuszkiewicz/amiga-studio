@@ -46,12 +46,12 @@ impl SingleStepTest {
                     "{name}.prefetch contains a value outside the word range"
                 ));
             }
-            for (index, &[address, byte]) in state.ram.iter().enumerate() {
-                if address > 0xFFFFFF || byte > u8::MAX as u32 {
-                    return Err(format!(
-                        "{name}.ram[{index}] exceeds the 24-bit address or byte range"
-                    ));
-                }
+        }
+        for (index, &[address, byte]) in self.initial.ram.iter().enumerate() {
+            if address > 0xFFFFFF || byte > u8::MAX as u32 {
+                return Err(format!(
+                    "initial.ram[{index}] exceeds the 24-bit address or byte range"
+                ));
             }
         }
         Ok(())

@@ -26,7 +26,7 @@ Each test case contains:
    - `prefetch`: `[pf0, pf1]` (two 16-bit words already in the queue)
    - `ram`: Array of `[address, byte_value]` pairs
 3. `final`:
-   - Expected values for all registers, active stack pointer (`usp`/`ssp`), `sr`, `pc`, `prefetch`, and final `ram` entries.
+   - Expected values for all registers, active stack pointer (`usp`/`ssp`), `sr`, `pc` and `prefetch`. Final `ram` entries remain in the source format but are not compared by the CPU runner.
 4. `transactions`:
    - Array of bus cycle activities: `r` (read), `w` (write), `n` (idle), `t` (TAS).
    - Bus records have six fields; idle records have two. Byte data is always 0..255.

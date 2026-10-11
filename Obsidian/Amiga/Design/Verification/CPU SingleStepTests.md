@@ -53,8 +53,8 @@ In the test suite, there are **no separate `CMPM.b.json`, `CMPM.w.json`, or `CMP
 
 ### 1.2 Input Scope and Complete Verification
 
-Every executed vector uses one complete comparison path: CPU registers and listed
-RAM bytes, instruction clock total and timed bus transactions. The former mode
+Every executed vector uses one complete comparison path: CPU registers,
+instruction clock total and timed bus transactions. The former mode
 selector has been removed. Sampling controls input count only; full input selection
 removes the ordinary per-suite limit. All 124 JSON files have named tests, including
 MOVEP word and long. The old PEA-only stronger-mode sample is redundant and removed.
@@ -103,15 +103,15 @@ cursor. It does not accept both that address and a cursor four bytes ahead.
 The sum of all reference transaction durations must also equal JSON `length`,
 including intervals after the final callback.
 
-Legacy RAM allowances remain for the information-word low nibble at `SSP + 1`,
-four filename-dependent MOVE.w frame bytes and the saved PC at `SSP + 10..13`.
-They now require observed entry into the CPU's Address Error sequence; ordinary
-RAM near SSP is compared exactly regardless of the input filename. The frame
-allowances themselves still require investigation under `SINGLESTEP-RAM-01`.
-Their presence does not establish valid hardware variation. Review and narrow
-them with focused evidence and the reference-conflict procedure in
-[spec-compliance.md](../../../../.agents/rules/spec-compliance.md).
-The implementation is
+`initial.ram` initializes the synthetic test memory. Successful read and write
+callbacks are compared with the JSON transaction sequence, including address,
+size, data and timing. The test bus commits each successful write before recording
+its callback. Therefore `final.ram` is retained as source data but is not a CPU
+assertion: comparing it with the same synthetic memory would check fixture or
+reference consistency rather than provide independent evidence of CPU writes.
+Address Error frame writes are checked through the same transaction comparison,
+without RAM byte masks or filename-dependent allowances. This does not verify
+that a production memory bus commits writes correctly. The implementation is
 [`singlestep_runner.rs`](../../../../crates/test_runner/tests/common/singlestep_runner.rs).
 
 Ordinary CPU waiting tests are described in [Section 8](#8-ordinary-cpu-wait-state-tests).
@@ -226,7 +226,7 @@ format, including its formal PC and six-field read transaction.
 | :--- | :--- | :--- |
 | `name` | `String` | Human-readable description with no execution semantics |
 | `initial` | `Object` | CPU state and memory before execution |
-| `final` | `Object` | Expected CPU state and memory after execution |
+| `final` | `Object` | Expected CPU state plus retained source RAM entries; the runner does not assert `final.ram` |
 | `transactions` | `Array` | Log of cycle bus transactions (see Section 2.3) |
 | `length` | `u32` | Total number of clock cycles taken (assuming immediate DTACK) |
 
@@ -238,7 +238,7 @@ format, including its formal PC and six-field read transaction.
 - `sr`: Status Register (`u16`) containing condition codes and system flags
 - `pc`: Formal Program Counter (`u32`, points to the opcode address at entry and the next instruction at exit). With the two-word prefetch queue primed, the SingleStep fixture sets the initial internal PC to `initial.pc.wrapping_add(4)` and `instruction_pc` to `initial.pc`.
 - `prefetch`: Two 16-bit words (`[u32; 2]`) in the CPU prefetch queue (`pf0`, `pf1`)
-- `ram`: Array of `[address, byte_value]` pairs (`Vec<[u32; 2]>`)
+- `ram`: Array of `[address, byte_value]` pairs (`Vec<[u32; 2]>`); `initial.ram` initializes the test bus, while `final.ram` is retained without a CPU assertion
 
 ### 2.3 Bus Transaction Format (`ref_src/SingleStepTests-680x0/`)
 
@@ -262,8 +262,9 @@ under the input contract below.
 ### 2.4 Input Contract
 The harness assumes the current silicon dataset. Serde requires the declared
 fields and value types; unknown object keys are ignored. The shared loader also
-validates 16-bit prefetch words and RAM entries with 24-bit addresses and byte
-values. The transaction parser accepts only `r`, `w`, `n` and `t`, requires two
+validates 16-bit prefetch words and `initial.ram` entries with 24-bit addresses
+and byte values. It parses but does not separately validate `final.ram` ranges.
+The transaction parser accepts only `r`, `w`, `n` and `t`, requires two
 fields for an internal record and six for a bus record, and checks numeric
 widths: duration is u32, FC is three bits, address is 24 bits and data fits the
 specified byte or word size. FC validation does not observe an FC signal.
@@ -295,7 +296,7 @@ flowchart TD
     H --> I[Assert active Stack Pointer USP/SSP matches]
     I --> J[Assert SR Status Register / Condition Codes match]
     J --> K[Assert PC and Prefetch Queue match]
-    K --> L[Assert final RAM bytes in test memory]
+    K --> L[Compare instruction clocks and timed bus callbacks]
 ```
 
 ### 4.1 Step-by-Step Test Runner Logic
@@ -318,7 +319,6 @@ flowchart TD
    - **Status Register (SR / CCR):** Assert `cpu.sr == final_state.sr`.
    - **Program Counter:** Compare the formal next opcode address described in Section 1.2 with `final_state.pc`.
    - **Prefetch Queue:** Compare `[cpu.state.ir, cpu.state.prefetch]` with both words in `final_state.prefetch`.
-   - **RAM Verification:** Compare listed final bytes, subject to the legacy allowances gated by observed Address Error entry described in Section 1.2.
 5. **Cycle-by-Cycle Bus Transaction Assertion:**
    - Parse `test.transactions` (`[type, duration, fc, addr, size, data]`) and retain idle intervals in the expected CPU-clock timeline.
    - Compare successful memory callbacks for time, address, access size, direction and data. Reads occur in CCK1 and writes in CCK2; one CCK advances two CPU clocks.
@@ -338,7 +338,7 @@ The test harness lives in `tests/common/`, shared by the integration test target
 
 ### 5.1 Module Structure
 - **[`schema.rs`](../../../../crates/test_runner/tests/common/schema.rs):** Deserialization of the expected `SingleStepTest` and `CpuTestState` fields from reference JSON.
-- **[`singlestep_runner.rs`](../../../../crates/test_runner/tests/common/singlestep_runner.rs):** Test execution loop, CPU prefetch priming, state comparison, cycle count validation, and RAM byte validation:
+- **[`singlestep_runner.rs`](../../../../crates/test_runner/tests/common/singlestep_runner.rs):** Test execution loop, CPU prefetch priming, state comparison, cycle count validation, and timed bus callback validation:
   - `run_single_test_detail(test, file_path, index) -> Result<(), TestFailure>`: Executes a single case with complete state, clock and timed transaction verification.
   - `run_test_file(path, limit) -> Result<(usize, usize), Box<dyn Error>>`: Reads plain `.json` test suites, running up to `limit` cases with the same complete comparison path.
   - `run_test_file_filtered(path, limit, selection, filter)`: Filters input cases without weakening complete verification and assigns a distinct report identity.
@@ -360,15 +360,14 @@ Implemented directly in [`crates/test_runner/tests/common/singlestep_runner.rs`]
 The ordinary [JSON mutation target](../../../../crates/test_runner/tests/test_singlestep_mutations.rs)
 uses selected original silicon cases and the [scoped test helpers](../../../../crates/test_runner/tests/common/mutations.rs).
 Each altered copy is written to ignored diagnostics, loaded through the shared
-loader and executed through the normal CPU comparator. State, RAM, transfer and
+loader and executed through the normal CPU comparator. State, transfer and
 timing mutations require the corresponding diagnostic category; malformed
-inputs require format rejection. Renamed tests, unknown metadata and unused
-initial RAM serve as equivalent controls. The untouched seed runs again after
-every mutation on the same reusable bus.
+inputs require format rejection. Renamed tests, unknown metadata, unused
+initial RAM and changed `final.ram` serve as controls. The untouched seed runs
+again after every mutation on the same reusable bus.
 
 The target records all probes, including function-code changes without an
-observed signal and unresolved Address Error frame-mask probes owned by
-`SINGLESTEP-RAM-01`. Those probes do not count as detected false expectations.
+observed signal. Those probes do not count as detected false expectations.
 Passing the bounded regression target establishes its enforced cases rather
 than full sensitivity of every JSON field or every silicon execution path.
 
@@ -491,7 +490,7 @@ Whenever a test case fails, the runner produces a formatted diagnostic report co
 - **Test Identification:** Opcode name, source JSON/GZ file, test vector index.
 - **Cycle & Timing:** Exact test length in CPU clock cycles and Amiga CCK cycles ($1\ \text{CCK} = 2\ \text{CPU clocks}$).
 - **Decomposed CCR Analysis:** Status Register decoded into human-readable flags ($T, S, I, X, N, Z, V, C$) indicating specifically which flags are unexpectedly SET or CLEARED.
-- **Register & Memory Diffs:** Detailed expected vs actual values with decimal offsets for registers ($D_0-D_7, A_0-A_7, PC$) and RAM byte addresses.
+- **Register Diffs:** Detailed expected vs actual values with decimal offsets for registers ($D_0-D_7, A_0-A_7, PC$).
 
 ### 10.2 Differential Regression Tracker (`.agent/tmp/singlestep/`)
 Test outcomes are persisted across runs in the `.agent/tmp/singlestep/` workspace directory:

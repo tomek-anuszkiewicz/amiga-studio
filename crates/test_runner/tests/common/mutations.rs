@@ -92,7 +92,6 @@ fn category(diff: &StateDiff) -> String {
         StateDiff::StatusRegister { .. } => "sr".into(),
         StateDiff::ProgramCounter { .. } => "pc".into(),
         StateDiff::Prefetch { word, .. } => format!("prefetch{word}"),
-        StateDiff::RamByte { .. } => "ram".into(),
         StateDiff::CycleLength { .. } => "length".into(),
         StateDiff::TransactionCountMismatch { .. } => "transaction_count".into(),
         StateDiff::TransactionMismatch { details } => {
@@ -249,19 +248,13 @@ impl Pilot {
             serde_json::to_vec(&json!([raw])).unwrap(),
         )
         .unwrap();
-        let owned_frame_gap = disposition == "owned_exception_mask_SINGLESTEP_RAM_01";
-        let owner_expectation_met = outcome["status"] == "comparison_rejection"
-            && outcome["categories"]
-                .as_array()
-                .is_some_and(|items| items.iter().any(|v| v == "ram"));
         self.records.push(
             json!({"suite":seed.suite,"index":seed.index,"name":seed.raw["name"],
             "path":seed.path,"source_sha256":seed.sha256,"label":label,"edits":edits,
-            "required_category":if owned_frame_gap { Some("ram") } else { required },
-            "owner":if owned_frame_gap { Some("SINGLESTEP-RAM-01") } else { None },
+            "required_category":required,
             "enforced_here":required.is_some(),"disposition":disposition,"input_path":input_path,
             "copy":file,"outcome":outcome,
-            "expectation_met":if owned_frame_gap { owner_expectation_met } else { correct }}),
+            "expectation_met":correct}),
         );
         // Run the untouched seed again on the same reusable bus to expose state leakage.
         let control = self.execute(seed, &seed.raw, &seed.suite);

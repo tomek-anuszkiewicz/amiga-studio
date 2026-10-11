@@ -179,11 +179,6 @@ pub enum StateDiff {
         actual: u16,
         expected: u16,
     },
-    RamByte {
-        address: u32,
-        actual: u8,
-        expected: u8,
-    },
     CycleLength {
         actual: u32,
         expected: u32,
@@ -325,16 +320,6 @@ impl TestFailure {
                         "  • Prefetch[{word}]: Expected 0x{expected:04X}, got 0x{actual:04X}\n"
                     ));
                 }
-                StateDiff::RamByte {
-                    address,
-                    actual,
-                    expected,
-                } => {
-                    out.push_str(&format!(
-                        "  • RAM at $0x{:06X}: Expected 0x{:02X}, got 0x{:02X}\n",
-                        address, expected, actual
-                    ));
-                }
                 StateDiff::CycleLength { actual, expected } => {
                     out.push_str(&format!(
                         "  • Instruction Cycle Count: Expected {} clocks ({} CCKs), got {} clocks ({} CCKs)\n",
@@ -418,16 +403,6 @@ impl From<&TestFailure> for super::reporting::TestFailureSummary {
                 } => {
                     format!(
                         "Prefetch[{word}] mismatch: got 0x{actual:04X}, expected 0x{expected:04X}"
-                    )
-                }
-                StateDiff::RamByte {
-                    address,
-                    actual,
-                    expected,
-                } => {
-                    format!(
-                        "RAM at 0x{:06X}: got 0x{:02X}, expected 0x{:02X}",
-                        address, actual, expected
                     )
                 }
                 StateDiff::UserStackPointer { actual, expected } => {

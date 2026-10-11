@@ -28,8 +28,8 @@ constraints. They do not establish hardware timing by themselves.
 
 The CPU harness uses Tom Harte's SingleStepTests, a large collection of instruction
 cases captured from physical 68000 hardware. Every executed vector compares
-registers, listed RAM bytes, instruction clocks and timed bus callbacks with its
-JSON reference. Sampling limits the number of inputs and never weakens those
+registers, instruction clocks and timed bus callbacks with its JSON reference.
+Sampling limits the number of inputs and never weakens those
 comparisons. SingleStep uses the silicon-vector format;
 test names are descriptions and do not select how registers or bus data are
 interpreted. Internal delays advance the expected transaction timeline, so correct

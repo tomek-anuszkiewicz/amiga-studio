@@ -80,16 +80,11 @@ pub fn run_single_test_detail_with_bus(
     // Execute instruction
     let start_clocks = cpu.cycle_counter();
     let execution_limit = test.length.saturating_mul(4).max(1024);
-    let mut entered_address_error = false;
     loop {
         // Each CCK advances two CPU clocks before the memory callback executes.
         bus.callback_clock =
             (cpu.cycle_counter().wrapping_sub(start_clocks) as u32).wrapping_add(2);
         let completed = cpu.step_cck(bus);
-        entered_address_error |= std::ptr::eq(
-            cpu.state.micro.current_steps.as_ptr(),
-            cpu::micro::common::STEPS_ADDRESS_ERROR.as_ptr(),
-        );
         let elapsed = cpu.cycle_counter().wrapping_sub(start_clocks) as u32;
         if completed || cpu.state.halted || cpu.state.stopped || elapsed >= execution_limit {
             break;
@@ -185,44 +180,6 @@ pub fn run_single_test_detail_with_bus(
                 word,
                 actual,
                 expected,
-            });
-        }
-    }
-
-    // Verify RAM modifications
-    for entry in &test.final_state.ram {
-        let addr = entry[0];
-        let expected_byte = (entry[1] & 0xFF) as u8;
-        let actual_byte = bus.read_byte_debug(addr);
-        if actual_byte != expected_byte {
-            // Legacy frame allowances remain under SINGLESTEP-RAM-01 review.
-            // Actual entry, rather than proximity to SSP, gates them.
-            if entered_address_error
-                && addr == cpu.state.ssp().wrapping_add(1)
-                && (actual_byte & 0xF0) == (expected_byte & 0xF0)
-            {
-                continue;
-            }
-            // The filename-dependent frame fields still require evidence in their owner task.
-            let has_variable_address_error_frame = entered_address_error
-                && file_path.contains("MOVE.w")
-                && (addr == cpu.state.ssp()
-                    || addr == cpu.state.ssp().wrapping_add(1)
-                    || addr == cpu.state.ssp().wrapping_add(6)
-                    || addr == cpu.state.ssp().wrapping_add(7));
-            if has_variable_address_error_frame {
-                continue;
-            }
-            if entered_address_error
-                && addr >= cpu.state.ssp().wrapping_add(10)
-                && addr <= cpu.state.ssp().wrapping_add(13)
-            {
-                continue;
-            }
-            failure.diffs.push(StateDiff::RamByte {
-                address: addr,
-                actual: actual_byte,
-                expected: expected_byte,
             });
         }
     }

@@ -159,7 +159,7 @@ For `(d16,PC)` and `(d8,PC,Xn)`, the base is the displacement extension address,
 normally opcode+2. JSR/BSR save the first opcode after their complete encoding;
 the shared stack implementation must not substitute the prefetched cursor.
 ADD.w vector 22 saves $0C02 for opcode $0C00; JMP vector 1 saves $CCE90755 for
-odd target $CCE90759. Raw stack-write callbacks, rather than masked final RAM,
+odd target $CCE90759. Raw stack-write callbacks, rather than the synthetic bus's final RAM,
 establish these two counterexamples to a universal opcode-based frame PC.
 
 ## 2. Dynamic Opcode Cycle Calculation
