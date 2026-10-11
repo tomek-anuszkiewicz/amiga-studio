@@ -519,12 +519,8 @@ fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
     cpu.state.set_sr(test.initial.sr);
     cpu.state.set_usp(test.initial.usp);
     cpu.state.set_ssp(test.initial.ssp);
-    let is_harte = test.name.contains('[');
-    if is_harte {
-        cpu.state.pc = test.initial.pc.wrapping_add(4);
-    } else {
-        cpu.state.pc = test.initial.pc;
-    }
+    // Silicon vectors supply the formal opcode address; the primed PC is ahead by four.
+    cpu.state.pc = test.initial.pc.wrapping_add(4);
     // Exception frames use the opcode address, four bytes behind the primed PC.
     cpu.state.instruction_pc = cpu.state.pc.wrapping_sub(4);
     cpu.state.ir = (test.initial.prefetch[0] & 0xFFFF) as u16;

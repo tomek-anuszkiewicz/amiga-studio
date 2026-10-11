@@ -2720,3 +2720,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Production Agnus observation covered eight complete PAL and NTSC lines with forced disk requests and the existing audio request path and observed five refresh selections on long NTSC lines
   - python tools/verification/verify.py commit passed ordinary crate tests with coverage standard transaction tests all quality gates the full English audit and all five Python contract directories
   - Full SingleStepTests Cartesian DMA hardware captures and milestone closure were not run or claimed
+---
+
+### [2026-10-11 02:34 CEST] — SINGLESTEP-FORMAT-01: use one silicon-vector contract
+- **Affected Subsystems**:
+  - `crates/test_runner`
+  - `CPU verification documentation`
+  - `silicon test skill`
+  - `docs/testing.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove both name-based is_harte detectors and always prime the internal PC from the formal input PC plus four
+  - Remove the comparator format argument and legacy byte-lane conversion and optional UDS/LDS handling
+  - Update existing comparator calls and describe the silicon-only schema without unsupported strict-validation claims
+  - Close SINGLESTEP-FORMAT-01 after commit verification and retire its execution plan
+- **Architectural Rationale & Trade-Offs**:
+  - Test names are human descriptions with no execution semantics
+  - Only the current physical-silicon vectors are supported and future external datasets require their own code changes
+  - The user requested removal of both newly added regression tests and the additional tag and record-length validator
+  - RAM comparison exceptions remain assigned to SINGLESTEP-RAM-01 and CPU repairs remain assigned to CPU-CYCLE-01
+- **Verification & Test Results**:
+  - The existing transaction timing test passed after the final parser simplification
+  - Earlier focused NOP and TST.b checks each passed 8065 silicon vectors and sampled Cartesian TST passed
+  - Structural inspection covered all 1000060 input vectors and found only the expected silicon tags and field counts
+  - Scoped design review selected two specifications with no missing mappings and left the testing strategy unchanged
+  - Vault audit passed 39 documents and 1049 links
+  - python tools/verification/verify.py commit passed ordinary crate tests with coverage the existing transaction timing test all quality gates the full English audit and all five Python contract directories
+  - No full final CPU run or milestone closure is claimed and no CPU implementation or reference vectors changed

@@ -33,8 +33,6 @@ pub enum ExpectedTransaction {
         addr: u32,
         size: BusAccessSize,
         data: u16,
-        uds: Option<bool>,
-        lds: Option<bool>,
     },
     Internal {
         duration: u32,
@@ -64,7 +62,7 @@ pub fn parse_transactions(
                 })? as u32;
             transactions.push(ExpectedTransaction::Internal { duration });
         } else {
-            let is_read = tag == "r" || tag == "re";
+            let is_read = tag == "r";
             let is_tas = tag == "t";
             let duration = arr
                 .get(1)
@@ -96,9 +94,6 @@ pub fn parse_transactions(
                 .ok_or_else(|| format!("Bus transaction [{}] missing data value", idx))?
                 as u16;
 
-            let uds = arr.get(6).and_then(|v| v.as_u64()).map(|v| v != 0);
-            let lds = arr.get(7).and_then(|v| v.as_u64()).map(|v| v != 0);
-
             transactions.push(ExpectedTransaction::Bus {
                 is_read,
                 is_tas,
@@ -106,8 +101,6 @@ pub fn parse_transactions(
                 addr,
                 size,
                 data,
-                uds,
-                lds,
             });
         }
     }
@@ -118,7 +111,6 @@ pub fn parse_transactions(
 pub fn match_transactions(
     recorded: &[RecordedTransaction],
     expected: &[ExpectedTransaction],
-    is_harte: bool,
 ) -> Result<(), Vec<String>> {
     let mut diffs = Vec::new();
 
@@ -162,8 +154,6 @@ pub fn match_transactions(
             addr: exp_addr,
             size: exp_size,
             data: exp_data,
-            uds: exp_uds,
-            lds: exp_lds,
             ..
         } = expected_bus[i].1
         {
@@ -210,32 +200,13 @@ pub fn match_transactions(
                 }
                 BusAccessSize::Byte => {
                     let actual_byte = (rec.data & 0xFF) as u8;
-                    let expected_byte = if is_harte {
-                        (*exp_data & 0xFF) as u8
-                    } else if exp_uds == &Some(true) {
-                        ((*exp_data >> 8) & 0xFF) as u8
-                    } else {
-                        (*exp_data & 0xFF) as u8
-                    };
+                    let expected_byte = (*exp_data & 0xFF) as u8;
                     if actual_byte != expected_byte {
                         diffs.push(format!(
                             "Transaction [{}]: Byte data mismatch: actual ${:02X}, expected ${:02X}",
                             i, actual_byte, expected_byte
                         ));
                     }
-                }
-            }
-            // Strobe comparison (if strobes provided)
-            if let (Some(exp_u), Some(exp_l)) = (exp_uds, exp_lds) {
-                let (rec_uds, rec_lds) = match rec.size {
-                    BusAccessSize::Word => (true, true),
-                    BusAccessSize::Byte => ((rec.addr & 1) == 0, (rec.addr & 1) != 0),
-                };
-                if rec_uds != *exp_u || rec_lds != *exp_l {
-                    diffs.push(format!(
-                        "Transaction [{}]: Strobe mismatch: actual (UDS={}, LDS={}), expected (UDS={}, LDS={})",
-                        i, rec_uds, rec_lds, exp_u, exp_l
-                    ));
                 }
             }
         }

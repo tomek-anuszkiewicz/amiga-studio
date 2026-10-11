@@ -30,7 +30,9 @@ The CPU harness uses Tom Harte's SingleStepTests, a large collection of instruct
 cases captured from physical 68000 hardware. Every executed vector compares
 registers, listed RAM bytes, instruction clocks and timed bus callbacks with its
 JSON reference. Sampling limits the number of inputs and never weakens those
-comparisons. Internal delays advance the expected transaction timeline, so correct
+comparisons. SingleStep and Cartesian DMA use the same silicon-vector format;
+test names are descriptions and do not select how registers or bus data are
+interpreted. Internal delays advance the expected transaction timeline, so correct
 total clocks do not conceal an early or late read or write. Existing state masks
 and the callback interface's signal limits are documented in the
 [CPU verification specification](../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification).

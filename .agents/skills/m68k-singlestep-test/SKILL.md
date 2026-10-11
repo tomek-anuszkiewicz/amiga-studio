@@ -20,7 +20,7 @@ This skill guides the validation and debugging of the M68000 CPU implementation 
 ## 2. Test JSON Schema Summary
 
 Each test case contains:
-1. `name`: Descriptive test case title with opcode and addressing mode.
+1. `name`: Human-readable description only; it never selects a test format or CPU setup.
 2. `initial`:
    - `d0`-`d7`, `a0`-`a6`, `usp`, `ssp`, `sr`, `pc`
    - `prefetch`: `[pf0, pf1]` (two 16-bit words already in the queue)
@@ -28,7 +28,8 @@ Each test case contains:
 3. `final`:
    - Expected values for all registers, active stack pointer (`usp`/`ssp`), `sr`, `pc`, `prefetch`, and final `ram` entries.
 4. `transactions`:
-   - Array of bus cycle activities: `r` (read), `w` (write), `n` (idle), `t` (TAS), `re` (read address error), `we` (write address error).
+   - Array of bus cycle activities: `r` (read), `w` (write), `n` (idle), `t` (TAS).
+   - Bus records have six fields; idle records have two. Byte data is always 0..255.
 5. `length`: Total execution clock cycles.
 
 ---
@@ -82,6 +83,7 @@ When a test fails, follow this systematic diagnostic checklist:
   - `IR` (Instruction Register): holds the opcode being executed.
   - `IRC` (Prefetch Queue): holds the next prefetched 16-bit word.
 - The fixture primes the prefetch state. The shared comparator checks PC with a four-byte pipeline allowance; it does not independently compare the final prefetch words. Inspect these fields explicitly when diagnosing a pipeline failure.
+- Silicon `initial.pc` is the formal opcode address. Both SingleStep and Cartesian DMA set the primed internal PC to `initial.pc.wrapping_add(4)` and the instruction address to `initial.pc`.
 - If `pc` is 2 or 4 bytes ahead or behind:
   - Verify that immediate operands or extension words (`.w` / `.l`) were fetched from the prefetch queue and refilled from memory.
   - Verify whether the final instruction prefetch step occurred before instruction retirement.

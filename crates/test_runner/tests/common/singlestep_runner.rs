@@ -37,7 +37,6 @@ pub fn run_single_test_detail_with_bus(
     file_path: &str,
     test_index: usize,
 ) -> Result<(), TestFailure> {
-    let is_harte = test.name.contains('[');
     let mut failure = TestFailure::new(&test.name, file_path, test_index, test.length);
 
     bus.clear();
@@ -65,11 +64,8 @@ pub fn run_single_test_detail_with_bus(
     cpu.state.set_sr(test.initial.sr);
     cpu.state.set_usp(test.initial.usp);
     cpu.state.set_ssp(test.initial.ssp);
-    if is_harte {
-        cpu.state.pc = test.initial.pc.wrapping_add(4);
-    } else {
-        cpu.state.pc = test.initial.pc;
-    }
+    // Silicon vectors supply the formal opcode address; the primed PC is ahead by four.
+    cpu.state.pc = test.initial.pc.wrapping_add(4);
     // Exception frames use the opcode address, four bytes behind the primed PC.
     cpu.state.instruction_pc = cpu.state.pc.wrapping_sub(4);
     cpu.state.ir = (test.initial.prefetch[0] & 0xFFFF) as u16;
@@ -183,8 +179,7 @@ pub fn run_single_test_detail_with_bus(
             }
             // Note: In M68000 Address Error stack frame for MOVE.w -(An), hardware captures
             // exhibit variations in the pushed instruction register (SSP+6..=SSP+7).
-            let has_variable_address_error_frame = is_harte
-                && file_path.contains("MOVE.w")
+            let has_variable_address_error_frame = file_path.contains("MOVE.w")
                 && (addr == cpu.state.ssp()
                     || addr == cpu.state.ssp().wrapping_add(1)
                     || addr == cpu.state.ssp().wrapping_add(6)
@@ -218,8 +213,7 @@ pub fn run_single_test_detail_with_bus(
     match super::transactions::parse_transactions(&test.transactions) {
         Ok(expected_txs) => {
             let recorded = bus.recorded_transactions().unwrap_or(&[]);
-            if let Err(tx_diffs) =
-                super::transactions::match_transactions(recorded, &expected_txs, is_harte)
+            if let Err(tx_diffs) = super::transactions::match_transactions(recorded, &expected_txs)
             {
                 for diff in tx_diffs {
                     failure

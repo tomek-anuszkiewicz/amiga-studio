@@ -99,77 +99,107 @@ comparison limits and source snapshot when describing a passing run.
 
 Each `.json` file contains a JSON array of individual test cases: `[ { ... }, { ... } ]`.
 
+SingleStep and Cartesian DMA accept only this silicon-vector contract. The
+[upstream format definition](../../../../ref_src/SingleStepTests-680x0/68000/v1/README.md)
+gives `name` no formal meaning; brackets or other description syntax never select
+CPU setup or data interpretation.
+
 ### 2.1 Example JSON Test Object
+
+The first vector in the authoritative `NOP.json` file illustrates the silicon
+format, including its formal PC and six-field read transaction.
+
 ```json
 {
-  "name": "ADD.B D1, D0 (0000)",
+  "name": "4e71 [NOP] 1",
   "initial": {
-    "d0": 0,
-    "d1": 42,
-    "d2": 0,
-    "d3": 0,
-    "d4": 0,
-    "d5": 0,
-    "d6": 0,
-    "d7": 0,
-    "a0": 0,
-    "a1": 0,
-    "a2": 0,
-    "a3": 0,
-    "a4": 0,
-    "a5": 0,
-    "a6": 0,
-    "usp": 0,
-    "ssp": 1048576,
-    "sr": 9984,
-    "pc": 1000,
-    "prefetch": [ 53264, 0 ],
+    "d0": 1684444070,
+    "d1": 4226060612,
+    "d2": 137500923,
+    "d3": 3212466008,
+    "d4": 1847830577,
+    "d5": 2468019811,
+    "d6": 3045547996,
+    "d7": 1084745099,
+    "a0": 2743876300,
+    "a1": 350947502,
+    "a2": 3169095864,
+    "a3": 3299346581,
+    "a4": 928099050,
+    "a5": 1518786414,
+    "a6": 2013915490,
+    "usp": 1469987768,
+    "ssp": 2048,
+    "sr": 9985,
+    "pc": 3072,
+    "prefetch": [
+      20081,
+      10835
+    ],
     "ram": [
-      [ 1000, 208 ],
-      [ 1001, 8 ],
-      [ 1002, 0 ],
-      [ 1003, 0 ]
+      [
+        3077,
+        121
+      ],
+      [
+        3076,
+        6
+      ]
     ]
   },
   "final": {
-    "d0": 42,
-    "d1": 42,
-    "d2": 0,
-    "d3": 0,
-    "d4": 0,
-    "d5": 0,
-    "d6": 0,
-    "d7": 0,
-    "a0": 0,
-    "a1": 0,
-    "a2": 0,
-    "a3": 0,
-    "a4": 0,
-    "a5": 0,
-    "a6": 0,
-    "usp": 0,
-    "ssp": 1048576,
-    "sr": 9984,
-    "pc": 1004,
-    "prefetch": [ 0, 0 ],
+    "d0": 1684444070,
+    "d1": 4226060612,
+    "d2": 137500923,
+    "d3": 3212466008,
+    "d4": 1847830577,
+    "d5": 2468019811,
+    "d6": 3045547996,
+    "d7": 1084745099,
+    "a0": 2743876300,
+    "a1": 350947502,
+    "a2": 3169095864,
+    "a3": 3299346581,
+    "a4": 928099050,
+    "a5": 1518786414,
+    "a6": 2013915490,
+    "usp": 1469987768,
+    "ssp": 2048,
+    "sr": 9985,
+    "pc": 3074,
+    "prefetch": [
+      10835,
+      1657
+    ],
     "ram": [
-      [ 1000, 208 ],
-      [ 1001, 8 ]
+      [
+        3077,
+        121
+      ],
+      [
+        3076,
+        6
+      ]
     ]
   },
+  "length": 4,
   "transactions": [
-    [ "r", 0, 2, 1000, ".w", 53264, 1, 1 ],
-    [ "r", 4, 2, 1002, ".w", 0, 1, 1 ],
-    [ "n", 8 ]
-  ],
-  "length": 8
+    [
+      "r",
+      4,
+      6,
+      3076,
+      ".w",
+      1657
+    ]
+  ]
 }
 ```
 
 ### 2.2 Field Descriptions
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `name` | `String` | Human-readable test description |
+| `name` | `String` | Human-readable description with no execution semantics |
 | `initial` | `Object` | CPU state and memory before execution |
 | `final` | `Object` | Expected CPU state and memory after execution |
 | `transactions` | `Array` | Log of cycle bus transactions (see Section 2.3) |
@@ -181,7 +211,7 @@ Each `.json` file contains a JSON array of individual test cases: `[ { ... }, { 
 - `usp`: User Stack Pointer (`u32`)
 - `ssp`: Supervisor Stack Pointer (`u32`)
 - `sr`: Status Register (`u16`) containing condition codes and system flags
-- `pc`: Program Counter (`u32`, points to next prefetch address)
+- `pc`: Formal Program Counter (`u32`, points to the opcode address at entry and the next instruction at exit). With the two-word prefetch queue primed, both harnesses set the initial internal PC to `initial.pc.wrapping_add(4)` and `instruction_pc` to `initial.pc`.
 - `prefetch`: Two 16-bit words (`[u32; 2]`) in the CPU prefetch queue (`pf0`, `pf1`)
 - `ram`: Array of `[address, byte_value]` pairs (`Vec<[u32; 2]>`)
 
@@ -196,19 +226,25 @@ The physical hardware test suite logs bus activity as a structured transaction a
   - `addr`: 24-bit physical address.
   - `size`: `".b"` (byte) or `".w"` (word).
   - `data`: Value on the data bus (0–255 for byte, 0–65535 for word). For `"t"`, records final byte written.
+  - Byte values use the same 0–255 representation at even and odd addresses. UDS/LDS are inferred from size and address, rather than supplied as extra fields or independently observed by the callback recorder.
 - **Internal / Idle Cycle:** `["n", duration]`
   - CPU internal execution phases without external bus activity.
 
-### 2.4 Strict Schema Validation Rules
-- **Optional Fields:** **None**. Every single field in the test schema is **mandatory**. If any expected field is missing from a test object or state object, deserialization must immediately fail with a descriptive error.
-- **Unknown Fields:** **Forbidden**. Any unrecognized or unexpected keys present in the JSON must cause deserialization to fail.
+The parser extracts the fields needed for comparison from the supplied silicon
+records; extra fields are ignored.
+
+### 2.4 Input Contract
+The harness assumes the current silicon dataset. Serde requires the declared
+fields and value types; unknown object keys are ignored. Transaction arrays are
+read according to Section 2.3, without format detection or additional tag and
+record-length validation.
 
 
 ---
 
 ## 3. Rust Deserialization Data Structures
 
-To enforce strict validation, all structs defined in [`crates/test_runner/tests/common/schema.rs`](../../../../crates/test_runner/tests/common/schema.rs) use `#[serde(deny_unknown_fields)]`:
+The structs in [`crates/test_runner/tests/common/schema.rs`](../../../../crates/test_runner/tests/common/schema.rs) derive `Deserialize`:
 - **`SingleStepTest`**: Encapsulates test `name`, `initial: CpuTestState`, `final_state: CpuTestState`, `transactions: Vec<serde_json::Value>`, and expected execution `length: u32`.
 - **`CpuTestState`**: Deserializes registers `d0..d7`, `a0..a6`, `usp`, `ssp`, `sr`, `pc`, `prefetch: [u32; 2]`, and initial/final `ram: Vec<[u32; 2]>` (`[address, byte]`).
 
@@ -241,7 +277,7 @@ flowchart TD
 2. **CPU State Setup:**
    - Load $D_0-D_7$ and $A_0-A_6$.
    - Load $USP$ and $SSP$. Set active $A_7$ based on the Supervisor bit ($S$) in $SR$.
-   - Set $SR$ and $PC$.
+   - Set $SR$, the primed internal $PC$ to `initial.pc.wrapping_add(4)` and the instruction address to `initial.pc`.
    - Prime the internal prefetch buffer: `initial.prefetch[0]` into `cpu.state.ir` and `initial.prefetch[1]` into `cpu.state.prefetch`.
 3. **Execute Instruction:**
    - Step the CPU cycle-by-cycle (or CCK-by-CCK) until the current instruction completes.
@@ -255,10 +291,9 @@ flowchart TD
    - **Prefetch Queue:** Assert `cpu.prefetch == final_state.prefetch`.
    - **RAM Verification:** Iterate through all `[address, expected_byte]` pairs in `final_state.ram` and assert that the test memory contains the exact byte.
 5. **Cycle-by-Cycle Bus Transaction Assertion:**
-   - Iterate through `test.transactions` (`[type, duration, size, addr, str_size, data, uds, lds]`):
-     - **CCK1 (S0–S3):** Assert the CPU asserts the exact address (`addr`), strobe signals (`uds`, `lds`), and transfer direction (`r` vs `w`).
-     - **CCK2 (S4–S7):** Assert that on read, data captured in the latch matches `data`, and on write, data driven on the bus matches `data`.
-     - Idle cycles (`n`) assert no active bus strobes for the given clock duration.
+   - Parse `test.transactions` (`[type, duration, fc, addr, size, data]`) and retain idle intervals in the expected CPU-clock timeline.
+   - Compare successful memory callbacks for time, address, access size, direction and data. Reads occur in CCK1 and writes in CCK2; one CCK advances two CPU clocks.
+   - UDS/LDS follow address and size; the recorder does not observe these pins independently. Idle intervals constrain callback times rather than asserting pin levels.
 6. **Address Error & Exception Handling:**
    - If the test triggers an address error (unaligned word/long access), verify that the CPU:
      1. Pushes the Address Error stack frame (Function Code, Access Address, Instruction Register, Status Register, PC).
@@ -438,6 +473,6 @@ python tools/verification/verify.py test runner singlestep case test_add_b sampl
 - [CPU Motorola M68000 Design Specification](../CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
 - [CPU Micro-Step State Machine Specification](../CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
 - [SingleStep Test Runner Implementation](../../../../crates/test_runner/tests/common/singlestep_runner.rs): Test loading, memory bus fixture, and assertion logic.
-- [SingleStep Integration Test Suite](../../../../crates/test_runner/tests/test_singlestep.rs): Automated dual-suite regression tests.
+- [SingleStep Integration Test Suite](../../../../crates/test_runner/tests/test_singlestep.rs): Silicon instruction regression tests.
 - [DMA Cartesian Contention Test Suite](../../../../crates/test_runner/tests/test_dma_cartesian.rs): Cycle invariance verification across DMA wait-state permutations.
 

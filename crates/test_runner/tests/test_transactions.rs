@@ -31,7 +31,7 @@ fn test_reject_shifted_internal_cycles() {
         serde_json::json!(["n", 2]),
     ])
     .unwrap();
-    assert!(match_transactions(&recorded, &expected, true).is_ok());
+    assert!(match_transactions(&recorded, &expected).is_ok());
 
     // Same direction, address, data and total clocks; the read moved two clocks earlier.
     let shifted = parse_transactions(&[
@@ -42,7 +42,7 @@ fn test_reject_shifted_internal_cycles() {
     ])
     .unwrap();
     assert!(
-        match_transactions(&recorded, &shifted, true).is_err(),
+        match_transactions(&recorded, &shifted).is_err(),
         "The comparator accepted a shifted bus timeline with unchanged total clocks"
     );
 }
