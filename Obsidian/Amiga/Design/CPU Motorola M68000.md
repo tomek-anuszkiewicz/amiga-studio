@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-10
+updated: 2026-10-11
 related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](Verification/CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/cpu"
@@ -177,7 +177,8 @@ The emulator does **NOT** rely on a static cycle lookup table. Cycles are calcul
 1. **Effective Addressing (EA) Timing:**
    - Register Direct: 0 additional cycles.
    - Address Register Indirect `(An)`: 4 clocks (2 CCK).
-   - Post-increment / Pre-decrement `(An)+` / `-(An)`: 4 clocks (2 CCK).
+   - Post-increment `(An)+`: 4 clocks (2 CCK).
+   - Pre-decrement `-(An)`: 6 clocks (3 CCK) for an operand read, including 2 internal address-calculation clocks before the 4-clock read cycle.
    - Displacement `(d16, An)`: 8 clocks (4 CCK) — 1 prefetch word + address calc.
    - Indexed `(d8, An, Xn)`: 10 clocks (5 CCK) — 1 prefetch word + index addition + internal idle clock.
 2. **Data-Dependent Operand Timing:**

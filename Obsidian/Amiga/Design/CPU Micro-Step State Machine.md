@@ -647,34 +647,23 @@ The table below catalogs representative micro-step sequences for each fundamenta
 
 ### Class 1: Register-to-Register Operations (Pure Internal ALU, Zero Memory Writes)
 
-#### Archetype: `ADD.W D1, D0` (Opcode `$D041`)
-- **Total Duration**: 4 CPU clocks (2 CCKs).
-- **Result Writing**: Register destination (`D0`). Zero external write cycles.
-- **Prefetch**: Single sequential prefetch of the next instruction opcode.
+#### Archetype: Register ADD (`ADD.W D1,D0`, Opcode `$D041`)
+- **Variants**: `ADD.b/w Dn,Dn`, `ADD.w An,Dn`, and `ADD.l Dn/An,Dn` in [add.rs](../../../crates/cpu/src/instructions/add.rs).
+- **Total Duration**: Byte/word: 4 CPU clocks (2 CCKs). Long: 8 CPU clocks (4 CCKs).
+- **Result Writing**: Register destination (`Dn`). Zero external write cycles.
+- **Prefetch**: Single sequential prefetch before the long variant's four internal clocks.
 
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `PREFETCH_NEXT_READ` + `alu_fn` | 2 (CCK1) | Initiates bus read from `PC` into `irc`. Fused ALU computes `D0 = D0 + D1`, sets CCR flags ($X, N, Z, V, C$). |
-| **1** | `BUS_READ_IDLE` | 2 (CCK2) | Bus read finishes (bus free for Agnus DMA). Retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
+| **0** | `PREFETCH_NEXT_READ` + `alu_fn` | 2 (CCK1) | Reads from `PC` into `irc`. Fused ALU adds the source register to `Dn` and updates CCR. |
+| **1** | `BUS_READ_IDLE` | 2 (CCK2) | Completes the prefetch bus cycle. Byte/word variants retire here. |
+| **2 (long only)** | `ALU_IDLE_4CLK` | 4 (2 internal CCKs) | Bus remains idle; the long variant retires after this delay. |
 
-#### Long Register Addition: `ADD.L Dn, Dn` and `ADD.L An, Dn`
-
-Long register ADD takes eight CPU clocks (four CCKs). Its bus timeline is a
-four-clock prefetch followed by four internal clocks. The internal delay must
-follow the read/idle pair; placing it before prefetch preserves the total time
-but violates the transaction order in the unchanged
-[ADD.l silicon vectors](../../../ref_src/SingleStepTests-680x0/68000/v1/ADD.l.json).
-The two variants are implemented in [add.rs](../../../crates/cpu/src/instructions/add.rs).
-
-| CCK | Microprogram action | CPU clocks | Observable bus activity |
-| --- | --- | --- | --- |
-| 1 | `PREFETCH_NEXT_READ` with the register-add ALU callback | 2 | Read callback within the first half of the prefetch interval |
-| 2 | `BUS_READ_IDLE` | 2 | Second half of the same four-clock read interval |
-| 3-4 | `ALU_IDLE_4CLK` | 4 | No bus transaction; retire after the internal interval |
-
-The JSON constrains bus activity and final state; it does not independently
-locate the internal ALU calculation. The implementation fuses addition and CCR
-updates into the first prefetch CCK, and advances the prefetch queue at retirement.
+Retirement advances `IR = prefetch`, `prefetch = irc`, and `PC += 2`. For long
+ADD, the four-clock internal interval follows the prefetch read/idle pair, as
+specified by the [ADD.l silicon vectors](../../../ref_src/SingleStepTests-680x0/68000/v1/ADD.l.json).
+The fused ALU callback is an implementation choice; the vectors constrain bus
+timing and final state rather than the internal arithmetic instant.
 
 ---
 
@@ -696,17 +685,33 @@ updates into the first prefetch CCK, and advances the prefetch queue at retireme
 
 ### Class 3: Memory Source to Register Load (Memory Read, Zero Memory Writes)
 
-#### Archetype: `ADD.W (A0), D0` (Opcode `$D050`)
-- **Total Duration**: 8 CPU clocks (4 CCKs).
-- **Result Writing**: Register destination (`D0`). Zero external write cycles.
-- **Prefetch**: Read operand from memory, then prefetch next opcode.
+#### Archetype: `ADD.b/w <ea>,Dn` (`ADD.W (A0),D0`, Opcode `$D050`)
+- **Total Duration**: 8 CPU clocks for indirect/postincrement, 10 for predecrement, 12 for displacement, and 14 for indexed addressing.
+- **Result Writing**: Register destination (`Dn`). Zero external write cycles.
+- **Prefetch**: Address phase, operand read, then next opcode prefetch.
 
-| Step | Action / Handler | Clocks | Description / Bus Transaction |
+The ADD byte/word sequences in [add.rs](../../../crates/cpu/src/instructions/add.rs)
+use the following address phases before the common read/prefetch pipeline.
+Class 5 uses the same address-phase layout for memory destinations.
+
+| Addressing mode | Prefix clocks | Address phase before the operand read |
+| --- | ---: | --- |
+| `(An)`, `(An)+` | 0 | Fuse `ea_calc` into the operand read CCK; postincrement also updates `An` once. |
+| `-(An)` | 2 | Internal `ea_calc` CCK commits the decrement once. Word operands also run `step_check_ea_read_word_idle`; an odd address enters Address Error without an operand access. |
+| `(d16,An)` | 4 | `FETCH_EXT_READ` with `ea_calc` using the staged extension word, then `FETCH_EXT_FINISH`. |
+| `(d8,An,Xn)` | 6 | Internal indexed `ea_calc` CCK, then `FETCH_EXT_READ` and `FETCH_EXT_FINISH`. |
+
+The predecrement alignment primitive is in
+[step_execution.rs](../../../crates/cpu/src/micro/step_execution.rs). Byte A7
+operands decrement by two; other byte address registers decrement by one. Word
+operands decrement by two.
+
+| Pipeline step after the address phase | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `READ_SRC_WORD` + `ea_calc` | 2 (CCK1) | Resolves `ea_addr = A0`. Initiates 16-bit memory read into `source`. Stalls if Chip RAM blocked. |
-| **1** | `BUS_READ_IDLE` | 2 (CCK2) | Memory read finishes into `source` (bus free for Agnus DMA). |
-| **2** | `PREFETCH_NEXT_READ` + `alu_fn` | 2 (CCK1) | Initiates next opcode read from `PC` into `irc`. Fused ALU computes `D0 = D0 + source`, sets CCR flags. |
-| **3** | `BUS_READ_IDLE` | 2 (CCK2) | Prefetch finishes. Retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
+| **0** | `READ_SRC_BYTE/WORD` | 2 (CCK1) | Reads from `ea_addr` into `source`. Indirect/postincrement resolves the address here. A stalled read does not repeat address calculation. |
+| **1** | `BUS_READ_IDLE` | 2 (CCK2) | Completes the operand read bus cycle. |
+| **2** | `PREFETCH_NEXT_READ` + `alu_fn` | 2 (CCK1) | Reads the next instruction word into `irc`; fused ALU adds `source` to `Dn` and updates CCR. |
+| **3** | `BUS_READ_IDLE` | 2 (CCK2) | Completes prefetch and retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
 
 ---
 
@@ -740,23 +745,22 @@ updates into the first prefetch CCK, and advances the prefetch queue at retireme
 
 ---
 
-### Class 5: Memory Read-Modify-Write with Extension Prefetch (`ADD.W Dn, (d16, An)`)
+### Class 5: Memory Read-Modify-Write (Operand Read, Prefetch, Writeback)
 
-#### Archetype 5A: `ADD.W D0, (d16, A0)` (Opcode `$D168` — Memory RMW with Displacement)
-- **Total Duration**: 16 CPU clocks (8 CCKs).
-- **Prefetch**: Displacement `d16` in `prefetch`; fetches next extension, then reads memory, then opcode prefetch before write!
-- **Result Writing**: Commits modified word to `ea_addr` in the final step.
+#### Archetype 5A: `ADD.b/w Dn,<ea>` (`ADD.W D0,(d16,A0)`, Opcode `$D168`)
+- **Total Duration**: 12 CPU clocks for indirect/postincrement, 14 for predecrement, 16 for displacement, and 18 for indexed addressing.
+- **Address Phase**: Use the [Class 3 address-phase layout](#class-3-memory-source-to-register-load-memory-read-zero-memory-writes) with destination `ea_calc` callbacks. Predecrement commits the address and checks word alignment in its own internal CCK before reading the destination.
+- **Prefetch**: Read the memory operand, prefetch the next instruction word, then write the modified operand.
+- **Result Writing**: Commits the modified byte or word to `ea_addr` in the final step.
 
-| Step | Action / Handler | Clocks | Description / Bus Transaction |
+| Pipeline step after the address phase | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `FETCH_EXT_READ` | 2 (CCK1) | Initiates bus read from `PC` for displacement word `d16`. |
-| **1** | `FETCH_EXT_FINISH` + `ea_calc` | 2 (CCK2) | Latches `d16` into `prefetch`, resolves `ea_addr = A0 + d16`, advances `PC += 2`. |
-| **2** | `READ_DST_WORD` | 2 (CCK1) | Reads memory operand from `ea_addr` into `destination`. Stalls if Chip RAM blocked. |
-| **3** | `BUS_READ_IDLE` | 2 (CCK2) | Memory read finishes into `destination`. |
-| **4** | `PREFETCH_IRC_READ` + `alu_fn` | 2 (CCK1) | **RMW Silicon Quirk:** Prefetches next opcode from `PC` into `irc` *before* memory write! Fused ALU computes `res = destination + D0`, updates CCR, sets `destination = res as u32`. |
-| **5** | `PREFETCH_IRC_FINISH` | 2 (CCK2) | Latching next opcode into `irc` completes. |
-| **6** | `BUS_WRITE_IDLE` | 2 (CCK1) | Internal address/bus write setup for `ea_addr`. Bus free for Agnus DMA. |
-| **7** | `WRITE_DST_WORD` | 2 (CCK2) | Writes `(destination & 0xFFFF)` to `ea_addr`. Commits memory write and retires: `IR = prefetch`, `prefetch = irc`. |
+| **0** | `READ_DST_BYTE/WORD` | 2 (CCK1) | Reads from `ea_addr` into `destination`. Indirect/postincrement resolves the address here. A stalled read does not repeat address calculation. |
+| **1** | `BUS_READ_IDLE` | 2 (CCK2) | Completes the operand read bus cycle. |
+| **2** | `PREFETCH_NEXT_READ` + `alu_fn` | 2 (CCK1) | Reads the next instruction word into `irc` before writeback. Fused ALU adds `Dn` to `destination` and updates CCR. |
+| **3** | `PREFETCH_IRC_FINISH` | 2 (CCK2) | Completes prefetch without retiring the instruction. |
+| **4** | `BUS_WRITE_IDLE` | 2 (CCK1) | Sets up the operand write; no bus access. |
+| **5** | `WRITE_DST_BYTE/WORD` | 2 (CCK2) | Writes the modified operand to `ea_addr` and retires: `IR = prefetch`, `prefetch = irc`. |
 
 #### Archetype 5B: `ADDI.W #$1234, (d16, A0)` (Opcode `$0668` — Immediate + Displacement Memory RMW)
 - **Total Duration**: 20 CPU clocks (10 CCKs).

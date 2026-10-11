@@ -8,6 +8,18 @@ impl Cpu {
     // 2-Clock Micro-Step Handlers (1 CCK = 2 CPU Clocks)
     // ========================================================================
 
+    /// Internal predecrement phase: validate the word read address before its bus cycle.
+    pub(crate) fn step_check_ea_read_word_idle(
+        &mut self,
+        _bus: &mut dyn AddressBus,
+    ) -> BusResult<()> {
+        let addr = self.state.micro.ea_addr;
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, true, false);
+        }
+        BusResult::Ready(())
+    }
+
     /// CCK1: Reads source byte from memory into `self.state.micro.source`
     pub fn step_bus_read_src_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr & 0x00FF_FFFF;

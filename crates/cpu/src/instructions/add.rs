@@ -186,12 +186,13 @@ pub static STEPS_ADD_B_PI_DN: [MicroStep; 4] = [
     },
     common::BUS_READ_IDLE,
 ];
-pub static STEPS_ADD_B_PD_DN: [MicroStep; 4] = [
+pub static STEPS_ADD_B_PD_DN: [MicroStep; 5] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_src_byte),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_b),
         base_clocks: 2,
     },
+    common::READ_SRC_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
@@ -360,12 +361,13 @@ pub static STEPS_ADD_W_PI_DN: [MicroStep; 4] = [
     },
     common::BUS_READ_IDLE,
 ];
-pub static STEPS_ADD_W_PD_DN: [MicroStep; 4] = [
+pub static STEPS_ADD_W_PD_DN: [MicroStep; 5] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_src_word),
+        bus_fn: Some(Cpu::step_check_ea_read_word_idle),
         alu_fn: Some(ea::ea_calc_src_pd_w),
         base_clocks: 2,
     },
+    common::READ_SRC_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
@@ -490,7 +492,6 @@ pub static STEPS_ADD_W_IMM_DN: [MicroStep; 4] = [
 ];
 
 // Long: <ea>, Dn
-// Register operands prefetch first, then spend four internal clocks on the long operation.
 pub static STEPS_ADD_L_DN_DN: [MicroStep; 3] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
@@ -731,12 +732,13 @@ pub static STEPS_ADD_B_DN_PI: [MicroStep; 6] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE,
 ];
-pub static STEPS_ADD_B_DN_PD: [MicroStep; 6] = [
+pub static STEPS_ADD_B_DN_PD: [MicroStep; 7] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_dst_byte),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_b),
         base_clocks: 2,
     },
+    common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
@@ -860,12 +862,13 @@ pub static STEPS_ADD_W_DN_PI: [MicroStep; 6] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_WORD,
 ];
-pub static STEPS_ADD_W_DN_PD: [MicroStep; 6] = [
+pub static STEPS_ADD_W_DN_PD: [MicroStep; 7] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_dst_word),
+        bus_fn: Some(Cpu::step_check_ea_read_word_idle),
         alu_fn: Some(ea::ea_calc_dst_pd_w),
         base_clocks: 2,
     },
+    common::READ_DST_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),

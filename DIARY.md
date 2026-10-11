@@ -2746,3 +2746,34 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Vault audit passed 39 documents and 1049 links
   - python tools/verification/verify.py commit passed ordinary crate tests with coverage the existing transaction timing test all quality gates the full English audit and all five Python contract directories
   - No full final CPU run or milestone closure is claimed and no CPU implementation or reference vectors changed
+---
+
+### [2026-10-11 03:07 CEST] — CPU-CYCLE-01 batch 02: repair ADD predecrement timing and reconcile instruction classes
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `CPU Micro-Step State Machine`
+  - `CPU Motorola M68000`
+- **What Was Changed (The Concrete Reality)**:
+  - Separate predecrement address calculation from the operand read in four ADD byte/word source and read-modify-write sequences
+  - Validate word alignment during the initial internal CCK through step_check_ea_read_word_idle so previously correct Address Error timing remains intact
+  - Remove the register ADD.l comment requested by the user
+  - Reconcile the existing Class 1, Class 3 and Class 5 descriptions and tables with the current ADD sequences
+  - Correct the main CPU timing list to distinguish four-clock postincrement reads from six-clock predecrement reads
+  - Require instruction-class specification updates for every microcode change in the active CPU-CYCLE-01 execution plan
+- **Architectural Rationale & Trade-Offs**:
+  - Normal predecrement ADD lacked two internal clocks before reading the operand
+  - Delaying the original fused read would regress the 322 passing word predecrement fault vectors
+  - Keep the specification as the current class model and retain diagnostic history in the batch review packet
+  - Other exception entry paths and full CPU agreement remain separate active work
+- **Verification & Test Results**:
+  - All 6,372 selected normal memory vectors pass state/RAM/clocks/timed callbacks and extra exact final prefetch/formal-PC checks
+  - Gain 1,257 passing vectors: 825 byte and 432 word predecrement cases, with no lost passes in either containing file
+  - All 322 previously passing predecrement Address Error cases retain their passing result
+  - All 10,042 register ADD/NOP controls pass including exact final prefetch/formal-PC checks
+  - Focused synthetic ADD/ADDX Cartesian DMA and CPU crate tests pass
+  - Full ADD.b remains 7,604/8,065 passing with 461 failures outside this batch, and full ADD.w remains 5,001/8,065 with 3,064 outside failures
+  - Formatting/architecture/Clippy and specification links/frontmatter/English checks pass for the recorded batch source
+  - Final commit profile command: python tools/verification/verify.py commit, with its result retained in .agent/tmp/CPU-CYCLE-01/batch-02/commit-profile.log and the commit message
+  - Synthetic DMA covers CPU plus TestMemoryBus waiting invariance rather than production Agnus arbitration
+  - Existing RAM masks and unobserved signal limits remain, and no silicon vectors or expected timing references changed
+  - CPU-CYCLE-01 remains active for later batches, with no milestone closure or final full CPU pass claimed
