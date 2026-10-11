@@ -5,7 +5,7 @@ description: Execute test suites across tiers, snapshot results to disk, and tra
 
 # Recipe: Test Runner & Regression Tracker
 
-Use this skill to select relevant existing tests and report their evidence. The aggregate SingleStep test saves snapshots and finalizes regression reports once after group execution in `.agent/tmp/singlestep/`; ordinary crate tests and Cartesian DMA do not create those reports. Direct Cargo execution also finalizes reports inside the aggregate test; the [verification reference](../../../tools/verification/README.md#saved-singlestep-reports) owns group selection and report isolation.
+Use this skill to select relevant existing tests and report their evidence. The aggregate SingleStep test saves snapshots and finalizes regression reports once after group execution in `.agent/tmp/singlestep/`; ordinary crate tests do not create those reports. Direct Cargo execution also finalizes reports inside the aggregate test; the [verification reference](../../../tools/verification/README.md#saved-singlestep-reports) owns group selection and report isolation.
 
 ---
 
@@ -37,10 +37,10 @@ Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
    ```powershell
    python tools/verification/verify.py commit
    ```
-   The commit profile runs standard suites and all Python contracts, without full DMA/SingleStep suites.
-   Full `test runner dma` or `test runner singlestep` runs remain available for explicit diagnosis or user requests.
+   The commit profile runs standard suites and all Python contracts, without full SingleStep.
+   Full `test runner singlestep` runs remain available for explicit diagnosis or user requests.
    After the commit verification above, run `python tools/verification/verify.py milestone` for stage completion.
-   Milestone runs both full CPU suites and the language audit, including on clean trees, without repeating other commit checks. Use `--plan` to inspect either set.
+   Milestone runs full SingleStep and the language audit, including on clean trees, without repeating other commit checks. Use `--plan` to inspect either set.
    Focused commands validate ordinary tasks; they do not replace the full pre-commit profile.
 
 ## Background Checks and Result Collection

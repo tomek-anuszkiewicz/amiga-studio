@@ -30,7 +30,7 @@ tracked_paths:
 
 ## 1. Benchmarking Goals & Architecture Overview
 
-The Amiga 500 emulator is a cycle-exact, micro-stepped simulation. While functional correctness is validated against over 1 million test vectors via [SingleStepTests](../Verification/CPU%20SingleStepTests.md) and [Cartesian DMA Contention](../CPU%20Motorola%20M68000.md#6-dma-contention--wait-states), raw correctness does not guarantee optimal host CPU performance or absence of micro-architectural stalls.
+The Amiga 500 emulator is a cycle-exact, micro-stepped simulation. While functional correctness is validated against over 1 million test vectors via [SingleStepTests](../Verification/CPU%20SingleStepTests.md) and [ordinary CPU wait tests](../Verification/CPU%20SingleStepTests.md#8-ordinary-cpu-wait-state-tests), raw correctness does not guarantee optimal host CPU performance or absence of micro-architectural stalls.
 
 The **M68000 Instruction Benchmarking Subsystem** exists to:
 1. **Detect Host Execution Anomalies:** Uncover unexpected execution latency spikes where instructions with identical or lower Amiga cycle counts consume disproportionately more host CPU time due to branch mispredictions, poor code alignment, cold path cache pollution, or missed inlining.

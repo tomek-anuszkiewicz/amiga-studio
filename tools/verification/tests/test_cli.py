@@ -66,16 +66,14 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(selected("test runner singlestep")[0][2],
                          {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})
 
-    def test_commit_excludes_full_cpu_suites_even_for_cpu_changes(self):
+    def test_commit_excludes_full_singlestep_even_for_cpu_changes(self):
         for changes in ([], ["crates/cpu/src/cpu.rs"], ["Cargo.toml"],
-                        ["crates/test_runner/tests/test_dma_cartesian.rs"], ["docs/testing.md"]):
+                        ["crates/cpu/tests/test_cck_bus.rs"], ["docs/testing.md"]):
             commands = selected("commit", changes)
-            for suite in ("test_singlestep", "test_dma_cartesian"):
-                self.assertFalse(any(suite in item[1] for item in commands))
+            self.assertFalse(any("tools/verification/run_singlestep.py" in item[1] for item in commands))
 
     def test_empty_standard_harness_never_selects_all_cargo_targets(self):
-        with patch.object(Path, "glob", return_value=[Path("test_singlestep.rs"),
-                                                   Path("test_dma_cartesian.rs")]):
+        with patch.object(Path, "glob", return_value=[Path("test_singlestep.rs")]):
             commands = selected("commit")
             self.assertFalse(any(item[1][:2] == ["cargo", "test"] for item in commands))
             self.assertEqual(selected("test runner standard"), [])
@@ -88,20 +86,25 @@ class SelectionTests(unittest.TestCase):
                                               "test_runner", "--test", "test_reports",
                                               "--", "--quiet"])
 
-    def test_explicit_cpu_sets_run_once_alongside_automatic_selection(self):
-        commands = selected("milestone singlestep dma", ["crates/cpu/src/cpu.rs"])
-        for suite in ("test_singlestep", "test_dma_cartesian"):
-            target = "tools/verification/run_singlestep.py" if suite == "test_singlestep" else suite
-            self.assertEqual(sum(target in item[1] for item in commands), 1)
+    def test_explicit_singlestep_runs_once_alongside_automatic_selection(self):
+        commands = selected("milestone singlestep", ["crates/cpu/src/cpu.rs"])
+        self.assertEqual(sum("tools/verification/run_singlestep.py" in item[1]
+                             for item in commands), 1)
+        self.assertEqual(selected("test runner silicon")[0][1:],
+                         selected("test runner singlestep")[0][1:])
+
+    def test_ordinary_cpu_wait_tests_remain_in_normal_selection(self):
+        for sentence in ("test rust unit", "commit"):
+            commands = selected(sentence)
+            self.assertTrue(any("cpu" in item[1] or "--workspace" in item[1] for item in commands))
 
     def test_milestone_retains_separate_scope(self):
         for changes in ([], ["crates/cpu/src/cpu.rs"], ["docs/testing.md"]):
             commands = selected("milestone", changes)
-            self.assertEqual(len(commands), 3)
+            self.assertEqual(len(commands), 2)
             self.assertTrue(commands[0][1][-1].endswith("check_english.py"))
-            self.assertEqual(commands[1][0], "Cartesian DMA")
-            self.assertEqual(commands[2][2], {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})
-            self.assertEqual(commands[2][1][-2:], ["--profile", "verification"])
+            self.assertEqual(commands[1][2], {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})
+            self.assertEqual(commands[1][1][-2:], ["--profile", "verification"])
 
     def test_commit_keeps_coverage_quality_and_all_python_directories(self):
         commands = selected("commit")
@@ -145,7 +148,8 @@ class SelectionTests(unittest.TestCase):
 
     def test_invalid_sentences_are_rejected(self):
         for sentence in ("test rust suite missing", "test rust crate cpu crate gui",
-                         "test python directory missing", "test runner dma sample 50",
+                         "test python directory missing", "test runner dma", "test runner harness",
+                         "test runner dma sample 50", "milestone dma",
                          "test runner singlestep sample 0", "test runner singlestep sample 50 full",
                          "milestone singlestep singlestep", "check english case name",
                          "runner bench -- --quick", "runner bench quick thorough",

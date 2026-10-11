@@ -29,16 +29,15 @@ tracked_paths:
 Completion uses [verify.py](../../../../tools/verification/verify.py) with
 `commit` for ordinary crate tests with coverage, quality gates, all available
 standard harness suites, all Python tool contracts and the full English audit.
-Standard harness selection excludes SingleStep and Cartesian DMA; transaction checker regressions and SingleStep override contracts are standard suites. If no
+Standard harness selection excludes SingleStep; transaction checker regressions and SingleStep override contracts are standard suites. If no
 standard suites remain, it schedules no Cargo test command. Python contracts
 are discovered separately for bootstrap, shared conversion, PDF conversion,
 the RAG MCP adapter and verification tooling.
 
-The separate `milestone` profile always runs full SingleStepTests, Cartesian
-DMA and the full English audit, including on a clean tree. It does not repeat
+The separate `milestone` profile always runs full SingleStepTests
+and the full English audit, including on a clean tree. It does not repeat
 commit checks. Stage closure requires both commands once for the same snapshot.
-Standalone `test runner singlestep` and `test runner dma` select the full CPU
-suites for explicit diagnosis or user requests. These synthetic suites use
+Standalone `test runner singlestep` selects full silicon verification for explicit diagnosis or user requests. This synthetic suite uses
 TestMemoryBus rather than the production machine.
 
 The [selection implementation](../../../../tools/verification/commands.py)
@@ -57,7 +56,7 @@ not additional completion obligations.
 
 ## 1. Architectural Purpose & Testing Pyramid
 
-The four tiers describe different evidence boundaries. Ordinary crate and integration tests, external CPU vectors and synthetic contention checks are available. Whole-machine capture execution is deferred until a new entry point exists. Passing one tier establishes only the properties its fixtures and assertions check. Runtime code and external test suites remain separate:
+The four tiers describe different evidence boundaries. Ordinary crate and integration tests, external CPU vectors and ordinary CPU wait checks are available. Whole-machine capture execution is deferred until a new entry point exists. Passing one tier establishes only the properties its fixtures and assertions check. Runtime code and external test suites remain separate:
 
 ```mermaid
 graph TD
@@ -78,9 +77,8 @@ graph TD
         I4["Motherboard Bus Routing<br/><code>crates/memory_bus/tests/</code><br/>(Address dispatch & register wiring)"]:::t2
     end
 
-    subgraph Tier3["Tier 3: CPU Silicon and Synthetic Contention (L3)"]
+    subgraph Tier3["Tier 3: CPU Silicon (L3)"]
         V1["Silicon SingleStepTests<br/><code>crates/test_runner/tests/test_singlestep.rs</code>"]:::t3
-        V2["Cartesian DMA Permutations<br/><code>crates/test_runner/tests/test_dma_cartesian.rs</code>"]:::t3
     end
 
     V3["Tier 4: vAmigaTS Whole-Machine Captures<br/><code>Execution entry point unavailable</code>"]:::t3
@@ -93,6 +91,11 @@ graph TD
 ---
 
 ## 2. Unit, Integration, and CPU/Bus Verification
+
+Ordinary CPU tests cover phase-specific waiting, stable retries, counted delay,
+and transfer side effects through PhysicalMemory and a small recording wrapper.
+They do not enumerate silicon vectors or DMA schedules; production arbitration
+is tested separately. See [CPU wait coverage](CPU%20SingleStepTests.md#8-ordinary-cpu-wait-state-tests).
 
 ### Tier 1: Isolated Unit Tests (L1 — Fast, Unit Scope)
 - **Scope**: Single crate, single module in complete isolation. Zero multi-chip machine state.
@@ -167,11 +170,10 @@ If any answer is **YES**, identify integration protection for that coordination.
      - `test_router.rs` & `test_register_wiring.rs`: Routing 24-bit physical addresses across chips and storage.
 
 ### Tier 3: Silicon Ground Truth & Verification Harness (L3 — Physical Vectors)
-- **Scope**: CPU state and selected timing comparisons against external 68000 vectors, plus synthetic waiting invariants.
-- **Execution Commands**: `python tools/verification/verify.py test runner singlestep` and `python tools/verification/verify.py test runner dma` for explicit diagnosis; automatic full-suite selection occurs at milestones.
+- **Scope**: CPU state, instruction clocks and timed callbacks against external 68000 vectors. Ordinary crate tests own focused waiting invariants.
+- **Execution Commands**: `python tools/verification/verify.py test runner singlestep` for explicit diagnosis; automatic full-suite selection occurs at milestones.
 - **Key Verification Suites**:
   - **Tom Harte SingleStepTests ([`crates/test_runner/tests/test_singlestep.rs`](../../../../crates/test_runner/tests/test_singlestep.rs))**: Every executed vector compares state, instruction clocks and timed bus callbacks. Sampling changes input count only; abstract callback and state-comparison limits remain explicit (see [CPU SingleStepTests.md](CPU%20SingleStepTests.md#12-input-scope-and-complete-verification)).
-  - **Cartesian DMA Contention ([`crates/test_runner/tests/test_dma_cartesian.rs`](../../../../crates/test_runner/tests/test_dma_cartesian.rs))**: Samples 5% of vectors and enumerates memory classifications and stalled/free patterns in a window of at most six CCKs. It checks $C = C_0 + 2 \times \text{wait\_states}$, Fast RAM immunity and state invariance against an uncontended run of the same emulator. It does not execute production Agnus arbitration.
 
 Repository architecture checks are a separate gate, implemented in
 [`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py).

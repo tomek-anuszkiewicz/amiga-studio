@@ -2970,3 +2970,32 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify refresh completed. Full CPU and DMA suites were not rerun during commit preparation. Prior task evidence recorded 128 completed groups, 924967 passing and 77770 failing JSON vectors, with unchanged diagnostic checksums and aggregate runs of 3.273 and 3.184 seconds
   - these measurements are retained task evidence, not a new passing CPU result.
   - Final `python tools/verification/verify.py commit` passed all gates, ordinary crate and standard harness tests, and all Python contracts after the approved vocabulary update. No milestone closure is claimed.
+---
+
+### [2026-10-11 19:38 CEST] — CPU-WAIT-01: replace Cartesian contention with ordinary CPU wait tests
+- **Affected Subsystems**:
+  - `crates/cpu/tests`
+  - `crates/test_runner/tests`
+  - `tools/verification`
+  - `agent instructions and design specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the complete Cartesian memory and DMA schedule permutation suite and its exclusive helper state
+  - Add a PhysicalMemory-backed recording wrapper and extend the existing CPU suites
+  - Exercise all 52 distinct public transfer handlers with zero, one and three refusals and real instruction retry sequences
+  - Remove DMA and harness selectors and reconcile milestone selection, policies, skills and specifications
+  - Close CPU-WAIT-01 and retire its execution plan after this commit
+- **Architectural Rationale & Trade-Offs**:
+  - Count actual bus refusals independently and require stable retry identity, retained state, one successful transfer and exact waiting cost
+  - Cover CCK phases, long halves, address updates, RMW, prefetch, stack, exceptions, MOVEM and MOVEP without arbitrary schedule permutations
+  - Keep production DMA arbitration separate and preserve CPU runtime behavior, silicon references and comparison strength
+  - Scoped sync-design-docs review selects the parent CPU specification and six changed design documents with no missing or invalid mappings
+  - The parent CPU specification remains accurate and unchanged
+- **Verification & Test Results**:
+  - CPU crate tests, standard harness and verification Python contracts pass
+  - CPU and test_runner Clippy with warnings denied, formatting and architecture pass
+  - Vault audit passes 39 specifications and 1073 links and the roadmap check passes
+  - MOVEP SingleStep sample passes 100 of 100 vectors across both selected groups with state, clocks and timed callbacks
+  - Five cached timing runs measure the selected wait cases at a median 0.065 seconds including test-process startup
+  - Changed files pass scoped English checks and Graphify code refresh completes
+  - Required final commit-profile verification is recorded in the commit message
+  - Full SingleStep and milestone profiles are not run and no roadmap milestone closure is claimed

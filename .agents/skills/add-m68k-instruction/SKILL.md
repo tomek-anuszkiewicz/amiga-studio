@@ -450,17 +450,16 @@ Run targeted tests:
 python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_sub
 ```
 
-### Tier 2 — Cartesian DMA Contention Verification
-Integrate the instruction into `crates/test_runner/tests/test_dma_cartesian.rs`:
-```rust
-#[test]
-fn test_dma_cartesian_sub() {
-    run_cartesian_for_opcodes(&["SUB.b", "SUB.w", "SUB.l", "SUBA.w", "SUBA.l"]);
-}
-```
-Run Cartesian stress tests (validating cycle invariance $C = C_0 + 2 \times \text{wait\_states}$, Fast RAM immunity, and state invariance across the entire $2^k \times 2^M$ space):
+### Ordinary CPU Wait-State Coverage
+
+Reuse `crates/cpu/tests/test_cck_bus.rs` and `test_micro_archetypes.rs` for shared
+transfer behavior. Add focused coverage when an instruction introduces a distinct
+retry state or side effect. Test phase, stable address/data, repeated refusal,
+one successful transfer and independently counted waiting cost. Do not register
+every opcode in a separate contention suite.
+
 ```powershell
-python tools/verification/verify.py test rust crate test_runner suite test_dma_cartesian case test_dma_cartesian_sub
+python tools/verification/verify.py test rust crate cpu
 ```
 
 ### Architecture, Inlining & Formatting Gate
@@ -476,4 +475,4 @@ Before completing a CPU change, stage the intended snapshot and run:
 ```powershell
 python tools/verification/verify.py commit
 ```
-The verifier owns full SingleStepTests and Cartesian DMA selection; targeted commands above remain diagnostic tools.
+The verifier owns full SingleStepTests selection; targeted commands above remain diagnostic tools.

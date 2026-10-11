@@ -19,7 +19,7 @@ Focused commands do not run completion gates or coverage. Commit always runs
 ordinary crate coverage, quality gates, standard harness and Python contracts.
 Without directory selectors, test python runs only contracts affected by changed
 tool inputs. Explicit directory selection runs that suite even on a clean tree.
-Commit excludes full DMA and SingleStep suites. Milestone runs both full suites
+Commit excludes full SingleStep. Milestone runs full SingleStep
 and the language audit; domain skills retain their own checks.
 """
 
@@ -48,7 +48,7 @@ def parser():
     for name in ("commit", "milestone"):
         leaf = commands.add_parser(name, help=f"Run the {name} completion profile")
         if name == "milestone":
-            leaf.add_argument("sets", nargs="*", metavar="singlestep|dma")
+            leaf.add_argument("sets", nargs="*", metavar="singlestep")
         else:
             leaf.set_defaults(sets=[])
     tests = commands.add_parser("test", help="Run focused Rust, Python or harness tests")
@@ -57,7 +57,7 @@ def parser():
     rust.add_argument("words", nargs="*", metavar="SELECTOR")
     python = kinds.add_parser("python", help="Changed tool contracts or directory PATH [file PATTERN] [case FILTER]")
     python.add_argument("words", nargs="*", metavar="SELECTOR")
-    runner = kinds.add_parser("runner", help="[standard|harness|silicon|singlestep|dma] [case FILTER] [sample N|full]")
+    runner = kinds.add_parser("runner", help="[standard|silicon|singlestep] [case FILTER] [sample N|full]")
     runner.add_argument("words", nargs="*", metavar="SELECTOR")
     checks = commands.add_parser("check", help="Run an individual quality or compilation check")
     checks.add_argument("name", choices=("all", "architecture", "english", "code", "hardware",

@@ -228,8 +228,7 @@ Before claiming hardware-correct DMA behavior:
   Blitter competition with an actual pending CPU request.
 
 Existing isolated scheduler tests cover selected positions and simplified
-arbitration; they do not establish the full beam-phase mapping. Cartesian CPU DMA
-tests use a synthetic bus and do not execute Agnus's scanline scheduler.
+arbitration; they do not establish the full beam-phase mapping. Ordinary CPU wait tests use an isolated bus and do not execute Agnus's scanline scheduler. Production arbitration needs separate integration tests.
 
 ## 8. Reference Documentation & Upstream Ground Truth
 

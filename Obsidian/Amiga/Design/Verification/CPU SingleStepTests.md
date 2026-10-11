@@ -49,7 +49,7 @@ To ensure robust, ground-truth verification, the M68000 CPU emulator is validate
 In the test suite, there are **no separate `CMPM.b.json`, `CMPM.w.json`, or `CMPM.l.json` files**. Instead, all `CMPM (Ay)+, (Ax)+` test cases are bundled together inside `CMP.b.json`, `CMP.w.json`, and `CMP.l.json` alongside standard `CMP <ea>, Dn`.
 
 - The test runner provides [`is_cmpm_postinc_opcode`](../../../../crates/test_runner/tests/common/singlestep_runner.rs) (`(op & 0xF138) == 0xB108`) to isolate `CMPM` cases when specific post-increment testing is required.
-- Standard `CMP`, `CMPA`, `CMPI` and isolated `CMPM` cases have tests in [`crates/test_runner/tests/test_singlestep.rs`](../../../../crates/test_runner/tests/test_singlestep.rs) and [`crates/test_runner/tests/test_dma_cartesian.rs`](../../../../crates/test_runner/tests/test_dma_cartesian.rs). Their presence and earlier state-focused results do not establish a passing result under the current complete comparison path.
+- Standard `CMP`, `CMPA`, `CMPI` and isolated `CMPM` cases have tests in [`crates/test_runner/tests/test_singlestep.rs`](../../../../crates/test_runner/tests/test_singlestep.rs). Their presence and earlier state-focused results do not establish a passing result under the current complete comparison path.
 
 ### 1.2 Input Scope and Complete Verification
 
@@ -65,8 +65,7 @@ Reviewed reference corrections live in the tracked
 [`overrides/singlestep/` catalog](../../../../crates/test_runner/tests/overrides/singlestep/README.md).
 The [shared vector loader](../../../../crates/test_runner/tests/common/singlestep_vectors.rs)
 checks the supported original record's SHA-256 identity and applies only listed
-final-state fields before filtering or sampling, for both SingleStep and
-Cartesian DMA. Missing, ambiguous or changed targets fail loading. The two ASL.b
+final-state fields before SingleStep filtering or sampling. Missing, ambiguous or changed targets fail loading. The two ASL.b
 corrections retain the upstream initial state, RAM, prefetch, transactions and
 clock total; the normal comparator executes their corrected vectors. Suite JSON
 lists executed override names and summary Markdown counts them separately.
@@ -98,14 +97,9 @@ procedure in [spec-compliance.md](../../../../.agents/rules/spec-compliance.md).
 The implementation is
 [`singlestep_runner.rs`](../../../../crates/test_runner/tests/common/singlestep_runner.rs).
 
-Cartesian DMA is a separate relative invariance test using CPU plus
-`TestMemoryBus`. It samples 5% of vectors and enumerates memory classifications
-and stalled/free schedules in a window of at most six CCKs, with a deterministic
-window position for longer instructions. Its uncontended reference is produced
-by the same emulator. This checks that contention preserves results and adds the
-expected waiting cost; it does not establish absolute CPU correctness, production
-MemoryBus behavior or Agnus arbitration. Report the selected input scope, modes,
-comparison limits and source snapshot when describing a passing run.
+Ordinary CPU waiting tests are described in [Section 8](#8-ordinary-cpu-wait-state-tests).
+They use an isolated PhysicalMemory-backed fixture; production MemoryBus and
+Agnus arbitration require separate integration evidence.
 
 ---
 
@@ -113,7 +107,7 @@ comparison limits and source snapshot when describing a passing run.
 
 Each `.json` file contains a JSON array of individual test cases: `[ { ... }, { ... } ]`.
 
-SingleStep and Cartesian DMA accept only this silicon-vector contract. The
+SingleStep accepts only this silicon-vector contract. The
 [upstream format definition](../../../../ref_src/SingleStepTests-680x0/68000/v1/README.md)
 gives `name` no formal meaning; brackets or other description syntax never select
 CPU setup or data interpretation.
@@ -225,7 +219,7 @@ format, including its formal PC and six-field read transaction.
 - `usp`: User Stack Pointer (`u32`)
 - `ssp`: Supervisor Stack Pointer (`u32`)
 - `sr`: Status Register (`u16`) containing condition codes and system flags
-- `pc`: Formal Program Counter (`u32`, points to the opcode address at entry and the next instruction at exit). With the two-word prefetch queue primed, both harnesses set the initial internal PC to `initial.pc.wrapping_add(4)` and `instruction_pc` to `initial.pc`.
+- `pc`: Formal Program Counter (`u32`, points to the opcode address at entry and the next instruction at exit). With the two-word prefetch queue primed, the SingleStep fixture sets the initial internal PC to `initial.pc.wrapping_add(4)` and `instruction_pc` to `initial.pc`.
 - `prefetch`: Two 16-bit words (`[u32; 2]`) in the CPU prefetch queue (`pf0`, `pf1`)
 - `ram`: Array of `[address, byte_value]` pairs (`Vec<[u32; 2]>`)
 
@@ -335,7 +329,7 @@ The test harness lives in `tests/common/`, shared by the integration test target
 Implemented directly in [`crates/test_runner/tests/common/singlestep_runner.rs`](../../../../crates/test_runner/tests/common/singlestep_runner.rs):
 - Instantiates a clean [`TestMemoryBus`](../../../../crates/test_runner/tests/common/test_memory_bus.rs) and injects initial RAM vectors via `bus.load_test_ram()`.
 - Primes CPU registers $D_0-D_7$, $A_0-A_6$, $USP$, $SSP$, $SR$, and Program Counter (accounting for Tom Harte's $+4$ prefetch offset).
-- Initializes `instruction_pc` to the opcode address (`pc - 4` after priming) in both SingleStep and DMA fixtures, so exception frames preserve the instruction address even on the first executed instruction.
+- Initializes `instruction_pc` to the opcode address (`pc - 4` after priming) in SingleStep fixtures, so exception frames preserve the instruction address even on the first executed instruction.
 - Primes prefetch queue registers `ir` and `prefetch`.
 - Drives SingleStep execution CCK-by-CCK via `cpu.step_cck(&mut bus)` to record observed callback clocks.
 
@@ -374,9 +368,6 @@ python tools/verification/verify.py test rust crate test_runner suite test_singl
 python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_move_w
 python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_nop
 
-# Run Cartesian DMA contention permutation test suite
-python tools/verification/verify.py test rust crate test_runner suite test_dma_cartesian
-
 # Run automated architectural compliance suite
 python tools/verification/verify.py check architecture
 
@@ -386,28 +377,36 @@ python tools/verification/verify.py test runner singlestep case test_add_b sampl
 
 ---
 
-## 8. In-Code Test Mutation Strategy (Chip/Fast RAM & DMA Contention)
+## 8. Ordinary CPU Wait-State Tests
 
-To test CPU waiting with synthetic contended and free memory, the test runner applies programmatic mutations in memory without generating duplicate JSON files. This fixture does not execute production Agnus arbitration:
+CPU waiting runs as ordinary crate coverage in
+[`test_cck_bus.rs`](../../../../crates/cpu/tests/test_cck_bus.rs) and
+[`test_micro_archetypes.rs`](../../../../crates/cpu/tests/test_micro_archetypes.rs).
+The [recording fixture](../../../../crates/cpu/tests/common/mod.rs) wraps
+PhysicalMemory and scripts refusals by transfer identity and occurrence.
+It records attempts separately from successful transfers, rejecting wrong
+address, direction, size, data, order, extra transfers and unused scripts.
 
-### 8.1 Memory Classification & Gary Bus Equivalence
-The test harness classifies accessed memory addresses using `MemoryType`:
-- **`MemoryType::ChipRam`**: Contended by Agnus DMA ($000000-$07FFFF); memory bus accesses stall with `BusResult::WaitState` when `chip_ram_blocked` is asserted.
-- **`MemoryType::FastRam`**: Uncontended memory; completely immune to Agnus DMA contention, executing with **zero wait states** even during 100% DMA bus stalls.
+Direct handler tables check unchanged latches/state/memory on each refusal and
+correct values after release. Engine tests check reads waiting in CCK1, writes
+waiting in CCK2 and no memory access in the idle phase. Zero, one and three
+refusals exercise no waiting, a single retry and repeated retries. Real
+instruction cases cover long halves, postincrement/predecrement, extension and
+branch prefetch, stack/exception transfers, RMW, MOVEM and MOVEP. Later transfers
+can wait again after earlier successful work. Entry ALU effects must not repeat.
+The first refusal can include legitimate setup or MOVEM dummy-state selection;
+subsequent refusals retain active state, including step and countdown.
 
-### 8.2 Full Cartesian Permutation Engine (`run_dma_full_cartesian_permutation`)
-Rather than testing a small subset of arbitrary schedules, the test harness evaluates the full combinatorial Cartesian product across both dimensions:
-1. **Address Permutation Space ($2^k$):** Memory cells accessed by the instruction are dynamically discovered during an uncontended pre-flight pass (`run_preflight`) and clustered into up to $k \le 4$ functional roles (`cluster_contacts`). Every combination of `ChipRam` vs `FastRam` is swept.
-2. **DMA Schedule Permutation Space ($2^M$):** A window of at most six CCKs is evaluated across all $2^M$ stalled/free patterns. Longer instructions use a deterministic window position rather than every schedule across the whole instruction.
-3. **Hardware Invariants Verified per Run:**
-   - **State Invariance:** CPU registers ($D_0-D_7$, $A_0-A_6$, $USP$, $SSP$, $SR$, $PC$, prefetch) and RAM contents match the golden uncontended run 100% bit-identically across all permutations.
-   - **Cycle Invariance:** Contended execution total CPU clocks satisfy $C = C_0 + 2 \times \text{wait\_cycles}$, where wait cycles only accumulate when contested `ChipRam` cells are accessed during an active DMA stall.
-   - **Fast RAM Immunity:** When all accessed contacts are assigned `FastRam`, wait states are strictly 0 ($C = C_0$) regardless of active DMA stalls.
+Expected transfers are authored in each fixture, not discovered by a clean run.
+Tests count actual bus refusals and require documented base clocks plus two CPU
+clocks per refusal. They do not replay every opcode/vector or enumerate memory
+placements and DMA schedules. The former Cartesian suite and its exclusive
+classification/inversion support are removed. This deliberately reduces vector
+and schedule breadth; isolated CPU waits do not establish production arbitration.
 
-### 8.3 Memory Inversion Guard (`invert_chip_ram`)
-During stalled CCK cycles, the test bus temporarily inverts contested Chip RAM cells (`bus.invert_chip_ram()`) before stepping the CPU, and re-inverts them afterwards. Any unauthorized read during a wait state captures inverted/corrupted data, and any unauthorized write modifies inverted storage which becomes permanently corrupted upon un-inversion, immediately failing state assertions.
-
----
+```powershell
+python tools/verification/verify.py test rust crate cpu
+```
 
 ## 9. Physical Hardware Silicon Verification & Discrepancy Diagnosis
 
@@ -494,5 +493,5 @@ python tools/verification/verify.py test runner singlestep case test_add_b sampl
 - [SingleStep launcher](../../../../tools/verification/run_singlestep.py): Builds optimized test artifacts, launches the aggregate test and checks Rust completion metadata.
 - [Aggregate SingleStep suite](../../../../crates/test_runner/tests/common/singlestep_suite.rs): Joins group workers and calls final report aggregation before returning the overall result.
 - [SingleStep reporting helpers](../../../../crates/test_runner/tests/common/reporting.rs): Persist group results and aggregate saved history with current-run metadata.
-- [DMA Cartesian Contention Test Suite](../../../../crates/test_runner/tests/test_dma_cartesian.rs): Cycle invariance verification across DMA wait-state permutations.
+- [Ordinary CPU Wait Tests](../../../../crates/cpu/tests/test_micro_archetypes.rs): Phase, retry, state and independently counted waiting cost.
 

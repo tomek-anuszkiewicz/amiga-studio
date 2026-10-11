@@ -3,7 +3,7 @@
 `corrections.json` contains approved corrections to specific upstream records.
 It is tracked independently of the ignored, reproducible `ref_src/` tree. The
 shared loader embeds this catalog at compile time, so adding a catalog entry
-requires rebuilding the tests. SingleStep and Cartesian DMA use the same loader.
+requires rebuilding the tests. SingleStep uses the shared vector loader.
 
 Each entry identifies a suite filename and an exact test name, protects the whole
 original record with SHA-256, and replaces only explicitly listed `final` fields.

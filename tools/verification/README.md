@@ -11,15 +11,14 @@ execution. `case` is a substring filter, including Python qualified test names.
 
 | Sentence | Scope |
 | --- | --- |
-| `commit` | Required commit profile; excludes full DMA and SingleStep suites |
-| `milestone [singlestep] [dma]` | Full language audit and both full CPU suites; selectors do not duplicate suites |
+| `commit` | Required commit profile; excludes full SingleStep |
+| `milestone [singlestep]` | Full language audit and full SingleStep; the selector does not duplicate execution |
 | `test rust [unit|integration|all|workspace]` | Diagnostic tiers; default is unit plus integration; workspace excludes test_runner |
 | `test rust crate NAME [suite NAME] [case FILTER]` | One Cargo package, optionally one integration target and filter |
 | `test python` | Tool contracts affected by changed owning inputs and shared dependencies |
 | `test python directory PATH [file PATTERN] [case FILTER]` | One Python test directory and optional discovery filters |
-| `test runner [standard|harness|silicon]` | Standard harness by default (transaction checker regressions), Cartesian DMA, or both full CPU sets |
+| `test runner [standard|silicon]` | Standard harness by default (transaction checker regressions), or full SingleStep |
 | `test runner singlestep [case FILTER] [full|sample N]` | Full vectors by default; explicit positive sampling limit overrides inherited environment |
-| `test runner dma [case FILTER]` | Cartesian DMA, optionally filtered |
 | `check all` | All commit quality gates without crate coverage or ordinary tests |
 | `check architecture [case FILTER]` | Python repository architecture checks; no Rust compilation |
 | `check english [files PATH...]` | Full language audit or explicit files |
@@ -60,7 +59,7 @@ An explicit `test_singlestep` target uses the launcher with the unoptimized
 `verification`: release optimization with debug symbols, debug assertions and
 overflow checks enabled. The launcher checks the CPU library and selected Cargo artifact's
 settings and rejects configuration overrides that disable these checks.
-Ordinary crate tests, coverage and Cartesian DMA retain their existing profiles.
+Ordinary crate tests and coverage retain their existing profiles.
 The dedicated SingleStep sentence explicitly chooses full or sampled execution.
 Skill-owned scripts remain owned by their skills. Bootstrap, conversion,
 indexing, worktree management, diary appending, tool installation and baseline
@@ -172,7 +171,7 @@ python tools/verification/verify.py commit
 python tools/verification/verify.py milestone
 ```
 
-Routine commits use only the first command. The profiles are invoked separately. Commit first runs ordinary workspace crate tests with coverage, reports the measured coverage, then runs quality gates, standard `test_runner` suites and Python tool contracts without coverage instrumentation. It never selects full Cartesian DMA or SingleStepTests, even for CPU changes. Every commit scans all repository-owned text files against the English dictionary and reviewed project vocabulary, regardless of staging or changes, using `tools/verification/checks/check_english.json`. Milestone runs that language audit plus both full CPU suites, including on a clean tree so already committed milestone work is covered. It does not repeat the other commit checks. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification.
+Routine commits use only the first command. The profiles are invoked separately. Commit first runs ordinary workspace crate tests with coverage, reports the measured coverage, then runs quality gates, standard `test_runner` suites and Python tool contracts without coverage instrumentation. It never selects full SingleStepTests, even for CPU changes. Every commit scans all repository-owned text files against the English dictionary and reviewed project vocabulary, regardless of staging or changes, using `tools/verification/checks/check_english.json`. Milestone runs that language audit plus full SingleStepTests, including on a clean tree so already committed milestone work is covered. It does not repeat the other commit checks. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification.
 
 Python tool contracts live beside their owning tools. Commit verification runs
 `unittest discover` separately for each directory below; the tools do not run
@@ -218,16 +217,15 @@ are run by their owning skills. Follow
 triggers. Semantic milestone review is required by its skill. A successful
 `verify.py milestone` alone does not certify these separate skill checks.
 
-DMA and SingleStep run automatically at milestones. Independent full runs remain available for explicit diagnosis or user requests:
+Full SingleStep runs automatically at milestones. Independent full runs remain available for explicit diagnosis or user requests:
 
 ```powershell
-python tools/verification/verify.py test runner dma
 python tools/verification/verify.py test runner singlestep
 python tools/verification/verify.py test runner silicon
 python tools/verification/verify.py milestone --plan
 ```
 
-With no completion profile, `test runner dma` runs only Cartesian DMA and `test runner singlestep` runs only full SingleStepTests. Standalone sets use the current working tree, require no staging, and run no quality gates, ordinary crate tests, or Python contracts. Milestone always selects both full suites once; optional milestone selectors do not duplicate them. Commit rejects CPU suite selectors. Standalone runs do not replace completion verification. Add `--plan` to inspect commands without executing checks. There are no hooks. Unknown arguments are rejected.
+With no completion profile, `test runner singlestep` runs only full SingleStepTests. Standalone sets use the current working tree, require no staging, and run no quality gates, ordinary crate tests, or Python contracts. Milestone always selects full SingleStep once; its optional selector does not duplicate execution. Commit rejects CPU suite selectors. Standalone runs do not replace completion verification. Add `--plan` to inspect commands without executing checks. There are no hooks. Unknown arguments are rejected.
 
 The verifier includes formatting, Clippy, architecture rules, and per-commit hardware/code audits. Ordinary-crate coverage measures executed code; there is no public-function name-matching gate. All profiles accept clean trees, unstaged changes and new files. Change selection includes both endpoints of renames. Completion evidence must match the final committed source; rerun verification if that source changes. All profiles reject results if the source or index changes during execution. Ignored diagnostics belong in `.agent/tmp/`. The verifier does not stage or commit files. It only selects external commands, launches them and aggregates exit codes; source/index stability is an orchestration guard. Command selection is declared in [commands.py](commands.py); [cli.py](cli.py) owns the grammar, [execution.py](execution.py) owns logging, and [repository.py](repository.py) owns source identity. During execution, `[RUN]` identifies the active check and `[CMD]` prints its exact command immediately before launching it; explicit environment overrides appear as `[ENV]`. Full child output is saved in a unique log under `.agent/tmp/verify/`. `--log-level full|warn|error` controls child output: `full` streams everything, `warn` (default) shows warnings and errors, and `error` shows only errors. Filtered modes include up to 12 indented diagnostic context lines, limited to 300 characters per line. Commands and final results remain visible in every mode. If a failed command emits no recognized error marker, its last 12 log lines are shown as failure context; failed commands also show the full log path before the final FAIL result. There is no initial test-command preview. `--plan` starts with an explicit preview-only message and does not launch commands.
 
@@ -236,29 +234,29 @@ Focused development diagnostics also use `verify.py`:
 ```powershell
 python tools/verification/verify.py test rust unit
 python tools/verification/verify.py test rust integration
-python tools/verification/verify.py test runner harness
+python tools/verification/verify.py test runner standard
 python tools/verification/verify.py test rust all --plan
 ```
 
 `test rust unit` runs the configured ordinary crate tests;
 `test rust integration` runs memory_bus, machine_loop, debugger and GUI tests;
-`test rust all` combines those two tiers. `test runner harness` runs
-Cartesian DMA. `test runner standard` selects ordinary harness suites, including
+`test rust all` combines those two tiers. `test runner standard` selects ordinary harness suites, including
 transaction checker regressions and SingleStep override contracts;
-`test runner silicon` selects full SingleStepTests and Cartesian DMA.
+`test runner silicon` selects full SingleStepTests.
 Focused commands do not run coverage or completion gates. With no arguments,
 the entry point displays help without executing commands.
 
-The two expensive environments use CPU + synthetic TestMemoryBus, not production MemoryBus or PhysicalMemory. Their selection is owned by [commands.py](commands.py):
+SingleStep uses CPU + synthetic TestMemoryBus, not production MemoryBus or
+PhysicalMemory. Its selection is owned by [commands.py](commands.py):
 
-| Trigger | Cartesian DMA | Full SingleStepTests |
-| --- | --- | --- |
-| Ordinary edits or task completion | No automatic full run | No automatic full run |
-| Commit, including CPU and harness changes | No | No |
-| Explicit suite selection | `test runner dma` | `test runner singlestep` |
-| Milestone, including a clean working tree | Full suite | Full suite |
+| Trigger | Full SingleStepTests |
+| --- | --- |
+| Ordinary edits or task completion | No automatic full run |
+| Commit, including CPU and harness changes | No |
+| Explicit suite selection | `test runner singlestep` |
+| Milestone, including a clean working tree | Full suite |
 
-Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory. The separate milestone set runs the full language audit and both full CPU suites; vAmigaTS Cargo suites and automatic chipset/capture runs have been removed.
+Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory. The separate milestone set runs the full language audit and full SingleStepTests; vAmigaTS Cargo suites and automatic chipset/capture runs have been removed.
 
 Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks and external sampling profiles run explicitly. CPU benchmark regression test targets, the old chipset throughput workload and capture execution commands have been removed. Retained CPU baselines are measurement comparison inputs. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
 
@@ -312,29 +310,27 @@ Running `.\tools\bootstrap\bootstrap.ps1 -Sources` automatically scans for compr
 
 ---
 
-## 2. Cartesian DMA Contention Verification
+## 2. Ordinary CPU Wait-State Verification
 
-Checks CPU waiting with a synthetic `TestMemoryBus`, not production Agnus DMA
-arbitration. The suite samples 5% of vectors and enumerates the following
-combinations for each selected case:
-
-- **Address Permutations ($2^k$):** Sweeps all role assignments of memory cells touched by the instruction (`ChipRam` vs `FastRam`).
-- **DMA Schedule Permutations ($2^M$):** Enumerates stalled/free patterns in a window of at most six CCKs. For longer instructions the window position is selected deterministically; this is not every schedule across their entire execution.
-- **Asserted State Constraints:**
-  1. *Cycle Invariance:* $C = C_0 + 2 \times \text{wait\_states}$
-  2. *Fast RAM Immunity:* $C = C_0$ with zero wait states when memory addresses point to Fast RAM.
-  3. *State Invariance:* Register values and RAM contents are 100% bit-identical to the uncontended golden run.
-
-The uncontended run is produced by the same emulator. It establishes a relative
-invariance property under contention, not independent absolute CPU correctness.
+The existing CPU crate suites use PhysicalMemory and a small recording
+AddressBus wrapper to deny specific transfers zero, once or repeatedly. They
+check read CCK1/write CCK2 waiting, idle phases without accesses, unchanged
+latches or memory during refusal, stable retry identity and one successful
+transfer. Real instruction fixtures cover long halves, address updates, RMW,
+prefetch, stack/exception transfers, MOVEM and MOVEP. Actual bus refusals are
+counted independently of elapsed clocks. Later transfers can wait again after
+an earlier successful access.
 
 ```powershell
-# Run full Cartesian DMA contention test suite
-python tools/verification/verify.py test rust crate test_runner suite test_dma_cartesian
-
-# Run specific sub-suite
-python tools/verification/verify.py test rust crate test_runner suite test_dma_cartesian case test_dma_cartesian_system_and_traps
+python tools/verification/verify.py test rust crate cpu
 ```
+
+These tests run in ordinary crate selection and commit coverage. They do not
+load silicon vectors or enumerate memory placements/DMA schedules. Production
+MemoryBus and Agnus arbitration retain separate integration tests. The former
+Cartesian suite, exclusive helpers and DMA/harness selectors are removed.
+See [CPU wait coverage](../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#8-ordinary-cpu-wait-state-tests)
+for the observation boundary.
 
 ---
 

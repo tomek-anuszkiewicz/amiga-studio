@@ -1,7 +1,7 @@
-//! Synthetic Test Memory Bus for CPU SingleStepTests & Contention Verification
+//! Synthetic Test Memory Bus for CPU SingleStepTests
 //!
 //! Provides an isolated memory space with configurable unmapped defaults,
-//! cycle-exact transaction recording, and DMA stall simulation without authentic
+//! cycle-exact transaction recording without authentic
 //! Amiga custom chip or ROM overhead.
 //!
 //! Supports two backend storage models:
@@ -11,17 +11,7 @@
 
 use super::transactions::{BusAccessSize, RecordedTransaction};
 use physical_memory::{AddressBus, BusResult};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-/// Classification of memory type for contention and bus arbitration verification
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum MemoryType {
-    /// Chip RAM (contended): Blocked during Agnus DMA; wait states apply
-    ChipRam,
-    /// Fast RAM (uncontended): Zero wait states, immune to DMA contention
-    FastRam,
-}
 
 /// 24-bit address space size (16 MB = 16,777,216 bytes)
 pub const FLAT_TEST_RAM_SIZE: usize = 16 * 1024 * 1024;
@@ -46,12 +36,6 @@ pub struct TestMemoryBus {
     pub callback_clock: u32,
     /// Value returned when reading unpopulated memory (defaults to 0xFF, configurable to 0x00)
     pub unmapped_byte: u8,
-    /// Flag simulating custom chip (Agnus DMA) contention stalling CPU Chip RAM access
-    pub chip_ram_blocked: bool,
-    /// Explicit classification for specific addresses or word regions
-    pub address_classification: HashMap<u32, MemoryType>,
-    /// Counter of write attempts intercepted during DMA wait states
-    pub stall_write_attempts: usize,
 }
 
 impl Default for TestMemoryBus {
@@ -68,9 +52,6 @@ impl TestMemoryBus {
             transaction_log: None,
             callback_clock: 0,
             unmapped_byte: 0xFF,
-            chip_ram_blocked: false,
-            address_classification: HashMap::new(),
-            stall_write_attempts: 0,
         }
     }
 
@@ -84,9 +65,6 @@ impl TestMemoryBus {
             transaction_log: None,
             callback_clock: 0,
             unmapped_byte: 0x00,
-            chip_ram_blocked: false,
-            address_classification: HashMap::new(),
-            stall_write_attempts: 0,
         }
     }
 
@@ -105,9 +83,6 @@ impl TestMemoryBus {
         if let Some(log) = &mut self.transaction_log {
             log.clear();
         }
-        self.address_classification.clear();
-        self.chip_ram_blocked = false;
-        self.stall_write_attempts = 0;
         self.callback_clock = 0;
     }
 
@@ -161,7 +136,7 @@ impl TestMemoryBus {
         }
     }
 
-    /// Inverts all bytes in test memory (used by DMA contention tests to detect unauthorized bus writes)
+    /// Inverts populated bytes and the unmapped default for memory mutation variants
     pub fn invert_test_memory(&mut self) {
         match &mut self.storage {
             TestMemoryStorage::Flat { mem, dirty } => {
@@ -177,30 +152,6 @@ impl TestMemoryBus {
             }
         }
         self.unmapped_byte = !self.unmapped_byte;
-    }
-
-    /// Inverts bytes in test memory that belong to Chip RAM (contended regions).
-    /// Used by DMA contention tests to detect unauthorized bus reads or writes during stalls,
-    /// while preserving uncontended Fast RAM contents intact.
-    pub fn invert_chip_ram(&mut self) {
-        let classifications = &self.address_classification;
-        match &mut self.storage {
-            TestMemoryStorage::Flat { mem, dirty } => {
-                for &addr in dirty.iter() {
-                    if Self::is_chip_ram_target_internal(classifications, addr) {
-                        let idx = (addr as usize) & 0x00FF_FFFF;
-                        mem[idx] = !mem[idx];
-                    }
-                }
-            }
-            TestMemoryStorage::Sparse(map) => {
-                for (&addr, val) in map.iter_mut() {
-                    if Self::is_chip_ram_target_internal(classifications, addr) {
-                        *val = !*val;
-                    }
-                }
-            }
-        }
     }
 
     /// Side-effect-free byte read for debugger inspection and test result assertions
@@ -264,42 +215,11 @@ impl TestMemoryBus {
             }
         }
     }
-
-    /// Sets the memory classification (Chip, Fast) for an address
-    #[inline]
-    pub fn set_address_type(&mut self, addr: u32, mem_type: MemoryType) {
-        self.address_classification.insert(addr, mem_type);
-    }
-
-    #[inline]
-    fn is_chip_ram_target_internal(classification: &HashMap<u32, MemoryType>, addr: u32) -> bool {
-        if classification.is_empty() {
-            return false;
-        }
-        // 1. Check explicit classification first (exact byte or word boundary)
-        if let Some(&mem_type) = classification.get(&addr) {
-            return mem_type == MemoryType::ChipRam;
-        }
-        if let Some(&mem_type) = classification.get(&(addr & !1)) {
-            return mem_type == MemoryType::ChipRam;
-        }
-        // If not explicitly classified as Chip RAM, it is uncontended (Fast RAM)
-        false
-    }
-
-    /// Checks whether an address targets Chip RAM (subject to DMA contention)
-    #[inline]
-    pub fn is_chip_ram_target(&self, addr: u32) -> bool {
-        Self::is_chip_ram_target_internal(&self.address_classification, addr)
-    }
 }
 
 impl AddressBus for TestMemoryBus {
     #[inline]
     fn read_byte(&mut self, addr: u32) -> BusResult<u8> {
-        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
-            return BusResult::WaitState;
-        }
         let val = match &self.storage {
             TestMemoryStorage::Flat { mem, .. } => mem[(addr as usize) & 0x00FF_FFFF],
             TestMemoryStorage::Sparse(map) => *map.get(&addr).unwrap_or(&self.unmapped_byte),
@@ -318,9 +238,6 @@ impl AddressBus for TestMemoryBus {
 
     #[inline]
     fn read_word(&mut self, addr: u32) -> BusResult<u16> {
-        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
-            return BusResult::WaitState;
-        }
         let (b0, b1) = match &self.storage {
             TestMemoryStorage::Flat { mem, .. } => {
                 let idx = (addr as usize) & 0x00FF_FFFF;
@@ -348,10 +265,6 @@ impl AddressBus for TestMemoryBus {
 
     #[inline]
     fn write_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
-        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
-            self.stall_write_attempts += 1;
-            return BusResult::WaitState;
-        }
         match &mut self.storage {
             TestMemoryStorage::Flat { mem, dirty } => {
                 let idx = (addr as usize) & 0x00FF_FFFF;
@@ -376,10 +289,6 @@ impl AddressBus for TestMemoryBus {
 
     #[inline]
     fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
-        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
-            self.stall_write_attempts += 1;
-            return BusResult::WaitState;
-        }
         let bytes = val.to_be_bytes();
         match &mut self.storage {
             TestMemoryStorage::Flat { mem, dirty } => {

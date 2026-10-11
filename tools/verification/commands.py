@@ -12,18 +12,14 @@ def singlestep_command(profile="verification", case=None):
     return command
 
 
-# Full synthetic CPU suites run automatically only at milestones.
-# These environments use TestMemoryBus, not production MemoryBus/PhysicalMemory.
-def select_tests(root, mode, verify_dma=False, verify_singlestep=False):
+# Full silicon verification runs automatically only at milestones.
+# SingleStep uses TestMemoryBus, not production MemoryBus/PhysicalMemory.
+def select_tests(root, mode, verify_singlestep=False):
     completion = mode == "commit"
-    dma = mode == "milestone" or verify_dma
     singlestep = mode == "milestone" or verify_singlestep
     commands = []
     if completion:
         commands.extend(standard_harness(root))
-    if dma:
-        commands.append(("Cartesian DMA", ["cargo", "test", "-p", "test_runner", "--test",
-                                           "test_dma_cartesian", "--", "--quiet"], {}))
     if singlestep:
         commands.append(("Full SingleStepTests", singlestep_command(),
                          {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"}))
@@ -150,7 +146,7 @@ def python_commands(directory=None, pattern=None, case=None, changes=None):
 
 def standard_harness(root):
     suites = {p.stem for p in (root / "crates/test_runner/tests").glob("test_*.rs")}
-    standard = suites - {"test_dma_cartesian", "test_singlestep"}
+    standard = suites - {"test_singlestep"}
     if not standard:
         return []
     command = ["cargo", "test", "--no-fail-fast", "-p", "test_runner"]
@@ -187,37 +183,24 @@ def harness_commands(words):
     scope = words[0] if words else "standard"
     if scope == "standard" and len(words) <= 1:
         return standard_harness(REPO_ROOT)
-    if scope == "harness" and len(words) == 1:
-        return select_tests(REPO_ROOT, "standalone", verify_dma=True)
     if scope == "silicon" and len(words) == 1:
-        return select_tests(REPO_ROOT, "standalone", verify_dma=True, verify_singlestep=True)
-    if scope not in ("singlestep", "dma"):
-        raise ValueError("Runner tests select standard, harness, singlestep or dma")
+        return select_tests(REPO_ROOT, "standalone", verify_singlestep=True)
+    if scope != "singlestep":
+        raise ValueError("Runner tests select standard, silicon or singlestep")
     selectors = list(words[1:])
     full = bool(selectors) and selectors[-1] == "full"
     if full:
         selectors.pop()
     values = keyword_values(selectors, ("case", "sample"))
-    if scope == "dma" and (full or "sample" in values):
-        raise ValueError("Sampling applies only to SingleStepTests")
     if full and "sample" in values:
         raise ValueError("Choose full or sample N, not both")
-    env = {}
-    if scope == "singlestep":
-        env = {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"}
-        if "sample" in values:
-            count = int(values["sample"])
-            if count <= 0:
-                raise ValueError("Sample count must be positive")
-            env = {"SINGLESTEP_FULL": "0", "SINGLESTEP_LIMIT": str(count)}
-    suite = "test_singlestep" if scope == "singlestep" else "test_dma_cartesian"
-    if scope == "singlestep":
-        command = singlestep_command(case=values.get("case"))
-    else:
-        command = ["cargo", "test", "-p", "test_runner", "--test", suite, "--", "--quiet"]
-        if "case" in values:
-            command.append(values["case"])
-    return [("SingleStepTests" if scope == "singlestep" else "Cartesian DMA", command, env)]
+    env = {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"}
+    if "sample" in values:
+        count = int(values["sample"])
+        if count <= 0:
+            raise ValueError("Sample count must be positive")
+        env = {"SINGLESTEP_FULL": "0", "SINGLESTEP_LIMIT": str(count)}
+    return [("SingleStepTests", singlestep_command(case=values.get("case")), env)]
 
 
 def check_commands(name, words):
@@ -293,11 +276,11 @@ def runner_commands(action, words):
 def select_phases(args, changes):
     from cli import keyword_values
     if args.command in ("commit", "milestone"):
-        if len(set(args.sets)) != len(args.sets) or set(args.sets) - {"singlestep", "dma"}:
-            raise ValueError("Completion profiles accept each of singlestep and dma at most once")
+        if len(set(args.sets)) != len(args.sets) or set(args.sets) - {"singlestep"}:
+            raise ValueError("Completion profiles accept singlestep at most once")
         coverage = select_coverage_commands(args.command)
         commands = select_quality_commands(args.command) + select_tests(
-            REPO_ROOT, args.command, verify_dma="dma" in args.sets, verify_singlestep="singlestep" in args.sets)
+            REPO_ROOT, args.command, verify_singlestep="singlestep" in args.sets)
         phases = []
         if coverage:
             phases.append(("Coverage", coverage))

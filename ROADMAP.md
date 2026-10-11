@@ -163,7 +163,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Once a representative whole-machine workload is executable, compare fresh throughput and external sampling profiles before and after the optimization; CPU-only benchmarks do not measure Agnus scheduling.
   - **Verification Gate:**
     - Zero regression across all active baseline OCS vAmigaTS suites.
-    - `python tools/verification/verify.py test rust crate test_runner suite test_dma_cartesian`
+    - Run DMA, Agnus and production memory_bus regression tests, including contention and pending CPU-request arbitration; CPU-only waiting tests do not validate scheduler changes.
 
 ---
 

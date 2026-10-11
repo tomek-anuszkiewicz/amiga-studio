@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "physical_memory"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-10
+updated: 2026-10-11
 related: ["[Agnus.md](Agnus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[RTC.md](RTC.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/memory_bus"
@@ -82,7 +82,7 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
   - Writes to unmapped space are silent no-ops and must never trigger host panics or out-of-bounds indexing.
 - **Decoupled Architecture (`TestMemoryBus` vs `MemoryBus`):**
   - Real emulation strictly uses `MemoryBus`, with unmapped open bus space defaulting to `$FF`. `MemoryBus` is completely free of test-harness branching or logging in its read/write bank dispatch.
-  - Synthetic CPU test vectors (`SingleStepTests`, Cartesian DMA contention sweeps) execute against `TestMemoryBus`, which encapsulates test RAM, configurable unmapped byte defaults (`0x00`), and automatic bus cycle transaction recording.
+  - Synthetic CPU test vectors (`SingleStepTests`) execute against `TestMemoryBus`, which encapsulates test RAM, configurable unmapped byte defaults (`0x00`), and automatic bus cycle transaction recording.
   - **Dual Storage Engine Architecture**:
     - `TestMemoryStorage::Sparse`: Powered by `std::collections::HashMap`, used by default in `TestMemoryBus::new()` for arbitrary unmapped defaults (`0xFF` open bus simulation).
     - `TestMemoryStorage::Flat`: Powered by a pre-allocated 16 MB buffer (`Box<[u8]>`) and a dirty address tracking list (`Vec<u32>`), created via `TestMemoryBus::new_flat()`. Provides $O(1)$ array accesses and $O(K)$ resets (`bus.clear()`) between test cases, eliminating all dynamic heap allocations in inner test execution loops.

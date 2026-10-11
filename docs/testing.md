@@ -17,7 +17,7 @@ wrong clock phase. Verification therefore uses several complementary approaches:
 | Crate tests | Does an individual component behave as expected? |
 | Integration tests | Do the CPU, bus, machine loop and peripherals coordinate correctly? |
 | 68000 silicon vectors | Does an instruction match captured state, instruction clocks and the timed bus callback sequence? |
-| Synthetic DMA contention | Does the CPU wait correctly when bus access is blocked? |
+| CPU wait-state crate tests | Does the CPU retain and retry a refused transfer correctly? |
 | Whole-machine captures | Does a selected hardware program produce the expected visible result? |
 | Performance measurements | How much host time does an emulated workload consume? |
 
@@ -30,23 +30,25 @@ The CPU harness uses Tom Harte's SingleStepTests, a large collection of instruct
 cases captured from physical 68000 hardware. Every executed vector compares
 registers, listed RAM bytes, instruction clocks and timed bus callbacks with its
 JSON reference. Sampling limits the number of inputs and never weakens those
-comparisons. SingleStep and Cartesian DMA use the same silicon-vector format;
+comparisons. SingleStep uses the silicon-vector format;
 test names are descriptions and do not select how registers or bus data are
 interpreted. Internal delays advance the expected transaction timeline, so correct
 total clocks do not conceal an early or late read or write. Existing state masks
 and the callback interface's signal limits are documented in the
 [CPU verification specification](../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification).
 
-Both harnesses use the [reviewed SingleStep override catalog](../crates/test_runner/tests/overrides/singlestep/README.md)
+SingleStep uses the [reviewed SingleStep override catalog](../crates/test_runner/tests/overrides/singlestep/README.md)
 for approved corrections to exact records, with the originals retained in `ref_src`.
 
-A separate contention harness varies memory placement and synthetic schedules of
-blocked and available bus slots. It checks that waiting adds the expected cycles
-without changing the instruction's result, and that noncontended memory access
-remains unaffected. It samples vectors and limits schedule permutations to a
-bounded CCK window. Both harnesses use a synthetic test bus. Their success does
-not by itself verify the production memory bus or the complete chipset scheduler;
-those relationships need integration tests.
+Ordinary CPU tests use PhysicalMemory and a small recording wrapper to refuse
+specific transfers zero, once or repeatedly, then release them. They check CCK
+phases, stable retry identity, exactly one successful transfer and waiting cost
+from independently counted refusals. Long halves, address updates, prefetch,
+stack/exception paths, read-modify-write and MOVEM/MOVEP progress have focused
+coverage. These tests run with ordinary CPU crate tests. They do not verify
+production Agnus arbitration or the complete chipset scheduler; those
+relationships need integration tests. Memory-placement and DMA-schedule
+permutation tests have been removed.
 
 For source and procedure details, start with [test_runner](../crates/test_runner/)
 and the [silicon verification skill](../.agents/skills/m68k-singlestep-test/SKILL.md).
@@ -78,9 +80,9 @@ python tools/verification/verify.py commit
 It runs standard tests and quality checks on the current working tree, including
 unchanged files where the check's scope requires them. Staging is not required,
 and the command does not create a commit. Ordinary task completion uses relevant
-focused checks. The full silicon and contention suites run automatically at
-milestone closure or explicitly for diagnosis; changes alone do not select them
-in the commit profile. Use
+focused checks. Full silicon verification runs automatically at
+milestone closure or explicitly for diagnosis; changes alone do not select it
+in the commit profile. CPU waiting tests run with ordinary crate tests. Use
 `python tools/verification/verify.py --help` for the available profiles and
 [tools/verification/README.md](../tools/verification/README.md#completion-verification) for execution details.
 
