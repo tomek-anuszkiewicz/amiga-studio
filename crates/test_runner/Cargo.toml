@@ -5,10 +5,11 @@ edition.workspace = true
 license.workspace = true
 
 [dev-dependencies]
-cpu = { workspace = true }
-physical_memory = { workspace = true }
 serde = { workspace = true, features = ["derive", "std"] }
 serde_json = { workspace = true, features = ["std"] }
+
+cpu = { workspace = true }
+physical_memory = { workspace = true }
 flate2 = { workspace = true }
 sha2 = { workspace = true }
 

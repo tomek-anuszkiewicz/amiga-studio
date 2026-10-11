@@ -25,10 +25,11 @@ codebases
 const
 contextlib
 copyfile
+copyfileobj
 copytree
+crlf
 css
 csv
-crlf
 ctx
 ctypes
 cwd
@@ -76,6 +77,7 @@ fs
 fullmatch
 fx
 getattr
+getpid
 getters
 getuser
 getvalue
@@ -110,8 +112,10 @@ iterdir
 jpg
 json
 kwargs
+libtest
 lstrip
 lto
+magicmock
 maxdepth
 maxlen
 memcpy
@@ -121,6 +125,7 @@ mpsc
 msvcrt
 namespaces
 nnnn
+nocapture
 nrtb
 ntfs
 num
@@ -175,6 +180,7 @@ stdin
 stdout
 str
 strftime
+stringify
 struct
 subdir
 subdirs
@@ -198,6 +204,7 @@ unittest
 usize
 utf
 util
+uuid
 vals
 vec
 webp

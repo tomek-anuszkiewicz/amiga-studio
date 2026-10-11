@@ -23,8 +23,8 @@ class SelectionTests(unittest.TestCase):
     def test_focused_rust_preserves_suite_and_case_without_completion(self):
         commands = selected("test rust crate test_runner suite test_singlestep case test_sub")
         self.assertEqual(len(commands), 1)
-        self.assertEqual(commands[0][1], ["cargo", "test", "-p", "test_runner", "--test",
-                                         "test_singlestep", "--", "--quiet", "test_sub"])
+        self.assertEqual(commands[0][1], [sys.executable, "tools/verification/run_singlestep.py",
+                                         "--profile", "test", "--case", "test_sub"])
         self.assertEqual(commands[0][2], {})
 
     def test_runner_build_compiles_test_and_benchmark_targets_without_execution(self):
@@ -91,7 +91,8 @@ class SelectionTests(unittest.TestCase):
     def test_explicit_cpu_sets_run_once_alongside_automatic_selection(self):
         commands = selected("milestone singlestep dma", ["crates/cpu/src/cpu.rs"])
         for suite in ("test_singlestep", "test_dma_cartesian"):
-            self.assertEqual(sum(suite in item[1] for item in commands), 1)
+            target = "tools/verification/run_singlestep.py" if suite == "test_singlestep" else suite
+            self.assertEqual(sum(target in item[1] for item in commands), 1)
 
     def test_milestone_retains_separate_scope(self):
         for changes in ([], ["crates/cpu/src/cpu.rs"], ["docs/testing.md"]):
@@ -100,6 +101,7 @@ class SelectionTests(unittest.TestCase):
             self.assertTrue(commands[0][1][-1].endswith("check_english.py"))
             self.assertEqual(commands[1][0], "Cartesian DMA")
             self.assertEqual(commands[2][2], {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})
+            self.assertEqual(commands[2][1][-2:], ["--profile", "verification"])
 
     def test_commit_keeps_coverage_quality_and_all_python_directories(self):
         commands = selected("commit")

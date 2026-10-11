@@ -107,6 +107,7 @@ def execute_command(command, overrides, log_level="warn"):
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUNBUFFERED"] = "1"
+    env["VERIFICATION_LOG_LEVEL"] = log_level
     env.update(overrides)
     if overrides:
         print(f"[ENV] {' '.join(f'{key}={value}' for key, value in overrides.items())}", flush=True)

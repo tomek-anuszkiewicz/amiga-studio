@@ -361,3 +361,87 @@ impl std::fmt::Display for TestFailure {
 }
 
 impl std::error::Error for TestFailure {}
+
+impl From<&TestFailure> for super::reporting::TestFailureSummary {
+    fn from(f: &TestFailure) -> Self {
+        let short_error = if let Some(diff) = f.diffs.first() {
+            match diff {
+                StateDiff::StatusRegister {
+                    diverging_flags, ..
+                } => {
+                    format!("SR mismatch: {}", diverging_flags.join(", "))
+                }
+                StateDiff::DataRegister {
+                    reg,
+                    actual,
+                    expected,
+                } => {
+                    format!(
+                        "D{} mismatch: got 0x{:08X}, expected 0x{:08X}",
+                        reg, actual, expected
+                    )
+                }
+                StateDiff::AddressRegister {
+                    reg,
+                    actual,
+                    expected,
+                } => {
+                    format!(
+                        "A{} mismatch: got 0x{:08X}, expected 0x{:08X}",
+                        reg, actual, expected
+                    )
+                }
+                StateDiff::ProgramCounter { actual, expected } => {
+                    format!(
+                        "PC mismatch: got 0x{:08X}, expected 0x{:08X}",
+                        actual, expected
+                    )
+                }
+                StateDiff::RamByte {
+                    address,
+                    actual,
+                    expected,
+                } => {
+                    format!(
+                        "RAM at 0x{:06X}: got 0x{:02X}, expected 0x{:02X}",
+                        address, actual, expected
+                    )
+                }
+                StateDiff::UserStackPointer { actual, expected } => {
+                    format!(
+                        "USP mismatch: got 0x{:08X}, expected 0x{:08X}",
+                        actual, expected
+                    )
+                }
+                StateDiff::SupervisorStackPointer { actual, expected } => {
+                    format!(
+                        "SSP mismatch: got 0x{:08X}, expected 0x{:08X}",
+                        actual, expected
+                    )
+                }
+                StateDiff::CycleLength { actual, expected } => {
+                    format!(
+                        "Cycles: got {} clocks, expected {} clocks",
+                        actual, expected
+                    )
+                }
+                StateDiff::TransactionCountMismatch { actual, expected } => {
+                    format!("Transactions: recorded {}, expected {}", actual, expected)
+                }
+                StateDiff::TransactionMismatch { details } => {
+                    format!("Transaction mismatch: {}", details)
+                }
+            }
+        } else {
+            "Unknown mismatch".to_string()
+        };
+
+        Self {
+            test_name: f.test_name.clone(),
+            test_index: f.test_index,
+            expected_clocks: f.expected_clocks,
+            expected_cck: f.expected_cck,
+            short_error,
+        }
+    }
+}

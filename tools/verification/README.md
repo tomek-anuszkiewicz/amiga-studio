@@ -34,12 +34,13 @@ execution. `case` is a substring filter, including Python qualified test names.
 `--plan` previews the exact child commands and environment. `--log-level
 full|warn|error` controls output; both options may appear among sentence selectors.
 CPU benchmarks use the Cargo benchmark target described below.
-SingleStep reports are saved automatically with suite results.
+The aggregate SingleStep test saves suite results and calls report aggregation
+once after all selected groups finish, including failing executions.
 Only `runner gui -- OPTIONS` forwards native switches to a separate program.
 Counts must be positive; the parser rejects unknown or repeated selectors and
 missing or invalid values before execution, with exit code 2.
-The `test_runner` crate has no application binary. SingleStep reports are generated
-automatically; chipset baseline recording has no executable entry point.
+The `test_runner` crate contains test and benchmark targets with shared helpers
+in `tests/common/`; chipset baseline recording has no executable entry point.
 Benchmark analysis and profiling default to full output; other commands default
 to warnings and errors. Full logs are always stored in `.agent/tmp/verify/`.
 
@@ -54,6 +55,12 @@ python tools/verification/verify.py runner bench quick --plan
 ```
 
 The generic Rust path preserves the selected Cargo test's normal environment.
+An explicit `test_singlestep` target uses the launcher with the unoptimized
+`test` profile. Dedicated SingleStep commands and milestone execution use
+`verification`: release optimization with debug symbols, debug assertions and
+overflow checks enabled. The launcher checks the CPU library and selected Cargo artifact's
+settings and rejects configuration overrides that disable these checks.
+Ordinary crate tests, coverage and Cartesian DMA retain their existing profiles.
 The dedicated SingleStep sentence explicitly chooses full or sampled execution.
 Skill-owned scripts remain owned by their skills. Bootstrap, conversion,
 indexing, worktree management, diary appending, tool installation and baseline
@@ -61,22 +68,61 @@ recording remain workflow operations with their own entry points.
 
 ## Saved SingleStep reports
 
-Saving a suite result automatically updates `.agent/tmp/singlestep/summary.md`
-and `diff.md` alongside the existing JSON results. The summary contains totals,
+The single `#[test]` entry point calls `common::singlestep_suite::run_suite()`.
+It runs selected instruction groups on bounded worker threads, catches group
+assertions so every group finishes, then calls `common::reporting::update_global_summary()`
+once before the final assertion. This updates `.agent/tmp/singlestep/summary.json`,
+`summary.md` and `diff.md` inside the same Rust process.
+Each suite writer only persists its own result and rotates its history.
+The summary contains totals,
 a table for all saved suites, and all failing case names. The diff lists cases
 that changed from passed to failed or failed to passed, and suites without a
 previous result. Suites and cases are ordered for readable comparisons.
 
-Open the generated Markdown files directly; no report-generation command is
-needed. Each suite retains its own latest and previous result, so the reports may
-combine different executions. New and removed cases are excluded from
-status-change comparisons.
+Open the generated Markdown files directly after a SingleStep run. Each suite
+retains its own latest and previous result, so saved totals may combine different
+executions. Current execution status and current report/vector counts are listed
+separately. Missing Rust completion/report metadata, an unfinished selection or zero
+matching groups is incomplete and returns failure. Test failure status is preserved even if
+finalization also fails. A successful test process cannot hide reporting failure.
+
+Full CMP and filtered CMPM have distinct report identities, for example
+`Real68k::CMP.b` and `Real68k::CMP.b::CMPM`. Diffs require matching selection
+identities and sample limits. Legacy unidentified reports, including old
+colliding CMP results, are retained through normal history rotation but excluded
+from comparisons until a compatible baseline exists. New and removed case names
+remain excluded from status-change comparisons.
+
+Direct Cargo execution of `test_singlestep` also finalizes reports automatically.
+The standard libtest runner sees one aggregate test. The existing verify `case`
+selector matches group names inside Rust through `SINGLESTEP_CASE`; sample limits
+still control vector counts only. For direct Cargo execution, select a group with
+the same environment variable:
+
+```powershell
+$env:SINGLESTEP_CASE = "test_add_b"
+cargo test -p test_runner --profile verification --test test_singlestep
+Remove-Item Env:SINGLESTEP_CASE
+```
+
+Set `SINGLESTEP_FULL=1` for all vectors; direct Cargo otherwise retains the
+per-group sample defaults. `RUST_TEST_THREADS` controls group worker count,
+defaulting to available logical CPUs. `SINGLESTEP_RESULTS_DIR` selects an isolated
+report/history directory. Launchers reject concurrent use of the same directory
+through `run.lock`; direct Cargo runs must also be kept separate. A killed or
+aborted process cannot finish Rust aggregation; its metadata is incomplete and
+older summaries do not establish completion for that run.
+After forcibly terminating a launcher, inspect its process and `run.json` before
+removing an abandoned lock. Build failure does not aggregate stale reports.
+Complete test diagnostics are retained in `execution.log`; `--log-level full`
+prints them after execution. `timing.json` separates already-built execution and
+finalization; the launcher prints build/reuse time separately.
 
 ## CPU benchmark entry point
 
 CPU measurements run through the `bench_instructions` Cargo target declared in
 [`Cargo.toml`](../../crates/test_runner/Cargo.toml). SingleStep reports are
-generated automatically when suite results are saved.
+finalized automatically inside the aggregate SingleStep test.
 
 ```powershell
 cargo bench -p test_runner --bench bench_instructions -- --help

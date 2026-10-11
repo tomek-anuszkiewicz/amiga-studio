@@ -5,6 +5,13 @@ from pathlib import Path
 from repository import REPO_ROOT
 
 
+def singlestep_command(profile="verification", case=None):
+    command = [sys.executable, "tools/verification/run_singlestep.py", "--profile", profile]
+    if case:
+        command += ["--case", case]
+    return command
+
+
 # Full synthetic CPU suites run automatically only at milestones.
 # These environments use TestMemoryBus, not production MemoryBus/PhysicalMemory.
 def select_tests(root, mode, verify_dma=False, verify_singlestep=False):
@@ -18,8 +25,7 @@ def select_tests(root, mode, verify_dma=False, verify_singlestep=False):
         commands.append(("Cartesian DMA", ["cargo", "test", "-p", "test_runner", "--test",
                                            "test_dma_cartesian", "--", "--quiet"], {}))
     if singlestep:
-        commands.append(("Full SingleStepTests", ["cargo", "test", "-p", "test_runner", "--test",
-                                                  "test_singlestep", "--", "--quiet"],
+        commands.append(("Full SingleStepTests", singlestep_command(),
                          {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"}))
     if completion:
         commands.extend(python_commands())
@@ -165,6 +171,8 @@ def rust_commands(words):
     values = keyword_values(words, ("crate", "suite", "case"))
     if "crate" not in values:
         raise ValueError("Rust tests require crate NAME")
+    if values["crate"] == "test_runner" and values.get("suite") == "test_singlestep":
+        return [("Focused SingleStepTests", singlestep_command("test", values.get("case")), {})]
     command = ["cargo", "test", "-p", values["crate"]]
     if "suite" in values:
         command += ["--test", values["suite"]]
@@ -203,9 +211,12 @@ def harness_commands(words):
                 raise ValueError("Sample count must be positive")
             env = {"SINGLESTEP_FULL": "0", "SINGLESTEP_LIMIT": str(count)}
     suite = "test_singlestep" if scope == "singlestep" else "test_dma_cartesian"
-    command = ["cargo", "test", "-p", "test_runner", "--test", suite, "--", "--quiet"]
-    if "case" in values:
-        command.append(values["case"])
+    if scope == "singlestep":
+        command = singlestep_command(case=values.get("case"))
+    else:
+        command = ["cargo", "test", "-p", "test_runner", "--test", suite, "--", "--quiet"]
+        if "case" in values:
+            command.append(values["case"])
     return [("SingleStepTests" if scope == "singlestep" else "Cartesian DMA", command, env)]
 
 

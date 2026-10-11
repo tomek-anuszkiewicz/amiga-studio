@@ -10,6 +10,8 @@ updated: 2026-10-11
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
+  - "crates/test_runner/Cargo.toml"
+  - "tools/verification/run_singlestep.py"
 ---
 
 # M68000 SingleStepTests Suite Specification
@@ -323,10 +325,10 @@ The test harness lives in `tests/common/`, shared by the integration test target
 - **[`singlestep_runner.rs`](../../../../crates/test_runner/tests/common/singlestep_runner.rs):** Test execution loop, CPU prefetch priming, state comparison, cycle count validation, and RAM byte validation:
   - `run_single_test_detail(test, file_path, index) -> Result<(), TestFailure>`: Executes a single case with complete state, clock and timed transaction verification.
   - `run_test_file(path, limit) -> Result<(usize, usize), Box<dyn Error>>`: Reads plain `.json` test suites, running up to `limit` cases with the same complete comparison path.
-  - `run_test_file_filtered(path, limit, filter)`: Filters input cases without weakening complete verification.
+  - `run_test_file_filtered(path, limit, selection, filter)`: Filters input cases without weakening complete verification and assigns a distinct report identity.
 - **[`transactions.rs`](../../../../crates/test_runner/tests/common/transactions.rs):** Parses Tom Harte logs and compares timed memory callbacks, direction, address, size and data. Function codes are parsed but not compared; special TAS and electrical signal limits follow Section 1.2.
 - **[`diagnostic.rs`](../../../../crates/test_runner/tests/common/diagnostic.rs):** Human-readable failure reporting, full CCR flag decomposition ($T, S, I, X, N, Z, V, C$), clock/CCK cycle metrics, and transaction diff formatting.
-- **[`reporter.rs`](../../../../crates/test_runner/tests/common/reporter.rs):** Persistent results recording in `.agent/tmp/singlestep/`, differential regression detection, and global summary generation.
+- **[`reporting.rs`](../../../../crates/test_runner/tests/common/reporting.rs):** Shared test helper for persistent results recording in `.agent/tmp/singlestep/`, differential regression detection, and global summary generation. The aggregate test calls it once after all selected instruction groups finish.
 - **[`benchmark/`](../../../../crates/test_runner/benches/bench_instructions):** Automated per-opcode instruction micro-benchmarking engine, programmatic unrolled block synthesis ($K = 700$), P-core affinity pinning, and anomaly classifier (see [CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)).
 
 ### 5.2 CPU State Setup & Execution Flow
@@ -355,7 +357,7 @@ Tests are grouped into cohesive categories within `test_singlestep.rs`:
 
 ## 7. Running Tests & CLI Commands
 
-Tests execute through Cargo test targets or the verification frontend; the package has no application CLI:
+Tests execute through Cargo test targets or the verification frontend; SingleStep has one aggregate `#[test]` entry point. Dedicated SingleStep verification uses an optimized `verification` profile with debug assertions, overflow checks and debug symbols enabled. The explicit generic Rust target retains the unoptimized `test` profile for step debugging. Both launcher paths run selected groups in parallel and finalize reports once inside Rust before the final assertion; ordinary crate tests retain their existing profiles. Profile and report invocation details belong to the [verification reference](../../../../tools/verification/README.md#saved-singlestep-reports).
 
 ```powershell
 # Run all single-step integration tests with default fast sample limit (50 vectors per suite)
@@ -367,10 +369,10 @@ python tools/verification/verify.py test runner singlestep full
 # Run tests with a custom vector limit per suite
 $env:SINGLESTEP_LIMIT = "500"; python tools/verification/verify.py test rust crate test_runner suite test_singlestep
 
-# Run all tests for a specific opcode across both suites
-python tools/verification/verify.py test rust crate test_runner case test_add_b
-python tools/verification/verify.py test rust crate test_runner case test_move_w
-python tools/verification/verify.py test rust crate test_runner case test_nop
+# Run sampled SingleStep groups for a specific opcode
+python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_add_b
+python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_move_w
+python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_nop
 
 # Run Cartesian DMA contention permutation test suite
 python tools/verification/verify.py test rust crate test_runner suite test_dma_cartesian
@@ -378,7 +380,7 @@ python tools/verification/verify.py test rust crate test_runner suite test_dma_c
 # Run automated architectural compliance suite
 python tools/verification/verify.py check architecture
 
-# Run sampled SingleStep tests for one opcode with live failure diagnostics
+# Run sampled SingleStep tests for one opcode with saved complete failure diagnostics
 python tools/verification/verify.py test runner singlestep case test_add_b sample 50
 ```
 
@@ -461,7 +463,9 @@ Test outcomes are persisted across runs in the `.agent/tmp/singlestep/` workspac
 - `.agent/tmp/singlestep/summary.md`: Readable summary with totals, all suites, and all failing case names.
 - `.agent/tmp/singlestep/diff.md`: Status changes against each suite's previous result and suites without a baseline.
 
-Both Markdown reports are updated automatically when suite results are saved. History rotates independently per suite, so reports may combine different executions.
+Suite writers persist their own results and rotate their histories without rebuilding global reports. The [aggregate suite helper](../../../../crates/test_runner/tests/common/singlestep_suite.rs) runs the selected instruction groups on bounded worker threads and catches group assertions so failures do not prevent other groups from finishing. It calls the shared reporting function exactly once after workers join, then returns failure to the top-level test if a group or finalization failed. The [SingleStep launcher](../../../../tools/verification/run_singlestep.py) only builds and launches that test, captures diagnostics and checks Rust completion metadata. A killed or aborted process cannot finalize reports; its execution is incomplete. Saved totals may combine executions, while current status and current report/vector counts are identified separately through run metadata.
+
+Full CMP and filtered CMPM use distinct report identities, such as `Real68k::CMP.b` and `Real68k::CMP.b::CMPM`. Differential comparisons require matching selection identities and sample limits. Legacy reports with unidentified selections are retained through history rotation and marked incomparable, including old colliding CMP reports. This prevents an old filtered result from becoming a full-suite baseline.
 
 #### Regression & Improvement Detection:
 - 🔴 **Regressions:** Tests that previously passed in `.agent/tmp/singlestep/previous/` but failed in the current run are immediately flagged with `⚠️ [REGRESSION DETECTED]` in the terminal.
@@ -469,7 +473,7 @@ Both Markdown reports are updated automatically when suite results are saved. Hi
 
 ### 10.3 Automatic Reports and Focused Execution
 Open the generated `summary.md` and `diff.md` directly to inspect saved results.
-The `test_runner` crate contains integration tests, their shared helpers in `tests/common/`, and benchmarks; it has no application binary or separate report commands.
+The `test_runner` crate contains integration tests, shared helpers in `tests/common/` and benchmarks. Direct Cargo execution of `test_singlestep` also aggregates reports automatically. The standard libtest runner sees one aggregate test; group filtering uses `SINGLESTEP_CASE`, supplied by the existing verify `case` selector. The [verification reference](../../../../tools/verification/README.md#saved-singlestep-reports) owns exact invocation, parallelism and report-directory isolation.
 
 ```powershell
 # Run sampled SingleStep tests for one opcode
@@ -487,5 +491,8 @@ python tools/verification/verify.py test runner singlestep case test_add_b sampl
 - [SingleStep Test Runner Implementation](../../../../crates/test_runner/tests/common/singlestep_runner.rs): Test loading, memory bus fixture, and assertion logic.
 - [Reviewed SingleStep overrides](../../../../crates/test_runner/tests/overrides/singlestep/README.md): Exact-record corrections, their evidence and shared loader contract.
 - [SingleStep Integration Test Suite](../../../../crates/test_runner/tests/test_singlestep.rs): Silicon instruction regression tests.
+- [SingleStep launcher](../../../../tools/verification/run_singlestep.py): Builds optimized test artifacts, launches the aggregate test and checks Rust completion metadata.
+- [Aggregate SingleStep suite](../../../../crates/test_runner/tests/common/singlestep_suite.rs): Joins group workers and calls final report aggregation before returning the overall result.
+- [SingleStep reporting helpers](../../../../crates/test_runner/tests/common/reporting.rs): Persist group results and aggregate saved history with current-run metadata.
 - [DMA Cartesian Contention Test Suite](../../../../crates/test_runner/tests/test_dma_cartesian.rs): Cycle invariance verification across DMA wait-state permutations.
 

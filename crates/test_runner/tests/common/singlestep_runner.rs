@@ -1,5 +1,7 @@
 use super::diagnostic::{format_ccr_diff, StateDiff, TestFailure};
-use super::reporter::{record_suite_result, SuiteResult, TestFailureSummary};
+use super::reporting::{
+    current_run_id, record_suite_result, resolve_results_dir, SuiteResult, TestFailureSummary,
+};
 use super::schema::SingleStepTest;
 use super::singlestep_vectors::load_test_vectors;
 use super::test_memory_bus::TestMemoryBus;
@@ -311,9 +313,12 @@ pub fn run_test_file(
         passed_test_names: passed_names,
         failures: failure_summaries,
         overridden_test_names,
+        selection: "all".to_string(),
+        sample_limit: limit,
+        run_id: Some(current_run_id().to_string()),
     };
 
-    record_suite_result(&suite_result);
+    record_suite_result(&suite_result, &resolve_results_dir())?;
 
     Ok((passed, failed))
 }
@@ -322,11 +327,19 @@ pub fn run_test_file(
 pub fn run_test_file_filtered<F>(
     path: &str,
     limit: Option<usize>,
+    selection: &str,
     filter: F,
 ) -> Result<(usize, usize), Box<dyn std::error::Error>>
 where
     F: Fn(&SingleStepTest) -> bool,
 {
+    if selection.is_empty()
+        || !selection
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+    {
+        return Err("Filtered selection requires an alphanumeric or underscore identifier".into());
+    }
     let resolved = resolve_test_path(path);
     let loaded = load_test_vectors(&resolved)?;
     let tests = loaded.tests;
@@ -371,7 +384,7 @@ where
         .unwrap_or(path)
         .trim_end_matches(".gz")
         .trim_end_matches(".json");
-    let suite_name = format!("Real68k::{}", stem);
+    let suite_name = format!("Real68k::{}::{}", stem, selection);
 
     let suite_result = SuiteResult {
         suite_name,
@@ -382,9 +395,12 @@ where
         passed_test_names: passed_names,
         failures: failure_summaries,
         overridden_test_names,
+        selection: selection.to_string(),
+        sample_limit: limit,
+        run_id: Some(current_run_id().to_string()),
     };
 
-    record_suite_result(&suite_result);
+    record_suite_result(&suite_result, &resolve_results_dir())?;
 
     Ok((passed, failed))
 }

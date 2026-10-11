@@ -525,7 +525,7 @@ The test runner features **built-in zero-configuration differential regression d
 
 CPU measurements have one executable entry point: the `bench_instructions`
 Cargo benchmark target in [`Cargo.toml`](../../../../crates/test_runner/Cargo.toml).
-The `test_runner` crate has no application binary. SingleStep reports are generated automatically when suite results are saved.
+The `test_runner` crate contains test and benchmark targets. The aggregate SingleStep test automatically finalizes reports once after its selected instruction groups finish; report details belong to the [verification reference](../../../../tools/verification/README.md#saved-singlestep-reports).
 
 #### 8.4.1 Benchmark Invocation
 

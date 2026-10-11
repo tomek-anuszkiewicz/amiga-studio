@@ -1,11 +1,10 @@
 //! Test result recording, persistence, and regression tracking
 
-use super::diagnostic::TestFailure;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::fs::{self, File};
-use std::io::{self, BufReader, BufWriter};
+use std::io::{self, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 /// Brief summary of a single test failure for persistence
@@ -16,90 +15,6 @@ pub struct TestFailureSummary {
     pub expected_clocks: u32,
     pub expected_cck: u32,
     pub short_error: String,
-}
-
-impl From<&TestFailure> for TestFailureSummary {
-    fn from(f: &TestFailure) -> Self {
-        let short_error = if let Some(diff) = f.diffs.first() {
-            match diff {
-                super::diagnostic::StateDiff::StatusRegister {
-                    diverging_flags, ..
-                } => {
-                    format!("SR mismatch: {}", diverging_flags.join(", "))
-                }
-                super::diagnostic::StateDiff::DataRegister {
-                    reg,
-                    actual,
-                    expected,
-                } => {
-                    format!(
-                        "D{} mismatch: got 0x{:08X}, expected 0x{:08X}",
-                        reg, actual, expected
-                    )
-                }
-                super::diagnostic::StateDiff::AddressRegister {
-                    reg,
-                    actual,
-                    expected,
-                } => {
-                    format!(
-                        "A{} mismatch: got 0x{:08X}, expected 0x{:08X}",
-                        reg, actual, expected
-                    )
-                }
-                super::diagnostic::StateDiff::ProgramCounter { actual, expected } => {
-                    format!(
-                        "PC mismatch: got 0x{:08X}, expected 0x{:08X}",
-                        actual, expected
-                    )
-                }
-                super::diagnostic::StateDiff::RamByte {
-                    address,
-                    actual,
-                    expected,
-                } => {
-                    format!(
-                        "RAM at 0x{:06X}: got 0x{:02X}, expected 0x{:02X}",
-                        address, actual, expected
-                    )
-                }
-                super::diagnostic::StateDiff::UserStackPointer { actual, expected } => {
-                    format!(
-                        "USP mismatch: got 0x{:08X}, expected 0x{:08X}",
-                        actual, expected
-                    )
-                }
-                super::diagnostic::StateDiff::SupervisorStackPointer { actual, expected } => {
-                    format!(
-                        "SSP mismatch: got 0x{:08X}, expected 0x{:08X}",
-                        actual, expected
-                    )
-                }
-                super::diagnostic::StateDiff::CycleLength { actual, expected } => {
-                    format!(
-                        "Cycles: got {} clocks, expected {} clocks",
-                        actual, expected
-                    )
-                }
-                super::diagnostic::StateDiff::TransactionCountMismatch { actual, expected } => {
-                    format!("Transactions: recorded {}, expected {}", actual, expected)
-                }
-                super::diagnostic::StateDiff::TransactionMismatch { details } => {
-                    format!("Transaction mismatch: {}", details)
-                }
-            }
-        } else {
-            "Unknown mismatch".to_string()
-        };
-
-        Self {
-            test_name: f.test_name.clone(),
-            test_index: f.test_index,
-            expected_clocks: f.expected_clocks,
-            expected_cck: f.expected_cck,
-            short_error,
-        }
-    }
 }
 
 /// Comprehensive outcome of running a single opcode test suite file
@@ -114,6 +29,13 @@ pub struct SuiteResult {
     pub failures: Vec<TestFailureSummary>,
     #[serde(default)]
     pub overridden_test_names: Vec<String>,
+    /// Empty in legacy reports whose selection cannot be identified reliably.
+    #[serde(default)]
+    pub selection: String,
+    #[serde(default)]
+    pub sample_limit: Option<usize>,
+    #[serde(default)]
+    pub run_id: Option<String>,
 }
 
 /// Concise statistics per suite stored in the global summary
@@ -138,10 +60,28 @@ pub struct GlobalTestSummary {
     pub total_failed: usize,
     pub overall_pass_rate_percent: f64,
     pub suites: BTreeMap<String, SuiteStats>,
+    pub run: Option<RunMetadata>,
+    pub current_run_suites: usize,
+    pub current_run_vectors: usize,
+}
+
+/// Group completion recorded by the aggregate test, independently of saved history.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RunMetadata {
+    pub id: String,
+    pub status: String,
+    pub profile: String,
+    pub selected_tests: usize,
+    pub completed_tests: usize,
+    // Windows process failures may use an unsigned 32-bit exception status.
+    pub exit_code: Option<i64>,
 }
 
 /// Resolves the SingleStep test results root directory path (`.agent/tmp/singlestep`)
 pub fn resolve_results_dir() -> PathBuf {
+    if let Some(path) = std::env::var_os("SINGLESTEP_RESULTS_DIR") {
+        return PathBuf::from(path);
+    }
     // Check if running from sub-crate or workspace root
     let candidates = [
         PathBuf::from(".agent/tmp/singlestep"),
@@ -167,8 +107,8 @@ fn sanitize_name(name: &str) -> String {
     name.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|', ' '], "_")
 }
 
-/// Saves a suite result, detects regressions/improvements against previous run, and updates summary
-pub fn record_suite_result(result: &SuiteResult) {
+/// Saves one suite and rotates its history. The aggregate Rust test owns global aggregation.
+pub fn record_suite_result(result: &SuiteResult, base_dir: &Path) -> io::Result<()> {
     if !result.overridden_test_names.is_empty() {
         eprintln!(
             "[OVERRIDE] {}: {} executed vectors use reviewed corrections: {}",
@@ -177,12 +117,11 @@ pub fn record_suite_result(result: &SuiteResult) {
             result.overridden_test_names.join(", ")
         );
     }
-    let base_dir = resolve_results_dir();
     let latest_dir = base_dir.join("latest");
     let previous_dir = base_dir.join("previous");
 
-    let _ = fs::create_dir_all(&latest_dir);
-    let _ = fs::create_dir_all(&previous_dir);
+    fs::create_dir_all(&latest_dir)?;
+    fs::create_dir_all(&previous_dir)?;
 
     let sanitized = sanitize_name(&result.suite_name);
     let latest_file = latest_dir.join(format!("{}.json", sanitized));
@@ -190,19 +129,17 @@ pub fn record_suite_result(result: &SuiteResult) {
 
     // Check for previous run
     let previous_result: Option<SuiteResult> = if latest_file.exists() {
-        let prev = File::open(&latest_file)
-            .ok()
-            .and_then(|f| serde_json::from_reader(BufReader::new(f)).ok());
+        let prev = read_suite(&latest_file)?;
 
         // Rotate current latest to previous
-        let _ = fs::copy(&latest_file, &previous_file);
-        prev
+        fs::copy(&latest_file, &previous_file)?;
+        Some(prev)
     } else {
         None
     };
 
     // Analyze regression vs improvements
-    if let Some(prev) = previous_result {
+    if let Some(prev) = previous_result.filter(|previous| comparable(previous, result)) {
         let (regressions, improvements) = suite_changes(&prev, result);
 
         if !regressions.is_empty() {
@@ -227,63 +164,69 @@ pub fn record_suite_result(result: &SuiteResult) {
     }
 
     // Write new latest file
-    if let Ok(f) = File::create(&latest_file) {
-        let writer = BufWriter::new(f);
-        let _ = serde_json::to_writer_pretty(writer, result);
-    }
+    write_json(&latest_file, result)
+}
 
-    // Update global summary
-    update_global_summary(&base_dir);
+fn write_json<T: Serialize>(path: &Path, value: &T) -> io::Result<()> {
+    let mut writer = BufWriter::new(File::create(path)?);
+    serde_json::to_writer_pretty(&mut writer, value)?;
+    writer.flush()
+}
+
+fn comparable(previous: &SuiteResult, latest: &SuiteResult) -> bool {
+    !previous.selection.is_empty()
+        && previous.selection == latest.selection
+        && previous.sample_limit == latest.sample_limit
 }
 
 /// Aggregates all suite results in `.agent/tmp/singlestep/latest` into a unified `summary.json`
-pub fn update_global_summary(base_dir: &Path) {
+pub fn update_global_summary(base_dir: &Path, run: Option<RunMetadata>) -> io::Result<()> {
     let latest_dir = base_dir.join("latest");
     if !latest_dir.exists() {
-        return;
+        fs::create_dir_all(&latest_dir)?;
     }
 
     let mut suites_map = BTreeMap::new();
     let mut total_executed = 0;
     let mut total_passed = 0;
     let mut total_failed = 0;
+    let mut current_run_suites = 0;
+    let mut current_run_vectors = 0;
 
-    if let Ok(entries) = fs::read_dir(&latest_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                if let Ok(file) = File::open(&path) {
-                    if let Ok(suite) =
-                        serde_json::from_reader::<_, SuiteResult>(BufReader::new(file))
-                    {
-                        total_executed += suite.total_executed;
-                        total_passed += suite.passed_count;
-                        total_failed += suite.failed_count;
-
-                        let pass_rate = if suite.total_executed > 0 {
-                            (suite.passed_count as f64 / suite.total_executed as f64) * 100.0
-                        } else {
-                            0.0
-                        };
-
-                        let active_failures =
-                            suite.failures.iter().map(|f| f.test_name.clone()).collect();
-
-                        suites_map.insert(
-                            suite.suite_name,
-                            SuiteStats {
-                                total: suite.total_executed,
-                                passed: suite.passed_count,
-                                failed: suite.failed_count,
-                                pass_rate_percent: pass_rate,
-                                active_failures,
-                                overrides: suite.overridden_test_names.len(),
-                            },
-                        );
-                    }
-                }
-            }
+    for entry in fs::read_dir(&latest_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("json") {
+            continue;
         }
+        let suite = read_suite(&path)?;
+        if run
+            .as_ref()
+            .is_some_and(|run| suite.run_id.as_ref() == Some(&run.id))
+        {
+            current_run_suites += 1;
+            current_run_vectors += suite.total_executed;
+        }
+        total_executed += suite.total_executed;
+        total_passed += suite.passed_count;
+        total_failed += suite.failed_count;
+        let pass_rate = if suite.total_executed > 0 {
+            (suite.passed_count as f64 / suite.total_executed as f64) * 100.0
+        } else {
+            0.0
+        };
+        let active_failures = suite.failures.iter().map(|f| f.test_name.clone()).collect();
+        suites_map.insert(
+            suite.suite_name,
+            SuiteStats {
+                total: suite.total_executed,
+                passed: suite.passed_count,
+                failed: suite.failed_count,
+                pass_rate_percent: pass_rate,
+                active_failures,
+                overrides: suite.overridden_test_names.len(),
+            },
+        );
     }
 
     let overall_pass_rate = if total_executed > 0 {
@@ -300,25 +243,16 @@ pub fn update_global_summary(base_dir: &Path) {
         total_failed,
         overall_pass_rate_percent: overall_pass_rate,
         suites: suites_map,
+        run,
+        current_run_suites,
+        current_run_vectors,
     };
 
     let summary_path = base_dir.join("summary.json");
-    if let Ok(f) = File::create(&summary_path) {
-        let writer = BufWriter::new(f);
-        let _ = serde_json::to_writer_pretty(writer, &summary);
-    }
-
-    if let Err(error) = fs::write(base_dir.join("summary.md"), summary_markdown(&summary)) {
-        eprintln!("Failed to write summary.md: {error}");
-    }
-    match diff_markdown(base_dir) {
-        Ok(report) => {
-            if let Err(error) = fs::write(base_dir.join("diff.md"), report) {
-                eprintln!("Failed to write diff.md: {error}");
-            }
-        }
-        Err(error) => eprintln!("Failed to generate diff.md: {error}"),
-    }
+    let diff = diff_markdown(base_dir)?;
+    write_json(&summary_path, &summary)?;
+    fs::write(base_dir.join("summary.md"), summary_markdown(&summary))?;
+    fs::write(base_dir.join("diff.md"), diff)
 }
 
 /// Fallback timestamp without external chrono dependency
@@ -361,6 +295,11 @@ fn cell(text: &str) -> String {
 /// Formats all persisted suite statistics and failure names as Markdown.
 fn summary_markdown(summary: &GlobalTestSummary) -> String {
     let mut report = String::from("# M68000 SingleStep Test Summary\n\n");
+    if let Some(run) = &summary.run {
+        let _ = write!(report, "Current execution: **{}** (profile `{}`).\n\n- Selected tests: {}\n- Completed tests: {}\n- Available current suite reports: {}\n- Reported current vectors: {}\n\n", cell(&run.status), cell(&run.profile), run.selected_tests, run.completed_tests, summary.current_run_suites, summary.current_run_vectors);
+    } else {
+        report.push_str("Saved results only; no current execution verdict is available.\n\n");
+    }
     report.push_str(
         "Latest saved result for each suite. Suites may come from different executions.\n\n",
     );
@@ -421,6 +360,7 @@ fn diff_markdown(base_dir: &Path) -> io::Result<String> {
     let previous_dir = base_dir.join("previous");
     let mut changes = BTreeMap::new();
     let mut missing_baselines = BTreeSet::new();
+    let mut incompatible_baselines = BTreeSet::new();
     let mut compared = 0;
     let mut regressions = 0;
     let mut improvements = 0;
@@ -439,6 +379,10 @@ fn diff_markdown(base_dir: &Path) -> io::Result<String> {
                 continue;
             }
             let previous = read_suite(&previous_path)?;
+            if !comparable(&previous, &latest) {
+                incompatible_baselines.insert(latest.suite_name);
+                continue;
+            }
             let (broken, fixed) = suite_changes(&previous, &latest);
             compared += 1;
             regressions += broken.len();
@@ -450,7 +394,7 @@ fn diff_markdown(base_dir: &Path) -> io::Result<String> {
     }
 
     let mut report = String::from("# M68000 SingleStep Test Diff\n\n");
-    report.push_str("Latest versus previous saved result for each suite. History rotates independently per suite. Only shared test names changing between passed and failed are compared; new or removed cases are excluded.\n\n");
+    report.push_str("Latest versus previous saved result for each suite. History rotates independently per suite. Only matching selections and sample limits are compared. Legacy unidentified selections are excluded. Only shared test names changing between passed and failed are compared; new or removed cases are excluded.\n\n");
     let _ = write!(report, "- Compared suites: {compared}\n");
     let _ = write!(
         report,
@@ -495,5 +439,24 @@ fn diff_markdown(base_dir: &Path) -> io::Result<String> {
             let _ = write!(report, "| {} |\n", cell(&suite));
         }
     }
+    if !incompatible_baselines.is_empty() {
+        report.push_str("\n## Suites With an Incompatible or Unidentified Previous Selection\n\n| Suite |\n| --- |\n");
+        for suite in incompatible_baselines {
+            let _ = write!(report, "| {} |\n", cell(&suite));
+        }
+    }
     Ok(report)
+}
+
+/// Shares one execution identity across all workers, including direct Cargo runs.
+pub fn current_run_id() -> &'static str {
+    static ID: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    ID.get_or_init(|| {
+        std::env::var("SINGLESTEP_RUN_ID").unwrap_or_else(|_| {
+            let elapsed = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default();
+            format!("{}-{}", std::process::id(), elapsed.as_nanos())
+        })
+    })
 }

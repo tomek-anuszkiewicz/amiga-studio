@@ -2,7 +2,7 @@
 
 mod common;
 
-use common::reporter::{resolve_results_dir, SuiteResult};
+use common::reporting::{resolve_results_dir, SuiteResult};
 use common::singlestep_runner::{run_single_test_detail, run_test_file, run_test_file_filtered};
 use common::singlestep_vectors::load_test_vectors;
 use flate2::write::GzEncoder;
@@ -103,14 +103,20 @@ fn test_filtered_and_sampled_override_execution() {
     assert_eq!(sampled.total_executed, 1);
     assert!(sampled.overridden_test_names.is_empty());
     assert_eq!(
-        run_test_file_filtered(source.to_str().unwrap(), None, |test| test
+        run_test_file_filtered(source.to_str().unwrap(), None, "reviewed", |test| test
             .name
             .ends_with("1583")
             || test.name.ends_with("1761"))
         .unwrap(),
         (2, 0)
     );
-    let filtered: SuiteResult = serde_json::from_slice(&fs::read(result_path).unwrap()).unwrap();
+    let filtered_path = resolve_results_dir().join("latest/Real68k__ASL.b__reviewed.json");
+    let filtered: SuiteResult = serde_json::from_slice(&fs::read(filtered_path).unwrap()).unwrap();
     assert_eq!(filtered.total_executed, 2);
     assert_eq!(filtered.overridden_test_names.len(), 2);
+    let retained: SuiteResult = serde_json::from_slice(&fs::read(result_path).unwrap()).unwrap();
+    assert_eq!(
+        retained.total_executed, 1,
+        "Filtered results overwrote the full suite"
+    );
 }

@@ -5,7 +5,7 @@ description: Execute test suites across tiers, snapshot results to disk, and tra
 
 # Recipe: Test Runner & Regression Tracker
 
-Use this skill to select relevant existing tests and report their evidence. SingleStep execution saves snapshots and regression reports in `.agent/tmp/singlestep/`; ordinary crate tests and Cartesian DMA do not create those reports.
+Use this skill to select relevant existing tests and report their evidence. The aggregate SingleStep test saves snapshots and finalizes regression reports once after group execution in `.agent/tmp/singlestep/`; ordinary crate tests and Cartesian DMA do not create those reports. Direct Cargo execution also finalizes reports inside the aggregate test; the [verification reference](../../../tools/verification/README.md#saved-singlestep-reports) owns group selection and report isolation.
 
 ---
 
@@ -15,7 +15,7 @@ Use this skill to select relevant existing tests and report their evidence. Sing
 | :---: | :--- | :--- | :---: |
 | **Tier 1** | Unit tests (isolated crates) | `python tools/verification/verify.py test rust unit` | $< 2$s |
 | **Tier 2** | Machine loop integration | `python tools/verification/verify.py test rust integration` | $3$–$15$s |
-| **Tier 3** | SingleStep CPU silicon vectors | `python tools/verification/verify.py test runner singlestep` | $6$–$15$s |
+| **Tier 3** | SingleStep CPU silicon vectors | `python tools/verification/verify.py test runner singlestep` | Depends on build cache, host and report history |
 | **Tier 4** | vAmigaTS whole-machine captures | Unavailable; requires a future capture execution entry point | Not measured |
 | **Arch** | Architecture rules & gates | `python tools/verification/verify.py check architecture` | $< 2$s |
 
@@ -58,6 +58,15 @@ SingleStep executions maintain rotating state to detect regressions across runs:
 - `.agent/tmp/singlestep/summary.json`: Saved SingleStep suite totals and percentages, which may include results from earlier runs.
 - `.agent/tmp/singlestep/summary.md`: Automatically generated readable summary and all failing cases.
 - `.agent/tmp/singlestep/diff.md`: Automatically generated regressions, improvements, and missing baselines.
+
+Dedicated commands use optimized `verification` artifacts with debug assertions
+and overflow checks preserved. An explicit generic Rust `test_singlestep` target
+uses unoptimized `test` artifacts. Both execute one aggregate Rust test which finalizes reports once before its
+final assertion, including group failures. `case` selects internal group names;
+libtest sees one test. Direct Cargo group filtering uses `SINGLESTEP_CASE`. Current group completion and report/vector counts are separate from saved
+history totals; unmatched or interrupted execution is incomplete. Full CMP and
+filtered CMPM have distinct identities. Legacy unidentified selections and
+different sample limits are not comparable baselines.
 
 ---
 

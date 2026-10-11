@@ -2945,3 +2945,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - DMA uses a 5 percent seeded sample and at most six contention CCKs against the same uncontended CPU on TestMemoryBus
   - existing RAM masks, unobserved electrical signals and unavailable partial-transfer bus errors remain limits
   - no whole-CPU or milestone closure is claimed
+---
+
+### [2026-10-11 18:52 CEST] — SINGLESTEP-PERF-01: finalize aggregate execution and reporting
+- **Affected Subsystems**:
+  - `test_runner`
+  - `verification tooling`
+  - `design specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Run selected SingleStep groups in parallel inside one aggregate Rust test
+  - finalize reports once after all groups
+  - preserve failure exits and distinct CMP/CMPM selection identities
+  - build optimized verification artifacts with runtime checks
+  - add launcher completion and ownership contracts
+  - rename launcher tests to test_run_singlestep.py
+  - add user-approved API vocabulary
+  - close SINGLESTEP-PERF-01 and retire its execution plan after this commit
+- **Architectural Rationale & Trade-Offs**:
+  - Remove repeated global aggregation while retaining vector comparisons, diagnostics, history and explicit incomplete-run handling. Keep commands selection, generic process execution and SingleStep launch procedure separate. No vector-loading optimization was adopted
+  - CPU correctness remains tracked by CPU-CYCLE-01.
+- **Verification & Test Results**:
+  - Six renamed launcher tests passed. Initial commit verification passed ordinary crate coverage/tests, formatting, Clippy, architecture, hardware/code quality, standard harness and all Python contracts
+  - its language gate identified API names subsequently approved by the user. Vault audit passed 39 documents and 1071 links
+  - Graphify refresh completed. Full CPU and DMA suites were not rerun during commit preparation. Prior task evidence recorded 128 completed groups, 924967 passing and 77770 failing JSON vectors, with unchanged diagnostic checksums and aggregate runs of 3.273 and 3.184 seconds
+  - these measurements are retained task evidence, not a new passing CPU result.
+  - Final `python tools/verification/verify.py commit` passed all gates, ordinary crate and standard harness tests, and all Python contracts after the approved vocabulary update. No milestone closure is claimed.

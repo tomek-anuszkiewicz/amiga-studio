@@ -51,8 +51,8 @@ directory selection runs that suite regardless of changed paths.
 Scoped design review, vault checks and workflow maintenance use their owning
 skills. Milestone semantic review follows [audit-semantic-parity](../../../../.agents/skills/audit-semantic-parity/SKILL.md).
 English audit scope and vocabulary approval follow the [language policy](../../../../.agents/rules/language-policy.md).
-The test_runner package has no application binary; vAmigaTS captures require a
-future execution entry point. Manual tier commands below are diagnostics,
+The aggregate SingleStep test finalizes reports inside Rust after all selected groups finish;
+vAmigaTS captures require a future execution entry point. Manual tier commands below are diagnostics,
 not additional completion obligations.
 
 ## 1. Architectural Purpose & Testing Pyramid
