@@ -105,12 +105,13 @@ pub static STEPS_SCC_PI: [MicroStep; 6] = [
     common::WRITE_DST_BYTE,
 ];
 
-pub static STEPS_SCC_PD: [MicroStep; 6] = [
+pub static STEPS_SCC_PD: [MicroStep; 7] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_dst_byte),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_b),
         base_clocks: 2,
     },
+    common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),

@@ -166,7 +166,7 @@ A common misconception is that the advanced hardware `PC` causes subroutine call
 3. **PC-Relative Addressing (`d16, PC`):**
    - Per Motorola PRM, the base address for `(d16, PC)` is the instruction address plus two ($PC_{\text{hardware}} - 2$), corresponding to the address where the displacement word was fetched.
 4. **Bus Error & Address Error Stack Frames:**
-   - Saved PC follows the faulting execution phase, rather than a universal offset from the opcode. Operand faults reflect the instruction stream; an odd `JMP`, `JSR`, `RTS`, `RTR` or `RTE` target captures `target - 4`. The [control-flow refill model](CPU%20Micro-Step%20State%20Machine.md#51-the-two-word-pipeline-refill) defines this target capture and its information word. Partial bus-error transfers remain outside the current AddressBus observation contract.
+   - Saved PC follows the faulting execution phase, rather than a universal offset from the opcode. Operand faults reflect the instruction stream; an odd `BRA`, taken `Bcc`/`DBcc`, `BSR`, `JMP`, `JSR`, `RTS`, `RTR` or `RTE` target captures `target - 4`. The [control-flow refill model](CPU%20Micro-Step%20State%20Machine.md#51-the-two-word-pipeline-refill) defines this target capture and its information word. Partial bus-error transfers remain outside the current AddressBus observation contract.
 
 ---
 
@@ -650,10 +650,10 @@ defines extension, transfer and prefetch ordering.
 
 ### 7.8 Branch & Control Flow Odd Target Address Error (FC 2 / 6)
 
-- When `BRA`, `Bcc`, `JMP`, or `JSR` evaluates a target address with an odd destination (`target & 1 != 0`):
+- When `BRA`, taken `Bcc`/`DBcc`, `BSR`, `JMP`, `JSR`, `RTS`, `RTR`, or `RTE` evaluates a target address with an odd destination (`target & 1 != 0`):
   - The MC68000 halts instruction execution and immediately triggers an **Address Error exception (Vector 3)**.
   - Because the instruction fetch pipeline caused the fault, the CPU asserts **Program Space** ($FC = 2$ in User mode, $FC = 6$ in Supervisor mode) in the exception status word.
-  - The pushed program counter in the stack frame points to the instruction boundary or target address.
+  - The frame saves `target - 4` as PC and sets the instruction-not bit (bit 3). `BSR` writes its return address before the target check; `JSR` checks the target first. See the [shared refill model](CPU%20Micro-Step%20State%20Machine.md#51-the-two-word-pipeline-refill).
 
 ### 7.9 Class 0 Read-Modify-Write (RMW) & Bit Manipulation Silicon Timings
 

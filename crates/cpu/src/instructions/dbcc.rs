@@ -15,7 +15,7 @@ use crate::state::CpuState;
 /// Taken branch execution steps (10 CPU clocks / 5 CCKs)
 pub static STEPS_DBCC_BRANCH_TAKEN: [MicroStep; 5] = [
     common::ALU_IDLE,
-    common::READ_TARGET_OPCODE_READ,
+    common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,

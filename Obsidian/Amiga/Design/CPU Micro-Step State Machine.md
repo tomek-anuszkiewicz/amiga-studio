@@ -316,14 +316,16 @@ When control flow changes (`JMP`, `JSR`, `RTS`, `BRA`, taken `Bcc`):
      - `state.pc` is initialized to `ea_addr + 4`.
      - Instruction retires with target refill (`target_refill = true`, `step_cck` returns `true`).
 
-`JMP`, `JSR`, `RTS`, `RTR` and `RTE` use
+`BRA`, taken `Bcc`/`DBcc`, `BSR`, `JMP`, `JSR`, `RTS`, `RTR` and `RTE` use
 `READ_CONTROL_TARGET_OPCODE_READ` for the first read. Its successful transfer
 uses the same [shared read phases](#23-specialized-2-clock-atomic-micro-step-handlers-busfn).
 An odd target begins Address Error without a target memory callback: the frame
 captures `target - 4` as PC, the full target as the fault address, and sets bit 3
 (instruction-not) alongside the program-space function code. `RTE` restores SR
 before this check, so the saved status and function code follow the restored mode.
-Branch paths retain their separate target-fault capture.
+`BSR` completes both return-address writes before checking target alignment;
+`JSR` checks the target before those writes. Untaken branches retain their
+sequential stream without checking the unused branch destination.
 
 ### 5.2 `JMP <ea>` (Jump to Effective Address)
 
@@ -384,7 +386,7 @@ flowchart TD
     NotTakenB --> SeqRetire["Step 0-1: step_alu idle (4 clocks)<br/>Step 2-3: PREFETCH_NEXT_READ & RETIRE (4 clocks)<br/>Retire! (Total: 8 clocks)"]
     
     Eval -- "Not Taken (Word .W)" --> NotTakenW["current_steps = &STEPS_BRANCH_NOT_TAKEN_WORD<br/>micro_step = 0"]
-    NotTakenW --> SkipExt["Step 0-1: step_alu idle (4 clocks)<br/>Step 2-3: FETCH_EXT_READ & FINISH (4 clocks)<br/>Step 4-5: PREFETCH_NEXT_READ & RETIRE (4 clocks)<br/>Retire! (Total: 12 clocks)"]
+    NotTakenW --> SkipExt["Step 0-1: step_alu idle (4 clocks)<br/>Step 2-3: READ_TARGET_OPCODE_READ & BUS_READ_IDLE at sequential PC (4 clocks)<br/>Step 4-5: PREFETCH_TARGET_READ & FINISH (4 clocks)<br/>Retire! (Total: 12 clocks)"]
 ```
 
 ---
@@ -872,6 +874,10 @@ long-store phases rather than the call/refill structure below.
 
 The byte/word layout also covers subtraction, logic and unary memory operations.
 `CLR` still reads its destination before prefetch and writeback.
+Memory `Scc` uses the same byte layout: it discards the destination read,
+writes `$FF` or `$00` according to the condition, and preserves CCR. Its
+predecrement address phase consumes two internal clocks before the read,
+committing An once; A7 decrements by two for the byte destination.
 
 #### Long Arithmetic and Unary Read-Modify-Write Variants
 
@@ -921,7 +927,17 @@ Archetype 5B below; long immediates require two extension pairs.
 
 Displacement/absolute-short modes add two internal clocks before the first
 target read; indexed modes add six. Absolute-long uses one extension pair.
-All forms retain target opcode read, stack writes, then target lookahead read.
+All JSR forms retain target opcode read, stack writes, then target lookahead read.
+
+#### Relative Call Variant (`BSR`)
+
+[`bsr.rs`](../../../crates/cpu/src/instructions/bsr.rs) computes
+`target = opcode_pc + 2 + sign_extend(displacement)` in two internal clocks.
+Both displacement forms then push the return PC high/low words using the shared
+stack phases, followed by the two target refill pairs: 18 clocks. Short calls
+save `opcode_pc + 2`; word calls save `opcode_pc + 4`. An odd target faults
+after both stack writes and captures the target through the
+[control-flow refill model](#51-the-two-word-pipeline-refill).
 
 ---
 
@@ -981,33 +997,35 @@ does not precede a failed stack read. Register semantics belong to the
 
 ### Class 9: Conditional Branching (`Bcc`) (Dynamic Path Selection)
 
-#### Archetype 9A: `BNE.B <disp8>` (Opcode `$66xx` — Short Branch)
-- **Total Duration**: 10 CPU clocks (5 CCKs) if Taken; 8 CPU clocks (4 CCKs) if Not Taken.
-- **Result Writing**: None.
-- **Prefetch**: Two-word refill if taken; sequential prefetch if not taken.
+[`bcc.rs`](../../../crates/cpu/src/instructions/bcc.rs) selects the path in a
+zero-clock ALU trampoline. A taken branch computes
+`ea_addr = opcode_pc + 2 + sign_extend(displacement)`. The short displacement
+comes from IR; the word displacement is already in the lookahead register.
+`BRA` uses the same taken layout without condition selection.
 
-| Step | Action / Handler | Clocks | Description / Bus Transaction |
-| :---: | :--- | :---: | :--- |
-| **0** | `BranchEval` / `ALU_IDLE` | 2 (CCK1) | Evaluates condition code.<br/>- **Taken**: sets `ea_addr = PC + disp8`, branches to taken sequence. *(Total: 10 clocks)*<br/>- **Not Taken**: branches to not-taken sequence. *(Total: 8 clocks)* |
-| **1 (Taken)** | `READ_TARGET_OPCODE_READ` | 2 (CCK1) | **Refill 1:** Reads target opcode from `ea_addr` into `irc`. |
-| **2 (Taken)** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completes. |
-| **3 (Taken)** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads prefetch word at `ea_addr + 2`. |
-| **4 (Taken)** | `PREFETCH_TARGET_FINISH` | 2 (CCK2) | Sets `target_refill = true`, loads `IR = irc`, sets `PC = ea_addr + 4`, and retires! *(Total: 10 clocks)* |
-| **1 (Not Taken)** | `ALU_IDLE` | 2 (CCK2) | Internal hardware pipeline delay. |
-| **2 (Not Taken)** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Performs standard sequential prefetch from `PC` into `irc`. |
-| **3 (Not Taken)** | `BUS_READ_IDLE` | 2 (CCK2) | Retires sequentially: `IR = prefetch`, `prefetch = irc`, `PC += 2`. *(Total: 8 clocks)* |
+| Selected path | Internal delay | Following bus pairs | Total clocks |
+| :--- | :---: | :--- | :---: |
+| Taken short or word | 2 | `READ_CONTROL_TARGET_OPCODE_READ` / `BUS_READ_IDLE`, then `PREFETCH_TARGET_READ` / `PREFETCH_TARGET_FINISH` | 10 |
+| Untaken short | 4 | `PREFETCH_NEXT_READ` / `BUS_READ_IDLE` | 8 |
+| Untaken word | 4 | `READ_TARGET_OPCODE_READ` / `BUS_READ_IDLE` at the sequential PC, then `PREFETCH_TARGET_READ` / `PREFETCH_TARGET_FINISH` | 12 |
 
-#### Archetype 9B: `BEQ.W <disp16>` (Opcode `$6700` — Word Branch)
-- **Total Duration**: 10 CPU clocks (5 CCKs) if Taken; 12 CPU clocks (6 CCKs) if Not Taken.
+Each pair follows the [shared read phases](#23-specialized-2-clock-atomic-micro-step-handlers-busfn).
+Taken paths refill at the destination and destination + 2. Untaken short paths
+retain the lookahead opcode and fetch its following word. Untaken word paths
+replace the displacement with the sequential opcode at `opcode_pc + 4` and
+fetch the word at `opcode_pc + 6`. Retirement commits the staged opcode and
+lookahead; the executing IR remains unchanged during the instruction.
+Odd taken targets use the [shared control-target frame capture](#51-the-two-word-pipeline-refill).
+Untaken paths do not check the unused displacement target.
 
-| Step | Action / Handler | Clocks | Description / Bus Transaction |
-| :---: | :--- | :---: | :--- |
-| **0** | `BranchEval` / `ALU_IDLE` | 2 (CCK1) | Evaluates condition code. If taken, dispatches 10-clock target refill. If not taken, dispatches 12-clock sequence. |
-| **1..4 (Taken)** | Target Refill Pipeline | 8 (4 CCKs) | Executes 2-word target refill (`READ_TARGET_OPCODE_READ`, `BUS_READ_IDLE`, `PREFETCH_TARGET_READ`, `PREFETCH_TARGET_FINISH`). *(Total: 10 clocks)* |
-| **1 (Not Taken)** | `FETCH_EXT_READ` | 2 (CCK1) | Initiates bus read to skip over displacement extension word in memory stream. |
-| **2 (Not Taken)** | `FETCH_EXT_FINISH` | 2 (CCK2) | Completes read, advances `PC += 2`. |
-| **3 (Not Taken)** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Initiates sequential opcode prefetch from `PC`. |
-| **4 (Not Taken)** | `BUS_READ_IDLE` | 2 (CCK2) | Retires sequentially: `IR = prefetch`, `prefetch = irc`, `PC += 2`. *(Total: 12 clocks)* |
+#### Decrement-and-Branch Variant (`DBcc`)
+
+[`dbcc.rs`](../../../crates/cpu/src/instructions/dbcc.rs) tests the condition
+before changing Dn. A true condition leaves Dn unchanged and uses the 12-clock
+sequential word path. A false condition decrements only the low word, preserves
+the upper word and CCR, and selects the 10-clock taken path when the new counter
+is not `$FFFF`. The word displacement is relative to `opcode_pc + 2`; taken
+refill and odd-target capture use the same primitives as Bcc.
 
 ---
 

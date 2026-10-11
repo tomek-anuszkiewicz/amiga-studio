@@ -3029,3 +3029,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Existing RAM masks and electrical signal limits remain
   - python tools/verification/verify.py commit passes all quality gates, ordinary crate and standard harness tests, Python contracts and the full repository English audit; output remains in the local commit-profile.log
   - Full CPU SingleStep and milestone profiles are not run
+---
+
+### [2026-10-11 19:59 CEST] — CPU-CYCLE-01: repair branch frames and Scc predecrement timing
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Repair batches 06.23 through 06.26 and 06.28
+  - Reuse control-target reads for odd BRA, taken Bcc/DBcc and BSR targets, capturing target minus four and information bit 3
+  - Separate Scc predecrement address calculation from its byte read, restoring the missing internal CCK
+  - Preserve BSR return-address writes before target faults and leave untaken paths unchanged
+  - Reconcile both affected CPU specifications and retain CPU-CYCLE-01 as an active plan
+- **Architectural Rationale & Trade-Offs**:
+  - Fix mechanisms demonstrated by original silicon inputs without changing references, comparison strength or masks. Reuse shared read phases rather than adding handlers.
+  - Scoped sync-design-docs review selects the parent CPU specification and the explicitly changed micro-step specification, with no missing or invalid ownership paths. This commit does not close a roadmap point or milestone.
+- **Verification & Test Results**:
+  - All 32260 selected vectors pass complete comparison plus independent exact final PC and both prefetch words, improving by 9446 cases without losing a prior pass
+  - Five official full-input SingleStep groups pass, including 8065 NOP controls
+  - CPU crate tests, formatting, architecture, Clippy and full repository English audit pass
+  - All 124 original reference hashes match and zero overrides execute
+  - Vault audit passes 39 specifications and 1083 links and Graphify AST refresh completes
+  - Supplied DBcc vectors contain no expired counters, so independent expiry timing is not established
+  - Initial mode is supervisor and BSR stacks are aligned
+  - Existing RAM masks, partial bus-error and electrical signal limits remain
+  - Retry controls use synthetic CPU buses rather than production chipset arbitration
+  - python tools/verification/verify.py commit passes all quality gates, ordinary crate and standard harness tests, all Python contracts and the full repository English audit. Output remains in the local commit-profile.log
+  - Full CPU SingleStep and milestone profiles are not run
