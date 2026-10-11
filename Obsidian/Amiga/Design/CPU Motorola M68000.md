@@ -182,9 +182,8 @@ The emulator does **NOT** rely on a static cycle lookup table. Cycles are calcul
    - Displacement `(d16, An)`: 8 clocks (4 CCK) — 1 prefetch word + address calc.
    - Indexed `(d8, An, Xn)`: 10 clocks (5 CCK) — 1 prefetch word + index addition + internal idle clock.
 2. **Data-Dependent Operand Timing:**
-   - **`DIVU` (Unsigned Division):** Dynamically takes between 38 and 140 CPU clocks depending on quotient bit loop cancellations and zero divisor detection.
-   - **`DIVS` (Signed Division):** Dynamically takes between 122 and 158 CPU clocks depending on sign resolution and division iterations.
-   - **`MULU` / `MULS`:** Takes 38 to 70 CPU clocks (cycles scale dynamically with the number of 1-bits in the multiplier).
+   - **`DIVU` / `DIVS`:** Shift/subtract iterations and sign handling determine normal execution time. Overflow and divide-by-zero use separate paths; [division timing formulas](../Reference/Motorola%2068000%20DIVU%20%26%20DIVS%20Cycle-Accurate%20Timing%20Analysis.md) give register baselines, with operand acquisition added for memory/immediate forms.
+   - **`MULU` / `MULS`:** Register forms take `38 + 2n` CPU clocks. MULU counts source one-bits; MULS counts adjacent transitions in the source with a low zero bit. Operand acquisition adds the effective-address cost.
    - **Shifts & Rotates (`ASL`, `LSR`, etc.):** 6 or 8 base clocks + 2 clocks per bit shifted.
 3. **Branch Conditions:**
    - `Bcc`: 10 clocks if branch taken, 8 clocks if not taken.
@@ -604,7 +603,7 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
     - **Step 1 (Read):** Read 16-bit word from effective address memory via linear EA resolution.
     - **Step 2 (Prefetch & Compute):** Perform 1-bit shift, evaluate condition codes, initiate next opcode prefetch, and latch modified word into `state.micro.destination`.
     - **Step 3 (Writeback):** Write modified 16-bit word back to the target memory address via bus write cycle.
-  - Concludes with pipeline retirement from `state.micro.irc`. Total duration: 12–16 clocks depending on addressing mode (e.g. `(An)` is 12 clocks, `-(An)` is 14 clocks).
+  - Concludes with pipeline retirement from `state.micro.irc`. Total duration is 12 clocks plus the Class 3 address prefix: 12 for `(An)`/`(An)+`, 14 for `-(An)`, 16 for displacement/absolute short, 18 for indexed, and 20 for absolute long.
 
 - **Shift Count Modulo:**
   - When the shift count is held in a data register, the CPU evaluates only the lower 6 bits (`count % 64` / `count & 63`).

@@ -686,6 +686,7 @@ Other register variants differ only in their internal tail after prefetch:
 | --- | ---: | ---: |
 | `CLR/NEG/NEGX/NOT.b/w Dn` | 0 | 4 |
 | `CLR/NEG/NEGX/NOT.l Dn` | 2 | 6 |
+| `ABCD/SBCD Dy,Dx`; `NBCD Dn` | 2 | 6 |
 | `SUBQ.l #q,Dn`; `SUBQ.w #q,An` | 4 | 8 |
 | `SUBQ.l #q,An` | 2 | 6 |
 | `SUBA.w/l Dn/An,An` | 4 | 8 |
@@ -926,7 +927,7 @@ Archetype 5B below; long immediates require two extension pairs.
 ### Class 10: Variable-Cycle Arithmetic (`DIVU.W <ea>, Dn`)
 
 #### Archetype: `DIVU.W (A0), D0` (Opcode `$80D0`)
-- **Total Duration**: Variable: 108 to 140 CPU clocks.
+- **Total Duration**: Register division timing plus four clocks for the indirect operand read; overflow takes 14 clocks, divide-by-zero entry takes 42.
 - **Result Writing**: Register destination (`D0`). Sets quotient and remainder. Zero memory writes.
 - **Prefetch**: Reads divisor word, waits internal division delay (`clocks_remaining`), then completes sequential opcode prefetch.
 
@@ -934,10 +935,16 @@ Archetype 5B below; long immediates require two extension pairs.
 | :---: | :--- | :---: | :--- |
 | **0** | `READ_SRC_WORD` | 2 (CCK1) | Reads 16-bit divisor from memory at `(A0)` into `source`. |
 | **1** | `BUS_READ_IDLE` | 2 (CCK2) | Memory read finishes into `source`. |
-| **2** | `ALU_IDLE` + `alu_fn` | 2 (CCK1) | Calls `alu_divu_w`. Divides `D0` by `source`. Sets CCR flags. Sets quotient & remainder in `D0`. Sets `state.micro.clocks_remaining = 76 + quot_ones * 2`. |
+| **2** | `ALU_IDLE` + `alu_fn` | 2 (CCK1) | Calls `alu_divu_mem`. Updates the result and CCR, then schedules the shift/subtract timing from `calc_divu_internal_clocks`, excluding the final four-clock prefetch. Overflow schedules six internal clocks; a zero divisor selects exception entry. |
 | **3..N** | `ALU_IDLE` (Countdown) | Variable | Sits in idle bus countdown for `clocks_remaining` (freeing Chip RAM for Blitter/Copper). |
 | **N+1** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Initiates sequential opcode prefetch from `PC` into `irc`. |
 | **N+2** | `BUS_READ_IDLE` | 2 (CCK2) | Completes prefetch, shifts `IR = prefetch`, `prefetch = irc`, `PC += 2`, and retires! |
+
+Multiplication uses **operand acquisition -> prefetch -> variable internal
+interval -> retirement**. Its internal interval is `34 + 2n` clocks: `n` counts
+source one-bits for MULU and adjacent bit transitions in the source with a low
+zero bit for MULS. Division completes its internal interval before prefetch;
+its iteration and sign timing is defined in the [division timing reference](../Reference/Motorola%2068000%20DIVU%20%26%20DIVS%20Cycle-Accurate%20Timing%20Analysis.md).
 
 #### Register Shifts and Rotates
 

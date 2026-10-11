@@ -4,7 +4,7 @@
 //! - MULU <ea>, Dn (Unsigned multiply: 16x16 -> 32)
 //!
 //! Execution timing:
-//! - 38-54 clocks (DN), data-dependent based on number of 1-bits in source operand:
+//! - 38-70 clocks (DN), data-dependent based on number of 1-bits in source operand:
 //!   Internal idle cycles = 34 + 2 * popcount(src)
 
 use crate::micro::common;

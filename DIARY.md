@@ -2824,3 +2824,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - CPU crate tests, focused Cartesian arithmetic/unary/shift/CMP checks and five override-loader contract tests pass. DMA uses a synthetic TestMemoryBus and sampled bounded schedules, not production bus or chipset arbitration
   - All 124 reference hashes are unchanged. CPU source hashes match the validated batch packet. Vault links/frontmatter and scoped English checks pass, with existing vocabulary findings retained only in the ignored task plan
   - The required per-commit profile is executed separately for this snapshot. No full whole-CPU SingleStep, full Cartesian or milestone closure is claimed. CPU-CYCLE-01, CPU-PC-01 and SINGLESTEP-RAM-01 remain active
+---
+
+### [2026-10-11 15:25 CEST] — CPU-CYCLE-01: correct BCD phases and verify batches 06.11 through 06.14
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `Obsidian/Amiga/Design`
+  - `CPU-BENCH-01`
+  - `SINGLESTEP-MUTATION-01`
+- **What Was Changed (The Concrete Reality)**:
+  - Move the two-clock register ABCD/SBCD/NBCD idle after prefetch; retain six-clock totals and existing ALU/flag behavior
+  - Separate NBCD byte predecrement calculation from the operand read; use a seven-step sequence with the required two-clock address phase
+  - Correct the MULU range comment and existing CPU class/timing descriptions; multiplication and division execution otherwise remain unchanged
+  - Record local CPU-BENCH-01 and SINGLESTEP-MUTATION-01 plans for benchmark measurement validity and verifier sensitivity; implementation remains pending
+- **Architectural Rationale & Trade-Offs**:
+  - Authoritative vectors require prefetch before the BCD register tail and an independent NBCD predecrement phase
+  - Scoped design review selected the two CPU specifications; shared phase descriptions remain concise and no reference files or comparison masks changed
+  - Benchmark planning identified historical CPU-clock values labeled CCK and estimated work counts; mutation planning targets observable fields plus current PC/prefetch/RAM comparison gaps
+- **Verification & Test Results**:
+  - Source-matched diagnostics pass 06.11 16246/16246, 06.12 16130/16130, 06.13 16130/16130 and 06.14 24195/24195; exact final prefetch and formal PC pass all 72701 selected vectors
+  - BCD improves from 13596 to 24195 complete passes with no lost prior passes; NOP/register ADD controls retain 10042/10042
+  - Standard full-input BCD, focused Cartesian BCD/multiply-divide/shift fixtures, CPU crate tests, CPU Clippy, formatting, architecture, English and vault checks passed during implementation
+  - All 124 original reference hashes and the validated packet match current inputs; selected scopes execute no overrides
+  - DIVU includes one zero-divisor vector; DIVS contains none. DMA uses the existing 5% sample and bounded synthetic contention rather than production arbitration
+  - Benchmark and mutation plans passed English/link checks; fresh benchmark measurements and mutation execution have not started. Historical benchmark warnings do not establish a current CPU regression
+  - The required commit profile runs separately for this frozen snapshot. Full CPU SingleStep, full Cartesian and milestone closure are not claimed; all related plans remain active
