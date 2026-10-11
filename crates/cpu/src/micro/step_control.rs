@@ -145,7 +145,7 @@ impl Cpu {
         }
     }
 
-    /// CCK2: Latches high word of return PC, advances SP += 2
+    /// CCK2: Advances SP += 2; the high word was latched during the CCK1 read
     pub fn step_bus_pop_stack_high_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
         let sp = self.state.a_long(7);
         self.state.set_a_long(7, sp.wrapping_add(2));
@@ -168,7 +168,7 @@ impl Cpu {
         }
     }
 
-    /// CCK2: Latches full return PC into `ea_addr`, advances SP += 2
+    /// CCK2: Advances SP += 2; `ea_addr` was assembled during the CCK1 read
     pub fn step_bus_pop_stack_low_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
         let sp = self.state.a_long(7);
         self.state.set_a_long(7, sp.wrapping_add(2));

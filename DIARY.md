@@ -3165,3 +3165,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Final milestone profile passes: full SingleStep completes 128 of 128 groups with zero failures, 1002737 reported current executions plus the two-record override control
   - Static semantic consistency, roadmap structure, diary ordering and vault metadata/link checks pass for 39 documents and 1089 links
   - Scoped design ownership review has no unmapped code paths
+---
+
+### [2026-10-11 22:58 CEST] — CPU-CONTINUE-01: verify continued execution and reconcile CPU documentation
+- **Affected Subsystems**:
+  - `CPU`
+  - `Machine Loop`
+  - `Design Documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Close CPU-CONTINUE-01 with 15 added test functions and extended existing fixtures for reset, exceptions, status, returns, completed waits and snapshots
+  - Execute meaningful following instructions with bounded CPU and production-machine helpers, including device markers and guest interrupt-source clearing
+  - Correct CHK saved-PC documentation and continuation expectations to the following instruction under the user-approved SingleStep precedence decision
+  - Correct eight document/code discrepancies for MOVEM, ABCD/SBCD, PC-relative operand space, indexed EA width, condition fields, CCK latch phases and DIVU descriptors
+  - Clarify active-slice snapshot reconstruction limits, document ownership and level 7 scope, and correct two RTS comments without changing runtime behavior
+- **Architectural Rationale & Trade-Offs**:
+  - Final PC and queue assertions alone do not establish useful execution after reset, exception return or a completed transfer. The fixtures exercise subsequent guest effects and expected repeat controls.
+  - Documentation follows executable statements and supplied reference evidence rather than stale comments. Reference vectors, overrides and production behavior remain unchanged.
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit, covering all ordinary crates with coverage, standard harness tests, full English audit, formatting, Clippy, architecture, hardware/code checks and all Python tool contracts
+  - PASS: vault links and frontmatter for 39 documents and 1095 links, configured static semantic checks, scoped English and diff checks
+  - Scoped pre-commit design review selected both CPU documents and Machine Loop.md, which needed no edit
+  - Earlier controlled fixture mutations detected a lost device marker, an extra completed write and a lost restored marker, then original source bytes were restored
+  - Full SingleStep and milestone profiles were not run. CPU bus scripts do not establish every callback timestamp or DMA arbitration. Physical keyboard hold timing, external BERR, level 7 NMI and arbitrary in-flight snapshot reconstruction remain outside this verified scope.

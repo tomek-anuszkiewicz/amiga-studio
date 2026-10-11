@@ -20,6 +20,9 @@
 use cpu::Cpu;
 use physical_memory::PhysicalMemory;
 
+mod common;
+use common::retire_to;
+
 /// Helper: Initializes CPU and Amiga PhysicalMemory with Chip RAM mapped at `$000000`.
 fn setup_machine() -> (Cpu, PhysicalMemory) {
     let mut bus = PhysicalMemory::new();
@@ -145,12 +148,14 @@ fn test_program_dbf_array_sum() {
     // loop ($00100A):
     // $00100A: ADD.W  (A0)+, D0         ; D058
     // $00100C: DBF    D1, loop          ; 51C9 FFFC (offset -4: from $00100E to $00100A)
-    let code: [u16; 8] = [
+    let code: [u16; 13] = [
         0x41F9, 0x0000, 0x2000, // LEA    (0x002000).L, A0
         0x4280, // CLR.L  D0
         0x7203, // MOVEQ  #3, D1
         0xD058, // ADD.W  (A0)+, D0
         0x51C9, 0xFFFC, // DBF    D1, $00100A
+        0x33C0, 0, 0x4000, // MOVE.W D0,$4000.L after counter expiry
+        0x742A, 0x5282, // MOVEQ #42,D2; ADDQ.L #1,D2
     ];
 
     let (mut cpu, mut bus) = setup_machine();
@@ -180,6 +185,14 @@ fn test_program_dbf_array_sum() {
         0x002008,
         "A0 must point past the 4 words"
     );
+    assert_eq!(cpu.state.instruction_pc, 0x1010);
+    for next in [0x1016, 0x1018, 0x101A] {
+        retire_to(&mut cpu, &mut bus, next);
+    }
+    assert_eq!(bus.read_word_debug(0x4000), 100);
+    assert_eq!(cpu.state.d_long(2), 43);
+    assert_eq!(cpu.state.d_word(1), 0xFFFF);
+    assert_eq!(cpu.state.a_long(0), 0x2008);
 }
 
 // ============================================================================
@@ -356,13 +369,17 @@ fn test_program_divide_by_zero_exception() {
     // Handler ($002500):
     // $002500: MOVEQ  #99, D0           ; 7063
     // $002502: RTE                      ; 4E73
-    let code: [u16; 5] = [
+    let code: [u16; 9] = [
         0x303C, 0x0064, // MOVE.W #100, D0
         0x323C, 0x0000, // MOVE.W #0, D1
         0x80C1, // DIVU.W D1, D0
+        0x5280, // ADDQ.L #1,D0 after successful retry
+        0x33C0, 0x0000, 0x4000, // MOVE.W D0,$4000.L
     ];
-    let handler: [u16; 2] = [
+    let handler: [u16; 4] = [
         0x7063, // MOVEQ  #99, D0
+        0x5282, // ADDQ.L #1,D2: count handler entries
+        0x7203, // MOVEQ #3,D1: repair the zero divisor before retry
         0x4E73, // RTE
     ];
 
@@ -377,16 +394,340 @@ fn test_program_divide_by_zero_exception() {
 
     cpu.set_pc_and_prime_prefetch(0x001000, &mut bus);
 
-    // 1: MOVE, 2: MOVE, 3: DIVU (traps to $002500), 4: MOVEQ in handler
-    for _ in 0..4 {
-        cpu.step_instruction(&mut bus);
-    }
+    retire_to(&mut cpu, &mut bus, 0x1004);
+    retire_to(&mut cpu, &mut bus, 0x1008);
+    retire_to(&mut cpu, &mut bus, 0x2500);
+    assert_eq!(bus.read_word_debug(ssp - 6), 0x2700);
+    assert_eq!(bus.read_word_debug(ssp - 4), 0);
+    assert_eq!(
+        bus.read_word_debug(ssp - 2),
+        0x1008,
+        "DIVU saves its opcode PC"
+    );
+    retire_to(&mut cpu, &mut bus, 0x2502);
 
     assert_eq!(
         cpu.state.d_long(0),
         99,
         "Handler must execute and set D0 to 99"
     );
+    for next in [0x2504, 0x2506, 0x1008, 0x100A, 0x100C, 0x1012] {
+        retire_to(&mut cpu, &mut bus, next);
+    }
+    assert_eq!(cpu.state.d_long(0), 34);
+    assert_eq!(bus.read_word_debug(0x4000), 34);
+    assert_eq!(cpu.state.d_long(2), 1, "division handler repeated");
+    assert_eq!(cpu.state.ssp(), ssp);
+}
+
+#[test]
+fn chk_executes_handlers_and_recovers_without_repetition() {
+    // Supplied CHK SingleStep stack writes save the following opcode PC.
+    // RTE resumes there without repairing or executing CHK again.
+    check_trap_continuation(&[
+        (0x4181, 6, true, 0x2010),      // CHK.W D1,D0: above bound
+        (0x4181, 0xFFFF, true, 0x2018), // negative only
+        (0x4181, 2, false, 0x2010),
+    ]);
+}
+
+#[test]
+fn trapv_taken_and_untaken_paths_execute_the_following_program() {
+    check_trap_continuation(&[
+        (0x4E76, 0, true, 0x2012), // TRAPV with V set
+        (0x4E76, 0, false, 0x2010),
+    ]);
+}
+
+fn check_trap_continuation(cases: &[(u16, u32, bool, u16)]) {
+    for &(opcode, value, traps, saved_sr) in cases {
+        let (mut cpu, mut bus) = setup_machine();
+        load_program(
+            &mut bus,
+            0x1000,
+            &[
+                opcode, 0x762A, // MOVEQ #42,D3
+                0x33C3, 0, 0x4000, // MOVE.W D3,$4000.L
+                0x5283, 0x7835, // ADDQ.L #1,D3; MOVEQ #53,D4
+            ],
+        );
+        load_program(
+            &mut bus,
+            0x2500,
+            &[0x5282, 0x4E73], // count handler entry; RTE
+        );
+        set_vector(&mut bus, if opcode == 0x4181 { 6 } else { 7 }, 0x2500);
+        cpu.state.set_ssp(0x5000);
+        cpu.state.set_sr(if opcode == 0x4E76 && traps {
+            0x2012
+        } else {
+            0x2010
+        });
+        cpu.state.set_d_long(0, value);
+        cpu.state.set_d_long(1, 5);
+        cpu.set_pc_and_prime_prefetch(0x1000, &mut bus);
+        if traps {
+            retire_to(&mut cpu, &mut bus, 0x2500);
+            assert_eq!(bus.read_word_debug(0x4FFA), saved_sr);
+            assert_eq!(bus.read_word_debug(0x4FFC), 0);
+            assert_eq!(bus.read_word_debug(0x4FFE), 0x1002);
+            for next in [0x2502, 0x1002] {
+                retire_to(&mut cpu, &mut bus, next);
+            }
+            assert_eq!(cpu.state.sr(), saved_sr);
+        } else {
+            retire_to(&mut cpu, &mut bus, 0x1002);
+        }
+        for next in [0x1004, 0x100A, 0x100C, 0x100E] {
+            retire_to(&mut cpu, &mut bus, next);
+        }
+        assert_eq!(cpu.state.d_long(2), u32::from(traps));
+        assert_eq!(
+            cpu.state.d_long(0),
+            value,
+            "handler must not repair a completed CHK"
+        );
+        assert_eq!(cpu.state.d_long(3), 43);
+        assert_eq!(cpu.state.d_long(4), 53);
+        assert_eq!(bus.read_word_debug(0x4000), 42);
+        assert_eq!(cpu.state.ssp(), 0x5000);
+    }
+}
+
+#[test]
+fn rejected_opcodes_recover_through_an_adjusted_frame_to_the_user_stack() {
+    for (opcode, extension, vector, skip) in [
+        (0x4E70, None, 8, 2),         // user RESET
+        (0x4E72, Some(0x2700), 8, 4), // user STOP
+        (0x4AFC, None, 4, 2),
+        (0xA123, None, 10, 2),
+        (0xF123, None, 11, 2),
+    ] {
+        let (mut cpu, mut bus) = setup_machine();
+        let mut code = vec![opcode];
+        if let Some(word) = extension {
+            code.push(word);
+        }
+        code.extend([0x702A, 0x2F00, 0x221F, 0x5281, 0x7435]);
+        load_program(&mut bus, 0x1000, &code);
+        // Explicitly skip the rejected encoding in the saved PC, then use RTE.
+        load_program(
+            &mut bus,
+            0x2500,
+            &[0x5283, if skip == 2 { 0x54AF } else { 0x58AF }, 2, 0x4E73],
+        );
+        set_vector(&mut bus, vector, 0x2500);
+        cpu.state.set_ssp(0x5000);
+        cpu.state.set_usp(0x6000);
+        cpu.state.set_sr(0x0010);
+        cpu.set_pc_and_prime_prefetch(0x1000, &mut bus);
+        retire_to(&mut cpu, &mut bus, 0x2500);
+        assert_eq!(bus.read_word_debug(0x4FFA), 0x0010);
+        assert_eq!(bus.read_word_debug(0x4FFE), 0x1000);
+        for next in [0x2502, 0x2506, 0x1000 + skip] {
+            retire_to(&mut cpu, &mut bus, next);
+            assert!(!cpu.state.reset_line_asserted && !cpu.state.stopped);
+        }
+        assert_eq!(cpu.state.ssp(), 0x5000);
+        assert_eq!(cpu.state.a_long(7), 0x6000);
+        for offset in [2, 4, 6, 8, 10] {
+            retire_to(&mut cpu, &mut bus, 0x1000 + skip + offset);
+            assert!(!cpu.state.reset_line_asserted && !cpu.state.stopped);
+        }
+        assert_eq!(cpu.state.d_long(1), 43);
+        assert_eq!(cpu.state.d_long(2), 53);
+        assert_eq!(cpu.state.d_long(3), 1);
+        assert_eq!(cpu.state.usp(), 0x6000);
+        assert_eq!(cpu.state.ssp(), 0x5000);
+        assert_eq!(bus.read_word_debug(0x5FFE), 42);
+    }
+}
+
+#[test]
+fn status_changes_select_the_stack_for_following_push_and_pop() {
+    for (opcode, immediate, initial_sr, expected_sr) in [
+        (0x46FC, 0x0015, 0x2700, 0x0015), // MOVE.W #...,SR
+        (0x027C, 0xD8FF, 0x2700, 0x0000), // ANDI: supervisor -> user
+        (0x0A7C, 0x2000, 0x2700, 0x0700), // EORI: supervisor -> user
+        (0x007C, 0x0400, 0x2100, 0x2500), // ORI: change interrupt mask
+    ] {
+        let (mut cpu, mut bus) = setup_machine();
+        load_program(
+            &mut bus,
+            0x1000,
+            &[opcode, immediate, 0x2F00, 0x221F, 0x5281, 0x7435],
+        );
+        cpu.state.set_ssp(0x5000);
+        cpu.state.set_usp(0x6000);
+        cpu.state.set_sr(initial_sr);
+        cpu.state.set_d_long(0, 42);
+        cpu.set_pc_and_prime_prefetch(0x1000, &mut bus);
+        retire_to(&mut cpu, &mut bus, 0x1004);
+        assert_eq!(cpu.state.sr(), expected_sr);
+        let active_sp = if expected_sr & 0x2000 == 0 {
+            0x6000
+        } else {
+            0x5000
+        };
+        assert_eq!(cpu.state.a_long(7), active_sp);
+        retire_to(&mut cpu, &mut bus, 0x1006);
+        assert_eq!(cpu.state.a_long(7), active_sp - 4);
+        assert_eq!(bus.read_word_debug(active_sp - 2), 42);
+        assert_eq!(
+            bus.read_word_debug(if active_sp == 0x6000 { 0x4FFE } else { 0x5FFE }),
+            0
+        );
+        for next in [0x1008, 0x100A, 0x100C] {
+            retire_to(&mut cpu, &mut bus, next);
+        }
+        assert_eq!(cpu.state.d_long(1), 43);
+        assert_eq!(cpu.state.d_long(2), 53);
+        assert_eq!(cpu.state.ssp(), 0x5000);
+        assert_eq!(cpu.state.usp(), 0x6000);
+        assert_eq!(cpu.state.sr() & 0xFF00, expected_sr & 0xFF00);
+    }
+}
+
+#[test]
+fn ccr_changes_drive_the_following_conditional_instruction() {
+    for (opcode, immediate, initial_ccr, expected_ccr) in [
+        (0x44FC, 4, 0, 4),    // MOVE #4,CCR
+        (0x023C, 0x1B, 4, 0), // ANDI clears Z
+        (0x003C, 4, 0, 4),    // ORI sets Z
+        (0x0A3C, 4, 4, 0),    // EORI toggles Z off
+    ] {
+        let (mut cpu, mut bus) = setup_machine();
+        load_program(
+            &mut bus,
+            0x1000,
+            &[opcode, immediate, 0x57C1, 0x742A, 0x5282],
+        );
+        cpu.state.set_sr(0x0700 | initial_ccr);
+        cpu.state.set_usp(0x6000);
+        cpu.state.set_ssp(0x5000);
+        cpu.state.set_d_long(1, 0x12345600);
+        cpu.set_pc_and_prime_prefetch(0x1000, &mut bus);
+        retire_to(&mut cpu, &mut bus, 0x1004);
+        assert_eq!(cpu.state.sr(), 0x0700 | expected_ccr);
+        for next in [0x1006, 0x1008, 0x100A] {
+            retire_to(&mut cpu, &mut bus, next);
+        }
+        assert_eq!(
+            cpu.state.d_long(1),
+            0x12345600 | if expected_ccr == 4 { 0xFF } else { 0 }
+        );
+        assert_eq!(cpu.state.d_long(2), 43);
+        assert_eq!(cpu.state.a_long(7), 0x6000);
+        assert_eq!(cpu.state.ssp(), 0x5000);
+    }
+}
+
+#[test]
+fn rtr_target_uses_the_restored_ccr_and_advanced_stack() {
+    let (mut cpu, mut bus) = setup_machine();
+    load_program(&mut bus, 0x1000, &[0x4E77, 0x4E71]);
+    load_program(&mut bus, 0x2000, &[0x57C1, 0x241F, 0x762A, 0x5283]);
+    load_program(&mut bus, 0x5000, &[4, 0, 0x2000, 0x1234, 0x5678]);
+    cpu.state.set_ssp(0x5000);
+    cpu.state.set_sr(0x2710);
+    cpu.set_pc_and_prime_prefetch(0x1000, &mut bus);
+    retire_to(&mut cpu, &mut bus, 0x2000);
+    assert_eq!(cpu.state.sr(), 0x2704);
+    assert_eq!(cpu.state.ssp(), 0x5006);
+    for next in [0x2002, 0x2004, 0x2006, 0x2008] {
+        retire_to(&mut cpu, &mut bus, next);
+    }
+    assert_eq!(cpu.state.d_byte(1), 0xFF);
+    assert_eq!(cpu.state.d_long(2), 0x12345678);
+    assert_eq!(cpu.state.d_long(3), 43);
+    assert_eq!(cpu.state.ssp(), 0x500A);
+}
+
+#[test]
+fn nested_bsr_calls_return_to_each_saved_address() {
+    let (mut cpu, mut bus) = setup_machine();
+    load_program(&mut bus, 0x1000, &[0x6100, 0x0FFE, 0x5280, 0x7235]);
+    load_program(&mut bus, 0x2000, &[0x702A, 0x610C, 0x5280, 0x4E75]);
+    load_program(&mut bus, 0x2010, &[0x5480, 0x4E75]);
+    cpu.state.set_ssp(0x5000);
+    cpu.set_pc_and_prime_prefetch(0x1000, &mut bus);
+    retire_to(&mut cpu, &mut bus, 0x2000);
+    assert_eq!(bus.read_word_debug(0x4FFE), 0x1004);
+    retire_to(&mut cpu, &mut bus, 0x2002);
+    retire_to(&mut cpu, &mut bus, 0x2010);
+    assert_eq!(cpu.state.ssp(), 0x4FF8);
+    assert_eq!(bus.read_word_debug(0x4FFA), 0x2004);
+    for next in [0x2012, 0x2004, 0x2006, 0x1004, 0x1006, 0x1008] {
+        retire_to(&mut cpu, &mut bus, next);
+    }
+    assert_eq!(cpu.state.d_long(0), 46);
+    assert_eq!(cpu.state.d_long(1), 53);
+    assert_eq!(cpu.state.ssp(), 0x5000);
+}
+
+#[test]
+fn self_modifying_code_retains_queued_words_until_branch_refill() {
+    let (mut cpu, mut bus) = setup_machine();
+    // MOVE.W D0,(A0) changes the already queued next MOVEQ. The old
+    // MOVEQ executes once; a taken branch then fetches the changed word.
+    load_program(&mut bus, 0x1000, &[0x3080, 0x722A, 0x60FC]);
+    cpu.state.set_d_long(0, 0x7235);
+    cpu.state.set_a_long(0, 0x1002);
+    cpu.set_pc_and_prime_prefetch(0x1000, &mut bus);
+    retire_to(&mut cpu, &mut bus, 0x1002);
+    assert_eq!(bus.read_word_debug(0x1002), 0x7235);
+    retire_to(&mut cpu, &mut bus, 0x1004);
+    assert_eq!(cpu.state.d_long(1), 42);
+    retire_to(&mut cpu, &mut bus, 0x1002);
+    retire_to(&mut cpu, &mut bus, 0x1004);
+    assert_eq!(cpu.state.d_long(1), 53);
+
+    // The same store at an address beyond the initial queue is visible
+    // when sequential execution first fetches that address.
+    let (mut cpu, mut bus) = setup_machine();
+    load_program(&mut bus, 0x1000, &[0x3080, 0x4E71, 0x4E71, 0x722A, 0x7435]);
+    cpu.state.set_d_long(0, 0x7235);
+    cpu.state.set_a_long(0, 0x1006);
+    cpu.set_pc_and_prime_prefetch(0x1000, &mut bus);
+    for next in [0x1002, 0x1004, 0x1006, 0x1008, 0x100A] {
+        retire_to(&mut cpu, &mut bus, next);
+    }
+    assert_eq!(cpu.state.d_long(1), 53);
+    assert_eq!(cpu.state.d_long(2), 53);
+}
+
+#[test]
+fn odd_control_target_recovers_after_discarding_the_diagnostic_frame() {
+    let (mut cpu, mut bus) = setup_machine();
+    load_program(&mut bus, 0x1000, &[0x4ED0, 0x722A, 0x5281, 0x7435]);
+    load_program(
+        &mut bus,
+        0x2800,
+        &[
+            0x5283, // handler entry count
+            0x4FEF, 14, // LEA 14(SP),SP: discard the seven-word frame
+            0x4EF9, 0, 0x1002, // explicit legal supervisor recovery
+        ],
+    );
+    set_vector(&mut bus, 3, 0x2800);
+    cpu.state.set_ssp(0x5000);
+    cpu.state.set_a_long(0, 0x3001);
+    cpu.set_pc_and_prime_prefetch(0x1000, &mut bus);
+    retire_to(&mut cpu, &mut bus, 0x2800);
+    assert_eq!(cpu.state.ssp(), 0x4FF2);
+    assert_eq!(bus.read_word_debug(0x4FF6), 0x3001);
+    assert_eq!(
+        bus.read_word_debug(0x4FFE),
+        0x2FFD,
+        "odd target frame saves target minus four"
+    );
+    for next in [0x2802, 0x2806, 0x1002, 0x1004, 0x1006, 0x1008] {
+        retire_to(&mut cpu, &mut bus, next);
+    }
+    assert_eq!(cpu.state.d_long(1), 43);
+    assert_eq!(cpu.state.d_long(2), 53);
+    assert_eq!(cpu.state.d_long(3), 1);
+    assert_eq!(cpu.state.ssp(), 0x5000);
 }
 
 // ============================================================================

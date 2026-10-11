@@ -10,6 +10,8 @@ updated: 2026-10-11
 related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU SingleStepTests.md](Verification/CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/cpu/src/micro"
+  - "crates/cpu/src/instructions"
+  - "crates/cpu/src/cpu.rs"
 ---
 # Architecture Specification: M68000 Cycle-Exact Micro-Step State Machine
 
@@ -92,10 +94,14 @@ phase roles and are reused by instruction-class sequences.
 | fault_addr, info_word, ssp_base | Address Error capture and original supervisor-stack base. |
 
 The [micro-state definition](../../../crates/cpu/src/micro/engine.rs) is serialized
-except current_steps, which is a runtime static pointer. The present restore API
-reconstructs the opcode slice from IR. It does not encode an arbitrary redirected
-branch/exception slice; restoring a snapshot halfway through such a sequence is
-a known capability gap, distinct from instruction-boundary state restoration.
+except current_steps, which is a runtime static pointer. The present
+[restore API](../../../crates/cpu/src/cpu.rs) reconstructs the opcode slice from
+IR rather than retaining the active slice's identity. Arbitrary snapshots during
+execution therefore have a known reconstruction limitation: a redirected
+branch/exception slice is not encoded, and an early prefetch can advance IR while
+the original instruction still has a pending write. The latter also prevents IR
+alone from identifying the active slice. Instruction-boundary restoration is
+distinct from these cases; arbitrary in-flight restoration is not guaranteed.
 
 ### 2.5 The 65,536 Static Dispatch Universe
 
@@ -120,7 +126,7 @@ To maintain rigorous execution efficiency and consistency with the Motorola M680
 | `IDX_AN` | Address Register Indirect with Index | `(d8, An, Xn)` | 8-bit signed displacement + index register ($D_n/A_n$) added to $A_n$. Consumes 2 clocks internal delay. |
 | `ABSW` | Absolute Short | `(xxx).W` | 16-bit sign-extended absolute memory address. |
 | `ABSL` | Absolute Long | `(xxx).L` | 32-bit absolute memory address fetched via 2 extension reads. |
-| `D16_PC` | Program Counter Indirect with Displacement | `(d16, PC)` | 16-bit signed displacement added to base PC. Program Space read ($FC_2/FC_6$). |
+| `D16_PC` | Program Counter Indirect with Displacement | `(d16, PC)` | 16-bit signed displacement added to base PC. Operand read uses Data Space ($FC_1/FC_5$); the extension fetch uses Program Space ($FC_2/FC_6$). |
 | `IDX_PC` | Program Counter Indirect with Index | `(d8, PC, Xn)` | 8-bit signed displacement + index register added to base PC. Consumes 2 clocks internal delay. |
 | `IMM` | Immediate Data | `#<data>` | Operand embedded in instruction stream at PC. |
 
@@ -291,8 +297,12 @@ Reg:   D0  D1  D2  D3  D4  D5  D6  D7  A0  A1  A2  A3  A4  A5  A6  A7   (Predecr
 
 #### The `MovemTransfer` Loop Mechanics:
 Because a static array cannot predict the number of registers at compile time, `MOVEM` is modeled via the atomic **`execute_movem_transfer`** sub-loop:
-1. **Step 0 (`FetchExtension`)**: Reads the 16-bit register mask from `PC` into `state.micro.movem_mask`, advancing `PC += 2`.
-2. **Step 1 (`Alu`)**: Resolves `ea_addr = An` (or calculates displacement/index).
+For indirect modes, the [MOVEM arrays](../../../crates/cpu/src/instructions/movem.rs)
+use the following ordering. Displacement, index and absolute modes insert their
+own address-extension and calculation prefix before the transfer loop.
+
+1. **Step 0 (`FETCH_MASK_READ`)**: Captures the already staged `prefetch` word in `state.micro.movem_mask`, then fetches the following stream word from `PC` into `prefetch` in CCK1.
+2. **Step 1 (`FETCH_MASK_FINISH_AI`)**: Resolves `ea_addr = An` and advances `PC += 2` in CCK2.
 3. **Step 2 (`MovemTransfer`)**:
    - Scans set mask bits from low to high using the cursor in `movem_state`; the mask remains unchanged. Predecrement uses the reversed register mapping above.
    - In CCK1/CCK2, performs the atomic bus transfer (Read or Write, Word or 2-cycle Long) between register $R_k$ and memory at `ea_addr`.
@@ -300,7 +310,8 @@ Because a static array cannot predict the number of registers at compile time, `
    - The final store CCK completes the loop and commits the predecrement address without another internal interval. An empty store mask starts prefetch directly in the first transfer CCK.
    - Loads perform a final dummy word read at the next address before prefetch. Postincrement commits that address after the dummy read; the address register in the mask cannot replace the final pointer.
    - **Loop Condition**: While selected registers or the final load dummy read remain, `micro_step` does not advance. A wait state preserves the active word and CCK phase.
-4. **Step 3 (`PREFETCH_NEXT_READ`)**: Standard sequential opcode prefetch, completing retirement via `retire_current_instruction()`.
+4. **Step 3 (`PREFETCH_NEXT_READ`)**: Reads the next sequential word into `irc` in CCK1.
+5. **Step 4 (`BUS_READ_IDLE`)**: Completes the prefetch in CCK2; `retire_current_instruction()` shifts the pipeline.
 
 #### Exact Hardware Timing:
 - **Base Overhead**: With the opcode already prefetched, indirect stores use 8 CPU clocks (mask fetch and final prefetch); loads use 12, including the final dummy operand read. Address extensions and index calculation add their prefix clocks.
@@ -434,7 +445,7 @@ resets external devices without clearing the CPU output.
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
 | **0** | `FETCH_EXT_READ` + `alu_fn` | 2 (CCK1) | Fused ALU consumes the staged immediate, computes `D0 = D0 \| imm` and sets CCR; reads the following word from `PC`. |
-| **1** | `FETCH_EXT_FINISH` | 2 (CCK2) | Latches the fetched word into `prefetch`, advances `PC += 2`. |
+| **1** | `FETCH_EXT_FINISH` | 2 (CCK2) | Advances `PC += 2`; the successful CCK1 read already latched the fetched word into `prefetch`. |
 | **2** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Reads the next instruction word from `PC` into `irc`. |
 | **3** | `BUS_READ_IDLE` | 2 (CCK2) | Prefetch finishes. Retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
 
@@ -637,10 +648,14 @@ phase accounts for the second decrement. These are distinct from the ordinary
 long RMW layout and use addr1/addr2 to retain their separate progress.
 
 ABCD/SBCD register forms use prefetch then an internal CCK, totaling six clocks.
-Paired byte memory forms use a source read, a destination read whose finish
-calculates the destination address, prefetch, an internal CCK and byte write.
-They have no upfront predecrement idle. NBCD memory uses the unary byte layout
-with its distinct predecrement prefix. BCD flag semantics belong to the CPU
+Paired byte memory forms begin with a two-clock internal CCK that decrements
+both address registers and establishes the source and destination addresses.
+They then read the source byte, read the destination byte, perform arithmetic
+fused with prefetch, and write the destination byte using the shared write
+phases, totaling 18 clocks. The [ABCD](../../../crates/cpu/src/instructions/abcd.rs)
+and [SBCD](../../../crates/cpu/src/instructions/sbcd.rs) arrays retain this initial
+idle before either operand read. NBCD memory uses the unary byte layout with its
+distinct predecrement prefix. BCD flag semantics belong to the CPU
 specification; undefined manual N/V behavior is constrained only for supplied
 silicon inputs.
 
@@ -722,10 +737,10 @@ after both stack writes and captures the target through the
 
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `POP_STACK_HIGH_READ` | 2 (CCK1) | Reads return PC high word from `(SP)`. |
-| **1** | `POP_STACK_HIGH_FINISH` | 2 (CCK2) | Latches high word into `ea_high`, updates `SP = SP + 2`. |
-| **2** | `POP_STACK_LOW_READ` | 2 (CCK1) | Reads return PC low word from `(SP)`. |
-| **3** | `POP_STACK_LOW_FINISH` | 2 (CCK2) | Completes the assembled return PC and advances SP by two. |
+| **0** | `POP_STACK_HIGH_READ` | 2 (CCK1) | Reads return PC high word from `(SP)` and latches it into `ea_high`. |
+| **1** | `POP_STACK_HIGH_FINISH` | 2 (CCK2) | Updates `SP = SP + 2`; the high word is already latched. |
+| **2** | `POP_STACK_LOW_READ` | 2 (CCK1) | Reads return PC low word from `(SP)` and assembles the full return address in `ea_addr`. |
+| **3** | `POP_STACK_LOW_FINISH` | 2 (CCK2) | Advances SP by two; the return address is already assembled. |
 | **4** | `READ_CONTROL_TARGET_OPCODE_READ` | 2 (CCK1) | Checks target alignment and reads the new opcode into `irc`; an odd target uses the fault capture in Section 5.1. |
 | **5** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completes (no additional CPU memory callback). |
 | **6** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads prefetch word at `ea_addr + 2`. |
@@ -811,11 +826,10 @@ refill and odd-target capture use the same primitives as Bcc.
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
 | **0** | `READ_SRC_WORD` | 2 (CCK1) | Reads 16-bit divisor from memory at `(A0)` into `source`. |
-| **1** | `BUS_READ_IDLE` | 2 (CCK2) | Memory read finishes into `source`. |
-| **2** | `ALU_IDLE` + `alu_fn` | 2 (CCK1) | Calls `alu_divu_mem`. Updates the result and CCR, then schedules the shift/subtract timing from `calc_divu_internal_clocks`, excluding the final four-clock prefetch. Overflow schedules six internal clocks; a zero divisor selects exception entry. |
-| **3..N** | `ALU_IDLE` (Countdown) | Variable | Sits in idle bus countdown for `clocks_remaining` (freeing Chip RAM for Blitter/Copper). |
-| **N+1** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Initiates sequential opcode prefetch from `PC` into `irc`. |
-| **N+2** | `BUS_READ_IDLE` | 2 (CCK2) | Completes prefetch, shifts `IR = prefetch`, `prefetch = irc`, `PC += 2`, and retires! |
+| **1** | `BUS_READ_IDLE` | 2 (CCK2) | Completes the operand read; `source` was latched in CCK1. |
+| **2** | `MicroStep::alu(alu_divu_mem)` | Variable | Has zero base clocks. The callback runs once, updates the result and CCR, and sets `clocks_remaining` from `calc_divu_internal_clocks`, excluding the final four-clock prefetch. Countdown stays at step 2 without bus access. Overflow schedules six internal clocks; a zero divisor redirects to exception entry. |
+| **3** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Initiates sequential opcode prefetch from `PC` into `irc`. |
+| **4** | `BUS_READ_IDLE` | 2 (CCK2) | Completes prefetch; retirement shifts `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
 
 Multiplication uses **operand acquisition -> prefetch -> variable internal
 interval -> retirement**. Its internal interval is `34 + 2n` clocks: `n` counts
@@ -835,7 +849,7 @@ Count decoding and flag behavior are defined in the [CPU specification, section
 
 ### Class 11: Multi-Register Block Transfer (`MOVEM <ea>, reglist`)
 
-#### Archetype: `MOVEM.W (A0)+, D0-D2/A0-A1` (Opcode `$4CD8 $0307` — 5 Registers)
+#### Archetype: `MOVEM.W (A0)+, D0-D2/A0-A1` (Opcode `$4C98 $0307` — 5 Registers)
 - **Total Duration**: Exactly 32 CPU clocks (16 CCKs).
 - **Result Writing**: Loads registers $D_0, D_1, D_2, A_0, A_1$ from memory. Postincrements $A_0$ by $5 \times 2 = 10$ bytes. Zero memory writes.
 - **Prefetch**: Consume the staged mask while fetching the following word; transfer the selected registers, read the final dummy operand word, then prefetch. See the [MOVEM loop mechanics](#58-movem-dynamic-register-transfer-engine).
@@ -908,8 +922,8 @@ old SR before selecting supervisor mode and clearing trace.
 | Trace | Four internal clocks | 34 | Next opcode after completion |
 | Interrupt | Fourteen clocks, including internal IACK | 44 | Next opcode after completion |
 | Taken `TRAPV` | Four-clock sequential prefetch pair | 34 | Following instruction |
-| `CHK`, above bound | Prefetch pair, four internal clocks | 38 | Captured instruction_pc |
-| `CHK`, negative only | Prefetch pair, six internal clocks | 40 | Captured instruction_pc |
+| `CHK`, above bound | Prefetch pair, four internal clocks | 38 | Following instruction |
+| `CHK`, negative only | Prefetch pair, six internal clocks | 40 | Following instruction |
 
 CHK tests the signed upper bound before the negative condition. A negative
 value greater than a negative bound uses above-bound timing. Normal CHK uses
@@ -932,7 +946,7 @@ and performs no operand read. Semantics and vector selection belong to the
 | Exceptions | Dedicated seven-word and shared three-word frame structures; no BERR or device-vector IACK input. |
 | Prefetch | Live bus reads with retained staged words; no host code cache. |
 | Signal fidelity | CCK callbacks and RESET output; no independent AS/FC/strobe waveform or TAS lock observation. |
-| Snapshot boundary | Serializable fields; redirected-sequence restoration remains a known limitation. |
+| Snapshot boundary | Serializable fields; active-slice reconstruction from IR limits restoration during redirected sequences and after early IR advance. |
 | Platform integration | CPU waits alone do not prove Agnus arbitration; production TAS Chip/Slow suppression is separately tested, without an electrical lock capture. |
 
 ## 9. Reference Documentation & Upstream Ground Truth

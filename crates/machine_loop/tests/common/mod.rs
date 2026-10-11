@@ -5,6 +5,8 @@
 
 use machine_loop::A500Machine;
 
+pub mod continuation;
+
 /// Fluent test harness wrapping an initialized `A500Machine` in low-memory Chip RAM mode
 #[allow(dead_code)]
 pub struct MachineHarness {

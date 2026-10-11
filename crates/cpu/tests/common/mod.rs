@@ -121,7 +121,14 @@ pub fn without_clocks(state: &CpuState) -> CpuState {
 
 /// Expected transfers/times come from each fixture, never from a discovery run.
 pub fn run_instruction(cpu: &mut Cpu, bus: &mut RecordingBus, base_clocks: u64) {
+    run_next_instruction(cpu, bus, base_clocks);
+    bus.assert_complete();
+}
+
+/// Check one instruction inside a longer, independently specified bus script.
+pub fn run_next_instruction(cpu: &mut Cpu, bus: &mut RecordingBus, base_clocks: u64) {
     let start = cpu.cycle_counter();
+    let start_refusals = bus.refusals;
     let mut waiting: Option<(usize, CpuState)> = None;
     for _ in 0..2048 {
         let before = cpu.cycle_counter();
@@ -166,11 +173,24 @@ pub fn run_instruction(cpu: &mut Cpu, bus: &mut RecordingBus, base_clocks: u64) 
             waiting = None;
         }
         if finished {
-            bus.assert_complete();
-            assert_eq!(cpu.cycle_counter() - start, base_clocks + 2 * bus.refusals);
+            assert_eq!(
+                cpu.cycle_counter() - start,
+                base_clocks + 2 * (bus.refusals - start_refusals)
+            );
             return;
         }
         assert!(!cpu.state.halted && !cpu.state.stopped);
     }
     panic!("instruction did not complete within the fixture limit");
+}
+
+pub fn retire_to(cpu: &mut Cpu, bus: &mut dyn AddressBus, next_pc: u32) {
+    for _ in 0..2048 {
+        if cpu.step_cck(bus) {
+            assert_eq!(cpu.state.instruction_pc, next_pc);
+            return;
+        }
+        assert!(!cpu.state.halted, "unexpected halt");
+    }
+    panic!("instruction did not retire within 2048 CCKs");
 }

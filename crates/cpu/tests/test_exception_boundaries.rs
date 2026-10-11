@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! MC68000 manual Sections 6.3 and 8: exception boundaries absent from silicon inputs.
 mod common;
-use common::{run_instruction, Access, RecordingBus};
+use common::{retire_to, run_instruction, Access, RecordingBus};
 use cpu::Cpu;
 use physical_memory::PhysicalMemory;
 
@@ -121,11 +121,77 @@ fn group_zero_double_fault_stops_bus_activity_until_external_reset() {
         memory.write_word_debug(2, 0x8000);
         memory.write_word_debug(4, 0);
         memory.write_word_debug(6, 0x1000);
+        memory.write_word_debug(0x1000, 0x702A); // replace the faulting program for reboot
+        memory.write_word_debug(0x1002, 0x5280);
+        memory.write_word_debug(0x1004, 0x7235);
         cpu.reset_warm(&mut memory);
         assert!(!cpu.state.halted);
         assert_eq!(cpu.state.instruction_pc, 0x1000);
         assert_eq!(cpu.state.pc, 0x1004);
         assert_eq!(cpu.state.sr(), 0x2700);
+        for next in [0x1002, 0x1004, 0x1006] {
+            retire_to(&mut cpu, &mut memory, next);
+        }
+        assert_eq!(cpu.state.d_long(0), 43);
+        assert_eq!(cpu.state.d_long(1), 53);
+    }
+}
+
+#[test]
+fn trace_handler_clears_saved_t_and_returns_through_nested_trap_frames() {
+    for nested_trap in [false, true] {
+        let (mut cpu, mut memory) = fixture(if nested_trap { 0x4E40 } else { 0x702A }, 0xA000);
+        for (index, word) in [0x7235, 0x5281, 0x7837].into_iter().enumerate() {
+            memory.write_word_debug(0x1002 + index as u32 * 2, word);
+        }
+        memory.write_word_debug(9 * 4 + 2, 0x3000);
+        let handler: &[u16] = if nested_trap {
+            &[0x5283, 0x026F, 0x7FFF, 6, 0x4E73] // clear T in the outer trap frame
+        } else {
+            &[0x5283, 0x0257, 0x7FFF, 0x4E73] // clear T in this trace frame
+        };
+        for (index, word) in handler.iter().enumerate() {
+            memory.write_word_debug(0x3000 + index as u32 * 2, *word);
+        }
+        memory.write_word_debug(0x2000, 0x5282); // trap entry counter
+        memory.write_word_debug(0x2002, 0x4E73);
+        cpu.set_pc_and_prime_prefetch(0x1000, &mut memory);
+        retire_to(
+            &mut cpu,
+            &mut memory,
+            if nested_trap { 0x2000 } else { 0x1002 },
+        );
+        retire_to(&mut cpu, &mut memory, 0x3000);
+        assert_eq!(cpu.state.ssp(), if nested_trap { 0x7FF4 } else { 0x7FFA });
+        assert_eq!(
+            memory.read_word_debug(cpu.state.ssp() + 4),
+            if nested_trap { 0x2000 } else { 0x1002 }
+        );
+        retire_to(&mut cpu, &mut memory, 0x3002);
+        retire_to(
+            &mut cpu,
+            &mut memory,
+            if nested_trap { 0x3008 } else { 0x3006 },
+        );
+        retire_to(
+            &mut cpu,
+            &mut memory,
+            if nested_trap { 0x2000 } else { 0x1002 },
+        );
+        if nested_trap {
+            retire_to(&mut cpu, &mut memory, 0x2002);
+            retire_to(&mut cpu, &mut memory, 0x1002);
+        }
+        assert!(!cpu.state.is_trace());
+        for next in [0x1004, 0x1006, 0x1008] {
+            retire_to(&mut cpu, &mut memory, next);
+        }
+        assert_eq!(cpu.state.d_long(1), 54);
+        assert_eq!(cpu.state.d_long(2), u32::from(nested_trap));
+        assert_eq!(cpu.state.d_long(3), 1);
+        assert_eq!(cpu.state.d_long(4), 55);
+        assert_eq!(cpu.state.ssp(), 0x8000);
+        assert_eq!(cpu.state.usp(), 0x6000);
     }
 }
 

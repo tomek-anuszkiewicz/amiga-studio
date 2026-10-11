@@ -16,6 +16,168 @@
 use config::A500Config;
 use machine_loop::{A500Machine, AddressBus};
 
+mod common;
+use common::continuation::{
+    assert_boot_entry, execute_boot, retire, rom_machine, BOOT_CODE, BOOT_PC, BOOT_SSP,
+    COLOR_MARKER,
+};
+
+fn press_reset_keys(machine: &mut A500Machine) {
+    for key in [
+        keyboard::SCANCODE_CTRL,
+        keyboard::SCANCODE_L_AMIGA,
+        keyboard::SCANCODE_R_AMIGA,
+    ] {
+        machine.keyboard.key_down(key);
+    }
+}
+
+#[test]
+fn hardware_resets_execute_boot_beyond_the_initial_queue() {
+    for reset_kind in 0..4 {
+        let mut machine = rom_machine(BOOT_CODE);
+        machine.physical_memory.chip_ram[0x41000] = 0x77;
+        machine.denise.color[0] = 0x0F00;
+        machine.cpu.state.set_d_long(3, 0x12345678);
+        machine.cpu.state.set_usp(0x60000);
+        machine.step_cycles(1);
+        match reset_kind {
+            0 => machine.reset(),
+            1 => machine.reset_warm(),
+            _ => {
+                press_reset_keys(&mut machine);
+                assert!(machine.keyboard.reset_line_asserted);
+                assert!(!machine.step_cck());
+                if reset_kind == 2 {
+                    for key in [
+                        keyboard::SCANCODE_CTRL,
+                        keyboard::SCANCODE_L_AMIGA,
+                        keyboard::SCANCODE_R_AMIGA,
+                    ] {
+                        machine.keyboard.key_up(key);
+                    }
+                }
+                // Case 3 sends no key-up events. The current event-based keyboard
+                // API consumes one request; it does not model a 500 ms pin hold.
+            }
+        }
+        assert_boot_entry(&machine);
+        assert_eq!(machine.denise.color[0], 0);
+        assert_eq!(
+            machine.physical_memory.chip_ram[0x41000],
+            if reset_kind == 0 { 0 } else { 0x77 }
+        );
+        assert_eq!(
+            machine.cpu.state.d_long(3),
+            if reset_kind == 0 { 0 } else { 0x12345678 }
+        );
+        assert_eq!(
+            machine.cpu.state.usp(),
+            if reset_kind == 0 { 0 } else { 0x60000 }
+        );
+        execute_boot(&mut machine);
+        if reset_kind == 3 {
+            // New host key-down events are a new request, rather than repetition
+            // of the request consumed above.
+            press_reset_keys(&mut machine);
+            assert!(!machine.step_cck());
+            assert_boot_entry(&machine);
+            assert_eq!(machine.denise.color[0], 0);
+            execute_boot(&mut machine);
+        }
+    }
+}
+
+#[test]
+fn keyboard_reset_replaces_stopped_and_partial_instruction_state() {
+    for stopped in [false, true] {
+        let mut machine = rom_machine(BOOT_CODE);
+        machine.physical_memory.write_bytes_debug(
+            0xF82000,
+            &[
+                0x4E, 0x72, 0x27, 0x00, // STOP #$2700
+                0x23, 0xC2, 0x00, 0x04, 0x10, 0x00, // MOVE.L D2,$41000.L
+            ],
+        );
+        machine.set_pc_and_prime_prefetch(if stopped { 0xF82000 } else { 0xF82004 });
+        machine.cpu.state.set_d_long(2, 0xDEADBEEF);
+        if stopped {
+            retire(&mut machine, 0xF82004);
+            assert!(machine.cpu.state.stopped);
+        } else {
+            assert!(!machine.step_cck());
+            assert!(!machine.step_cck());
+            assert!(!machine.cpu.state.micro.current_steps.is_empty());
+        }
+        press_reset_keys(&mut machine);
+        assert!(!machine.step_cck());
+        assert_boot_entry(&machine);
+        execute_boot(&mut machine);
+        assert_eq!(
+            &machine.physical_memory.chip_ram[0x41000..0x41004],
+            &[0; 4],
+            "abandoned store executed after reset"
+        );
+    }
+}
+
+#[test]
+fn separate_reset_opcodes_each_clear_the_post_pulse_device_marker_once() {
+    let code = [
+        0x4E70, // RESET
+        0x33FC,
+        COLOR_MARKER,
+        0x00DF,
+        0xF180, // MOVE.W #$A5,COLOR00
+        0x702A,
+        0x5280, // MOVEQ #42,D0; ADDQ.L #1,D0
+        0x4E70, // RESET again
+        0x33FC,
+        COLOR_MARKER,
+        0x00DF,
+        0xF180,
+        0x7235,
+        0x4E71,
+        0x60FE,
+    ];
+    let mut machine = rom_machine(&code);
+    machine.physical_memory.chip_ram[0x41000] = 0x77;
+    machine.cpu.state.set_d_long(3, 0x12345678);
+    for (reset_pc, after_store, after_marker) in [
+        (BOOT_PC, BOOT_PC + 10, BOOT_PC + 14),
+        (BOOT_PC + 14, BOOT_PC + 24, BOOT_PC + 28),
+    ] {
+        machine.denise.color[0] = 0x0F00;
+        let start = machine.cpu.cycle_counter();
+        let mut asserted = 0;
+        let mut edges = 0;
+        let mut previous = false;
+        for tick in 1..=66 {
+            assert_eq!(machine.cpu.state.instruction_pc, reset_pc);
+            assert_eq!(machine.step_cck(), tick == 66);
+            let output = machine.cpu.state.reset_line_asserted;
+            asserted += u32::from(output) * 2;
+            edges += u32::from(output && !previous);
+            previous = output;
+        }
+        assert_eq!((asserted, edges), (124, 1));
+        assert_eq!(machine.cpu.cycle_counter() - start, 132);
+        assert!(!machine.cpu.state.reset_line_asserted);
+        assert_eq!(machine.denise.color[0], 0);
+        assert_eq!(machine.physical_memory.chip_ram[0x41000], 0x77);
+        assert_eq!(machine.cpu.state.d_long(3), 0x12345678);
+        assert_eq!(machine.cpu.state.ssp(), BOOT_SSP);
+        retire(&mut machine, after_store);
+        retire(&mut machine, after_store + 2);
+        assert_eq!(machine.denise.color[0], COLOR_MARKER);
+        retire(&mut machine, after_marker);
+        assert_eq!(machine.denise.color[0], COLOR_MARKER);
+        assert!(!machine.cpu.state.reset_line_asserted);
+    }
+    assert_eq!(machine.cpu.state.d_long(0), 43);
+    assert_eq!(machine.cpu.state.d_long(1), 53);
+}
+
 #[test]
 fn test_cold_reset_full_flow() {
     let config = A500Config::default();
@@ -332,29 +494,37 @@ fn test_cpu_reset_instruction_privilege_violation() {
 
     // Code at $001000: RESET ($4E70)
     let _ = machine.memory_bus().write_word(0x001000, 0x4E70);
+    for (offset, word) in [(2, 0x722A), (4, 0x5281), (6, 0x7435)] {
+        machine
+            .physical_memory
+            .write_word_debug(0x1000 + offset, word);
+    }
 
     // Privilege Violation vector (Vector 8 at $000020) points to $002600
     machine.physical_memory.write_word_debug(0x000020, 0x0000);
     machine.physical_memory.write_word_debug(0x000022, 0x002600);
 
-    // Exception handler at $002600: MOVEQ #99, D0 ($7063), RTE ($4E73)
-    let _ = machine.memory_bus().write_word(0x002600, 0x7063);
-    let _ = machine.memory_bus().write_word(0x002602, 0x4E73);
+    // Count entry, skip the rejected two-byte RESET in its saved PC, then RTE.
+    for (index, word) in [0x5280, 0x54AF, 2, 0x4E73].into_iter().enumerate() {
+        machine
+            .physical_memory
+            .write_word_debug(0x2600 + index as u32 * 2, word);
+    }
 
     // Set custom chip register
     machine.agnus.dma.write_dmacon(0x8200);
+    machine.denise.color[0] = COLOR_MARKER;
 
     // Setup CPU in user mode (S = 0)
     machine.cpu.state.set_ssp(0x005000);
     machine.cpu.state.set_usp(0x003000);
-    machine.cpu.state.set_a_long(7, 0x003000);
     machine.cpu.state.set_sr(0x0000); // User mode
     machine
         .cpu
         .set_pc_and_prime_prefetch(0x001000, &mut machine.physical_memory);
 
     // Step instruction: traps to Vector 8
-    machine.step_instruction();
+    retire(&mut machine, 0x2600);
 
     // Verify PC entered exception handler at $002600
     assert_eq!(
@@ -367,6 +537,17 @@ fn test_cpu_reset_instruction_privilege_violation() {
         machine.agnus.dma.dmacon, 0x0200,
         "Custom chips must NOT be reset when RESET instruction is rejected for privilege violation"
     );
+    assert_eq!(machine.physical_memory.read_word_debug(0x4FFE), 0x1000);
+    for next in [0x2602, 0x2606, 0x1002, 0x1004, 0x1006, 0x1008] {
+        retire(&mut machine, next);
+        assert!(!machine.cpu.state.reset_line_asserted);
+        assert_eq!(machine.denise.color[0], COLOR_MARKER);
+    }
+    assert_eq!(machine.cpu.state.d_long(0), 1);
+    assert_eq!(machine.cpu.state.d_long(1), 43);
+    assert_eq!(machine.cpu.state.d_long(2), 53);
+    assert_eq!(machine.cpu.state.ssp(), 0x5000);
+    assert_eq!(machine.cpu.state.a_long(7), 0x3000);
 }
 
 #[test]

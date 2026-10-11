@@ -5,6 +5,131 @@
 use config::{A500Config, A500Preset, VideoStandard};
 use machine_loop::{A500Machine, A500State, SAVE_STATE_VERSION};
 
+mod common;
+use common::continuation::{
+    retire, rom_machine, BOOT_CODE, BOOT_PC, BOOT_SSP, COLOR_MARKER, RAM_MARKER,
+};
+
+#[test]
+fn snapshots_resume_reset_stop_and_a_refused_second_operand_half() {
+    for boundary in 0..3 {
+        let prefix: &[u16] = match boundary {
+            0 => &[0x4E70],         // RESET output asserted
+            1 => &[0x4E72, 0x2000], // STOP, interrupts enabled
+            _ => &[0x2418],         // MOVE.L (A0)+,D2
+        };
+        let mut code = prefix.to_vec();
+        code.extend_from_slice(BOOT_CODE);
+        let mut machine = rom_machine(&code);
+        let boot_pc = BOOT_PC + prefix.len() as u32 * 2;
+        match boundary {
+            0 => {
+                for _ in 0..3 {
+                    assert!(!machine.step_cck());
+                }
+                assert!(machine.cpu.state.reset_line_asserted);
+                // The pulse edge has already reset peripherals. A restore in the
+                // asserted interval must not manufacture a second assertion edge.
+                machine.denise.color[0] = 0x0F00;
+            }
+            1 => {
+                retire(&mut machine, boot_pc);
+                assert!(machine.cpu.state.stopped);
+                // Vector 27 lives in the ROM overlay; handler clears Paula's source.
+                machine.physical_memory.write_word_debug(0xF8006C, 0x00F8);
+                machine.physical_memory.write_word_debug(0xF8006E, 0x2000);
+                for (index, word) in [0x5282, 0x33FC, 0x0040, 0x00DF, 0xF09C, 0x4E73]
+                    .into_iter()
+                    .enumerate()
+                {
+                    machine
+                        .physical_memory
+                        .write_word_debug(0xF82000 + index as u32 * 2, word);
+                }
+            }
+            _ => {
+                machine.cpu.state.set_a_long(0, 0xC41000);
+                machine.physical_memory.write_word_debug(0xC41000, 0x1234);
+                machine.physical_memory.write_word_debug(0xC41002, 0x5678);
+                // Complete the high half in an idle slot, then refuse the low
+                // half at a production DRAM refresh slot (HPOS 1).
+                machine.agnus.hpos = 49;
+                assert!(!machine.step_cck());
+                assert!(!machine.step_cck());
+                let step = machine.cpu.state.micro.micro_step;
+                machine.agnus.hpos = 0;
+                assert!(!machine.step_cck());
+                assert!(machine.physical_memory.chip_ram_blocked);
+                assert_eq!(machine.cpu.state.micro.micro_step, step);
+                assert_eq!(machine.cpu.state.d_long(2), 0);
+                assert_eq!(machine.cpu.state.micro.source, 0x1234_0000);
+            }
+        }
+        // Actual serialization drops the runtime-only static micro-step slice.
+        let json = machine.save_state().to_json().unwrap();
+        let snapshot = A500State::from_json(&json).unwrap();
+        let mut restored = A500Machine::new(A500Config::default());
+        restored.load_state(&snapshot).unwrap();
+        if boundary != 1 {
+            assert!(!restored.cpu.state.micro.current_steps.is_empty());
+        }
+        if boundary == 1 {
+            for target in [&mut machine, &mut restored] {
+                target.memory_bus().write_custom_word(0x09A, 0xC040);
+                target.memory_bus().write_custom_word(0x09C, 0x8040);
+            }
+        }
+        let mut finished = false;
+        for tick in 0..4096 {
+            let original_done = machine.step_cck();
+            let restored_done = restored.step_cck();
+            assert_eq!(
+                original_done, restored_done,
+                "retirement diverged at tick {tick}"
+            );
+            assert_eq!(
+                machine.cpu.state, restored.cpu.state,
+                "CPU diverged at tick {tick}"
+            );
+            assert_eq!(machine.denise.color[0], restored.denise.color[0]);
+            if boundary == 0 && tick == 0 {
+                assert_eq!(restored.denise.color[0], 0x0F00);
+            }
+            if original_done && machine.cpu.state.instruction_pc == boot_pc + 22 {
+                finished = true;
+                break;
+            }
+        }
+        assert!(finished, "restored program did not reach its final loop");
+        assert_eq!(machine.cpu.state.d_long(0), 43);
+        assert_eq!(machine.cpu.state.d_long(1), 53);
+        assert_eq!(
+            machine.cpu.state.d_long(2),
+            match boundary {
+                1 => 1,
+                2 => 0x12345678,
+                _ => 0,
+            }
+        );
+        if boundary == 2 {
+            assert_eq!(machine.cpu.state.a_long(0), 0xC41004);
+        }
+        assert_eq!(machine.cpu.state.ssp(), BOOT_SSP);
+        assert_eq!(machine.denise.color[0], COLOR_MARKER);
+        assert_eq!(
+            &machine.physical_memory.slow_ram.as_ref().unwrap()[RAM_MARKER..RAM_MARKER + 2],
+            &[0, 42]
+        );
+        assert!(!machine.cpu.state.reset_line_asserted && !machine.cpu.state.stopped);
+        for _ in 0..4 {
+            retire(&mut machine, boot_pc + 22);
+            retire(&mut restored, boot_pc + 22);
+            assert_eq!(restored.denise.color[0], COLOR_MARKER);
+        }
+        assert_eq!(machine.save_state(), restored.save_state());
+    }
+}
+
 #[test]
 fn test_save_state_metadata_and_header() {
     let machine = A500Machine::new(A500Config::from_preset(

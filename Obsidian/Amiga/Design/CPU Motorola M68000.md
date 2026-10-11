@@ -102,8 +102,9 @@ The MC68000 exclusively supports the 16-bit **Brief Extension Word**:
 - **Bits 10–8 (Scale):** Scale factor. On the MC68000, scale is always $1\times$ (`000`).
 - **Bits 7–0 (Displacement):** Signed 8-bit integer ($d_8$), sign-extended to 32 bits.
 - **Effective Address Formula:**
-  - For `(d8, An, Xn)`: $EA = (A_n + X_n + \text{sign\_extend}(d_8)) \ \& \ \text{\$00FFFFFF}$.
-  - For `(d8, PC, Xn)`: $EA = (PC_{extension} + X_n + \text{sign\_extend}(d_8)) \ \& \ \text{\$00FFFFFF}$.
+  - For `(d8, An, Xn)`: $EA = (A_n + X_n + \text{sign\_extend}(d_8)) \bmod 2^{32}$.
+  - For `(d8, PC, Xn)`: $EA = (PC_{extension} + X_n + \text{sign\_extend}(d_8)) \bmod 2^{32}$.
+  - The [effective-address helpers](../../../crates/cpu/src/micro/ea.rs) retain this 32-bit result, including when `LEA` writes it to an address register. A memory transfer separately uses $bus\_address = EA \ \& \ \text{\$00FFFFFF}$; the 24-bit bus mask does not truncate the internal EA.
 
 #### Hardware Quirks & Rules
 1. **Stack Pointer `A7` Byte Alignment Quirk:**
@@ -147,7 +148,8 @@ truncating its high byte; only external bus addresses are masked.
 | STOP | No refill; following opcode address equals the current cursor after the immediate. |
 | Illegal/Line A/Line F/privilege | Save the rejected instruction_pc. |
 | TRAP | Save the following opcode address, cursor minus two for its one-word encoding. |
-| CHK/divide-by-zero | Save the instruction_pc selected by the supplied fault vectors. |
+| CHK | Save the following opcode address after its operand extensions. |
+| Divide-by-zero | Save the instruction_pc selected by the supplied fault vectors. |
 | Trace/interrupt | Save the next not yet executed opcode address, including the STOP continuation. |
 | Operand Address Error | Capture cursor minus four at the failed access phase; extension progress can make it differ from the original opcode. |
 | Odd control target | Capture target minus four; this is an observed stack value, not proof of a physical subtraction circuit. |
@@ -191,7 +193,9 @@ decoded values; no host pointer cast or transmute is permitted.
 > [!NOTE]
 > For emulator codebase function naming conventions, consult the operational rule in [opcode-naming.md](../../../.agents/rules/opcode-naming.md).
 
-The 16-bit M68000 opcode word is partitioned into five canonical bitfields:
+Many M68000 opcode families use the following register, operation and EA fields.
+Field boundaries depend on the family: `Bcc`, `DBcc` and `Scc` use bits 11–8
+for their condition code, overlapping the register and operation fields below.
 
 ```text
  15  14  13  12  11  10   9   8   7   6   5   4   3   2   1   0
@@ -200,8 +204,8 @@ The 16-bit M68000 opcode word is partitioned into five canonical bitfields:
 +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
  \_____________/ \_________/ \_____________/ \_______/   \_________/
     Bits 15-12    Bits 11-9     Bits 8-6      Bits 5-3    Bits 2-0
-  Instruction    Destination   Direction /    EA Mode     EA Reg
-     Family       / Condition  Size / Sub-op
+   Instruction    Destination   Direction /    EA Mode     EA Reg
+      Family        Register    Size / Sub-op
 ```
 
 #### 1. Bits 15–12: Major Opcode Class ($0..F$)
@@ -227,11 +231,11 @@ Every instruction's primary category is indexed by its highest nibble:
 | **`$E`** (`1110`) | Bit Shifts & Rotates | `ASL`, `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `ROXL`, `ROXR` |
 | **`$F`** (`1111`) | Line-F Coprocessor Trap | Reserved for FPU/coprocessor traps (Vector 11) |
 
-#### 2. Bits 11–9: Register & Condition Field
+#### 2. Bits 11–9: Register or Quick Data; Bits 11–8: Condition
 
 - **Standard ALU (`ADD`, `SUB`, `AND`, `OR`, `CMP`):** Primary Data Register $D_n$ index (`0`–`7`).
 - **`MOVE` instructions:** Destination Data/Address register index.
-- **Branches (`Bcc`, `DBcc`, `Scc`):** 4-bit condition code test (`0000`–`1111`).
+- **Branches (`Bcc`, `DBcc`, `Scc`):** Bits 11–8 hold the 4-bit condition code test (`0000`–`1111`).
 - **`ADDQ` / `SUBQ`:** 3-bit quick immediate data: values `1`–`7`; `000` encodes value `8`.
 - **`MOVEQ`:** Destination Data Register $D_n$ index (bits 7–0 hold the signed 8-bit literal).
 
@@ -307,7 +311,8 @@ later-CPU restart frame or coprocessor execution.
 | 8 | Privilege violation | Rejected opcode PC before prohibited operand access; synthetic user-mode controls. |
 | 9 | Trace | Next opcode PC; synthetic boundary, STOP and priority controls. |
 | 10/11 | Line A / Line F | Rejected opcode PC; no later-CPU instruction execution. |
-| 25-31 | Autovector levels 1-7 | Next opcode PC; fixed four-clock IACK abstraction. |
+| 25-30 | Autovector levels 1-6 | Next opcode PC; fixed four-clock IACK abstraction. |
+| 31 | Level 7 autovector | Defined by the MC68000; level 7 acceptance is outside the implemented Amiga 500 scope. |
 | 32-47 | TRAP #0-15 | Following instruction PC; supplied vectors. |
 
 A short frame occupies six bytes: saved SR at final SSP, PC high at SSP+2 and
@@ -567,7 +572,11 @@ an out-of-range value. Its supplied normal inputs retain N and clear Z. Prefetch
 precedes condition evaluation and stacking; above-bound timing is tested before
 the negative-only path. Untaken TRAPV preserves flags and completes normal
 prefetch; taken TRAPV also performs that read before Vector 7 entry. TRAP selects
-Vector `32 + n`. TRAP/TRAPV save the following opcode PC; CHK uses the captured instruction_pc from its supplied fault vectors. Each entry saves the selected status.
+Vector `32 + n`. TRAP/TRAPV and CHK save the following opcode PC. The supplied
+[CHK SingleStep vectors](../../../ref_src/SingleStepTests-680x0/68000/v1/CHK.json)
+start register CHK at $0C00 and write $0C02 into the saved PC; RTE therefore
+continues after CHK without retrying it. Divide-by-zero retains its separate
+opcode-PC return rule. Each entry saves the selected status.
 Their prefixes and shared frame order belong to the
 [three-word exception class](CPU%20Micro-Step%20State%20Machine.md#class-13-three-word-software-exception-entry).
 
