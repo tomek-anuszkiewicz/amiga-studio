@@ -14,13 +14,13 @@ use crate::micro::types::MicroStep;
 // ============================================================================
 
 pub static STEPS_RTR: [MicroStep; 10] = [
+    common::RETURN_HIGH_READ,
+    common::BUS_READ_IDLE,
     common::POP_STACK_SR_READ,
     common::POP_STACK_CCR_FINISH,
-    common::POP_STACK_HIGH_READ,
-    common::POP_STACK_HIGH_FINISH,
     common::POP_STACK_LOW_READ,
     common::POP_STACK_LOW_FINISH,
-    common::READ_TARGET_OPCODE_READ,
+    common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,

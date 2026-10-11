@@ -136,6 +136,10 @@ pub const WRITE_ADDR2_PD_LONG_HIGH: MicroStep =
 pub const READ_TARGET_OPCODE_READ: MicroStep =
     MicroStep::cck(Cpu::step_bus_read_target_opcode_read);
 
+/// CCK1: JMP/JSR and return target read, with their target-PC fault capture.
+pub const READ_CONTROL_TARGET_OPCODE_READ: MicroStep =
+    MicroStep::cck(Cpu::step_bus_read_control_target_opcode_read);
+
 /// CCK1: Reads second word of target pipeline from `ea_addr + 2`
 pub const PREFETCH_TARGET_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_target_read);
 
@@ -349,13 +353,16 @@ pub const REFILL_SECOND_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_refi
 /// CCK1: Stack pop status word read from (SP)
 pub const POP_STACK_SR_READ: MicroStep = MicroStep::cck(Cpu::step_bus_pop_stack_sr_read);
 
-/// CCK2: Stack pop status word finish: SP += 2
-pub const POP_STACK_SR_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_stack_sr_finish);
+/// CCK1: RTR/RTE read the return PC high word at SP + 2 before the status word.
+pub const RETURN_HIGH_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_return_high);
+
+/// CCK2: Status read completion skips both status and the already read PC high word.
+pub const RETURN_STATUS_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_return_status_finish);
 
 /// CCK2: Stack pop PC low word finish for RTE: SP += 2, apply restored SR
 pub const POP_STACK_RTE_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_stack_rte_finish);
 
-/// CCK2: Stack pop status word finish for RTR: SP += 2, set CCR
+/// CCK2: RTR status read finish: SP += 4, skip PC high word, set CCR
 pub const POP_STACK_CCR_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_stack_ccr_finish);
 
 // ============================================================================

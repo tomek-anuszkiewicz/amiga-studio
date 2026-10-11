@@ -30,13 +30,13 @@ pub static ALU_RTE_INIT: MicroStep = MicroStep {
 
 pub static STEPS_RTE: [MicroStep; 11] = [
     ALU_RTE_INIT,
+    common::RETURN_HIGH_READ,
+    common::BUS_READ_IDLE,
     common::POP_STACK_SR_READ,
-    common::POP_STACK_SR_FINISH,
-    common::POP_STACK_HIGH_READ,
-    common::POP_STACK_HIGH_FINISH,
+    common::RETURN_STATUS_IDLE,
     common::POP_STACK_LOW_READ,
     common::POP_STACK_RTE_FINISH,
-    common::READ_TARGET_OPCODE_READ,
+    common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,

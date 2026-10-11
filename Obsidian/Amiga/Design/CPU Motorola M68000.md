@@ -166,7 +166,7 @@ A common misconception is that the advanced hardware `PC` causes subroutine call
 3. **PC-Relative Addressing (`d16, PC`):**
    - Per Motorola PRM, the base address for `(d16, PC)` is the instruction address plus two ($PC_{\text{hardware}} - 2$), corresponding to the address where the displacement word was fetched.
 4. **Bus Error & Address Error Stack Frames:**
-   - As documented in Section 5.3 of the *Motorola 68000 User's Manual*, the PC saved on the stack for Vector 2 and 3 can be **2 to 10 bytes beyond** the address of the instruction that caused the fault, reflecting the advanced state of the prefetch queue when the bus fault occurred.
+   - Saved PC follows the faulting execution phase, rather than a universal offset from the opcode. Operand faults reflect the instruction stream; an odd `JMP`, `JSR`, `RTS`, `RTR` or `RTE` target captures `target - 4`. The [control-flow refill model](CPU%20Micro-Step%20State%20Machine.md#51-the-two-word-pipeline-refill) defines this target capture and its information word. Partial bus-error transfers remain outside the current AddressBus observation contract.
 
 ---
 

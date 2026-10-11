@@ -316,6 +316,15 @@ When control flow changes (`JMP`, `JSR`, `RTS`, `BRA`, taken `Bcc`):
      - `state.pc` is initialized to `ea_addr + 4`.
      - Instruction retires with target refill (`target_refill = true`, `step_cck` returns `true`).
 
+`JMP`, `JSR`, `RTS`, `RTR` and `RTE` use
+`READ_CONTROL_TARGET_OPCODE_READ` for the first read. Its successful transfer
+uses the same [shared read phases](#23-specialized-2-clock-atomic-micro-step-handlers-busfn).
+An odd target begins Address Error without a target memory callback: the frame
+captures `target - 4` as PC, the full target as the fault address, and sets bit 3
+(instruction-not) alongside the program-space function code. `RTE` restores SR
+before this check, so the saved status and function code follow the restored mode.
+Branch paths retain their separate target-fault capture.
+
 ### 5.2 `JMP <ea>` (Jump to Effective Address)
 
 - **Target Address Calculation**:
@@ -326,7 +335,7 @@ When control flow changes (`JMP`, `JSR`, `RTS`, `BRA`, taken `Bcc`):
 - **Execution Flow**:
   1. Calculate target into `ea_addr`.
   2. Verify `(ea_addr & 1) == 0`. If odd, trigger **Address Error (Vector 3)** immediately!
-  3. Execute `READ_TARGET_OPCODE_READ` at `ea_addr`.
+  3. Execute `READ_CONTROL_TARGET_OPCODE_READ` at `ea_addr`.
   4. Execute `PREFETCH_TARGET_READ` & `PREFETCH_TARGET_FINISH` at `ea_addr + 2`.
 - **Total Time**:
   - `JMP (An)`: Exactly 8 CPU clocks (4 CCKs).
@@ -337,13 +346,12 @@ When control flow changes (`JMP`, `JSR`, `RTS`, `BRA`, taken `Bcc`):
 - **Execution Flow**:
   1. Calculate target into `ea_addr`. Verify `(ea_addr & 1) == 0`.
   2. Determine return address `return_pc = base_pc + extension_words`.
-  3. Decrement stack pointer: `SP = SP - 4`. Verify `(SP & 1) == 0`.
-  4. Latch `source = return_pc`.
+  3. Read the target opcode into `irc`, before touching the stack.
+  4. Latch `destination = return_pc`. Decrement `SP = SP - 4` and check stack alignment.
   5. Push Return Address:
-     - `PUSH_STACK_HIGH_WRITE`: Write `(source >> 16) as u16` to `SP` (4 clocks).
-     - `PUSH_STACK_LOW_WRITE`: Write `(source & 0xFFFF) as u16` to `SP + 2` (4 clocks).
-  6. Execute Two-Word Refill:
-     - `READ_TARGET_OPCODE_READ` at `ea_addr` (4 clocks).
+     - `PUSH_STACK_HIGH_WRITE`: Write `(destination >> 16) as u16` to `SP` (4 clocks).
+     - `PUSH_STACK_LOW_WRITE`: Write `(destination & 0xFFFF) as u16` to `SP + 2` (4 clocks).
+  6. Complete the target refill:
      - `PREFETCH_TARGET_READ` & `PREFETCH_TARGET_FINISH` at `ea_addr + 2` (4 clocks).
 - **Total Time**:
   - `JSR (An)`: Exactly 16 CPU clocks (8 CCKs: 2 stack writes + 2 prefetch reads).
@@ -357,7 +365,7 @@ When control flow changes (`JMP`, `JSR`, `RTS`, `BRA`, taken `Bcc`):
   2. Pop Low Word: `POP_STACK_LOW_READ` reads word from `(SP + 2)` into lower 16 bits of `ea_addr`, and updates `SP = SP + 4` (4 clocks).
   3. Verify `(ea_addr & 1) == 0`. If odd, trigger **Address Error (Vector 3)**!
   4. Execute Two-Word Refill:
-     - `READ_TARGET_OPCODE_READ` at `ea_addr` (4 clocks).
+     - `READ_CONTROL_TARGET_OPCODE_READ` at `ea_addr` (4 clocks).
      - `PREFETCH_TARGET_READ` & `PREFETCH_TARGET_FINISH` at `ea_addr + 2` (4 clocks).
 
 ### 5.5 `Bcc` (Conditional Branch State Machine: Taken vs Not-Taken)
@@ -751,6 +759,13 @@ one. Word operands decrement by two; single-operand long variants decrement by
 four. Long operands use two four-clock reads, high word then low word, before
 the instruction-specific ALU/prefetch tail.
 
+The frame-load variant [`UNLK`](../../../crates/cpu/src/instructions/unlk.rs)
+sets SP from the selected frame register when the address is aligned, reads the
+saved register high word then low word with a complete read pair for each,
+and prefetches: 12 clocks. At prefetch entry it advances SP by four, then writes
+the saved value to An; for `UNLK A7`, that final write supplies the active SP.
+CCR is unchanged.
+
 | Pipeline step after the address phase | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
 | **0** | `READ_SRC_BYTE/WORD` | 2 (CCK1) | Reads from `ea_addr` into `source`. Indirect/postincrement resolves the address here. A stalled read does not repeat address calculation. |
@@ -830,6 +845,13 @@ For memory sources with an absolute-long destination, the first destination exte
 
 LEA calculates the effective address without an operand read, then prefetches. Indexed modes place one internal CCK before the extension pair and one after it. PEA uses the same address calculation and the [shared stack push phases](#23-specialized-2-clock-atomic-micro-step-handlers-busfn). Indirect, displacement and indexed forms prefetch before the push; absolute forms push both words before prefetch. Effective-address parity does not cause a fault; stack-write alignment does.
 
+The frame-store variant [`LINK`](../../../crates/cpu/src/instructions/link.rs)
+uses an extension pair, writes the saved An high word then low word at `SP - 4`,
+then prefetches: 16 clocks. Its setup stages the signed displacement and saved
+register; `LINK A7` saves `SP - 4`. At prefetch entry it sets An to the frame base
+and SP to that base plus displacement, preserving CCR. It follows the shared
+long-store phases rather than the call/refill structure below.
+
 ### Class 5: Memory Read-Modify-Write (Operand Read, Prefetch, Writeback)
 
 #### Archetype 5A: `ADD.b/w Dn,<ea>` (`ADD.W D0,(d16,A0)`, Opcode `$D168`)
@@ -888,14 +910,18 @@ Archetype 5B below; long immediates require two extension pairs.
 
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `PUSH_STACK_HIGH_IDLE` + `ea_calc` | 2 (CCK1) | Resolves `ea_addr = A0`. Decrements `SP = SP - 4`. Latches `destination = return_pc`. Bus idle. |
-| **1** | `PUSH_STACK_HIGH_WRITE` | 2 (CCK2) | Writes MSW `((destination >> 16) & 0xFFFF)` to `SP` (Data Space). Stalls on Chip RAM contention. |
-| **2** | `BUS_WRITE_IDLE` | 2 (CCK1) | Address bus setup for low word write to `SP + 2`. Bus idle for Agnus DMA. |
-| **3** | `PUSH_STACK_LOW_WRITE` | 2 (CCK2) | Writes LSW `(destination & 0xFFFF)` to `SP + 2` (Data Space). Stalls on Chip RAM contention. |
-| **4** | `READ_TARGET_OPCODE_READ` | 2 (CCK1) | **Refill 1:** Reads new opcode from Program Space at `ea_addr` into `irc`. |
-| **5** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completes (bus free for Agnus DMA). |
+| **0** | `READ_CONTROL_TARGET_OPCODE_READ` + `alu_jsr_ai` | 2 (CCK1) | Resolves target and return address; reads target opcode into `irc`. An odd target faults before SP changes. |
+| **1** | `BUS_READ_IDLE` | 2 (CCK2) | Completes the target opcode read. |
+| **2** | `PUSH_STACK_HIGH_IDLE` | 2 (CCK1) | Decrements SP by four and checks stack alignment. |
+| **3** | `PUSH_STACK_HIGH_WRITE` | 2 (CCK2) | Writes return PC high word to SP. |
+| **4** | `BUS_WRITE_IDLE` | 2 (CCK1) | Prepares the low word write. |
+| **5** | `PUSH_STACK_LOW_WRITE` | 2 (CCK2) | Writes return PC low word to SP + 2. |
 | **6** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads prefetch word at `ea_addr + 2`. |
 | **7** | `PREFETCH_TARGET_FINISH` | 2 (CCK2) | Sets `target_refill = true`, loads `IR = irc`, sets `PC = ea_addr + 4`, and completes retirement! |
+
+Displacement/absolute-short modes add two internal clocks before the first
+target read; indexed modes add six. Absolute-long uses one extension pair.
+All forms retain target opcode read, stack writes, then target lookahead read.
 
 ---
 
@@ -911,13 +937,31 @@ Archetype 5B below; long immediates require two extension pairs.
 | **0** | `POP_STACK_HIGH_READ` | 2 (CCK1) | Reads return PC high word from `(SP)`. |
 | **1** | `POP_STACK_HIGH_FINISH` | 2 (CCK2) | Latches high word into `ea_high`, updates `SP = SP + 2`. |
 | **2** | `POP_STACK_LOW_READ` | 2 (CCK1) | Reads return PC low word from `(SP)`. |
-| **3** | `POP_STACK_LOW_FINISH` | 2 (CCK2) | Assembles `ea_addr = (ea_high << 16) \| low`, updates `SP = SP + 2`, verifies word alignment. |
-| **4** | `READ_TARGET_OPCODE_READ` | 2 (CCK1) | **Refill 1:** Reads new opcode from Program Space at `ea_addr` into `irc`. |
+| **3** | `POP_STACK_LOW_FINISH` | 2 (CCK2) | Completes the assembled return PC and advances SP by two. |
+| **4** | `READ_CONTROL_TARGET_OPCODE_READ` | 2 (CCK1) | Checks target alignment and reads the new opcode into `irc`; an odd target uses the fault capture in Section 5.1. |
 | **5** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completes (bus free for Agnus DMA). |
 | **6** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads prefetch word at `ea_addr + 2`. |
 | **7** | `PREFETCH_TARGET_FINISH` | 2 (CCK2) | Sets `target_refill = true`, loads `IR = irc`, sets `PC = ea_addr + 4`, and completes retirement! |
 
 ---
+
+#### Status-return variant: RTR and RTE
+
+[`RTR`](../../../crates/cpu/src/instructions/rtr.rs) and
+[`RTE`](../../../crates/cpu/src/instructions/rte.rs) use three stack read pairs
+followed by the two target refill pairs: 20 clocks. Read order is PC high at
+`SP + 2`, status at `SP`, then PC low at `SP + 4`. The first read leaves SP
+unchanged. Status completion advances SP by four; low-word completion advances
+it by two. RTR applies only CCR at status completion. RTE stages SR until all
+three words have been read from the supervisor stack, then restores it before
+target access; returning to user mode therefore leaves SSP advanced by six and
+selects USP. Refused transfers preserve staged words and do not advance SP.
+
+RTE checks privilege before any stack access. User execution selects the shared
+34-clock privilege exception sequence. Operand alignment faults and target
+alignment faults occur at their respective read phases; status restoration
+does not precede a failed stack read. Register semantics belong to the
+[CPU specification](CPU%20Motorola%20M68000.md).
 
 ### Class 8: Unconditional Jump (`JMP <ea>`)
 
@@ -928,7 +972,7 @@ Archetype 5B below; long immediates require two extension pairs.
 
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `READ_TARGET_OPCODE_READ` + `ea_calc` | 2 (CCK1) | Resolves `ea_addr = A0`. Checks `(ea_addr & 1) == 0` (halts on double fault if odd). Reads target opcode into `irc`. |
+| **0** | `READ_CONTROL_TARGET_OPCODE_READ` + `ea_calc` | 2 (CCK1) | Resolves `ea_addr = A0`. An odd target starts Address Error with the target-PC capture in Section 5.1; an aligned target reads the opcode into `irc`. |
 | **1** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completes (bus free for Agnus DMA). |
 | **2** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads prefetch word at `ea_addr + 2`. |
 | **3** | `PREFETCH_TARGET_FINISH` | 2 (CCK2) | Sets `target_refill = true`, loads `IR = irc`, sets `PC = ea_addr + 4`, and completes retirement! |

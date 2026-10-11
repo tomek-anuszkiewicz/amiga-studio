@@ -456,6 +456,18 @@ fn test_read_handlers_retain_latches_until_ready() {
             0xA1B2,
         ),
         (
+            Cpu::step_bus_read_control_target_opcode_read,
+            Access::ReadWord(0x2000),
+            |cpu| cpu.state.micro.irc as u32,
+            0xA1B2,
+        ),
+        (
+            Cpu::step_bus_read_return_high,
+            Access::ReadWord(0x6002),
+            |cpu| cpu.state.micro.ea_high,
+            0xA1B2_0000,
+        ),
+        (
             Cpu::step_bus_read_vector_high_read,
             Access::ReadWord(0x2000),
             |cpu| cpu.state.micro.ea_high,

@@ -29,6 +29,45 @@ impl Cpu {
         }
     }
 
+    /// CCK1: Jump/return target read; an odd target captures target minus four in the frame.
+    pub fn step_bus_read_control_target_opcode_read(
+        &mut self,
+        bus: &mut dyn AddressBus,
+    ) -> BusResult<()> {
+        let addr = self.state.micro.ea_addr;
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, true, true);
+            self.state.micro.source = addr.wrapping_sub(4);
+            // The jump/return refill fault retains the instruction-not bit.
+            self.state.micro.info_word |= 0x08;
+            return BusResult::Ready(());
+        }
+        self.step_bus_read_target_opcode_read(bus)
+    }
+
+    /// CCK1: RTR/RTE first read the PC high word at SP + 2, without advancing SP.
+    pub fn step_bus_read_return_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.a_long(7).wrapping_add(2);
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, true, false);
+            return BusResult::Ready(());
+        }
+        match bus.read_word(addr & 0x00FF_FFFF) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(data) => {
+                self.state.micro.ea_high = u32::from(data) << 16;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK2: The status read completes before skipping the already read PC high word.
+    pub fn step_bus_return_status_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
+        let sp = self.state.a_long(7);
+        self.state.set_a_long(7, sp.wrapping_add(4));
+        BusResult::Ready(())
+    }
+
     /// CCK1: Reads second word of target pipeline directly into `self.state.prefetch`
     pub fn step_prefetch_target_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2);
@@ -458,13 +497,6 @@ impl Cpu {
         }
     }
 
-    /// CCK2: Latches status word into `micro.source`, advances SP += 2
-    pub fn step_bus_pop_stack_sr_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.a_long(7);
-        self.state.set_a_long(7, sp.wrapping_add(2));
-        BusResult::Ready(())
-    }
-
     /// CCK2: Latches full return PC and sets restored SR for RTE, advances SP += 2
     pub fn step_bus_pop_stack_rte_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
         let sp = self.state.a_long(7);
@@ -473,10 +505,10 @@ impl Cpu {
         BusResult::Ready(())
     }
 
-    /// CCK2: Latches low byte of status word into CCR, advances SP += 2
+    /// CCK2: Restores CCR and skips status plus the already read PC high word.
     pub fn step_bus_pop_stack_ccr_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
         let sp = self.state.a_long(7);
-        self.state.set_a_long(7, sp.wrapping_add(2));
+        self.state.set_a_long(7, sp.wrapping_add(4));
         self.state.set_ccr((self.state.micro.source & 0xFF) as u8);
         BusResult::Ready(())
     }

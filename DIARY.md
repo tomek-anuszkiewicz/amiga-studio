@@ -2999,3 +2999,33 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Changed files pass scoped English checks and Graphify code refresh completes
   - Required final commit-profile verification is recorded in the commit message
   - Full SingleStep and milestone profiles are not run and no roadmap milestone closure is claimed
+---
+
+### [2026-10-11 19:50 CET] — CPU-CYCLE-01: repair frame, jump and return batches
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Repair batches 06.21, 06.22, 06.27 and 06.29 through 06.31
+  - Restore the missing UNLK low-word read completion CCK
+  - Read PC high before status in RTR and RTE and retain staged status until its restore phase
+  - Capture target minus four and instruction-not for odd JMP/JSR/RTS/RTR/RTE target frames
+  - Preserve already correct LINK and JSR return-address calculations
+  - Extend existing CPU retry fixtures for both new reads, CCR restoration, banked RTE return and privilege entry
+  - Reconcile the existing instruction classes and parent fault-PC description
+- **Architectural Rationale & Trade-Offs**:
+  - Repair demonstrated silicon phases and frame capture without changing original references, comparator masks or the generic branch target path
+  - Scoped sync-design-docs review selects both CPU specifications with no missing or invalid tracked mappings
+  - CPU-CYCLE-01 remains active and this commit does not close a milestone
+- **Verification & Test Results**:
+  - All 56455 selected vectors pass complete comparison plus independent exact final PC and both prefetch words, improving by 35940 cases with no lost prior pass
+  - NOP remains 8065 of 8065
+  - Eight full-input official SingleStep groups, CPU crate tests, formatting, architecture, Clippy and the full repository English audit pass during implementation
+  - All 124 original reference hashes match and zero overrides execute
+  - Vault links and frontmatter pass and Graphify AST refresh completes
+  - Initial synthetic privilege fixture failed because it lacked opcode-PC initialization, corrected before the final passing CPU crate run
+  - Supplied stack addresses are aligned and initial execution is supervisor, so odd-stack and partial bus-error behavior lack selected silicon inputs
+  - Privilege and retry controls are synthetic CPU fixtures rather than production arbitration
+  - Existing RAM masks and electrical signal limits remain
+  - python tools/verification/verify.py commit passes all quality gates, ordinary crate and standard harness tests, Python contracts and the full repository English audit; output remains in the local commit-profile.log
+  - Full CPU SingleStep and milestone profiles are not run

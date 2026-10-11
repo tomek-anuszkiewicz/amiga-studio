@@ -605,51 +605,84 @@ fn test_stack_push_pop_and_exception_waits_commit_once() {
         assert_eq!(cpu.state.pc, 0x2004);
         assert_eq!(bus.memory.read_word_debug(0x5FFE), 0x1002);
 
-        for opcode in [0x4E75, 0x4E73] {
-            let rte = opcode == 0x4E73;
-            let mut script = vec![
-                (Access::ReadWord(0x6000), waits),
-                (Access::ReadWord(0x6002), waits),
-            ];
-            if rte {
-                script.push((Access::ReadWord(0x6004), waits));
-            }
+        for (opcode, status, expected_sr) in [
+            (0x4E75, 0, 0x2700),
+            (0x4E77, 0xFFFF, 0x271F),
+            (0x4E73, 0x2700, 0x2700),
+            (0x4E73, 0x0015, 0x0015),
+        ] {
+            let restores_status = opcode != 0x4E75;
+            // Silicon reads PC high, status, PC low for RTR/RTE.
+            let mut script = if restores_status {
+                vec![
+                    (Access::ReadWord(0x6002), waits),
+                    (Access::ReadWord(0x6000), waits),
+                    (Access::ReadWord(0x6004), waits),
+                ]
+            } else {
+                vec![
+                    (Access::ReadWord(0x6000), waits),
+                    (Access::ReadWord(0x6002), waits),
+                ]
+            };
             script.extend([
                 (Access::ReadWord(0x2000), waits),
                 (Access::ReadWord(0x2002), waits),
             ]);
             let (mut cpu, mut bus) = recording_machine(opcode, 0x4E71, script);
             cpu.state.set_a_long(7, 0x6000);
+            cpu.state.set_usp(0x7000);
+            bus.memory.write_word_debug(0x6000, status);
             bus.memory
-                .write_word_debug(0x6000, if rte { 0x2700 } else { 0 });
-            bus.memory
-                .write_word_debug(0x6002, if rte { 0 } else { 0x2000 });
+                .write_word_debug(0x6002, if restores_status { 0 } else { 0x2000 });
             bus.memory.write_word_debug(0x6004, 0x2000);
             bus.memory.write_word_debug(0x2000, 0x4E71);
             bus.memory.write_word_debug(0x2002, 0x4E75);
-            run_instruction(&mut cpu, &mut bus, if rte { 20 } else { 16 });
-            assert_eq!(cpu.state.a_long(7), if rte { 0x6006 } else { 0x6004 });
+            run_instruction(&mut cpu, &mut bus, if restores_status { 20 } else { 16 });
+            assert_eq!(cpu.state.sr(), expected_sr);
+            assert_eq!(
+                cpu.state.ssp(),
+                if restores_status { 0x6006 } else { 0x6004 }
+            );
+            assert_eq!(cpu.state.usp(), 0x7000);
+            assert_eq!(
+                cpu.state.a_long(7),
+                if expected_sr & 0x2000 == 0 {
+                    0x7000
+                } else {
+                    cpu.state.ssp()
+                }
+            );
             assert_eq!(cpu.state.pc, 0x2004);
         }
-        let script = vec![
-            (Access::WriteWord(0x5FFE, 0x1002), waits),
-            (Access::WriteWord(0x5FFA, 0x2700), waits),
-            (Access::WriteWord(0x5FFC, 0), waits),
-            (Access::ReadWord(0x80), waits),
-            (Access::ReadWord(0x82), waits),
-            (Access::ReadWord(0x2000), waits),
-            (Access::ReadWord(0x2002), waits),
-        ];
-        let (mut cpu, mut bus) = recording_machine(0x4E40, 0x4E71, script);
-        cpu.state.set_a_long(7, 0x6000);
-        bus.memory.write_word_debug(0x80, 0);
-        bus.memory.write_word_debug(0x82, 0x2000);
-        bus.memory.write_word_debug(0x2000, 0x4E71);
-        bus.memory.write_word_debug(0x2002, 0x4E75);
-        run_instruction(&mut cpu, &mut bus, 34);
-        assert_eq!(cpu.state.a_long(7), 0x5FFA);
-        assert_eq!(cpu.state.pc, 0x2004);
-        assert_eq!(cpu.state.ir, 0x4E71);
+        for (opcode, old_sr, return_pc, vector_addr) in [
+            (0x4E40, 0x2700, 0x1002, 0x80),
+            (0x4E73, 0x0000, 0x1000, 0x20),
+        ] {
+            let script = vec![
+                (Access::WriteWord(0x5FFE, return_pc), waits),
+                (Access::WriteWord(0x5FFA, old_sr), waits),
+                (Access::WriteWord(0x5FFC, 0), waits),
+                (Access::ReadWord(vector_addr), waits),
+                (Access::ReadWord(vector_addr + 2), waits),
+                (Access::ReadWord(0x2000), waits),
+                (Access::ReadWord(0x2002), waits),
+            ];
+            let (mut cpu, mut bus) = recording_machine(opcode, 0x4E71, script);
+            cpu.state.set_ssp(0x6000);
+            cpu.state.set_usp(0x7000);
+            cpu.state.set_sr(old_sr);
+            cpu.state.instruction_pc = 0x1000;
+            bus.memory.write_word_debug(vector_addr, 0);
+            bus.memory.write_word_debug(vector_addr + 2, 0x2000);
+            bus.memory.write_word_debug(0x2000, 0x4E71);
+            bus.memory.write_word_debug(0x2002, 0x4E75);
+            run_instruction(&mut cpu, &mut bus, 34);
+            assert_eq!(cpu.state.ssp(), 0x5FFA);
+            assert_eq!(cpu.state.usp(), 0x7000);
+            assert_eq!(cpu.state.pc, 0x2004);
+            assert_eq!(cpu.state.ir, 0x4E71);
+        }
     }
 }
 
