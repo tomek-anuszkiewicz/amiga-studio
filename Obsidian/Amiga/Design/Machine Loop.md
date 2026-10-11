@@ -107,9 +107,11 @@ The public stepping methods all advance the same coordinated machine:
 2. Run `step_subsystems_cck()`, including output polling, peripheral routing, and
    delivery of Paula's resolved interrupt level to `cpu.state.ipl`.
 3. Evaluate the keyboard reset line. A warm reset ends this CCK step without CPU execution.
-4. Evaluate the CPU's external `RESET` request and reset external devices when asserted.
+4. Sample the CPU-owned `RESET` output before CPU execution.
 5. Construct a transient `MemoryBus` and advance one CPU CCK phase. A
    `BusResult::WaitState` preserves the active CPU micro-step.
+6. Observe the output assertion edge and reset external devices once. The CPU
+   owns the 124-clock output interval and its release.
 
 Within `step_subsystems_cck()`, disk requests are sampled before Agnus runs. Copper
 writes, bitplane words, disk DMA slots, and bus contention are then routed. Denise,

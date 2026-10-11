@@ -165,7 +165,8 @@ fn test_stop_instruction_awakened_by_interrupt() {
     cpu.set_pc_and_prime_prefetch(0x001000, &mut bus);
 
     // Execute STOP
-    cpu.step_instruction(&mut bus);
+    assert_eq!(cpu.step_instruction(&mut bus), 4);
+    assert_eq!(cpu.state.instruction_pc, 0x001004);
     assert!(cpu.state.stopped);
     assert_eq!(cpu.state.interrupt_mask(), 0);
 

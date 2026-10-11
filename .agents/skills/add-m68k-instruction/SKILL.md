@@ -67,7 +67,7 @@ Every micro-step where the physical memory bus does not perform an active read/w
 | **Internal ALU Idle** | 2 | `common::ALU_IDLE` | 2-clock internal execution delay with zero external bus activity (e.g. `CMPA.W`, `Bcc`, `BSET`, `CLR.L`). |
 | **Internal Execution Idle (4-clock)** | 4 | `common::ALU_IDLE_4CLK` | 4-clock internal execution delay (e.g. 32-bit register arithmetic `ADD.L Dn, Dn`, `SUBA.L`). |
 | **Internal Exception Idle (8-clock)** | 8 | `common::ALU_IDLE_8CLK` | 8-clock internal exception processing delay (`CHK` trap, `DIV` divide-by-zero). |
-| **Reset Idle (128-clock)** | 128 | `common::ALU_IDLE_128CLK` | 128-clock external bus idle countdown for `RESET`. |
+| **Reset Assertion Idle (124-clock)** | 124 | `reset::RESET_ASSERT_IDLE` | CPU-owned external `RESET` output interval; four released internal clocks precede it. |
 | **Stack Push Setup Idle** | 2 | `common::PUSH_STACK_HIGH_IDLE`<br>`common::EXCEPTION_PUSH_*_IDLE`<br>`common::AERR_PUSH_*_IDLE` | CCK1 SP decrement and alignment check; bus idle for DMA prior to CCK2 write. |
 
 > [!IMPORTANT]

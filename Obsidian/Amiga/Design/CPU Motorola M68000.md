@@ -41,7 +41,7 @@ The CPU exposes a fully queryable, read-only state snapshot (`CpuState`) for ins
 | **`instruction_pc`** | 32-bit | Architectural Opcode PC | $PC_{\text{hardware}} - 4$ at instruction retirement; represents the base memory address of the executing opcode word (used by GUI disassembler, debugger, breakpoints, and exception vectors). |
 | **`stopped`** | bool | STOP Instruction Latch | Processor halted awaiting interrupt higher than current interrupt mask. |
 | **`halted`** | bool | Double Bus Fault Latch | Processor halted due to catastrophic hardware failure / reset. |
-| **`reset_line_asserted`** | bool | External _RESET Pin Latch | Asserted by privileged `RESET` instruction to signal external chip/CIA reset via machine coordinator without resetting CPU state or RAM. |
+| **`reset_line_asserted`** | bool | External _RESET Output | Held for 124 clocks by privileged `RESET`; the coordinator observes assertion without clearing it or resetting CPU state/RAM. |
 | **`cycle_counter`** | 64-bit | Master CPU Cycle Counter | Monotonic accumulator of total elapsed CPU clock cycles since reset; queried via `cycle_counter()`, advanced by `advance_clocks(clocks)`, reset by `reset_cycle_counter()`. |
 | **`micro`** | `CpuMicroState` | Execution Micro-State | Tracks Color Clock phase, `micro_step` index, latched bus words, dual staging registers (`addr1`, `addr2`), Data Output Buffer, and wait cycles. |
 
@@ -502,11 +502,11 @@ On both **Cold** and **Warm** reset, the CPU execution flow begins at vector `$0
 
 The `RESET` instruction is a privileged M68000 instruction that asserts the external `_RESET` line for 124 clock cycles (total instruction duration: 132 CPU clocks / 66 CCKs):
 - **Privilege Gate:** If executed in User Mode ($SR.S = 0$), the processor immediately aborts execution and triggers a **Privilege Violation exception (Vector 8)** without asserting the reset pin.
-- **CPU State Invariance:** When executed in Supervisor Mode ($SR.S = 1$), CPU data/address registers ($D_0-D_7, A_0-A_7$), stack pointers ($USP, SSP$), Program Counter ($PC$), and Status Register ($SR$) are **completely unaffected**. The processor simply executes internal idle clocks and sequential opcode prefetch.
-- **Decoupled Pin Latching (`reset_line_asserted`):**
-  - In `crates/cpu/src/instructions/reset.rs`, `alu_reset()` latches `state.reset_line_asserted = true`.
+- **CPU State Invariance:** When executed in Supervisor Mode ($SR.S = 1$), CPU data/address registers ($D_0-D_7, A_0-A_7$), stack pointers ($USP, SSP$), and Status Register ($SR$) are **completely unaffected**; PC advances to the following instruction. The processor simply executes internal idle clocks and sequential opcode prefetch.
+- **CPU-Owned Output Duration (`reset_line_asserted`):**
+  - In [`reset.rs`](../../../crates/cpu/src/instructions/reset.rs), privilege validation precedes four internal clocks, 124 clocks of output assertion, and sequential prefetch. The CPU releases output before prefetch; bus waits do not extend the pulse.
   - The top-level machine loop coordinator (`crates/machine_loop/src/machine_loop.rs`) samples this line during its Color Clock progression.
-  - When asserted, `machine_loop` invokes `reset_external_devices()`, resetting Agnus, Denise, Paula, CIAs, and re-engaging the Gary boot overlay (`_OVL`) without touching RAM or CPU registers, cleanly decoupling microcode execution from machine-level coordination.
+  - On its assertion edge, `machine_loop` invokes `reset_external_devices()`, resetting Agnus, Denise, Paula, CIAs, and re-engaging the Gary boot overlay (`_OVL`) without touching RAM or CPU registers, cleanly decoupling microcode execution from machine-level coordination.
 
 ### 6.3 System Reset Comparison Matrix
 
@@ -735,6 +735,23 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
   - **TRAP (Trap Exception Processing):** 34 clocks (17 CCKs). Pushes return PC and SR to supervisor stack ($SSP$), switches to supervisor mode ($S=1, T=0$), fetches exception vector from `$000080 + \text{vec} \times 4$, and initiates double prefetch refill.
   - **Address Error (Vector 3) & 32-bit Target Fidelity:** Target addresses and stack values retain full 32-bit register width without artificial 24-bit truncation (`& 0x00FF_FFFF`), ensuring cycle-exact diagnostic and stack frame fidelity matching Tom Harte silicon test vectors.
 
+#### Status Transfers and Bounds Exceptions
+
+MC68000 `MOVE SR,<ea>` is unprivileged; `MOVE <ea>,SR` and both USP transfer
+directions require initial supervisor state. `MOVE <ea>,CCR` and immediate
+CCR logic preserve the system byte. SR writes mask reserved bits and select
+USP/SSP through banked A7 accessors. Operand faults precede status replacement;
+rejected privilege checks leave operand registers and USP unchanged.
+
+CHK compares signed words, preserves X, clears V/C, and selects Vector 6 on
+an out-of-range value. Its supplied normal inputs retain N and clear Z. Prefetch
+precedes condition evaluation and stacking; above-bound timing is tested before
+the negative-only path. Untaken TRAPV preserves flags and completes normal
+prefetch; taken TRAPV also performs that read before Vector 7 entry. TRAP selects
+Vector `32 + n`. All three save the following instruction address and old status.
+Their prefixes and shared frame order belong to the
+[three-word exception class](CPU%20Micro-Step%20State%20Machine.md#class-13-three-word-software-exception-entry).
+
 ### 7.12 Autovector Interrupt Processing & STOP Instruction Awakening
 
 - **Interrupt Priority Levels (IPL 1–7):**
@@ -751,8 +768,8 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
     5. **Autovector Fetch (8 clocks):** Reads high word and low word of vector address from physical memory into `ea_addr`.
     6. **Prefetch Target Refill (10 clocks):** Reads first target opcode from `ea_addr` and prefetches second word from `ea_addr + 2`, completing target refill and transferring control to the Interrupt Service Routine (ISR).
 - **Awakening the `STOP` Instruction:**
-  - When the CPU executes `STOP #<data>`, it writes the immediate word to $SR$ (requiring Supervisor mode) and halts instruction stepping (`state.stopped = true`).
-  - When a qualifying interrupt level (`ipl > mask || ipl == 7`) is asserted, `check_and_trigger_interrupt()` immediately initiates `STEPS_INTERRUPT`, clearing `state.stopped` and jumping directly to the registered autovector handler.
+  - `STOP #<data>` checks the initial supervisor state, loads the immediate into SR, and finishes two internal CCKs before setting `stopped`. The loaded S bit selects the stack bank. No stream reads occur; PC identifies the instruction after the immediate word.
+  - When a qualifying interrupt level (`ipl > mask || ipl == 7`) is asserted, `check_and_trigger_interrupt()` initiates `STEPS_INTERRUPT`; its setup clears `stopped`, saves PC after STOP, and completes 44-clock entry before handler execution.
 
 ---
 

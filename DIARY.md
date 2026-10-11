@@ -3056,3 +3056,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Retry controls use synthetic CPU buses rather than production chipset arbitration
   - python tools/verification/verify.py commit passes all quality gates, ordinary crate and standard harness tests, all Python contracts and the full repository English audit. Output remains in the local commit-profile.log
   - Full CPU SingleStep and milestone profiles are not run
+---
+
+### [2026-10-11 20:14 CEST] — CPU-CYCLE-01: repair system instruction timing and RESET output ownership
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/machine_loop`
+  - `Obsidian/Amiga/Design`
+  - `opcode implementation skill`
+- **What Was Changed (The Concrete Reality)**:
+  - Deliver batches 06.32 through 06.36 plus 06.38 and 06.39
+  - Prefetch before CHK and taken TRAPV exception entry and restore CHK bound-dependent internal timing and indexed address cost
+  - Complete STOP at four clocks before suspension and preserve the PC after its immediate word
+  - Hold RESET output for 124 clocks and release before prefetch while the machine observes its assertion edge without clearing CPU state
+  - Preserve already correct SR/CCR/USP and TRAP behavior and add focused privilege and wait controls
+  - Reconcile CPU and machine specifications and replace the obsolete RESET idle constant in the opcode procedure
+- **Architectural Rationale & Trade-Offs**:
+  - Repair mechanisms demonstrated by unchanged silicon vectors and focused failing STOP/RESET tests without weakening comparisons or masks
+  - Scoped sync-design-docs review selects both CPU specifications and Machine Loop with no missing or invalid ownership paths
+  - CPU-CYCLE-01 remains active and no roadmap point or milestone is closed
+- **Verification & Test Results**:
+  - All 120975 selected silicon vectors pass complete comparison plus independent exact formal PC and both final prefetch words with 9734 gained passes and no lost prior pass
+  - All 16 official full-input groups pass including 8065 NOP controls and all 124 original reference hashes match with zero overrides
+  - CPU crate tests and production machine reset integration pass together with formatting architecture Clippy English and vault checks
+  - STOP has no supplied silicon file and RESET vectors do not capture output pin duration independently so these timing controls use synthetic CPU fixtures and production machine observation
+  - Cold warm and keyboard reset tests currently stop before verified instruction continuation and no explicit test rules out repeated peripheral reset after the pulse
+  - Existing RAM masks and unobserved electrical signals remain limits and full CPU SingleStep and milestone profiles are not run
+  - python tools/verification/verify.py commit passes all quality gates ordinary crate and standard harness tests all Python contracts and the full repository English audit. Output remains in the local commit-profile.log

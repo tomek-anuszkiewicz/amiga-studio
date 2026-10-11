@@ -47,12 +47,13 @@ pub fn alu_trapv_exception_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8
 pub static ALU_TRAPV_EXCEPTION_INIT: MicroStep = MicroStep {
     bus_fn: None,
     alu_fn: Some(alu_trapv_exception_init),
-    base_clocks: 2,
+    base_clocks: 0,
 };
 
-pub static STEPS_TRAPV_EXCEPTION: [MicroStep; 17] = [
+pub static STEPS_TRAPV_EXCEPTION: [MicroStep; 18] = [
+    common::PREFETCH_IRC_READ,
+    common::BUS_READ_IDLE,
     ALU_TRAPV_EXCEPTION_INIT,
-    common::ALU_IDLE,
     common::EXCEPTION_PUSH_PCLO_IDLE,
     common::EXCEPTION_PUSH_PCLO_WRITE,
     common::EXCEPTION_PUSH_SR_IDLE,

@@ -329,13 +329,6 @@ pub const ALU_IDLE_8CLK: MicroStep = MicroStep {
     base_clocks: 8,
 };
 
-/// 128-clock internal idle sequence for RESET instruction (64 CCKs)
-pub const ALU_IDLE_128CLK: MicroStep = MicroStep {
-    bus_fn: None,
-    alu_fn: None,
-    base_clocks: 128,
-};
-
 // ============================================================================
 // Prefetch Queue Refill Building Blocks (SR / CCR Modifications)
 // ============================================================================

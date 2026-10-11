@@ -258,8 +258,15 @@ fn test_cpu_reset_instruction_external_propagation() {
         .set_pc_and_prime_prefetch(0x001000, &mut machine.physical_memory);
     machine.cpu.state.set_sr(0x2700);
 
-    // Step the RESET instruction through all sub-cycle microsteps
-    machine.step_instruction();
+    // Observe the CPU output through production machine coordination.
+    let mut asserted_clocks = 0;
+    for tick in 1..=66 {
+        assert_eq!(machine.step_cck(), tick == 66);
+        if machine.cpu.state.reset_line_asserted {
+            asserted_clocks += 2;
+        }
+    }
+    assert_eq!(asserted_clocks, 124);
 
     // 1. Verify custom chips WERE reset by the CPU RESET line pulse
     assert_eq!(
@@ -306,7 +313,7 @@ fn test_cpu_reset_instruction_external_propagation() {
     );
     assert!(
         !machine.cpu.state.reset_line_asserted,
-        "Reset line assertion flag must be cleared after dispatch"
+        "RESET output must be released before the final prefetch"
     );
 
     // 6. Verify CPU continues linear execution (fetching from re-engaged Kickstart ROM)

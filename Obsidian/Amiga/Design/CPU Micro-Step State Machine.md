@@ -165,7 +165,7 @@ Composite array names follow the strict convention `STEPS_<MNEMONIC>_<SIZE>_<SRC
 
 #### Standardized Common Micro-Step Constants (`crates/cpu/src/micro/common.rs`)
 All instruction modules reuse shared atomic Color Clock micro-step primitives rather than duplicating local slice definitions:
-- **Bus & Internal Idle Primitives:** `BUS_WRITE_IDLE` (CCK1 write setup / bus idle), `BUS_READ_IDLE` (CCK2 read completion / bus idle), `ALU_IDLE` (internal processing 2-clock delay / bus idle), `ALU_IDLE_4CLK` (4-clock internal execution delay / bus idle), `ALU_IDLE_8CLK` (8-clock internal exception delay / bus idle), `ALU_IDLE_128CLK` (128-clock `RESET` bus idle delay).
+- **Bus & Internal Idle Primitives:** `BUS_WRITE_IDLE` (CCK1 write setup / bus idle), `BUS_READ_IDLE` (CCK2 read completion / bus idle), `ALU_IDLE` (internal processing 2-clock delay / bus idle), `ALU_IDLE_4CLK` (4-clock internal execution delay / bus idle), `ALU_IDLE_8CLK` (8-clock internal exception delay / bus idle), `RESET_ASSERT_IDLE` (124-clock external `RESET` assertion in reset.rs).
 - **Operand Writes:** `WRITE_DST_BYTE`, `WRITE_DST_WORD`, `WRITE_DST_LONG_HIGH`, `WRITE_DST_LONG_LOW`.
 - **Operand Reads:** `READ_SRC_BYTE`, `READ_SRC_WORD`, `READ_SRC_LONG_HIGH`, `READ_SRC_LONG_LOW`, `READ_DST_BYTE`, `READ_DST_WORD`, `READ_DST_LONG_HIGH`, `READ_DST_LONG_LOW`, `BUS_READ_IDLE` (shared CCK2 idle completion).
 - **Dual Staged Address Reads & Writes:** `READ_ADDR1_BYTE`, `READ_ADDR1_WORD`, `READ_ADDR1_LONG_HIGH`, `READ_ADDR1_LONG_LOW`, `READ_ADDR2_BYTE`, `READ_ADDR2_WORD`, `READ_ADDR2_LONG_HIGH`, `READ_ADDR2_LONG_LOW`, `WRITE_ADDR2_BYTE`, `WRITE_ADDR2_WORD`, `WRITE_ADDR2_PD_LONG_HIGH`, `WRITE_ADDR2_PD_LONG_LOW`.
@@ -711,6 +711,25 @@ this timing. Exact instruction timings follow the
 
 ---
 
+#### System register and suspended-execution variants
+
+`MOVE An,USP` and `MOVE USP,An` check privilege before changing either register,
+then use four-clock sequential prefetch. MC68000 `MOVE SR,Dn` is unprivileged
+and has a two-clock internal tail after prefetch.
+
+[`STOP`](../../../crates/cpu/src/instructions/stop.rs) has two internal CCKs
+and no bus transfer. The first checks privilege and loads the staged immediate
+SR; the second sets `stopped`, records the following instruction PC, and clears
+the active sequence of micro-steps without shifting an unfilled prefetch queue. Rejected
+privilege redirects before the SR load. Interrupt entry refills the queue.
+
+[`RESET`](../../../crates/cpu/src/instructions/reset.rs) checks privilege, spends
+four internal clocks with the output released, asserts the CPU-owned output for
+124 clocks, then releases it before four-clock sequential prefetch. Waiting
+on that prefetch does not extend assertion. Total: 132 clocks plus bus waits.
+The [machine coordinator](Machine%20Loop.md) observes the assertion edge and
+resets external devices without clearing the CPU output.
+
 ### Class 2: Immediate to Register Operations (Extension Prefetch + ALU, Zero Memory Writes)
 
 #### Archetype: `ORI.B #$42, D0` (Opcode `$0000`)
@@ -734,6 +753,15 @@ two-clock tail. `CMP.l #imm,Dn` and `CMPI.l #imm,Dn` share this ordering;
 the immediate is staged before the comparison callback runs with prefetch.
 
 ---
+
+#### Status immediate variant
+
+`ANDI/ORI/EORI` to CCR/SR consume one extension pair, apply status in an
+eight-clock internal interval, then reread both queue words: `REFILL_FIRST_READ`
+at `PC - 2`, followed by `REFILL_SECOND_READ` at `PC`. Total: 20 clocks. SR forms
+check privilege before extension acquisition; CCR preserves the system byte.
+The first reread deliberately repeats the address fetched during extension
+consumption. Both pairs use shared read completion and sequential retirement.
 
 ### Class 3: Memory Source to Register Load (Memory Read, Zero Memory Writes)
 
@@ -788,6 +816,20 @@ Read-only comparisons and tests reuse this address/read/prefetch layout without
 destination write-back. Long `CMP` and both `CMPA` sizes retire after a two-clock
 tail; `TST` has no tail. Memory `CMPI` consumes its immediate extension words
 before the address prefix and operand reads, then prefetches without a tail.
+
+#### Status load and bounds-check variants
+
+`MOVE <ea>,SR/CCR` acquires the word through this class's address/read prefix,
+applies status in a four-clock internal interval, then rereads both queue words
+using the Class 2 status refill pair. Register sources omit the operand read;
+immediate sources consume an extension pair. SR checks privilege before operand
+side effects. Operand Address Error precedes status replacement and queue refill.
+
+[`CHK`](../../../crates/cpu/src/instructions/chk.rs) uses the same operand prefix,
+then a complete sequential prefetch pair before checking the bound. A normal
+result retires after six internal clocks. Above-bound and negative-only results
+select the [three-word exception class](#class-13-three-word-software-exception-entry).
+Indexed operands use one internal address CCK, matching the shared prefix.
 
 #### Dual-memory read variant: `CMPM (Ay)+,(Ax)+`
 
@@ -1117,6 +1159,32 @@ Count decoding and flag behavior are defined in the [CPU specification, section
 | **23** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads second instruction word from `ea_addr + 2` into `prefetch`. |
 | **24** | `PREFETCH_TARGET_FINISH` | 2 (CCK2) | Arms `target_refill = true`, latches `IR = irc`, sets `PC = ea_addr + 4`, retires exception! |
 
+
+---
+
+### Class 13: Three-Word Software Exception Entry
+
+This differs from Class 12's seven-word diagnostic frame. The shared tail uses
+the [canonical bus phases](#23-specialized-2-clock-atomic-micro-step-handlers-busfn):
+write saved PC low at `SSP - 2`, SR at `SSP - 6`, PC high at `SSP - 4`; read both
+vector words; read the handler opcode, spend one internal CCK, then read handler
+lookahead and retire through target refill. The tail takes 30 clocks. Entry saves
+old SR before selecting supervisor mode and clearing trace.
+
+| Entry | Prefix before the shared tail | Total excluding operand acquisition | Saved PC |
+| --- | --- | ---: | --- |
+| `TRAP #n` | Four internal clocks | 34 | Following instruction |
+| Taken `TRAPV` | Four-clock sequential prefetch pair | 34 | Following instruction |
+| `CHK`, above bound | Prefetch pair, four internal clocks | 38 | Following instruction |
+| `CHK`, negative only | Prefetch pair, six internal clocks | 40 | Following instruction |
+
+CHK tests the signed upper bound before the negative condition. A negative
+value greater than a negative bound uses above-bound timing. Normal CHK uses
+the Class 3 six-clock tail; untaken TRAPV uses Class 1 four-clock prefetch.
+Exception prefixes do not retire the sequential queue before stacking.
+Privilege entry uses four internal clocks, saves the rejected opcode address,
+and performs no operand read. Semantics and vector selection belong to the
+[CPU specification](CPU%20Motorola%20M68000.md).
 
 ---
 

@@ -319,11 +319,8 @@ impl A500Machine {
             return false;
         }
 
-        // 4. M68000 external RESET instruction pulse
-        if self.cpu.state.reset_line_asserted {
-            self.cpu.state.reset_line_asserted = false;
-            self.reset_external_devices();
-        }
+        // 4. Sample the CPU output before stepping to detect its assertion edge.
+        let reset_was_asserted = self.cpu.state.reset_line_asserted;
 
         // 5. Step CPU Color Clock phase with bus reference
         let mut bus = MemoryBus {
@@ -335,7 +332,11 @@ impl A500Machine {
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
         };
-        self.cpu.step_cck(&mut bus)
+        let completed = self.cpu.step_cck(&mut bus);
+        if !reset_was_asserted && self.cpu.state.reset_line_asserted {
+            self.reset_external_devices();
+        }
+        completed
     }
 
     /// Advances the machine by a given number of Color Clocks
