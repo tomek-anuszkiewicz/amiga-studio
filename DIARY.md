@@ -2849,3 +2849,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - DIVU includes one zero-divisor vector; DIVS contains none. DMA uses the existing 5% sample and bounded synthetic contention rather than production arbitration
   - Benchmark and mutation plans passed English/link checks; fresh benchmark measurements and mutation execution have not started. Historical benchmark warnings do not establish a current CPU regression
   - The required commit profile runs separately for this frozen snapshot. Full CPU SingleStep, full Cartesian and milestone closure are not claimed; all related plans remain active
+---
+
+### [2026-10-11 15:56 CEST] — CPU-CYCLE-01: repair logic, bit operation and EXG timing
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/test_runner`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Repair batches 06.06, 06.08 and 06.09: separate byte logic predecrement phases, complete prefetch before internal register delays and write long logic RMW low word before high word
+  - Use the existing countdown for register bit modifications, preserving original bit numbers for aliases and accounting for the selected register word
+  - Move the EXG delay after prefetch and add its missing Cartesian register operation fixture
+  - Correct two stale local BSET bit-4 assertions to six clocks, supported by all 40 matching original silicon records
+  - At the user request, shorten the documentation to corrected prefetch semantics and the register-bit timing dependency, removing repeated timing tables and instruction lists
+- **Architectural Rationale & Trade-Offs**:
+  - Silicon vectors constrain bus phases and clock totals independently, so correct final state alone is insufficient
+  - Shared execution, leaf ALU formulas, decoders, comparator masks and original reference files remain unchanged
+  - Scoped design review selected both CPU specifications and both verification specifications, with valid tracked paths and no missing mappings
+  - Keep shared delay and word-order descriptions general, and leave already accurate verification specifications unchanged
+- **Verification & Test Results**:
+  - Source-matched diagnostics pass 06.06 72585/72585, 06.08 32260/32260 and 06.09 32260/32260, including exact final prefetch and formal PC
+  - Gain 31540 with no lost prior passes, and controls retain 10042/10042 passes
+  - All 17 selected standard SingleStep suites, focused Cartesian logic/bit/register fixtures and CPU crate tests pass
+  - DMA uses the existing 5 percent sample and bounded synthetic contention, not production bus arbitration
+  - All 124 original references retain their hashes, and no override executes in the selected scopes
+  - Formatting, architecture, Clippy, English and vault checks passed during implementation, with explicit Graphify AST refresh
+  - The per-commit profile is run separately for the final snapshot, with its outcome recorded in the commit message and local batch log
+  - No whole-CPU SingleStep, exhaustive Cartesian or milestone closure is claimed, and CPU-CYCLE-01 remains active

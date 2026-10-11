@@ -38,6 +38,8 @@ pub fn alu_bclr_l_dyn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = state.d_long(reg_dst as usize);
     let res = bclr_l(state, bit_num, val);
     state.set_d_long(reg_dst as usize, res);
+    // Modifying the upper register word takes one additional internal CCK.
+    state.micro.clocks_remaining = if bit_num & 16 == 0 { 4 } else { 6 };
 }
 
 pub fn alu_bclr_b_dyn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
@@ -52,6 +54,8 @@ pub fn alu_bclr_l_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let val = state.d_long(reg_dst as usize);
     let res = bclr_l(state, bit_num, val);
     state.set_d_long(reg_dst as usize, res);
+    // Modifying the upper register word takes one additional internal CCK.
+    state.micro.clocks_remaining = if bit_num & 16 == 0 { 4 } else { 6 };
 }
 
 pub fn alu_bclr_b_imm_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
@@ -86,16 +90,10 @@ pub fn latch_bit_imm_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 // Static Micro-Step Slices: Dynamic BCLR Dn, <ea>
 // ============================================================================
 
-pub static STEPS_BCLR_DYN_DN: [MicroStep; 5] = [
-    common::ALU_IDLE,
-    common::ALU_IDLE,
-    common::ALU_IDLE,
-    MicroStep {
-        bus_fn: Some(Cpu::step_prefetch_next_read),
-        alu_fn: Some(alu_bclr_l_dyn_dn),
-        base_clocks: 2,
-    },
+pub static STEPS_BCLR_DYN_DN: [MicroStep; 3] = [
+    common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_bclr_l_dyn_dn),
 ];
 
 pub static STEPS_BCLR_DYN_AI: [MicroStep; 6] = [
@@ -237,22 +235,16 @@ pub static STEPS_BCLR_DYN_ABSL: [MicroStep; 10] = [
 // Static Micro-Step Slices: Static BCLR #imm, <ea>
 // ============================================================================
 
-pub static STEPS_BCLR_STAT_DN: [MicroStep; 7] = [
+pub static STEPS_BCLR_STAT_DN: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(latch_bit_imm),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
-    common::ALU_IDLE,
-    common::ALU_IDLE,
-    common::ALU_IDLE,
-    MicroStep {
-        bus_fn: Some(Cpu::step_prefetch_next_read),
-        alu_fn: Some(alu_bclr_l_imm_dn),
-        base_clocks: 2,
-    },
+    common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_bclr_l_imm_dn),
 ];
 
 pub static STEPS_BCLR_STAT_AI: [MicroStep; 8] = [

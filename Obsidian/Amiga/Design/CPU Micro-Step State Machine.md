@@ -42,16 +42,16 @@ The architecture mirrors the physical two-level microcode design of the Motorola
 5. **Parametric, Bus-Free ALU Function Pointers (`AluFn`)**:
    ALU steps do **not** take `MemoryBus`. By the time the ALU executes, all operands have already arrived in `CpuState` (`prefetch`, `d[]/a[]`) or `CpuMicroState` (`source`, `destination`, `addr1`, `addr2`). ALU functions take `(&mut CpuState, reg_src: u8, reg_dst: u8)`. This parameterization collapses 8–64 repetitive opcode functions into **one shared, elegant function per operation**.
 6. **Fused CCK ALU Micro-Operations (Zero-Overhead Internal Operations)**:
-   ALU calculations, condition code flag updates, and Effective Address arithmetic are fused directly onto native 2-clock Color Clock phases (`MicroStep.alu_fn`) where operand data has arrived (e.g. CCK2 read idle `BUS_READ_IDLE`, CCK1 extension fetch, or internal 2-clock processing phases). This eliminates separate 0-clock dispatch steps and redundant state machine iterations while guaranteeing 100% cycle-exact execution, Address Error verification, and Chip RAM DMA contention timing. Standalone 0-clock micro-steps (`base_clocks: 0`) are reserved exclusively for dynamic countdown delay loops (`clocks_remaining` in `MUL`/`DIV`/shifts) or single-instruction branch slice trampolines (`Bcc`/`DBcc`/`Scc`).
+   ALU calculations, condition code flag updates, and Effective Address arithmetic are fused directly onto native 2-clock Color Clock phases (`MicroStep.alu_fn`) where operand data has arrived (e.g. CCK2 read idle `BUS_READ_IDLE`, CCK1 extension fetch, or internal 2-clock processing phases). This eliminates separate 0-clock dispatch steps and redundant state machine iterations while guaranteeing 100% cycle-exact execution, Address Error verification, and Chip RAM DMA contention timing. Standalone 0-clock micro-steps (`base_clocks: 0`) are reserved exclusively for dynamic countdown delay loops (`clocks_remaining`) or single-instruction branch slice trampolines (`Bcc`/`DBcc`/`Scc`).
 7. **Data Output Buffer (`state.micro.destination: u32`) & Exact Write Strobe Preservation**:
    Results destined for memory are held in `state.micro.destination: u32` (hardware `DOB`). Memory writes strictly respect 68000 bus widths:
    - **`WRITE_DST_BYTE`** (`Cpu::step_bus_write_dst_byte`): Drives $\overline{\text{UDS}}$ (even address, high byte) or $\overline{\text{LDS}}$ (odd address, low byte). The unaddressed byte in the 16-bit memory cell is **strictly preserved**.
    - **`WRITE_DST_WORD`** (`Cpu::step_bus_write_dst_word`): Drives both $\overline{\text{UDS}}$ and $\overline{\text{LDS}}$ simultaneously on even address boundaries.
-   - **`WRITE_DST_LONG_HIGH` & `WRITE_DST_LONG_LOW`**: Decomposed into two sequential 16-bit Word bus write cycles (High Word followed by Low Word).
+   - **`WRITE_DST_LONG_HIGH` & `WRITE_DST_LONG_LOW`**: Two 16-bit Word bus write cycles; their order follows the instruction class.
 8. **Two-Word Pipeline Refill for Control Flow (`JMP`, `JSR`, `RTS`, `Bcc`)**:
    When program execution flow changes, the prefetch stream is flushed and refilled from the target address via two sequential program-space read bus cycles (`Cpu::step_bus_read_target_opcode_read` and `Cpu::step_prefetch_target_finish`).
 9. **Decoupled Internal Delay Countdown**:
-   Variable-cycle operations (`DIVU`, `DIVS`, `MULU`, `MULS`, multi-bit shifts) calculate their math instantly, compute the hardware cycle penalty, and set `cpu.state.micro.clocks_remaining`. The host ticks down this counter by 2 clocks per CCK, leaving the external bus completely idle for Amiga custom chips (Copper, Blitter, Denise).
+   Variable-cycle operations calculate their result instantly, compute the hardware cycle penalty, and set `cpu.state.micro.clocks_remaining`. The host ticks down this counter by 2 clocks per CCK, leaving the external bus completely idle for Amiga custom chips (Copper, Blitter, Denise).
 10. **Automatic Self-Modifying Code (SMC) Immunity**:
     Because opcodes directly index the static 65,536 table upon prefetch, and operands are read live from memory, **the engine requires zero bus snooping, zero page dirty tracking, and zero cache invalidation**.
 11. **Cached Slice Pointer Dispatch (`current_steps: &'static [MicroStep]`)**:
@@ -691,6 +691,12 @@ Other register variants differ only in their internal tail after prefetch:
 | `SUBQ.l #q,An` | 2 | 6 |
 | `SUBA.w/l Dn/An,An` | 4 | 8 |
 
+Register bit modifications complete prefetch before their internal delay;
+selecting a bit in the upper 16-bit word adds one internal CCK. Capture the
+original bit number before writing the destination so register aliases preserve
+this timing. Exact instruction timings follow the
+[SingleStep vectors](Verification/CPU%20SingleStepTests.md).
+
 ---
 
 ### Class 2: Immediate to Register Operations (Extension Prefetch + ALU, Zero Memory Writes)
@@ -698,13 +704,13 @@ Other register variants differ only in their internal tail after prefetch:
 #### Archetype: `ORI.B #$42, D0` (Opcode `$0000`)
 - **Total Duration**: 8 CPU clocks (4 CCKs).
 - **Result Writing**: Register destination (`D0`). Zero external write cycles.
-- **Prefetch**: First bus cycle fetches immediate extension word; second bus cycle prefetches next instruction opcode.
+- **Prefetch**: Consume the immediate word already in `prefetch` while fetching the following word; the second bus cycle completes the sequential prefetch.
 
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `FETCH_EXT_READ` | 2 (CCK1) | Initiates bus read from `PC` for immediate extension word. |
-| **1** | `FETCH_EXT_FINISH` | 2 (CCK2) | Latches immediate word into `prefetch`, advances `PC += 2`. |
-| **2** | `PREFETCH_NEXT_READ` + `alu_fn` | 2 (CCK1) | Initiates next opcode read from `PC` into `irc`. Fused ALU computes `D0 = D0 \| imm`, sets CCR flags. |
+| **0** | `FETCH_EXT_READ` + `alu_fn` | 2 (CCK1) | Fused ALU consumes the staged immediate, computes `D0 = D0 \| imm` and sets CCR; reads the following word from `PC`. |
+| **1** | `FETCH_EXT_FINISH` | 2 (CCK2) | Latches the fetched word into `prefetch`, advances `PC += 2`. |
+| **2** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Reads the next instruction word from `PC` into `irc`. |
 | **3** | `BUS_READ_IDLE` | 2 (CCK2) | Prefetch finishes. Retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
 
 Long immediate arithmetic (`ADD/SUB/SUBI.l #imm,Dn`, `SUBA.l #imm,An`)
@@ -805,12 +811,12 @@ tail after it. Costs below exclude the shared address prefix:
 | **4** | `BUS_WRITE_IDLE` | 2 (CCK1) | Sets up the operand write; no bus access. |
 | **5** | `WRITE_DST_BYTE/WORD` | 2 (CCK2) | Writes the modified operand to `ea_addr` and retires: `IR = prefetch`, `prefetch = irc`. |
 
-The byte/word layout also covers subtraction and unary memory operations.
+The byte/word layout also covers subtraction, logic and unary memory operations.
 `CLR` still reads its destination before prefetch and writeback.
 
 #### Long Arithmetic and Unary Read-Modify-Write Variants
 
-Long arithmetic and unary RMW uses **read high -> read low -> prefetch -> write low
+Long arithmetic, logic and unary RMW uses **read high -> read low -> prefetch -> write low
 -> write high**, then retires. Each transfer uses the shared four-clock bus cycle:
 20 clocks after the address/immediate prefix. The base effective address stays
 fixed; low-word accesses use `ea_addr + 2`, high-word accesses use `ea_addr`.

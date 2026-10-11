@@ -585,6 +585,10 @@ Bit manipulation instructions evaluate individual bit positions:
   - Only the **Zero flag ($Z$)** is updated: $Z = 1$ if the tested bit was zero; $Z = 0$ if the tested bit was one.
   - Flags **$X, N, V, C$ are completely unaffected** (preserving existing carry/extend states across bit tests).
 
+`BTST` leaves the operand unchanged; `BCHG`, `BCLR` and `BSET` toggle, clear
+or set the tested bit. Execution phases are described in the
+[micro-step classes](CPU%20Micro-Step%20State%20Machine.md#7-concrete-micro-step-traces-by-architectural-class).
+
 ### 7.5 Shifts & Rotates Micro-Step Pipeline & Silicon Quirks (`ASd`, `LSd`, `ROXd`, `ROd`)
 
 Motorola 68000 Group 0xE encompasses four operation types across register and memory forms: Arithmetic Shift (`ASL`/`ASR`), Logical Shift (`LSL`/`LSR`), Rotate with Extend (`ROXL`/`ROXR`), and Rotate without Extend (`ROL`/`ROR`).

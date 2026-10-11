@@ -598,6 +598,11 @@ fn test_dma_cartesian_bitops() {
     run_cartesian_for_opcodes(&["BSET", "BTST", "BCLR", "BCHG"]);
 }
 
+#[test]
+fn test_dma_cartesian_register_ops() {
+    run_cartesian_for_opcodes(&["EXG", "EXT.w", "EXT.l", "SWAP"]);
+}
+
 // ============================================================================
 // Shifts & Rotates (ASL)
 // ============================================================================

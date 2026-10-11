@@ -87,13 +87,13 @@ pub fn latch_bit_imm_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_BTST_DYN_DN: [MicroStep; 3] = [
-    common::ALU_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_btst_l_dyn_dn),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_BTST_DYN_AI: [MicroStep; 4] = [
@@ -252,7 +252,7 @@ pub static STEPS_BTST_DYN_IDX_PC: [MicroStep; 7] = [
     common::BUS_READ_IDLE,
 ];
 
-pub static STEPS_BTST_DYN_IMM: [MicroStep; 4] = [
+pub static STEPS_BTST_DYN_IMM: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(alu_btst_b_dyn_imm),
@@ -261,6 +261,7 @@ pub static STEPS_BTST_DYN_IMM: [MicroStep; 4] = [
     common::FETCH_EXT_FINISH,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
 // ============================================================================
@@ -274,13 +275,13 @@ pub static STEPS_BTST_STAT_DN: [MicroStep; 5] = [
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
-    common::ALU_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_btst_l_imm_dn),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_BTST_STAT_AI: [MicroStep; 6] = [

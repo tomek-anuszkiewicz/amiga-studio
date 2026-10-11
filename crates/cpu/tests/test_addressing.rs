@@ -217,7 +217,7 @@ fn test_bit_manipulation() {
     cpu.state.ir = 0x01C1;
     cpu.state.prefetch = 0x4E71;
     let clocks1 = cpu.step_instruction(&mut bus);
-    assert_eq!(clocks1, 8);
+    assert_eq!(clocks1, 6); // Register bit 4 uses a two-clock internal tail.
     assert!(cpu.state.is_z()); // bit 4 was 0, so Z=1
     assert_eq!(cpu.state.d_long(1), 0x0000_0010);
 
@@ -226,7 +226,7 @@ fn test_bit_manipulation() {
     cpu.state.ir = 0x01C1;
     cpu.state.prefetch = 0x4E71;
     let clocks2 = cpu.step_instruction(&mut bus);
-    assert_eq!(clocks2, 8);
+    assert_eq!(clocks2, 6);
     assert!(!cpu.state.is_z()); // bit 4 was 1, so Z=0
     assert_eq!(cpu.state.d_long(1), 0x0000_0010);
 }
