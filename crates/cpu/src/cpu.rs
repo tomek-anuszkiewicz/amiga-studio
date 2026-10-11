@@ -216,12 +216,11 @@ impl Cpu {
                 return true;
             }
 
-            // If step redirected execution to a new step sequence (e.g. Address Error),
-            // conclude this CCK and begin the new sequence on next CCK.
+            // A faulting transfer performs no bus access. Its CCK starts exception processing.
             let sequence_redirected = self.state.micro.current_steps.as_ptr() != prev_steps_ptr;
             if sequence_redirected {
                 self.state.micro.clocks_remaining = 0;
-                return false;
+                continue;
             }
 
             match bus_res {
@@ -336,6 +335,11 @@ impl Cpu {
         let rw_bit = if is_read { 0x10 } else { 0x00 };
         let info_word = (self.state.ir & 0xFFE0) | rw_bit | ((fc as u16) & 0x07);
 
+        self.state.micro.source = if is_program_space {
+            self.state.instruction_pc
+        } else {
+            self.state.pc.wrapping_sub(4)
+        };
         self.state.micro.fault_addr = fault_addr;
         self.state.micro.info_word = info_word;
         self.state.micro.current_steps = &crate::micro::common::STEPS_ADDRESS_ERROR;

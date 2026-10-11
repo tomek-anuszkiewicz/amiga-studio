@@ -2777,3 +2777,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Synthetic DMA covers CPU plus TestMemoryBus waiting invariance rather than production Agnus arbitration
   - Existing RAM masks and unobserved signal limits remain, and no silicon vectors or expected timing references changed
   - CPU-CYCLE-01 remains active for later batches, with no milestone closure or final full CPU pass claimed
+---
+
+### [2026-10-11 13:05 CEST] — CPU-CYCLE-01 batch 03: Address Error entry and predecrement phases
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `Obsidian/Amiga/Design/CPU Micro-Step State Machine.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Start Address Error processing in the rejected-access CCK without an operand transfer
+  - Latch data-access frame PC from the progressed stream before exception initialization and retain the existing program-space policy
+  - Separate 44 fused word/long predecrement reads into internal address calculation and common operand reads
+  - Remove the temporary early-alignment helper and align the direct-trigger fixture with the primed stream PC
+  - Update the execution flowchart and instruction classes 3, 5 and 12
+- **Architectural Rationale & Trade-Offs**:
+  - Rejected transfers consume no separate bus phase. Predecrement must finish its internal address phase before alignment validation in the operand read
+  - Scoped design review selected both CPU specifications through valid tracked paths. The main CPU specification already describes progressed PC and predecrement timing and remains unchanged
+- **Verification & Test Results**:
+  - Fresh python tools/verification/verify.py commit passed: ordinary workspace tests with coverage, full repository English audit, formatting, Clippy, architecture, hardware and code quality checks, standard transaction harness and all Python contracts
+  - Fresh vault audit passed for 39 specifications and 1050 links with valid frontmatter
+  - Rechecked archived batch-03 evidence: all 87 CPU source hashes, 124 reference hashes and 20 evidence hashes match current inputs. Diagnostics were not rerun during this commit workflow
+  - Source-matched diagnostics passed all 1772 selected ADD.w operand faults and 6372 normal ADD.b/w vectors. Scoped predecrement faults passed 15053/15053 and normal vectors passed 10112/19520, with no lost prior passes
+  - The broad archived Address Error diagnostic passed 145346/178088 and retains 32742 failures in other instruction families. Containing ADD.b/w/l suites still fail outside this batch
+  - RAM comparison masks, the final-PC allowance and unobserved electrical signals remain limits. Full SingleStepTests, full Cartesian DMA and milestone verification were not run. CPU-CYCLE-01, CPU-PC-01 and SINGLESTEP-RAM-01 remain active

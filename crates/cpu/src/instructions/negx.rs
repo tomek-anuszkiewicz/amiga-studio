@@ -295,12 +295,13 @@ pub static STEPS_NEGX_W_PI: [MicroStep; 6] = [
     common::WRITE_DST_WORD,
 ];
 
-pub static STEPS_NEGX_W_PD: [MicroStep; 6] = [
+pub static STEPS_NEGX_W_PD: [MicroStep; 7] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_dst_word),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_w),
         base_clocks: 2,
     },
+    common::READ_DST_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
@@ -451,12 +452,13 @@ pub static STEPS_NEGX_L_PI: [MicroStep; 10] = [
     common::WRITE_DST_LONG_LOW,
 ];
 
-pub static STEPS_NEGX_L_PD: [MicroStep; 10] = [
+pub static STEPS_NEGX_L_PD: [MicroStep; 11] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_dst_long_high),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_l),
         base_clocks: 2,
     },
+    common::READ_DST_LONG_HIGH,
     common::BUS_READ_IDLE,
     common::READ_DST_LONG_LOW,
     common::BUS_READ_IDLE,

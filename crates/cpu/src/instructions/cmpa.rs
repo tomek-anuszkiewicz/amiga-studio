@@ -113,12 +113,13 @@ pub static STEPS_CMPA_W_PI_AN: [MicroStep; 5] = [
     common::ALU_IDLE,
 ];
 
-pub static STEPS_CMPA_W_PD_AN: [MicroStep; 5] = [
+pub static STEPS_CMPA_W_PD_AN: [MicroStep; 6] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_src_word),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
         base_clocks: 2,
     },
+    common::READ_SRC_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
@@ -317,12 +318,13 @@ pub static STEPS_CMPA_L_PI_AN: [MicroStep; 7] = [
     common::ALU_IDLE,
 ];
 
-pub static STEPS_CMPA_L_PD_AN: [MicroStep; 7] = [
+pub static STEPS_CMPA_L_PD_AN: [MicroStep; 8] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_src_long_high),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_l),
         base_clocks: 2,
     },
+    common::READ_SRC_LONG_HIGH,
     common::BUS_READ_IDLE,
     common::READ_SRC_LONG_LOW,
     common::BUS_READ_IDLE,

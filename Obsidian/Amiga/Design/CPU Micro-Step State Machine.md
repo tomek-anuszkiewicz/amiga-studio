@@ -602,12 +602,16 @@ flowchart TD
     Adv --> CheckSeq["Execute Micro-Step (execute_micro_step)"]
     
     CheckSeq --> InitCheck{"clocks_remaining == 0?"}
-    InitCheck -- Yes --> Init["clocks_remaining = base_clocks<br/>Execute alu_fn (if any)"] --> InstCheck{"clocks_remaining == 0?"}
+    InitCheck -- Yes --> Init["clocks_remaining = base_clocks<br/>Execute alu_fn (if any)"] --> AluRedirect{"Step sequence redirected?"}
+    AluRedirect -- Yes --> CheckSeq
+    AluRedirect -- No --> InstCheck{"clocks_remaining == 0?"}
     InstCheck -- Yes (Instant ALU) --> InstExec["micro_step += 1<br/>continue to next step"] --> CheckSeq
     InstCheck -- No --> ExecStep["Execute bus_fn(self, bus)"]
     InitCheck -- No --> ExecStep
     
-    ExecStep --> BusRes{"BusResult?"}
+    ExecStep --> BusRedirect{"Step sequence redirected?"}
+    BusRedirect -- Yes --> Redirect["clocks_remaining = 0<br/>continue in this CCK"] --> CheckSeq
+    BusRedirect -- No --> BusRes{"BusResult?"}
     BusRes -- WaitState --> Stall["CPU stalls (phase held)<br/>return false"]
     BusRes -- Ready --> Dec["clocks_remaining -= 2"]
     
@@ -631,6 +635,7 @@ The full CCK stepping engine is implemented in [`crates/cpu/src/micro/engine.rs`
 2. **Instantaneous Fall-Through Micro-Steps:**
    - A fast internal loop executes zero-cycle micro-operations (`alu_fn`) when entering a step or when `base_clocks == 0` within the same host tick until encountering a bus cycle.
    - If a subsequent bus cycle stalls due to Chip RAM contention, the ALU calculation is **never repeated**.
+   - A redirected step sequence resumes in the same CCK without advancing clocks again.
 3. **Two-Phase External Bus Execution via Atomic Micro-Steps:**
    - **CCK1 (Phase 1):** Read steps (`step_bus_read_*`) issue `bus.read_word(addr)` / `bus.read_byte(addr)`. If `BusResult::WaitState`, the CPU stalls without advancing `micro_step` (returns `false`). If `BusResult::Ready(data)`, samples memory data into `source` / `destination` / `prefetch` / `irc` and advances to CCK2 (`micro_step += 1`). For write actions, `step_bus_write_idle` does not touch the bus (bus idle for DMA) and simply advances to CCK2 (`micro_step += 1`).
    - **CCK2 (Phase 2):** Write steps (`step_bus_write_dst_*`) issue `bus.write_word(addr, val)` / `bus.write_byte(addr, val)`. If `BusResult::WaitState`, stalls without committing (returns `false`). If `BusResult::Ready(())`, commits data, records transaction, and advances `micro_step += 1`, completing the 4-clock bus cycle. Read finish steps (`step_bus_read_*_finish`) log the transaction, release the bus for Agnus DMA, and advance `micro_step += 1`.
@@ -697,14 +702,14 @@ Class 5 uses the same address-phase layout for memory destinations.
 | Addressing mode | Prefix clocks | Address phase before the operand read |
 | --- | ---: | --- |
 | `(An)`, `(An)+` | 0 | Fuse `ea_calc` into the operand read CCK; postincrement also updates `An` once. |
-| `-(An)` | 2 | Internal `ea_calc` CCK commits the decrement once. Word operands also run `step_check_ea_read_word_idle`; an odd address enters Address Error without an operand access. |
+| `-(An)` | 2 | Internal `ea_calc` commits the decrement once; the following word/long read checks alignment. |
 | `(d16,An)` | 4 | `FETCH_EXT_READ` with `ea_calc` using the staged extension word, then `FETCH_EXT_FINISH`. |
 | `(d8,An,Xn)` | 6 | Internal indexed `ea_calc` CCK, then `FETCH_EXT_READ` and `FETCH_EXT_FINISH`. |
 
-The predecrement alignment primitive is in
-[step_execution.rs](../../../crates/cpu/src/micro/step_execution.rs). Byte A7
-operands decrement by two; other byte address registers decrement by one. Word
-operands decrement by two.
+Byte A7 operands decrement by two; other byte address registers decrement by
+one. Word operands decrement by two; single-operand long variants decrement by
+four. Long operands use two four-clock reads, high word then low word, before
+the instruction-specific ALU/prefetch tail.
 
 | Pipeline step after the address phase | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
@@ -749,9 +754,10 @@ operands decrement by two.
 
 #### Archetype 5A: `ADD.b/w Dn,<ea>` (`ADD.W D0,(d16,A0)`, Opcode `$D168`)
 - **Total Duration**: 12 CPU clocks for indirect/postincrement, 14 for predecrement, 16 for displacement, and 18 for indexed addressing.
-- **Address Phase**: Use the [Class 3 address-phase layout](#class-3-memory-source-to-register-load-memory-read-zero-memory-writes) with destination `ea_calc` callbacks. Predecrement commits the address and checks word alignment in its own internal CCK before reading the destination.
+- **Address Phase**: Use the [Class 3 address-phase layout](#class-3-memory-source-to-register-load-memory-read-zero-memory-writes) with destination `ea_calc` callbacks.
 - **Prefetch**: Read the memory operand, prefetch the next instruction word, then write the modified operand.
 - **Result Writing**: Commits the modified byte or word to `ea_addr` in the final step.
+- **Size Variants**: Memory shifts use word operands; long RMW variants read both words before prefetch.
 
 | Pipeline step after the address phase | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
@@ -909,14 +915,16 @@ operands decrement by two.
 ### Class 12: Group 0 Diagnostic Hardware Exception (Address Error Vector 3)
 
 #### Archetype: Misaligned Word Access (Total Duration: Exactly 50 CPU clocks / 25 CCKs)
-- **Total Duration**: Exactly 50 CPU clocks (25 CCKs).
+- **Total Duration**: 50 CPU clocks (25 CCKs), plus completed address and extension phases.
+- **Entry CCK**: Alignment failure starts `ALU_AERR_INIT` in the rejected-access CCK, with no operand transfer.
+- **Return PC**: `trigger_address_error` latches `pc - 4` for data-access faults and `instruction_pc` for program-space faults.
 - **Physical Silicon Stacking Order**: Interleaved hardware write sequence matching Motorola M68000 PRM Figure B-9 and physical silicon captures.
 - **Double Bus Fault**: If $SSP$ is odd during exception setup or stack writes, or if the low vector address is odd, the processor halts immediately (`self.state.halted = true`).
 - **Prefetch**: Vector fetch + two-word pipeline refill from exception handler.
 
 | Step | Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `ALU_AERR_INIT` | 2 (CCK1) | S=1, T=0, double-bus fault check on SSP, snapshots `ssp_base`, return PC, old SR, vector `$00000C`. Internal duration 4 logged. |
+| **0** | `ALU_AERR_INIT` | 2 (CCK1) | S=1, T=0; checks SSP, saves `ssp_base` and old SR, retains latched return PC in `source`, sets vector `$00000C`. |
 | **1** | `ALU_IDLE` | 2 (CCK2) | Internal execution cycle completing initial 4-clock hardware delay. |
 | **2** | `AERR_PUSH_PCLO_IDLE` | 2 (CCK1) | Validates SSP alignment and idles bus for return PC low word write to `SSP - 2`. |
 | **3** | `AERR_PUSH_PCLO_WRITE` | 2 (CCK2) | Writes return PC low word (`source & 0xFFFF`) to `SSP - 2`. Stalls on Chip RAM DMA contention. |

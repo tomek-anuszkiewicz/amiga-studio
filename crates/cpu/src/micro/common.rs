@@ -202,7 +202,7 @@ pub const VECTOR_ADDRESS_ERROR: u32 = vector::addr(vector::ADDRESS_ERROR);
 
 /// Initial setup for Address Error exception:
 /// Sets supervisor mode (S=1, T=0), checks for double-bus fault,
-/// snapshots SSP, return PC, old SR, and sets vector address ($00000C).
+/// snapshots SSP and old SR, keeps the latched return PC, and sets vector address ($00000C).
 pub fn alu_aerr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let old_sr = state.sr();
     state.set_supervisor(true);
@@ -213,7 +213,6 @@ pub fn alu_aerr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
         state.halted = true;
     }
     state.micro.ssp_base = ssp;
-    state.micro.source = state.instruction_pc;
     state.micro.destination = old_sr as u32;
     state.micro.ea_addr = VECTOR_ADDRESS_ERROR;
 }

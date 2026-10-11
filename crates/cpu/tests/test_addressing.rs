@@ -63,6 +63,7 @@ fn test_unaligned_address_error() {
     cpu.state.set_ssp(0x004000);
     cpu.state.set_usp(0x003000);
     cpu.state.instruction_pc = 0x001000;
+    cpu.state.pc = 0x001004; // Primed stream position at a data-access fault.
     cpu.state.ir = 0x3010; // MOVE.W (A0), D0
     cpu.trigger_address_error(0x001001, true, false);
 
