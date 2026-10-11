@@ -2876,3 +2876,33 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Formatting, architecture, Clippy, English and vault checks passed during implementation, with explicit Graphify AST refresh
   - The per-commit profile is run separately for the final snapshot, with its outcome recorded in the commit message and local batch log
   - No whole-CPU SingleStep, exhaustive Cartesian or milestone closure is claimed, and CPU-CYCLE-01 remains active
+---
+
+### [2026-10-11 16:32 CEST] — CPU-CYCLE-01: correct comparison timing and verify batches 06.04 and 06.05
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Separate the CMP.b predecrement address CCK from its operand read
+  - Prefetch before the two-clock register CMP.l and CMPA tail, correcting the excessive CMP.l Dn delay
+  - Add the missing two-clock tail after long CMP memory and immediate reads
+  - Execute the CMPI.l register comparison with prefetch and move its internal CCK afterward
+  - Preserve already correct CMPM and TST microprograms
+  - Add the explicitly approved term microprograms to the software vocabulary
+  - Update instruction classes with comparison tails and the distinct dual-read CMPM layout
+- **Architectural Rationale & Trade-Offs**:
+  - Silicon bus phases and clock totals constrain comparison timing independently from flags and final registers
+  - Reuse existing shared microsteps without changing the common engine, decoders, addressing helpers or flag formulas
+  - Scoped design review selected the parent CPU specification and explicit microstep specification, with valid tracked paths and no missing code mappings
+  - The parent CPU specification remains accurate and unchanged
+- **Verification & Test Results**:
+  - Source-matched diagnostics pass CMPM 2677/2677 and CMP/CMPI/CMPA/TST 61843/61843, including exact final prefetch and formal PC
+  - Repair 9702 timing divergences with no lost prior passes, while NOP/register ADD controls retain 10042/10042 passes
+  - All eight containing SingleStep suites and three filtered CMPM tests pass, along with CPU crate tests and focused comparison/TST Cartesian tests
+  - Cartesian validation retains the existing 5 percent sample and bounded synthetic contention rather than production arbitration
+  - All 124 original reference files retain their hashes and no override executes in the selected scopes
+  - Formatting, architecture, Clippy, English and vault checks passed, with explicit Graphify AST refresh
+  - The initial commit profile passed all tests and other checks but rejected microprograms as unknown vocabulary, which the user subsequently approved
+  - The required per-commit profile runs separately on the isolated commit snapshot, with its outcome recorded in commit-profile.log and the commit message
+  - Existing RAM masks and unobserved electrical signals remain verification limits, and no full whole-CPU suite or milestone closure is claimed
+  - CPU-CYCLE-01 remains active

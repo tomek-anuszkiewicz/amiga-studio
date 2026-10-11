@@ -546,12 +546,12 @@ pub static STEPS_CMPI_L_DN: [MicroStep; 7] = [
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        bus_fn: None,
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmpi_l_imm_dn),
         base_clocks: 2,
     },
-    common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPI_L_AI: [MicroStep; 10] = [

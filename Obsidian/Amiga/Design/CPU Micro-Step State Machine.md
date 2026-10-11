@@ -691,6 +691,10 @@ Other register variants differ only in their internal tail after prefetch:
 | `SUBQ.l #q,An` | 2 | 6 |
 | `SUBA.w/l Dn/An,An` | 4 | 8 |
 
+Register comparisons use this prefetch-first layout with a two-clock tail for
+`CMP.l` and `CMPA.w/l`; byte/word `CMP` and all register `TST` sizes have no tail.
+Comparison callbacks update CCR without writing the operand registers.
+
 Register bit modifications complete prefetch before their internal delay;
 selecting a bit in the upper 16-bit word adds one internal CCK. Capture the
 original bit number before writing the destination so register aliases preserve
@@ -716,6 +720,10 @@ this timing. Exact instruction timings follow the
 Long immediate arithmetic (`ADD/SUB/SUBI.l #imm,Dn`, `SUBA.l #imm,An`)
 uses two extension pairs, then prefetch and a four-clock internal tail: 16 clocks.
 `SUBA.w #imm,An` uses one extension pair and the same tail: 12 clocks.
+
+Long immediate comparisons use two extension pairs, then prefetch and a
+two-clock tail. `CMP.l #imm,Dn` and `CMPI.l #imm,Dn` share this ordering;
+the immediate is staged before the comparison callback runs with prefetch.
 
 ---
 
@@ -760,6 +768,21 @@ tail after it. Costs below exclude the shared address prefix:
 | `SUB.l`; absolute/PC-relative `ADD.l` | 8 | 2 | 14 |
 | `SUBA.w` | 4 | 4 | 12 |
 | `SUBA.l` | 8 | 2 | 14 |
+
+Read-only comparisons and tests reuse this address/read/prefetch layout without
+destination write-back. Long `CMP` and both `CMPA` sizes retire after a two-clock
+tail; `TST` has no tail. Memory `CMPI` consumes its immediate extension words
+before the address prefix and operand reads, then prefetches without a tail.
+
+#### Dual-memory read variant: `CMPM (Ay)+,(Ax)+`
+
+[`cmpm.rs`](../../../crates/cpu/src/instructions/cmpm.rs) reads the source before
+the destination, then prefetches and retires without writes or an internal tail.
+Long operands read high word then low word for each operand. Byte addresses can
+be staged together; word/long destination calculation waits until source reads
+succeed, preserving its address register on a source Address Error. Each
+postincrement is committed once, including same-register operands and byte A7
+alignment. The compare updates CCR while preserving X.
 
 ---
 

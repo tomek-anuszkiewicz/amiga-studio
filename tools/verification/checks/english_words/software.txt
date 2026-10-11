@@ -638,6 +638,7 @@ metadata
 microarchitectural
 microbenchmarks
 microcontroller
+microprograms
 microrom
 microstep
 microsteps
