@@ -544,7 +544,7 @@ pub static CATALOG_DATA_A: &[BenchmarkSpec] = &[
         amiga_cck: 158,
         category: InstructionCategory::Arithmetic,
         category_tag: "arith_div",
-        strategy: BenchmarkStrategy::DivideValid,
+        strategy: BenchmarkStrategy::DivideSignedValid,
     },
     BenchmarkSpec {
         id: "ARITH-19b",

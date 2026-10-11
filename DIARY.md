@@ -3232,3 +3232,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: 39-document vault frontmatter and 1097-link audit, diff check and Graphify source refresh
   - Scoped design review selected CPU SingleStepTests and Testing Strategy; the latter already matched the contract. The CPU design note was corrected for its direct reference.
   - Full SingleStep and milestone profiles were not run. Synthetic callbacks do not verify production memory commits.
+---
+
+### [2026-10-12 01:41 CET] — CPU-BENCH-01: keep repeated DIVS on valid division path
+- **Affected Subsystems**:
+  - `test_runner CPU instruction benchmark`
+  - `benchmark strategy specification`
+- **What Was Changed (The Concrete Reality)**:
+  - Seed the normal `DIVS` workload with D1 = 1 and D0 = 0x1234 before the unrolled opcode block.
+  - Add a 700-instruction regression test for the valid signed division path.
+  - Correct the benchmark strategy description and map it to its source directory.
+- **Architectural Rationale & Trade-Offs**:
+  - The previous shared division seed let repeated signed divisions enter quotient overflow, so the measurement did not represent normal `DIVS` execution. A stable quotient preserves the intended path across all repetitions.
+- **Verification & Test Results**:
+  - PASS: focused benchmark workload test.
+  - PASS: `python tools/verification/verify.py commit`, including ordinary crates, standard `test_runner` harnesses, Python contracts, formatting, Clippy, architecture and English checks.
+  - PASS: Obsidian vault link and frontmatter audit.

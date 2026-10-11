@@ -6,8 +6,10 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-10
-updated: 2026-10-10
+updated: 2026-10-12
 related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)"]
+tracked_paths:
+  - "crates/test_runner/benches/bench_instructions"
 ---
 
 # M68000 Instruction Benchmark Strategies
@@ -129,10 +131,10 @@ Division features three fundamentally distinct execution paths on the M68000, ea
 
 #### A. Valid Division (Full Quotient & Remainder Calculation)
 - **Circuit Behavior:** Executes the full 16-step non-restoring division microcode loop (~140 CCK for `DIVU`, ~158 CCK for `DIVS`).
-- **Strategy:** Ensure Dividend $< \text{Divisor} \times \$10000$:
-  - Divisor $D_1$ is initialized to a stable non-zero constant (e.g. $\$00A5$).
-  - Dividend $D_0$ is pre-seeded or clamped so the quotient fits strictly in 16 bits without triggering overflow.
-  - Alternating registers ($D_0 \dots D_3$) ensures each division executes the full 140–158 guest clocks.
+- **Strategy:** Keep the quotient in range throughout the unrolled block:
+  - The normal `DIVU D1,D0` workload starts with D1 = $00A5 and D0 = $00050000.
+  - The normal `DIVS D1,D0` workload uses D1 = 1 and D0 = $00001234. Dividing by one leaves the nonzero signed quotient in D0 for every repetition.
+  - The workload does not alternate registers. Verify the repeated path and actual instruction clocks independently of the catalog estimate.
 
 #### B. Quotient Overflow Path (Early Exit)
 - **Circuit Behavior:** If $(\text{Dividend} \gg 16) \ge \text{Divisor}$, the CPU detects overflow immediately in the first micro-step, sets the Overflow flag ($V = 1$), leaves destination unchanged, and completes in just **~10 CCK**.

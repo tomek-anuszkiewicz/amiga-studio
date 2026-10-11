@@ -150,6 +150,12 @@ impl BenchmarkProgramBuilder {
                 initial_d[0] = 0x0005_0000;
                 self.emit_unrolled_opcodes(&mut code_words);
             }
+            BenchmarkStrategy::DivideSignedValid => {
+                // Dividing by one keeps a nonzero signed quotient in D0 on every repeat.
+                initial_d[1] = 1;
+                initial_d[0] = 0x1234;
+                self.emit_unrolled_opcodes(&mut code_words);
+            }
             BenchmarkStrategy::DivideOverflow => {
                 // Dividend high word >= Divisor
                 initial_d[1] = 0x0000_0002;

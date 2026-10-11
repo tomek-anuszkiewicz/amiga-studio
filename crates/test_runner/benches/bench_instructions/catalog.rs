@@ -99,6 +99,7 @@ pub enum BenchmarkStrategy {
     ArithMemPreDec,
     MultiplyRotate,
     DivideValid,
+    DivideSignedValid,
     DivideOverflow,
     DivideZeroTrap,
     LogicMaskAlternate,
