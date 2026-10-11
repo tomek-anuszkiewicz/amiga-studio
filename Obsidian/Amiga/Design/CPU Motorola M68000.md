@@ -595,7 +595,8 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
   - **Internal Idle Clocks:** The execution unit schedules internal processing clocks based on operand size and shift count:
     - **Byte / Word:** $idle\_clocks = 2 + 2 \times count$ (Total execution time: $6 + 2n$ clocks).
     - **Long (32-bit):** $idle\_clocks = 4 + 2 \times count$ (Total execution time: $8 + 2n$ clocks).
-  - **Retirement:** Micro-step 2 marks standard sequential prefetch retirement (`common::BUS_READ_IDLE`), completing the prefetch into `state.micro.irc` and calling `retire_current_instruction()` to advance the program counter.
+  - **Phase Order:** `PREFETCH_NEXT_READ` executes in CCK1 and `BUS_READ_IDLE` completes the read in CCK2. The size/count-specific ALU callback then starts its internal countdown. These clocks follow the complete prefetch bus cycle.
+  - **Retirement:** The CPU retains the fetched word in `state.micro.irc` throughout the internal interval. Only its final CCK calls `retire_current_instruction()` to advance the pipeline and program counter.
 
 - **Memory Shift Micro-Step Pipeline (Class 0 Read-Modify-Write):**
   - Memory shifts are strictly **Word size** and shift by **1 bit** only (`count = 1`).
@@ -622,11 +623,11 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
 - **`ASR` Count $\ge$ Width Silicon Exhaustion:**
   - When shift count exceeds operand width, physical shifter pipeline exhaustion forces $C=0, X=0$ per [Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md#2-motorola-68000-silicon-quirks--cpu-pipeline-traps).
 
-### 7.6 Address Error (Vector 3) Program Space Selection (FC 2 / 6)
+### 7.6 Address Error (Vector 3) Operand and Instruction Space
 
 - **Function Code Selection on Address Error:**
-  - If the unaligned word/long access was triggered by a **PC-relative addressing mode** (`(d16, PC)` or `(d8, PC, Xn)`), the CPU asserts **Program Space** ($FC = 2$ in User mode, $FC = 6$ in Supervisor mode).
-  - For standard data memory operands, the CPU asserts **Data Space** ($FC = 1$ in User mode, $FC = 5$ in Supervisor mode).
+  - Operand reads use **Data Space** ($FC = 1$ in User mode, $FC = 5$ in Supervisor mode), including operands whose effective address is calculated relative to PC. PC-relative address calculation does not turn an arithmetic operand into an instruction fetch.
+  - Instruction-stream fetches use **Program Space** ($FC = 2$ in User mode, $FC = 6$ in Supervisor mode). Operand and instruction-fetch faults remain distinct in the common exception entry API.
 - **AGU Register Commitment & Predecrement Bus Inversion:**
   - Detailed physical silicon rules governing `(An)+` read/write commitment asymmetry and `MOVE ..., -(An)` prefetch-before-write sequencing reside in [Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md#2-motorola-68000-silicon-quirks--cpu-pipeline-traps).
 
@@ -705,7 +706,7 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
   - **Z-Flag Retention Quirk:** The $Z$ condition code flag is cleared if the arithmetic result is non-zero, but **preserved intact** if the result is zero, enabling seamless chaining across multi-precision additions/subtractions.
   - **Register-to-Register Forms:**
     - Byte and Word: 4 clocks (2 CCKs, standard prefetch retire).
-    - Long: 8 clocks (4 internal ALU clocks in Step 0 + 4 prefetch bus clocks in Step 1).
+    - Long: 8 clocks (4 prefetch bus clocks followed by 4 internal ALU clocks). The prefetch pair precedes `ALU_IDLE_4CLK`, with retirement after the internal interval.
   - **Memory Predecrement `-(Ay), -(Ax)` Multi-Precision Ordering:**
     - In accordance with MC68000 hardware execution, multi-precision 32-bit arithmetic transfers operate low word first, then high word.
     - Byte and Word: 18 clocks (2 internal + 4 read Ay + 4 read Ax + 4 prefetch + 4 write Ax).

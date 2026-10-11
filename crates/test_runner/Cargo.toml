@@ -10,6 +10,7 @@ physical_memory = { workspace = true }
 serde = { workspace = true, features = ["derive", "std"] }
 serde_json = { workspace = true, features = ["std"] }
 flate2 = { workspace = true }
+sha2 = { workspace = true }
 
 [[bench]]
 name = "bench_instructions"

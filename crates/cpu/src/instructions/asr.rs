@@ -151,35 +151,35 @@ pub fn alu_asr_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_ASR_B_IMM: [MicroStep; 3] = [
-    MicroStep::alu(alu_asr_b_imm_dn),
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_asr_b_imm_dn),
 ];
 pub static STEPS_ASR_W_IMM: [MicroStep; 3] = [
-    MicroStep::alu(alu_asr_w_imm_dn),
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_asr_w_imm_dn),
 ];
 pub static STEPS_ASR_L_IMM: [MicroStep; 3] = [
-    MicroStep::alu(alu_asr_l_imm_dn),
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_asr_l_imm_dn),
 ];
 
 pub static STEPS_ASR_B_REG: [MicroStep; 3] = [
-    MicroStep::alu(alu_asr_b_reg_dn),
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_asr_b_reg_dn),
 ];
 pub static STEPS_ASR_W_REG: [MicroStep; 3] = [
-    MicroStep::alu(alu_asr_w_reg_dn),
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_asr_w_reg_dn),
 ];
 pub static STEPS_ASR_L_REG: [MicroStep; 3] = [
-    MicroStep::alu(alu_asr_l_reg_dn),
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_asr_l_reg_dn),
 ];
 
 // ============================================================================

@@ -127,13 +127,13 @@ pub static STEPS_SUBX_W_DN_DN: [MicroStep; 2] = [
 ];
 
 pub static STEPS_SUBX_L_DN_DN: [MicroStep; 3] = [
-    common::ALU_IDLE_4CLK,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subx_l_dn_dn),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
 pub static STEPS_SUBX_B_PD_PD: [MicroStep; 9] = [

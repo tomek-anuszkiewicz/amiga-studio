@@ -1,8 +1,8 @@
 //! Serde schema definitions for SingleStepTests (Tom Harte physical silicon vectors)
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SingleStepTest {
     pub name: String,
     pub initial: CpuTestState,
@@ -12,7 +12,7 @@ pub struct SingleStepTest {
     pub length: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CpuTestState {
     pub d0: u32,
     pub d1: u32,

@@ -252,6 +252,10 @@ Therefore, a 32-bit (Long) read or write is **strictly composed of two 16-bit Wo
 
 Each cycle is an independent 4-clock / 2-CCK bus transaction that can stall on Agnus DMA contention in Chip RAM.
 
+Word handlers select addresses; the class sequence determines transfer order.
+[Class 5 long RMW](#long-arithmetic-and-unary-read-modify-write-variants) writes
+low then high.
+
 ### 4.4 Operation Comparison Matrix
 
 | Action | Physical Bus Size | Target Address | Data Source / Destination | $\overline{\text{UDS}}$ / $\overline{\text{LDS}}$ | Preservation Behavior |
@@ -294,7 +298,10 @@ Field: Unused   R/W    I/N    FC2   FC1   FC0
 
 ### 5.1 The Two-Word Pipeline Refill
 
-In normal sequential execution, instructions end with `common::PREFETCH_NEXT_READ` and `common::BUS_READ_IDLE`, shifting `ir = prefetch`, `prefetch = irc`, and `pc += 2`.
+Sequential prefetch uses `common::PREFETCH_NEXT_READ` and `common::BUS_READ_IDLE`.
+Instruction retirement shifts `ir = prefetch`, `prefetch = irc`, and `pc += 2`.
+The class sequence determines whether retirement follows prefetch immediately or
+waits for remaining internal clocks or writeback.
 
 When control flow changes (`JMP`, `JSR`, `RTS`, `BRA`, taken `Bcc`):
 - The existing prefetch pipeline contents are **flushed**.
@@ -646,7 +653,9 @@ The full CCK stepping engine is implemented in [`crates/cpu/src/micro/engine.rs`
 
 ## 7. Concrete Micro-Step Traces by Architectural Class
 
-The table below catalogs representative micro-step sequences for each fundamental instruction class, highlighting how **prefetch** and **result writing** are coordinated.
+The traces below describe class ordering and structural variants. Shared bus
+phases are defined in [section 4.1](#41-direct-2-phase-bus-architecture-zero-dynamic-strobe-boilerplate);
+instruction semantics belong to the [CPU specification](CPU%20Motorola%20M68000.md).
 
 ---
 
@@ -670,6 +679,17 @@ specified by the [ADD.l silicon vectors](../../../ref_src/SingleStepTests-680x0/
 The fused ALU callback is an implementation choice; the vectors constrain bus
 timing and final state rather than the internal arithmetic instant.
 
+Register `SUB`, `ADDX` and `SUBX` use the same size-dependent layout.
+Other register variants differ only in their internal tail after prefetch:
+
+| Variant | Internal tail clocks | Total clocks |
+| --- | ---: | ---: |
+| `CLR/NEG/NEGX/NOT.b/w Dn` | 0 | 4 |
+| `CLR/NEG/NEGX/NOT.l Dn` | 2 | 6 |
+| `SUBQ.l #q,Dn`; `SUBQ.w #q,An` | 4 | 8 |
+| `SUBQ.l #q,An` | 2 | 6 |
+| `SUBA.w/l Dn/An,An` | 4 | 8 |
+
 ---
 
 ### Class 2: Immediate to Register Operations (Extension Prefetch + ALU, Zero Memory Writes)
@@ -686,17 +706,20 @@ timing and final state rather than the internal arithmetic instant.
 | **2** | `PREFETCH_NEXT_READ` + `alu_fn` | 2 (CCK1) | Initiates next opcode read from `PC` into `irc`. Fused ALU computes `D0 = D0 \| imm`, sets CCR flags. |
 | **3** | `BUS_READ_IDLE` | 2 (CCK2) | Prefetch finishes. Retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
 
+Long immediate arithmetic (`ADD/SUB/SUBI.l #imm,Dn`, `SUBA.l #imm,An`)
+uses two extension pairs, then prefetch and a four-clock internal tail: 16 clocks.
+`SUBA.w #imm,An` uses one extension pair and the same tail: 12 clocks.
+
 ---
 
 ### Class 3: Memory Source to Register Load (Memory Read, Zero Memory Writes)
 
-#### Archetype: `ADD.b/w <ea>,Dn` (`ADD.W (A0),D0`, Opcode `$D050`)
+#### Archetype: `ADD/SUB.b/w <ea>,Dn` (`ADD.W (A0),D0`, Opcode `$D050`)
 - **Total Duration**: 8 CPU clocks for indirect/postincrement, 10 for predecrement, 12 for displacement, and 14 for indexed addressing.
 - **Result Writing**: Register destination (`Dn`). Zero external write cycles.
 - **Prefetch**: Address phase, operand read, then next opcode prefetch.
 
-The ADD byte/word sequences in [add.rs](../../../crates/cpu/src/instructions/add.rs)
-use the following address phases before the common read/prefetch pipeline.
+Addressing modes add the following prefix before the common read/prefetch pipeline.
 Class 5 uses the same address-phase layout for memory destinations.
 
 | Addressing mode | Prefix clocks | Address phase before the operand read |
@@ -705,6 +728,10 @@ Class 5 uses the same address-phase layout for memory destinations.
 | `-(An)` | 2 | Internal `ea_calc` commits the decrement once; the following word/long read checks alignment. |
 | `(d16,An)` | 4 | `FETCH_EXT_READ` with `ea_calc` using the staged extension word, then `FETCH_EXT_FINISH`. |
 | `(d8,An,Xn)` | 6 | Internal indexed `ea_calc` CCK, then `FETCH_EXT_READ` and `FETCH_EXT_FINISH`. |
+| `(xxx).w` | 4 | Calculate the sign-extended absolute address from the staged word while fetching the following word; finish the extension read. |
+| `(xxx).l` | 8 | Two extension read/finish pairs assemble the high and low address words. |
+| `(d16,PC)` | 4 | Calculate the operand address from the displacement-word address and staged displacement; finish the extension read. |
+| `(d8,PC,Xn)` | 6 | Internal indexed address calculation, then the extension read/finish pair. |
 
 Byte A7 operands decrement by two; other byte address registers decrement by
 one. Word operands decrement by two; single-operand long variants decrement by
@@ -717,6 +744,15 @@ the instruction-specific ALU/prefetch tail.
 | **1** | `BUS_READ_IDLE` | 2 (CCK2) | Completes the operand read bus cycle. |
 | **2** | `PREFETCH_NEXT_READ` + `alu_fn` | 2 (CCK1) | Reads the next instruction word into `irc`; fused ALU adds `source` to `Dn` and updates CCR. |
 | **3** | `BUS_READ_IDLE` | 2 (CCK2) | Completes prefetch and retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
+
+Arithmetic variants retain operand reads before prefetch and place their internal
+tail after it. Costs below exclude the shared address prefix:
+
+| Variant | Operand clocks | Internal tail clocks | Total with prefetch |
+| --- | ---: | ---: | ---: |
+| `SUB.l`; absolute/PC-relative `ADD.l` | 8 | 2 | 14 |
+| `SUBA.w` | 4 | 4 | 12 |
+| `SUBA.l` | 8 | 2 | 14 |
 
 ---
 
@@ -767,6 +803,18 @@ the instruction-specific ALU/prefetch tail.
 | **3** | `PREFETCH_IRC_FINISH` | 2 (CCK2) | Completes prefetch without retiring the instruction. |
 | **4** | `BUS_WRITE_IDLE` | 2 (CCK1) | Sets up the operand write; no bus access. |
 | **5** | `WRITE_DST_BYTE/WORD` | 2 (CCK2) | Writes the modified operand to `ea_addr` and retires: `IR = prefetch`, `prefetch = irc`. |
+
+The byte/word layout also covers subtraction and unary memory operations.
+`CLR` still reads its destination before prefetch and writeback.
+
+#### Long Arithmetic and Unary Read-Modify-Write Variants
+
+Long arithmetic and unary RMW uses **read high -> read low -> prefetch -> write low
+-> write high**, then retires. Each transfer uses the shared four-clock bus cycle:
+20 clocks after the address/immediate prefix. The base effective address stays
+fixed; low-word accesses use `ea_addr + 2`, high-word accesses use `ea_addr`.
+Immediate forms acquire their extension words before these operand reads, as in
+Archetype 5B below; long immediates require two extension pairs.
 
 #### Archetype 5B: `ADDI.W #$1234, (d16, A0)` (Opcode `$0668` — Immediate + Displacement Memory RMW)
 - **Total Duration**: 20 CPU clocks (10 CCKs).
@@ -890,6 +938,14 @@ the instruction-specific ALU/prefetch tail.
 | **3..N** | `ALU_IDLE` (Countdown) | Variable | Sits in idle bus countdown for `clocks_remaining` (freeing Chip RAM for Blitter/Copper). |
 | **N+1** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Initiates sequential opcode prefetch from `PC` into `irc`. |
 | **N+2** | `BUS_READ_IDLE` | 2 (CCK2) | Completes prefetch, shifts `IR = prefetch`, `prefetch = irc`, `PC += 2`, and retires! |
+
+#### Register Shifts and Rotates
+
+Register shifts and rotates use **prefetch -> variable internal ALU interval ->
+retirement**, unlike division above. The internal interval is `2 + 2n` clocks for
+byte/word and `4 + 2n` for long; totals are `6 + 2n` and `8 + 2n` respectively.
+Count decoding and flag behavior are defined in the [CPU specification, section
+7.5](CPU%20Motorola%20M68000.md). Memory shifts use the Class 5 word RMW layout.
 
 ---
 

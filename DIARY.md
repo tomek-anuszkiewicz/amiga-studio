@@ -2799,3 +2799,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Source-matched diagnostics passed all 1772 selected ADD.w operand faults and 6372 normal ADD.b/w vectors. Scoped predecrement faults passed 15053/15053 and normal vectors passed 10112/19520, with no lost prior passes
   - The broad archived Address Error diagnostic passed 145346/178088 and retains 32742 failures in other instruction families. Containing ADD.b/w/l suites still fail outside this batch
   - RAM comparison masks, the final-PC allowance and unobserved electrical signals remain limits. Full SingleStepTests, full Cartesian DMA and milestone verification were not run. CPU-CYCLE-01, CPU-PC-01 and SINGLESTEP-RAM-01 remain active
+---
+
+### [2026-10-11 14:57 CEST] — CPU-CYCLE-01: repair selected arithmetic and shift sequences with reviewed reference overrides
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/test_runner`
+  - `Obsidian/Amiga/Design`
+  - `.agents/rules/docs-maintenance.md`
+  - `.agents/skills`
+  - `tools/verification/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Repair static sequences for batches 06.01, 06.02, 06.03, 06.07 and 06.10: separate byte predecrement phases, place size-dependent internal delays after prefetch and write long RMW low word before high word
+  - Apply two approved ASL.b overrides through the shared SingleStep/DMA loader, checking original SHA-256 identities and reporting corrected executed cases
+  - Preserve original references, the complete comparator and all leaf ALU/decoder/engine implementations
+  - Consolidate instruction-class descriptions and require shared mechanisms to be described once rather than repeated for each mnemonic
+- **Architectural Rationale & Trade-Offs**:
+  - SingleStep expectations and approved overrides determine observable CPU behavior. The user explicitly authorized correcting conflicting code-derived descriptions throughout CPU-CYCLE-01 without repeated specification-approval questions
+  - The ASL byte records incorrectly modify upper register bytes. Upstream issue 4 and analogous MAME records support the three approved final-field replacements, without establishing identical full-state or physical-capture evidence
+  - Missing, ambiguous or changed override targets fail loading. No vector is counted as passed without execution
+- **Verification & Test Results**:
+  - Selected complete comparisons pass: 06.01 1065/1065, 06.02 40325/40325, 06.03 48390/48390, 06.07 96780/96780 and 06.10 177314/177314 with two overrides. Exact final prefetch and formal PC pass in each selected scope
+  - Standard full-input ASL.b passes 8065/8065 with both override names recorded. Earlier full SUB, ADDX, CLR, NEG and NOT filters also pass. Controls retain 10042/10042 passes
+  - CPU crate tests, focused Cartesian arithmetic/unary/shift/CMP checks and five override-loader contract tests pass. DMA uses a synthetic TestMemoryBus and sampled bounded schedules, not production bus or chipset arbitration
+  - All 124 reference hashes are unchanged. CPU source hashes match the validated batch packet. Vault links/frontmatter and scoped English checks pass, with existing vocabulary findings retained only in the ignored task plan
+  - The required per-commit profile is executed separately for this snapshot. No full whole-CPU SingleStep, full Cartesian or milestone closure is claimed. CPU-CYCLE-01, CPU-PC-01 and SINGLESTEP-RAM-01 remain active

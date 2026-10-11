@@ -1,12 +1,9 @@
 use super::diagnostic::{format_ccr_diff, StateDiff, TestFailure};
 use super::reporter::{record_suite_result, SuiteResult, TestFailureSummary};
 use super::schema::SingleStepTest;
+use super::singlestep_vectors::load_test_vectors;
 use super::test_memory_bus::TestMemoryBus;
 use cpu::Cpu;
-use flate2::read::GzDecoder;
-
-use std::fs::File;
-use std::io::{BufReader, Read};
 
 /// Identifies whether an opcode word is a `CMPM (Ay)+, (Ax)+` instruction.
 ///
@@ -261,22 +258,20 @@ pub fn run_test_file(
     limit: Option<usize>,
 ) -> Result<(usize, usize), Box<dyn std::error::Error>> {
     let resolved = resolve_test_path(path);
-    let file = File::open(&resolved)?;
-    let reader = BufReader::new(file);
-
-    let tests: Vec<SingleStepTest> = if path.ends_with(".gz") {
-        let mut gz = GzDecoder::new(reader);
-        let mut json_str = String::new();
-        gz.read_to_string(&mut json_str)?;
-        serde_json::from_str(&json_str)?
-    } else {
-        serde_json::from_reader(reader)?
-    };
+    let loaded = load_test_vectors(&resolved)?;
+    let tests = loaded.tests;
 
     let count = match limit {
         Some(max) => tests.len().min(max),
         None => tests.len(),
     };
+
+    let overridden_test_names = tests
+        .iter()
+        .take(count)
+        .filter(|test| loaded.overridden_test_names.contains(&test.name))
+        .map(|test| test.name.clone())
+        .collect();
 
     let mut passed = 0;
     let mut failed = 0;
@@ -315,6 +310,7 @@ pub fn run_test_file(
         failed_count: failed,
         passed_test_names: passed_names,
         failures: failure_summaries,
+        overridden_test_names,
     };
 
     record_suite_result(&suite_result);
@@ -332,17 +328,8 @@ where
     F: Fn(&SingleStepTest) -> bool,
 {
     let resolved = resolve_test_path(path);
-    let file = File::open(&resolved)?;
-    let reader = BufReader::new(file);
-
-    let tests: Vec<SingleStepTest> = if path.ends_with(".gz") {
-        let mut gz = GzDecoder::new(reader);
-        let mut json_str = String::new();
-        gz.read_to_string(&mut json_str)?;
-        serde_json::from_str(&json_str)?
-    } else {
-        serde_json::from_reader(reader)?
-    };
+    let loaded = load_test_vectors(&resolved)?;
+    let tests = loaded.tests;
 
     let filtered_tests: Vec<&SingleStepTest> = tests.iter().filter(|t| filter(t)).collect();
 
@@ -350,6 +337,13 @@ where
         Some(max) => filtered_tests.len().min(max),
         None => filtered_tests.len(),
     };
+
+    let overridden_test_names = filtered_tests
+        .iter()
+        .take(count)
+        .filter(|test| loaded.overridden_test_names.contains(&test.name))
+        .map(|test| test.name.clone())
+        .collect();
 
     let mut passed = 0;
     let mut failed = 0;
@@ -387,6 +381,7 @@ where
         failed_count: failed,
         passed_test_names: passed_names,
         failures: failure_summaries,
+        overridden_test_names,
     };
 
     record_suite_result(&suite_result);

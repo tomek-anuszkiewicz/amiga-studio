@@ -17,10 +17,10 @@ mod common;
 use common::diagnostic::StateDiff;
 use common::schema::SingleStepTest;
 use common::singlestep_runner::is_cmpm_postinc_opcode;
+use common::singlestep_vectors::load_test_vectors;
 use common::test_memory_bus::{MemoryType, TestMemoryBus};
 use cpu::state::CpuState;
 use cpu::Cpu;
-use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -83,38 +83,27 @@ fn sample_tests_percentage(
 }
 
 fn load_hardware_tests(opcode_name: &str, percentage: f64) -> Vec<SingleStepTest> {
-    let repo_root = find_repo_root();
-    // NOTE (ROADMAP Batch 1.3): Tom Harte single-step tests do not have dedicated `CMPM.<size>.json` files;
-    // `CMPM` vectors are bundled inside `CMP.<size>.json` alongside standard `CMP <ea>, Dn`.
-    // Currently, only CMPM is implemented, so we filter by `is_cmpm_postinc_opcode`.
-    // When Batch 1.3 (`CMP`, `CMPA`, `CMPI`) is implemented, alter or remove this guard so the full `CMP` family is tested.
-    if let Some(suffix) = opcode_name.strip_prefix("CMPM.") {
-        let target_file = repo_root
-            .join("ref_src/SingleStepTests-680x0/68000/v1")
-            .join(format!("CMP.{}.json", suffix));
-        let content = fs::read_to_string(&target_file)
-            .unwrap_or_else(|_| panic!("Failed to read {}", target_file.display()));
-        let tests: Vec<SingleStepTest> = serde_json::from_str(&content)
-            .unwrap_or_else(|err| panic!("JSON parse error in {}: {}", target_file.display(), err));
-        let filtered: Vec<SingleStepTest> = tests
-            .into_iter()
-            .filter(|t| is_cmpm_postinc_opcode(t.initial.prefetch[0]))
-            .collect();
-
-        return sample_tests_percentage(filtered, percentage, opcode_name);
-    }
-    let target_file = repo_root
+    let source_name = opcode_name
+        .strip_prefix("CMPM.")
+        .map_or_else(|| opcode_name.to_string(), |suffix| format!("CMP.{suffix}"));
+    let target_file = find_repo_root()
         .join("ref_src/SingleStepTests-680x0/68000/v1")
-        .join(format!("{}.json", opcode_name));
-
-    if target_file.exists() {
-        let content = fs::read_to_string(&target_file)
-            .unwrap_or_else(|_| panic!("Failed to read {}", target_file.display()));
-        let tests: Vec<SingleStepTest> = serde_json::from_str(&content)
-            .unwrap_or_else(|err| panic!("JSON parse error in {}: {}", target_file.display(), err));
-        return sample_tests_percentage(tests, percentage, opcode_name);
+        .join(format!("{source_name}.json"));
+    let loaded = load_test_vectors(&target_file)
+        .unwrap_or_else(|err| panic!("Failed to load {}: {}", target_file.display(), err));
+    let mut tests = loaded.tests;
+    if opcode_name.starts_with("CMPM.") {
+        tests.retain(|test| is_cmpm_postinc_opcode(test.initial.prefetch[0]));
     }
-    panic!("Could not find test vector file for opcode {}", opcode_name);
+    let sampled = sample_tests_percentage(tests, percentage, opcode_name);
+    let overrides = sampled
+        .iter()
+        .filter(|test| loaded.overridden_test_names.contains(&test.name))
+        .count();
+    if overrides > 0 {
+        eprintln!("[OVERRIDE] {opcode_name}: {overrides} sampled SingleStep vectors use reviewed corrections");
+    }
+    sampled
 }
 
 fn run_cartesian_for_opcodes(opcodes: &[&str]) {

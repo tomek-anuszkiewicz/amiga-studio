@@ -29,7 +29,7 @@ tracked_paths:
 Completion uses [verify.py](../../../../tools/verification/verify.py) with
 `commit` for ordinary crate tests with coverage, quality gates, all available
 standard harness suites, all Python tool contracts and the full English audit.
-Standard harness selection excludes SingleStep and Cartesian DMA; the transaction checker regressions are standard suites. If no
+Standard harness selection excludes SingleStep and Cartesian DMA; transaction checker regressions and SingleStep override contracts are standard suites. If no
 standard suites remain, it schedules no Cargo test command. Python contracts
 are discovered separately for bootstrap, shared conversion, PDF conversion,
 the RAG MCP adapter and verification tooling.

@@ -35,6 +35,11 @@ Deterministic static analysis can verify configured register offsets, memory ran
 
 This skill leverages deep LLM reasoning and inference to evaluate true bidirectional parity.
 
+Assess completeness across the owning specification and its linked descriptions.
+Shared mechanisms or instruction semantics documented there are not blind spots
+merely because an archetype section does not repeat it. Apply the scope rules in
+[docs-maintenance.md](../../rules/docs-maintenance.md#living-design-specifications).
+
 ---
 
 ## 2. The 3-Vector Bidirectional Evaluation Model

@@ -112,6 +112,8 @@ pub struct SuiteResult {
     pub failed_count: usize,
     pub passed_test_names: Vec<String>,
     pub failures: Vec<TestFailureSummary>,
+    #[serde(default)]
+    pub overridden_test_names: Vec<String>,
 }
 
 /// Concise statistics per suite stored in the global summary
@@ -122,6 +124,8 @@ pub struct SuiteStats {
     pub failed: usize,
     pub pass_rate_percent: f64,
     pub active_failures: Vec<String>,
+    #[serde(default)]
+    pub overrides: usize,
 }
 
 /// Global repository-wide test run summary
@@ -165,6 +169,14 @@ fn sanitize_name(name: &str) -> String {
 
 /// Saves a suite result, detects regressions/improvements against previous run, and updates summary
 pub fn record_suite_result(result: &SuiteResult) {
+    if !result.overridden_test_names.is_empty() {
+        eprintln!(
+            "[OVERRIDE] {}: {} executed vectors use reviewed corrections: {}",
+            result.suite_name,
+            result.overridden_test_names.len(),
+            result.overridden_test_names.join(", ")
+        );
+    }
     let base_dir = resolve_results_dir();
     let latest_dir = base_dir.join("latest");
     let previous_dir = base_dir.join("previous");
@@ -265,6 +277,7 @@ pub fn update_global_summary(base_dir: &Path) {
                                 failed: suite.failed_count,
                                 pass_rate_percent: pass_rate,
                                 active_failures,
+                                overrides: suite.overridden_test_names.len(),
                             },
                         );
                     }
@@ -355,22 +368,25 @@ fn summary_markdown(summary: &GlobalTestSummary) -> String {
     let _ = write!(report, "- Executed: {}\n", summary.total_executed);
     let _ = write!(report, "- Passed: {}\n", summary.total_passed);
     let _ = write!(report, "- Failed: {}\n", summary.total_failed);
+    let override_count: usize = summary.suites.values().map(|stats| stats.overrides).sum();
+    let _ = write!(report, "- Executed with overrides: {override_count}\n");
     let _ = write!(
         report,
         "- Pass rate: {:.2}%\n\n",
         summary.overall_pass_rate_percent
     );
     report.push_str(
-        "| Suite | Executed | Passed | Failed | Pass rate |\n| --- | ---: | ---: | ---: | ---: |\n",
+        "| Suite | Executed | Passed | Failed | Overrides | Pass rate |\n| --- | ---: | ---: | ---: | ---: | ---: |\n",
     );
     for (name, stats) in &summary.suites {
         let _ = write!(
             report,
-            "| {} | {} | {} | {} | {:.2}% |\n",
+            "| {} | {} | {} | {} | {} | {:.2}% |\n",
             cell(name),
             stats.total,
             stats.passed,
             stats.failed,
+            stats.overrides,
             stats.pass_rate_percent
         );
     }

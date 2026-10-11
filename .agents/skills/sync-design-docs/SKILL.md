@@ -93,6 +93,10 @@ Prune superseded drafts and copied implementations only within the reviewed
 scope; retain concise links to living source. Update `tracked_paths` if ownership
 changed. Design specifications have no line-count ceiling.
 
+Apply the class-scope and duplication rules in
+[docs-maintenance.md](../../rules/docs-maintenance.md#living-design-specifications).
+Review does not require a new paragraph for each changed instruction.
+
 If the document already describes the intended code correctly, leave the file
 unchanged, including its `updated` date. Change `updated` only alongside a real
 content correction. Never add synchronization hashes/dates, periodic stamps or

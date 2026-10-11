@@ -197,8 +197,8 @@ python tools/verification/verify.py test rust all --plan
 `test rust unit` runs the configured ordinary crate tests;
 `test rust integration` runs memory_bus, machine_loop, debugger and GUI tests;
 `test rust all` combines those two tiers. `test runner harness` runs
-Cartesian DMA. `test runner standard` selects ordinary harness suites, currently
-the transaction checker regressions;
+Cartesian DMA. `test runner standard` selects ordinary harness suites, including
+transaction checker regressions and SingleStep override contracts;
 `test runner silicon` selects full SingleStepTests and Cartesian DMA.
 Focused commands do not run coverage or completion gates. With no arguments,
 the entry point displays help without executing commands.

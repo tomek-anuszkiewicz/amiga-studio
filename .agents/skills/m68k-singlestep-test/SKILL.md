@@ -53,6 +53,9 @@ python tools/verification/verify.py test runner singlestep case test_move_w samp
 
 Every executed vector compares state, instruction clocks and timed bus callbacks.
 There are no weaker modes. Sampling limits only how many vectors execute. The
+tracked [SingleStep override catalog](../../../crates/test_runner/tests/overrides/singlestep/README.md)
+applies approved corrections to exact reference records; report executed overrides
+separately from unmodified inputs. Original reference files remain untouched. The
 matcher retains internal delays in the expected timeline, and the driver records
 observed callback clocks while stepping CPU CCKs. Inspect existing state masks and
 unobserved signal boundaries in [CPU SingleStepTests.md](../../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification).

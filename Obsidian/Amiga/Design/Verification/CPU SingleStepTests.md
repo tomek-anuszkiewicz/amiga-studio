@@ -59,6 +59,18 @@ MOVEP word and long. The old PEA-only stronger-mode sample is redundant and remo
 No vector is counted as passed without execution, including the formerly skipped
 ASL byte cases.
 
+Reviewed reference corrections live in the tracked
+[`overrides/singlestep/` catalog](../../../../crates/test_runner/tests/overrides/singlestep/README.md).
+The [shared vector loader](../../../../crates/test_runner/tests/common/singlestep_vectors.rs)
+checks the supported original record's SHA-256 identity and applies only listed
+final-state fields before filtering or sampling, for both SingleStep and
+Cartesian DMA. Missing, ambiguous or changed targets fail loading. The two ASL.b
+corrections retain the upstream initial state, RAM, prefetch, transactions and
+clock total; the normal comparator executes their corrected vectors. Suite JSON
+lists executed override names and summary Markdown counts them separately.
+The catalog records the user approval, byte-operation evidence and independent
+MAME comparison; the original reference files remain untouched.
+
 The driver steps `Cpu::step_cck` and timestamps memory callbacks from observed CPU
 clock progress. Read callbacks occur at the end of CCK1, writes at CCK2 in the core
 bus model. Reference internal events advance the expected timeline rather than
@@ -473,6 +485,7 @@ python tools/verification/verify.py test runner singlestep case test_add_b sampl
 - [CPU Motorola M68000 Design Specification](../CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
 - [CPU Micro-Step State Machine Specification](../CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
 - [SingleStep Test Runner Implementation](../../../../crates/test_runner/tests/common/singlestep_runner.rs): Test loading, memory bus fixture, and assertion logic.
+- [Reviewed SingleStep overrides](../../../../crates/test_runner/tests/overrides/singlestep/README.md): Exact-record corrections, their evidence and shared loader contract.
 - [SingleStep Integration Test Suite](../../../../crates/test_runner/tests/test_singlestep.rs): Silicon instruction regression tests.
 - [DMA Cartesian Contention Test Suite](../../../../crates/test_runner/tests/test_dma_cartesian.rs): Cycle invariance verification across DMA wait-state permutations.
 

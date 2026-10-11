@@ -1,0 +1,33 @@
+[
+  {
+    "suite": "ASL.b.json",
+    "test_name": "e502 [ASL.b Q, D2] 1583",
+    "original_sha256": "693966bd85dfd8cb7d4ce2ce1cc155aa01a5c46238d6b7cd8124f64eb177c391",
+    "final": {
+      "d2": 3455811576,
+      "sr": 9994
+    },
+    "reason": "ASL.b #2,D2 modifies only the low byte. The upstream expectation changes the upper 24 bits. Preserve those bits and use the byte result and CCR independently confirmed by the analogous MAME vectors.",
+    "evidence": [
+      "https://github.com/SingleStepTests/680x0/issues/4",
+      "https://github.com/SingleStepTests/m68000/blob/64b253116a3de04aaac4346c43680960dc9b67e5/v1/ASL.b.json.bin",
+      "MAME record 625: 0xA370CDBE -> 0xA370CDF8, CCR 0A; record 695: 0x104DA87D -> 0x104DA8F4, CCR 1B. Both encode ASL.b #2,D7 and log ten clocks (read four, internal six). These are analogous operands, not identical full states.",
+      "User approved these overrides after comparing the original records, byte semantics and MAME data on 2026-10-11."
+    ]
+  },
+  {
+    "suite": "ASL.b.json",
+    "test_name": "e502 [ASL.b Q, D2] 1761",
+    "original_sha256": "4cef8f24e604047291ed07939dde8c5a1a4939bd5c1df3338910d079661046d8",
+    "final": {
+      "d2": 1098678004
+    },
+    "reason": "ASL.b #2,D2 modifies only the low byte. The upstream expectation changes the upper 24 bits. Preserve those bits and use the byte result and CCR independently confirmed by the analogous MAME vectors.",
+    "evidence": [
+      "https://github.com/SingleStepTests/680x0/issues/4",
+      "https://github.com/SingleStepTests/m68000/blob/64b253116a3de04aaac4346c43680960dc9b67e5/v1/ASL.b.json.bin",
+      "MAME record 625: 0xA370CDBE -> 0xA370CDF8, CCR 0A; record 695: 0x104DA87D -> 0x104DA8F4, CCR 1B. Both encode ASL.b #2,D7 and log ten clocks (read four, internal six). These are analogous operands, not identical full states.",
+      "User approved these overrides after comparing the original records, byte semantics and MAME data on 2026-10-11."
+    ]
+  }
+]
