@@ -3113,3 +3113,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Vault audit passes 39 specifications and 1094 links and Graphify code refresh completes
   - Original reference hashes remain unchanged and no milestone verification is run
   - Commit profile log is retained in .agent/tmp/CPU-CYCLE-01/remainder/commit-profile.log
+---
+
+### [2026-10-11 20:33 CEST] — Separate memory access helpers from debug handlers
+- **Affected Subsystems**:
+  - `crates/physical_memory`
+- **What Was Changed (The Concrete Reality)**:
+  - Extract 20 private internal byte and word access helpers for Chip RAM Fast RAM Slow RAM Kickstart ROM and open bus
+  - Route ordinary and debug handlers directly to internal helpers with inline attributes
+  - Preserve contention checks and ordinary ROM write protection
+- **Architectural Rationale & Trade-Offs**:
+  - Keep storage operations independent of debug entry points without duplicating memory logic. Scoped sync-design-docs review selects MemoryBus with valid ownership paths and requires no specification changes. No roadmap point or milestone closes.
+- **Verification & Test Results**:
+  - cargo test -p physical_memory passes all 33 tests
+  - cargo clippy -p physical_memory --all-targets -- -D warnings and focused rustfmt and diff checks pass
+  - Graphify code refresh completes
+  - Required commit profile output is retained in .agent/tmp/memory-internal-commit.log
+  - python tools/verification/verify.py commit fails only on the two existing TAS Chip and Slow RAM integration tests. All other ordinary tests and all quality gates standard harness tests and Python contracts pass.
+  - Existing TAS Chip and Slow RAM integration failures remain unresolved and are documented in the preceding diary entry
+  - Full SingleStep and milestone profiles are not run
