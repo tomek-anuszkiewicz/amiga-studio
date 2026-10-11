@@ -44,6 +44,7 @@ pub mod move_usp;
 pub mod move_w;
 pub mod movea;
 pub mod movem;
+pub mod movep;
 pub mod moveq;
 pub mod muls;
 pub mod mulu;

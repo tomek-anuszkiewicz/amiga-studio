@@ -2906,3 +2906,42 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - The required per-commit profile runs separately on the isolated commit snapshot, with its outcome recorded in commit-profile.log and the commit message
   - Existing RAM masks and unobserved electrical signals remain verification limits, and no full whole-CPU suite or milestone closure is claimed
   - CPU-CYCLE-01 remains active
+---
+
+### [2026-10-11 17:04 CEST] — CPU-CYCLE-01: complete data-transfer timing batches 06.15 through 06.20
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/test_runner/tests`
+  - `Obsidian/Amiga/Design`
+  - `tools/verification/checks/english_words`
+- **What Was Changed (The Concrete Reality)**:
+  - Check MOVE word/long destination alignment in CCK1 setup
+  - retain executing IR while predecrement prefetch advances PC and retire only after the successful store
+  - write memory-source absolute-long destinations before the remaining stream fetch
+  - complete MOVEM stores in the final write CCK and prefetch directly for empty store masks
+  - implement MOVEP word/long transfers through spaced bytes with wait-safe staged addresses and data
+  - split LEA/PEA indexed calculation around the extension pair and push absolute PEA operands before prefetch
+  - add MOVEP and LEA/PEA fixtures to the existing Cartesian harness
+  - correct Class 4/11 descriptions and the predecrement quirks catalog under the recorded SingleStep authority decision
+  - preserve already correct MOVE/MOVEA register/immediate and MOVEQ sequences
+  - add the explicitly approved busfn vocabulary term
+- **Architectural Rationale & Trade-Offs**:
+  - Repair demonstrated bus phases and retirement mechanisms without changing silicon references or comparison strength
+  - preserve source acquisition before destination addressing and retain state while waiting
+  - keep instruction semantics in the parent specification and shared phases in the micro-step specification
+  - scoped sync-design-docs review selected the CPU and micro-step specifications plus the quirks catalog and both verification specifications
+  - existing verification descriptions remain accurate and unchanged
+- **Verification & Test Results**:
+  - All 96780 selected vectors pass complete state, clocks and timed callbacks plus independent exact final prefetch/formal PC checks
+  - improve from 66502 passes with no lost prior pass and retain 10042 passing NOP/register ADD controls
+  - all 124 original reference files are unchanged and no override executes
+  - full-input test_move, test_lea, test_pea and adjacent BTST/BCHG/BCLR/BSET tests pass
+  - focused synthetic DMA fixtures and CPU crate tests pass
+  - formatting, architecture, Clippy, English and affected Verification CLI Python contracts pass
+  - vault audit passes for 39 specifications and 1063 links
+  - explicit Graphify AST refresh completes
+  - python tools/verification/verify.py commit passes for this snapshot, including quality gates, architecture, all ordinary crate and standard harness tests, all Python contracts and the full English audit
+  - evidence is retained in .agent/tmp/CPU-CYCLE-01/batch-06-15-20
+  - DMA uses a 5 percent seeded sample and at most six contention CCKs against the same uncontended CPU on TestMemoryBus
+  - existing RAM masks, unobserved electrical signals and unavailable partial-transfer bus errors remain limits
+  - no whole-CPU or milestone closure is claimed

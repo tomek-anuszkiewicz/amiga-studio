@@ -634,11 +634,19 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
 - **AGU Register Commitment & Predecrement Bus Inversion:**
   - Detailed physical silicon rules governing `(An)+` read/write commitment asymmetry and `MOVE ..., -(An)` prefetch-before-write sequencing reside in [Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md#2-motorola-68000-silicon-quirks--cpu-pipeline-traps).
 
-### 7.7 MOVE.l 32-Bit Memory-to-Memory CCR Evaluation
+### 7.7 MOVE and MOVEP Data Transfers
 
 - In 32-bit `MOVE.l <ea>, (An)` transfers:
   - **Real MC68000 Silicon:** Condition codes reflect the full 32-bit transfer ($N = \text{bit } 31$, $Z = \text{value } == 0$).
   - *Emulator Resolution:* The core strictly implements the full 32-bit condition code evaluation matching real silicon.
+
+[`movep.rs`](../../../crates/cpu/src/instructions/movep.rs) transfers a word or
+long between Dn and alternate bytes beginning at `An + sign_extend(d16)`.
+Bytes move from most to least significant at offsets 0, 2, 4 and 6 as needed;
+An and all condition codes remain unchanged. Word loads preserve the upper
+half of Dn. Each memory access is a byte transfer, so an odd effective address
+is valid. The [micro-step specification](CPU%20Micro-Step%20State%20Machine.md#spaced-byte-transfer-variant-movep)
+defines extension, transfer and prefetch ordering.
 
 ### 7.8 Branch & Control Flow Odd Target Address Error (FC 2 / 6)
 

@@ -367,6 +367,15 @@ impl Cpu {
         }
     }
 
+    /// CCK1: Checks destination alignment before the word/long write bus cycle.
+    pub fn step_bus_write_dst_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro.ea_addr;
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, false, false);
+        }
+        BusResult::Ready(())
+    }
+
     /// CCK2: Writes word from `self.state.micro.destination` to memory
     pub fn step_bus_write_dst_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
@@ -394,6 +403,25 @@ impl Cpu {
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => BusResult::Ready(()),
+        }
+    }
+
+    /// CCK2: Completes a predecrement word store and retires the staged prefetch.
+    pub fn step_bus_write_dst_pd_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro.ea_addr;
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, false, false);
+            return BusResult::Ready(());
+        }
+        let val = self.state.micro.destination as u16;
+        match bus.write_word(addr & 0x00FF_FFFF, val) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(()) => {
+                self.state.ir = self.state.prefetch;
+                self.state.prefetch = self.state.micro.irc;
+                self.state.micro.prefetch_retired = true;
+                BusResult::Ready(())
+            }
         }
     }
 
@@ -446,7 +474,6 @@ impl Cpu {
                 let reg_dst = self.state.micro.reg_dst as usize;
                 self.state.set_a_long(reg_dst, addr);
                 self.state.micro.ea_addr = addr;
-                self.state.pc = self.state.pc.wrapping_add(2);
                 self.state.ir = self.state.prefetch;
                 self.state.prefetch = self.state.micro.irc;
                 self.state.micro.prefetch_retired = true;
@@ -491,6 +518,12 @@ impl Cpu {
         self.state.prefetch = self.state.micro.irc;
         self.state.pc = self.state.pc.wrapping_add(2);
         self.state.micro.prefetch_retired = true;
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Advances the completed prefetch address while retaining IR until the store completes.
+    pub fn step_prefetch_irc_advance_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
+        self.state.pc = self.state.pc.wrapping_add(2);
         BusResult::Ready(())
     }
 }

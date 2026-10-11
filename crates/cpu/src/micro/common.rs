@@ -26,6 +26,16 @@ pub const PREFETCH_IRC_READ: MicroStep = PREFETCH_NEXT_READ;
 /// CCK2: Prefetch next opcode to IRC finish (latches into irc and advances prefetch)
 pub const PREFETCH_IRC_FINISH: MicroStep = MicroStep::cck(Cpu::step_prefetch_irc_finish);
 
+/// CCK2: Completes prefetch address advancement before a deferred store retirement.
+pub const PREFETCH_IRC_ADVANCE_IDLE: MicroStep =
+    MicroStep::cck(Cpu::step_prefetch_irc_advance_idle);
+
+/// CCK1: Checks alignment while preparing a destination word/long write.
+pub const WRITE_DST_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_idle);
+
+/// CCK2: Writes a predecrement word destination and retires its staged prefetch.
+pub const WRITE_DST_PD_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_pd_word);
+
 /// CCK1: Bus write idle step (internal address/pin setup, bus free for Agnus DMA)
 pub const BUS_WRITE_IDLE: MicroStep = MicroStep::cck_idle();
 

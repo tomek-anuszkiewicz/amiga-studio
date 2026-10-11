@@ -106,7 +106,7 @@ By decomposing 4-clock bus cycles into native 2-clock slices ($1\ \text{MicroSte
 | :--- | :--- | :--- |
 | **Operand Reads (Data Space)** | `step_bus_read_src_word`, `step_bus_read_src_byte`, `step_bus_read_dst_word`, `step_bus_read_dst_byte`, `step_bus_read_src_long_high`, `step_bus_read_src_long_low`, `step_bus_read_dst_long_high`, `step_bus_read_dst_long_low` | **CCK1**: Reads from `ea_addr`. Stalls if Chip RAM blocked. Latches into `source`/`destination`.<br>**CCK2** (`BUS_READ_IDLE`): Physical bus free for Agnus DMA (`bus_fn: None`). |
 | **Dual Staged Operands (Data Space)** | `step_bus_read_addr1_byte`, `step_bus_read_addr1_word`, `step_bus_read_addr1_long_high`, `step_bus_read_addr1_long_low`, `step_bus_read_addr2_byte`, `step_bus_read_addr2_word`, `step_bus_read_addr2_long_high`, `step_bus_read_addr2_long_low`, `step_bus_write_addr2_byte`, `step_bus_write_addr2_word` | Dedicated 2-clock bus handlers operating directly over dual staging registers `addr1` and `addr2` for dual-memory instructions (`CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`). |
-| **Operand Writes (Data Space)** | `BUS_WRITE_IDLE`, `step_bus_write_dst_word`, `step_bus_write_dst_byte`, `step_bus_write_dst_long_high`, `step_bus_write_dst_long_low` | **CCK1** (`BUS_WRITE_IDLE`): Internal setup; physical bus free for Agnus DMA (`bus_fn: None`).<br>**CCK2**: Drives data from `destination` to memory. Stalls if wait states asserted. Retires if final step. |
+| **Operand Writes (Data Space)** | `BUS_WRITE_IDLE`, `WRITE_DST_IDLE`, `step_bus_write_dst_word`, `step_bus_write_dst_byte`, `step_bus_write_dst_long_high`, `step_bus_write_dst_long_low` | **CCK1**: Internal setup; physical bus free for Agnus DMA. `WRITE_DST_IDLE` checks word alignment before a MOVE store and starts Address Error in the rejected setup CCK.<br>**CCK2**: Drives data from `destination` to memory. Stalls if wait states asserted. Retires if final step. |
 | **Stack Operations (Data Space)** | `step_bus_push_stack_high_idle`, `step_bus_push_stack_high_write`, `step_bus_push_stack_low_write`, `step_bus_pop_stack_high_read`, `step_bus_pop_stack_high_finish`, `step_bus_pop_stack_low_read`, `step_bus_pop_stack_low_finish` | Stack reads and pushes over `SP` ($A_7$). Validates address alignment, adjusts SP, and transfers high/low words across CCK1/CCK2 phases. |
 | **Prefetch & Refill (Program Space)** | `step_fetch_extension_read`, `step_fetch_extension_finish`, `step_prefetch_irc_read`, `step_prefetch_irc_finish`, `step_prefetch_next_read`, `BUS_READ_IDLE`, `step_bus_read_target_opcode_read`, `step_prefetch_target_read`, `step_prefetch_target_finish` | Reads from `pc` or branch target in Program Space ($FC_2$ / $FC_6$). Refills pipeline across 2-clock phases and manages standard or target retirement. |
 | **Internal & Exceptions** | ALU callbacks (`AluFn`), `ALU_IDLE_*`, `step_bus_write_trap_*`, `step_bus_write_aerr_*`, `step_bus_read_vector_*` | Instantaneous (0 CCK) internal operations, CCR updates, condition evaluation, and 2-phase CCK bus primitives for exception processing. Pure ALU steps utilize `bus_fn: None`. |
@@ -500,18 +500,16 @@ Because a static array cannot predict the number of registers at compile time, `
 1. **Step 0 (`FetchExtension`)**: Reads the 16-bit register mask from `PC` into `state.micro.movem_mask`, advancing `PC += 2`.
 2. **Step 1 (`Alu`)**: Resolves `ea_addr = An` (or calculates displacement/index).
 3. **Step 2 (`MovemTransfer`)**:
-   - Inspects `state.micro.movem_mask`. If `movem_mask == 0`, immediately falls through and advances `micro_step += 1`.
-   - Finds the next active register bit $k$:
-     - **For Memory-to-Register / Standard**: Finds lowest set bit ($k = \text{trailing\_zeros}(movem\_mask)$).
-     - **For Predecrement `-(An)`**: Finds highest set bit ($k = 15 - \text{leading\_zeros}(movem\_mask)$).
+   - Scans set mask bits from low to high using the cursor in `movem_state`; the mask remains unchanged. Predecrement uses the reversed register mapping above.
    - In CCK1/CCK2, performs the atomic bus transfer (Read or Write, Word or 2-cycle Long) between register $R_k$ and memory at `ea_addr`.
    - Adjusts `ea_addr`: increments `ea_addr += size` (or decrements `ea_addr -= size` for `-(An)`).
-   - Clears bit $k$ in `state.micro.movem_mask`.
-   - **Loop Condition**: If `state.micro.movem_mask != 0`, `micro_step` **does NOT advance**, repeating `MovemTransfer` on the subsequent bus cycle!
+   - The final store CCK completes the loop and commits the predecrement address without another internal interval. An empty store mask starts prefetch directly in the first transfer CCK.
+   - Loads perform a final dummy word read at the next address before prefetch. Postincrement commits that address after the dummy read; the address register in the mask cannot replace the final pointer.
+   - **Loop Condition**: While selected registers or the final load dummy read remain, `micro_step` does not advance. A wait state preserves the active word and CCK phase.
 4. **Step 3 (`PREFETCH_NEXT_READ`)**: Standard sequential opcode prefetch, completing retirement via `retire_current_instruction()`.
 
 #### Exact Hardware Timing:
-- **Base Overhead**: 12 CPU clocks (6 CCKs: 1 opcode fetch + 1 mask fetch + 1 opcode prefetch) for `(An)`.
+- **Base Overhead**: With the opcode already prefetched, indirect stores use 8 CPU clocks (mask fetch and final prefetch); loads use 12, including the final dummy operand read. Address extensions and index calculation add their prefix clocks.
 - **Per-Register Transfer**:
   - **Word (`.W`)**: Exactly **4 CPU clocks (2 CCKs)** per transferred register.
   - **Long (`.L`)**: Exactly **8 CPU clocks (4 CCKs: 2 bus cycles)** per transferred register.
@@ -795,7 +793,7 @@ alignment. The compare updates CCR while preserving X.
 
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `BUS_WRITE_IDLE` + `alu_fn` | 2 (CCK1) | Resolves `ea_addr = A0`, latches `destination = D0 as u32`, sets CCR flags ($N, Z, V=0, C=0$). Bus idle for Agnus DMA. |
+| **0** | `WRITE_DST_IDLE` + `alu_fn` | 2 (CCK1) | Resolves `ea_addr = A0`, latches `destination = D0 as u32`, sets CCR flags ($N, Z, V=0, C=0$), and checks word alignment. Bus idle for Agnus DMA. |
 | **1** | `WRITE_DST_WORD` | 2 (CCK2) | Drives 16-bit word `(destination & 0xFFFF)` to `ea_addr`. Both $\overline{\text{UDS}}$ and $\overline{\text{LDS}}$ assert. Stalls on Chip RAM contention. |
 | **2** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Initiates prefetch from `PC` into `irc`. |
 | **3** | `BUS_READ_IDLE` | 2 (CCK2) | Prefetch finishes. Retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
@@ -807,7 +805,7 @@ alignment. The compare updates CCR while preserving X.
 
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `BUS_WRITE_IDLE` + `alu_fn` | 2 (CCK1) | Resolves `ea_addr = A0`, latches `destination = D0` (32 bits), sets CCR flags. Bus idle for Agnus DMA. |
+| **0** | `WRITE_DST_IDLE` + `alu_fn` | 2 (CCK1) | Resolves `ea_addr = A0`, latches `destination = D0` (32 bits), sets CCR flags, and checks word alignment. Bus idle for Agnus DMA. |
 | **1** | `WRITE_DST_LONG_HIGH` | 2 (CCK2) | Drives High Word `((destination >> 16) & 0xFFFF)` to `ea_addr`. Stalls if Chip RAM blocked. |
 | **2** | `BUS_WRITE_IDLE` | 2 (CCK1) | Address bus setup for low word write to `ea_addr + 2`. Bus idle for Agnus DMA. |
 | **3** | `WRITE_DST_LONG_LOW` | 2 (CCK2) | Drives Low Word `(destination & 0xFFFF)` to `ea_addr + 2`. Stalls if Chip RAM blocked. |
@@ -815,6 +813,22 @@ alignment. The compare updates CCR while preserving X.
 | **5** | `BUS_READ_IDLE` | 2 (CCK2) | Prefetch finishes. Retires: `IR = prefetch`, `prefetch = irc`, `PC += 2`. |
 
 ---
+
+#### MOVE destination variants
+
+Memory sources use the [Class 3 address/read prefix](#class-3-memory-source-to-register-load-memory-read-zero-memory-writes), then the destination address and store sequence above; MOVE/MOVEA register loads have no internal tail. Register and immediate sources stage their value without an operand read. Source addressing completes before destination addressing, preserving aliases and source-fault state.
+
+Predecrement stores prefetch before writing. Word and long variants use `PREFETCH_IRC_ADVANCE_IDLE` to advance the completed fetch address while retaining the executing IR. The final store shifts the staged prefetch and marks it retired without another PC increment. Word stores decrement once by two; long stores decrement by two for the low word, then by two for the high word. A rejected write starts Address Error in `WRITE_DST_IDLE`; subsequent transfer phases do not execute. Byte stores retain their existing prefetch retirement before the write.
+
+For memory sources with an absolute-long destination, the first destination extension pair leaves the low address word staged. The write setup assembles the address without another fetch. The store precedes the remaining extension and final prefetch pairs. Register/immediate sources consume both destination extension pairs before their store.
+
+#### Spaced-byte transfer variant: MOVEP
+
+[`movep.rs`](../../../crates/cpu/src/instructions/movep.rs) uses an extension pair, two or four byte bus cycles, then prefetch: 16 or 24 clocks. Bytes transfer from most to least significant at addresses separated by two, with [shared read/write phases](#23-specialized-2-clock-atomic-micro-step-handlers-busfn). Reads assemble `source`; writes consume staged `destination`. Address and data advance only after a successful callback. Byte accesses permit odd addresses. Register-width and CCR semantics belong to the [CPU specification](CPU%20Motorola%20M68000.md#77-move-and-movep-data-transfers).
+
+#### Control-address variant: LEA and PEA
+
+LEA calculates the effective address without an operand read, then prefetches. Indexed modes place one internal CCK before the extension pair and one after it. PEA uses the same address calculation and the [shared stack push phases](#23-specialized-2-clock-atomic-micro-step-handlers-busfn). Indirect, displacement and indexed forms prefetch before the push; absolute forms push both words before prefetch. Effective-address parity does not cause a fault; stack-write alignment does.
 
 ### Class 5: Memory Read-Modify-Write (Operand Read, Prefetch, Writeback)
 
@@ -990,17 +1004,16 @@ Count decoding and flag behavior are defined in the [CPU specification, section
 #### Archetype: `MOVEM.W (A0)+, D0-D2/A0-A1` (Opcode `$4CD8 $0307` — 5 Registers)
 - **Total Duration**: Exactly 32 CPU clocks (16 CCKs).
 - **Result Writing**: Loads registers $D_0, D_1, D_2, A_0, A_1$ from memory. Postincrements $A_0$ by $5 \times 2 = 10$ bytes. Zero memory writes.
-- **Prefetch**: Extension word provides 16-bit register mask `$0307` (`%0000_0011_0000_0111`).
+- **Prefetch**: Consume the staged mask while fetching the following word; transfer the selected registers, read the final dummy operand word, then prefetch. See the [MOVEM loop mechanics](#58-movem-dynamic-register-transfer-engine).
 
 | Step | Action / Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `FETCH_EXT_READ` | 2 (CCK1) | Reads 16-bit mask `$0307` from `PC` into `source`. |
-| **1** | `FETCH_EXT_FINISH` | 2 (CCK2) | Latches mask into `state.micro.movem_mask`, advances `PC += 2`. |
-| **2** | `BUS_READ_IDLE` + `ea_calc` | 2 (CCK1) | Resolves `ea_addr = A0`. Latches starting address. |
-| **3** | `BUS_READ_IDLE` | 2 (CCK2) | Prepares transfer loop. |
-| **4** | `MovemTransfer`<br/>*(x5 iterations)* | **20 (10 CCKs)** | Loops across all set mask bits ($D_0, D_1, D_2, A_0, A_1$). Each register read takes 4 clocks (2 CCKs) from `ea_addr`, increments `ea_addr += 2`, and clears bit in `movem_mask`. Stalls on Chip RAM DMA. |
-| **5** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Commits final address write-back $A_0 = ea\_addr$. Reads next opcode from `PC` into `irc`. |
-| **6** | `BUS_READ_IDLE` | 2 (CCK2) | Completes prefetch, shifts `IR = prefetch`, `prefetch = irc`, `PC += 2`, and retires! |
+| **0** | `FETCH_MASK_READ` | 2 (CCK1) | Latches staged mask `$0307` and fetches the following instruction word. |
+| **1** | `FETCH_MASK_FINISH_AI` | 2 (CCK2) | Advances `PC += 2` and resolves `ea_addr = A0`. |
+| **2** | `MOVEM_TRANSFER` (five register reads) | 20 (10 CCKs) | Reads selected registers in mask order, sign-extends words and increments the transfer address. |
+| **2** | `MOVEM_TRANSFER` (dummy read) | 4 (2 CCKs) | Reads at the final transfer address, then commits $A_0 = ea\_addr$. |
+| **3** | `PREFETCH_NEXT_READ` | 2 (CCK1) | Reads the next instruction word from `PC` into `irc`. |
+| **4** | `BUS_READ_IDLE` | 2 (CCK2) | Completes sequential prefetch and retires. |
 
 ---
 

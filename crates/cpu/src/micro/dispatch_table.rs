@@ -495,19 +495,23 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
             let mode = ((ir >> 3) & 7) as u8;
             let reg = (ir & 7) as u8;
 
-            let maybe_steps = match op_type {
-                0 => crate::instructions::btst::decode_btst_dyn_steps(mode, reg),
-                1 => crate::instructions::bchg::decode_bchg_dyn_steps(mode, reg),
-                2 => crate::instructions::bclr::decode_bclr_dyn_steps(mode, reg),
-                3 => crate::instructions::bset::decode_bset_dyn_steps(mode, reg),
-                _ => None,
+            let maybe_steps = if mode == 1 {
+                Some(crate::instructions::movep::decode_movep_steps(op_type))
+            } else {
+                match op_type {
+                    0 => crate::instructions::btst::decode_btst_dyn_steps(mode, reg),
+                    1 => crate::instructions::bchg::decode_bchg_dyn_steps(mode, reg),
+                    2 => crate::instructions::bclr::decode_bclr_dyn_steps(mode, reg),
+                    3 => crate::instructions::bset::decode_bset_dyn_steps(mode, reg),
+                    _ => None,
+                }
             };
 
             if let Some(steps) = maybe_steps {
                 table[op] = OpcodeDescriptor {
                     steps,
-                    reg_src: reg_s,
-                    reg_dst: reg,
+                    reg_src: if mode == 1 && op_type < 2 { reg } else { reg_s },
+                    reg_dst: if mode == 1 && op_type < 2 { reg_s } else { reg },
                 };
             }
         }

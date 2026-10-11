@@ -553,6 +553,16 @@ fn test_dma_cartesian_movem() {
     run_cartesian_for_opcodes(&["MOVEM.w", "MOVEM.l"]);
 }
 
+#[test]
+fn test_dma_cartesian_movep() {
+    run_cartesian_for_opcodes(&["MOVEP.w", "MOVEP.l"]);
+}
+
+#[test]
+fn test_dma_cartesian_control_addresses() {
+    run_cartesian_for_opcodes(&["LEA", "PEA"]);
+}
+
 // ============================================================================
 // Integer Arithmetic (ADD, ADDA, ADDX)
 // ============================================================================

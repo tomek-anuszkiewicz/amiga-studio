@@ -61,14 +61,15 @@ pub static STEPS_LEA_D16_AN: [MicroStep; 4] = [
 ];
 
 /// LEA (d8, An, Xn): 12 CPU clocks / 6 CCKs
-pub static STEPS_LEA_IDX_AN: [MicroStep; 5] = [
+pub static STEPS_LEA_IDX_AN: [MicroStep; 6] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_pea_idx_an),
-        base_clocks: 4,
+        base_clocks: 2,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
+    common::ALU_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
@@ -132,14 +133,15 @@ pub static STEPS_LEA_D16_PC: [MicroStep; 4] = [
 ];
 
 /// LEA (d8, PC, Xn): 12 CPU clocks / 6 CCKs
-pub static STEPS_LEA_IDX_PC: [MicroStep; 5] = [
+pub static STEPS_LEA_IDX_PC: [MicroStep; 6] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_pea_idx_pc),
-        base_clocks: 4,
+        base_clocks: 2,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
+    common::ALU_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),

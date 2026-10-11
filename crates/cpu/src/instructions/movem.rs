@@ -253,13 +253,18 @@ pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusRes
     // 1. Initial check: mask == 0 and address alignment
     let is_transfer_start = bit_idx == 0 && sub_word == 0 && !dummy_read_active && !is_cck2;
     if is_transfer_start {
-        if mask == 0 {
-            cpu.state.micro.movem_state = 0;
-            cpu.state.micro.micro_step = cpu.state.micro.micro_step.wrapping_add(1);
-            return BusResult::Ready(());
+        if mask == 0 && is_reg_to_mem {
+            // An empty store mask proceeds directly to the prefetch read in this CCK.
+            return match cpu.step_prefetch_next_read(bus) {
+                BusResult::WaitState => BusResult::WaitState,
+                BusResult::Ready(()) => {
+                    cpu.state.micro.micro_step = cpu.state.micro.micro_step.wrapping_add(2);
+                    BusResult::Ready(())
+                }
+            };
         }
         let ea = cpu.state.micro.ea_addr;
-        if (ea & 1) != 0 {
+        if mask != 0 && (ea & 1) != 0 {
             if is_predec {
                 cpu.trigger_address_error(ea.wrapping_sub(2), false, false);
             } else if is_postinc {
@@ -403,6 +408,15 @@ pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusRes
                             }
                             cpu.state.micro.movem_state =
                                 (((bit_idx as u32) << 1) | ((sub_word as u32) << 6)) as u16;
+                            // The final write CCK completes the loop; no extra idle precedes prefetch.
+                            if sub_word == 0 && (mask as u32) >> bit_idx == 0 {
+                                if is_predec {
+                                    cpu.state.set_a_long(reg_ea, cpu.state.micro.ea_addr);
+                                }
+                                cpu.state.micro.movem_state = 0;
+                                cpu.state.micro.micro_step =
+                                    cpu.state.micro.micro_step.wrapping_add(1);
+                            }
                             BusResult::Ready(())
                         }
                     }
