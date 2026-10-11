@@ -3187,3 +3187,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Scoped pre-commit design review selected both CPU documents and Machine Loop.md, which needed no edit
   - Earlier controlled fixture mutations detected a lost device marker, an extra completed write and a lost restored marker, then original source bytes were restored
   - Full SingleStep and milestone profiles were not run. CPU bus scripts do not establish every callback timestamp or DMA arbitration. Physical keyboard hold timing, external BERR, level 7 NMI and arbitrary in-flight snapshot reconstruction remain outside this verified scope.
+---
+
+### [2026-10-11 23:29 CEST] — SINGLESTEP-MUTATION-01: check JSON sensitivity and tighten shared comparison
+- **Affected Subsystems**:
+  - `SingleStep Harness`
+  - `CPU Verification`
+  - `Testing Strategy`
+- **What Was Changed (The Concrete Reality)**:
+  - Close the bounded SINGLESTEP-MUTATION-01 pilot with eleven original silicon seeds and 1003 raw JSON mutations loaded through the shared pipeline
+  - Retain the ordinary mutation target with diagnostic-category assertions and untouched controls after every mutation, automatically selected by the standard harness profile
+  - Compare the exact formal next opcode PC and both final prefetch words, and require expected transaction durations to sum to JSON length
+  - Validate prefetch and RAM widths plus transaction tags, record lengths and numeric ranges in shared loader and parser paths
+  - Gate legacy RAM allowances on observed Address Error entry so normal RAM near SSP is checked independently of filename
+  - Synchronize CPU verification and testing strategy descriptions and the SingleStep skill while leaving CPU execution, reference files and approved overrides unchanged
+- **Architectural Rationale & Trade-Offs**:
+  - Unchanged passing vectors do not establish that every expectation is checked
+  - The original comparator failed retained sensitivity assertions while positive controls passed, so repairs belong in the shared comparison path rather than a diagnostic-only filter
+  - Preserve explicit evidence boundaries and transfer unresolved frame-mask investigation to the active SINGLESTEP-RAM-01 task
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit, including all ordinary crate tests with coverage, all standard harness tests including mutations, full English, formatting, Clippy, architecture, hardware/code checks and all Python tool contracts
+  - Pilot: 748 observable mutations rejected by comparison, 165 invalid copies rejected by format and 33 equivalent controls passed, with every unchanged control passing
+  - Ten full affected SingleStep groups passed 80650 executions with zero failures: NOP, ADD.l, ASL.w, MULS, DIVU, DIVS, ADDX.l, ABCD, RTE and TAS
+  - PASS: scoped Clippy and English, vault links/frontmatter for 39 documents and 1098 links, configured static semantic checks, diff checks and source/reference hash integrity
+  - Eight false Address Error frame RAM expectations still survive legacy allowances and belong to SINGLESTEP-RAM-01. The 49 valid FC changes have no observed signal and do not count as detection
+  - The exhaustive 128-group suite and milestone profile were not run. Callback timing and four-clock bus-model checks are not independent electrical pin observations. Full field sensitivity is not claimed

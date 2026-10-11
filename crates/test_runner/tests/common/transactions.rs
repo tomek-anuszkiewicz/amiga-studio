@@ -56,29 +56,24 @@ pub fn parse_transactions(
             .ok_or_else(|| format!("Transaction [{}] tag is not a string: {:?}", idx, arr[0]))?;
 
         if tag == "n" {
-            let duration =
-                arr.get(1).and_then(|v| v.as_u64()).ok_or_else(|| {
-                    format!("Internal transaction [{}] missing numeric duration", idx)
-                })? as u32;
+            if arr.len() != 2 {
+                return Err(format!("Internal transaction [{idx}] requires two fields"));
+            }
+            let duration = transaction_number(arr, 1, u32::MAX as u64, idx)? as u32;
             transactions.push(ExpectedTransaction::Internal { duration });
         } else {
+            if !matches!(tag, "r" | "w" | "t") {
+                return Err(format!("Unknown transaction tag '{tag}' at [{idx}]"));
+            }
+            if arr.len() != 6 {
+                return Err(format!("Bus transaction [{idx}] requires six fields"));
+            }
             let is_read = tag == "r";
             let is_tas = tag == "t";
-            let duration = arr
-                .get(1)
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| format!("Bus transaction [{}] missing duration", idx))?
-                as u32;
-            let _fc = arr
-                .get(2)
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| format!("Bus transaction [{}] missing function code", idx))?
-                as u8;
-            let addr = arr
-                .get(3)
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| format!("Bus transaction [{}] missing address", idx))?
-                as u32;
+            let duration = transaction_number(arr, 1, u32::MAX as u64, idx)? as u32;
+            // Width validation is not observation of an electrical FC signal.
+            let _fc = transaction_number(arr, 2, 7, idx)? as u8;
+            let addr = transaction_number(arr, 3, 0xFFFFFF, idx)? as u32;
             let size_str = arr
                 .get(4)
                 .and_then(|v| v.as_str())
@@ -88,11 +83,12 @@ pub fn parse_transactions(
                 ".w" => BusAccessSize::Word,
                 other => return Err(format!("Unknown transfer size '{}' at [{}]", other, idx)),
             };
-            let data = arr
-                .get(5)
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| format!("Bus transaction [{}] missing data value", idx))?
-                as u16;
+            let max_data = if size == BusAccessSize::Byte {
+                255
+            } else {
+                65535
+            };
+            let data = transaction_number(arr, 5, max_data, idx)? as u16;
 
             if is_tas {
                 // Motorola Section 5.1.3: S0..S7 read, S8..S11 modify,
@@ -135,6 +131,20 @@ pub fn parse_transactions(
         }
     }
     Ok(transactions)
+}
+
+fn transaction_number(
+    arr: &[serde_json::Value],
+    field: usize,
+    max: u64,
+    index: usize,
+) -> Result<u64, String> {
+    arr.get(field)
+        .and_then(|value| value.as_u64())
+        .filter(|&value| value <= max)
+        .ok_or_else(|| {
+            format!("Transaction [{index}] field {field} requires an integer in 0..={max}")
+        })
 }
 
 /// Matches recorded CPU bus transactions against the expected test sequence

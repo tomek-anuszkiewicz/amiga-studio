@@ -85,7 +85,7 @@ When a test fails, follow this systematic diagnostic checklist:
 - Remember the M68000 two-word prefetch pipeline:
   - `IR` (Instruction Register): holds the opcode being executed.
   - `IRC` (Prefetch Queue): holds the next prefetched 16-bit word.
-- The fixture primes the prefetch state. The shared comparator checks PC with a four-byte pipeline allowance; it does not independently compare the final prefetch words. Inspect these fields explicitly when diagnosing a pipeline failure.
+- The fixture primes the prefetch state. The shared comparator checks the formal next opcode PC and both final queue words independently. Stopped or halted execution uses its current cursor; it does not accept an alternative PC four bytes ahead. Inspect the PC and each prefetch diagnostic when diagnosing a pipeline failure.
 - Silicon `initial.pc` is the formal opcode address. SingleStep sets the primed internal PC to `initial.pc.wrapping_add(4)` and the instruction address to `initial.pc`.
 - If `pc` is 2 or 4 bytes ahead or behind:
   - Verify that immediate operands or extension words (`.w` / `.l`) were fetched from the prefetch queue and refilled from memory.

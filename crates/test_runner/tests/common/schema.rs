@@ -36,3 +36,24 @@ pub struct CpuTestState {
     pub prefetch: [u32; 2],
     pub ram: Vec<[u32; 2]>, // [address, byte]
 }
+
+impl SingleStepTest {
+    /// Validate widths that the JSON container types cannot express themselves.
+    pub fn validate(&self) -> Result<(), String> {
+        for (name, state) in [("initial", &self.initial), ("final", &self.final_state)] {
+            if state.prefetch.iter().any(|&word| word > u16::MAX as u32) {
+                return Err(format!(
+                    "{name}.prefetch contains a value outside the word range"
+                ));
+            }
+            for (index, &[address, byte]) in state.ram.iter().enumerate() {
+                if address > 0xFFFFFF || byte > u8::MAX as u32 {
+                    return Err(format!(
+                        "{name}.ram[{index}] exceeds the 24-bit address or byte range"
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+}

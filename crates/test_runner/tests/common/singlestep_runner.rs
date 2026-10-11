@@ -38,6 +38,13 @@ pub fn run_single_test_detail_with_bus(
 ) -> Result<(), TestFailure> {
     let mut failure = TestFailure::new(&test.name, file_path, test_index, test.length);
 
+    if let Err(error) = test.validate() {
+        failure.diffs.push(StateDiff::TransactionMismatch {
+            details: format!("Invalid vector: {error}"),
+        });
+        return Err(failure);
+    }
+
     bus.clear();
     // SingleStepTests flat RAM harness: unpopulated addresses in test vectors default to 0x00
     bus.set_unmapped_byte(0x00);
@@ -73,11 +80,16 @@ pub fn run_single_test_detail_with_bus(
     // Execute instruction
     let start_clocks = cpu.cycle_counter();
     let execution_limit = test.length.saturating_mul(4).max(1024);
+    let mut entered_address_error = false;
     loop {
         // Each CCK advances two CPU clocks before the memory callback executes.
         bus.callback_clock =
             (cpu.cycle_counter().wrapping_sub(start_clocks) as u32).wrapping_add(2);
         let completed = cpu.step_cck(bus);
+        entered_address_error |= std::ptr::eq(
+            cpu.state.micro.current_steps.as_ptr(),
+            cpu::micro::common::STEPS_ADDRESS_ERROR.as_ptr(),
+        );
         let elapsed = cpu.cycle_counter().wrapping_sub(start_clocks) as u32;
         if completed || cpu.state.halted || cpu.state.stopped || elapsed >= execution_limit {
             break;
@@ -153,14 +165,28 @@ pub fn run_single_test_detail_with_bus(
         });
     }
 
-    // Verify Program Counter against hardware target
-    let pc_matches =
-        cpu.state.pc == test.final_state.pc || cpu.state.pc.wrapping_sub(4) == test.final_state.pc;
-    if !pc_matches {
+    // Compare the formal next opcode address, not two alternative pipeline cursors.
+    let actual_pc = if cpu.state.stopped || cpu.state.halted {
+        cpu.state.pc
+    } else {
+        cpu.state.instruction_pc
+    };
+    if actual_pc != test.final_state.pc {
         failure.diffs.push(StateDiff::ProgramCounter {
-            actual: cpu.state.pc,
+            actual: actual_pc,
             expected: test.final_state.pc,
         });
+    }
+
+    for (word, actual) in [cpu.state.ir, cpu.state.prefetch].into_iter().enumerate() {
+        let expected = test.final_state.prefetch[word] as u16;
+        if actual != expected {
+            failure.diffs.push(StateDiff::Prefetch {
+                word,
+                actual,
+                expected,
+            });
+        }
     }
 
     // Verify RAM modifications
@@ -169,16 +195,17 @@ pub fn run_single_test_detail_with_bus(
         let expected_byte = (entry[1] & 0xFF) as u8;
         let actual_byte = bus.read_byte_debug(addr);
         if actual_byte != expected_byte {
-            // Note: In the Address Error Internal Information Word at SSP+1, the lower nibble
-            // (I/N and Function Code bits) is masked out for hardware invariance.
-            if addr == cpu.state.ssp().wrapping_add(1)
+            // Legacy frame allowances remain under SINGLESTEP-RAM-01 review.
+            // Actual entry, rather than proximity to SSP, gates them.
+            if entered_address_error
+                && addr == cpu.state.ssp().wrapping_add(1)
                 && (actual_byte & 0xF0) == (expected_byte & 0xF0)
             {
                 continue;
             }
-            // Note: In M68000 Address Error stack frame for MOVE.w -(An), hardware captures
-            // exhibit variations in the pushed instruction register (SSP+6..=SSP+7).
-            let has_variable_address_error_frame = file_path.contains("MOVE.w")
+            // The filename-dependent frame fields still require evidence in their owner task.
+            let has_variable_address_error_frame = entered_address_error
+                && file_path.contains("MOVE.w")
                 && (addr == cpu.state.ssp()
                     || addr == cpu.state.ssp().wrapping_add(1)
                     || addr == cpu.state.ssp().wrapping_add(6)
@@ -186,9 +213,9 @@ pub fn run_single_test_detail_with_bus(
             if has_variable_address_error_frame {
                 continue;
             }
-            // Note: In M68000 Address Error stack frame, the PC pushed at SSP+10..=SSP+13
-            // exhibits documented pipeline stage variations across real silicon captures.
-            if addr >= cpu.state.ssp().wrapping_add(10) && addr <= cpu.state.ssp().wrapping_add(13)
+            if entered_address_error
+                && addr >= cpu.state.ssp().wrapping_add(10)
+                && addr <= cpu.state.ssp().wrapping_add(13)
             {
                 continue;
             }
@@ -211,6 +238,20 @@ pub fn run_single_test_detail_with_bus(
     // Verify Bus Transactions
     match super::transactions::parse_transactions(&test.transactions, &test.initial.ram) {
         Ok(expected_txs) => {
+            let timeline_clocks: u64 = expected_txs
+                .iter()
+                .map(|tx| match tx {
+                    super::transactions::ExpectedTransaction::Bus { duration, .. }
+                    | super::transactions::ExpectedTransaction::Internal { duration } => {
+                        *duration as u64
+                    }
+                })
+                .sum();
+            if timeline_clocks != test.length as u64 {
+                failure.diffs.push(StateDiff::TransactionMismatch {
+                    details: format!("Timeline length mismatch: transactions total {timeline_clocks}, JSON length {}", test.length),
+                });
+            }
             let recorded = bus.recorded_transactions().unwrap_or(&[]);
             if let Err(tx_diffs) = super::transactions::match_transactions(recorded, &expected_txs)
             {

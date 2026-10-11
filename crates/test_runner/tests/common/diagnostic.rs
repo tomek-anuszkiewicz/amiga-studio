@@ -174,6 +174,11 @@ pub enum StateDiff {
         actual: u32,
         expected: u32,
     },
+    Prefetch {
+        word: usize,
+        actual: u16,
+        expected: u16,
+    },
     RamByte {
         address: u32,
         actual: u8,
@@ -311,6 +316,15 @@ impl TestFailure {
                         format_diff_offset(*actual, *expected)
                     ));
                 }
+                StateDiff::Prefetch {
+                    word,
+                    actual,
+                    expected,
+                } => {
+                    out.push_str(&format!(
+                        "  • Prefetch[{word}]: Expected 0x{expected:04X}, got 0x{actual:04X}\n"
+                    ));
+                }
                 StateDiff::RamByte {
                     address,
                     actual,
@@ -395,6 +409,15 @@ impl From<&TestFailure> for super::reporting::TestFailureSummary {
                     format!(
                         "PC mismatch: got 0x{:08X}, expected 0x{:08X}",
                         actual, expected
+                    )
+                }
+                StateDiff::Prefetch {
+                    word,
+                    actual,
+                    expected,
+                } => {
+                    format!(
+                        "Prefetch[{word}] mismatch: got 0x{actual:04X}, expected 0x{expected:04X}"
                     )
                 }
                 StateDiff::RamByte {

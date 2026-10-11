@@ -4,6 +4,7 @@
 #![allow(dead_code)]
 
 pub mod diagnostic;
+pub mod mutations;
 pub mod reporting;
 pub mod schema;
 pub mod singlestep_runner;

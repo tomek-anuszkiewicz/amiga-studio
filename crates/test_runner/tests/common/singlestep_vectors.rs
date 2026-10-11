@@ -39,6 +39,9 @@ pub fn load_test_vectors(path: &Path) -> Result<LoadedVectors, Box<dyn std::erro
     } else {
         serde_json::from_reader(reader)?
     };
+    for test in &tests {
+        test.validate().map_err(invalid_correction)?;
+    }
     let suite = path
         .file_name()
         .and_then(|name| name.to_str())

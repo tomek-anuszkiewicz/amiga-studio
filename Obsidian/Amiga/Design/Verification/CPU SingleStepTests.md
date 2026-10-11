@@ -96,14 +96,21 @@ address; TAS-specific pins and error-cycle pin activity are not independently
 observed. Report these boundaries rather than equating the abstract callbacks
 with a full hardware pin trace.
 
-The shared comparator primes the initial prefetch state but does not independently
-compare final prefetch words. PC can match directly or with the current
-four-byte pipeline allowance. Existing RAM exceptions include masked stack-frame
-fields and skipped bytes around `SSP`; some address-based exceptions lack a guard
-for the specific exception frame. These are current comparison limits, not proof
-that differences in all those situations are valid hardware variation. Review
-and narrow them only with a focused reproduction and the reference-conflict
-procedure in [spec-compliance.md](../../../../.agents/rules/spec-compliance.md).
+The shared comparator checks both final prefetch words independently against
+`IR` and `prefetch`. It compares final PC with the formal next opcode address
+(`instruction_pc` after retirement); stopped or halted execution uses its current
+cursor. It does not accept both that address and a cursor four bytes ahead.
+The sum of all reference transaction durations must also equal JSON `length`,
+including intervals after the final callback.
+
+Legacy RAM allowances remain for the information-word low nibble at `SSP + 1`,
+four filename-dependent MOVE.w frame bytes and the saved PC at `SSP + 10..13`.
+They now require observed entry into the CPU's Address Error sequence; ordinary
+RAM near SSP is compared exactly regardless of the input filename. The frame
+allowances themselves still require investigation under `SINGLESTEP-RAM-01`.
+Their presence does not establish valid hardware variation. Review and narrow
+them with focused evidence and the reference-conflict procedure in
+[spec-compliance.md](../../../../.agents/rules/spec-compliance.md).
 The implementation is
 [`singlestep_runner.rs`](../../../../crates/test_runner/tests/common/singlestep_runner.rs).
 
@@ -248,14 +255,18 @@ The physical hardware test suite logs bus activity as a structured transaction a
 - **Internal / Idle Cycle:** `["n", duration]`
   - CPU internal execution phases without external bus activity.
 
-The parser extracts the fields needed for comparison from the supplied silicon
-records; extra fields are ignored.
+The parser requires exactly six fields for a bus record and two for an internal
+record. Extra array fields are rejected; unknown object metadata remains ignored
+under the input contract below.
 
 ### 2.4 Input Contract
 The harness assumes the current silicon dataset. Serde requires the declared
-fields and value types; unknown object keys are ignored. Transaction arrays are
-read according to Section 2.3, without format detection or additional tag and
-record-length validation.
+fields and value types; unknown object keys are ignored. The shared loader also
+validates 16-bit prefetch words and RAM entries with 24-bit addresses and byte
+values. The transaction parser accepts only `r`, `w`, `n` and `t`, requires two
+fields for an internal record and six for a bus record, and checks numeric
+widths: duration is u32, FC is three bits, address is 24 bits and data fits the
+specified byte or word size. FC validation does not observe an FC signal.
 
 
 ---
@@ -299,19 +310,20 @@ flowchart TD
    - Prime the internal prefetch buffer: `initial.prefetch[0]` into `cpu.state.ir` and `initial.prefetch[1]` into `cpu.state.prefetch`.
 3. **Execute Instruction:**
    - Step the CPU cycle-by-cycle (or CCK-by-CCK) until the current instruction completes.
-   - Guard against infinite loops with a timeout threshold (e.g., `length * 2` cycles or max 1,000 cycles).
+   - Guard against infinite loops with `length.saturating_mul(4).max(1024)` CPU clocks.
 4. **State Verification:**
    - **Data Registers:** Assert `cpu.d(i) == final_state.d[i]` for $i \in 0..7$.
    - **Address Registers:** Assert `cpu.a(i) == final_state.a[i]` for $i \in 0..6$.
    - **Stack Pointers:** Assert `cpu.usp == final_state.usp` and `cpu.ssp == final_state.ssp`.
    - **Status Register (SR / CCR):** Assert `cpu.sr == final_state.sr`.
-   - **Program Counter:** Assert `cpu.pc == final_state.pc`.
-   - **Prefetch Queue:** Assert `cpu.prefetch == final_state.prefetch`.
-   - **RAM Verification:** Iterate through all `[address, expected_byte]` pairs in `final_state.ram` and assert that the test memory contains the exact byte.
+   - **Program Counter:** Compare the formal next opcode address described in Section 1.2 with `final_state.pc`.
+   - **Prefetch Queue:** Compare `[cpu.state.ir, cpu.state.prefetch]` with both words in `final_state.prefetch`.
+   - **RAM Verification:** Compare listed final bytes, subject to the legacy allowances gated by observed Address Error entry described in Section 1.2.
 5. **Cycle-by-Cycle Bus Transaction Assertion:**
    - Parse `test.transactions` (`[type, duration, fc, addr, size, data]`) and retain idle intervals in the expected CPU-clock timeline.
    - Compare successful memory callbacks for time, address, access size, direction and data. Reads occur in CCK1 and writes in CCK2; one CCK advances two CPU clocks.
    - UDS/LDS follow address and size; the recorder does not observe these pins independently. Idle intervals constrain callback times rather than asserting pin levels.
+   - The complete expected timeline must sum to `length`. Each ordinary reference bus interval must be four clocks; this is a bus-model invariant, not an independently observed end-of-interval pin signal.
 6. **Address Error & Exception Handling:**
    - If the test triggers an address error (unaligned word/long access), verify that the CPU:
      1. Pushes the Address Error stack frame (Function Code, Access Address, Instruction Register, Status Register, PC).
@@ -339,9 +351,26 @@ The test harness lives in `tests/common/`, shared by the integration test target
 Implemented directly in [`crates/test_runner/tests/common/singlestep_runner.rs`](../../../../crates/test_runner/tests/common/singlestep_runner.rs):
 - Instantiates a clean [`TestMemoryBus`](../../../../crates/test_runner/tests/common/test_memory_bus.rs) and injects initial RAM vectors via `bus.load_test_ram()`.
 - Primes CPU registers $D_0-D_7$, $A_0-A_6$, $USP$, $SSP$, $SR$, and Program Counter (accounting for Tom Harte's $+4$ prefetch offset).
-- Initializes `instruction_pc` to the opcode address (`pc - 4` after priming) in SingleStep fixtures, so exception frames preserve the instruction address even on the first executed instruction.
+- Initializes `instruction_pc` to the opcode address (`pc - 4` after priming), supplying the original instruction identity for diagnostics and exception paths whose return rule requires it.
 - Primes prefetch queue registers `ir` and `prefetch`.
 - Drives SingleStep execution CCK-by-CCK via `cpu.step_cck(&mut bus)` to record observed callback clocks.
+
+### 5.3 Comparator Sensitivity
+
+The ordinary [JSON mutation target](../../../../crates/test_runner/tests/test_singlestep_mutations.rs)
+uses selected original silicon cases and the [scoped test helpers](../../../../crates/test_runner/tests/common/mutations.rs).
+Each altered copy is written to ignored diagnostics, loaded through the shared
+loader and executed through the normal CPU comparator. State, RAM, transfer and
+timing mutations require the corresponding diagnostic category; malformed
+inputs require format rejection. Renamed tests, unknown metadata and unused
+initial RAM serve as equivalent controls. The untouched seed runs again after
+every mutation on the same reusable bus.
+
+The target records all probes, including function-code changes without an
+observed signal and unresolved Address Error frame-mask probes owned by
+`SINGLESTEP-RAM-01`. Those probes do not count as detected false expectations.
+Passing the bounded regression target establishes its enforced cases rather
+than full sensitivity of every JSON field or every silicon execution path.
 
 ---
 
