@@ -7,26 +7,79 @@ subsystem: "general"
 status: "draft"
 created: 2026-09-14
 updated: 2026-10-12
-related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[DMA.md](DMA.md)"]
+related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[DMA.md](DMA.md)", "[Interrupts.md](Interrupts.md)", "[Game Ports.md](Game%20Ports.md)", "[Keyboard.md](Keyboard.md)"]
 ---
 
 # Cross-Chip Signals and Action Dispatch Catalog
 
-The Amiga 500's chips communicate through fixed motherboard buses and electrical signal lines. In the emulator, the [machine loop](Machine%20Loop.md) and [memory bus](MemoryBus.md) route these connections. Individual chips do not hold references to one another or call one another's mutating methods.
+The Amiga 500 connects its chips through shared buses and dedicated electrical lines. This catalog records the connections that carry behavior across chip or peripheral boundaries. Its board-level evidence is the Commodore A500 Rev. 6A/7 schematic, available as a vector redraw, checked against the custom-chip pin list and hardware manuals. A drawn net establishes connectivity; the manuals explain what a receiver does with it. Neither establishes a general propagation delay or complete event order for an emulator.
 
-## Signal flow
+This is a hardware model for a future [machine coordinator](Machine%20Loop.md), not an account of current code. [DMA](DMA.md) owns slot allocation and arbitration rules; this catalog identifies requests, buses, strobes, and result paths. The [custom-register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) identifies addresses selected on `RGA`. Names prefixed by `_` in the schematic or suffixed by `*` in the manuals are active low unless otherwise specified. `DMAL` is explicitly active high. Evidence keys are linked at the end.
 
-[Agnus](Agnus.md) generates Chip RAM DMA addresses and drives the register address bus (RGA). The memory bus places fetched data on the shared data bus. [Denise](Denise.md) and [Paula](Paula.md) latch data when the corresponding register strobe selects them; they do not read Chip RAM directly. The machine loop also samples chip outputs and delivers their signals to the receiving components.
+## Shared buses, requests, and beam timing
 
-Signals and register effects can take time to propagate. Their timing depends on the particular connection and the modeled clock phase; this document does not yet provide a verified delay for each signal. [DMA.md](DMA.md) owns slot scheduling and arbitration, while this catalog concerns connections between components.
+| Signal or bus | Source → receiver | Hardware role | Evidence |
+| :--- | :--- | :--- | :--- |
+| `D[15:0]`, `DRD[15:0]` | CPU and motherboard latches ↔ Chip RAM and custom chips | Shared word path. DMA reads deliver RAM data to a selected chip; disk write DMA reverses direction. The CPU side is buffered from the chip-memory side. | S2, S4, S5; P, F |
+| `DRA/MA`, `RAS0/1*`, `CASU/L*`, `WE/RRW` | Agnus → DRAM | Address, row/column, byte-lane, and read/write control for CPU memory cycles, DMA, and refresh. Refresh does not deliver a peripheral word. | S2, F |
+| `BLIT*`, `BLISS*` and CPU bus strobes | Agnus ↔ Gary; CPU → Agnus/Gary | On the Rev. 6A/7 drawing, Agnus and Gary exchange Blitter control lines while CPU address, read/write, and strobes feed the shared memory-control network. The older Fat Agnus description calls a related pin `DBR*`; equivalence is not established here. | S2, F |
+| `RGA[8:1]` | Agnus → Denise and Paula | Selects custom registers and DMA destinations. A receiving chip samples or drives the shared data bus; the address code is not a data payload. | S2, S4, S5; P, F |
+| Shared custom-register selection | CPU or Copper write → Agnus `RGA` encoding → listed chip recipients | One write may be visible to more than one chip: Appendix B lists `DMACON` for Agnus, Denise, and Paula, and `BPLCON0` for Agnus and Denise. This is register-bus fan-out, not a separate private signal between chips. | S2, S4, S5; P, B |
+| `DMAL` | Paula → Agnus | Active-high request for audio and/or disk DMA. Agnus schedules and addresses the granted transfer. The pin list confirms Paula output and Agnus input. | S2, S4; P, F |
+| `CCK`, `CCKQ`, `7MHz`, `CDAC` | Oscillator/Agnus clock network → CPU, Gary, Denise, Paula | Related clock phases drive chip work and bus timing. CIA `E` is a distinct CPU-side clock input, not another name for CCK. | S2, S4, S5, S6; P, F |
+| `HSYNC*`, `VSYNC*`, `CSYNC*` | Agnus timing network → video path and other timing inputs | Horizontal, vertical, and composite sync. Agnus can instead accept external horizontal/vertical sync in its documented resync mode. Denise receives composite sync for video blanking. | S2, S5, S6; P, F |
+| `STREQU`, `STRVBL`, `STRHOR`, `STRLONG` on `RGA` | Agnus refresh-time address code → Denise; `STRHOR` also → Paula | Sync is also encoded as register-address strobes during refresh opportunities, distinct from physical `HSYNC*`/`VSYNC*` lines. | A, F |
+| `VSYNC*` or `EXTICK`; `HSYNC*` | Video timing/expansion tick → CIA-A TOD; horizontal sync → CIA-B TOD | The CIA-A TOD source is jumper-selected on this board; CIA-B counts horizontal sync events. These inputs are separate from the timer E-Clock. | S6, AF |
 
-## Signal table to add
+## Interrupts and reset
 
-This catalog still needs a table of the electrical signals that cross chip boundaries. Each entry should identify the source and destination, name the line or bus, and explain what the signal causes. Timing and active level should be recorded where supported by hardware evidence.
+| Signal | Source → receiver | Hardware role | Evidence |
+| :--- | :--- | :--- | :--- |
+| `INT3*` | Agnus → Paula | Active-low Blitter-complete request enters Paula's interrupt controller. | S2, S4; P, F, H7 |
+| `INT2*` | CIA-A and expansion connector → Paula | Active-low CIA-A/external low-level request, represented by Paula's `PORTS` level-2 source. | S4, S6, S7; P, AF, H7 |
+| `INT6*` | CIA-B and expansion connector → Paula | Active-low CIA-B/external high-level request, represented by Paula's `EXTER` level-6 source. | S4, S6, S7; P, AF, H7 |
+| `IPL[2:0]*` | Paula → 68000 | Paula masks and prioritizes pending requests, then drives the CPU interrupt level. Audio, disk, serial, vertical blank, and Copper are documented sources; the schematic does not imply a separate board wire for each. | S2, S4; P, H7 |
+| `KBRESET*`, `RESET*` | Keyboard and power-on circuit → Gary/reset network → CPU, custom chips, CIAs | Keyboard or power-on reset reaches the shared system reset path, rather than a custom-register write. | S2, S4, S6, S7; P, H |
 
-## Reference documentation and source
+## Peripheral connections
 
-- [General Architecture.md](General%20Architecture.md) describes the machine's chip and bus topology.
-- [Amiga Hardware Reference Manual, Chapter 1](../Reference/Hardware%20Reference%20Manual/01%20-%20Chapter%201%20-%20Introduction.md) introduces the custom chips and shared buses.
-- [`machine_loop.rs`](../../../crates/machine_loop/src/machine_loop.rs) routes modeled signals between components.
-- [`memory_bus.rs`](../../../crates/memory_bus/src/memory_bus.rs) routes memory and custom register accesses.
+| Signal family | Source → receiver | Hardware role | Evidence |
+| :--- | :--- | :--- | :--- |
+| `MTR*`, `SEL[3:0]*`, `SIDE*`, `DIR`, `STEP*` | CIA-B port B → drive control, partly through Gary | Motor, drive select, head side, direction, and stepping. Gary participates in the internal motor/selection path on this revision. | S4, S6, S7; AF, DI |
+| `RDY*`, `TRK0*`, `WPROT*`, `CHNG*` | Drive → CIA-A port A | Drive ready, track zero, write protection, and disk change are separate from the serial disk bitstream. | S6, S7; AF, DI |
+| `INDEX*` | Drive → CIA-B `FLAG*` | Index pulse reaches the CIA-B edge-sensitive input. | S6, S7; AF, DI |
+| `DKRD*`, `DKWD*`, `DKWE*` | Drive → Paula read-data input; Paula → Gary/drive write-data and write-enable paths | Paula serializes and deserializes disk data. Gary gates write-side signals on the Rev. 6A/7 drawing. | S4, S7; P, DI |
+| Direction/quadrature contacts | Mouse or joystick connector → multiplexer → Denise `M0H/M0V`, `M1H/M1V` | Denise counts mouse quadrature and exposes movement or joystick state through `JOY0DAT`/`JOY1DAT`. | S5, H8 |
+| `FIRE0*`, `FIRE1*` | Controller pin 6 → CIA-A `PA6/PA7` | First mouse/joystick button is sampled by CIA-A, separate from Denise movement counters. | S5, S6; AF, H8 |
+| `POT0X/Y`, `POT1X/Y` | Controller pins 5/9 ↔ Paula | Proportional inputs and additional mouse buttons use Paula's potentiometer circuitry. | S4, S5; P, H8 |
+| `LPEN*` | Selected controller/light-pen trigger → Agnus | Optional light-pen trigger latches beam position; a board jumper selects the source. | S2, S6; P, H8 |
+| `KBDATA`, `KBCLOCK` | Keyboard controller ↔ CIA-A `SP/CNT` | Synchronous keyboard data/clock and handshake reach the CIA serial circuit. Keyboard reset uses the separate path above. | S6, AF, H |
+| Parallel data and handshake | CIA-A port B/`PC*` ↔ parallel connector; CIA-B port A ↔ control/status | Eight data pins and strobe/acknowledge are distinct from select, busy, and paper-out signals. | S6, AF |
+| `TXD`, `RXD`; RS-232 handshake | Paula UART ↔ line drivers/receiver ↔ serial connector; CIA-B port A ↔ control lines | Paula owns serial data; CIA-B drives or senses modem-control pins. | S4, S6; P, AF |
+| `LEFT`, `RIGHT`; `LED*` | Paula → analog audio filters/output; CIA-A `PA1` → filter/LED control | Paula's output is analog after the chip. CIA-A's LED line also selects the board audio-filter path. | S4, S6; P, AF |
+| RGB, burst, blanking, sync | Denise plus Agnus sync → video hybrid/connector | Denise supplies color data while Agnus supplies beam timing; board video circuitry combines them for output. | S2, S5; P |
+
+## Interpretation for a machine coordinator
+
+The coordinator needs distinct paths for **requests** (`DMAL`, interrupt inputs), **granted transfers** (RAM address, data direction, `RGA` destination), **sampled inputs** (CIA ports, Denise movement, Paula `POT`, disk read data), and **continuous timing** (clocks, sync, TOD). A pending DMA request is not itself a completed word transfer. The [audio state-machine description](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md#state-machine-signal-summary) names per-channel requests such as `AUDxDR` and `AUDxDSR`, while the board drawing shows one Paula-to-Agnus `DMAL` line; those names must not become invented per-channel motherboard wires. An interrupt generated within Paula need not become a synthetic motherboard wire merely because software observes it in `INTREQ`. Shared interrupt lines can have more than one source.
+
+These tables establish connectivity and documented effects, not a complete list of electrical connections. Exact CCK propagation, sampling edges, Gary gate delays, analog thresholds, and differences among board revisions remain unverified. The Rev. 6A/7 schematic's `BLIT*`/`BLISS*` labeling and the older Fat Agnus manual's `DBR*` description need a separate revision-aware reconciliation before assigning one emulated signal to both. The manuals document `VERTB` and refresh-time sync strobes, but the evidence above does not establish a dedicated Agnus-to-Paula vertical-blank wire. Preserve that distinction when specifying its event path. See [Interrupts](Interrupts.md), [CIA](CIA.md), [Floppy](Floppy.md), and [Game Ports](Game%20Ports.md) for behavior inside those components.
+
+## Reference Documentation & Upstream Ground Truth
+
+The `S` keys refer to sheets of the [Commodore A500 Rev. 6A/7 schematic, vector redraw](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf). They identify board nets, pins, and intermediate logic for this revision.
+
+- **S2** — [processor, Gary, and Agnus (PDF page 3)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=3): bus, DMA, clock, sync, and CPU interrupt connections.
+- **S4** — [Paula, Gary floppy logic, and audio (PDF page 5)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=5): DMA request, interrupts, disk data, potentiometers, and audio output.
+- **S5** — [Denise, game ports, and video (PDF page 6)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=6): movement input multiplexer, buses, sync, and video output.
+- **S6** — [CIA-A/B, keyboard, parallel, and serial (PDF page 7)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=7): port pins, interrupts, TOD input, and peripherals.
+- **S7** — [floppy and reset connectors (PDF page 8)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=8): drive wiring, expansion lines, and reset network.
+- **P** — [Hardware Reference Manual, Appendix C](../Reference/Hardware%20Reference%20Manual/11%20-%20Appendix%20C%20-%20Custom%20Chip%20Pin%20Allocation%20List.md): Chip pin names, directions, and active-low convention.
+- **F** — [A500/A2000 Technical Reference, Fat Agnus](../Reference/A500%20A2000%20Technical%20Reference%20Manual/11%20-%20Section%206%20-%20Fat%20Agnus%20Chip.md): DMA request direction, memory control, RGA, and sync behavior.
+- **A** — [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md): Refresh-time sync strobes and listed receiving chips.
+- **B** — [Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Register-bus addresses with multiple listed chip recipients.
+- **H7** — [Hardware Reference Manual, Chapter 7](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): Interrupt sources, levels, and masking.
+- **H8** — [Hardware Reference Manual, Chapter 8](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md): Game-controller and disk/serial interface behavior.
+- **AF** — [Hardware Reference Manual, Appendix F](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md): CIA ports, TOD, serial pins, and interrupts.
+- **DI** — [Hardware Reference Manual, Appendix I](../Reference/Hardware%20Reference%20Manual/17%20-%20Appendix%20I%20-%20External%20Disk%20Connector%20Interface%20Specification.md): Drive line names and directions.
+- **H** — [Hardware Reference Manual, Appendix H](../Reference/Hardware%20Reference%20Manual/16%20-%20Appendix%20H%20-%20Keyboard.md): Keyboard serial and reset lines.

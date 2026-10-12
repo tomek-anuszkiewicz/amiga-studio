@@ -3294,3 +3294,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: vault frontmatter and links for 36 design specifications and 664 links
   - PASS: git diff --check
   - NOT RUN: full SingleStep and milestone profiles
+---
+
+### [2026-10-12 13:49 CEST] — Document custom-register and board signal maps
+- **Affected Subsystems**:
+  - `Amiga design specifications`
+  - `verification vocabulary`
+- **What Was Changed (The Concrete Reality)**:
+  - Add a book-derived 256-offset custom-chip register map and CIA-A/B address tables
+  - document board-level cross-chip signal paths with evidence and uncertainty
+  - expand prose abbreviations and approve 17 verified hardware signal terms
+- **Architectural Rationale & Trade-Offs**:
+  - Give the planned machine coordinator an evidence-bounded hardware map while separating documented circuit behavior from current emulator coverage and unknown timing
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit on the final documentation and vocabulary edits, including ordinary crate tests, standard harness tests, Python contracts, English, formatting, Clippy, architecture, hardware and code quality checks
+  - PASS: vault audit for 36 specifications and 678 links
+  - PASS: 256 even custom-register offsets present once in order
+  - PASS: git diff --check
+  - initial English scan failed on 78 unknown occurrences, resolved by expanding prose and user-approved hardware vocabulary
+  - NOT RUN: full SingleStep and milestone profiles
