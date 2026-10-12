@@ -84,11 +84,9 @@ pub struct CpuState {
     pub ipl: u8,
 
     /// T sampled at instruction entry, retained through instruction-generated traps.
-    #[serde(default)]
     pub(crate) trace_pending: bool,
 
     /// Program counter at the start of the current instruction (used for PC-relative EA & exceptions)
-    #[serde(default)]
     pub instruction_pc: u32,
 
     /// CPU Stopped state (halted until higher interrupt arrives)
@@ -98,15 +96,12 @@ pub struct CpuState {
     pub halted: bool,
 
     /// Hardware RESET pin active state
-    #[serde(default)]
     pub reset_line_asserted: bool,
 
     /// Cycle-exact micro-operation engine state (not saved in basic snapshot)
-    #[serde(default)]
     pub micro: crate::micro::CpuMicroState,
 
     /// Master cycle counter
-    #[serde(default)]
     pub cycle_counter: u64,
 }
 

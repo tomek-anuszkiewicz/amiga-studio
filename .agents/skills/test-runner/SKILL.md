@@ -65,8 +65,8 @@ uses unoptimized `test` artifacts. Both execute one aggregate Rust test which fi
 final assertion, including group failures. `case` selects internal group names;
 libtest sees one test. Direct Cargo group filtering uses `SINGLESTEP_CASE`. Current group completion and report/vector counts are separate from saved
 history totals; unmatched or interrupted execution is incomplete. Full CMP and
-filtered CMPM have distinct identities. Legacy unidentified selections and
-different sample limits are not comparable baselines.
+filtered CMPM have distinct identities. Reports missing required fields fail to
+load; explicit empty selections and different sample limits are not comparable baselines.
 
 ---
 

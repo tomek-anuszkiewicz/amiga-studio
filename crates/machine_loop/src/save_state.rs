@@ -23,7 +23,6 @@ pub struct SaveStateHeader {
     /// Unix timestamp when the save state was created (seconds since epoch)
     pub timestamp: u64,
     /// PNG-encoded screenshot bytes captured from Denise frame builder
-    #[serde(default)]
     pub screenshot_png: Vec<u8>,
 }
 

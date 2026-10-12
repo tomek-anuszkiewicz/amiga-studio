@@ -176,10 +176,8 @@ pub struct FloppyController {
     /// Disk byte and sync status register (DSKBYTR)
     pub dskbytr: u16,
     /// Disk block DMA completion interrupt strobe (DSKBLK, Level 1, bit 1)
-    #[serde(default)]
     pub dskblk_irq: bool,
     /// Disk sync pattern match interrupt strobe (DSKSYN, Level 5, bit 12)
-    #[serde(default)]
     pub dsksyn_irq: bool,
     /// Active raw MFM track buffer for streaming
     #[serde(skip)]

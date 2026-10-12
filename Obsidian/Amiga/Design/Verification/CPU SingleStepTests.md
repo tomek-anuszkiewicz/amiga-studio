@@ -81,6 +81,7 @@ A failing case identifies its JSON file and vector, then reports expected and ac
 | `diff.md` | Changes in case status against a comparable previous selection. |
 
 Filtered runs can leave older suites in the saved summary. Read the current-run metadata and selection before treating aggregate totals as fresh results. An interrupted run cannot finalize its reports. The [verification reference](../../../../tools/verification/README.md#saved-singlestep-reports) documents report interpretation and diagnostic commands.
+Saved reports without required fields such as `selection` fail to load; a parsed report with an explicit empty selection is not a comparable baseline.
 
 ## 6. Performance measurements
 

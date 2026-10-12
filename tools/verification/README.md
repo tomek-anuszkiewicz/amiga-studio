@@ -87,10 +87,9 @@ finalization also fails. A successful test process cannot hide reporting failure
 
 Full CMP and filtered CMPM have distinct report identities, for example
 `Real68k::CMP.b` and `Real68k::CMP.b::CMPM`. Diffs require matching selection
-identities and sample limits. Legacy unidentified reports, including old
-colliding CMP results, are retained through normal history rotation but excluded
-from comparisons until a compatible baseline exists. New and removed case names
-remain excluded from status-change comparisons.
+identities and sample limits. Reports missing required fields such as `selection`
+fail to load; parsed reports with an explicit empty selection are excluded from
+comparisons. New and removed case names remain excluded from status-change comparisons.
 
 Direct Cargo execution of `test_singlestep` also finalizes reports automatically.
 The standard libtest runner sees one aggregate test. The existing verify `case`

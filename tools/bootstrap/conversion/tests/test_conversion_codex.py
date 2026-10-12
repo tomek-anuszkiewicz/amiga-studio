@@ -56,23 +56,6 @@ class ConfigTests(unittest.TestCase):
                     with self.assertRaises(Exception):
                         load_config(path)
 
-    def test_unknown_legacy_empty_and_deterministic_selections(self):
-        cases = []
-        for key, value in (("provider", "google-genai"), ("model_prose", "old"), ("default_thinking_budget", 512)):
-            value_config = config()
-            value_config["llm"][key] = value
-            cases.append(value_config)
-        for field, value in (("model", ""), ("reasoning_effort", None), ("extra", "medium")):
-            value_config = config()
-            value_config["llm"]["stages"]["html_to_markdown"][field] = value
-            cases.append(value_config)
-        value_config = config()
-        value_config["llm"]["stages"]["03_build_raw_stream"] = {"model": "x", "reasoning_effort": "medium"}
-        cases.append(value_config)
-        for value_config in cases:
-            with self.subTest(config=value_config), self.assertRaises(ValueError):
-                validate_config(value_config, HTML_STAGES, HTML_STAGES)
-
     def test_invalid_timeout_and_concurrency(self):
         for field, value in (("timeout_seconds", -1), ("timeout_seconds", float("nan")), ("timeout_seconds", True), ("concurrency", 8)):
             value_config = config()

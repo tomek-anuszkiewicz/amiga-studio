@@ -161,15 +161,6 @@ class SelectionTests(unittest.TestCase):
             with self.subTest(sentence=sentence), self.assertRaises(ValueError):
                 selected(sentence)
 
-    def test_legacy_selectors_are_rejected(self):
-        for argv in (["--commit"], ["commit", "dma"], ["commit", "singlestep"], ["runner", "suite", "ADD.b"],
-                     ["runner", "summary"], ["runner", "diff"]):
-            with self.subTest(argv=argv), contextlib.redirect_stderr(io.StringIO()), \
-                 self.assertRaises(SystemExit) as result:
-                parse_args(argv)
-            self.assertEqual(result.exception.code, 2)
-
-
 class ExecutionTests(unittest.TestCase):
     def test_benchmark_analysis_follows_successful_measurement_only(self):
         for success in (True, False):

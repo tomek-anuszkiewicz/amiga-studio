@@ -60,13 +60,7 @@ pub struct PhysicalMemory {
 
     /// Default byte value returned when reading unpopulated memory or unmapped open bus space.
     /// In real Amiga hardware execution, this is 0xFF (floating open bus with pull-up resistors).
-    #[serde(default = "default_unmapped_byte")]
     pub unmapped_byte: u8,
-}
-
-#[inline(always)]
-fn default_unmapped_byte() -> u8 {
-    0xFF
 }
 
 impl Default for PhysicalMemory {

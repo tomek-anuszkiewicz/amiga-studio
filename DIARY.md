@@ -3354,3 +3354,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: all 30 addresses compared with CIA.md and selectors checked for both chips
   - PASS: scoped review of CIA.md and Configuration.md found no corrections
   - NOT RUN: full SingleStep and milestone profiles
+---
+
+### [2026-10-12 21:51 CEST] — Remove implicit persisted-field defaults and obsolete legacy tests
+- **Affected Subsystems**:
+  - `machine snapshots`
+  - `CPU and chip state`
+  - `GUI preferences`
+  - `SingleStep reporting`
+  - `conversion and verification tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove Serde defaults from serialized state, preferences, and report fields while retaining defaults for skipped runtime-only fields
+  - remove two legacy compatibility test cases
+  - remove the unused open-bus default helper
+  - align SaveState and SingleStep specifications plus reporting instructions with the current read behavior
+- **Architectural Rationale & Trade-Offs**:
+  - Require current non-Option fields during deserialization without claiming that old version-1 snapshots remain compatible
+  - preserve explicit null handling for Option fields and reconstruction of skipped runtime state
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit on the code and documentation before this diary entry, including ordinary crates, standard harness, Python contracts, English, formatting, Clippy, architecture, hardware and code-quality checks
+  - PASS: focused Tier 1 and Tier 2 Rust suites and cargo check -p test_runner --tests
+  - PASS: vault audit of 36 specifications and 678 links
+  - PASS: graphify update . and git diff --check
+  - Initial focused Tier 1 compile failed due to the now-unused default_unmapped_byte helper, which was removed before the passing rerun
+  - The post-diary English scan rejected an abbreviated title; the title was spelled out before the final rerun
+  - NOT RUN: full SingleStep, milestone profile, and whole-machine hardware captures

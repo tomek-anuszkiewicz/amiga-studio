@@ -10,62 +10,45 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CpuMicroState {
     /// Instruction Register Capture prefetch latch (68000 IRC)
-    #[serde(default)]
     pub irc: u16,
     /// Step index within the current instruction's micro-operation sequence
     pub micro_step: u16,
     /// Intermediate high-word buffer for 32-bit address/immediate assembly
-    #[serde(default)]
     pub ea_high: u32,
     /// Active 16-bit register mask for MOVEM block transfers
-    #[serde(default)]
     pub movem_mask: u16,
     /// Transfer progress state for MOVEM block transfers
-    #[serde(default)]
     pub movem_state: u16,
     /// Clocks remaining for the active micro-step (0 when completed or between steps)
-    #[serde(default)]
     pub clocks_remaining: u16,
 
     // --- Micro-Step State Machine Fields ---
     /// Decoded source operand buffer for ALU operations
-    #[serde(default)]
     pub source: u32,
     /// Decoded destination operand buffer and ALU output result buffer
-    #[serde(default)]
     pub destination: u32,
     /// Resolved effective memory address for operands or branch/jump targets
-    #[serde(default)]
     pub ea_addr: u32,
     /// Dual Staging Register 1 (X1 / Source EA / High-word / Low-word split EA)
-    #[serde(default)]
     pub addr1: u32,
     /// Dual Staging Register 2 (X2 / Destination EA / High-word / Low-word split EA)
-    #[serde(default)]
     pub addr2: u32,
     /// Pre-decoded source register index (0..7 for Dn/An)
-    #[serde(default)]
     pub reg_src: u8,
     /// Pre-decoded destination register index (0..7 for Dn/An)
-    #[serde(default)]
     pub reg_dst: u8,
     /// Cached pointer to the active opcode's slice of MicroSteps
     #[serde(skip, default = "default_empty_steps")]
     pub current_steps: &'static [MicroStep],
     /// Indicates whether instruction retirement must perform a branch/jump target refill
-    #[serde(default)]
     pub target_refill: bool,
     /// Indicates whether prefetch pipeline has already retired into IR during microcode execution
-    #[serde(default)]
     pub prefetch_retired: bool,
     /// Fault address for Group 0 Address Error / Bus Error exception
-    #[serde(default)]
     pub fault_addr: u32,
     /// Internal Information Word for Group 0 exception frame
-    #[serde(default)]
     pub info_word: u16,
     /// Base supervisor stack pointer at start of exception frame stacking
-    #[serde(default)]
     pub ssp_base: u32,
 }
 

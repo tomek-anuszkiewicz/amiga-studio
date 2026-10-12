@@ -61,16 +61,12 @@ pub struct Agnus {
     /// Floppy Disk DMA pointer ($020-$022)
     pub dskpt: u32,
     /// Disk DMA request line asserted by Paula/Floppy (_DSKREQ pin)
-    #[serde(default)]
     pub dsk_dma_req: bool,
     /// Pending Disk DMA Chip RAM address slot awarded on this cycle
-    #[serde(default)]
     pub pending_dsk_dma_slot: Option<u32>,
     /// Vertical blanking interrupt request strobe
-    #[serde(default)]
     pub vblank_irq: bool,
     /// Pending custom register write emitted by the Copper on this cycle
-    #[serde(default)]
     pub pending_copper_write: Option<(u16, u16)>,
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)

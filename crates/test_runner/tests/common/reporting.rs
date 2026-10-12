@@ -27,14 +27,10 @@ pub struct SuiteResult {
     pub failed_count: usize,
     pub passed_test_names: Vec<String>,
     pub failures: Vec<TestFailureSummary>,
-    #[serde(default)]
     pub overridden_test_names: Vec<String>,
-    /// Empty in legacy reports whose selection cannot be identified reliably.
-    #[serde(default)]
+    /// Selection identity used to compare reports from equivalent runs.
     pub selection: String,
-    #[serde(default)]
     pub sample_limit: Option<usize>,
-    #[serde(default)]
     pub run_id: Option<String>,
 }
 
@@ -46,7 +42,6 @@ pub struct SuiteStats {
     pub failed: usize,
     pub pass_rate_percent: f64,
     pub active_failures: Vec<String>,
-    #[serde(default)]
     pub overrides: usize,
 }
 
@@ -394,7 +389,7 @@ fn diff_markdown(base_dir: &Path) -> io::Result<String> {
     }
 
     let mut report = String::from("# M68000 SingleStep Test Diff\n\n");
-    report.push_str("Latest versus previous saved result for each suite. History rotates independently per suite. Only matching selections and sample limits are compared. Legacy unidentified selections are excluded. Only shared test names changing between passed and failed are compared; new or removed cases are excluded.\n\n");
+    report.push_str("Latest versus previous saved result for each suite. History rotates independently per suite. Only matching selections and sample limits are compared. Reports missing required fields fail to load; explicit empty selections are excluded. Only shared test names changing between passed and failed are compared; new or removed cases are excluded.\n\n");
     let _ = write!(report, "- Compared suites: {compared}\n");
     let _ = write!(
         report,

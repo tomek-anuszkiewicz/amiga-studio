@@ -75,11 +75,8 @@ pub struct UserPreferences {
     pub view_mode: ViewMode,
     pub show_microcode: bool,
     pub temporal_capacity: usize,
-    #[serde(default = "default_disasm_pane_width")]
     pub disasm_pane_width: f32,
-    #[serde(default = "default_crt_pane_height")]
     pub crt_pane_height: f32,
-    #[serde(default = "default_right_dock_bottom_height")]
     pub right_dock_bottom_height: f32,
 }
 

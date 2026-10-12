@@ -36,6 +36,8 @@ tracked_paths:
 5. **Direct Chip Value Containment:**
    - Unlike `Cpu` which isolates register snapshots in `CpuState` for external test harnesses (SingleStepTests), custom chips (`Copper`, `Blitter`, `Agnus`, `Denise`, `Paula`, `Cia`) are already flat value containers with zero circular pointers. They are themselves the canonical serializable state records, avoiding duplicate wrapper structs.
 
+Snapshot JSON must contain the serialized non-`Option` fields of the current schema; missing fields fail deserialization. `Option` fields may be `null` or absent, while fields skipped by Serde are reconstructed at load time. The header still uses format version 1, but matching that number alone does not guarantee that an older version-1 snapshot has every field required by the current schema.
+
 ---
 
 ## 2. Complete State Schema Definitions
