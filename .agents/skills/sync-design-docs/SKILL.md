@@ -80,8 +80,12 @@ same matching to non-crate paths explicitly listed in `tracked_paths`.
 Read each selected document and inspect only the intended changed files, their
 diff and necessary local context. Evaluate behavior, registers, timing phases,
 bus coordination, public contracts and dependency changes described by the
-specification. Extend to another subsystem only when a concrete shared contract,
-dependency or interaction requires it; record the reason and added scope.
+specification. Compare in both directions within that scope: identify intended
+code behavior missing from the selected specifications, and identify claims in
+those specifications that the affected code does not support. This scoped review
+does not replace the broader milestone semantic audit. Extend to another subsystem
+only when a concrete shared contract, dependency or interaction requires it;
+record the reason and added scope.
 
 Follow [spec-compliance.md](../../rules/spec-compliance.md) for conflicts. Do not
 rewrite a specification simply to legitimize an implementation divergence.

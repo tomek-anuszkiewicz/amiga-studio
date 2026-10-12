@@ -3273,3 +3273,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Code-quality review still reports 87 advisory visibility suggestions; it found zero dead or test-only symbols and zero accessor issues
   - Removed isolated register, algorithm and boundary assertions are no longer covered by those deleted suites
   - Full SingleStep and milestone profiles not run
+---
+
+### [2026-10-12 13:04 CEST] — Consolidate design specifications and agent guidance
+- **Affected Subsystems**:
+  - `Design specifications`
+  - `agent governance`
+  - `verification documentation`
+  - `CPU benchmark references`
+- **What Was Changed (The Concrete Reality)**:
+  - Condense subsystem specifications and introduce a dedicated Physical Memory note
+  - Consolidate GUI and CPU benchmark documentation and remove superseded notes
+  - Simplify agent rules and skills while retaining their owning procedures
+  - Update links and benchmark source references, and remove selected stale AGENTS.md descriptions and numbered-rule citations
+- **Architectural Rationale & Trade-Offs**:
+  - Keep architectural ownership and verification limits readable in their owning documents. Remove duplicated instructions and preserve direct links to active procedures. Benchmark source changes update comments and docstrings only
+  - runtime behavior is unchanged.
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit on the intended source, including ordinary crate and standard harness tests, quality checks, English audit, and Python contracts
+  - PASS: vault frontmatter and links for 36 design specifications and 664 links
+  - PASS: git diff --check
+  - NOT RUN: full SingleStep and milestone profiles

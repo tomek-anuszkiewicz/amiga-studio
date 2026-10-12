@@ -5,7 +5,7 @@ description: Audit and repair YAML frontmatter properties, dual-layer linking, a
 
 # Recipe: Obsidian Properties & Dual-Layer Vault Linking
 
-This skill defines the complete operational checklist and formatting template for maintaining knowledge graph integrity and dual-layer linking across [Obsidian/Amiga/Design/](../../../Obsidian/Amiga/Design/) per [`.agents/rules/vault-linking-and-graph-integrity.md`](../../rules/vault-linking-and-graph-integrity.md).
+This skill defines the complete operational checklist and formatting template for maintaining knowledge graph integrity and dual-layer linking across [Obsidian/Amiga/Design/](../../../Obsidian/Amiga/Design/) per [docs-maintenance.md](../../rules/docs-maintenance.md#vault-metadata-and-link-integrity).
 
 ---
 

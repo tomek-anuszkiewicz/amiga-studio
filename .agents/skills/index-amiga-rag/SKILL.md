@@ -11,8 +11,8 @@ This skill defines the Amiga project workflow for indexing technical Markdown th
 
 ## 1. When to Trigger This Skill
 
-- **Trigger:** Immediately after a successful [`$audit-docs-quality`](../audit-docs-quality/SKILL.md) run in the current maintenance sequence under the same conditions: major milestone completion, specification updates, or a documentation/governance review.
-- **Order:** Repair and validate the documentation first; then run this skill to index the resulting accepted Markdown.
+- **Trigger:** An explicit request to index accepted, validated project documentation. A specification edit, commit, milestone, or documentation audit alone does not trigger indexing.
+- **Order:** Repair and validate the documentation first; then run this skill to index the accepted Markdown.
 - **Goal:** Preserve accurate project Markdown so the Amiga RAG MCP can retrieve trustworthy `amiga` context after its normal ingestion lifecycle.
 
 ---

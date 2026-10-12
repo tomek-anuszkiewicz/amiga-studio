@@ -6,8 +6,8 @@ category: "Design"
 subsystem: "config"
 status: "active"
 created: 2026-09-05
-updated: 2026-10-10
-related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Machine Loop.md](Machine%20Loop.md)"]
+updated: 2026-10-12
+related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/config"
 ---
@@ -16,7 +16,7 @@ tracked_paths:
 > [!NOTE]
 > All ROM binaries, disk images, and memory configurations are injected into the core externally as raw byte slices (`&[u8]`), preserving WASM portability and system independence (see [AGENTS.md](../../../AGENTS.md)).
 > Implementation resides in the dedicated foundational crate [`crates/config`](../../../crates/config).
-> Physical memory layout is applied in [MemoryBus.md](MemoryBus.md), RTC models in [RTC.md](RTC.md), chipset variants in [Agnus.md](Agnus.md) and [Denise.md](Denise.md), and system coordinator setup in [Machine Loop.md](Machine%20Loop.md).
+> Physical memory layout is applied in [Physical Memory.md](Physical%20Memory.md), motherboard routing in [MemoryBus.md](MemoryBus.md), RTC models in [RTC.md](RTC.md), chipset variants in [Agnus.md](Agnus.md) and [Denise.md](Denise.md), and system coordinator setup in [Machine Loop.md](Machine%20Loop.md).
 
 ---
 
@@ -64,7 +64,7 @@ The master configuration is encapsulated in [`A500Config`](../../../crates/confi
 
 ## 3. ROM & Image Injection Interfaces
 
-Because the emulator core is system-agnostic and decoupled from the host filesystem (Rule 1.1 and Rule 2.5 in [AGENTS.md](../../../AGENTS.md)), all ROMs and disk images are injected strictly as external byte slices (`&[u8]`):
+Because the emulator core is system-agnostic and decoupled from the host filesystem, all ROMs and disk images are injected strictly as external byte slices (`&[u8]`):
 - **Kickstart ROM Injection**: The top-level machine constructor accepts `kickstart_rom: &[u8]`, validating exact length (256 KB or 512 KB) before loading into `MemoryBus` and executing initial cold reset.
 - **Floppy ADF Injection**: Disk drives accept ADF images as raw byte slices `&[u8]`, enabling seamless operation in both desktop environments and WebAssembly canvas contexts.
 - **Zero Host I/O in Core**: No `std::fs` operations exist inside the core emulation engine.

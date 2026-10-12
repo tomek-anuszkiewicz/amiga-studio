@@ -1,661 +1,333 @@
 ---
-title: "M68000 Instruction Benchmarking Architecture & Anomaly Detection"
-aliases: ["CPU Instruction Benchmarking", "Instruction Benchmarking Architecture"]
-tags: ["amiga", "design", "m68000", "benchmark", "telemetry"]
+title: "M68000 Instruction Benchmarking"
+aliases: ["CPU Instruction Benchmarking", "Instruction Benchmarking Architecture", "CPU Benchmark Analysis Guide", "Instruction Benchmark Catalog", "Benchmark Strategies"]
+tags: ["amiga", "design", "m68000", "benchmark", "verification"]
 category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-10
-updated: 2026-10-11
-related: ["[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)"]
+updated: 2026-10-12
+related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](../Verification/CPU%20SingleStepTests.md)", "[Performance Profiling and Optimization Strategy.md](Performance%20Profiling%20and%20Optimization%20Strategy.md)"]
 tracked_paths:
   - "crates/test_runner/Cargo.toml"
   - "crates/test_runner/benches"
   - "tools/verification/analyze_benchmarks.py"
 ---
 
-# M68000 Instruction Benchmarking Architecture & Anomaly Detection
+# M68000 Instruction Benchmarking
 
-- **Parent Specification:** [CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)
-- **Module Location:** `crates/test_runner/benches/bench_instructions/`
-- **Companion Specifications:** [CPU Instruction Benchmark Catalog](CPU%20Instruction%20Benchmark%20Catalog.md) | [CPU Instruction Benchmark Strategies](CPU%20Instruction%20Benchmark%20Strategies.md) | [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md)
-- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../../AGENTS.md).
+The instruction benchmark measures the host cost of executing representative M68000 workloads through the cycle-stepped CPU and a mapped `PhysicalMemory` bus. Its 108 catalog entries cover selected instruction families, operand sizes, addressing modes, and distinct execution paths. It helps locate expensive emulator paths and compare performance after a change. It is a performance experiment, not a proof that the CPU produced the correct result or used the correct number and timing of bus cycles.
 
-> [!NOTE]
-> This document defines the architectural specification and execution model for the programmatic M68000 instruction benchmarking subsystem.
-> For per-instruction testing strategies (cascading stacks, PRNG data, exception loops), see [CPU Instruction Benchmark Strategies](CPU%20Instruction%20Benchmark%20Strategies.md).
-> For the exhaustive list of testable opcodes and addressing modes, see [CPU Instruction Benchmark Catalog](CPU%20Instruction%20Benchmark%20Catalog.md).
+The independent [SingleStep verification](../Verification/CPU%20SingleStepTests.md) supplies that correctness evidence: it compares CPU state, instruction duration, and timed bus callbacks with silicon-derived vectors on an isolated test bus. The [CPU model](../CPU%20Motorola%20M68000.md) and [micro-step specification](../CPU%20Micro-Step%20State%20Machine.md) define intended behavior; this benchmark reports how much host time the implementation spends executing it. Neither test runs the complete Amiga machine or establishes whole-system throughput.
 
----
+## 1. What we measure and why
 
-## 1. Benchmarking Goals & Architecture Overview
+| Evidence | Workload or comparison | Question it answers | Limit |
+| --- | --- | --- | --- |
+| Instruction benchmarks | Repeated guest instruction sequences from the catalog | Which paths cost more host time, and did that cost change? | Generated setup, stepping, bus work, and control flow contribute to wall time. |
+| Within-run comparisons | Register versus memory modes, byte/word/long sizes, related ALU operations, and distinct branch/division paths | Does a relative cost suggest an unusual dispatch, effective-address, bus, or exception path? | A difference is a diagnostic signal; it does not identify a root cause by itself. |
+| Historical baseline comparison | Current result versus a retained JSON report for a matching variant | Is a change large enough to investigate? | Host hardware, build, temperature, and scheduling can alter timing. |
+| SingleStep tests | One instruction against reference state, clocks, and bus callbacks | Does the CPU execute that case correctly? | Uses a synthetic bus rather than production arbitration. |
+| Profiler | Sampling a concrete benchmark executable | Where does host time go within a slow workload? | Samples explain a measured cost; they do not establish guest correctness. |
 
-The Amiga 500 emulator is a cycle-exact, micro-stepped simulation. While functional correctness is validated against over 1 million test vectors via [SingleStepTests](../Verification/CPU%20SingleStepTests.md) and [ordinary CPU wait tests](../Verification/CPU%20SingleStepTests.md#8-ordinary-cpu-wait-state-tests), raw correctness does not guarantee optimal host CPU performance or absence of micro-architectural stalls.
+The catalog selects representative registers such as `D0`, `D1`, `A0`, `A1`, `A6`, and `SP` to keep the suite practical. Its 108 entries are **selected variants**, not every register permutation, legal encoding, operand value, or instruction. Twelve effective-address forms are described below, but each instruction uses only forms legal and included for that instruction. Catalog CCK values are comparison metadata, including estimates for variable-duration operations; a row does not independently validate its own cycle count.
 
-The **M68000 Instruction Benchmarking Subsystem** exists to:
-1. **Detect Host Execution Anomalies:** Uncover unexpected execution latency spikes where instructions with identical or lower Amiga cycle counts consume disproportionately more host CPU time due to branch mispredictions, poor code alignment, cold path cache pollution, or missed inlining.
-2. **Profile Host Execution Efficiency:** Measure how efficiently modern pipelined host processors (x86_64 Zen/Core, aarch64 Apple Silicon/Neoverse) execute the 65,536-entry static dispatch table and micro-step state machine.
-3. **Differential Baseline Calibration:** Isolate pure instruction execution cost by subtracting a standardized 700-op `NOP` baseline ($T_{\text{baseline}}$), neutralizing loop control and instruction fetch overhead.
-4. **Prevent Performance Regressions:** Maintain persistent, version-controlled benchmark records over time (JSON/CSV) to track emulator throughput across commits and refactorings with automated diff alerting.
-5. **Flexible Execution Scaling:** Support both lightning-fast sanity checks (seconds) and thorough statistical baseline generation without modifying source code.
+## 2. How a workload runs
 
----
+The [catalog](../../../../crates/test_runner/benches/bench_instructions/catalog.rs) supplies an ID, syntax, opcode words, expected CCK count, category, and [construction strategy](../../../../crates/test_runner/benches/bench_instructions/builder.rs). The builder creates a program image in memory. The runner injects that image and initial registers into `Cpu` and `PhysicalMemory`, executes until the exit PC or another stopping condition, and repeats the program for timed passes. This is a synthetic CPU workload. It does not route accesses through the complete machine's DMA arbitration or peripherals.
 
-## 2. Execution Hierarchy: Dual-Loop Architecture
+The default unroll factor is $K=700$. A normal workload emits the target opcode 700 times, then jumps to the exit sentinel at `$004FFE`. The program starts at `$001000`; operand buffers begin at `$006000` and `$007000`; return chains use `$008000`; stack data starts near `$07F000`. Some workloads use a branch, a companion instruction, a return stack, or an exception handler, so **700 is a nominal target-operation count, not a guarantee that every block consists of 700 identical instructions**. The builder records `total_ops_per_pass = K` and `total_cck_per_pass = K × catalog CCK` for every strategy. These are declared counts, not an observed instruction or cycle trace.
 
-Accurately micro-benchmarking individual instructions on modern out-of-order, superscalar host CPUs requires isolating the target instruction from loop control branch overhead, host micro-architectural prediction biases, and compiler dead-code elimination.
+Each timed iteration calls `BenchmarkProgram::inject_into` again, resetting CPU state and selected Chip RAM bytes. The timer in the [runner](../../../../crates/test_runner/benches/bench_instructions/runner.rs) surrounds these injections and guest execution. Consequently `host_ns_per_instruction` divides **whole-iteration time** by nominal target operations; it includes setup and any companion/handler instructions. The unrolled guest block reduces branch overhead within the block, but the result is not the isolated latency of one host ALU operation. `std::hint::black_box` keeps the CPU state observable to the compiler after iterations; it does not verify the final state.
 
+### 2.1 Operand and state strategies
 
-```mermaid
-flowchart TD
-    subgraph Host Runner ["Host Test Runner (Outer Loop)"]
-        A[Load Benchmark Spec] --> B[Initialize Machine & Memory]
-        B --> C[Warm-up Pass]
-        C --> D[Sample Run 1..N]
-        D --> E[Statistical Aggregation: Min, Median, Max, StdDev]
-        E --> F[Persist to JSON & CSV]
-    end
-
-    subgraph Guest Emulation ["Guest Amiga MemoryBus (Inner Loop)"]
-        G[Preamble: Init Registers & Reset Pointers] --> H[Unrolled Instruction Block: K = 700 ops]
-        H --> I["Loop Footer: DBF D7, Target / Reset"]
-        I -->|D7 != 0| H
-        I -->|D7 == 0| J[Benchmark Complete / Exit]
-    end
-
-    D <-->|Executes Guest Machine| Guest Emulation
-```
-
-### 2.1 The Inner Loop: Unrolled Block ($K = 700$ Instructions)
-
-If an inner loop executed only 1 or 2 instructions before branching back (e.g. `ADD.W D1, D0` followed by `DBF D7, loop`), the loop control mechanics (`DBF` micro-steps, PC recalculation, host branch prediction evaluation) would consume up to 60% of the total measured time.
-
-To achieve pure instruction measurement:
-1. **Configurable Unroll Factor ($K$):** By default, the benchmark generator emits a contiguous block of **$K = 700$ unrolled instances** of the instruction under test.
-2. **Amortized Branch Overhead:** With 700 instructions per block, the single terminating `DBF` or jump represents less than **0.15%** of the executed cycles, negligible enough to provide near-perfect measurement isolation.
-3. **Defeating Host Loop Stream Detectors (LSD):**
-   - Modern x86 processors (Intel Skylake through Raptor Lake, AMD Zen 3/4) contain dedicated Loop Stream Detectors / $\mu\text{op}$ caches that identify tight loops under 64 instructions and stream decoded micro-ops directly to execution ports, completely bypassing instruction fetch and decode.
-   - An unrolled block of 700 instructions produces 1,400 to 4,200 bytes of guest machine code. This comfortably exceeds the host CPU's LSD threshold (preventing synthetic micro-op loop bypass) while remaining well within standard L1 instruction caches (32 KB–64 KB), ensuring realistic host instruction dispatch.
-4. **Host Branch Predictor Decorrelation:**
-   - Where applicable, unrolled sequences alternate registers (e.g. $D_0 \dots D_3$) or stride memory addresses so that the host CPU does not over-optimize repeated register rename aliases.
-
-### 2.2 The Outer Loop: Multi-Pass Statistical Sampling & Noise Compensation
-
-Modern host operating systems introduce non-deterministic timing noise via background thread preemption, memory paging, antivirus scans, DPC/ISR spikes, and dynamic CPU frequency scaling (turbo boost / thermal throttling).
-
-To guarantee that measurements reflect true emulator performance rather than transient host OS interference, the outer loop employs a multi-tiered noise compensation and filtering pipeline:
-
-```mermaid
-flowchart TD
-    Start["Run N Passes (e.g. 100 passes x 700 ops)"] --> Collect["Collect Raw Latency Samples"]
-    Collect --> OutlierFilter["1. Outlier Rejection: IQR / Tukey's Fences<br/>(Discard background OS preemption spikes)"]
-    OutlierFilter --> VarianceCheck{"2. Jitter Check:<br/>Coefficient of Variation (CV) < 3%?"}
-
-    VarianceCheck -- Yes: Stable --> Aggregate["3. Compute Robust Metrics:<br/>Median, Trimmed Mean, Min, Max"]
-    Aggregate --> Save["Persist Clean Benchmark Record"]
-
-    VarianceCheck -- No: Storm Detected --> StormAction{"Retry Count < Max Retries?"}
-    StormAction -- Yes --> Cooldown["Wait Out the Storm:<br/>500ms-1s Cooldown Sleep<br/>+ Dynamic Pass Extension (+20 passes)"]
-    Cooldown --> Collect
-
-    StormAction -- No --> FlagNoisy["Mark Run as 'environment_noisy: true'<br/>Preserve record but isolate from regression alerts"]
-```
-
-#### 1. Warm-up Phase
-- One or two unmeasured passes execute first to prime host L1i/L1d caches, populate the translation lookaside buffer (TLB), and bring CPU frequency governors up to maximum stable clock speed.
-
-#### 2. Outlier Rejection (Tukey's Fences & Trimmed Statistics)
-- Raw timing samples collected across passes undergo automatic outlier rejection:
-  - Calculate Interquartile Range ($\text{IQR} = Q_3 - Q_1$).
-  - Filter out extreme latency spikes where $T > Q_3 + 1.5 \times \text{IQR}$ (typical of host OS context switches and background service interference).
-  - Compute a **trimmed mean** (discarding top and bottom 10% of samples) alongside the **median**.
-
-#### 3. Adaptive Environmental Noise Compensation ("Wait Out the Storm")
-If the filtered samples exhibit high jitter ($\text{CV} = \sigma / \mu > 3.0\%$), it indicates the host CPU is experiencing external load or thermal throttling:
-1. **Cooldown Pause ("Wait Out the Storm"):** Sleep for 500 ms to 1 second to allow transient host spikes (disk I/O bursts, background threads) to settle.
-2. **Dynamic Pass Extension:** Automatically collect additional passes (e.g. extending from 100 to 120+ passes) until a statistically stable cluster of runs is achieved.
-3. **Graceful Noise Flagging:** If the host remains unstable after 3 retry cooldown attempts, the benchmark does not fail; instead, it flags the record with `"environment_noisy": true` and `"confidence": "low"`, preventing external host interference from being falsely reported as an emulator code regression.
-
-### 2.3 Compiler Optimization Defense (`black_box` & State Checksumming)
-
-Modern optimizing compilers (LLVM / `rustc -O`) are extraordinarily capable of detecting dead loops, constant results, or redundant state transitions:
-- If a benchmark loop modifies `CpuState` but never reads the result outside the loop, LLVM may optimize away parts of the dispatch loop or state updates.
-- **Defense Mechanism:**
-  1. At the conclusion of each outer pass, the test harness passes the mutable reference `&mut cpu` through `std::hint::black_box()` to prevent LLVM from eliminating intermediate memory or register writes.
-  2. The harness computes a rolling 64-bit CRC / XOR checksum of all registers ($D_0 \dots D_7, A_0 \dots A_7, SR, PC$) and asserts it via `black_box`, forcing complete hardware simulation fidelity on every pass.
-
-### 2.4 Differential Baseline Subtraction (`NOP` Reference Calibration)
-
-Even with 700 unrolled instructions, a baseline fraction of runtime is consumed by:
-- Instruction fetch and prefetch queue advance (`IR`/`IRC`).
-- Cycle counter incrementing and bus clock tick bookkeeping.
-- The single terminating `DBF` branch and loop control logic.
-
-To isolate the **pure execution latency ($\Delta T$)** of complex ALU or memory operations, the subsystem defines two baseline calibration models:
-
-#### 1. The Standard `NOP-700` Homogeneous Baseline
-- For the ~95% of instructions that are **100% homogeneous** (e.g. 700 pure `ADD.W`, 700 pure `MOVE.W`, 700 pure cascading `RTS`), the reference baseline is **`BASE-00`**: an identical block of 700 unrolled `NOP` instructions ($4\text{ CCK}$ each, the lowest-latency valid guest opcode).
-- The unit dispatch overhead of one guest instruction is:
-  $$T_{\text{unit\_nop}} = \frac{T_{\text{NOP-700}}}{700}$$
-- **Differential Delta:**
-  $$\Delta T_{\text{net}} = T_{\text{instruction}} - T_{\text{NOP-700}}$$
-  This cancels out the `DBF` loop control, prefetch priming, and general micro-step loop bookkeeping, leaving strictly the net host time spent on operand effective address calculations, bus transfers, and ALU computation.
-
-#### 2. Composite & Paired Blocks (Template-Matched Baselines)
-For instructions that require auxiliary or state-balancing companions inside the 700-instruction block:
-- **Paired Instructions (e.g. `LINK` + `UNLK`, `LSL` + `LSR`):**
-  - The block maintains the exact same total length ($K_{\text{total}} = 700$), consisting of 350 pairs:
-    $$350 \times \text{LINK} + 350 \times \text{UNLK} = 700\text{ instructions}$$
-  - The runner reports metrics normalized **per individual target instruction**:
-    $$\text{Host ns/op} = \frac{T_{\text{block}}}{350} - T_{\text{unit\_aux}}$$
-  - If `UNLK` has already been calibrated independently, its measured cost is subtracted to isolate `LINK`.
-- **Exception Trampoline Loops (e.g. `DIVU #0` with handler):**
-  - The baseline can run a **structural template replacement**, replacing the faulting `DIVU` with an un-trapped instruction in the same loop harness to isolate the trampoline overhead (`SUBQ` + `BEQ` + `RTE`) from the core Vector 5 exception dispatch.
-
-### 2.5 Sentinel Termination & Infinite Loop Protection
-
-To ensure synthesized machine code terminates cleanly and deterministically without unbounded execution or host process hangs:
-1. **The Sentinel Exit Address (`BENCH_EXIT_PC = $004FFE`):**
-   - Every synthesized linear block terminates with a jump footer (`JMP $004FFE`, opcode `4EF9 0000 4FFE`), or in cascading stack workflows (`RTS`, `RTR`, `RTE`), pops the final return address pointing to `$004FFE`.
-   - At address `$004FFE`, the injection builder places a supervisor stop instruction: `STOP #$2700` (opcode `4E 72 27 00`).
-2. **Termination Loop Invariant:**
-   - The inner stepping loop evaluates termination after each instruction:
-     ```rust
-     while !cpu.state.halted && !cpu.state.stopped && cpu.state.instruction_pc != program.exit_pc {
-         cpu.step_instruction(&mut bus);
-     }
-     ```
-   - Reaching `$004FFE` immediately breaks the loop, transitioning the CPU into the clean stopped state.
-3. **Hard Cycle Timeout Threshold ($10\times$ Expected CCK):**
-   - If an unexpected hardware defect, unaligned vector jump, or instruction corruption causes an infinite loop, execution is guaranteed to abort:
-     $$\text{max\_cycles} = \max(C_{\text{expected\_per\_pass}}, 1000) \times 10$$
-   - When `elapsed_cycles >= max_cycles`, the runner halts execution, marks `timed_out = true`, and flags the result with `AnomalyType::ExecutionTimeoutOrInfiniteLoop`.
-
-
----
-
-## 3. Programmatic Code Generation (`BenchmarkProgramBuilder`)
-
-Rather than maintaining hundreds of static `.bin` files and requiring an external M68000 assembler toolchain, the benchmarking subsystem synthesizes test programs **100% programmatically in Rust memory**.
-
-```mermaid
-flowchart LR
-    Spec[Benchmark Catalog Spec] --> Builder[BenchmarkProgramBuilder]
-    Builder --> Preamble[Preamble Synthesis]
-    Builder --> Unroll[Unrolled K-Block Generator]
-    Builder --> Footer[Footer Synthesis]
-    Builder --> Memory[PRNG Memory Buffer Init]
-    Preamble & Unroll & Footer & Memory --> Machine[Chip RAM Injection: $001000]
-```
-
-### 3.1 Architecture Advantages
-- **Zero External Toolchain Dependencies:** Compiles and runs out-of-the-box on native Linux, macOS, Windows, and WebAssembly without requiring `vasm`, `gas`, or pre-assembled binaries.
-- **Dynamic Parameterization:** Unroll factor $K$, register sets, memory addresses, and data patterns can be altered at runtime via test configuration flags.
-- **Microsecond Synthesis:** Constructing a 700-instruction test program directly in a `Vec<u16>` and writing it into Chip RAM takes under 15 microseconds.
-
-### 3.2 Program Structure
-Every generated benchmark program conforms to a 4-stage memory layout:
-
-```
-+-------------------------------------------------------------+
-| Vector Table & Exception Handlers ($000000 - $0003FF)       |
-+-------------------------------------------------------------+
-| PRNG Memory Operand Buffer ($000400 - $000FFF)              |
-+-------------------------------------------------------------+
-| Benchmark Program Entry ($001000):                          |
-|   1. Preamble: Set registers, SP, flags                     |
-|   2. Inner Loop Body: K unrolled target instructions        |
-|   3. Footer: JMP $004FFE / Cascading Stack Return           |
-|   4. Exit Sentinel: STOP #$2700 at $004FFE                  |
-+-------------------------------------------------------------+
-| Memory Buffers ($006000 A0 source, $007000 A1 destination)  |
-| Subroutine Return Base ($008000 rts_base)                   |
-| Cascading Stack / Push Buffer ($070000 - $07FFFF)           |
-+-------------------------------------------------------------+
-```
-
----
-
-## 4. Execution Scaling & Runtime Configuration
-
-The benchmark runner selects one execution profile through the command line, allowing the same catalog to serve as a quick measurement or a longer baseline generation run.
-
-### 4.1 Execution Profiles
-
-| Profile | CLI Profile | Nominal Total Instructions per Specification | Approximate Runtime (Whole Suite) | Primary Use Case |
-| :--- | :--- | :--- | :--- | :--- |
-| **Sanity / Quick** | `--quick` | $31{,}500$ | ~5 seconds | Pre-commit check, CI pipeline validation. |
-| **Standard** | `--standard` | $6{,}997{,}200$ | ~2 minutes | PR review, instruction optimization validation. |
-| **Thorough** | `--thorough` | $149{,}992{,}500$ | ~20 minutes | Nightly performance regression check. |
-
-### 4.2 Fixed Measurement Settings
-
-The command-line benchmark uses 700 instructions per generated block, the full
-catalog, profile-defined passes and iterations, and host core affinity when
-supported. Reports are written under `.agent/tmp/benchmarks/<profile>/`.
-Only the measurement profile is selectable from the command line. Internal test
-harnesses configure `BenchmarkConfig` directly for their constructed fixtures.
-
-### 4.3 Multi-Core Policy & Performance Core (P-Core) Auto-Detection
-
-```mermaid
-flowchart TD
-    Start["Benchmark Startup"] --> Mode{"Execution Mode"}
-    Mode -- "quick (Smoke Test)" --> ParallelOpt{"Parallel Flag Set?"}
-    ParallelOpt -- Yes --> MultiWorker["Run workers across N cores (-j N)"]
-    ParallelOpt -- No --> SingleSeq
-
-    Mode -- "standard / thorough" --> SingleSeq["Sequential Precision Profiling"]
-    SingleSeq --> Detect["Detect Host Topology & Core Types"]
-    Detect --> FindPCore["Identify Performance Cores (P-Cores)<br/>Windows: EfficiencyClass > 0<br/>Linux: Max cpuinfo_max_freq<br/>macOS: hw.perflevel0"]
-    FindPCore --> Pin["1. Pin Worker Thread to Primary P-Core<br/>2. Elevate to High Priority Class"]
-    Pin --> RunBench["Execute Benchmark Passes in Clean Isolation"]
-```
-
-#### 1. Why Sequential Profiling on P-Cores is Mandatory
-Running multiple benchmark threads concurrently across all CPU cores causes **severe measurement degradation**:
-- **Shared Cache Contention:** Concurrent threads evict each other's lines in the shared L3 cache.
-- **DRAM Bus Saturation:** Memory-referencing instructions compete for shared memory bus bandwidth.
-- **Thermal Downclocking:** Modern multi-core processors reduce clock speeds under all-core load (e.g. all-core boost clock is often 500–1000 MHz lower than peak single-core boost clock).
-- **The Golden Rule:** High-precision instruction profiling (`standard`, `thorough`) must execute **sequentially on a single dedicated Performance Core (P-core)** to maintain peak single-core turbo frequencies, clean L1i/L2 caches, and minimal jitter. Multi-threaded execution (`-j <N>`) is strictly reserved for developer smoke tests (`quick`).
-
-#### 2. Automatic Detection of Performance Cores (P-Cores vs E-Cores)
-On modern hybrid architectures (Intel 12th–14th Gen, AMD Zen 4/5c, Apple Silicon M-series), host processors mix high-performance P-cores with lower-clocked Efficiency (E-cores). To guarantee benchmarks always execute on maximum-performance hardware:
-
-- **Windows (`GetLogicalProcessorInformationEx`):**
-  - Queries `RelationProcessorCore` topology.
-  - Inspects the `EfficiencyClass` byte in each `PROCESSOR_CORE_INFO`:
-    - `EfficiencyClass == 0`: Efficiency Core (E-core).
-    - `EfficiencyClass > 0`: Performance Core (P-core) with highest computational throughput.
-  - The runner selects a core with the highest `EfficiencyClass`.
-- **Linux (`/sys/devices/system/cpu/`):**
-  - Scans `/sys/devices/system/cpu/cpu*/cpufreq/cpuinfo_max_freq`.
-  - Cores reporting the highest frequency ceiling (e.g. 5.8 GHz vs 4.0 GHz) are classified as P-cores.
-- **macOS (`sysctl`):**
-  - Queries `hw.perflevel0.logicalcpu` (P-cores) and `hw.perflevel1.logicalcpu` (E-cores).
-
-#### 3. Affinity Pinning & Thread Priority Elevation
-Once the optimal P-core is resolved:
-1. **Thread Affinity:** The runner binds the benchmark thread to the selected core mask (`SetThreadAffinityMask` on Windows, `pthread_setaffinity_np` on Linux/macOS), preventing the OS scheduler from migrating the thread across cores mid-pass.
-2. **Process Priority:** The runner temporarily raises its priority to `HIGH_PRIORITY_CLASS` (Windows) or `nice -20` (Unix) to minimize preemption from background host tasks.
-
-### 4.4 Portability & WebAssembly (WASM) Decoupling Architecture
-
-A fundamental architectural mandate of this emulator is:
-> *"Compiles seamlessly for native desktop (x86_64, aarch64) and WebAssembly (`wasm32-unknown-unknown`). System-agnostic core: zero direct OS or platform dependencies."*
-
-To satisfy this requirement without compromising native P-core pinning or portability across different machines:
-
-```mermaid
-flowchart TD
-    Runner["Benchmark Runner Entry"] --> Abstraction["Platform Abstraction Layer: HostEnvironment"]
-
-    Abstraction -->|cfg target_os = windows| Win["Windows Native: GetLogicalProcessorInformationEx + SetThreadAffinityMask"]
-    Abstraction -->|cfg target_os = linux| Lin["Linux Native: /sys/devices/system/cpu + sched_setaffinity"]
-    Abstraction -->|cfg target_os = macos| Mac["macOS Native: sysctl hw.perflevel0 + thread_policy_set"]
-    Abstraction -->|cfg target_arch = wasm32| Wasm["WebAssembly (WASM): Graceful No-Op Fallback + performance.now()"]
-    Abstraction -->|Homogeneous Native| Generic["Generic Fallback: Pin to Core 0 / All Cores Equal"]
-```
-
-#### 1. Decoupled Platform Abstraction (`HostEnvironment`)
-The benchmark harness defines a lightweight platform abstraction with zero runtime overhead in [`crates/test_runner/benches/bench_instructions/platform.rs`](../../../../crates/test_runner/benches/bench_instructions/platform.rs):
-- **Struct [`HostEnvironment`](../../../../crates/test_runner/benches/bench_instructions/platform.rs):** Encapsulates `platform_name`, `p_core_id`, and `affinity_supported`.
-- **`HostEnvironment::detect()`:** Discovers host topology dynamically on startup without hardcoding.
-- **`HostEnvironment::pin_to_p_core()`:** Pins the worker thread to the resolved P-core with high priority class; compiles to a clean no-op on WebAssembly.
-
-#### 2. Dynamic Hardware Discovery (Zero Hardcoded Paths or IDs)
-- If the user moves the project from an Intel hybrid laptop (P+E cores) to an AMD desktop (16 identical Zen cores) or an Apple Silicon Mac (M-series):
-  - **No hardcoded core numbers exist in the codebase.**
-  - At startup, the OS query resolves the current machine's physical layout in microseconds.
-  - On homogeneous processors (where all cores have identical performance), the detector recognizes that all cores are equal and pins to core 0 (or core 2 to stay clear of OS timer IRQs).
-
-#### 3. WebAssembly (`wasm32-unknown-unknown`) Compatibility
-In a WebAssembly environment (browsers, Node.js, Web Workers):
-- **Browser Sandboxing:** Web browsers intentionally restrict access to physical CPU core topology and thread affinity to prevent side-channel timing attacks (Spectre) and device fingerprinting.
-- **Graceful Compilation Fallback:** Under `#[cfg(target_arch = "wasm32")]`:
-  - `pin_to_p_core()` compiles into a **zero-overhead, successful no-op** (`Ok(())`).
-  - Core detection returns `affinity_supported: false`.
-  - Timers automatically bind to high-resolution web standards (`performance.now()`) instead of host-native APIs.
-- **Result:** The exact same benchmark code compiles cleanly for `wasm32-unknown-unknown`, allowing instruction benchmarking directly inside web browser test suites without compile errors, platform panics, or conditional code branching in the hot loop.
-
-
-
----
-
-## 5. Memory Environment & PRNG Seeding
-
-Memory-referencing instructions (`(An)`, `(An)+`, `-(An)`, `d(An)`, `d(An,Xi)`, `$xxxx.W`, `$xxxxxxxx.L`) must not operate on uninitialized, zeroed, or static memory:
-- Operating entirely on zeros risks unrealistic branch and arithmetic shortcuts in the host ALU (e.g. zero division, no-op carries).
-- Inverting bits or repeating single values creates synthetic CPU cache behaviors.
-
-### 5.1 Deterministic Pseudo-Random Generator (PRNG)
-To eliminate repetitive data patterns and prevent host processor branch/ALU shortcut optimizations, a deterministic PRNG is used for:
-1. **Memory Operand Buffers:** Pre-filling Chip RAM operand buffers with varied, non-zero bit patterns.
-2. **Initial Register Preamble:** Initializing Data and Address registers ($D_0 \dots D_7, A_0 \dots A_6$) with pseudo-random values.
-3. **Immediate Operand Stream:** Emitting varying pseudo-random constants for immediate instruction streams (e.g. 700 unrolled `MOVE.L #<random>, D0` or `ADDI.W #<random>, D0`) rather than repeating a single static constant.
-
-The generator does not require cryptographic security; a fast, lightweight 64-bit algorithm (such as `XorShift64`) is used:
-```rust
-// Deterministic seed ensures identical data across runs and host architectures
-const BENCH_PRNG_SEED: u64 = 0x8547_5938_4721_9381;
-```
-- **Determinism:** Data is 100% bit-for-bit identical across runs, native architectures (x86_64 vs aarch64), and releases.
-- **Valid Data Range Clamping:** For sensitive instructions (e.g. non-zero `DIVU`/`DIVS` divisors, valid decimal digits for `ABCD`/`SBCD`, word-aligned addresses for address registers), the PRNG output is clamped or masked to ensure architectural validity without triggering accidental hardware traps.
-
-
-### 5.2 Cyclic Memory Buffers
-For post-increment `(An)+` and pre-decrement `-(An)` modes:
-- The buffer size is sized to match the unroll block (e.g. $700 \times 4\text{ bytes} = 2{,}800\text{ bytes}$ for `.L` operations).
-- In the loop footer, $An$ is reset back to the buffer head, allowing endless cyclic traversals without memory overflow or fault generation.
-
----
-
-## 6. Results Persistence & Output Schema
-
-Upon completion of a benchmark run, results are serialized to disk into profile-isolated directories under `.agent/tmp/benchmarks/<profile>/`. To maintain a clean, deterministic repository without accumulating unbounded timestamped files, the harness implements **two-tier rotation**: before writing the new benchmark results, existing reports are automatically rotated to `_previous`:
-
-1. `.agent/tmp/benchmarks/<profile>/m68k_benchmark.json` (Active structured dataset with environment metadata).
-2. `.agent/tmp/benchmarks/<profile>/m68k_benchmark.csv` (Active flat tabular format for spreadsheet analysis and measurement comparisons).
-3. `.agent/tmp/benchmarks/<profile>/m68k_benchmark_latest.json` / `.csv` (Active run copy for automated regression diffing).
-4. `.agent/tmp/benchmarks/<profile>/m68k_benchmark_previous.json` / `.csv` (Immediately preceding run preserved before rotation).
-
-### 6.1 JSON Data Schema
-```json
-{
-  "version": 1,
-  "timestamp": "2026-09-10T12:00:00Z",
-  "environment": {
-    "host_os": "windows",
-    "host_arch": "x86_64",
-    "rustc_version": "rustc 1.82.0",
-    "profile": "release",
-    "unroll_factor": 700,
-    "outer_passes": 7
-  },
-  "results": [
-    {
-      "mnemonic": "ADD.W",
-      "variant": "ADD.W D1, D0",
-      "addressing_mode": "DataRegDirect",
-      "category": "Arithmetic",
-      "opcode_hex": "D041",
-      "amiga_cck_cycles": 4,
-      "total_guest_instructions": 7000000,
-      "total_guest_cck": 28000000,
-      "host_duration_median_ms": 19.82,
-      "host_duration_min_ms": 19.45,
-      "host_duration_max_ms": 20.31,
-      "host_jitter_pct": 1.25,
-      "host_ns_per_instruction": 2.83,
-      "host_ns_per_guest_cck": 0.708,
-      "host_mips": 353.18,
-      "anomaly_flag": false
-    }
-  ]
-}
-```
-
-### 6.2 CSV Data Columns & Schema Reference
-
-The `.csv` table provides identical telemetry and metadata to the JSON report in flat tabular form (`m68k_benchmark.csv`, `latest.csv`). All column headers are **100% unified with JSON property names**:
-
-```csv
-timestamp,mnemonic,variant,addressing_mode,category,opcode_hex,amiga_cck_cycles,total_guest_instructions,host_duration_median_ms,host_ns_per_instruction,host_ns_per_guest_cck,host_mips,host_jitter_pct,anomaly_flag
-epoch_00020706_140107,ADD,ADD.W D1 D0,DataRegDirect,Arithmetic,D041,4,6997200,19.82,2.83,0.708,353.18,1.25,false
-```
-
-#### Complete 14-Column Specification Table
-
-| Col # | Header Name (Unified with JSON) | Type | Example | Classification | Architectural Definition & Mathematical Formula |
-| :---: | :--- | :---: | :--- | :---: | :--- |
-| **0** | **`timestamp`** | `String` | `epoch_00020706_140107` | Run Metadata | Monotonically formatted execution timestamp or ISO-8601 string identifying the specific benchmark run. |
-| **1** | **`mnemonic`** | `String` | `ADD` | **Deterministic Invariant** | Motorola M68000 base assembly mnemonic (e.g. `ADD`, `MOVE`, `SUB`, `JSR`). |
-| **2** | **`variant`** | `String` | `ADD.W D1 D0` | **Deterministic Invariant** | Representative instruction syntax including operand size (`.B`, `.W`, `.L`) and operand types. Commas are replaced with spaces to avoid CSV quoting. |
-| **3** | **`addressing_mode`** | `String` | `DataRegDirect` | **Deterministic Invariant** | Effective Addressing Mode name (e.g. `DataRegDirect`, `AddrIndirect`, `PreDecrement`, `Displacement`, `Immediate`, `PcDisplacement`). |
-| **4** | **`category`** | `String` | `Arithmetic` | **Deterministic Invariant** | Functional instruction category (`Baseline`, `DataMovement`, `Arithmetic`, `Comparison`, `Logic`, `Shift`, `ControlFlow`, `Bcd`, `System`). |
-| **5** | **`opcode_hex`** | `String` | `D041` | **Deterministic Invariant** | Hexadecimal machine code representation of the instruction (16-bit, 32-bit, or 48-bit words separated by space). |
-| **6** | **`amiga_cck_cycles`** | `u64` | `4` | **Deterministic Invariant** | Cycle-exact Amiga Color Clock (**CCK**) cost on an Amiga 500 (~282 ns per CCK; $1\ \text{CCK} = 2\ \text{CPU clocks}$). |
-| **7** | **`total_guest_instructions`** | `u64` | `6997200` | **Deterministic Invariant** | Strictly nominal total operations executed across all passes ($K \times \text{iterations} \times \text{passes}$). Exactly invariant across all 108 specs for a profile (`Quick`: 31,500; `Standard`: 6,997,200; `Thorough`: 149,992,500). |
-| **8** | **`host_duration_median_ms`** | `f64` | `19.82` | **Stochastic Telemetry** | Median wall-clock duration per pass in milliseconds across all surviving passes after Tukey's fences outlier rejection. |
-| **9** | **`host_ns_per_instruction`** | `f64` | `2.83` | **Stochastic Telemetry** | Host execution latency per instruction in nanoseconds: $$T_{\text{host\_ns}} = \frac{T_{\text{median\_ms}} \times 10^6}{K \times \text{iterations}}$$ |
-| **10** | **`host_ns_per_guest_cck`** | `f64` | `0.708` | **Stochastic Telemetry** | **Normalized Emulation Tax ($R_{\text{norm}}$):** Host nanoseconds required to simulate one Amiga CCK phase. $$R_{\text{norm}} = \frac{\text{host\_ns\_per\_instruction}}{\text{amiga\_cck\_cycles}}$$ Target bound is $\le 3.50\text{ ns/CCK}$ (~80–110× real-time). |
-| **11** | **`host_mips`** | `f64` | `353.18` | **Stochastic Telemetry** | Host execution throughput in Millions of Instructions Per Second: $$\text{MIPS} = \frac{1000}{\text{host\_ns\_per\_instruction}}$$ |
-| **12** | **`host_jitter_pct`** | `f64` | `1.25` | **Stochastic Telemetry** | Coefficient of Variation ($\text{CV} = \sigma / \mu \times 100\%$) across passes. Values $< 3\%$ indicate high stability; $> 5\%$ flags excessive host jitter. |
-| **13** | **`anomaly_flag`** | `bool` | `false` | **Stochastic Telemetry** | Boolean anomaly verdict (`true` / `false`). Triggered if Type A (intra-family spike $> 2.5\times$), Type B (memory overhead $> 3.0\times$), or Type C (jitter $> 5\%$) rules fail. |
-
----
-
-## 7. Anomaly Detection: The Normalized Cycle Metric
-
-The primary objective of the benchmarking suite is not merely measuring raw speed, but **identifying implementation anomalies**.
-
-### 7.1 The Metric: Host Nanoseconds per Amiga Color Clock ($R_{\text{norm}}$)
-$$R_{\text{norm}} = \frac{T_{\text{host}}\ (\text{ns})}{C_{\text{guest}}\ (\text{Amiga CCK})}$$
-
-In a micro-stepped, cycle-exact emulator, each Amiga Color Clock represents a single step of the bus or internal state machine. Consequently, **the host time required per guest clock cycle should remain relatively uniform across all instructions of the same execution tier**.
-
-### 7.2 Anomaly Classification Rules
-
-```mermaid
-flowchart TD
-    Calc["Calculate R_norm = Host_ns / Guest_CCK"] --> Check1{"R_norm > 2.5x Family Baseline?"}
-    Check1 -- Yes --> Anomaly1["⚠️ Type A Anomaly: Hot Path Stalling / Cold Dispatch"]
-    Check1 -- No --> Check2{"R_norm (Memory) > 3.0x Register Baseline?"}
-    Check2 -- Yes --> Anomaly2["⚠️ Type B Anomaly: Bus Contention / Memory Inlining Defect"]
-    Check2 -- No --> Check3{"Jitter > 5.0% Across Passes?"}
-    Check3 -- Yes --> Anomaly3["⚠️ Type C Anomaly: Host Branch Prediction Thrashing"]
-    Check3 -- No --> Pass["✅ Normal Execution Profile"]
-```
-
-1. **Type A: Intra-Family Execution Spike ($R_{\text{norm}} > 2.5\times$ baseline)**
-   - *Symptom:* `SUB.W D1, D0` takes $0.71\text{ ns/CCK}$, but `AND.W D1, D0` (both 4-cycle register operations) takes $2.45\text{ ns/CCK}$.
-   - *Root Cause:* Dynamic match expressions evaluated at runtime instead of direct table dispatch, or missing compiler optimizations.
-2. **Type B: Addressing Mode Inefficiency ($R_{\text{norm}} > 3.0\times$ register baseline)**
-   - *Symptom:* Memory read `MOVE.W (A0), D0` exhibits an exorbitant cost per cycle compared to register `MOVE.W D1, D0`.
-   - *Root Cause:* Memory access helpers (`read_word`, `bank_handler`) failing cross-crate inlining (`#[inline]`), creating indirect function call overhead on every bus cycle.
-3. **Type C: Excessive Jitter ($\sigma / \text{median} > 5\%$)**
-   - *Symptom:* Significant variance between consecutive outer loop passes on an idle system.
-   - *Root Cause:* Host CPU Branch Target Buffer (BTB) capacity exceeded, or instruction stream crossing cache line boundaries unevenly.
-
-### 7.3 Automated Historical Regression Diffing (`bench_diff`)
-
-To make benchmark data immediately actionable across development cycles:
-- **Baseline Comparison:** The test runner automatically looks for `baselines/benchmarks/m68k_benchmark_baseline.json`. If present, it computes the delta percentage for each instruction variant:
-  $$\Delta \% = \frac{T_{\text{new}} - T_{\text{baseline}}}{T_{\text{baseline}}} \times 100\%$$
-- **Regression Alert Thresholds:**
-  - **$\Delta \le +3.0\%$:** Normal variance / noise tolerance.
-  - **$+3.0\% < \Delta \le +7.0\%$:** Warning flag (`⚠️ Minor Regression: Investigate inlining`).
-  - **$\Delta > +7.0\%$:** Failure alert (`🚨 Severe Regression: Blocking merge`).
-- **Environment Metadata Verification:** The diff engine verifies that `host_arch`, `host_cpu`, and `profile` match before issuing regression alerts, ensuring measurements taken on different hardware are never compared directly.
-
-For the comprehensive evaluation framework and analysis techniques (Functional Symmetry, Addressing Mode Latency Ladders, Size Scaling, and Normalized Emulation Tax), consult the dedicated [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md).
-
----
-
-## 8. CLI Execution Guide: Quick, Standard, and Thorough Runs & Automated Baseline Diffing
-
-The benchmarking harness supports multiple operational profiles, targeted category filtering, and automatic differential regression comparison against a locked golden baseline.
-
-### 8.1 Execution Profiles: Quick, Standard, and Thorough
-
-Select an execution profile with the words `quick`, `standard`, or `thorough`:
-
-| Profile Selector | Outer Passes | Iterations / Pass | Total Ops / Spec | Typical Full Suite Duration | Recommended Usage |
-| :--- | :---: | :---: | :---: | :---: | :--- |
-| **`quick`** | 3 | 15 | ~10,500 | **~2–5 seconds** | Rapid developer sanity checks, pre-commit validation, CI pipelines. |
-| **`standard`** *(default)* | 7 | 1,428 | ~1,000,000 | **~1–2 minutes** | Standard performance profiling, PR validation, Tukey outlier rejection. |
-| **`thorough`** | 15 | 14,285 | ~10,000,000 | **~10–15 minutes** | High-precision baseline generation, jitter elimination ($\text{CV} < 1\%$). |
-
-### 8.2 Results Output Files & Directory Structure
-
-Tracked references and generated artifacts use separate directories:
-
-```text
-baselines/benchmarks/                         # Git-tracked references
-    m68k_benchmark_baseline.json
-    m68k_benchmark_baseline.csv
-.agent/tmp/benchmarks/                    # Ignored CLI output
-    quick/                               # Current/latest/previous JSON and CSV
-    standard/
-    thorough/
-```
-
-Benchmark runs write generated artifacts into ignored directories. Tracked baseline reports remain unchanged unless explicitly updated after review.
-
-### 8.3 Automated Baseline Diffing & Cross-Hardware Normalization
-
-The test runner features **built-in zero-configuration differential regression detection**:
-1. **Automatic Detection:** On every benchmark run, the harness automatically checks whether `baselines/benchmarks/m68k_benchmark_baseline.json` exists.
-2. **Cross-Hardware Normalization:** When running on a different CPU architecture (e.g. AMD Ryzen, Apple Silicon, CI) or when baseline NOP duration diverges by $> 15\%$ from the host's measured NOP latency, the runner automatically normalizes execution durations relative to `BASE-00` (`NOP`):
-   $$R_{\text{nop}} = \frac{T_{\text{host}}(\text{Op})}{T_{\text{host}}(\text{NOP})}$$
-   $$\Delta\% = \frac{R_{\text{nop, current}} - R_{\text{nop, baseline}}}{R_{\text{nop, baseline}}} \times 100\%$$
-   Because host CPU clock speed variations scale both the target instruction and NOP equally, this ratio is hardware-invariant and eliminates false regression alarms across different developer machines.
-3. **Immediate Diff Output:** The runner matches each opcode specification, calculates $\Delta\%$ change, and displays live terminal alerts:
-   - **$\Delta \le +3.0\%$:** `OK (baseline)` — within normal noise and thermal jitter tolerance.
-   - **$+3.0\% < \Delta \le +7.0\%$:** `⚠️ [WARN: Minor Regression]` — potential cache line misalignment or missed cross-crate inlining.
-   - **$\Delta > +7.0\%$:** `🚨 [FAIL: Severe Regression]` — unacceptable performance drop; review git diff immediately.
-4. **Promoting / Updating the Baseline:**
-   To establish or update the golden baseline after intentional, verified optimizations:
-   ```powershell
-   Copy-Item .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.json baselines/benchmarks/m68k_benchmark_baseline.json
-   Copy-Item .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.csv baselines/benchmarks/m68k_benchmark_baseline.csv
-   ```
-
-### 8.4 Command Cheat-Sheet & Comprehensive CLI Reference
-
-CPU measurements have one executable entry point: the `bench_instructions`
-Cargo benchmark target in [`Cargo.toml`](../../../../crates/test_runner/Cargo.toml).
-The `test_runner` crate contains test and benchmark targets. The aggregate SingleStep test automatically finalizes reports once after its selected instruction groups finish; report details belong to the [verification reference](../../../../tools/verification/README.md#saved-singlestep-reports).
-
-#### 8.4.1 Benchmark Invocation
+The [deterministic PRNG](../../../../crates/test_runner/benches/bench_instructions/prng.rs) seeds initial data registers and fills operand buffers. The builder overrides those seeds where a path needs a particular condition. Re-injection gives each iteration the same initial state. Immediate operands come from catalog opcode words; they are not a freshly generated random stream for every emitted instruction.
+
+| Workload family | Constructed condition | Why it matters and what remains in the timing |
+| --- | --- | --- |
+| Register moves and ALU | Repeated operations on representative registers; arithmetic wraps at the operand width. | Exposes dispatch and register paths, though repeated destructive operations can reach a stable value. |
+| Memory modes and `CMPM` | Aligned pointers traverse PRNG-filled Chip RAM buffers. Post-increment and pre-decrement start at positions that leave room for the block. | Exercises effective-address and memory paths. Pointers are reset by the next injection, not by a guest loop footer. |
+| `LINK`/`UNLK`, paired shifts, and terminal `DBcc` | The builder emits 350 pairs rather than 700 identical target operations. | Preserves a usable stack or operand/loop state; reported cost includes both members of the pair. |
+| Logic, bit operations, and rotations | Catalog opcode words are repeated over seeded registers or memory. Selected left/right shifts use the paired construction; rotations and `SWAP` use the ordinary repeated block. | Exercises the selected decode and data paths, but the builder does not cycle bit indices or alternate fresh random masks within a block. Repeated destructive operations can change the operand distribution. |
+| Comparisons and tests | Register `CMP`/`TST` cases repeat without changing operands; `CMPM` advances two seeded memory pointers. | Keeps simple comparisons stable while exercising a separate memory path for `CMPM`. It does not validate the resulting flags. |
+| Multiply and divide | Valid unsigned division starts with `D1=$00A5`, `D0=$00050000`; signed division uses `D1=1`, `D0=$1234`. Overflow uses a high dividend word and small divisor. | Separates normal and early-overflow paths. Operand evolution and actual clocks need independent inspection when interpreting a result. |
+| Divide by zero | Vector 5 points to a handler that decrements `D7` and uses `RTE` to repeat the fault until the count is exhausted. | Times exception entry **plus** handler, stack, and return activity. The generated entry uses `DIVU.W D1,D0`; catalog labels for both divide-by-zero variants are metadata, not proof of two distinct emitted faulting opcodes. |
+| BCD and bounds check | BCD buffer bytes are generated as valid packed digits; `CHK` starts in bounds. | Measures selected valid-data paths rather than every carry or exception case. |
+| Branches and calls | Taken branches skip inserted `NOP`s; untaken branches fall through. `BSR` uses an inline call/return sequence; `DBcc` has taken and terminal constructions. | Control-flow timing includes the selected layout and, for calls, return instructions. |
+| `RTS`, `RTR`, `RTE` | Prepared stacks point each return at the next opcode and end at the exit PC. `RTR`/`RTE` use six-byte frames. | Exercises return or exception-return paths with no guest setup between returns; stack construction occurs during timed injection. |
+| `TRAP #0` and privileged operations | A vector 32 handler contains `RTE`; system-register variants start in supervisor mode where required. | Measures the selected trap/privileged path and handler overhead; other exception classes described by the 68000 are not automatically benchmarked. |
+
+For return chains, the stack contains target addresses for the next instruction and finally `$004FFE`. `RTS` pops four-byte PCs. `RTR` pops a CCR word and PC; `RTE` pops an SR word and PC. For divide-by-zero, the vector at `$000014` points to a handler at `$000500`; its `SUBQ`/`BEQ`/`RTE` loop and final stack adjustment make repeated faults terminate. These layouts are necessary to execute control-flow instructions repeatedly, and their overhead must be considered when comparing them with straight-line instructions.
+
+The catalog's declared opcode words and the emitted program are different layers. The builder substitutes sequences for several strategies. For example, `FLOW-04` declares `6104` in [catalog data](../../../../crates/test_runner/benches/bench_instructions/catalog_data_b.rs), while the `SubroutineCall` builder emits `6102` inside its call/return block. The catalog table below retains the declared syntax and opcode metadata; use the builder or inspect an injected image to determine the actual timed instruction stream. Do not treat this mismatch as a validated reference correction.
+
+### 2.2 Sampling and termination
+
+| Profile | Measured passes | Iterations per pass | Nominal target operations, if all passes finish |
+| --- | ---: | ---: | ---: |
+| `--quick` | 3 | 15 | 31,500 |
+| `--standard` | 7 | 1,428 | 6,997,200 |
+| `--thorough` | 15 | 14,285 | 149,992,500 |
+
+For each specification the runner performs one unmeasured warm-up pass, then times the profile's passes. It computes the median and a 10% trimmed mean after applying Tukey fences when there are at least four samples. The coefficient of variation (CV) is calculated from the retained samples. If CV exceeds 3%, the runner waits 500 ms and retries up to twice, replacing the previous sample set rather than extending it. A final CV above 3% marks the environment noisy; above 5% also triggers a jitter anomaly. `quick` has only three samples, so its outlier filter cannot operate. A nominal operation count uses the raw number of **final** samples, not the filtered count.
+
+The runner attempts to pin its thread to a selected core where supported and runs specifications sequentially. This is a host benchmark policy in [platform.rs](../../../../crates/test_runner/benches/bench_instructions/platform.rs), outside the portable emulation core. The pinning call's result is ignored, so the report's `p_core_pinning_active` field describes the requested/supported path, not confirmed OS affinity. Host load and thermal behavior still affect measurements. The runner stops a pass at an exit PC, a CPU stop/halt, zero clocks returned by a step, or a cycle cap based on ten times the nominal CCK budget (at least 1,000 CCK before multiplication). A cap hit produces a timeout anomaly; the mere absence of that flag does not prove that exactly $K$ target instructions executed.
+
+## 3. Results, comparisons, and interpretation
+
+The [persistence module](../../../../crates/test_runner/benches/bench_instructions/persistence.rs) writes JSON and CSV under `.agent/tmp/benchmarks/<profile>/`. It preserves the preceding canonical files as `_previous`, writes `m68k_benchmark.json` and `.csv`, and copies them to `_latest`. Generated files are local artifacts. Reviewed reference files live in `baselines/benchmarks/` and are protected by the [reference-artifact rule](../../../../.agents/rules/spec-compliance.md); a timing difference alone does not authorize editing them.
+
+CSV has 14 columns: `timestamp`; seven declared or nominal fields (`mnemonic`, `variant`, `addressing_mode`, `category`, `opcode_hex`, `amiga_cck_cycles`, `total_guest_instructions`); and six host/result fields (`host_duration_median_ms`, `host_ns_per_instruction`, `host_ns_per_guest_cck`, `host_mips`, `host_jitter_pct`, `anomaly_flag`). The JSON report also contains environment metadata, nominal total CCK, min/max durations, a NOP differential, and anomaly notes. The CSV values are formatted to limited decimal precision, so use JSON or raw output for closer investigation. The `timestamp` identifies the run; it is not a deterministic invariant.
+
+The key calculations are:
+
+$$T_{\text{ns/op}}=\frac{\text{median pass nanoseconds}}{K\times\text{iterations}},\qquad R_{\text{norm}}=\frac{T_{\text{ns/op}}}{\text{catalog CCK/op}},\qquad \text{MIPS}=\frac{1000}{T_{\text{ns/op}}}.$$
+
+`R_norm` expresses **host nanoseconds per declared guest CCK**, not measured Amiga clock accuracy. The NOP differential is `max(T_op − T_NOP, 0)` and is useful as a rough within-run comparison. The NOP and target workloads can have different memory, control-flow, or setup costs, so subtraction does not isolate an ALU or bus primitive.
+
+The anomaly classifier uses the NOP `ns/CCK` value as its supplied family baseline and flags a result above 2.5 times that value, jitter above 5%, or a cycle-cap timeout. Its memory-mode comparison currently receives the NOP `ns/op` value as a register baseline but compares it with the target's `ns/CCK`: those units differ, so that Type B verdict is not a reliable measure of memory overhead. These flags identify candidates for investigation, not demonstrated cache, branch predictor, or inlining defects. The runner also loads a historical JSON baseline when available. Matching variants are compared by raw `ns/op`; when architecture/OS differs or NOP time differs by more than 15%, it instead compares the target-to-NOP ratios. Changes above 3% receive a warning, and above 7% receive a severe label and report anomaly. Ratio normalization reduces some clock-rate effects but cannot make different machines equivalent or make the benchmark fail the process solely for a performance regression.
+
+### 3.1 Questions to ask of a report
+
+| Comparison | Calculation or observation | Interpretation check |
+| --- | --- | --- |
+| Functional symmetry | Compare `ADD.W`, `SUB.W`, `AND.W`, `OR.W`, `EOR.W`, and `CMP.W` register cases on the same run. | A large spread suggests a candidate path; confirm comparable instruction streams and noise before tracing code. |
+| Addressing cost | $\Delta T_{\text{mode}}=T(\text{MOVE.W, mode})-T(\text{MOVE.W, Dn})$. | This includes guest cycle count, effective-address work, memory work, and setup; it is not a pure address-calculation cost. |
+| Operand size | Compare `.B`, `.W`, and `.L` within the same instruction family and mode. | Different declared CCK and guest bus transfers can explain a size change. |
+| Complex instructions | Compare raw `ns/op` and `R_norm` for `MOVEM`, multiply/divide, returns, and traps. | Handler, companion, and stack setup costs can dominate a nominal operation. |
+| Cycle correlation | Fit $T_{\text{ns/op}}=\alpha\,C_{\text{catalog}}+\beta$ and inspect $R^2$. | Correlation describes this dataset; $\beta$ is not independently measured dispatch cost and a high $R^2$ does not validate cycle counts. |
+
+The [analysis script](../../../../tools/verification/analyze_benchmarks.py) produces these tables and a complete result listing. Its thresholds for `R_norm` are presentation labels, not correctness gates. Some dimensions require a full catalog: a filtered or partial CSV may lack comparison members. Historical example numbers in `baselines/benchmarks/m68k_benchmark_baseline.csv` are a retained measurement from one environment, not a universal target or a current measurement. Investigate a change by repeating both revisions under comparable conditions, checking jitter and the actual guest sequence, and profiling the slow case.
+
+For example, the retained CSV reports `MOVE.W D1,D0` at 16.20 ns/op (4 declared CCK), `MOVE.W (A0),D0` at 25.08 ns/op (8 CCK), and `MOVE.W 16(A0),D0` at 32.92 ns/op (12 CCK). The differences of 8.88 ns and 16.72 ns relative to register direct suggest increasing host cost with the selected effective-address paths. They do not isolate address calculation from guest clock stepping or timed injection. The same file reports `ADD.W D1,D0` at 15.96 ns/op and `SUB.W D1,D0` at 15.86 ns/op; that 0.10 ns difference is small compared with a cross-run performance claim. This example explains how to read a recorded dataset; its source run is not repeated or validated by this document.
+
+## 4. How we verify the benchmark and CPU
+
+1. **Check the workload definition.** Compare an ID, opcode words, addressing mode, category, strategy, and CCK metadata with the [living catalog parts](../../../../crates/test_runner/benches/bench_instructions/catalog_data_a.rs) and [part B](../../../../crates/test_runner/benches/bench_instructions/catalog_data_b.rs). The catalog contains 108 IDs. Inspect the builder for strategies that replace or supplement declared opcodes. This is a static consistency review, not behavioral proof.
+2. **Check guest correctness separately.** Run focused SingleStep vectors for changed CPU behavior and the authoritative full suite when required by the project verification profile. The vectors compare state, clocks, and timed bus callbacks; the benchmark cannot replace them. For a memory or DMA change, use the relevant production-bus and machine tests as well, because this benchmark uses `PhysicalMemory` directly.
+3. **Measure the affected workload.** Select one of the three supported profiles. A completed command means the harness produced files; inspect timeout and anomaly notes, row count, and whether each expected ID/variant is present. A cycle cap, `STOP`, or zero-clock exit needs investigation before accepting timing.
+4. **Check report structure.** Compare CSV headers and rows with JSON results. Recompute nominal counts from $K ×$ iterations $×$ raw measured passes and derive `ns/op`, `ns/CCK`, and MIPS from the median. Compare declared fields with catalog data. Host durations, jitter, and anomaly verdicts can legitimately differ between runs. Whole-file checksums are unsuitable for generated reports.
+5. **Interpret the performance evidence.** Review CV, machine/build context, NOP time, family and addressing comparisons, and a repeated baseline diff. Use a profiler for a suspected hot path. Do not rewrite a reference CSV or cycle expectation to turn a failed check into a pass; follow the [specification conflict procedure](../../../../.agents/rules/spec-compliance.md).
+
+The benchmark does **not** currently assert the final register or memory state for each catalog row, compare an observed guest instruction count with the nominal count, or compare observed cycles with `amiga_cck_cycles`. Its metadata, timeout logic, and generated CSV therefore cannot independently establish execution correctness. A changed builder strategy deserves particular scrutiny because it can alter the timed sequence without changing the catalog row.
+
+### 4.1 Commands and artifacts
 
 ```powershell
-cargo bench -p test_runner --bench bench_instructions -- [OPTIONS]
-```
+# No profile prints help; a profile is required to measure.
+cargo bench -p test_runner --bench bench_instructions -- --quick
+cargo bench -p test_runner --bench bench_instructions -- --standard
+cargo bench -p test_runner --bench bench_instructions -- --thorough
 
-Cargo builds this target with the optimized benchmark profile. The target uses
-`harness = false`: its own entry point invokes the existing measurement engine,
-which retains program synthesis, timing, statistics and report persistence.
-Running without options prints instructions and exits without measuring. Select
-one measurement profile with `--quick`, `--standard` or `--thorough`.
-The [benchmark parser](../../../../crates/test_runner/benches/bench_instructions/cli.rs)
-rejects unknown, repeated, missing or invalid options before execution with exit
-code 2. Only a measurement profile or help is accepted. Cargo's appended
-`--bench` marker is handled without changing the measurement configuration.
-
-`verify.py runner bench` translates sentence selectors into the same Cargo
-invocation. `verify.py runner profile bench` builds the target without execution,
-reads the benchmark executable from Cargo artifact messages and runs that exact
-artifact under `samply`. Build failure or a missing benchmark artifact stops
-profiling before an older executable can run. The
-[profiling launcher](../../../../tools/verification/profile_benchmark.py) owns
-artifact selection and external profiler invocation.
-
-#### 8.4.2 Benchmark Options
-
-| Option | Argument | Default | Description |
-| :--- | :---: | :---: | :--- |
-| **`--quick`** | None | None | 3 passes with 15 iterations per specification. |
-| **`--standard`** | None | None | 7 passes with 1,428 iterations per specification. |
-| **`--thorough`** | None | None | 15 passes with 14,285 iterations per specification. |
-| **`--help`, `-h`** | None | Help | Prints benchmark usage without measuring. |
-
-#### 8.4.3 Practical CLI Execution Examples
-```powershell
-# 1. Quick measurement profile:
+# The verification frontend measures and then analyzes a successful run.
 python tools/verification/verify.py runner bench quick
 
-# 2. Standard measurement profile (no profile prints help without measuring):
-python tools/verification/verify.py runner bench standard
-
-# 3. Sampled SingleStep tests for one opcode (reports are saved automatically):
-python tools/verification/verify.py test runner singlestep case test_add_b sample 50
-
-# 4. Full markdown comparative analysis report generation from latest thorough run:
-python tools/verification/verify.py runner analyze .agent/tmp/benchmarks/thorough/m68k_benchmark_latest.csv report .agent/tmp/benchmarks/thorough/analysis_report.md
+# Analyze an existing CSV without remeasuring.
+python tools/verification/verify.py runner analyze .agent/tmp/benchmarks/thorough/m68k_benchmark.csv report .agent/tmp/benchmarks/thorough/analysis_report.md
 ```
 
----
+Direct `cargo bench` runs measurement and persistence. `verify.py runner bench` invokes that same Cargo target and, only after success, runs the Python analysis into `.agent/tmp/benchmarks/<profile>/analysis_report.md`. The [verification README](../../../../tools/verification/README.md) owns further command options and SingleStep procedures. The CLI accepts one of `--quick`, `--standard`, `--thorough`, or help; internal `BenchmarkConfig.filter` supports constructed subsets but is not a Cargo CLI option. A profile run is not part of ordinary task completion unless the changed behavior or user request calls for it.
 
-## 9. Living Rust Source Code & Module Map
+## 5. Catalog: selected variants and addressing modes
 
-All components specified in this document are implemented without macros or const-generic dispatch, strictly conforming to the 800-line modularity threshold:
+The catalog table records **declared benchmark metadata**. It retains the 108 case IDs so a reader can map a report row to its strategy and the source definition. `~` marks a historical approximate CCK annotation; the executable catalog stores an integer. The code and its [Motorola timing reference](../../Reference/68000%20User%27s%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md) must be reviewed before treating a value as an exact cycle requirement.
 
-| Subsystem Component | Living Rust Source File | Responsibilities |
-| :--- | :--- | :--- |
-| **Benchmark Runner** | [`crates/test_runner/benches/bench_instructions/runner.rs`](../../../../crates/test_runner/benches/bench_instructions/runner.rs) | Dual-loop runner, baseline calibration, black_box compiler defense, and hard cycle cap timeout. |
-| **Catalog Specifications** | [`crates/test_runner/benches/bench_instructions/catalog.rs`](../../../../crates/test_runner/benches/bench_instructions/catalog.rs)<br/>[`catalog_data_a.rs`](../../../../crates/test_runner/benches/bench_instructions/catalog_data_a.rs)<br/>[`catalog_data_b.rs`](../../../../crates/test_runner/benches/bench_instructions/catalog_data_b.rs) | Exhaustive static catalog of ~80 benchmark specifications covering Categories 0–8. |
-| **Programmatic Builder** | [`crates/test_runner/benches/bench_instructions/builder.rs`](../../../../crates/test_runner/benches/bench_instructions/builder.rs) | Synthesizes unrolled instruction blocks ($K = 700$), cascading return stacks, and Chip RAM buffers. |
-| **Platform Abstraction** | [`crates/test_runner/benches/bench_instructions/platform.rs`](../../../../crates/test_runner/benches/bench_instructions/platform.rs) | Windows P-core topology discovery, affinity pinning (`SetThreadAffinityMask`), priority elevation, WASM fallback. |
-| **Deterministic PRNG** | [`crates/test_runner/benches/bench_instructions/prng.rs`](../../../../crates/test_runner/benches/bench_instructions/prng.rs) | `XorShift64` PRNG seeded with `BENCH_PRNG_SEED`, valid BCD generator. |
-| **Statistical Analysis** | [`crates/test_runner/benches/bench_instructions/stats.rs`](../../../../crates/test_runner/benches/bench_instructions/stats.rs) | Multi-pass statistical sampling, Tukey's fences outlier rejection, jitter analysis ($\text{CV} < 3\%$), MIPS calculation. |
-| **Anomaly Classifier** | [`crates/test_runner/benches/bench_instructions/anomaly.rs`](../../../../crates/test_runner/benches/bench_instructions/anomaly.rs) | Evaluates Type A, Type B, Type C, and `ExecutionTimeoutOrInfiniteLoop` anomalies; diffs against baseline. |
-| **Persistence Engine** | [`crates/test_runner/benches/bench_instructions/persistence.rs`](../../../../crates/test_runner/benches/bench_instructions/persistence.rs) | Formats and saves ignored JSON and CSV measurement reports. |
-| **Benchmark Entry** | [`crates/test_runner/benches/bench_instructions/cli.rs`](../../../../crates/test_runner/benches/bench_instructions/cli.rs) | Sole executable entry point and argument validation for `cargo bench`. |
-| **Analysis & Reporting Tool** | [`tools/verification/analyze_benchmarks.py`](../../../../tools/verification/analyze_benchmarks.py) | Comparative analysis tool evaluating functional symmetry, addressing mode scaling, and emulation tax. |
+Data and address registers use canonical representatives: destination `D0`, source `D1`, source pointer `A0`, destination pointer `A1`, frame pointer `A6`, stack pointer `A7`, and index `D2.W`. This bounds the performance suite; it does not imply complete register-index decoding coverage.
 
----
+| Mode | Example | Encoding `mmm/rrr` | Extension words |
+| --- | --- | --- | --- |
+| Data register direct | `Dn` | `000/register` | 0 |
+| Address register direct | `An` | `001/register` | 0 |
+| Address indirect | `(An)` | `010/register` | 0 |
+| Post-increment | `(An)+` | `011/register` | 0 |
+| Pre-decrement | `-(An)` | `100/register` | 0 |
+| Displacement | `d16(An)` | `101/register` | 1 |
+| Index | `d8(An,Xn)` | `110/register` | 1 |
+| Absolute short | `(xxx).W` | `111/000` | 1 |
+| Absolute long | `(xxx).L` | `111/001` | 2 |
+| PC displacement | `d16(PC)` | `111/010` | 1 |
+| PC index | `d8(PC,Xn)` | `111/011` | 1 |
+| Immediate | `#data` | `111/100` | 1 or 2 |
 
-## 10. Benchmark Report Fields and Nominal Operation Counts
+### Category 0: Calibration Baseline (`NOP`)
 
-A fundamental engineering challenge in micro-benchmarking is verifying that generated output files (`.agent/tmp/benchmarks/**/*.csv` and `.json`) are **structurally and functionally correct**, even though physical timing metrics (`host_ns_op`, `host_mips`, `jitter_pct`) naturally vary across host CPUs, operating systems, and ambient workloads.
+| ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
+| :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
+| **BASE-00** | `NOP` | — | Implied | `NOP` | `4E71` | 4 | `baseline` |
 
-### 10.1 Separating Stochastic Telemetry from Emulation Invariants
+> [!TIP]
+> `BASE-00` supplies the within-run NOP comparison. The differential includes workload setup and cannot isolate a pure instruction cost.
 
-Every benchmark row in the CSV table contains 14 columns. The verification architecture strictly bifurcates these into two categories:
+### Category 1: Data Movement (`MOVE`, `MOVEM`, `EXG`, `LEA`, `PEA`, `LINK`, `UNLK`)
 
-```mermaid
-flowchart TD
-    Row["Benchmark CSV Row (14 Columns)"] --> Invariants["Deterministic Invariants (Columns 1..=7)<br/>Must be 100% bit-for-bit identical across all hosts and runs"]
-    Row --> Telemetry["Stochastic Host Telemetry (Columns 8..=13)<br/>Varies naturally with host CPU, clock speed, and OS preemption"]
-
-    Invariants --> H1["1. mnemonic (e.g. ADD, MOVE)"]
-    Invariants --> H2["2. variant (e.g. ADD.W D1 D0)"]
-    Invariants --> H3["3. addressing_mode (e.g. DataRegDirect)"]
-    Invariants --> H4["4. category (e.g. Arithmetic)"]
-    Invariants --> H5["5. opcode_hex (e.g. D041)"]
-    Invariants --> H6["6. amiga_cck_cycles (e.g. 4, 8, 34)"]
-    Invariants --> H7["7. total_guest_instructions (Nominal count)"]
-
-    Telemetry --> T1["8. host_duration_median_ms"]
-    Telemetry --> T2["9. host_ns_per_instruction"]
-    Telemetry --> T3["10. host_ns_per_guest_cck (R_norm)"]
-    Telemetry --> T4["11. host_mips"]
-    Telemetry --> T5["12. host_jitter_pct (CV)"]
-    Telemetry --> T6["13. anomaly_flag (true/false)"]
-```
-
-- **Stochastic Telemetry (Columns 8–13):** Host nanoseconds, MIPS, and variance cannot be verified with static checksums. They are evaluated via statistical confidence bounds ($\text{CV} < 3\%$) and anomaly rules ($R_{\text{norm}}$ ratios) as detailed in [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md).
-- **Deterministic Invariants (Columns 1–7):** The opcode encodings, addressing mode names, cycle-exact Amiga timings, and total nominal operation counts are **strictly deterministic**. If an agent refactoring code accidentally changes an opcode encoding, modifies an addressing mode, alters an Amiga CCK cycle count, or skews test iteration counts, the invariant columns will diverge.
-
-### 10.2 Strictly Nominal `total_ops` Invariance
-
-In earlier iterations, `total_ops` was calculated from the number of passes surviving Tukey's fences outlier rejection (`instructions_per_pass * filtered_count`). Consequently, on noisy host runs where 1–2 outlier passes were dropped, `total_ops` fluctuated (e.g. 119M vs 149M), making nominal operation counts unstable.
-
-To ensure absolute repeatability, `total_ops` is computed using **nominal pass counts** (`raw_count` in `stats.rs`):
-
-$$\text{total\_ops} = K \times \text{iterations} \times \text{passes}$$
-
-| Profile | Unroll Factor ($K$) | Inner Iterations | Outer Passes | Nominal `total_ops` (Invariant) |
-| :--- | :---: | :---: | :---: | :---: |
-| **`quick`** | 700 | 3 | 15 | **31,500** |
-| **`standard`** | 700 | 1,428 | 7 | **6,997,200** |
-| **`thorough`** | 700 | 14,285 | 15 | **149,992,500** |
-
-All 108 benchmark specifications within a given profile have identical nominal `total_ops`.
+| ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
+| :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
+| **MOV-01** | `MOVE` | `.B` | Data Reg Direct | `MOVE.B D1, D0` | `1001` | 4 | `move_reg` |
+| **MOV-02** | `MOVE` | `.W` | Data Reg Direct | `MOVE.W D1, D0` | `3001` | 4 | `move_reg` |
+| **MOV-03** | `MOVE` | `.L` | Data Reg Direct | `MOVE.L D1, D0` | `2001` | 4 | `move_reg` |
+| **MOV-04** | `MOVE` | `.W` | Address Indirect Read | `MOVE.W (A0), D0` | `3010` | 8 | `move_mem` |
+| **MOV-05** | `MOVE` | `.W` | Post-increment Read | `MOVE.W (A0)+, D0` | `3018` | 8 | `move_mem` |
+| **MOV-06** | `MOVE` | `.W` | Pre-decrement Read | `MOVE.W -(A0), D0` | `3020` | 10 | `move_mem` |
+| **MOV-07** | `MOVE` | `.W` | Displacement Read | `MOVE.W 16(A0), D0` | `3028 0010` | 12 | `move_mem` |
+| **MOV-08** | `MOVE` | `.W` | Index Read | `MOVE.W 8(A0, D2.W), D0` | `3030 2008` | 14 | `move_mem` |
+| **MOV-09** | `MOVE` | `.W` | Absolute Short Read | `MOVE.W ($2000).W, D0` | `3038 2000` | 12 | `move_mem` |
+| **MOV-10** | `MOVE` | `.W` | Absolute Long Read | `MOVE.W ($00002000).L, D0` | `3039 0000 2000` | 16 | `move_mem` |
+| **MOV-11** | `MOVE` | `.W` | PC Displacement Read | `MOVE.W 8(PC), D0` | `303A 0008` | 12 | `move_mem` |
+| **MOV-12** | `MOVE` | `.W` | Immediate Read | `MOVE.W #$1234, D0` | `303C 1234` | 8 | `move_imm` |
+| **MOV-13** | `MOVE` | `.W` | Memory-to-Memory | `MOVE.W (A0)+, (A1)+` | `32D8` | 12 | `move_mem2mem` |
+| **MOV-14** | `MOVEA` | `.W` | Data Reg to Addr Reg | `MOVEA.W D0, A0` | `3040` | 4 | `move_addr` |
+| **MOV-15** | `MOVEA` | `.L` | Data Reg to Addr Reg | `MOVEA.L D0, A0` | `2040` | 4 | `move_addr` |
+| **MOV-16** | `MOVEM` | `.W` | Reg to Mem (4 regs) | `MOVEM.W D0-D3, -(SP)` | `48A7 000F` | 24 | `move_multi` |
+| **MOV-17** | `MOVEM` | `.W` | Mem to Reg (4 regs) | `MOVEM.W (SP)+, D0-D3` | `4CDF 000F` | 28 | `move_multi` |
+| **MOV-18** | `EXG` | `.L` | Data Regs | `EXG D0, D1` | `C141` | 6 | `move_reg` |
+| **MOV-19** | `EXG` | `.L` | Addr Regs | `EXG A0, A1` | `C149` | 6 | `move_reg` |
+| **MOV-20** | `LEA` | `.L` | Displacement to Addr Reg | `LEA 16(A0), A1` | `43E8 0010` | 8 | `move_addr` |
+| **MOV-21** | `PEA` | `.L` | Push Effective Address | `PEA 16(A0)` | `4868 0010` | 16 | `move_stack` |
+| **MOV-22** | `LINK` | `.W` | Link Stack Frame | `LINK A6, #-16` | `4E56 FFF0` | 16 | `move_stack` |
+| **MOV-23** | `UNLK` | `.L` | Unlink Stack Frame | `UNLK A6` | `4E5E` | 12 | `move_stack` |
 
 ---
 
-## 11. Reference Documentation & Upstream Ground Truth
+### Category 2: Integer Arithmetic (`ADD`, `SUB`, `MUL`, `DIV`, `NEG`, `CLR`)
 
-- [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../../Reference/68000%20User%27s%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Baseline instruction execution times and memory bus cycle references.
-- [CPU Instruction Benchmark Catalog](CPU%20Instruction%20Benchmark%20Catalog.md): Comprehensive catalog of 108 benchmarked instruction variants.
-- [CPU Instruction Benchmark Strategies](CPU%20Instruction%20Benchmark%20Strategies.md): Strategy matrix for PRNG, cascading stacks, and pointer management.
-- [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md): Operational guide for interpreting host performance metrics and anomalies.
-- [CPU Motorola M68000 Architecture](../CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
-- [CPU Micro-Step State Machine Specification](../CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
-- [Benchmark Harness Implementation](../../../../crates/test_runner/benches/bench_instructions): Living Rust benchmark harness, runners, and profiler models.
+| ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
+| :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
+| **ARITH-01** | `ADD` | `.B` | Data Reg Direct | `ADD.B D1, D0` | `D001` | 4 | `arith_reg` |
+| **ARITH-02** | `ADD` | `.W` | Data Reg Direct | `ADD.W D1, D0` | `D041` | 4 | `arith_reg` |
+| **ARITH-03** | `ADD` | `.L` | Data Reg Direct | `ADD.L D1, D0` | `D081` | 8 | `arith_reg` |
+| **ARITH-04** | `ADD` | `.W` | Indirect Memory to Reg | `ADD.W (A0)+, D0` | `D058` | 8 | `arith_mem` |
+| **ARITH-05** | `ADD` | `.W` | Reg to Indirect Memory | `ADD.W D0, (A0)` | `D150` | 12 | `arith_mem` |
+| **ARITH-06** | `ADDA` | `.W` | Word to Addr Reg | `ADDA.W D0, A0` | `D0C0` | 8 | `arith_addr` |
+| **ARITH-07** | `ADDA` | `.L` | Long to Addr Reg | `ADDA.L D0, A0` | `D0E0` | 8 | `arith_addr` |
+| **ARITH-08** | `ADDQ` | `.W` | Quick Immediate to Reg | `ADDQ.W #4, D0` | `5840` | 4 | `arith_imm` |
+| **ARITH-09** | `ADDX` | `.W` | Extended Add Regs | `ADDX.W D1, D0` | `D141` | 4 | `arith_reg` |
+| **ARITH-10** | `ADDX` | `.W` | Extended Add Mem | `ADDX.W -(A1), -(A0)` | `D149` | 18 | `arith_mem` |
+| **ARITH-11** | `SUB` | `.W` | Data Reg Direct | `SUB.W D1, D0` | `9041` | 4 | `arith_reg` |
+| **ARITH-12** | `SUB` | `.L` | Data Reg Direct | `SUB.L D1, D0` | `9081` | 8 | `arith_reg` |
+| **ARITH-13** | `SUBA` | `.W` | Word to Addr Reg | `SUBA.W D0, A0` | `90C0` | 8 | `arith_addr` |
+| **ARITH-14** | `SUBQ` | `.W` | Quick Immediate to Reg | `SUBQ.W #4, D0` | `5940` | 4 | `arith_imm` |
+| **ARITH-15** | `SUBX` | `.W` | Extended Sub Regs | `SUBX.W D1, D0` | `9141` | 4 | `arith_reg` |
+| **ARITH-16** | `MULU` | `.W` | Unsigned Multiply Reg | `MULU D1, D0` | `C0C1` | ~54 | `arith_mul` |
+| **ARITH-17** | `MULS` | `.W` | Signed Multiply Reg | `MULS D1, D0` | `C1C1` | ~54 | `arith_mul` |
+| **ARITH-18** | `DIVU` | `.W` | Unsigned Divide Reg | `DIVU D1, D0` | `80C1` | ~140 | `arith_div` |
+| **ARITH-18b**| `DIVU` | `.W` | Quotient Overflow Path | `DIVU D1, D0` (Overflow) | `80C1` | ~10 | `arith_div` |
+| **ARITH-18c**| `DIVU` | `.W` | Divide-by-Zero Exception| `DIVU #0, D0` (Vector 5)| `80FC 0000` | ~42 | `arith_div` |
+| **ARITH-19** | `DIVS` | `.W` | Signed Divide Reg | `DIVS D1, D0` | `81C1` | ~158 | `arith_div` |
+| **ARITH-19b**| `DIVS` | `.W` | Quotient Overflow Path | `DIVS D1, D0` (Overflow) | `81C1` | ~10 | `arith_div` |
+| **ARITH-19c**| `DIVS` | `.W` | Divide-by-Zero Exception| `DIVS #0, D0` (Vector 5)| `81FC 0000` | ~42 | `arith_div` |
+| **ARITH-20** | `NEG` | `.W` | Negate Register | `NEG.W D0` | `4440` | 4 | `arith_reg` |
+| **ARITH-21** | `NEGX` | `.W` | Negate with Extend Reg | `NEGX.W D0` | `4040` | 4 | `arith_reg` |
+| **ARITH-22** | `CLR` | `.W` | Clear Register | `CLR.W D0` | `4240` | 4 | `arith_reg` |
+| **ARITH-23** | `CLR` | `.W` | Clear Memory | `CLR.W (A0)+` | `4258` | 8 | `arith_mem` |
+| **ARITH-24** | `EXT` | `.W` | Sign Extend Byte to Word | `EXT.W D0` | `4880` | 4 | `arith_reg` |
+| **ARITH-25** | `EXT` | `.L` | Sign Extend Word to Long | `EXT.L D0` | `48C0` | 4 | `arith_reg` |
 
+---
 
+### Category 3: Logic & Bit Operations (`AND`, `OR`, `EOR`, `NOT`, `BTST`, `BSET`, `BCLR`, `BCHG`, `TAS`)
 
+| ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
+| :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
+| **LOGIC-01** | `AND` | `.W` | Data Reg Direct | `AND.W D1, D0` | `C041` | 4 | `logic_reg` |
+| **LOGIC-02** | `AND` | `.L` | Data Reg Direct | `AND.L D1, D0` | `C081` | 8 | `logic_reg` |
+| **LOGIC-03** | `ANDI` | `.W` | Immediate to Reg | `ANDI.W #$AAAA, D0` | `0240 AAAA` | 8 | `logic_imm` |
+| **LOGIC-04** | `OR` | `.W` | Data Reg Direct | `OR.W D1, D0` | `8041` | 4 | `logic_reg` |
+| **LOGIC-05** | `ORI` | `.W` | Immediate to Reg | `ORI.W #$5555, D0` | `0040 5555` | 8 | `logic_imm` |
+| **LOGIC-06** | `EOR` | `.W` | Data Reg Direct | `EOR.W D1, D0` | `B140` | 4 | `logic_reg` |
+| **LOGIC-07** | `EORI` | `.W` | Immediate to Reg | `EORI.W #$00FF, D0` | `0A40 00FF` | 8 | `logic_imm` |
+| **LOGIC-08** | `NOT` | `.W` | Invert Register Bits | `NOT.W D0` | `4640` | 4 | `logic_reg` |
+| **LOGIC-09** | `BTST` | `.L` | Static Bit Test Reg | `BTST #5, D0` | `0800 0005` | 10 | `bit_test` |
+| **LOGIC-10** | `BTST` | `.L` | Dynamic Bit Test Reg | `BTST D1, D0` | `0100` | 6 | `bit_test` |
+| **LOGIC-11** | `BSET` | `.L` | Dynamic Bit Set Reg | `BSET D1, D0` | `01C0` | 8 | `bit_mod` |
+| **LOGIC-12** | `BCLR` | `.L` | Dynamic Bit Clear Reg | `BCLR D1, D0` | `0180` | 10 | `bit_mod` |
+| **LOGIC-13** | `BCHG` | `.L` | Dynamic Bit Change Reg | `BCHG D1, D0` | `0140` | 8 | `bit_mod` |
+| **LOGIC-14** | `TAS` | `.B` | Test & Set Memory (RMW)| `TAS (A0)+` | `4AD8` | 14 | `bit_rmw` |
 
+---
+
+### Category 4: Shift & Rotate (`ASL`, `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `SWAP`)
+
+| ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
+| :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
+| **SHIFT-01** | `LSL` | `.W` | Static Immediate Count | `LSL.W #3, D0` | `E748` | 12 | `shift_static` |
+| **SHIFT-02** | `LSR` | `.W` | Static Immediate Count | `LSR.W #3, D0` | `E648` | 12 | `shift_static` |
+| **SHIFT-03** | `LSL` | `.W` | Dynamic Register Count | `LSL.W D1, D0` | `E368` | ~12 | `shift_dynamic` |
+| **SHIFT-04** | `ASL` | `.W` | Static Immediate Count | `ASL.W #2, D0` | `E540` | 10 | `shift_static` |
+| **SHIFT-05** | `ASR` | `.W` | Static Immediate Count | `ASR.W #2, D0` | `E440` | 10 | `shift_static` |
+| **SHIFT-06** | `ROL` | `.W` | Static Immediate Count | `ROL.W #4, D0` | `E958` | 14 | `shift_rotate` |
+| **SHIFT-07** | `ROR` | `.W` | Static Immediate Count | `ROR.W #4, D0` | `E858` | 14 | `shift_rotate` |
+| **SHIFT-08** | `SWAP` | `.W` | Swap 16-bit Halves | `SWAP D0` | `4840` | 4 | `shift_rotate` |
+
+---
+
+### Category 5: Comparisons & Tests (`CMP`, `CMPA`, `CMPM`, `CMPI`, `TST`, `CHK`)
+
+| ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
+| :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
+| **CMP-01** | `CMP` | `.B` | Data Reg Direct | `CMP.B D1, D0` | `B001` | 4 | `cmp_reg` |
+| **CMP-02** | `CMP` | `.W` | Data Reg Direct | `CMP.W D1, D0` | `B041` | 4 | `cmp_reg` |
+| **CMP-03** | `CMP` | `.L` | Data Reg Direct | `CMP.L D1, D0` | `B081` | 6 | `cmp_reg` |
+| **CMP-04** | `CMPA` | `.W` | Word to Addr Reg | `CMPA.W D0, A0` | `B0C0` | 6 | `cmp_addr` |
+| **CMP-05** | `CMPA` | `.L` | Long to Addr Reg | `CMPA.L D0, A0` | `B0E0` | 6 | `cmp_addr` |
+| **CMP-06** | `CMPI` | `.W` | Immediate to Reg | `CMPI.W #$1234, D0` | `0C40 1234` | 8 | `cmp_imm` |
+| **CMP-07** | `CMPM` | `.W` | Post-inc Memory Compare| `CMPM.W (A0)+, (A1)+`| `B348` | 12 | `cmp_mem` |
+| **CMP-08** | `TST` | `.W` | Test Register | `TST.W D0` | `4A40` | 4 | `cmp_tst` |
+| **CMP-09** | `TST` | `.W` | Test Memory | `TST.W (A0)+` | `4A58` | 8 | `cmp_tst` |
+| **CMP-10** | `CHK` | `.W` | Check Bounds (In-bound)| `CHK.W D1, D0` | `4181` | 10 | `cmp_chk` |
+
+---
+
+### Category 6: Decimal / BCD Arithmetic (`ABCD`, `SBCD`, `NBCD`)
+
+| ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
+| :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
+| **BCD-01** | `ABCD` | `.B` | Data Regs | `ABCD D1, D0` | `C101` | 6 | `bcd_reg` |
+| **BCD-02** | `ABCD` | `.B` | Pre-dec Memory | `ABCD -(A1), -(A0)` | `C109` | 18 | `bcd_mem` |
+| **BCD-03** | `SBCD` | `.B` | Data Regs | `SBCD D1, D0` | `8101` | 6 | `bcd_reg` |
+| **BCD-04** | `SBCD` | `.B` | Pre-dec Memory | `SBCD -(A1), -(A0)` | `8109` | 18 | `bcd_mem` |
+| **BCD-05** | `NBCD` | `.B` | Data Reg | `NBCD D0` | `4800` | 6 | `bcd_reg` |
+
+---
+
+### Category 7: Control Flow & Subroutines (`BRA`, `Bcc`, `BSR`, `RTS`, `RTR`, `DBcc`)
+
+| ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
+| :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
+| **FLOW-01** | `BRA` | `.S` | Short Relative Branch | `BRA.S +2` | `6002` | 10 | `flow_branch` |
+| **FLOW-02** | `Bcc` | `.S` | Branch Taken (BEQ) | `BEQ.S +2` | `6702` | 10 | `flow_branch` |
+| **FLOW-03** | `Bcc` | `.S` | Branch Not Taken (BEQ)| `BEQ.S +2` | `6702` | 8 | `flow_branch` |
+| **FLOW-04** | `BSR` | `.S` | Subroutine Branch | `BSR.S sub` | `6104` | 18 | `flow_call` |
+| **FLOW-05** | `RTS` | — | Cascading Stack Return | `RTS` | `4E75` | 16 | `flow_return` |
+| **FLOW-06** | `RTR` | — | Cascading Return with CCR| `RTR` | `4E77` | 20 | `flow_return` |
+| **FLOW-07** | `DBcc` | `.W` | Decrement & Loop Taken| `DBF D7, target` | `51CF 0002` | 10 | `flow_loop` |
+| **FLOW-08** | `DBcc` | `.W` | Loop Terminal Fallthrough| `DBF D7, exit` | `51CF 0002` | 14 | `flow_loop` |
+
+---
+
+### Category 8: System & Privileged (`MOVE to SR/CCR`, `RTE`, `TRAP`, `TRAPV`)
+
+| ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
+| :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
+| **SYS-01** | `MOVE` | `.W` | Move to CCR | `MOVE.W D0, CCR` | `44C0` | 12 | `sys_ccr` |
+| **SYS-02** | `MOVE` | `.W` | Move to SR (Supervisor) | `MOVE.W D0, SR` | `46C0` | 12 | `sys_sr` |
+| **SYS-03** | `MOVE` | `.W` | Move from SR | `MOVE.W SR, D0` | `40C0` | 6 | `sys_sr` |
+| **SYS-04** | `ANDI` | `.W` | AND Immediate to CCR | `ANDI.W #$001F, CCR` | `023C 001F` | 20 | `sys_ccr` |
+| **SYS-05** | `ORI` | `.W` | OR Immediate to CCR | `ORI.W #$0000, CCR` | `003C 0000` | 20 | `sys_ccr` |
+| **SYS-06** | `MOVE` | `.L` | Move USP to Addr Reg | `MOVE USP, A0` | `4E68` | 4 | `sys_usp` |
+| **SYS-07** | `MOVE` | `.L` | Move Addr Reg to USP | `MOVE A0, USP` | `4E60` | 4 | `sys_usp` |
+| **SYS-08** | `RTE` | — | Cascading Exception Return| `RTE` | `4E73` | 20 | `sys_rte` |
+| **SYS-09** | `TRAP` | — | Software Trap Handler | `TRAP #0` | `4E40` | 34 | `sys_trap` |
+| **SYS-10** | `TRAPV` | — | Trap on Overflow (Untaken)| `TRAPV` | `4E76` | 4 | `sys_trap` |
+
+---
+
+## Reference documentation and living sources
+
+- [Motorola 68000 instruction timing tables](../../Reference/68000%20User%27s%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): hardware cycle and bus-operation context for catalog values.
+- [Motorola 68000 exception processing](../../Reference/68000%20User%27s%20Manual/06%20-%20Section%206%20-%20Exception%20Processing%2C%20Stack%20Frames%20%26%20Reset.md): vector, stack-frame, and return behavior used by exception workloads.
+- [CPU architecture](../CPU%20Motorola%20M68000.md) and [micro-step state machine](../CPU%20Micro-Step%20State%20Machine.md): intended CPU behavior and CCK execution model.
+- [SingleStep verification](../Verification/CPU%20SingleStepTests.md): independent reference-vector checks and their observation boundary.
+- [Benchmark harness](../../../../crates/test_runner/benches/bench_instructions) and [analysis tool](../../../../tools/verification/analyze_benchmarks.py): living workload construction, timing, persistence, and report generation.
+- [Retained benchmark CSV](../../../../baselines/benchmarks/m68k_benchmark_baseline.csv): historical host measurements used for the worked example and optional comparisons.
+- [Performance profiling strategy](Performance%20Profiling%20and%20Optimization%20Strategy.md): broader host profiling and optimization workflow.

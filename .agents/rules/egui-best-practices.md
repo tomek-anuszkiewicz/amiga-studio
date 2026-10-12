@@ -1,6 +1,6 @@
 # egui Frontend Rules
 
-Applies to `crates/gui`. Read [GUI.md](../../Obsidian/Amiga/Design/Application/GUI.md), [GUI Specification.md](../../Obsidian/Amiga/Design/Application/GUI%20Specification.md), [egui Guidelines.md](../../Obsidian/Amiga/Design/egui%20Guidelines.md), and [Debugger.md](../../Obsidian/Amiga/Design/Application/Debugger.md) for the affected UI behavior.
+Applies to `crates/gui`. Read [GUI.md](../../Obsidian/Amiga/Design/Application/GUI.md), [egui Guidelines.md](../../Obsidian/Amiga/Design/egui%20Guidelines.md), and [Debugger.md](../../Obsidian/Amiga/Design/Application/Debugger.md) for the affected UI behavior.
 
 - Render by directly querying machine and debugger state in a synchronous loop. No core-to-UI callbacks, observers, channels, async runtimes, or shared threading handles.
 - Execute bounded emulation slices per frame to keep native and WASM frontends responsive. Organize layout modules by visible panel responsibilities.

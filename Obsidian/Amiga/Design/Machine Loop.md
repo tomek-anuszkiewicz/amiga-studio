@@ -1,371 +1,56 @@
 ---
-title: "Machine Loop Crate Architecture & Subsystem Coordination"
-aliases: ["Machine Loop", "machine_loop", "A500 Machine Loop", "Main Machine Loop", "A500 Step"]
-tags: ["amiga", "design", "machine-loop", "coordination", "step_cck"]
+title: "Machine Loop"
+aliases: ["A500 Machine Loop", "Main Machine Loop", "machine_loop"]
+tags: ["amiga", "design", "machine-loop", "coordination"]
 category: "Design"
 subsystem: "machine_loop"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-11
-related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)"]
+updated: 2026-10-12
+related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[DMA.md](DMA.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/machine_loop"
 ---
-# Machine Loop Crate Architecture & Subsystem Coordination
+# Machine Loop
 
-The Cargo crate [`machine_loop`](../../../crates/machine_loop/Cargo.toml) owns the
-top-level `A500Machine` and coordinates CPU execution, custom chips, memory, and
-peripherals. It models motherboard connections through explicit polling and input
-updates; peer chips never hold direct references to one another. This document
-combines the machine-loop specification and the architectural orientation formerly
-kept in a separate review.
+[`A500Machine`](../../../crates/machine_loop/src/machine_loop.rs) is the top-level owner and clock coordinator of the emulated Amiga 500. Its main loop advances the machine one Color Clock (CCK) at a time. It also carries outputs between components that do not directly own or call one another: bus data, interrupt requests, reset lines, peripheral pins, and other modeled hardware signals. The loop determines when those connections are sampled and delivered; each component implements its own internal behavior.
 
-## Crate Scope & Source Map
+The machine owns the CPU, physical memory, Agnus, Denise, Paula, both CIAs, the RTC, floppy controller, keyboard, and game ports. Its `cck` field counts executed Color Clock steps. [`MemoryBus`](MemoryBus.md) is a temporary router over these owned components for CPU accesses and Copper custom-register writes. [Agnus](Agnus.md) determines Chip RAM contention and DMA activity; the slot schedule and arbitration belong to [DMA.md](DMA.md), not to this coordinator.
 
-| Source | Responsibility |
-| :--- | :--- |
-| [`machine_loop.rs`](../../../crates/machine_loop/src/machine_loop.rs) | `A500Machine`, transient bus construction, CCK stepping, peripheral pin routing, resets, and snapshot entry points. |
-| [`save_state.rs`](../../../crates/machine_loop/src/save_state.rs) | Machine snapshot records and validation errors; format details are in [SaveState.md](Application/SaveState.md). |
-| [`tests/`](../../../crates/machine_loop/tests) | Integration checks for coordination and machine behavior. |
+## One Color Clock
 
-The crate re-exports its subsystem crates for consumers such as
-[`DebuggerSession`](../../../crates/debugger/src/session.rs). It coordinates their
-existing engines rather than implementing another CPU, DMA arbiter, or renderer.
+`A500Machine::step_cck()` is the common path used by the stepping APIs. It performs these operations in order:
 
-> [!NOTE]
-> Ownership architecture and module decoupling principles are defined in [AGENTS.md](../../../AGENTS.md) and [General Architecture.md](General%20Architecture.md).
-> Physical bus arbitration is specified in [MemoryBus.md](MemoryBus.md), and CPU execution in [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md). Custom chips are detailed in [Agnus.md](Agnus.md), [Denise.md](Denise.md), and [Paula.md](Paula.md).
+1. Increment the wrapping `cck` counter and call `step_subsystems_cck()`.
+2. If the keyboard asserts its reset line, perform a warm reset and return `false` without stepping the CPU in that call.
+3. Otherwise, record the CPU's current `RESET` output, create a `MemoryBus` over the machine components, and advance the CPU by one CCK phase.
+4. If that CPU phase newly asserted `RESET`, reset external devices while preserving the CPU's registers and program counter.
 
----
+The return value says whether the CPU completed an instruction during this step. The non-CPU components advance even when the CPU is waiting or stopped, subject to the keyboard reset path above. `step_cycles`, `step_instruction`, `step_line`, and `step_frame` all repeat `step_cck()` until their respective count, CPU instruction, Agnus line transition, or Agnus frame transition condition is met. These are ways to drive the same machine loop, not separate execution models.
 
-## 1. Master System Clock & Frequency Hierarchy
+## Connections advanced within the step
 
-The Amiga 500 derives all system clock frequencies from a single master crystal oscillator. All processing units operate in synchronous harmonic lock:
+`step_subsystems_cck()` transfers the currently modeled signals in a fixed order:
 
-```mermaid
-flowchart TD
-    XTAL["Master Crystal Oscillator\nPAL: 28.37516 MHz | NTSC: 28.63636 MHz"] --> DIV4["Divide by 4"]
-    XTAL --> DIV8["Divide by 8"]
-    
-    DIV4 --> CPU_CLK["CPU Clock (7.09379 MHz PAL / 7.15909 MHz NTSC)\n1 Cycle ≈ 140.97 ns (PAL) / 139.68 ns (NTSC)"]
-    DIV8 --> CCK["Color Clock / CCK (3.546895 MHz PAL / 3.579545 MHz NTSC)\n1 CCK ≈ 281.94 ns (PAL) / 279.37 ns (NTSC)"]
-    
-    CPU_CLK --> CPU["Motorola 68000 CPU\n(4 Clocks per Bus Cycle = 2 CCKs)"]
-    CCK --> AGNUS["Agnus (Master Beam Counter / Copper / Blitter DMA)"]
-    CCK --> DENISE["Denise (Pixel Serializer / Sprites / Palette)"]
-    CCK --> PAULA["Paula (Audio Periods / Floppy MFM / UART)"]
-    
-    CPU_CLK --> DIV10["Divide by 10 (E-Clock Divider in CIAs)\n6 Clocks Low / 4 Clocks High"]
-    DIV10 --> ECLK["Motorola E-Clock (709.379 kHz PAL / 715.909 kHz NTSC)\n1 E-Clock = 5 CCKs ≈ 1.4097 µs (PAL)"]
-    ECLK --> CIAA["CIA-A (Timers A/B, TOD, Keyboard SDR)"]
-    ECLK --> CIAB["CIA-B (Timers A/B, TOD, Floppy Control)"]
-```
+1. It presents the disk DMA request, derived from Paula's active disk DMA and a word available in the floppy controller, to Agnus. Agnus then advances its beam, Copper, Blitter, and DMA against Chip RAM. The loop sends a pending Copper register write through `MemoryBus`, latches a bitplane DMA word into Denise, and handles an available disk read DMA slot by moving a floppy word into Chip RAM. It copies Agnus's Chip RAM blocked state to physical memory for bus accesses. Agnus's Blitter completion and vertical blank outputs request Paula interrupts; vertical blank also ticks CIA-A's time-of-day clock.
+2. It takes Agnus's beam position for Denise's video step. At horizontal position zero, it ticks CIA-B's time-of-day clock.
+3. It advances Paula and the floppy controller. Floppy sync and completed disk blocks request Paula interrupts. An audio channel restart reloads the corresponding Agnus DMA pointer and requests that channel's Paula interrupt.
+4. It advances keyboard transmission into CIA-A, then both CIAs. Pending CIA-A and CIA-B interrupt outputs feed Paula's INT2 and INT6 inputs, respectively.
+5. It advances the RTC. A CIA-A overlay transition changes whether low memory maps to Chip RAM or Kickstart ROM. It then samples peripheral connections and copies Paula's pending interrupt level to the CPU's `ipl` input.
 
-### 1.1 Master Frequency Standards
+The peripheral sampling step carries CIA-B drive controls to the floppy controller, floppy status to CIA-A, a floppy byte to Paula, game-port fire inputs to CIA-A, digital position counters to Denise, and potentiometer values to Paula. The machine also samples these connections after construction and resets. See the [cross-chip signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md) for the broader signal inventory; the order above describes what this implementation actually dispatches per CCK.
 
-| Standard | Master Oscillator ($f_{\text{master}}$) | CPU Clock ($f_{\text{cpu}} = \frac{f_{\text{master}}}{4}$) | Color Clock ($f_{\text{cck}} = \frac{f_{\text{master}}}{8}$) | E-Clock ($f_{\text{e}} = \frac{f_{\text{cpu}}}{10}$) | CCK Period ($T_{\text{cck}}$) |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **PAL** | **$28.375160\ \text{MHz}$** | **$7.093790\ \text{MHz}$** | **$3.546895\ \text{MHz}$** | **$709.379\ \text{kHz}$** | $\approx 281.9368\ \text{ns}$ |
-| **NTSC** | **$28.636360\ \text{MHz}$** | **$7.159090\ \text{MHz}$** | **$3.579545\ \text{MHz}$** | **$715.909\ \text{kHz}$** | $\approx 279.3651\ \text{ns}$ |
+## Lifecycle around the loop
 
----
+Construction creates the components from `A500Config`, resets the CPU against physical memory, samples peripheral inputs, and initializes the CPU interrupt level from Paula. A cold `reset()` resets physical memory, the master counter, chips, and devices before resetting the CPU. `reset_warm()` preserves RAM through the physical-memory warm-reset path and restarts the CPU and devices with the low-memory overlay restored. A CPU `RESET` instruction takes a narrower path: `reset_external_devices()` re-engages the Kickstart overlay and resets external chips and devices without clearing RAM or resetting CPU execution state. These are distinct operations in [`machine_loop.rs`](../../../crates/machine_loop/src/machine_loop.rs).
 
-## 2. Machine Struct (`A500Machine`)
+The machine also owns whole-machine snapshots: `save_state()` captures the clock, configuration, CPU, memory, chips, and peripherals, together with a frame-buffer screenshot; `load_state()` checks the snapshot version, restores those components, and samples peripheral pins again. Snapshot format and persistence are described in [SaveState.md](Application/SaveState.md). Video buffer production belongs to [Denise.md](Denise.md) and [Frame Buffer.md](Frame%20Buffer.md).
 
-The top-level `A500Machine` struct (`crates/machine_loop/src/machine_loop.rs`) owns and orchestrates all components without circular references:
-- `cpu`: Motorola 68000 core (`m68000::Cpu`)
-- `physical_memory`: 24-bit physical storage and RAM/ROM buffers (`physical_memory::PhysicalMemory`)
-- `cck`: Monotonic master 64-bit Color Clock counter (`pub cck: u64`)
-- `rtc`: Real-Time Clock OKI MSM6242B (`rtc::RtcMsm6242b`)
-- `agnus`, `denise`, `paula`: Custom chipsets
-- `cia_a`, `cia_b`: MOS 8520 Complex Interface Adapters
-- `floppy`, `keyboard`, `game_ports`: Peripheral controllers and connected input devices
-- `memory_bus(&mut self) -> MemoryBus<'_>`: Zero-cost transient router decoding the 24-bit physical address space live to storage, custom chips, and peripherals.
+## Reference Documentation & Upstream Ground Truth
 
-Agnus contains Copper, Blitter, and the DMA scheduler; Denise contains sprites and
-the frame builder; Paula contains audio and interrupt logic. These engines are not
-duplicate top-level `A500Machine` fields. The transient `MemoryBus` borrows the live
-subsystems for a transaction; it is not a second persistent owner.
-
----
-
-## 3. Stepping Capabilities & Master Clock Loop
-
-The public stepping methods all advance the same coordinated machine:
-
-| Method | Boundary |
-| :--- | :--- |
-| `step_cck()` | One Color Clock; returns whether a CPU instruction completed. |
-| `step_cycles(cck_count)` | A requested number of Color Clocks. |
-| `step_instruction()` | CPU instruction completion, or a stopped/halted CPU. |
-| `step_line()` | A change in the Agnus vertical beam counter. |
-| `step_frame()` | The next frame boundary after leaving the initial line-zero interval. |
-
-`step_cck()` follows this implementation sequence:
-
-1. Advance `cck` using wrapping arithmetic.
-2. Run `step_subsystems_cck()`, including output polling, peripheral routing, and
-   delivery of Paula's resolved interrupt level to `cpu.state.ipl`.
-3. Evaluate the keyboard reset line. A warm reset ends this CCK step without CPU execution.
-4. Sample the CPU-owned `RESET` output before CPU execution.
-5. Construct a transient `MemoryBus` and advance one CPU CCK phase. A
-   `BusResult::WaitState` preserves the active CPU micro-step.
-6. Observe the output assertion edge and reset external devices once. The CPU
-   owns the 124-clock output interval and its release.
-
-Within `step_subsystems_cck()`, disk requests are sampled before Agnus runs. Copper
-writes, bitplane words, disk DMA slots, and bus contention are then routed. Denise,
-Paula, floppy mechanics, keyboard, CIAs, and RTC advance in their implemented order;
-TOD, audio restart, disk interrupts, overlay, and peripheral pins are routed before
-the final IPL sample. The living sequence is in
-[`machine_loop.rs`](../../../crates/machine_loop/src/machine_loop.rs), rather than a
-separate review report that can drift from this specification.
-
----
-
-### 3.1 Motherboard PCB Simulation & Post-CCK `poll_*` Signal Dispatch
-
-The `MachineLoop` (`A500Machine`) acts as the physical motherboard PCB simulator, coordinating all electronic traces between chips without allowing direct inter-chip calls:
-1. **Isolated Subsystem Execution:** In `step_subsystems_cck()`, each subsystem executes its internal logic for the current CCK phase (`agnus.step_cck_ram()`, `denise.step_cck()`, `paula.step_cck()`, `cia_a.step_cck()`, `cia_b.step_cck()`).
-2. **Motherboard Output Polling (`poll_*`):** Subsystems never push events or invoke methods on peers. Instead, `MachineLoop` queries the updated state of output pins using explicit `poll_*` methods:
-   - `agnus.poll_blitter_irq()`: Samples physical `_BLITINT` line.
-   - `agnus.poll_vblank_irq()`: Samples physical `_VSYNC` line.
-   - `agnus.poll_copper_write()`: Samples active Copper bus register writes.
-   - `agnus.poll_bpl_dma()`: Samples bitplane data words fetched for Denise.
-   - `paula.poll_audio_restart(ch)`: Samples audio channel DMA restart request (`AUDxDSR`).
-   - `floppy.poll_dskblk_irq()`: Samples disk block DMA completion line.
-   - `cia_a.irq_pending()` / `cia_b.irq_pending()`: Samples CIA active `/IRQ` lines.
-3. **Motherboard Action Routing:** `MachineLoop` routes the sampled electrical transitions to the target chip's input latches (e.g. `paula.set_interrupt_request()`, `denise.write_bpldat()`, `agnus.reload_audio_ptr()`).
-4. **Central Arbitration & CPU Delivery:** `MachineLoop` samples `paula.pending_interrupt_level()` and sets `cpu.state.ipl` before stepping the 68000 CPU bus cycle.
-
----
-
-## 4. Interrupt Arbitration Pipeline
-
-On each CCK step (`step_subsystems_cck`), the main loop coordinates interrupt requests across chips, multiplexing physical IRQ lines through Paula, validating `INTENA`, and presenting the highest unmasked priority level to the M68000:
-
-```mermaid
-flowchart TD
-    AGNUS["Agnus\n(VBlank, Blitter, Copper)"] -->|BLITINT, VERTB, COPINT| PAULA
-    FLOPPY["Floppy DMA\n(Disk Block Complete)"] -->|DSKBLK| PAULA
-    AUDIO["Paula Audio DMA\n(Buffer Reload AUD0-3)"] -->|AUD0..3| PAULA
-    SERIAL["Paula Serial UART\n(TBE, RBF)"] -->|TBE, RBF| PAULA
-    CIAA["CIA-A /IRQ\n(Timer A/B, TOD, SDR)"] -->|PORTS / Level 2| PAULA
-    CIAB["CIA-B /IRQ\n(Timer A/B, TOD, SDR)"] -->|EXTER / Level 6| PAULA
-
-    PAULA["Paula INTREQ & INTENA\n(Bits 0..14 + Master INTEN)"] -->|Arbitrate Highest Unmasked Level| MAIN_LOOP["Main Machine Loop\n(paula.pending_interrupt_level)"]
-    MAIN_LOOP -->|cpu.state.ipl = 1..6| CPU["M68000 CPU\n(Autovector Exception / STOP Wakeup)"]
-```
-
-### 4.1 Cross-Chip Signal Sources & Bit Mapping
-
-All peripheral interrupt requests are latched in Paula's `INTREQ` register (`$DFF01E` read, `$DFF09C` write) and masked by `INTENA` (`$DFF01C` read, `$DFF09A` write):
-
-| Source Chip / Peripheral | Signal Name | `INTREQ` / `INTENA` Bit | Level | Autovector | Hardware Meaning |
-| :--- | :--- | :---: | :---: | :---: | :--- |
-| **Paula Serial** | `TBE` | Bit 0 (`$0001`) | 1 | 25 (`$000064`) | Serial port transmit buffer empty |
-| **Floppy DMA** | `DSKBLK` | Bit 1 (`$0002`) | 1 | 25 (`$000064`) | Disk block DMA transfer completed |
-| **Software** | `SOFT` | Bit 2 (`$0004`) | 1 | 25 (`$000064`) | Software generated interrupt |
-| **CIA-A** | `PORTS` | Bit 3 (`$0008`) | 2 | 26 (`$000068`) | CIA-A `/IRQ` line (Timer A/B underflow, TOD, keyboard SDR) |
-| **Agnus Copper** | `COPINT` | Bit 4 (`$0010`) | 3 | 27 (`$00006C`) | Copper instruction with interrupt flag set |
-| **Agnus Beam** | `VERTB` | Bit 5 (`$0020`) | 3 | 27 (`$00006C`) | Start of Vertical Blanking interval (`vpos == 0 && hpos == 0`) |
-| **Agnus Blitter** | `BLITINT` | Bit 6 (`$0040`) | 3 | 27 (`$00006C`) | Blitter operation finished (`_BLITINT` low pulse) |
-| **Paula Audio** | `AUD0` | Bit 7 (`$0080`) | 4 | 28 (`$000070`) | Audio Channel 0 buffer finished / loop reload |
-| **Paula Audio** | `AUD1` | Bit 8 (`$0100`) | 4 | 28 (`$000070`) | Audio Channel 1 buffer finished / loop reload |
-| **Paula Audio** | `AUD2` | Bit 9 (`$0200`) | 4 | 28 (`$000070`) | Audio Channel 2 buffer finished / loop reload |
-| **Paula Audio** | `AUD3` | Bit 10 (`$0400`) | 4 | 28 (`$000070`) | Audio Channel 3 buffer finished / loop reload |
-| **Paula Serial** | `RBF` | Bit 11 (`$0800`) | 5 | 29 (`$000074`) | Serial port receive buffer full |
-| **Floppy Sync** | `DSKSYN` | Bit 12 (`$1000`) | 5 | 29 (`$000074`) | Disk controller matched sync pattern |
-| **CIA-B** | `EXTER` | Bit 13 (`$2000`) | 6 | 30 (`$000078`) | CIA-B `/IRQ` line (Timer A/B underflow, TOD, floppy index) |
-| **Paula Master** | `INTEN` | Bit 14 (`$4000`) | — | — | Master interrupt enable (gates all Paula/CIA lines) |
-| **Strobe** | `SET/CLR` | Bit 15 (`$8000`) | — | — | Set (`1`) or Clear (`0`) selected bits on write |
-
-### 4.2 Central Arbitration & CPU Delivery
-
-1. **`paula.pending_interrupt_level()` Resolution:**
-   - Evaluates `paula.pending_interrupt_level()`, which checks `intreq & intena` conditioned on master `INTEN` (bit 14).
-   - Validates CIA-A (Level 2) and CIA-B (Level 6) lines passing through Paula's `INTENA` mask bits.
-   - Computes the monotonic maximum: `paula_ipl.max(cia_a_ipl).max(cia_b_ipl)`.
-   - Directly drives `cpu.state.ipl` with the resulting priority ($0..6$).
-2. **CPU Delivery & Exception Entry:**
-   - Evaluated at instruction retirement (`retire_current_instruction()`) or upon waking from `STOP` mode.
-   - If `ipl > interrupt_mask` for a supported level 1-6, the CPU initiates the 44-clock `STEPS_INTERRUPT` pipeline, pushes the standard 3-word exception frame ($PC_{\text{low}}, SR, PC_{\text{high}}$) to $SSP$, fetches the autovector from physical memory, and redirects execution to the ISR. Pending Trace is processed first. The standard A500 generates no level-seven NMI; external NMI hardware is outside the [CPU implementation scope](CPU%20Motorola%20M68000.md#712-autovector-interrupt-processing--stop-instruction-awakening).
-
----
-
-## 5. Reset Flows: Cold vs. Warm Reset & Physical Circuit Mechanics
-
-On real Amiga hardware, **all resets start CPU execution from address `$000000` via the Gary low-memory boot overlay (`_OVL`)**:
-
-### 5.1 Physical Reset Lines & Timing
-1. **Physical Reset Circuitry:**
-   - **Power-On Reset:** A 555 timer circuit on the Amiga motherboard asserts the bidirectional open-collector `_RESET` and `_HALT` lines LOW simultaneously for ~500 ms upon system power-up.
-   - **Keyboard Reset (`Ctrl-Amiga-Amiga`):** The MOS 6500/1 keyboard microcontroller transmits warning code `$78` to CIA-A over the serial link, allowing AmigaOS up to 10 seconds to park floppy drive heads and flush disk cache buffers. After an ACK handshake or timeout (~500 ms), the keyboard pulls the motherboard `_RESET` line LOW for $\ge 500$ ms.
-   - **M68000 Reset Exception Timing:**
-     - After `_RESET` and `_HALT` are released HIGH, the M68000 enters its internal 40-clock reset sequence (10 bus cycles = 20 Color Clocks / CCK phases).
-     - Bus cycles 1–2 (4 CCK): Fetch initial 32-bit `SSP` from `$000000-$000003`.
-     - Bus cycles 3–4 (4 CCK): Fetch initial 32-bit `PC` from `$000004-$000007`.
-     - Bus cycles 5–6 (4 CCK): Prefetch first instruction word at `PC` into `IR`; increment `PC += 2`.
-     - Bus cycles 7–8 (4 CCK): Prefetch second instruction word at `PC` into `IRC` (`prefetch`); increment `PC += 2`.
-     - Cycles 9–10: Internal dispatch and microcode initialization.
-     - *Double Bus Fault:* If a bus error or address error (odd vector) occurs during the reset vector fetch, the CPU enters the **HALTED** state and permanently tri-states its bus until an external hardware reset occurs.
-
-2. **M68000 `RESET` Instruction (`$4E70`) Distinction:**
-   - The assembly instruction `RESET` is a privileged instruction ($S=1$).
-   - When executed, the M68000 drives its external `_RESET` pin LOW for 124 clock cycles (62 CCKs) while `_HALT` remains HIGH.
-   - **The CPU does NOT reset its own internal state, registers, or PC!** It continues execution with the subsequent instruction.
-   - External devices (custom chips, CIAs, expansion boards) and Gary are reset, re-engaging `_OVL`. Software executing `RESET` must ensure its execution is already running out of Kickstart ROM space (`$F80000-$FFFFFF`) before triggering `RESET`.
-
----
-
-### 5.2 Subsystem Reset Defaults Table
-
-| Subsystem / Chip | Register / State | Power-On / Hardware Reset Value | Circuit Effect |
-| :--- | :--- | :--- | :--- |
-| **Gary / Bus** | `_OVL` (Boot Overlay) | **Active (`0`)** | Intercepts CPU accesses to `$000000-$07FFFF` and routes to Kickstart ROM space (`$F80000-$FFFFFF`). Chip DMA is unaffected. |
-| **CPU (M68000)** | `SR` | **`$2700`** | Supervisor mode ($S=1$), Trace disabled ($T=0$), Interrupt mask set to Level 7 ($I_2,I_1,I_0 = 111$). |
-| **CPU (M68000)** | `SSP` / `PC` | **Vectors from `$000000` / `$000004`** | Fetched from Kickstart ROM via Gary `_OVL`. |
-| **CPU (M68000)** | `D0..D7`, `A0..A6` | **Undefined (Cold) / Unaltered (Warm)** | Flip-flops retain state on warm reset; random on cold silicon. |
-| **Agnus (8370/8371)** | `DMACON` | **`$0000`** | All 7 DMA channels disabled, master DMA disabled, Blitter Nasty disabled. |
-| **Agnus** | `hpos` / `vpos` / `lof` | **`0` / `0` / `false`** | Raster beam synchronized to scanline 0, horizontal CCK 0, short frame. |
-| **Copper** | `COP1LC` / `COP2LC` | **`0` / `0`** | Copper halted (`is_running = false`, `is_waiting = false`, `cdang = false`). |
-| **Blitter** | Busy flag | **`false`** | Blitter idle, channels released. |
-| **Denise (8362)** | `BPLCON0`..`BPLCON3` | **`$0000`** | Display output disabled, 0 bitplanes active, sprites disabled. |
-| **Denise** | `CLXDAT` | **`$0000`** | Collision latches cleared. |
-| **Paula (8364)** | `INTENA` / `INTREQ` | **`$0000` / `$0000`** | Master and all 14 interrupt channels disabled; all requests cleared. |
-| **Paula** | `AUD0VOL`..`AUD3VOL` | **`0`** | Audio output immediately muted. |
-| **Paula** | Floppy & UART | **Motor OFF, UART idle** | Drive motor disabled, write gate off, serial dividers reset. |
-| **CIA-A & CIA-B** | `DDRA` / `DDRB` | **`$00`** | All port pins configured as high-impedance inputs. |
-| **CIA-A** | `PRA` bit 0 (`_OVL`) | **Input (`0`)** | Keeps Gary boot overlay active until software configures `DDRA` bit 0 = 1 and `PRA` bit 0 = 1. |
-| **CIA-A & CIA-B** | `CRA` / `CRB` | **`$00`** | All timers stopped (continuous mode, E-clock source). Latches reset to `$FFFF`. |
-| **CIA-A & CIA-B** | `ICR` | **`$00`** | All interrupt masks cleared; pending flags cleared. |
-| **Machine Loop** | `cck` | **`0`** | Master Color Clock counter reset to 0. |
-
----
-
-### 5.3 Cold / Hard Reset (`reset`)
-1. **Physical Memory:** Call `physical_memory.reset()`. Zeroes all physical Chip RAM, Slow RAM, and Fast RAM buffers (`$00`) and unconditionally engages low-memory overlay (`map_kickstart_to_low_memory()`).
-   - *Headless / Synthetic Test Invariant:* When no external Kickstart ROM is loaded, `PhysicalMemory`'s default `kickstart_rom` buffer provides synthetic boot vectors (`SSP = $00080000` at `$000000`, `PC = $00000000` at `$000004`), backed by `$FF` open bus. The CPU executes physical vector fetches through `_OVL` with zero synthetic normalization in the CPU core.
-2. **Master CCK Counter:** Set `self.cck = 0`.
-3. **Specialized Chips:** Apply chip reset defaults from the table above (disable DMA, mask interrupts, halt Copper/Blitter, mute audio, clear CIA latches).
-4. **CPU:** Apply M68000 reset:
-   - `SR` set to `$2700`.
-   - Read initial `SSP` from `$000000` (routed to Kickstart ROM via active `_OVL`).
-   - Read initial `PC` from `$000004` (routed to Kickstart ROM via active `_OVL`).
-   - If initial `PC` is unaligned (`(pc & 1) != 0`), trigger immediate Double Bus Fault (`halted = true`) and abort prefetch.
-   - Otherwise, prime prefetch pipeline (`IR` and `IRC`) and initiate the first instruction.
-5. **Execution & Kickstart Detection:**
-   - CPU begins executing at Kickstart entry point.
-   - Because RAM was zeroed, memory checksum validation fails.
-   - Kickstart executes full cold system initialization: diagnostic colors (Red/Green/Blue tests), memory auto-sizing, chip initialization, and prompts for boot diskette (insert floppy screen or Early Startup).
-
----
-
-### 5.4 Warm Reset (`reset_warm`)
-1. **Physical Memory:** Call `physical_memory.reset_warm()`. **Leaves RAM contents completely intact!** Unconditionally re-engages low-memory overlay (`map_kickstart_to_low_memory()`).
-   - *Headless / Synthetic Test Invariant:* When no external Kickstart ROM is loaded, `PhysicalMemory`'s default `kickstart_rom` buffer provides synthetic boot vectors (`SSP = $00080000`, `PC = $00000000`).
-2. **Master CCK Counter:** Set `self.cck = 0`.
-3. **Specialized Chips:** Apply chip reset defaults (disable DMA, mask interrupts, mute audio, reset CIA port latches), leaving physical RAM undisturbed.
-4. **CPU:**
-   - Re-initialize `SR = $2700`.
-   - Reload initial `SSP` from `$000000` and initial `PC` from `$000004` via `_OVL`.
-   - If initial `PC` is unaligned (`(pc & 1) != 0`), trigger Double Bus Fault (`halted = true`).
-   - Otherwise, prime prefetch pipeline (`IR` and `IRC`) and initiate the first instruction.
-5. **Kickstart Detection & Fast Reboot:**
-   - CPU begins executing at Kickstart entry point.
-   - Kickstart scans RAM for magic resident signatures (`KickTagPtr`, ExecBase pointers, `ColdCapture`/`CoolCapture` vectors, and memory checksums).
-   - Because RAM was preserved, the memory checksum succeeds.
-   - Kickstart recognizes a **warm reboot**: it preserves resident libraries, device drivers, and surviving RAD: recoverable RAM-disks, bypasses prolonged memory sizing, and reboots rapidly.
-
----
-
-## 6. Delayed Signal & Register Mutation Propagation Pipeline
-
-Physical Amiga circuit traces and custom chip internal latches exhibit finite propagation delays:
-- **Read is NOW**: Reading a custom register returns the *currently latched active value* immediately with zero delay.
-- **Write is Staged**: Writes to control registers (e.g. `DMACON`, `BPLCON0`, `COLORxx`, `INTENA`), trigger strobes (`COPJMP1`, `BLTSIZE`), or CIA timer latches do not take instantaneous cross-chip effect. Instead, they enter a small staged delay pipeline and commit to the active register after $K$ Color Clock phases or CCK cycles ($K \in 1..4$).
-
-```mermaid
-flowchart LR
-    CPU_WRITE["CPU / Copper Write\n(Cycle T)"] --> STAGE["Delayed Mutation Latch\n[delay_cck = K, value = V]"]
-    STAGE -->|step_cck() decrements countdown| PIPELINE{"countdown == 0?"}
-    PIPELINE -->|No| WAIT["Pending (Hidden from Chip Logic)"]
-    PIPELINE -->|Yes| COMMIT["Commit to Active Register\n(Cycle T + K)\nAffects Beam / DMA / Video"]
-    
-    REG_READ["Register Read\n(Cycle T)"] --> ACTIVE["Read Active Latched Value NOW\n(Immediate Bus Return)"]
-```
-
-### 6.1 Hot-Path Zero-Allocation Architecture
-To preserve the zero-allocation hot path:
-- Staged mutations are modeled using fixed-size inline ring buffers / fixed arrays embedded directly in chip structs:
-  - `Agnus`: `[Option<DelayedMutation>; 64]` (covering all Agnus write registers including Copper, Blitter, and beam controls).
-  - `Denise`: `[Option<DelayedMutation>; 64]` (covering palette `COLOR00..31`, bitplane control `BPLCON0..3`, and sprites).
-  - `Paula`: `[Option<DelayedMutation>; 32]` (covering audio channels, interrupt control `INTENA`/`INTREQ`, and disk controller).
-  - `CIA`: `[Option<DelayedMutation>; 16]` (covering all 16 addressable 8520 register offsets).
-- Two distinct mutation propagation modes are supported:
-  - `MutationMode::Pipeline`: Pipelined FIFO wave for streaming registers (colors, audio samples, bitplane pointers).
-  - `MutationMode::OverwritePending`: Control/strobe registers (`DMACON`, `INTENA`, `INTREQ`, `BLTSIZE`, `COPJMP1/2`) where back-to-back writes replace pending mutations targeting the same register.
-- Overflow Protection: If the mutation buffer capacity is exceeded, an immediate fallback commit is executed with a defensive error log, guaranteeing zero host panics and zero heap allocations.
-
-### 6.2 Deterministic Save State Serialization
-All pending mutations, staged register values, and remaining cycle countdowns are fully serialized within the subsystem snapshot structs (`AgnusState`, `DeniseState`, etc.):
-- Restoring a save state captured mid-propagation guarantees that pending writes commit at the exact target cycle, ensuring bit-for-bit cycle-exact repeatability.
-
-### 6.3 Register Maturity, Output Polling & Action Routing
-
-Register propagation remains local to the owning chip. The coordinator does not
-require a generic array of matured register/value pairs from each chip. Instead,
-`step_subsystems_cck()` polls explicit outputs after advancing each engine:
-
-- `agnus.poll_copper_write()` yields a custom-register write routed through the
-  transient `MemoryBus`.
-- `agnus.poll_bpl_dma()` yields a plane and word latched by Denise.
-- `agnus.poll_dsk_dma_slot()` yields the Agnus-generated disk address; the
-  coordinator bridges the floppy holding data and physical Chip RAM.
-- Blitter, VBlank, disk, audio restart, and CIA outputs are sampled and routed to
-  their destination interrupt or pointer inputs.
-
-DMA requests, data-bus latches, and contention outputs are routed between the
-connected components. Agnus owns transfer scheduling and arbitration, specified
-in [DMA.md](DMA.md); the coordinator does not select DMA slots. Signal directions
-are recorded in the [cross-chip catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md).
-
-The following register and signal requirements describe the coordination contract;
-individual register decoding and mutation pipelines remain in their owning chips:
-
-  - **`Copper` Strobes & Latches:**
-    - `COP1LC` ($080/$082) & `COP2LC` ($084/$086) update Copper pointer latches.
-    - `COPJMP1` ($088) & `COPJMP2` ($08A) strobes reload the active Copper Program Counter (`cop_pc`) and assert `is_running = true`.
-  - **`Blitter` Triggering & Register Synchronization:**
-    - Writing `BLTSIZE` ($058) synchronizes all active address pointers (`bltapt`, `bltbpt`, `bltcpt`, `bltdpt`) and control registers (`bltcon0`, `bltcon1`, modulos, masks) from Agnus into the Blitter engine.
-    - Hardware Invariant: Writing `BLTSIZE` immediately arms the Blitter and sets `is_busy = true`, asserting `BBUSY` in `DMACONR` even if DMA is currently disabled.
-  - **`Floppy` Subsystem Bridge:**
-    - Writing `DSKLEN` ($024) enforces the physical 2-write arming sequence: the first write with bit 15 arms the controller, and the second consecutive write with bit 15 starts DMA transfer.
-    - Writes to CIA-B Port B ($BFD100) clock the shared `_MTR` wire into drive motor flip-flops on the falling edge of `_SELx`, pulse `_STEP`, and configure `_DIR` and `_SIDE`.
-    - On every CCK cycle, peripheral pin polling samples active drive status lines (`_RDY`, `_TK0`, `_WPROT`, `_CHNG`) into CIA-A Port A ($BFE001) inputs.
-  - **Raster Beam Observation:**
-    - Centralized master beam coordinates (`BeamPosition { hpos, vpos, lof }`) from Agnus are passed directly into `step_cck(beam)` on `Copper`, `Sprites`, and `FrameBuilder`, eliminating circular references and dynamic heap allocations.
-
----
-
-## 7. Host Interfaces & Persistence
-
-- **Video Frame Retrieval:** Returns current frame buffer slice (`&[u32]` ARGB, $720 \times 576$ max PAL).
-- **Audio Sample Retrieval:** Decouples stereo audio ring buffers (`&[i16]`).
-- **Save State:** Serializes complete machine state via [SaveState.md](Application/SaveState.md).
-
----
-
-## 8. Reference Documentation & Upstream Ground Truth
-
-- [`machine_loop` Cargo manifest](../../../crates/machine_loop/Cargo.toml): Crate name, dependencies, and library entry point.
-- [`A500Machine implementation`](../../../crates/machine_loop/src/machine_loop.rs): Living ownership, CCK sequence, reset domains, and peripheral routing.
-- [`Machine snapshot records`](../../../crates/machine_loop/src/save_state.rs): Serializable machine state and validation types.
-- [MemoryBus.md](MemoryBus.md): Transient address routing and CPU contention contract.
-- [DMA.md](DMA.md): Agnus transfer scheduling and arbitration; the machine loop routes the resulting signals.
-- [Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md): Signal directions and propagation requirements.
-- [SaveState.md](Application/SaveState.md): Snapshot and differential rewind specification.
-
-- [Amiga Hardware Reference Manual: Chapter 7 (System Control Hardware)](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): System reset sequences, bus arbitration lines, and interrupt prioritization.
-- [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md): Motherboard layout, master system clocks, bus timing, and chip interconnections.
-- [vAmiga System Coordinator Reference](../../../ref_src/vAmiga-4.5/Core/Components/Amiga.cpp): Master execution loop, sub-frame step scheduling, and decoupled host buffer flushes.
+- [`machine_loop.rs`](../../../crates/machine_loop/src/machine_loop.rs): Source of component ownership, CCK ordering, signal dispatch, resets, and stepping APIs described here.
+- [`save_state.rs`](../../../crates/machine_loop/src/save_state.rs): Defines the machine snapshot and versioned serialization contract.
+- [General Architecture.md](General%20Architecture.md): Places the coordinator within the machine's component structure.
+- [MemoryBus.md](MemoryBus.md): Describes address routing and bus access between the CPU and connected devices.
+- [DMA.md](DMA.md): Owns the Agnus transfer schedule and Chip RAM arbitration details.
+- [Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md): Records the wider set of modeled inter-chip connections.

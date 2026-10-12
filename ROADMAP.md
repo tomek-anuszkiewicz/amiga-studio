@@ -103,7 +103,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
   - **Objective:** Advance custom chips and registers systematically from clean baseline specifications to fully validated cycle-exact implementations.
   - **Actionable Scope:**
     - Implement and calibrate custom chip features following the substrate-first causality chain (Layer 0 $\to$ Layer 4).
-    - Strictly adhere to repro-first defect resolution (`.agents/rules/repro-first.md`) and 4-tier integration archetypes (`.agents/rules/unit-testing-policy.md`).
+    - Strictly adhere to defect resolution (`.agents/rules/structural-root-cause.md`) and 4-tier integration archetypes (`.agents/rules/unit-testing-policy.md`).
   - **Verification Gate:**
     - `python tools/verification/verify.py test rust crate machine_loop`
     - `python tools/verification/verify.py test rust integration`

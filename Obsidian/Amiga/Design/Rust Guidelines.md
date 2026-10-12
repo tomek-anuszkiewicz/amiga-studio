@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-09-10
-updated: 2026-10-10
+updated: 2026-10-12
 related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[PowerShell tooling skill](../../../.agents/skills/write-powershell/SKILL.md)"]
 ---
 
@@ -15,7 +15,6 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guideli
 - **Parent Specification:** [General Architecture.md](General%20Architecture.md)
 - **Frontend Guidelines:** [egui Guidelines.md](egui%20Guidelines.md) | **Tooling Guidelines:** [PowerShell tooling skill](../../../.agents/skills/write-powershell/SKILL.md)
 - **Rules & Policies:** [performance-and-readability.md](../../../.agents/rules/performance-and-readability.md) | [rust-best-practices.md](../../../.agents/rules/rust-best-practices.md) | [unit-testing-policy.md](../../../.agents/rules/unit-testing-policy.md)
-- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
 
 > [!NOTE]
 > This document defines the engineering standards, idioms, and best practices for writing Rust code across the Amiga 500 emulator workspace.
@@ -123,7 +122,6 @@ Every implementation or bugfix must satisfy:
 
 ## 6. Reference Documentation & Upstream Ground Truth
 
-- [Rust Systems Rules & Guidelines (AGENTS.md)](../../../AGENTS.md): Complete repository guidelines, memory model, and Definition of Done.
 - [Performance & Readability Rule](../../../.agents/rules/performance-and-readability.md): Lean execution paths, zero macros, and flat dispatch.
 - [Rust Best Practices Rule](../../../.agents/rules/rust-best-practices.md): Safe borrowing, wrapping math, and inlining policies.
 - [Unit Testing Policy](../../../.agents/rules/unit-testing-policy.md): Unit and integration testing mandates.

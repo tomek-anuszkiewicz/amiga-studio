@@ -2,6 +2,8 @@
 
 Design specifications and [AGENTS.md](../../AGENTS.md) govern implementation. Never silently contradict or bypass documented behavior, timing, memory semantics, or architectural boundaries.
 
+Consult relevant requirements while implementing and handle concrete conflicts when encountered. This does not trigger a general code/design parity audit; scoped synchronization belongs to the authorized pre-commit review, and broader semantic parity belongs to milestone closure or an explicit request.
+
 - When a requirement, test expectation, or reference emulator conflicts with the specification, stop the conflicting change and present the current rule, contrary evidence, and concrete options.
 - Obtain an explicit recorded user decision before deviating or amending the specification. Otherwise implement the documented behavior.
 

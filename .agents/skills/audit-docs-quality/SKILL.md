@@ -1,25 +1,28 @@
 ---
 name: audit-docs-quality
-description: Review concise instructions and agent governance, and route design, vault, semantic and workflow checks to their owning skills.
+description: Review concise instructions and agent governance on request or at major milestone completion; route conditional checks to their owning skills.
 ---
 
 # Recipe: Documentation & Agent Governance Quality Auditor Playbook
 
-This skill reviews instruction brevity and audits agent governance. Design synchronization, vault integrity, semantic comparisons and workflow checks are owned and executed by the skills linked below; this manual review does not replace those domain checks.
+This skill reviews instruction brevity and audits agent governance. Design synchronization, vault integrity, semantic comparisons and workflow checks belong to the skills linked below and run only at their own triggers; this manual review does not replace those domain checks.
 
 ---
 
 ## 1. When to Trigger This Skill
 
-- **Major Milestone Completion:** Audit documentation governance upon milestone sign-off.
-- **Specification Updates:** Verify that code changes across `crates/` have not left `Obsidian/Amiga/Design/` in a drifted state.
-- **Governance Review:** Review script ownership and required procedure routing.
+- **Major Milestone Completion:** Audit documentation governance during milestone sign-off.
+- **Requested Governance Review:** Review script ownership and required procedure routing.
+
+Ordinary code work and specification updates do not invoke this skill. The
+authorized pre-commit workflow owns scoped code/design synchronization;
+milestone closure owns broader semantic parity.
 
 ---
 
 ## 2. Documentation Quality Checks
 
-### Pillar 1: Scoped Design Documentation Review
+### Pillar 1: Scoped Design Documentation Review (Pre-Commit)
 [sync-design-docs](../sync-design-docs/SKILL.md) owns the pre-commit review of intended changes and documents selected by `tracked_paths`.
 
 ### Pillar 2: Obsidian Vault Linking & Graph Integrity (`--vault-links`)
@@ -38,7 +41,7 @@ classification registry or skill-name symmetry check is maintained.
 ### Pillar 7: Frontmatter & Inverted Pyramid Structure (`--frontmatter`)
 [obsidian-vault-linking](../obsidian-vault-linking/SKILL.md) owns YAML frontmatter checks.
 
-### Pillar 8: Semantic Documentation-to-Code Parity (`--semantic-sync`)
+### Pillar 8: Semantic Documentation-to-Code Parity (Milestone)
 [audit-semantic-parity](../audit-semantic-parity/SKILL.md) owns static comparisons and manual semantic review.
 
 ### Pillar 9: Workflow Invariants (`--workflow-invariants`)
@@ -49,7 +52,7 @@ classification registry or skill-name symmetry check is maintained.
 ## 3. The Verbal Double-Check Protocol (Heuristic Verification)
 
 Automated checks validate their configured patterns and boundaries. They do not establish complete semantic agreement or hardware fidelity; report the inspected scope and follow with manual review where required. Conclude every audit with the **5 Heuristic Questions**:
-1. 🧠 **Spec Freshness Review:** Did recent code changes alter chip behavior or registers without updating `Obsidian/Amiga/Design/*.md`?
+1. 🧠 **Procedure Routing Review:** Are scoped code/design synchronization and broader semantic parity assigned to their pre-commit and milestone workflows?
 2. 🚫 **Anti-Nudge Review (`structural-root-cause.md`):** Are all beam coordinates and delays silicon-verified rather than empirical $\pm 1$ / $\pm 2$ symptom patches?
 3. 🔬 **Assertion Density & Genuine Test Review (`unit-testing-policy.md`):** Do unit tests genuinely verify chip behavior and state changes, or do they only assert trivial boilerplate?
 4. 📢 **Spec Conflict Escalation (`spec-compliance.md`):** Were any conflicts between reference test suites and internal design specs escalated to the user before changing code?
@@ -59,29 +62,23 @@ Automated checks validate their configured patterns and boundaries. They do not 
 
 ## Default Execution
 
-When invoked without a narrower scope, run:
-
-```powershell
-python tools/verification/verify.py commit
-```
-
-Only after the scoped documentation review and verification succeed, use [`$index-amiga-rag`](../index-amiga-rag/SKILL.md)
-to index the accepted documentation. Do not index failed audits or stale drafts.
-For remediation, follow the owning skill to reconcile the intended code changes
-and selected specifications, repair vault links and review actual script ownership.
+When invoked without a narrower scope, inspect the affected governance files,
+their procedure links, and actual script ownership. Use verification results from
+an enclosing commit or milestone workflow when that workflow applies; this audit
+does not start the commit profile, code/design synchronization, semantic parity,
+or RAG indexing on its own. For remediation, follow the owning skill for the
+specific finding.
 
 ## 5. Output Contract
 Conclude with the standardized summary report:
 Report observed results; mark checks that were not run instead of copying the example PASS values.
 ```markdown
 ### 📚 Documentation & Governance Quality Audit Report
-- **Design Specs Sync:** [PASS | <count> drifted]
 - **Vault Linking & Graph Integrity:** [PASS | <count> broken links] (verified <count> links)
 - **Instruction Brevity and Script Ownership:** <manual review scope and findings; mark unrun>
 - **Skill and Rule Ownership:** <manual routing review scope and findings; mark unrun>
 - **Frontmatter Compliance:** [PASS | <count> missing frontmatter]
-- **Semantic Documentation-to-Code:** [PASS | <count> discrepancies] (registers, memory map, crate topology, signals, quirks)
 - **Workflow Invariants:** [PASS | <count> issues] (diary structure/timestamps, roadmap file/checkboxes)
 - **Manual Review:** <inspected scope and unresolved questions; mark unrun reviews>
-- **Verification:** `verify.py` (PASS), `check_architecture.py` (PASS)
+- **Enclosing Commit or Milestone Results:** <actual results when applicable; otherwise not run>
 ```

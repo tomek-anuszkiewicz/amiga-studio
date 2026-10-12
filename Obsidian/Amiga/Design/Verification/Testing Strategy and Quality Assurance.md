@@ -19,11 +19,6 @@ tracked_paths:
 
 # Amiga 500 Testing Strategy and Quality Assurance
 
-> [!NOTE]
-> Project-wide engineering constraints, Rust coding guidelines, and constitutional rules are defined in [AGENTS.md](../../../../AGENTS.md) and [.agents/rules/unit-testing-policy.md](../../../../.agents/rules/unit-testing-policy.md).
-
----
-
 ## Completion entry point
 
 Completion uses [verify.py](../../../../tools/verification/verify.py) with
@@ -111,7 +106,11 @@ is tested separately. See [CPU wait coverage](CPU%20SingleStepTests.md#8-ordinar
   - CPU instruction, memory, wait-state, and exception behavior ([`crates/cpu/tests/`](../../../../crates/cpu/tests)).
   - Configuration and physical memory behavior ([`crates/config/tests/`](../../../../crates/config/tests), [`crates/physical_memory/tests/`](../../../../crates/physical_memory/tests)).
 
-The removed isolated chip and peripheral suites no longer establish their former register, algorithm, or boundary assertions. Production-machine integration tests cover only their stated cross-chip cases. [Roadmap step 3.3](../../../../ROADMAP.md) plans new HRM-derived subsystem tests.
+Custom-chip and peripheral tests should check register behavior, algorithms,
+and boundary conditions against HRM-derived expectations in isolated fixtures.
+Production-machine integration tests check the cross-chip interactions they
+assert, but do not establish those isolated behaviors. [Roadmap step 3.3](../../../../ROADMAP.md)
+plans the subsystem coverage.
 
 ### Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)
 - **Scope**: Multi-crate interaction, bus routing, and system loop orchestration.
@@ -119,20 +118,10 @@ The removed isolated chip and peripheral suites no longer establish their former
 - **Execution Command**: `python tools/verification/verify.py test rust integration`
 - **Primary Integration Hubs**:
   1. **Machine Loop Nexus ([`crates/machine_loop/tests/`](../../../../crates/machine_loop/tests))**:
-     - `test_machine_loop.rs`: Top-level A500 state machine loop step progression, monotonic CCK clock progression, CPU bus wait-states.
-     - `test_copper_machine_integration.rs`: Copper list execution, raster beam WAIT synchronization, palette mutation, and Level 3 IRQ.
-     - `test_blitter_machine_integration.rs`: Blitter 2D memory operations (copy, fill), Chip RAM mutation, and Level 3 `_BLITINT` signaling.
-     - `test_denise_palette_sprite_integration.rs`: Full 32-color palette batch writes, sprite channel vertical comparators, and data arming.
-     - `test_audio_machine_integration.rs`: Paula audio DMA playback streaming from Chip RAM, period clock division, and Level 4 `AUDxDSR` interrupt propagation.
-     - `test_dma_switching_and_signals_integration.rs`: Dynamic `DMACON` bitwise SET/CLR across all chips, electronic signal propagation delays, and unmapped open bus reads.
-     - `test_dma_contention.rs`: Agnus DMA scheduler contending with CPU bus accesses.
-     - `test_interrupt_pipeline.rs`: Level 1-6 interrupt prioritization between Paula, Agnus, CIA-A, CIA-B and CPU IPL.
-     - `test_register_propagation.rs`: CPU writing custom registers with CCK electronic delay pipelines.
-     - `test_cia_keyboard_integration.rs`: Physical keyboard transmission -> CIA-A SDR -> Level 2 interrupt to CPU.
-     - `test_action_dispatch.rs`: Register writes dispatching strongly-typed actions across custom chips.
-     - `test_reset.rs`: Cold, warm, and external CPU RESET instruction handling.
-     - `test_rtc.rs`: Real-time clock BCD decoding and cycle-exact stepping.
-      - `test_save_state.rs`: Complete machine state serialization and restoration roundtrip.
+     - Step the production machine in CCKs and check CPU progress, bus wait states, register propagation, and DMA contention.
+     - Drive Copper, Blitter, Denise, and Paula through machine-visible registers and Chip RAM; check their memory, display, audio, and interrupt effects.
+     - Check `DMACON` gating, cross-chip action and signal routing, interrupt priority, and keyboard-to-CIA-to-CPU delivery.
+     - Check cold and warm reset, the CPU RESET instruction, RTC stepping, and machine-state save and restore.
 
 #### The 4-Question Integration Checklist (When Tier 2 Tests are Mandatory)
 
@@ -153,14 +142,14 @@ If any answer is **YES**, identify integration protection for that coordination.
 
 #### Custom Chip Whole-Machine Verification Matrix
 
-| Custom Chip | Primary Integration Test File | Behavior Exercised by Integration Fixtures |
-| :--- | :--- | :--- |
-| **Copper** | `test_copper_machine_integration.rs`, `test_copper_control_flow_integration.rs` | List execution, beam `WAIT`, `MOVE` to `COLOR00`, DMACON enable/disable, Level 3 IRQ, `SKIP` condition, `CDANG` danger mode |
-| **Blitter** | `test_blitter_machine_integration.rs`, `test_blitter_nasty_contention_integration.rs` | 2D copy & fill in Chip RAM, `BLTSIZE` start, Level 3 `_BLITINT` assertion, CPU bus lockout, Blitter Nasty vs Fast RAM immunity |
-| **Denise** | `test_denise_palette_sprite_integration.rs`, `test_denise_bitplane_integration.rs` | 32-color batch mutation, sprite vertical window, `SPRxDATA` arming, DMA toggling, 1-plane bitplane fetch, display window clipping |
-| **Paula** | `test_audio_machine_integration.rs`, `test_interrupt_pipeline_integration.rs` | Audio DMA playback, period scaling, sample buffer generation, Level 4 `AUD0DSR`, multi-interrupt IPL 1-6 arbitration, INTENA masking |
-| **DMA Arbiter** | `test_dma_switching_and_signals_integration.rs` | Bitwise SET/CLR in `DMACON`, master `DMAEN` global halt, 1-2 CCK electronic delays, open bus `$FFFF` |
-| **CIAs** | `test_cia_keyboard_integration.rs`, `test_cia_machine_integration.rs` | Keyboard serial shift to CIA-A `SDR`, Timer A/B underflow Level 2/6 IRQs, horizontal TOD (CIA-B), vertical TOD 50 Hz tick (CIA-A) |
+| Custom Chip | Integration Behavior to Verify |
+| :--- | :--- |
+| **Copper** | List execution, beam `WAIT`, `MOVE` to `COLOR00`, DMACON enable/disable, Level 3 IRQ, `SKIP` condition, `CDANG` danger mode |
+| **Blitter** | 2D copy & fill in Chip RAM, `BLTSIZE` start, Level 3 `_BLITINT` assertion, CPU bus lockout, Blitter Nasty vs Fast RAM immunity |
+| **Denise** | 32-color batch mutation, sprite vertical window, `SPRxDATA` arming, DMA toggling, 1-plane bitplane fetch, display window clipping |
+| **Paula** | Audio DMA playback, period scaling, sample buffer generation, Level 4 `AUD0DSR`, multi-interrupt IPL 1-6 arbitration, INTENA masking |
+| **DMA Arbiter** | Bitwise SET/CLR in `DMACON`, master `DMAEN` global halt, 1-2 CCK electronic delays, open bus `$FFFF` |
+| **CIAs** | Keyboard serial shift to CIA-A `SDR`, Timer A/B underflow Level 2/6 IRQs, horizontal TOD (CIA-B), vertical TOD 50 Hz tick (CIA-A) |
 
 
   2. **Debugger & Tooling Nexus ([`crates/debugger/tests/`](../../../../crates/debugger/tests))**:
@@ -191,19 +180,17 @@ and runs with ordinary CPU tests.
 
 ## 3. Tier 4: Whole-Machine Hardware Capture Verification
 
-vAmigaTS reference assets remain available, but the former runner, injection,
-script execution, viewport extraction and comparison commands have been removed.
-Neither completion profile executes captures or chipset throughput measurements.
-The old capture path compared a rendered 716 x 285 RGB24 viewport with hardware
-reference images after running the selected program for scripted frames. A future
-workflow must establish executable workload setup and a validated comparison path
-before those assets can certify current whole-machine output.
+Whole-machine verification should load an executable hardware workload, run it
+for specified frames, extract the rendered 716 x 285 RGB24 viewport, and compare
+it with the vAmigaTS reference images using a validated comparison method.
+The execution and comparison entry point is still unavailable, so the reference
+assets cannot yet certify current whole-machine output. Neither completion
+profile executes captures or chipset throughput measurements.
 
-A requested integration sprint uses the available production machine tests.
-The [integration-test-sprint skill](../../../../.agents/skills/integration-test-sprint/SKILL.md)
-owns discovery, failure clustering, scoped repair and final validation. Its capture
-branch requires an executable entry point first. A passing crate or CPU suite
-cannot substitute for that missing hardware comparison.
+A requested integration sweep uses the available production machine tests.
+Classify failures by observed mechanism, repair demonstrated causes, and rerun
+the affected tests. A passing crate or CPU suite cannot substitute for the
+missing hardware comparison.
 
 ## 4. Diagnose Mechanisms Before Consolidating Fixes
 
@@ -214,13 +201,10 @@ cause when the evidence connects failures; unrelated defects need not collapse
 into one hardware law. Preserve justified state-machine conditions while removing
 temporary compensating patches.
 
-Use [synthesize-test-fixes](../../../../.agents/skills/synthesize-test-fixes/SKILL.md)
-when a requested review or accumulated exploratory changes need synthesis. Its
-symptom, patch location and applied mechanism matrix exposes whether changes
-share an upstream cause. This procedure does not add a mandatory review campaign
-after every edit. Scope, reproduction and reference conflicts follow
-[structural-root-cause.md](../../../../.agents/rules/structural-root-cause.md),
-[repro-first.md](../../../../.agents/rules/repro-first.md) and
+When exploratory changes accumulate, compare symptoms, patch locations, and
+applied mechanisms to determine whether they share an upstream cause. Scope,
+reproduction and reference conflicts follow
+[structural-root-cause.md](../../../../.agents/rules/structural-root-cause.md) and
 [spec-compliance.md](../../../../.agents/rules/spec-compliance.md).
 
 ---
@@ -266,8 +250,6 @@ Select existing checks for the actual change. The following categories describe 
 | [`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py) | Python checks validating source constraints, test naming and retained required suite files; passing them does not prove behavioral coverage. | `verify.py check architecture` & commit verification gate |
 | [`tools/verification/checks/audit_code_quality.py`](../../../../tools/verification/checks/audit_code_quality.py) | Checks dead code, test-only code and accessor conventions. Observed-caller visibility suggestions are advisory because external public API use is outside the repository scan. | `verify.py check code` & commit verification gate |
 | [`$test-runner`](../../../../.agents/skills/test-runner/SKILL.md) | Standardized execution runner across tiers, writing snapshots to `.agent/tmp/singlestep/` and diffing regressions. | Codex skill |
-| [`$integration-test-sprint`](../../../../.agents/skills/integration-test-sprint/SKILL.md) | Orchestrates the 4-iteration cascading verification sweep and failure cluster triage. | Codex skill |
-| [`$synthesize-test-fixes`](../../../../.agents/skills/synthesize-test-fixes/SKILL.md) | Audits recent test patches, builds the 3-column diagnostic matrix, and synthesizes root causes into upstream crates. | Codex skill |
 
 ---
 

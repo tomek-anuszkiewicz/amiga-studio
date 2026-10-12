@@ -1,11 +1,21 @@
 # Scope and Root-Cause Resolution
 
 - Inspection questions authorize investigation and explanation. Modify files when implementation is requested or proposed changes are accepted.
-- Complete the requested change, including affected consumers, tests, and documentation. Avoid unrelated cleanup; obtain direction if the cause requires expanding the agreed scope.
-- Explain the failing data flow, clock phase, or state transition before repairing it. Follow [repro-first.md](repro-first.md) to confirm the defect and fix.
+- Complete the requested change, including affected consumers and tests. Synchronize design documentation for code changes before an authorized commit, unless documentation work was explicitly requested earlier. Avoid unrelated cleanup; obtain direction if the cause requires expanding the agreed scope.
+
+## Defect Resolution
+
+- When investigating a suspected defect, trace the failing data flow, clock phase, or state transition toward its cause before choosing a repair.
+- Before changing production behavior to fix a defect, identify or author a focused regression test and confirm that it fails on the original code for the expected reason. An existing isolated failing test is sufficient.
 - Repair a shared upstream mechanism only when evidence establishes it. Reuse authoritative constants, types, and helpers; prove the mechanism on an isolated case before scaling.
+- Repair the demonstrated mechanism within the requested scope, then confirm the reproduction passes and run adjacent domain regressions.
+- Keep the regression protection after the fix; never delete or disable it merely to hide a failure. Rust test placement follows [unit-testing-policy.md](unit-testing-policy.md).
 - Do not nudge coordinates or timing to fit a test, hardcode one-artifact OCR substitutions, or special-case an opcode, address, or filename to mask a defect. Represent the actual condition in the state machine or data model.
+- Apply [spec-compliance.md](spec-compliance.md); never adjust goldens or timing offsets to manufacture a pass.
+- Use the focused reproduction procedure in [test-runner](../skills/test-runner/SKILL.md). For CPU silicon divergences, use [m68k-singlestep-test](../skills/m68k-singlestep-test/SKILL.md).
 - Before completion, verify scope, cause, and absence of duplicated definitions; requested refactors follow [clean-break-refactoring.md](clean-break-refactoring.md). Report delivered work, actual verification, and material unresolved findings.
+
+Ordinary defect completion requires relevant focused checks. Full commit and milestone profiles run only at their respective triggers in [AGENTS.md](../../AGENTS.md); report actual results and remaining gaps.
 
 ## Execution-Plan Lifecycle
 

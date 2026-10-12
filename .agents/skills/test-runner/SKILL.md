@@ -23,7 +23,7 @@ Use this skill to select relevant existing tests and report their evidence. The 
 
 ## Focused Defect Reproduction
 
-Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
+Follow [defect resolution](../../rules/structural-root-cause.md#defect-resolution) when repairing behavior:
 
 1. Identify existing regression protection, including authoritative vectors. Extend it or add a focused test only for a demonstrated gap. State the checked behavior and expected-result source under [unit-testing-policy.md](../../rules/unit-testing-policy.md). For Rust, use `crates/<crate>/tests/`; Python tool contracts use the owning tool's `tests/` directory, listed in [tools/verification/README.md](../../../tools/verification/README.md).
 2. Run it before the repair and confirm the expected failure, rather than a missing fixture or unrelated setup error:

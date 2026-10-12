@@ -2,7 +2,7 @@
 //!
 //! Synthesizes unrolled instruction blocks (K = 700 ops), preambles, footers,
 //! cascading stacks, and PRNG memory buffers directly in Rust memory per
-//! Obsidian/Amiga/Design/Performance/CPU Instruction Benchmark Strategies.md.
+//! Obsidian/Amiga/Design/Performance/CPU Instruction Benchmarking.md.
 
 use cpu::Cpu;
 use physical_memory::PhysicalMemory;
