@@ -95,7 +95,7 @@ pub fn alu_asl_b_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asl_b(state, count, val);
     state.set_d_byte(reg_dst as usize, res);
     let duration = 2 + (2 * count);
-    state.micro.clocks_remaining = duration as u16;
+    state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_asl_w_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
@@ -104,7 +104,7 @@ pub fn alu_asl_w_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asl_w(state, count, val);
     state.set_d_word(reg_dst as usize, res);
     let duration = 2 + (2 * count);
-    state.micro.clocks_remaining = duration as u16;
+    state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_asl_l_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
@@ -113,7 +113,7 @@ pub fn alu_asl_l_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asl_l(state, count, val);
     state.set_d_long(reg_dst as usize, res);
     let duration = 4 + (2 * count);
-    state.micro.clocks_remaining = duration as u16;
+    state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_asl_b_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
@@ -122,7 +122,7 @@ pub fn alu_asl_b_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asl_b(state, count, val);
     state.set_d_byte(reg_dst as usize, res);
     let duration = 2 + (2 * count);
-    state.micro.clocks_remaining = duration as u16;
+    state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_asl_w_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
@@ -131,7 +131,7 @@ pub fn alu_asl_w_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asl_w(state, count, val);
     state.set_d_word(reg_dst as usize, res);
     let duration = 2 + (2 * count);
-    state.micro.clocks_remaining = duration as u16;
+    state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_asl_l_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
@@ -140,13 +140,13 @@ pub fn alu_asl_l_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asl_l(state, count, val);
     state.set_d_long(reg_dst as usize, res);
     let duration = 4 + (2 * count);
-    state.micro.clocks_remaining = duration as u16;
+    state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_asl_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = (state.micro.destination & 0xFFFF) as u16;
+    let d = (state.micro().destination & 0xFFFF) as u16;
     let res = asl_w(state, 1, d);
-    state.micro.destination = (state.micro.destination & !0xFFFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFFFF) | (res as u32);
 }
 
 // ============================================================================

@@ -17,9 +17,9 @@ use crate::Cpu;
 
 pub fn alu_check_privilege(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     if !state.is_supervisor() {
-        state.micro.current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
-        state.micro.micro_step = 0;
-        state.micro.clocks_remaining = 0;
+        state.micro_mut().current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
+        state.micro_mut().micro_step = 0;
+        state.micro_mut().clocks_remaining = 0;
     }
 }
 
@@ -30,7 +30,7 @@ pub static ALU_CHECK_PRIVILEGE: MicroStep = MicroStep {
 };
 
 pub fn alu_latch_src_dn_word(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
-    state.micro.source = state.d_long(reg_src as usize) & 0xFFFF;
+    state.micro_mut().source = state.d_long(reg_src as usize) & 0xFFFF;
 }
 
 pub static ALU_LATCH_SRC_DN_WORD: MicroStep = MicroStep {
@@ -40,7 +40,7 @@ pub static ALU_LATCH_SRC_DN_WORD: MicroStep = MicroStep {
 };
 
 pub fn alu_set_ccr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.set_ccr((state.micro.source & 0xFF) as u8);
+    state.set_ccr((state.micro().source & 0xFF) as u8);
 }
 
 pub static ALU_SET_CCR_4CLK: MicroStep = MicroStep {
@@ -50,7 +50,7 @@ pub static ALU_SET_CCR_4CLK: MicroStep = MicroStep {
 };
 
 pub fn alu_set_sr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.set_sr(state.micro.source as u16);
+    state.set_sr(state.micro().source as u16);
 }
 
 pub static ALU_SET_SR_4CLK: MicroStep = MicroStep {
@@ -440,7 +440,7 @@ pub static STEPS_MOVE_FROM_SR_DN: [MicroStep; 3] = [
 ];
 
 pub fn alu_move_from_sr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.destination = state.sr() as u32;
+    state.micro_mut().destination = state.sr() as u32;
 }
 
 pub static STEPS_MOVE_FROM_SR_AI: [MicroStep; 6] = [

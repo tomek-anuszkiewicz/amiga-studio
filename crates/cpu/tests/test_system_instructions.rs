@@ -18,14 +18,14 @@ fn reset_pin_is_asserted_for_124_clocks() {
     for tick in 1..=66 {
         let done = cpu.step_cck(&mut bus);
         assert_eq!(done, tick == 66);
-        if cpu.state.reset_line_asserted {
+        if cpu.state.is_reset_line_asserted() {
             asserted += 2;
         }
     }
     assert_eq!(asserted, 124, "Motorola RESET output duration");
-    assert!(!cpu.state.reset_line_asserted);
+    assert!(!cpu.state.is_reset_line_asserted());
     assert_eq!(cpu.cycle_counter(), 132);
-    assert_eq!(cpu.state.instruction_pc, 0x1002);
+    assert_eq!(cpu.state.instruction_pc(), 0x1002);
 }
 
 #[test]
@@ -45,10 +45,10 @@ fn privileged_system_instructions_reject_user_mode_before_operand_access() {
             cpu.state.set_ssp(0x8000);
             cpu.state.set_usp(0x6000);
             cpu.state.set_sr(0x0015);
-            cpu.state.pc = 0x1004;
-            cpu.state.instruction_pc = 0x1000;
-            cpu.state.ir = opcode;
-            cpu.state.prefetch = 0x2700;
+            cpu.state.set_pc(0x1004);
+            cpu.state.set_instruction_pc(0x1000);
+            cpu.state.set_ir(opcode);
+            cpu.state.set_prefetch(0x2700);
             cpu.state.set_a_long(0, 0x3000);
             let transfers = [
                 Access::WriteWord(0x7ffe, 0x1000),
@@ -65,8 +65,8 @@ fn privileged_system_instructions_reject_user_mode_before_operand_access() {
             assert_eq!(cpu.state.usp(), 0x6000);
             assert_eq!(cpu.state.a_long(0), 0x3000);
             assert_eq!(cpu.state.sr(), 0x2015);
-            assert!(!cpu.state.stopped);
-            assert!(!cpu.state.reset_line_asserted);
+            assert!(!cpu.state.is_stopped());
+            assert!(!cpu.state.is_reset_line_asserted());
         }
     }
 }
@@ -77,18 +77,18 @@ fn stop_retires_at_four_clocks_without_bus_access_and_selects_the_loaded_stack()
         let mut cpu = Cpu::new();
         cpu.state.set_ssp(0x8000);
         cpu.state.set_usp(0x6000);
-        cpu.state.pc = 0x1004;
-        cpu.state.instruction_pc = 0x1000;
-        cpu.state.ir = 0x4e72;
-        cpu.state.prefetch = sr;
+        cpu.state.set_pc(0x1004);
+        cpu.state.set_instruction_pc(0x1000);
+        cpu.state.set_ir(0x4e72);
+        cpu.state.set_prefetch(sr);
         let mut bus = RecordingBus::new(PhysicalMemory::new(), vec![]);
         assert!(!cpu.step_cck(&mut bus));
-        assert!(!cpu.state.stopped);
+        assert!(!cpu.state.is_stopped());
         assert!(cpu.step_cck(&mut bus));
         assert_eq!(cpu.cycle_counter(), 4);
-        assert!(cpu.state.stopped);
+        assert!(cpu.state.is_stopped());
         assert_eq!(cpu.state.sr(), sr);
-        assert_eq!(cpu.state.instruction_pc, 0x1004);
+        assert_eq!(cpu.state.instruction_pc(), 0x1004);
         assert_eq!(
             cpu.state.a_long(7),
             if sr & 0x2000 != 0 { 0x8000 } else { 0x6000 }
@@ -106,15 +106,15 @@ fn reset_releases_output_before_a_stalled_prefetch() {
         memory.map_chip_ram_to_low_memory();
         memory.write_word_debug(0x1004, 0x4e75);
         let mut cpu = Cpu::new();
-        cpu.state.pc = 0x1004;
-        cpu.state.instruction_pc = 0x1000;
-        cpu.state.ir = 0x4e70;
-        cpu.state.prefetch = 0x4e71;
+        cpu.state.set_pc(0x1004);
+        cpu.state.set_instruction_pc(0x1000);
+        cpu.state.set_ir(0x4e70);
+        cpu.state.set_prefetch(0x4e71);
         let mut bus = RecordingBus::new(memory, vec![(Access::ReadWord(0x1004), waits)]);
         run_instruction(&mut cpu, &mut bus, 132);
-        assert!(!cpu.state.reset_line_asserted);
-        assert_eq!(cpu.state.ir, 0x4e71);
-        assert_eq!(cpu.state.prefetch, 0x4e75);
+        assert!(!cpu.state.is_reset_line_asserted());
+        assert_eq!(cpu.state.ir(), 0x4e71);
+        assert_eq!(cpu.state.prefetch(), 0x4e75);
     }
 }
 
@@ -134,10 +134,10 @@ fn user_status_operations_preserve_system_byte_and_stack_bank() {
             cpu.state.set_usp(0x6000);
             cpu.state.set_sr(0x0015);
             cpu.state.set_d_long(0, 0x1234_000a);
-            cpu.state.pc = 0x1004;
-            cpu.state.instruction_pc = 0x1000;
-            cpu.state.ir = opcode;
-            cpu.state.prefetch = immediate;
+            cpu.state.set_pc(0x1004);
+            cpu.state.set_instruction_pc(0x1000);
+            cpu.state.set_ir(opcode);
+            cpu.state.set_prefetch(immediate);
             let mut memory = PhysicalMemory::new();
             memory.map_chip_ram_to_low_memory();
             memory.write_word_debug(0x1002, immediate);

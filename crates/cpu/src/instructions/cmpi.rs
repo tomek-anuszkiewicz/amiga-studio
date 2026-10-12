@@ -15,84 +15,84 @@ use crate::Cpu;
 // ============================================================================
 
 pub fn alu_cmpi_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.prefetch & 0xFF) as u8;
+    let s = (state.prefetch() & 0xFF) as u8;
     let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
     cmp_b(state, s, d);
 }
 
 pub fn alu_cmpi_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.prefetch;
+    let s = state.prefetch();
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
     cmp_w(state, s, d);
 }
 
 pub fn alu_cmpi_l_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.micro.source;
+    let s = state.micro().source;
     let d = state.d_long(reg_dst as usize);
     cmp_l(state, s, d);
 }
 
 pub fn latch_imm_b(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.source = (state.prefetch & 0xFF) as u32;
+    state.micro_mut().source = (state.prefetch() & 0xFF) as u32;
 }
 
 pub fn latch_imm_w(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.source = state.prefetch as u32;
+    state.micro_mut().source = state.prefetch() as u32;
 }
 
 pub fn latch_imm_b_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.source = (state.prefetch & 0xFF) as u32;
+    state.micro_mut().source = (state.prefetch() & 0xFF) as u32;
     ea::ea_calc_dst_ai(state, 0, reg_dst);
 }
 
 pub fn latch_imm_b_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.source = (state.prefetch & 0xFF) as u32;
+    state.micro_mut().source = (state.prefetch() & 0xFF) as u32;
     ea::ea_calc_dst_pi_b(state, 0, reg_dst);
 }
 
 pub fn latch_imm_w_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.source = state.prefetch as u32;
+    state.micro_mut().source = state.prefetch() as u32;
     ea::ea_calc_dst_ai(state, 0, reg_dst);
 }
 
 pub fn latch_imm_w_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.source = state.prefetch as u32;
+    state.micro_mut().source = state.prefetch() as u32;
     ea::ea_calc_dst_pi_w(state, 0, reg_dst);
 }
 
 pub fn latch_imm_l_hi(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.source = (state.prefetch as u32) << 16;
+    state.micro_mut().source = (state.prefetch() as u32) << 16;
 }
 
 pub fn latch_imm_l_lo_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.source |= state.prefetch as u32;
+    state.micro_mut().source |= state.prefetch() as u32;
     ea::ea_calc_dst_ai(state, 0, reg_dst);
 }
 
 pub fn latch_imm_l_lo_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.source |= state.prefetch as u32;
+    state.micro_mut().source |= state.prefetch() as u32;
     ea::ea_calc_dst_pi_l(state, 0, reg_dst);
 }
 
 pub fn latch_imm_l_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.source |= state.prefetch as u32;
+    state.micro_mut().source |= state.prefetch() as u32;
 }
 
 pub fn alu_cmpi_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let s = (state.micro.source & 0xFF) as u8;
-    let d = (state.micro.destination & 0xFF) as u8;
+    let s = (state.micro().source & 0xFF) as u8;
+    let d = (state.micro().destination & 0xFF) as u8;
     cmp_b(state, s, d);
 }
 
 pub fn alu_cmpi_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let s = (state.micro.source & 0xFFFF) as u16;
-    let d = (state.micro.destination & 0xFFFF) as u16;
+    let s = (state.micro().source & 0xFFFF) as u16;
+    let d = (state.micro().destination & 0xFFFF) as u16;
     cmp_w(state, s, d);
 }
 
 pub fn alu_cmpi_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let s = state.micro.source;
-    let d = state.micro.destination;
+    let s = state.micro().source;
+    let d = state.micro().destination;
     cmp_l(state, s, d);
 }
 

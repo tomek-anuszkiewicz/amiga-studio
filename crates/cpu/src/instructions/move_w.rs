@@ -37,13 +37,13 @@ pub fn alu_move_w_an_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_move_w_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.micro.source & 0xFFFF) as u16;
+    let val = (state.micro().source & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
     state.set_d_word(reg_dst as usize, val);
 }
 
 pub fn alu_move_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = state.prefetch;
+    let val = state.prefetch();
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
     state.set_d_word(reg_dst as usize, val);
 }
@@ -51,22 +51,22 @@ pub fn alu_move_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 pub fn alu_move_w_src_dn(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let val = (state.d_long(reg_src as usize) & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
 }
 
 pub fn alu_move_w_dn_dst_ai(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = (state.d_long(reg_src as usize) & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
-    state.micro.ea_addr = state.a_long(reg_dst as usize);
+    state.micro_mut().destination = val as u32;
+    state.micro_mut().ea_addr = state.a_long(reg_dst as usize);
 }
 
 pub fn alu_move_w_dn_dst_pi(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = (state.d_long(reg_src as usize) & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
     let an = state.a_long(reg_dst as usize);
-    state.micro.ea_addr = an;
+    state.micro_mut().ea_addr = an;
     if (an & 1) == 0 {
         state.set_a_long(reg_dst as usize, an.wrapping_add(2));
     }
@@ -75,25 +75,25 @@ pub fn alu_move_w_dn_dst_pi(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 pub fn alu_move_w_dn_dst_pd(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = (state.d_long(reg_src as usize) & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
     let an = state.a_long(reg_dst as usize).wrapping_sub(2);
     state.set_a_long(reg_dst as usize, an);
-    state.micro.ea_addr = an;
+    state.micro_mut().ea_addr = an;
 }
 
 pub fn alu_move_w_an_dst_ai(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = (state.a_long(reg_src as usize) & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
-    state.micro.ea_addr = state.a_long(reg_dst as usize);
+    state.micro_mut().destination = val as u32;
+    state.micro_mut().ea_addr = state.a_long(reg_dst as usize);
 }
 
 pub fn alu_move_w_an_dst_pi(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = (state.a_long(reg_src as usize) & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
     let an = state.a_long(reg_dst as usize);
-    state.micro.ea_addr = an;
+    state.micro_mut().ea_addr = an;
     if (an & 1) == 0 {
         state.set_a_long(reg_dst as usize, an.wrapping_add(2));
     }
@@ -102,49 +102,49 @@ pub fn alu_move_w_an_dst_pi(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 pub fn alu_move_w_an_dst_pd(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = (state.a_long(reg_src as usize) & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
     let an = state.a_long(reg_dst as usize).wrapping_sub(2);
     state.set_a_long(reg_dst as usize, an);
-    state.micro.ea_addr = an;
+    state.micro_mut().ea_addr = an;
 }
 
 pub fn alu_move_w_mem_dst_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.micro.source & 0xFFFF) as u16;
+    let val = (state.micro().source & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
-    state.micro.ea_addr = state.a_long(reg_dst as usize);
+    state.micro_mut().destination = val as u32;
+    state.micro_mut().ea_addr = state.a_long(reg_dst as usize);
 }
 
 pub fn alu_move_w_mem_dst_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.micro.source & 0xFFFF) as u16;
+    let val = (state.micro().source & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
     let an = state.a_long(reg_dst as usize);
-    state.micro.ea_addr = an;
+    state.micro_mut().ea_addr = an;
     if (an & 1) == 0 {
         state.set_a_long(reg_dst as usize, an.wrapping_add(2));
     }
 }
 
 pub fn alu_move_w_mem_dst_pd(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.micro.source & 0xFFFF) as u16;
+    let val = (state.micro().source & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
     let an = state.a_long(reg_dst as usize).wrapping_sub(2);
     state.set_a_long(reg_dst as usize, an);
-    state.micro.ea_addr = an;
+    state.micro_mut().ea_addr = an;
 }
 
 pub fn alu_move_w_src_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let val = (state.a_long(reg_src as usize) & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
 }
 
 pub fn alu_move_w_src_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let val = (state.micro.source & 0xFFFF) as u16;
+    let val = (state.micro().source & 0xFFFF) as u16;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
 }
 
 const READ_SRC_IDLE_MOVE_W: MicroStep = MicroStep {
@@ -154,9 +154,9 @@ const READ_SRC_IDLE_MOVE_W: MicroStep = MicroStep {
 };
 
 pub fn alu_move_w_src_imm(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let val = state.prefetch;
+    let val = state.prefetch();
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
 }
 
 pub fn alu_move_w_dn_ea_d16_an(state: &mut CpuState, reg_src: u8, reg_dst: u8) {

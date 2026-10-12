@@ -35,17 +35,17 @@ pub fn alu_clr_l_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_clr_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.destination &= !0xFF;
+    state.micro_mut().destination &= !0xFF;
     state.set_ccr_nz_clear_vc(false, true);
 }
 
 pub fn alu_clr_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.destination &= !0xFFFF;
+    state.micro_mut().destination &= !0xFFFF;
     state.set_ccr_nz_clear_vc(false, true);
 }
 
 pub fn alu_clr_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.destination = 0;
+    state.micro_mut().destination = 0;
     state.set_ccr_nz_clear_vc(false, true);
 }
 

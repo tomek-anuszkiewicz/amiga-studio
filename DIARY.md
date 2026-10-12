@@ -3379,3 +3379,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Initial focused Tier 1 compile failed due to the now-unused default_unmapped_byte helper, which was removed before the passing rerun
   - The post-diary English scan rejected an abbreviated title; the title was spelled out before the final rerun
   - NOT RUN: full SingleStep, milestone profile, and whole-machine hardware captures
+---
+
+### [2026-10-12 22:25 CET] — Encapsulate CPU state fields
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/machine_loop`
+  - `crates/debugger`
+  - `crates/gui`
+  - `crates/test_runner`
+- **What Was Changed (The Concrete Reality)**:
+  - Make PC, prefetch, IR, IPL, trace, instruction position, stop and halt flags, reset output, micro-state and cycle counter private in CpuState
+  - replace direct callers with accessors and setters across production code, fixtures and benchmarks
+  - retain a mutable micro-state accessor for existing engine and benchmark mutations
+- **Architectural Rationale & Trade-Offs**:
+  - Narrow field visibility and centralize state access without changing CPU timing, serialization or snapshot data
+  - keep public methods where cross-crate callers require them and crate-visible methods for internal signals
+- **Verification & Test Results**:
+  - PASS: cargo check --workspace --all-targets --quiet
+  - PASS: cargo fmt --all --check and git diff --check
+  - PASS: cargo test -p cpu -p machine_loop -p debugger -p gui -p test_runner --lib --tests --quiet
+  - PASS: graphify update .
+  - PASS: scoped review of nine tracked design specifications found no corrections
+  - NOT RUN: full SingleStep, milestone profile and whole-machine captures

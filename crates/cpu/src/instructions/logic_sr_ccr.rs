@@ -15,9 +15,9 @@ use crate::Cpu;
 
 pub fn alu_check_privilege(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     if !state.is_supervisor() {
-        state.micro.current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
-        state.micro.micro_step = 0;
-        state.micro.clocks_remaining = 0;
+        state.micro_mut().current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
+        state.micro_mut().micro_step = 0;
+        state.micro_mut().clocks_remaining = 0;
     }
 }
 
@@ -32,7 +32,7 @@ pub static ALU_CHECK_PRIVILEGE: MicroStep = MicroStep {
 // ============================================================================
 
 pub fn alu_ori_to_ccr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let imm = (state.micro.source & 0x1F) as u8;
+    let imm = (state.micro().source & 0x1F) as u8;
     state.set_ccr(state.ccr() | imm);
 }
 
@@ -57,7 +57,7 @@ pub static STEPS_ORI_TO_CCR: [MicroStep; 7] = [
 ];
 
 pub fn alu_ori_to_sr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.set_sr(state.sr() | (state.micro.source as u16));
+    state.set_sr(state.sr() | (state.micro().source as u16));
 }
 
 pub static ALU_ORI_TO_SR_8CLK: MicroStep = MicroStep {
@@ -86,7 +86,7 @@ pub static STEPS_ORI_TO_SR: [MicroStep; 8] = [
 // ============================================================================
 
 pub fn alu_andi_to_ccr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let imm = (state.micro.source & 0x1F) as u8;
+    let imm = (state.micro().source & 0x1F) as u8;
     state.set_ccr(state.ccr() & imm);
 }
 
@@ -111,7 +111,7 @@ pub static STEPS_ANDI_TO_CCR: [MicroStep; 7] = [
 ];
 
 pub fn alu_andi_to_sr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.set_sr(state.sr() & (state.micro.source as u16));
+    state.set_sr(state.sr() & (state.micro().source as u16));
 }
 
 pub static ALU_ANDI_TO_SR_8CLK: MicroStep = MicroStep {
@@ -140,7 +140,7 @@ pub static STEPS_ANDI_TO_SR: [MicroStep; 8] = [
 // ============================================================================
 
 pub fn alu_eori_to_ccr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let imm = (state.micro.source & 0x1F) as u8;
+    let imm = (state.micro().source & 0x1F) as u8;
     state.set_ccr(state.ccr() ^ imm);
 }
 
@@ -165,7 +165,7 @@ pub static STEPS_EORI_TO_CCR: [MicroStep; 7] = [
 ];
 
 pub fn alu_eori_to_sr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.set_sr(state.sr() ^ (state.micro.source as u16));
+    state.set_sr(state.sr() ^ (state.micro().source as u16));
 }
 
 pub static ALU_EORI_TO_SR_8CLK: MicroStep = MicroStep {

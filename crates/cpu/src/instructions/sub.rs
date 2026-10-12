@@ -86,7 +86,7 @@ pub fn alu_sub_l_an_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_sub_b_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.micro.source & 0xFF) as u8;
+    let s = (state.micro().source & 0xFF) as u8;
     let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
     let res = sub_b(state, s, d);
     let orig = state.d_long(reg_dst as usize);
@@ -94,7 +94,7 @@ pub fn alu_sub_b_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_sub_w_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.micro.source & 0xFFFF) as u16;
+    let s = (state.micro().source & 0xFFFF) as u16;
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
     let res = sub_w(state, s, d);
     let orig = state.d_long(reg_dst as usize);
@@ -102,14 +102,14 @@ pub fn alu_sub_w_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_sub_l_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.micro.source;
+    let s = state.micro().source;
     let d = state.d_long(reg_dst as usize);
     let res = sub_l(state, s, d);
     state.set_d_long(reg_dst as usize, res);
 }
 
 pub fn alu_sub_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.prefetch & 0xFF) as u8;
+    let s = (state.prefetch() & 0xFF) as u8;
     let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
     let res = sub_b(state, s, d);
     let orig = state.d_long(reg_dst as usize);
@@ -117,7 +117,7 @@ pub fn alu_sub_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_sub_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.prefetch;
+    let s = state.prefetch();
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
     let res = sub_w(state, s, d);
     let orig = state.d_long(reg_dst as usize);
@@ -126,23 +126,23 @@ pub fn alu_sub_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 pub fn alu_sub_b_dn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let s = (state.d_long(reg_src as usize) & 0xFF) as u8;
-    let d = (state.micro.destination & 0xFF) as u8;
+    let d = (state.micro().destination & 0xFF) as u8;
     let res = sub_b(state, s, d);
-    state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFF) | (res as u32);
 }
 
 pub fn alu_sub_w_dn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let s = (state.d_long(reg_src as usize) & 0xFFFF) as u16;
-    let d = (state.micro.destination & 0xFFFF) as u16;
+    let d = (state.micro().destination & 0xFFFF) as u16;
     let res = sub_w(state, s, d);
-    state.micro.destination = (state.micro.destination & !0xFFFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFFFF) | (res as u32);
 }
 
 pub fn alu_sub_l_dn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let s = state.d_long(reg_src as usize);
-    let d = state.micro.destination;
+    let d = state.micro().destination;
     let res = sub_l(state, s, d);
-    state.micro.destination = res;
+    state.micro_mut().destination = res;
 }
 
 // ============================================================================

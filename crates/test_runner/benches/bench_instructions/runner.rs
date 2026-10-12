@@ -501,7 +501,9 @@ fn execute_pass_inner(
         program.inject_into(cpu, bus);
 
         let mut elapsed_cycles: u64 = 0;
-        while !cpu.state.halted && !cpu.state.stopped && cpu.state.instruction_pc != program.exit_pc
+        while !cpu.state.is_halted()
+            && !cpu.state.is_stopped()
+            && cpu.state.instruction_pc() != program.exit_pc
         {
             let step_clocks = cpu.step_instruction(bus);
             if step_clocks == 0 {
@@ -529,7 +531,7 @@ fn execute_pass_inner(
         crc ^= cpu.state.a_long(i) as u64;
     }
     crc ^= (cpu.state.sr() as u64) << 16;
-    crc ^= cpu.state.pc as u64;
+    crc ^= cpu.state.pc() as u64;
     std::hint::black_box(crc);
 
     (elapsed_ns, has_timed_out)

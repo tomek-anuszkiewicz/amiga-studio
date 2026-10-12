@@ -5,31 +5,31 @@ use crate::{Cpu, CpuState};
 use physical_memory::{AddressBus, BusResult};
 
 pub fn alu_movep_w_dn_disp(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    state.micro.destination = (state.d_word(reg_src as usize) as u32) << 16;
+    state.micro_mut().destination = (state.d_word(reg_src as usize) as u32) << 16;
     ea::ea_calc_dst_d16_an(state, reg_src, reg_dst);
 }
 
 pub fn alu_movep_l_dn_disp(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    state.micro.destination = state.d_long(reg_src as usize);
+    state.micro_mut().destination = state.d_long(reg_src as usize);
     ea::ea_calc_dst_d16_an(state, reg_src, reg_dst);
 }
 
 pub fn alu_movep_w_disp_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.set_d_word(reg_dst as usize, state.micro.source as u16);
+    state.set_d_word(reg_dst as usize, state.micro().source as u16);
 }
 
 pub fn alu_movep_l_disp_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.set_d_long(reg_dst as usize, state.micro.source);
+    state.set_d_long(reg_dst as usize, state.micro().source);
 }
 
 /// CCK1: Appends one byte and advances the spaced address only after a successful read.
 fn step_movep_read_byte(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()> {
-    let addr = cpu.state.micro.ea_addr;
+    let addr = cpu.state.micro().ea_addr;
     match bus.read_byte(addr & 0x00FF_FFFF) {
         BusResult::WaitState => BusResult::WaitState,
         BusResult::Ready(data) => {
-            cpu.state.micro.source = (cpu.state.micro.source << 8) | data as u32;
-            cpu.state.micro.ea_addr = addr.wrapping_add(2);
+            cpu.state.micro_mut().source = (cpu.state.micro().source << 8) | data as u32;
+            cpu.state.micro_mut().ea_addr = addr.wrapping_add(2);
             BusResult::Ready(())
         }
     }
@@ -37,13 +37,13 @@ fn step_movep_read_byte(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()
 
 /// CCK2: Transfers the high staged byte, retaining address and data while waiting.
 fn step_movep_write_byte(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()> {
-    let addr = cpu.state.micro.ea_addr;
-    let data = (cpu.state.micro.destination >> 24) as u8;
+    let addr = cpu.state.micro().ea_addr;
+    let data = (cpu.state.micro().destination >> 24) as u8;
     match bus.write_byte(addr & 0x00FF_FFFF, data) {
         BusResult::WaitState => BusResult::WaitState,
         BusResult::Ready(()) => {
-            cpu.state.micro.destination <<= 8;
-            cpu.state.micro.ea_addr = addr.wrapping_add(2);
+            cpu.state.micro_mut().destination <<= 8;
+            cpu.state.micro_mut().ea_addr = addr.wrapping_add(2);
             BusResult::Ready(())
         }
     }

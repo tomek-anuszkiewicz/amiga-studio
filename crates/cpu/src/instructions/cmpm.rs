@@ -47,22 +47,22 @@ pub fn cmp_l(state: &mut CpuState, s: u32, d: u32) {
 
 /// ALU compare callback for Byte
 pub fn alu_cmpm_b(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let s = (state.micro.source & 0xFF) as u8;
-    let d = (state.micro.destination & 0xFF) as u8;
+    let s = (state.micro().source & 0xFF) as u8;
+    let d = (state.micro().destination & 0xFF) as u8;
     cmp_b(state, s, d);
 }
 
 /// ALU compare callback for Word
 pub fn alu_cmpm_w(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let s = (state.micro.source & 0xFFFF) as u16;
-    let d = (state.micro.destination & 0xFFFF) as u16;
+    let s = (state.micro().source & 0xFFFF) as u16;
+    let d = (state.micro().destination & 0xFFFF) as u16;
     cmp_w(state, s, d);
 }
 
 /// ALU compare callback for Long
 pub fn alu_cmpm_l(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let s = state.micro.source;
-    let d = state.micro.destination;
+    let s = state.micro().source;
+    let d = state.micro().destination;
     cmp_l(state, s, d);
 }
 

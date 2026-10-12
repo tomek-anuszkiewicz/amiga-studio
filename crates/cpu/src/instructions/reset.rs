@@ -17,9 +17,9 @@ use crate::Cpu;
 
 pub fn alu_reset(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     if !state.is_supervisor() {
-        state.micro.current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
-        state.micro.micro_step = 0;
-        state.micro.clocks_remaining = 0;
+        state.micro_mut().current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
+        state.micro_mut().micro_step = 0;
+        state.micro_mut().clocks_remaining = 0;
     }
 }
 
@@ -30,11 +30,11 @@ pub static ALU_RESET: MicroStep = MicroStep {
 };
 
 pub fn alu_assert_reset(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.reset_line_asserted = true;
+    state.set_reset_line_asserted(true);
 }
 
 pub fn alu_release_reset(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.reset_line_asserted = false;
+    state.set_reset_line_asserted(false);
 }
 
 pub static RESET_ASSERT_IDLE: MicroStep = MicroStep {

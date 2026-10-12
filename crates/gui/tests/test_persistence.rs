@@ -102,11 +102,13 @@ fn test_user_preferences_roundtrip_via_storage() {
         "Instruction count must start at 0"
     );
     assert_eq!(
-        new_app.session.machine.cpu.state.pc, fresh_app.session.machine.cpu.state.pc,
+        new_app.session.machine.cpu.state.pc(),
+        fresh_app.session.machine.cpu.state.pc(),
         "PC must remain fresh default on restart"
     );
     assert_ne!(
-        new_app.session.machine.cpu.state.pc, 0x001000,
+        new_app.session.machine.cpu.state.pc(),
+        0x001000,
         "Loaded binary PC must not be persisted"
     );
 }

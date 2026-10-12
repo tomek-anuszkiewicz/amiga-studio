@@ -224,11 +224,11 @@ pub fn alu_aerr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 
     let ssp = state.a_long(7);
     if (ssp & 1) != 0 {
-        state.halted = true;
+        state.set_halted(true);
     }
-    state.micro.ssp_base = ssp;
-    state.micro.destination = old_sr as u32;
-    state.micro.ea_addr = VECTOR_ADDRESS_ERROR;
+    state.micro_mut().ssp_base = ssp;
+    state.micro_mut().destination = old_sr as u32;
+    state.micro_mut().ea_addr = VECTOR_ADDRESS_ERROR;
 }
 
 /// CCK1: Address Error initial ALU step (S=1, T=0, SSP check, vector setup)
@@ -364,15 +364,15 @@ pub const POP_STACK_CCR_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_sta
 
 /// Initial setup for Privilege Violation exception: saves old SR, switches to supervisor
 pub fn alu_privilege_violation_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.trace_pending = false;
+    state.set_trace_pending(false);
     let vector_addr = vector::addr(vector::PRIVILEGE_VIOLATION);
-    let return_pc = state.instruction_pc;
+    let return_pc = state.instruction_pc();
     let old_sr = state.sr();
     state.set_supervisor(true);
     state.clear_trace();
-    state.micro.source = return_pc;
-    state.micro.destination = old_sr as u32;
-    state.micro.ea_addr = vector_addr;
+    state.micro_mut().source = return_pc;
+    state.micro_mut().destination = old_sr as u32;
+    state.micro_mut().ea_addr = vector_addr;
 }
 
 pub static ALU_PRIVILEGE_VIOLATION_INIT: MicroStep = MicroStep {
@@ -433,12 +433,12 @@ pub fn trigger_divide_by_zero(state: &mut CpuState) {
     state.set_supervisor(true);
     state.clear_trace();
 
-    state.micro.source = state.instruction_pc;
-    state.micro.destination = updated_sr as u32;
-    state.micro.ea_addr = vector::addr(vector::ZERO_DIVIDE);
-    state.micro.current_steps = &STEPS_DIV_ZERO;
-    state.micro.micro_step = 0;
-    state.micro.clocks_remaining = 0;
+    state.micro_mut().source = state.instruction_pc();
+    state.micro_mut().destination = updated_sr as u32;
+    state.micro_mut().ea_addr = vector::addr(vector::ZERO_DIVIDE);
+    state.micro_mut().current_steps = &STEPS_DIV_ZERO;
+    state.micro_mut().micro_step = 0;
+    state.micro_mut().clocks_remaining = 0;
 }
 
 // ============================================================================
@@ -453,12 +453,12 @@ pub fn trigger_divide_by_zero(state: &mut CpuState) {
 /// - Computes autovector address: `vector::addr(vector::AUTOVECTOR_BASE + level as u32)`.
 /// - Clears stopped flag.
 pub fn alu_interrupt_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let level = state.micro.reg_src.clamp(1, 6);
+    let level = state.micro().reg_src.clamp(1, 6);
     let vector_addr = vector::addr(vector::AUTOVECTOR_BASE + level as u32);
-    let return_pc = if state.stopped {
-        state.pc
+    let return_pc = if state.is_stopped() {
+        state.pc()
     } else {
-        state.instruction_pc
+        state.instruction_pc()
     };
     let old_sr = state.sr();
 
@@ -466,10 +466,10 @@ pub fn alu_interrupt_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.clear_trace();
     state.set_interrupt_mask(level);
 
-    state.micro.source = return_pc;
-    state.micro.destination = old_sr as u32;
-    state.micro.ea_addr = vector_addr;
-    state.stopped = false;
+    state.micro_mut().source = return_pc;
+    state.micro_mut().destination = old_sr as u32;
+    state.micro_mut().ea_addr = vector_addr;
+    state.set_stopped(false);
 }
 
 pub static ALU_INTERRUPT_INIT: MicroStep = MicroStep {
@@ -504,12 +504,12 @@ pub static STEPS_INTERRUPT: [MicroStep; 19] = [
 /// Decode exceptions save the rejected opcode PC; the shared frame/refill follows.
 pub fn alu_decode_exception_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     alu_privilege_violation_init(state, 0, 0);
-    let number = match state.ir >> 12 {
+    let number = match state.ir() >> 12 {
         0xa => vector::LINE_1010,
         0xf => vector::LINE_1111,
         _ => vector::ILLEGAL_INSTRUCTION,
     };
-    state.micro.ea_addr = vector::addr(number);
+    state.micro_mut().ea_addr = vector::addr(number);
 }
 
 pub static STEPS_DECODE_EXCEPTION: [MicroStep; 17] = {
@@ -525,9 +525,9 @@ pub static STEPS_DECODE_EXCEPTION: [MicroStep; 17] = {
 /// Trace captures the completed instruction boundary before changing SR.
 pub fn alu_trace_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let old_sr = state.sr();
-    state.micro.source = state.instruction_pc;
-    state.micro.destination = u32::from(old_sr);
-    state.micro.ea_addr = vector::addr(vector::TRACE);
+    state.micro_mut().source = state.instruction_pc();
+    state.micro_mut().destination = u32::from(old_sr);
+    state.micro_mut().ea_addr = vector::addr(vector::TRACE);
     state.set_supervisor(true);
     state.clear_trace();
 }

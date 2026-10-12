@@ -339,13 +339,13 @@ pub(crate) fn render_registers(
         egui::CollapsingHeader::new(RichText::new("Execution Status & CCR").strong())
             .default_open(true)
             .show(ui, |ui| {
-                let instruction_pc = state.instruction_pc & 0x00FF_FFFF;
+                let instruction_pc = state.instruction_pc() & 0x00FF_FFFF;
 
                 ui.columns(2, |cols| {
                     // Col 0: PC, SR, Mode, IPL
                     cols[0].vertical(|ui| {
                         ui.horizontal(|ui| {
-                            let pc_changed = prev_state.map_or(false, |p| p.instruction_pc != state.instruction_pc);
+                            let pc_changed = prev_state.map_or(false, |p| p.instruction_pc() != state.instruction_pc());
                     ui.monospace("PC:")
                         .on_hover_ui(|ui| {
                             ui.heading("Program Counter (PC)");
@@ -355,7 +355,7 @@ pub(crate) fn render_registers(
                                      Hardware prefetch bus PC: ${:06X}\n\n\
                                      The M68000 prefetch pipeline primes 2 instruction words (IR and IRC) \
                                      ahead from the bus, advancing the hardware bus register by 4 bytes.",
-                                    instruction_pc, state.pc & 0x00FF_FFFF
+                                    instruction_pc, state.pc() & 0x00FF_FFFF
                                 ),
                             );
                         });
@@ -536,9 +536,9 @@ pub(crate) fn render_registers(
                 });
 
                 ui.horizontal(|ui| {
-                    ui.monospace(format!("IR: ${:04X}", state.ir))
+                    ui.monospace(format!("IR: ${:04X}", state.ir()))
                         .on_hover_text("Instruction Register (IR): Current executing opcode");
-                    ui.monospace(format!("IRC: ${:04X}", state.micro.irc))
+                    ui.monospace(format!("IRC: ${:04X}", state.micro().irc))
                         .on_hover_text("Instruction Register Capture (IRC): Prefetched next pipeline word");
                 });
             });

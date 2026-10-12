@@ -86,7 +86,7 @@ fn test_cia_a_ovl_pin_cascade_to_memory_bus() {
 #[test]
 fn test_paula_interrupt_cascade_to_cpu_ipl() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
-    assert_eq!(machine.cpu.state.ipl, 0);
+    assert_eq!(machine.cpu.state.ipl(), 0);
 
     // Write INTENA ($DFF09A) = 0xC020 (SET master INTEN + Level 3 VBlank)
     assert_eq!(
@@ -107,7 +107,7 @@ fn test_paula_interrupt_cascade_to_cpu_ipl() {
     machine.step_cck();
     assert_eq!(machine.paula.interrupts.intena, 0x4020);
     assert_eq!(machine.paula.interrupts.intreq, 0x0020);
-    assert_eq!(machine.cpu.state.ipl, 3);
+    assert_eq!(machine.cpu.state.ipl(), 3);
 }
 
 #[test]

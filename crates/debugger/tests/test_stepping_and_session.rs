@@ -24,7 +24,7 @@ fn test_debugger_stepping_and_breakpoints() {
     // Run until breakpoint
     let executed = dbg.run_until_breakpoint(&mut cpu, &mut bus, 10);
     assert_eq!(executed, 2); // Executed $1000 and $1002, stopped at $1004
-    assert_eq!(cpu.state.pc.wrapping_sub(4), 0x1004);
+    assert_eq!(cpu.state.pc().wrapping_sub(4), 0x1004);
 }
 
 #[test]
@@ -61,14 +61,14 @@ fn test_debugger_session_full_lifecycle() {
     session.step_backward();
     assert_eq!(session.temporal.scrub_cursor, Some(0));
     assert!(
-        !session.machine.cpu.state.micro.current_steps.is_empty(),
+        !session.machine.cpu.state.micro().current_steps.is_empty(),
         "Scrubbing backward must re-hydrate CPU micro-steps via restore_state"
     );
 
     session.step_forward();
     assert_eq!(session.temporal.scrub_cursor, None); // Live head
     assert!(
-        !session.machine.cpu.state.micro.current_steps.is_empty(),
+        !session.machine.cpu.state.micro().current_steps.is_empty(),
         "Returning to live head must re-hydrate CPU micro-steps via restore_state"
     );
 
@@ -147,19 +147,19 @@ fn test_lea_step_instruction() {
 
     println!(
         "Initial: pc={:06X}, instruction_pc={:06X}, ir={:04X}",
-        session.machine.cpu.state.pc,
-        session.machine.cpu.state.instruction_pc,
-        session.machine.cpu.state.ir
+        session.machine.cpu.state.pc(),
+        session.machine.cpu.state.instruction_pc(),
+        session.machine.cpu.state.ir()
     );
     for i in 0..8 {
         session.step_cck();
         println!(
             "After CCK {}: pc={:06X}, instruction_pc={:06X}, micro_step={}, pc-4={:06X}",
             i,
-            session.machine.cpu.state.pc,
-            session.machine.cpu.state.instruction_pc,
-            session.machine.cpu.state.micro.micro_step,
-            session.machine.cpu.state.pc.wrapping_sub(4) & 0x00FF_FFFF
+            session.machine.cpu.state.pc(),
+            session.machine.cpu.state.instruction_pc(),
+            session.machine.cpu.state.micro().micro_step,
+            session.machine.cpu.state.pc().wrapping_sub(4) & 0x00FF_FFFF
         );
     }
 }
@@ -175,8 +175,8 @@ fn test_lea_step_instruction_call() {
     session.step_instruction();
     println!(
         "After step_instruction: pc={:06X}, instruction_pc={:06X}, a0={:08X}",
-        session.machine.cpu.state.pc,
-        session.machine.cpu.state.instruction_pc,
+        session.machine.cpu.state.pc(),
+        session.machine.cpu.state.instruction_pc(),
         session.machine.cpu.state.a_long(0)
     );
 }

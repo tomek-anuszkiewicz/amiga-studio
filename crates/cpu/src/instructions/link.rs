@@ -25,16 +25,16 @@ pub fn alu_link_setup(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     } else {
         state.a_long(an as usize)
     };
-    let disp = (state.prefetch as i16) as i32 as u32;
-    state.micro.source = disp;
-    state.micro.destination = val;
-    state.micro.ea_addr = sp;
+    let disp = (state.prefetch() as i16) as i32 as u32;
+    state.micro_mut().source = disp;
+    state.micro_mut().destination = val;
+    state.micro_mut().ea_addr = sp;
 }
 
 pub fn alu_link_finish(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let an = reg_dst;
-    let sp = state.micro.ea_addr;
-    let disp = state.micro.source;
+    let sp = state.micro().ea_addr;
+    let disp = state.micro().source;
     state.set_a_long(an as usize, sp);
     state.set_a_long(7, sp.wrapping_add(disp));
 }

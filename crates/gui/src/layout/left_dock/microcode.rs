@@ -30,10 +30,10 @@ pub(crate) fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool)
 
                 // 1. Active Opcode, Micro-step progress & Phase
                 ui.horizontal(|ui| {
-                    ui.monospace(format!("IR: ${:04X}", state.ir));
+                    ui.monospace(format!("IR: ${:04X}", state.ir()));
 
-                    let step_idx = state.micro.micro_step;
-                    let total_steps = state.micro.current_steps.len();
+                    let step_idx = state.micro().micro_step;
+                    let total_steps = state.micro().current_steps.len();
                     ui.monospace("Step:");
                     ui.colored_label(
                         Color32::from_rgb(0, 220, 180),
@@ -47,7 +47,7 @@ pub(crate) fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool)
                     };
                     ui.add(egui::ProgressBar::new(fraction).desired_width(40.0));
 
-                    let is_cck1 = (state.cycle_counter & 2) == 0;
+                    let is_cck1 = (state.cycle_counter() & 2) == 0;
                     let phase_label = if is_cck1 {
                         ui.colored_label(Color32::from_rgb(100, 200, 255), "[CCK1]")
                     } else {
@@ -66,11 +66,11 @@ pub(crate) fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool)
                 });
 
                 // 2. Real-Time Remaining Clock & Cycle Counters
-                let active_rem = state.micro.clocks_remaining;
+                let active_rem = state.micro().clocks_remaining;
                 let mut upcoming_clocks = 0u32;
-                let cur_step = state.micro.micro_step as usize;
-                if cur_step + 1 < state.micro.current_steps.len() {
-                    for s in &state.micro.current_steps[cur_step + 1..] {
+                let cur_step = state.micro().micro_step as usize;
+                if cur_step + 1 < state.micro().current_steps.len() {
+                    for s in &state.micro().current_steps[cur_step + 1..] {
                         upcoming_clocks += s.base_clocks as u32;
                     }
                 }
@@ -104,27 +104,27 @@ pub(crate) fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool)
                     .show(ui, |ui| {
                         ui.monospace("addr1 (X1):")
                             .on_hover_text("Staged source address");
-                        ui.monospace(format!("${:08X}", state.micro.addr1))
+                        ui.monospace(format!("${:08X}", state.micro().addr1))
                             .on_hover_text("Staged source address");
                         ui.monospace("addr2 (X2):")
                             .on_hover_text("Staged destination address");
-                        ui.monospace(format!("${:08X}", state.micro.addr2))
+                        ui.monospace(format!("${:08X}", state.micro().addr2))
                             .on_hover_text("Staged destination address");
                         ui.end_row();
 
                         ui.monospace("source:")
                             .on_hover_text("Source operand value");
-                        ui.monospace(format!("${:08X}", state.micro.source))
+                        ui.monospace(format!("${:08X}", state.micro().source))
                             .on_hover_text("Source operand value");
                         ui.monospace("destination:")
                             .on_hover_text("Destination operand value");
-                        ui.monospace(format!("${:08X}", state.micro.destination))
+                        ui.monospace(format!("${:08X}", state.micro().destination))
                             .on_hover_text("Destination operand value");
                         ui.end_row();
 
                         ui.monospace("ea_addr:")
                             .on_hover_text("Effective address");
-                        ui.monospace(format!("${:08X}", state.micro.ea_addr))
+                        ui.monospace(format!("${:08X}", state.micro().ea_addr))
                             .on_hover_text("Effective address");
                         ui.monospace("Chip RAM:")
                             .on_hover_text("Chip RAM DMA arbitration: Agnus/Denise bus locking status");
@@ -134,7 +134,7 @@ pub(crate) fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool)
                         } else {
                             ui.colored_label(
                                 Color32::from_rgb(70, 220, 70),
-                                format!("FREE ({}c)", state.micro.clocks_remaining),
+                                format!("FREE ({}c)", state.micro().clocks_remaining),
                             )
                             .on_hover_text("Chip RAM is accessible to CPU");
                         }

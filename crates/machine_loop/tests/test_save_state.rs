@@ -28,14 +28,14 @@ fn snapshots_resume_reset_stop_and_a_refused_second_operand_half() {
                 for _ in 0..3 {
                     assert!(!machine.step_cck());
                 }
-                assert!(machine.cpu.state.reset_line_asserted);
+                assert!(machine.cpu.state.is_reset_line_asserted());
                 // The pulse edge has already reset peripherals. A restore in the
                 // asserted interval must not manufacture a second assertion edge.
                 machine.denise.color[0] = 0x0F00;
             }
             1 => {
                 retire(&mut machine, boot_pc);
-                assert!(machine.cpu.state.stopped);
+                assert!(machine.cpu.state.is_stopped());
                 // Vector 27 lives in the ROM overlay; handler clears Paula's source.
                 machine.physical_memory.write_word_debug(0xF8006C, 0x00F8);
                 machine.physical_memory.write_word_debug(0xF8006E, 0x2000);
@@ -57,13 +57,13 @@ fn snapshots_resume_reset_stop_and_a_refused_second_operand_half() {
                 machine.agnus.hpos = 49;
                 assert!(!machine.step_cck());
                 assert!(!machine.step_cck());
-                let step = machine.cpu.state.micro.micro_step;
+                let step = machine.cpu.state.micro().micro_step;
                 machine.agnus.hpos = 0;
                 assert!(!machine.step_cck());
                 assert!(machine.physical_memory.chip_ram_blocked);
-                assert_eq!(machine.cpu.state.micro.micro_step, step);
+                assert_eq!(machine.cpu.state.micro().micro_step, step);
                 assert_eq!(machine.cpu.state.d_long(2), 0);
-                assert_eq!(machine.cpu.state.micro.source, 0x1234_0000);
+                assert_eq!(machine.cpu.state.micro().source, 0x1234_0000);
             }
         }
         // Actual serialization drops the runtime-only static micro-step slice.
@@ -72,7 +72,7 @@ fn snapshots_resume_reset_stop_and_a_refused_second_operand_half() {
         let mut restored = A500Machine::new(A500Config::default());
         restored.load_state(&snapshot).unwrap();
         if boundary != 1 {
-            assert!(!restored.cpu.state.micro.current_steps.is_empty());
+            assert!(!restored.cpu.state.micro().current_steps.is_empty());
         }
         if boundary == 1 {
             for target in [&mut machine, &mut restored] {
@@ -100,7 +100,7 @@ fn snapshots_resume_reset_stop_and_a_refused_second_operand_half() {
             if boundary == 0 && tick == 0 {
                 assert_eq!(restored.denise.color[0], 0x0F00);
             }
-            if original_done && machine.cpu.state.instruction_pc == boot_pc + 22 {
+            if original_done && machine.cpu.state.instruction_pc() == boot_pc + 22 {
                 finished = true;
                 break;
             }
@@ -125,7 +125,7 @@ fn snapshots_resume_reset_stop_and_a_refused_second_operand_half() {
             &machine.physical_memory.slow_ram.as_ref().unwrap()[RAM_MARKER..RAM_MARKER + 2],
             &[0, 42]
         );
-        assert!(!machine.cpu.state.reset_line_asserted && !machine.cpu.state.stopped);
+        assert!(!machine.cpu.state.is_reset_line_asserted() && !machine.cpu.state.is_stopped());
         for _ in 0..4 {
             retire(&mut machine, boot_pc + 22);
             retire(&mut restored, boot_pc + 22);
@@ -223,7 +223,7 @@ fn test_save_state_deterministic_stepping_roundtrip() {
 
     // 4b. Verify that Cpu::restore_state re-hydrated the static micro-step slice
     assert!(
-        !machine.cpu.state.micro.current_steps.is_empty(),
+        !machine.cpu.state.micro().current_steps.is_empty(),
         "Micro-step slice must be re-hydrated by restore_state on load_state"
     );
 

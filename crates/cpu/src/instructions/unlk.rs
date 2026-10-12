@@ -20,7 +20,7 @@ use crate::Cpu;
 pub fn alu_unlk_setup(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let an = reg_dst;
     let sp = state.a_long(an as usize);
-    state.micro.ea_addr = sp;
+    state.micro_mut().ea_addr = sp;
     if (sp & 1) == 0 {
         state.set_a_long(7, sp);
     }
@@ -28,8 +28,8 @@ pub fn alu_unlk_setup(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 pub fn alu_unlk_finish(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let an = reg_dst;
-    let sp = state.micro.ea_addr;
-    let data = state.micro.source;
+    let sp = state.micro().ea_addr;
+    let data = state.micro().source;
     state.set_a_long(7, sp.wrapping_add(4));
     state.set_a_long(an as usize, data);
 }

@@ -115,7 +115,7 @@ impl AddressBus for RecordingBus {
 
 pub fn without_clocks(state: &CpuState) -> CpuState {
     let mut snapshot = state.clone();
-    snapshot.cycle_counter = 0;
+    snapshot.set_cycle_counter(0);
     snapshot
 }
 
@@ -134,9 +134,9 @@ pub fn run_next_instruction(cpu: &mut Cpu, bus: &mut RecordingBus, base_clocks: 
         let before = cpu.cycle_counter();
         let state_before = without_clocks(&cpu.state);
         let active_step = state_before
-            .micro
+            .micro()
             .current_steps
-            .get(state_before.micro.micro_step as usize)
+            .get(state_before.micro().micro_step as usize)
             .copied();
         let refusals = bus.refusals;
         let finished = cpu.step_cck(bus);
@@ -147,14 +147,14 @@ pub fn run_next_instruction(cpu: &mut Cpu, bus: &mut RecordingBus, base_clocks: 
             if let Some(step) = active_step {
                 if step.alu_fn.is_none() && step.bus_fn.is_some() {
                     let mut expected = state_before;
-                    if expected.micro.clocks_remaining == 0 {
-                        expected.micro.clocks_remaining = step.base_clocks as u16;
+                    if expected.micro().clocks_remaining == 0 {
+                        expected.micro_mut().clocks_remaining = step.base_clocks as u16;
                     }
                     // MOVEM can select its pending dummy read on the first refusal.
                     // Register/operand/address state must still remain unchanged.
                     let dummy_read_pending = (16 << 1) | (1 << 7);
-                    if step.base_clocks == 0 && snapshot.micro.movem_state == dummy_read_pending {
-                        expected.micro.movem_state = dummy_read_pending;
+                    if step.base_clocks == 0 && snapshot.micro().movem_state == dummy_read_pending {
+                        expected.micro_mut().movem_state = dummy_read_pending;
                     }
                     assert_eq!(snapshot, expected, "refused transfer changed active state");
                 }
@@ -162,8 +162,8 @@ pub fn run_next_instruction(cpu: &mut Cpu, bus: &mut RecordingBus, base_clocks: 
             if let Some((position, previous)) = &waiting {
                 if *position == bus.completed {
                     assert!(std::ptr::eq(
-                        snapshot.micro.current_steps,
-                        previous.micro.current_steps
+                        snapshot.micro().current_steps,
+                        previous.micro().current_steps
                     ));
                     assert_eq!(&snapshot, previous, "repeated wait changed active state");
                 }
@@ -179,7 +179,7 @@ pub fn run_next_instruction(cpu: &mut Cpu, bus: &mut RecordingBus, base_clocks: 
             );
             return;
         }
-        assert!(!cpu.state.halted && !cpu.state.stopped);
+        assert!(!cpu.state.is_halted() && !cpu.state.is_stopped());
     }
     panic!("instruction did not complete within the fixture limit");
 }
@@ -187,10 +187,10 @@ pub fn run_next_instruction(cpu: &mut Cpu, bus: &mut RecordingBus, base_clocks: 
 pub fn retire_to(cpu: &mut Cpu, bus: &mut dyn AddressBus, next_pc: u32) {
     for _ in 0..2048 {
         if cpu.step_cck(bus) {
-            assert_eq!(cpu.state.instruction_pc, next_pc);
+            assert_eq!(cpu.state.instruction_pc(), next_pc);
             return;
         }
-        assert!(!cpu.state.halted, "unexpected halt");
+        assert!(!cpu.state.is_halted(), "unexpected halt");
     }
     panic!("instruction did not retire within 2048 CCKs");
 }

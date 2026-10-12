@@ -61,11 +61,11 @@ impl BenchmarkProgram {
             cpu.state.set_a_long(i, self.initial_a[i]);
         }
         cpu.state.set_ssp(self.initial_ssp);
-        cpu.state.stopped = false;
-        cpu.state.halted = false;
+        cpu.state.set_stopped(false);
+        cpu.state.set_halted(false);
 
         // Reset microcode state
-        cpu.state.micro.reset();
+        cpu.state.micro_mut().reset();
         cpu.reset_cycle_counter();
 
         // Prime PC and prefetch pipeline

@@ -38,9 +38,9 @@ pub fn alu_nbcd_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_nbcd_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = (state.micro.destination & 0xFF) as u8;
+    let d = (state.micro().destination & 0xFF) as u8;
     let res = nbcd_b(state, d);
-    state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFF) | (res as u32);
 }
 
 // ============================================================================

@@ -26,7 +26,7 @@ pub fn alu_lea_ai(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_lea_finish(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let ea = state.micro.destination;
+    let ea = state.micro().destination;
     state.set_a_long(reg_dst as usize, ea);
 }
 

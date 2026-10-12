@@ -67,7 +67,7 @@ pub struct CpuState {
     ssp: u32,
 
     /// Program Counter (24-bit physical addressing on MC68000)
-    pub pc: u32,
+    pc: u32,
 
     /// Status Register (16-bit, private):
     /// - System Byte (Bits 8-15): Trace (T, bit 15), Supervisor (S, bit 13), Interrupt Mask (I2-I0, bits 10-8)
@@ -75,34 +75,34 @@ pub struct CpuState {
     sr: u16,
 
     /// Lookahead Prefetch Queue Register (models 16-bit hardware IR holding extension word or next opcode)
-    pub prefetch: u16,
+    prefetch: u16,
 
     /// Instruction Register (active 16-bit instruction being executed)
-    pub ir: u16,
+    ir: u16,
 
     /// Encoded A500 interrupt input (IPL 0-6); external level-seven NMI is unsupported.
-    pub ipl: u8,
+    ipl: u8,
 
     /// T sampled at instruction entry, retained through instruction-generated traps.
-    pub(crate) trace_pending: bool,
+    trace_pending: bool,
 
     /// Program counter at the start of the current instruction (used for PC-relative EA & exceptions)
-    pub instruction_pc: u32,
+    instruction_pc: u32,
 
     /// CPU Stopped state (halted until higher interrupt arrives)
-    pub stopped: bool,
+    stopped: bool,
 
     /// CPU Halted state (fatal double bus fault or physical HALT line)
-    pub halted: bool,
+    halted: bool,
 
     /// Hardware RESET pin active state
-    pub reset_line_asserted: bool,
+    reset_line_asserted: bool,
 
     /// Cycle-exact micro-operation engine state (not saved in basic snapshot)
-    pub micro: crate::micro::CpuMicroState,
+    micro: crate::micro::CpuMicroState,
 
     /// Master cycle counter
-    pub cycle_counter: u64,
+    cycle_counter: u64,
 }
 
 impl Default for CpuState {
@@ -129,6 +129,96 @@ impl Default for CpuState {
 }
 
 impl CpuState {
+    #[inline(always)]
+    pub fn pc(&self) -> u32 {
+        self.pc
+    }
+    #[inline(always)]
+    pub fn set_pc(&mut self, value: u32) {
+        self.pc = value;
+    }
+
+    #[inline(always)]
+    pub fn prefetch(&self) -> u16 {
+        self.prefetch
+    }
+    #[inline(always)]
+    pub fn set_prefetch(&mut self, value: u16) {
+        self.prefetch = value;
+    }
+    #[inline(always)]
+    pub fn ir(&self) -> u16 {
+        self.ir
+    }
+    #[inline(always)]
+    pub fn set_ir(&mut self, value: u16) {
+        self.ir = value;
+    }
+    #[inline(always)]
+    pub fn ipl(&self) -> u8 {
+        self.ipl
+    }
+    #[inline(always)]
+    pub fn set_ipl(&mut self, value: u8) {
+        self.ipl = value;
+    }
+    #[inline(always)]
+    pub(crate) fn is_trace_pending(&self) -> bool {
+        self.trace_pending
+    }
+    #[inline(always)]
+    pub(crate) fn set_trace_pending(&mut self, value: bool) {
+        self.trace_pending = value;
+    }
+    #[inline(always)]
+    pub fn instruction_pc(&self) -> u32 {
+        self.instruction_pc
+    }
+    #[inline(always)]
+    pub fn set_instruction_pc(&mut self, value: u32) {
+        self.instruction_pc = value;
+    }
+    #[inline(always)]
+    pub fn is_stopped(&self) -> bool {
+        self.stopped
+    }
+    #[inline(always)]
+    pub fn set_stopped(&mut self, value: bool) {
+        self.stopped = value;
+    }
+    #[inline(always)]
+    pub fn is_halted(&self) -> bool {
+        self.halted
+    }
+    #[inline(always)]
+    pub fn set_halted(&mut self, value: bool) {
+        self.halted = value;
+    }
+    #[inline(always)]
+    pub fn is_reset_line_asserted(&self) -> bool {
+        self.reset_line_asserted
+    }
+    #[inline(always)]
+    pub(crate) fn set_reset_line_asserted(&mut self, value: bool) {
+        self.reset_line_asserted = value;
+    }
+    #[inline(always)]
+    pub fn micro(&self) -> &crate::micro::CpuMicroState {
+        &self.micro
+    }
+    #[inline(always)]
+    pub fn micro_mut(&mut self) -> &mut crate::micro::CpuMicroState {
+        &mut self.micro
+    }
+    #[inline(always)]
+    pub fn set_micro(&mut self, value: crate::micro::CpuMicroState) {
+        self.micro = value;
+    }
+    #[inline(always)]
+    pub fn set_cycle_counter(&mut self, value: u64) {
+        self.cycle_counter = value;
+    }
+
     // --- Data Register (Dn) Accessors ---
 
     /// Reads lowest 8 bits of data register Dn

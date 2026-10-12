@@ -40,14 +40,14 @@ pub fn retire(machine: &mut A500Machine, next_pc: u32) {
     let start = machine.cck;
     for _ in 0..4096 {
         if machine.step_cck() {
-            assert_eq!(machine.cpu.state.instruction_pc, next_pc);
+            assert_eq!(machine.cpu.state.instruction_pc(), next_pc);
             assert!(
                 machine.cck > start,
                 "instruction made no master-clock progress"
             );
             return;
         }
-        assert!(!machine.cpu.state.halted, "unexpected CPU halt");
+        assert!(!machine.cpu.state.is_halted(), "unexpected CPU halt");
     }
     panic!("instruction did not retire within 4096 CCKs");
 }
@@ -59,13 +59,13 @@ pub fn assert_boot_entry(machine: &A500Machine) {
     assert_eq!(machine.cpu.state.sr(), 0x2700);
     assert_eq!(machine.cpu.state.ssp(), BOOT_SSP);
     assert_eq!(machine.cpu.state.a_long(7), BOOT_SSP);
-    assert_eq!(machine.cpu.state.instruction_pc, BOOT_PC);
-    assert_eq!(machine.cpu.state.pc, BOOT_PC + 4);
-    assert_eq!(machine.cpu.state.ir, BOOT_CODE[0]);
-    assert_eq!(machine.cpu.state.prefetch, BOOT_CODE[1]);
-    assert!(!machine.cpu.state.stopped);
-    assert!(!machine.cpu.state.halted);
-    assert!(!machine.cpu.state.reset_line_asserted);
+    assert_eq!(machine.cpu.state.instruction_pc(), BOOT_PC);
+    assert_eq!(machine.cpu.state.pc(), BOOT_PC + 4);
+    assert_eq!(machine.cpu.state.ir(), BOOT_CODE[0]);
+    assert_eq!(machine.cpu.state.prefetch(), BOOT_CODE[1]);
+    assert!(!machine.cpu.state.is_stopped());
+    assert!(!machine.cpu.state.is_halted());
+    assert!(!machine.cpu.state.is_reset_line_asserted());
     assert!(!machine.keyboard.reset_line_asserted);
 }
 
@@ -79,7 +79,7 @@ pub fn execute_boot(machine: &mut A500Machine) {
         BOOT_PC + 22,
     ] {
         retire(machine, next_pc);
-        assert!(!machine.cpu.state.reset_line_asserted);
+        assert!(!machine.cpu.state.is_reset_line_asserted());
         assert!(!machine.keyboard.reset_line_asserted);
         assert_eq!(machine.cpu.state.a_long(7), BOOT_SSP);
         if next_pc >= BOOT_PC + 8 {

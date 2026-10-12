@@ -15,9 +15,9 @@ use crate::state::{vector, CpuState};
 
 pub fn alu_trapv_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     if state.is_v() {
-        state.micro.current_steps = &STEPS_TRAPV_EXCEPTION;
-        state.micro.micro_step = 0;
-        state.micro.clocks_remaining = 0;
+        state.micro_mut().current_steps = &STEPS_TRAPV_EXCEPTION;
+        state.micro_mut().micro_step = 0;
+        state.micro_mut().clocks_remaining = 0;
     }
 }
 
@@ -35,13 +35,13 @@ pub static STEPS_TRAPV: [MicroStep; 3] = [
 
 pub fn alu_trapv_exception_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let vector_addr = vector::addr(vector::TRAPV);
-    let return_pc = state.pc.wrapping_sub(2);
+    let return_pc = state.pc().wrapping_sub(2);
     let old_sr = state.sr();
     state.set_supervisor(true);
     state.clear_trace();
-    state.micro.source = return_pc;
-    state.micro.destination = old_sr as u32;
-    state.micro.ea_addr = vector_addr;
+    state.micro_mut().source = return_pc;
+    state.micro_mut().destination = old_sr as u32;
+    state.micro_mut().ea_addr = vector_addr;
 }
 
 pub static ALU_TRAPV_EXCEPTION_INIT: MicroStep = MicroStep {

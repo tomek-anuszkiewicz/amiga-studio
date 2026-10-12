@@ -11,50 +11,50 @@ use crate::state::CpuState;
 use crate::Cpu;
 
 pub fn alu_jsr_ai(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
-    state.micro.ea_addr = state.a_long(reg_src as usize);
-    let ret = state.pc.wrapping_sub(2);
-    state.micro.destination = ret;
+    state.micro_mut().ea_addr = state.a_long(reg_src as usize);
+    let ret = state.pc().wrapping_sub(2);
+    state.micro_mut().destination = ret;
 }
 
 pub fn alu_jsr_d16_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
-    let disp = (state.prefetch as i16) as i32;
-    state.micro.ea_addr = state.a_long(reg_src as usize).wrapping_add(disp as u32);
-    state.micro.destination = state.pc;
+    let disp = (state.prefetch() as i16) as i32;
+    state.micro_mut().ea_addr = state.a_long(reg_src as usize).wrapping_add(disp as u32);
+    state.micro_mut().destination = state.pc();
 }
 
 pub fn alu_jsr_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
-    let ext = state.prefetch;
+    let ext = state.prefetch();
     let disp8 = (ext & 0xFF) as i8 as i32;
     let xn = crate::micro::ea::read_index_reg(state, ext);
     let an = state.a_long(reg_src as usize);
-    state.micro.ea_addr = an.wrapping_add(xn).wrapping_add(disp8 as u32);
-    state.micro.destination = state.pc;
+    state.micro_mut().ea_addr = an.wrapping_add(xn).wrapping_add(disp8 as u32);
+    state.micro_mut().destination = state.pc();
 }
 
 pub fn alu_jsr_absw(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.ea_addr = state.prefetch as i16 as i32 as u32;
-    state.micro.destination = state.pc;
+    state.micro_mut().ea_addr = state.prefetch() as i16 as i32 as u32;
+    state.micro_mut().destination = state.pc();
 }
 
 pub fn alu_jsr_absl_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.ea_addr = state.micro.ea_high | (state.prefetch as u32);
-    state.micro.destination = state.pc;
+    state.micro_mut().ea_addr = state.micro().ea_high | (state.prefetch() as u32);
+    state.micro_mut().destination = state.pc();
 }
 
 pub fn alu_jsr_d16_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let disp = (state.prefetch as i16) as i32;
-    let base_pc = state.pc.wrapping_sub(2);
-    state.micro.ea_addr = base_pc.wrapping_add(disp as u32);
-    state.micro.destination = state.pc;
+    let disp = (state.prefetch() as i16) as i32;
+    let base_pc = state.pc().wrapping_sub(2);
+    state.micro_mut().ea_addr = base_pc.wrapping_add(disp as u32);
+    state.micro_mut().destination = state.pc();
 }
 
 pub fn alu_jsr_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let ext = state.prefetch;
+    let ext = state.prefetch();
     let disp8 = (ext & 0xFF) as i8 as i32;
     let xn = crate::micro::ea::read_index_reg(state, ext);
-    let base_pc = state.pc.wrapping_sub(2);
-    state.micro.ea_addr = base_pc.wrapping_add(xn).wrapping_add(disp8 as u32);
-    state.micro.destination = state.pc;
+    let base_pc = state.pc().wrapping_sub(2);
+    state.micro_mut().ea_addr = base_pc.wrapping_add(xn).wrapping_add(disp8 as u32);
+    state.micro_mut().destination = state.pc();
 }
 
 /// JSR (An): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)

@@ -9,14 +9,14 @@ use physical_memory::{BusResult, PhysicalMemory};
 #[test]
 fn test_micro_state_initial_and_reset() {
     let mut cpu = Cpu::new();
-    assert_eq!(cpu.state.micro.micro_step, 0);
-    assert_eq!(cpu.state.micro.clocks_remaining, 0);
+    assert_eq!(cpu.state.micro().micro_step, 0);
+    assert_eq!(cpu.state.micro().clocks_remaining, 0);
 
-    cpu.state.micro.micro_step = 2;
-    cpu.state.micro.clocks_remaining = 4;
-    cpu.state.micro.reset();
-    assert_eq!(cpu.state.micro.micro_step, 0);
-    assert_eq!(cpu.state.micro.clocks_remaining, 0);
+    cpu.state.micro_mut().micro_step = 2;
+    cpu.state.micro_mut().clocks_remaining = 4;
+    cpu.state.micro_mut().reset();
+    assert_eq!(cpu.state.micro().micro_step, 0);
+    assert_eq!(cpu.state.micro().clocks_remaining, 0);
 }
 
 #[test]
@@ -26,12 +26,12 @@ fn test_cck_unblocked_read_cycle() {
     bus.write_word_debug(0x002000, 0x55AA);
 
     let mut cpu = Cpu::new();
-    cpu.state.micro.ea_addr = 0x002000;
+    cpu.state.micro_mut().ea_addr = 0x002000;
 
     // CCK1 step: initiates bus read
     let res1 = cpu.step_bus_read_src_word(&mut bus);
     assert_eq!(res1, BusResult::Ready(()));
-    assert_eq!(cpu.state.micro.source as u16, 0x55AA);
+    assert_eq!(cpu.state.micro().source as u16, 0x55AA);
 }
 
 #[test]
@@ -41,7 +41,7 @@ fn test_cck_read_contention_stall_at_cck1() {
     bus.write_word_debug(0x002000, 0x1234);
 
     let mut cpu = Cpu::new();
-    cpu.state.micro.ea_addr = 0x002000;
+    cpu.state.micro_mut().ea_addr = 0x002000;
 
     // Agnus DMA occupies Chip RAM
     bus.chip_ram_blocked = true;
@@ -60,7 +60,7 @@ fn test_cck_read_contention_stall_at_cck1() {
     // 3rd attempt: CCK1 unblocked -> Ready
     let res3 = cpu.step_bus_read_src_word(&mut bus);
     assert_eq!(res3, BusResult::Ready(()));
-    assert_eq!(cpu.state.micro.source as u16, 0x1234);
+    assert_eq!(cpu.state.micro().source as u16, 0x1234);
 }
 
 #[test]
@@ -69,8 +69,8 @@ fn test_cck_write_contention_stall_at_cck2() {
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
-    cpu.state.micro.ea_addr = 0x003000;
-    cpu.state.micro.destination = 0xABCD;
+    cpu.state.micro_mut().ea_addr = 0x003000;
+    cpu.state.micro_mut().destination = 0xABCD;
 
     // Agnus DMA grabs Chip RAM before CCK2 commit
     bus.chip_ram_blocked = true;
@@ -102,22 +102,22 @@ fn test_clocks_remaining_micro_stepping() {
         base_clocks: 4,
     }];
 
-    cpu.state.micro.current_steps = &TEST_STEPS;
-    cpu.state.micro.micro_step = 0;
-    cpu.state.micro.clocks_remaining = 0;
+    cpu.state.micro_mut().current_steps = &TEST_STEPS;
+    cpu.state.micro_mut().micro_step = 0;
+    cpu.state.micro_mut().clocks_remaining = 0;
 
     let initial_cycles = cpu.cycle_counter();
 
     // 1st CCK step: consumes 2 clocks, 2 remaining
     let finished1 = cpu.step_cck(&mut bus);
     assert!(!finished1);
-    assert_eq!(cpu.state.micro.clocks_remaining, 2);
+    assert_eq!(cpu.state.micro().clocks_remaining, 2);
     assert_eq!(cpu.cycle_counter(), initial_cycles + 2);
 
     // 2nd CCK step: consumes 2 clocks, completes step
     let finished2 = cpu.step_cck(&mut bus);
     assert!(finished2);
-    assert_eq!(cpu.state.micro.clocks_remaining, 0);
+    assert_eq!(cpu.state.micro().clocks_remaining, 0);
     assert_eq!(cpu.cycle_counter(), initial_cycles + 4);
 }
 
@@ -126,7 +126,7 @@ fn test_cycle_counter_monotonic_accumulation() {
     let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
     let mut cpu = Cpu::new();
-    assert_eq!(cpu.state.cycle_counter, 0);
+    assert_eq!(cpu.state.cycle_counter(), 0);
     assert_eq!(cpu.cycle_counter(), 0);
 
     // Write NOP ($4E71) instructions at $1000 and $1002
@@ -134,26 +134,26 @@ fn test_cycle_counter_monotonic_accumulation() {
     bus.write_word_debug(0x1002, 0x4E71);
     bus.write_word_debug(0x1004, 0x4E71);
 
-    cpu.state.pc = 0x1000;
-    cpu.state.ir = 0x4E71;
-    cpu.state.prefetch = 0x4E71;
-    cpu.state.pc = 0x1004;
+    cpu.state.set_pc(0x1000);
+    cpu.state.set_ir(0x4E71);
+    cpu.state.set_prefetch(0x4E71);
+    cpu.state.set_pc(0x1004);
 
     // Step first NOP: should take 4 CPU clocks (2 CCK steps)
     let clocks1 = cpu.step_instruction(&mut bus);
     assert_eq!(clocks1, 4);
-    assert_eq!(cpu.state.cycle_counter, 4);
+    assert_eq!(cpu.state.cycle_counter(), 4);
     assert_eq!(cpu.cycle_counter(), 4);
 
     // Step second NOP: returns 4 clocks, cycle_counter accumulates to 8
     let clocks2 = cpu.step_instruction(&mut bus);
     assert_eq!(clocks2, 4);
-    assert_eq!(cpu.state.cycle_counter, 8);
+    assert_eq!(cpu.state.cycle_counter(), 8);
     assert_eq!(cpu.cycle_counter(), 8);
 
     // Manual reset of cycle counter
     cpu.reset_cycle_counter();
-    assert_eq!(cpu.state.cycle_counter, 0);
+    assert_eq!(cpu.state.cycle_counter(), 0);
     assert_eq!(cpu.cycle_counter(), 0);
 }
 
@@ -176,8 +176,8 @@ fn test_cpu_reset_status_and_vectors() {
     assert!(cpu.state.is_supervisor());
     assert_eq!(cpu.state.interrupt_mask(), 7);
     assert_eq!(cpu.state.ssp(), 0x0007_0000);
-    assert_eq!(cpu.state.instruction_pc, 0x0000_1000);
-    assert_eq!(cpu.state.pc, 0x0000_1004); // Prefetch pipeline primed 2 words forward
+    assert_eq!(cpu.state.instruction_pc(), 0x0000_1000);
+    assert_eq!(cpu.state.pc(), 0x0000_1004); // Prefetch pipeline primed 2 words forward
 
     // Vector addresses calculation
     assert_eq!(cpu::vector::addr(cpu::vector::RESET_SSP), 0x00);
@@ -237,7 +237,7 @@ fn test_cpu_reset_and_reset_warm() {
     assert_eq!(cpu.state.a_long(0), 0x9ABCDEF0);
     assert_eq!(cpu.state.usp(), 0x00054321);
     assert_eq!(cpu.state.ssp(), 0x00070000);
-    assert_eq!(cpu.state.instruction_pc, 0x00002000);
+    assert_eq!(cpu.state.instruction_pc(), 0x00002000);
 
     // Standard reset zeroes data/address registers and USP
     cpu.reset(&mut bus);
@@ -245,7 +245,7 @@ fn test_cpu_reset_and_reset_warm() {
     assert_eq!(cpu.state.a_long(0), 0);
     assert_eq!(cpu.state.usp(), 0);
     assert_eq!(cpu.state.ssp(), 0x00070000);
-    assert_eq!(cpu.state.instruction_pc, 0x00002000);
+    assert_eq!(cpu.state.instruction_pc(), 0x00002000);
 }
 
 #[test]
@@ -264,32 +264,32 @@ fn test_cpu_reset_unaligned_pc_triggers_double_bus_fault() {
 
     // On physical M68000 silicon, unaligned PC at reset triggers an immediate Double Bus Fault
     assert!(
-        cpu.state.halted,
+        cpu.state.is_halted(),
         "CPU must be halted on Double Bus Fault when reset PC vector is unaligned"
     );
-    assert_eq!(cpu.state.instruction_pc, 0x0000_1001);
-    assert_eq!(cpu.state.pc, 0x0000_1001);
+    assert_eq!(cpu.state.instruction_pc(), 0x0000_1001);
+    assert_eq!(cpu.state.pc(), 0x0000_1001);
 }
 
 // Each handler has its own WaitState branch. These tables cover those branches
 // without replicating opcode or memory-schedule permutations.
 fn transfer_cpu() -> Cpu {
     let mut cpu = Cpu::new();
-    cpu.state.pc = 0x1004;
-    cpu.state.ir = 0x4E71;
-    cpu.state.prefetch = 0x4E75;
+    cpu.state.set_pc(0x1004);
+    cpu.state.set_ir(0x4E71);
+    cpu.state.set_prefetch(0x4E75);
     cpu.state.set_a_long(0, 0x2004);
     cpu.state.set_a_long(7, 0x6000);
-    cpu.state.micro.ea_addr = 0x2000;
-    cpu.state.micro.addr1 = 0x3000;
-    cpu.state.micro.addr2 = 0x4000;
-    cpu.state.micro.source = 0x1122_3344;
-    cpu.state.micro.destination = 0x5566_7788;
-    cpu.state.micro.ea_high = 0x1234_0000;
-    cpu.state.micro.ssp_base = 0x7000;
-    cpu.state.micro.fault_addr = 0x89AB_CDEF;
-    cpu.state.micro.info_word = 0x1234;
-    cpu.state.micro.irc = 0x4E70;
+    cpu.state.micro_mut().ea_addr = 0x2000;
+    cpu.state.micro_mut().addr1 = 0x3000;
+    cpu.state.micro_mut().addr2 = 0x4000;
+    cpu.state.micro_mut().source = 0x1122_3344;
+    cpu.state.micro_mut().destination = 0x5566_7788;
+    cpu.state.micro_mut().ea_high = 0x1234_0000;
+    cpu.state.micro_mut().ssp_base = 0x7000;
+    cpu.state.micro_mut().fault_addr = 0x89AB_CDEF;
+    cpu.state.micro_mut().info_word = 0x1234;
+    cpu.state.micro_mut().irc = 0x4E70;
     cpu
 }
 
@@ -302,211 +302,211 @@ fn test_read_handlers_retain_latches_until_ready() {
         (
             Cpu::step_bus_read_src_byte,
             Access::ReadByte(0x2000 + 0),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0xA1,
         ),
         (
             Cpu::step_bus_read_src_word,
             Access::ReadWord(0x2000 + 0),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0xA1B2,
         ),
         (
             Cpu::step_bus_read_src_long_high,
             Access::ReadWord(0x2000 + 0),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0xA1B2_0000,
         ),
         (
             Cpu::step_bus_read_src_long_low,
             Access::ReadWord(0x2000 + 2),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0x1122A1B2,
         ),
         (
             Cpu::step_bus_read_src_byte,
             Access::ReadByte(0x2000 + 1),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0xB2,
         ),
         (
             Cpu::step_bus_read_dst_byte,
             Access::ReadByte(0x2000 + 0),
-            |cpu| cpu.state.micro.destination,
+            |cpu| cpu.state.micro().destination,
             0xA1,
         ),
         (
             Cpu::step_bus_read_dst_word,
             Access::ReadWord(0x2000 + 0),
-            |cpu| cpu.state.micro.destination,
+            |cpu| cpu.state.micro().destination,
             0xA1B2,
         ),
         (
             Cpu::step_bus_read_dst_long_high,
             Access::ReadWord(0x2000 + 0),
-            |cpu| cpu.state.micro.destination,
+            |cpu| cpu.state.micro().destination,
             0xA1B2_0000,
         ),
         (
             Cpu::step_bus_read_dst_long_low,
             Access::ReadWord(0x2000 + 2),
-            |cpu| cpu.state.micro.destination,
+            |cpu| cpu.state.micro().destination,
             0x5566A1B2,
         ),
         (
             Cpu::step_bus_read_dst_byte,
             Access::ReadByte(0x2000 + 1),
-            |cpu| cpu.state.micro.destination,
+            |cpu| cpu.state.micro().destination,
             0xB2,
         ),
         (
             Cpu::step_bus_read_addr1_byte,
             Access::ReadByte(0x3000 + 0),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0xA1,
         ),
         (
             Cpu::step_bus_read_addr1_word,
             Access::ReadWord(0x3000 + 0),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0xA1B2,
         ),
         (
             Cpu::step_bus_read_addr1_long_high,
             Access::ReadWord(0x3000 + 0),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0xA1B2_0000,
         ),
         (
             Cpu::step_bus_read_addr1_long_low,
             Access::ReadWord(0x3000 + 2),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0x1122A1B2,
         ),
         (
             Cpu::step_bus_read_addr1_byte,
             Access::ReadByte(0x3000 + 1),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0xB2,
         ),
         (
             Cpu::step_bus_read_addr2_byte,
             Access::ReadByte(0x4000 + 0),
-            |cpu| cpu.state.micro.destination,
+            |cpu| cpu.state.micro().destination,
             0xA1,
         ),
         (
             Cpu::step_bus_read_addr2_word,
             Access::ReadWord(0x4000 + 0),
-            |cpu| cpu.state.micro.destination,
+            |cpu| cpu.state.micro().destination,
             0xA1B2,
         ),
         (
             Cpu::step_bus_read_addr2_long_high,
             Access::ReadWord(0x4000 + 0),
-            |cpu| cpu.state.micro.destination,
+            |cpu| cpu.state.micro().destination,
             0xA1B2_0000,
         ),
         (
             Cpu::step_bus_read_addr2_long_low,
             Access::ReadWord(0x4000 + 2),
-            |cpu| cpu.state.micro.destination,
+            |cpu| cpu.state.micro().destination,
             0x5566A1B2,
         ),
         (
             Cpu::step_bus_read_addr2_byte,
             Access::ReadByte(0x4000 + 1),
-            |cpu| cpu.state.micro.destination,
+            |cpu| cpu.state.micro().destination,
             0xB2,
         ),
         (
             Cpu::step_bus_read_src_split_high,
             Access::ReadWord(0x2000),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0xA1B2_3344,
         ),
         (
             Cpu::step_bus_read_dst_split_high,
             Access::ReadWord(0x2000),
-            |cpu| cpu.state.micro.destination,
+            |cpu| cpu.state.micro().destination,
             0xA1B2_7788,
         ),
         (
             Cpu::step_fetch_extension_read,
             Access::ReadWord(0x1004),
-            |cpu| cpu.state.prefetch as u32,
+            |cpu| cpu.state.prefetch() as u32,
             0xA1B2,
         ),
         (
             Cpu::step_prefetch_next_read,
             Access::ReadWord(0x1004),
-            |cpu| cpu.state.micro.irc as u32,
+            |cpu| cpu.state.micro().irc as u32,
             0xA1B2,
         ),
         (
             Cpu::step_bus_read_target_opcode_read,
             Access::ReadWord(0x2000),
-            |cpu| cpu.state.micro.irc as u32,
+            |cpu| cpu.state.micro().irc as u32,
             0xA1B2,
         ),
         (
             Cpu::step_prefetch_target_read,
             Access::ReadWord(0x2002),
-            |cpu| cpu.state.prefetch as u32,
+            |cpu| cpu.state.prefetch() as u32,
             0xA1B2,
         ),
         (
             Cpu::step_bus_read_control_target_opcode_read,
             Access::ReadWord(0x2000),
-            |cpu| cpu.state.micro.irc as u32,
+            |cpu| cpu.state.micro().irc as u32,
             0xA1B2,
         ),
         (
             Cpu::step_bus_read_return_high,
             Access::ReadWord(0x6002),
-            |cpu| cpu.state.micro.ea_high,
+            |cpu| cpu.state.micro().ea_high,
             0xA1B2_0000,
         ),
         (
             Cpu::step_bus_read_vector_high_read,
             Access::ReadWord(0x2000),
-            |cpu| cpu.state.micro.ea_high,
+            |cpu| cpu.state.micro().ea_high,
             0xA1B2_0000,
         ),
         (
             Cpu::step_bus_read_vector_low_read,
             Access::ReadWord(0x2002),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0xA1B2,
         ),
         (
             Cpu::step_bus_pop_stack_high_read,
             Access::ReadWord(0x6000),
-            |cpu| cpu.state.micro.ea_high,
+            |cpu| cpu.state.micro().ea_high,
             0xA1B2_0000,
         ),
         (
             Cpu::step_bus_pop_stack_low_read,
             Access::ReadWord(0x6000),
-            |cpu| cpu.state.micro.ea_addr,
+            |cpu| cpu.state.micro().ea_addr,
             0x1234_A1B2,
         ),
         (
             Cpu::step_bus_pop_stack_sr_read,
             Access::ReadWord(0x6000),
-            |cpu| cpu.state.micro.source,
+            |cpu| cpu.state.micro().source,
             0xA1B2,
         ),
         (
             Cpu::step_bus_read_refill_first,
             Access::ReadWord(0x1002),
-            |cpu| cpu.state.prefetch as u32,
+            |cpu| cpu.state.prefetch() as u32,
             0xA1B2,
         ),
         (
             Cpu::step_bus_read_refill_second,
             Access::ReadWord(0x1004),
-            |cpu| cpu.state.micro.irc as u32,
+            |cpu| cpu.state.micro().irc as u32,
             0xA1B2,
         ),
     ];
@@ -520,9 +520,9 @@ fn test_read_handlers_retain_latches_until_ready() {
                 _ => panic!("invalid fixture access"),
             };
             memory.write_word_debug(addr & !1, 0xA1B2);
-            cpu.state.micro.ea_addr |= addr & 1;
-            cpu.state.micro.addr1 |= addr & 1;
-            cpu.state.micro.addr2 |= addr & 1;
+            cpu.state.micro_mut().ea_addr |= addr & 1;
+            cpu.state.micro_mut().addr1 |= addr & 1;
+            cpu.state.micro_mut().addr2 |= addr & 1;
             let mut bus = RecordingBus::new(memory, vec![(access, refusals)]);
             let before = cpu.state.clone();
             for _ in 0..refusals {
@@ -657,9 +657,9 @@ fn test_write_handlers_commit_once_after_release() {
                 _ => panic!("invalid fixture access"),
             };
             memory.write_word_debug(addr & !1, 0xDEAD);
-            cpu.state.micro.ea_addr |= addr & 1;
-            cpu.state.micro.addr1 |= addr & 1;
-            cpu.state.micro.addr2 |= addr & 1;
+            cpu.state.micro_mut().ea_addr |= addr & 1;
+            cpu.state.micro_mut().addr1 |= addr & 1;
+            cpu.state.micro_mut().addr2 |= addr & 1;
             let mut bus = RecordingBus::new(memory, vec![(access, refusals)]);
             let before = cpu.state.clone();
             for _ in 0..refusals {
@@ -698,7 +698,7 @@ fn test_engine_read_and_write_phases_with_repeated_waits() {
     for is_read in [true, false] {
         for refusals in [0, 1, 3] {
             let mut cpu = transfer_cpu();
-            cpu.state.micro.current_steps = if is_read { &READ } else { &WRITE };
+            cpu.state.micro_mut().current_steps = if is_read { &READ } else { &WRITE };
             let mut memory = PhysicalMemory::new();
             memory.map_chip_ram_to_low_memory();
             memory.write_word_debug(0x2000, 0xDEAD);
@@ -716,15 +716,15 @@ fn test_engine_read_and_write_phases_with_repeated_waits() {
             }
             for _ in 0..refusals {
                 assert!(!cpu.step_cck(&mut bus));
-                assert_eq!(cpu.state.micro.micro_step, u16::from(!is_read));
-                assert_eq!(cpu.state.micro.clocks_remaining, 2);
-                assert_eq!(cpu.state.micro.source, 0x1122_3344);
+                assert_eq!(cpu.state.micro().micro_step, u16::from(!is_read));
+                assert_eq!(cpu.state.micro().clocks_remaining, 2);
+                assert_eq!(cpu.state.micro().source, 0x1122_3344);
                 assert_eq!(bus.memory.read_word_debug(0x2000), 0xDEAD);
             }
             let finished = cpu.step_cck(&mut bus);
             assert_eq!(finished, !is_read);
             if is_read {
-                assert_eq!(cpu.state.micro.source, 0xDEAD);
+                assert_eq!(cpu.state.micro().source, 0xDEAD);
                 bus.memory.chip_ram_blocked = true;
                 assert!(cpu.step_cck(&mut bus), "read CCK2 must leave memory idle");
             }
@@ -750,7 +750,7 @@ fn test_engine_does_not_repeat_entry_alu_during_write_retries() {
     ];
     for steps in [&FUSED[..], &ZERO_CLOCK[..]] {
         let mut cpu = transfer_cpu();
-        cpu.state.micro.current_steps = steps;
+        cpu.state.micro_mut().current_steps = steps;
         let mut memory = PhysicalMemory::new();
         memory.map_chip_ram_to_low_memory();
         let mut bus = RecordingBus::new(memory, vec![(Access::WriteWord(0x2000, 0x7788), 3)]);
@@ -767,9 +767,9 @@ fn test_successful_store_applies_deferred_address_and_pipeline_updates() {
             Cpu::step_bus_write_dst_pd_word,
             Access::WriteWord(0x2000, 0x7788),
             |state| {
-                state.ir = state.prefetch;
-                state.prefetch = state.micro.irc;
-                state.micro.prefetch_retired = true;
+                state.set_ir(state.prefetch());
+                state.set_prefetch(state.micro().irc);
+                state.micro_mut().prefetch_retired = true;
             },
         ),
         (
@@ -782,10 +782,10 @@ fn test_successful_store_applies_deferred_address_and_pipeline_updates() {
             Access::WriteWord(0x1FFE, 0x5566),
             |state| {
                 state.set_a_long(0, 0x1FFE);
-                state.micro.ea_addr = 0x1FFE;
-                state.ir = state.prefetch;
-                state.prefetch = state.micro.irc;
-                state.micro.prefetch_retired = true;
+                state.micro_mut().ea_addr = 0x1FFE;
+                state.set_ir(state.prefetch());
+                state.set_prefetch(state.micro().irc);
+                state.micro_mut().prefetch_retired = true;
             },
         ),
         (

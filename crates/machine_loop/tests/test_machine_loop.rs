@@ -11,8 +11,8 @@ fn test_machine_creation_and_stepping() {
 
     assert_eq!(machine.cck, 0);
     assert_eq!(machine.paula.pending_interrupt_level(), 0);
-    assert_eq!(machine.cpu.state.pc, 4);
-    assert!(!machine.cpu.state.halted);
+    assert_eq!(machine.cpu.state.pc(), 4);
+    assert!(!machine.cpu.state.is_halted());
 
     // Step 10 Color Clocks
     machine.step_cycles(10);

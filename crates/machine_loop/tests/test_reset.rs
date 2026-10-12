@@ -103,11 +103,11 @@ fn keyboard_reset_replaces_stopped_and_partial_instruction_state() {
         machine.cpu.state.set_d_long(2, 0xDEADBEEF);
         if stopped {
             retire(&mut machine, 0xF82004);
-            assert!(machine.cpu.state.stopped);
+            assert!(machine.cpu.state.is_stopped());
         } else {
             assert!(!machine.step_cck());
             assert!(!machine.step_cck());
-            assert!(!machine.cpu.state.micro.current_steps.is_empty());
+            assert!(!machine.cpu.state.micro().current_steps.is_empty());
         }
         press_reset_keys(&mut machine);
         assert!(!machine.step_cck());
@@ -153,16 +153,16 @@ fn separate_reset_opcodes_each_clear_the_post_pulse_device_marker_once() {
         let mut edges = 0;
         let mut previous = false;
         for tick in 1..=66 {
-            assert_eq!(machine.cpu.state.instruction_pc, reset_pc);
+            assert_eq!(machine.cpu.state.instruction_pc(), reset_pc);
             assert_eq!(machine.step_cck(), tick == 66);
-            let output = machine.cpu.state.reset_line_asserted;
+            let output = machine.cpu.state.is_reset_line_asserted();
             asserted += u32::from(output) * 2;
             edges += u32::from(output && !previous);
             previous = output;
         }
         assert_eq!((asserted, edges), (124, 1));
         assert_eq!(machine.cpu.cycle_counter() - start, 132);
-        assert!(!machine.cpu.state.reset_line_asserted);
+        assert!(!machine.cpu.state.is_reset_line_asserted());
         assert_eq!(machine.denise.color[0], 0);
         assert_eq!(machine.physical_memory.chip_ram[0x41000], 0x77);
         assert_eq!(machine.cpu.state.d_long(3), 0x12345678);
@@ -172,7 +172,7 @@ fn separate_reset_opcodes_each_clear_the_post_pulse_device_marker_once() {
         assert_eq!(machine.denise.color[0], COLOR_MARKER);
         retire(&mut machine, after_marker);
         assert_eq!(machine.denise.color[0], COLOR_MARKER);
-        assert!(!machine.cpu.state.reset_line_asserted);
+        assert!(!machine.cpu.state.is_reset_line_asserted());
     }
     assert_eq!(machine.cpu.state.d_long(0), 43);
     assert_eq!(machine.cpu.state.d_long(1), 53);
@@ -269,11 +269,12 @@ fn test_cold_reset_full_flow() {
         "CPU Status Register must be reset to supervisor mask 7 ($2700)"
     );
     assert_eq!(
-        machine.cpu.state.ipl, 0,
+        machine.cpu.state.ipl(),
+        0,
         "CPU IPL must be 0 with all interrupts masked/cleared"
     );
     assert!(
-        !machine.cpu.state.reset_line_asserted,
+        !machine.cpu.state.is_reset_line_asserted(),
         "CPU reset line asserted flag must be cleared"
     );
 }
@@ -372,7 +373,8 @@ fn test_warm_reset_full_flow() {
         "CPU SR must be reset to supervisor mask 7 ($2700)"
     );
     assert_eq!(
-        machine.cpu.state.ipl, 0,
+        machine.cpu.state.ipl(),
+        0,
         "CPU IPL must be 0 with all interrupts masked/cleared"
     );
 }
@@ -424,7 +426,7 @@ fn test_cpu_reset_instruction_external_propagation() {
     let mut asserted_clocks = 0;
     for tick in 1..=66 {
         assert_eq!(machine.step_cck(), tick == 66);
-        if machine.cpu.state.reset_line_asserted {
+        if machine.cpu.state.is_reset_line_asserted() {
             asserted_clocks += 2;
         }
     }
@@ -470,17 +472,18 @@ fn test_cpu_reset_instruction_external_propagation() {
 
     // 5. Verify CPU PC advanced past RESET to the next instruction ($001002 NOP)
     assert_eq!(
-        machine.cpu.state.instruction_pc, 0x001002,
+        machine.cpu.state.instruction_pc(),
+        0x001002,
         "CPU PC must advance past RESET to the subsequent instruction"
     );
     assert!(
-        !machine.cpu.state.reset_line_asserted,
+        !machine.cpu.state.is_reset_line_asserted(),
         "RESET output must be released before the final prefetch"
     );
 
     // 6. Verify CPU continues linear execution (fetching from re-engaged Kickstart ROM)
     machine.step_instruction(); // executes NOP
-    assert_eq!(machine.cpu.state.instruction_pc, 0x001004);
+    assert_eq!(machine.cpu.state.instruction_pc(), 0x001004);
 
     machine.step_instruction(); // executes MOVEQ #42, D0
     assert_eq!(machine.cpu.state.d_long(0), 42);
@@ -528,7 +531,8 @@ fn test_cpu_reset_instruction_privilege_violation() {
 
     // Verify PC entered exception handler at $002600
     assert_eq!(
-        machine.cpu.state.instruction_pc, 0x002600,
+        machine.cpu.state.instruction_pc(),
+        0x002600,
         "CPU must trap to Privilege Violation handler at $002600"
     );
 
@@ -540,7 +544,7 @@ fn test_cpu_reset_instruction_privilege_violation() {
     assert_eq!(machine.physical_memory.read_word_debug(0x4FFE), 0x1000);
     for next in [0x2602, 0x2606, 0x1002, 0x1004, 0x1006, 0x1008] {
         retire(&mut machine, next);
-        assert!(!machine.cpu.state.reset_line_asserted);
+        assert!(!machine.cpu.state.is_reset_line_asserted());
         assert_eq!(machine.denise.color[0], COLOR_MARKER);
     }
     assert_eq!(machine.cpu.state.d_long(0), 1);
@@ -646,7 +650,8 @@ fn test_reset_overlay_kickstart_vs_synthetic() {
         "SSP must be loaded from Kickstart ROM vector"
     );
     assert_eq!(
-        machine.cpu.state.instruction_pc, 0x00FC0002,
+        machine.cpu.state.instruction_pc(),
+        0x00FC0002,
         "PC must be loaded from Kickstart ROM vector"
     );
 

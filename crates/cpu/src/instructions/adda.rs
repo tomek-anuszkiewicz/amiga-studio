@@ -38,19 +38,19 @@ pub fn alu_adda_l_an_an(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_adda_w_mem_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.micro.source as i16 as i32) as u32;
+    let s = (state.micro().source as i16 as i32) as u32;
     let d = state.a_long(reg_dst as usize);
     state.set_a_long(reg_dst as usize, d.wrapping_add(s));
 }
 
 pub fn alu_adda_l_mem_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.micro.source;
+    let s = state.micro().source;
     let d = state.a_long(reg_dst as usize);
     state.set_a_long(reg_dst as usize, d.wrapping_add(s));
 }
 
 pub fn alu_adda_w_imm_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.prefetch as i16 as i32) as u32;
+    let s = (state.prefetch() as i16 as i32) as u32;
     let d = state.a_long(reg_dst as usize);
     state.set_a_long(reg_dst as usize, d.wrapping_add(s));
 }

@@ -36,7 +36,7 @@ pub(crate) fn render_disassembly(
 
     ui.heading("Disassembly");
 
-    let current_pc = cpu.state.instruction_pc & 0x00FF_FFFF;
+    let current_pc = cpu.state.instruction_pc() & 0x00FF_FFFF;
 
     // 1. Navigation & Jump Bar
     ui.horizontal(|ui| {

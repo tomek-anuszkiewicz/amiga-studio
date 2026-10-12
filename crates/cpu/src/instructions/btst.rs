@@ -39,25 +39,25 @@ pub fn alu_btst_l_dyn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 
 pub fn alu_btst_b_dyn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let bit_num = state.d_long(reg_src as usize);
-    let val = (state.micro.destination & 0xFF) as u8;
+    let val = (state.micro().destination & 0xFF) as u8;
     btst_b(state, bit_num, val);
 }
 
 pub fn alu_btst_b_dyn_imm(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let bit_num = state.d_long(reg_src as usize);
-    let val = (state.prefetch & 0xFF) as u8;
+    let val = (state.prefetch() & 0xFF) as u8;
     btst_b(state, bit_num, val);
 }
 
 pub fn alu_btst_l_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let bit_num = state.micro.source;
+    let bit_num = state.micro().source;
     let val = state.d_long(reg_dst as usize);
     btst_l(state, bit_num, val);
 }
 
 pub fn alu_btst_b_imm_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let bit_num = state.micro.source;
-    let val = (state.micro.destination & 0xFF) as u8;
+    let bit_num = state.micro().source;
+    let val = (state.micro().destination & 0xFF) as u8;
     btst_b(state, bit_num, val);
 }
 
@@ -66,19 +66,19 @@ pub fn alu_btst_b_imm_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub fn latch_bit_imm(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let imm = (state.prefetch & 0xFF) as u32;
-    state.micro.source = imm;
+    let imm = (state.prefetch() & 0xFF) as u32;
+    state.micro_mut().source = imm;
 }
 
 pub fn latch_bit_imm_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let imm = (state.prefetch & 0xFF) as u32;
-    state.micro.source = imm;
+    let imm = (state.prefetch() & 0xFF) as u32;
+    state.micro_mut().source = imm;
     ea::ea_calc_dst_ai(state, 0, reg_dst);
 }
 
 pub fn latch_bit_imm_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let imm = (state.prefetch & 0xFF) as u32;
-    state.micro.source = imm;
+    let imm = (state.prefetch() & 0xFF) as u32;
+    state.micro_mut().source = imm;
     ea::ea_calc_dst_pi_b(state, 0, reg_dst);
 }
 

@@ -49,7 +49,7 @@ fn test_all_sample_binaries_execution_and_generation() {
         1000,
     );
 
-    assert_eq!(session.machine.cpu.state.pc.wrapping_sub(4), 0x001022);
+    assert_eq!(session.machine.cpu.state.pc().wrapping_sub(4), 0x001022);
     let expected_fib = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610];
     for (i, &val) in expected_fib.iter().enumerate() {
         let addr = 0x002000 + (i as u32 * 2);
@@ -117,7 +117,10 @@ fn test_all_sample_binaries_execution_and_generation() {
         5000,
     );
 
-    assert_eq!(sort_session.machine.cpu.state.pc.wrapping_sub(4), 0x001038);
+    assert_eq!(
+        sort_session.machine.cpu.state.pc().wrapping_sub(4),
+        0x001038
+    );
     let expected_sorted = [
         0x0001, 0x0003, 0x0010, 0x0025, 0x0042, 0x0050, 0x0077, 0x0099,
     ];
@@ -211,7 +214,10 @@ fn test_all_sample_binaries_execution_and_generation() {
         10000,
     );
 
-    assert_eq!(sieve_session.machine.cpu.state.pc.wrapping_sub(4), 0x001056);
+    assert_eq!(
+        sieve_session.machine.cpu.state.pc().wrapping_sub(4),
+        0x001056
+    );
     // Prime count in D7 should be 18
     assert_eq!(sieve_session.machine.cpu.state.d_long(7), 18);
     let expected_primes = [
@@ -300,7 +306,7 @@ fn test_all_sample_binaries_execution_and_generation() {
         2000,
     );
 
-    assert_eq!(str_session.machine.cpu.state.pc.wrapping_sub(4), 0x00103E);
+    assert_eq!(str_session.machine.cpu.state.pc().wrapping_sub(4), 0x00103E);
     // D0 should be 1 (palindrome verified)
     assert_eq!(str_session.machine.cpu.state.d_long(0), 1);
 
@@ -380,7 +386,10 @@ fn test_all_sample_binaries_execution_and_generation() {
         5000,
     );
 
-    assert_eq!(fact_session.machine.cpu.state.pc.wrapping_sub(4), 0x00101E);
+    assert_eq!(
+        fact_session.machine.cpu.state.pc().wrapping_sub(4),
+        0x00101E
+    );
     // Expected factorials 1! through 8!:
     let expected_facts: [u32; 8] = [1, 2, 6, 24, 120, 720, 5040, 40320];
     for (i, &f) in expected_facts.iter().enumerate() {

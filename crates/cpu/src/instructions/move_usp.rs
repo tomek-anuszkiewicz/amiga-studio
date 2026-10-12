@@ -15,9 +15,9 @@ use crate::state::CpuState;
 
 pub fn alu_move_to_usp(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     if !state.is_supervisor() {
-        state.micro.current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
-        state.micro.micro_step = 0;
-        state.micro.clocks_remaining = 0;
+        state.micro_mut().current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
+        state.micro_mut().micro_step = 0;
+        state.micro_mut().clocks_remaining = 0;
         return;
     }
     state.set_usp(state.a_long(reg_src as usize));
@@ -37,9 +37,9 @@ pub static STEPS_MOVE_TO_USP: [MicroStep; 3] = [
 
 pub fn alu_move_from_usp(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     if !state.is_supervisor() {
-        state.micro.current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
-        state.micro.micro_step = 0;
-        state.micro.clocks_remaining = 0;
+        state.micro_mut().current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
+        state.micro_mut().micro_step = 0;
+        state.micro_mut().clocks_remaining = 0;
         return;
     }
     state.set_a_long(reg_dst as usize, state.usp());

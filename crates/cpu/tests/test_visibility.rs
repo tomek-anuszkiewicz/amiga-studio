@@ -7,7 +7,7 @@ use cpu::{Cpu, CpuState, OPCODE_DESCRIPTOR_TABLE};
 #[test]
 fn test_m68000_public_api_surface_and_encapsulation() {
     let cpu = Cpu::new();
-    assert_eq!(cpu.state.pc, 0);
+    assert_eq!(cpu.state.pc(), 0);
 
     // Verify opcode descriptor table accessibility while internal instruction submodules remain encapsulated
     let nop_desc = &OPCODE_DESCRIPTOR_TABLE[0x4E71];
@@ -23,9 +23,9 @@ fn test_m68000_public_api_surface_and_encapsulation() {
 fn test_m68000_core_restore_state_and_rehydration() {
     let mut cpu = Cpu::new();
     let mut state = CpuState::default();
-    state.ir = 0x4E71; // NOP
+    state.set_ir(0x4E71); // NOP
     cpu.restore_state(state);
-    assert!(!cpu.state.micro.current_steps.is_empty());
+    assert!(!cpu.state.micro().current_steps.is_empty());
 }
 
 #[test]

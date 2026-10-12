@@ -19,12 +19,12 @@ use physical_memory::{AddressBus, BusResult};
 
 pub fn alu_stop(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     if !state.is_supervisor() {
-        state.micro.current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
-        state.micro.micro_step = 0;
-        state.micro.clocks_remaining = 0;
+        state.micro_mut().current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
+        state.micro_mut().micro_step = 0;
+        state.micro_mut().clocks_remaining = 0;
         return;
     }
-    let imm = state.prefetch;
+    let imm = state.prefetch();
     state.set_sr(imm);
 }
 
@@ -37,9 +37,9 @@ pub static ALU_STOP: MicroStep = MicroStep {
 impl Cpu {
     /// Final internal CCK: stop at the instruction after the immediate word.
     pub fn step_stop_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        self.state.stopped = true;
-        self.state.instruction_pc = self.state.pc;
-        self.state.micro.reset();
+        self.state.set_stopped(true);
+        self.state.set_instruction_pc(self.state.pc());
+        self.state.micro_mut().reset();
         BusResult::Ready(())
     }
 }

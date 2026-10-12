@@ -26,16 +26,17 @@ fn setup_test_machine(base_pc: u32) -> (Cpu, PhysicalMemory) {
     let mut cpu = Cpu::new();
     // Default stack pointer to 0x008000
     cpu.state.set_a_long(7, 0x008000);
-    cpu.state.pc = base_pc;
+    cpu.state.set_pc(base_pc);
     (cpu, bus)
 }
 
 /// Initializes CPU prefetch queue from memory at `base_pc`
 fn prime_prefetch(cpu: &mut Cpu, bus: &mut PhysicalMemory) {
-    let pc = cpu.state.pc;
-    cpu.state.ir = bus.read_word_debug(pc);
-    cpu.state.prefetch = bus.read_word_debug(pc.wrapping_add(2));
-    cpu.state.pc = pc.wrapping_add(4);
+    let pc = cpu.state.pc();
+    cpu.state.set_ir(bus.read_word_debug(pc));
+    cpu.state
+        .set_prefetch(bus.read_word_debug(pc.wrapping_add(2)));
+    cpu.state.set_pc(pc.wrapping_add(4));
 }
 
 #[test]
@@ -49,7 +50,7 @@ fn test_archetype1_nop_4_clocks() {
 
     let clocks = cpu.step_instruction(&mut bus);
     assert_eq!(clocks, 4, "NOP must take exactly 4 CPU clocks (2 CCKs)");
-    assert_eq!(cpu.state.pc, 0x001006);
+    assert_eq!(cpu.state.pc(), 0x001006);
 }
 
 #[test]
@@ -118,12 +119,12 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     // Color Clock 1: instruction handler initiates bus read, but Gary withholds _DTACK at CCK1 -> WaitState
     let r1 = cpu.step_cck(&mut bus);
     assert!(!r1);
-    assert_eq!(cpu.state.micro.micro_step, 0);
+    assert_eq!(cpu.state.micro().micro_step, 0);
 
     // Color Clock 2: still blocked -> WaitState
     let r2 = cpu.step_cck(&mut bus);
     assert!(!r2);
-    assert_eq!(cpu.state.micro.micro_step, 0);
+    assert_eq!(cpu.state.micro().micro_step, 0);
 
     // Agnus completes DMA transfer and frees the bus
     bus.chip_ram_blocked = false;
@@ -131,7 +132,7 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     // Color Clock 3: CCK1 succeeds and advances to CCK2
     let r3 = cpu.step_cck(&mut bus);
     assert!(!r3);
-    assert_eq!(cpu.state.micro.micro_step, 1);
+    assert_eq!(cpu.state.micro().micro_step, 1);
 
     // Color Clock 4: CCK2 completes transaction and latches data
     let r4 = cpu.step_cck(&mut bus);
@@ -183,7 +184,7 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     // Color Clock 1: Initiates write cycle, outputs address/data on bus, finishes CCK1
     let r1 = cpu.step_cck(&mut bus);
     assert!(!r1);
-    assert_eq!(cpu.state.micro.micro_step, 1);
+    assert_eq!(cpu.state.micro().micro_step, 1);
 
     // Before CCK2 commit, Agnus DMA grabs Chip RAM
     bus.chip_ram_blocked = true;
@@ -191,13 +192,13 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     // Color Clock 2: CCK2 write blocked by DMA -> WaitState
     let r2 = cpu.step_cck(&mut bus);
     assert!(!r2);
-    assert_eq!(cpu.state.micro.micro_step, 1);
+    assert_eq!(cpu.state.micro().micro_step, 1);
     assert_ne!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Color Clock 3: still blocked -> WaitState
     let r3 = cpu.step_cck(&mut bus);
     assert!(!r3);
-    assert_eq!(cpu.state.micro.micro_step, 1);
+    assert_eq!(cpu.state.micro().micro_step, 1);
     assert_ne!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Agnus frees bus
@@ -206,7 +207,7 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     // Color Clock 4: CCK2 succeeds, write commits to Chip RAM
     let r4 = cpu.step_cck(&mut bus);
     assert!(!r4);
-    assert_eq!(cpu.state.micro.micro_step, 2);
+    assert_eq!(cpu.state.micro().micro_step, 2);
     assert_eq!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Next Color Clocks: Prefetch next instruction word (CCK1 and CCK2)
@@ -257,7 +258,8 @@ fn test_archetype5_bcc_untaken_8_clocks() {
         "Bcc.s untaken must take exactly 8 CPU clocks (4 CCKs)"
     );
     assert_eq!(
-        cpu.state.pc, 0x001006,
+        cpu.state.pc(),
+        0x001006,
         "PC should fall through sequentially to next instruction"
     );
 }
@@ -278,8 +280,12 @@ fn test_archetype5_bcc_taken_10_clocks() {
         clocks, 10,
         "Bcc.s taken / BRA.s must take exactly 10 CPU clocks (5 CCKs)"
     );
-    assert_eq!(cpu.state.ir, 0x4E71, "Target opcode must be loaded into IR");
-    assert_eq!(cpu.state.pc, 0x00100A, "PC must be primed at target + 4");
+    assert_eq!(
+        cpu.state.ir(),
+        0x4E71,
+        "Target opcode must be loaded into IR"
+    );
+    assert_eq!(cpu.state.pc(), 0x00100A, "PC must be primed at target + 4");
 }
 
 #[test]
@@ -348,10 +354,11 @@ fn test_archetype6_jsr_16_clocks() {
         "Return PC must point to next sequential instruction"
     );
     assert_eq!(
-        cpu.state.ir, 0x4E71,
+        cpu.state.ir(),
+        0x4E71,
         "Subroutine first opcode must be loaded into IR"
     );
-    assert_eq!(cpu.state.pc, 0x002004, "PC must be primed at target + 4");
+    assert_eq!(cpu.state.pc(), 0x002004, "PC must be primed at target + 4");
 }
 
 #[test]
@@ -453,7 +460,7 @@ fn load_continuation(bus: &mut RecordingBus, target: u32) {
 fn execute_continuation(cpu: &mut Cpu, bus: &mut RecordingBus, target: u32) {
     for (offset, result) in [(2, 0), (4, 42), (6, 43)] {
         run_next_instruction(cpu, bus, if offset == 6 { 8 } else { 4 });
-        assert_eq!(cpu.state.instruction_pc, target + offset);
+        assert_eq!(cpu.state.instruction_pc(), target + offset);
         assert_eq!(cpu.state.d_long(6), result);
     }
     bus.assert_complete();
@@ -501,8 +508,8 @@ fn test_long_halves_and_address_updates_under_waits() {
                 cpu.state.a_long(0),
                 if opcode == 0x20C0 { 0x2004 } else { 0x2000 }
             );
-            assert_eq!(cpu.state.pc, 0x1006);
-            assert_eq!(cpu.state.ir, 0x4E71);
+            assert_eq!(cpu.state.pc(), 0x1006);
+            assert_eq!(cpu.state.ir(), 0x4E71);
         }
     }
 }
@@ -580,7 +587,7 @@ fn test_extension_and_branch_target_waits_preserve_pipeline() {
         bus.memory.write_word_debug(0x2004, 0xCAFE);
         run_instruction(&mut cpu, &mut bus, 12);
         assert_eq!(cpu.state.d_word(0), 0xCAFE);
-        assert_eq!(cpu.state.pc, 0x1008);
+        assert_eq!(cpu.state.pc(), 0x1008);
         let mut script = vec![
             (Access::ReadWord(0x1006), waits),
             (Access::ReadWord(0x1008), waits),
@@ -589,9 +596,9 @@ fn test_extension_and_branch_target_waits_preserve_pipeline() {
         let (mut cpu, mut bus) = recording_machine(0x6004, 0x4E71, script);
         load_continuation(&mut bus, 0x1006);
         run_next_instruction(&mut cpu, &mut bus, 10);
-        assert_eq!(cpu.state.pc, 0x100A);
-        assert_eq!(cpu.state.ir, 0x4E71);
-        assert_eq!(cpu.state.prefetch, 0x7C2A);
+        assert_eq!(cpu.state.pc(), 0x100A);
+        assert_eq!(cpu.state.ir(), 0x4E71);
+        assert_eq!(cpu.state.prefetch(), 0x7C2A);
         execute_continuation(&mut cpu, &mut bus, 0x1006);
     }
 }
@@ -628,7 +635,7 @@ fn test_stack_push_pop_and_exception_waits_commit_once() {
         bus.memory.write_word_debug(0x2002, 0x4E75);
         run_instruction(&mut cpu, &mut bus, 16);
         assert_eq!(cpu.state.a_long(7), 0x5FFC);
-        assert_eq!(cpu.state.pc, 0x2004);
+        assert_eq!(cpu.state.pc(), 0x2004);
         assert_eq!(bus.memory.read_word_debug(0x5FFE), 0x1002);
 
         for (opcode, status, expected_sr) in [
@@ -679,7 +686,7 @@ fn test_stack_push_pop_and_exception_waits_commit_once() {
                     cpu.state.ssp()
                 }
             );
-            assert_eq!(cpu.state.pc, 0x2004);
+            assert_eq!(cpu.state.pc(), 0x2004);
             execute_continuation(&mut cpu, &mut bus, 0x2000);
             assert_eq!(
                 cpu.state.ssp(),
@@ -704,7 +711,7 @@ fn test_stack_push_pop_and_exception_waits_commit_once() {
             cpu.state.set_ssp(0x6000);
             cpu.state.set_usp(0x7000);
             cpu.state.set_sr(old_sr);
-            cpu.state.instruction_pc = 0x1000;
+            cpu.state.set_instruction_pc(0x1000);
             bus.memory.write_word_debug(vector_addr, 0);
             bus.memory.write_word_debug(vector_addr + 2, 0x2000);
             bus.memory.write_word_debug(0x2000, 0x4E71);
@@ -712,8 +719,8 @@ fn test_stack_push_pop_and_exception_waits_commit_once() {
             run_instruction(&mut cpu, &mut bus, 34);
             assert_eq!(cpu.state.ssp(), 0x5FFA);
             assert_eq!(cpu.state.usp(), 0x7000);
-            assert_eq!(cpu.state.pc, 0x2004);
-            assert_eq!(cpu.state.ir, 0x4E71);
+            assert_eq!(cpu.state.pc(), 0x2004);
+            assert_eq!(cpu.state.ir(), 0x4E71);
         }
     }
 }
@@ -855,7 +862,7 @@ fn test_movem_waits_preserve_register_word_and_terminal_progress() {
                 }
                 let base = if is_read { 12 } else { 8 };
                 run_next_instruction(&mut cpu, &mut bus, base + 4 * words.len() as u64);
-                assert_eq!(cpu.state.pc, 0x1008);
+                assert_eq!(cpu.state.pc(), 0x1008);
                 if continues {
                     execute_continuation(&mut cpu, &mut bus, 0x1004);
                 } else {
@@ -893,9 +900,9 @@ fn test_status_change_refill_waits_preserve_both_queue_words() {
         cpu.state.set_d_long(0, 0x2700);
         load_continuation(&mut bus, 0x1002);
         run_next_instruction(&mut cpu, &mut bus, 12);
-        assert_eq!(cpu.state.pc, 0x1006);
-        assert_eq!(cpu.state.ir, 0x4E71);
-        assert_eq!(cpu.state.prefetch, 0x7C2A);
+        assert_eq!(cpu.state.pc(), 0x1006);
+        assert_eq!(cpu.state.ir(), 0x4E71);
+        assert_eq!(cpu.state.prefetch(), 0x7C2A);
         execute_continuation(&mut cpu, &mut bus, 0x1002);
     }
 }

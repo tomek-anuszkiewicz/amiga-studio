@@ -59,10 +59,10 @@ pub fn alu_sbcd_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_sbcd_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let s = (state.micro.source & 0xFF) as u8;
-    let d = (state.micro.destination & 0xFF) as u8;
+    let s = (state.micro().source & 0xFF) as u8;
+    let d = (state.micro().destination & 0xFF) as u8;
     let res = sbcd_b(state, s, d);
-    state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFF) | (res as u32);
 }
 
 // ============================================================================

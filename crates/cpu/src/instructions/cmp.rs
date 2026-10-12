@@ -45,37 +45,37 @@ pub fn alu_cmp_l_an_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_cmp_b_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.micro.source & 0xFF) as u8;
+    let s = (state.micro().source & 0xFF) as u8;
     let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
     cmp_b(state, s, d);
 }
 
 pub fn alu_cmp_w_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.micro.source & 0xFFFF) as u16;
+    let s = (state.micro().source & 0xFFFF) as u16;
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
     cmp_w(state, s, d);
 }
 
 pub fn alu_cmp_l_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.micro.source;
+    let s = state.micro().source;
     let d = state.d_long(reg_dst as usize);
     cmp_l(state, s, d);
 }
 
 pub fn alu_cmp_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.prefetch & 0xFF) as u8;
+    let s = (state.prefetch() & 0xFF) as u8;
     let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
     cmp_b(state, s, d);
 }
 
 pub fn alu_cmp_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.prefetch;
+    let s = state.prefetch();
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
     cmp_w(state, s, d);
 }
 
 pub fn alu_cmp_l_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.micro.source;
+    let s = state.micro().source;
     let d = state.d_long(reg_dst as usize);
     cmp_l(state, s, d);
 }

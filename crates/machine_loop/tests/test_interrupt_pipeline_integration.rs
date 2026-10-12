@@ -70,7 +70,7 @@ fn guest_interrupt_handler_clears_paula_source_and_returns_after_lowering_mask()
             assert_eq!(machine.cpu.state.d_long(0), 0);
         }
         assert_eq!(machine.denise.color[0], 0x00A5);
-        assert!(!machine.cpu.state.reset_line_asserted);
+        assert!(!machine.cpu.state.is_reset_line_asserted());
     }
 }
 
@@ -239,7 +239,8 @@ fn test_cpu_autovector_exception_dispatch() {
 
     // Verify PC entered the Level 3 ISR
     assert_eq!(
-        harness.machine.cpu.state.instruction_pc, isr_level3_addr,
+        harness.machine.cpu.state.instruction_pc(),
+        isr_level3_addr,
         "CPU PC should vector to Level 3 ISR address ($001000)"
     );
 

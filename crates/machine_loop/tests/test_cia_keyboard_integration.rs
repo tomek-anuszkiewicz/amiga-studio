@@ -13,7 +13,7 @@ fn test_keyboard_scancode_delivery_to_cia_and_level2_irq() {
     // Enable Level 2 PORTS interrupt in Paula INTENA: SET(0x8000) | INTEN(0x4000) | PORTS(0x0008) = $C008
     machine.paula.write_intena(0xC008);
 
-    assert_eq!(machine.cpu.state.ipl, 0);
+    assert_eq!(machine.cpu.state.ipl(), 0);
 
     // Press key 'A' (Amiga raw position $20)
     machine.keyboard.key_down(0x20);
@@ -27,7 +27,7 @@ fn test_keyboard_scancode_delivery_to_cia_and_level2_irq() {
 
     // Verify CIA-A requested interrupt and Paula escalated to IPL 2 (PORTS)
     assert!(machine.cia_a.irq_pending());
-    assert_eq!(machine.cpu.state.ipl, 2);
+    assert_eq!(machine.cpu.state.ipl(), 2);
 
     // Emulate OS driver: read SDR and acknowledge by setting CRA bit 6 (SPMODE = 1)
     let sdr_read = machine.cia_a.read_register(0xC);

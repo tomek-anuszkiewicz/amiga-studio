@@ -45,21 +45,21 @@ pub fn alu_subq_l_imm_an(state: &mut CpuState, imm: u8, reg_dst: u8) {
 }
 
 pub fn alu_subq_b_imm_mem(state: &mut CpuState, imm: u8, _reg_dst: u8) {
-    let d = (state.micro.destination & 0xFF) as u8;
+    let d = (state.micro().destination & 0xFF) as u8;
     let res = sub_b(state, imm, d);
-    state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFF) | (res as u32);
 }
 
 pub fn alu_subq_w_imm_mem(state: &mut CpuState, imm: u8, _reg_dst: u8) {
-    let d = (state.micro.destination & 0xFFFF) as u16;
+    let d = (state.micro().destination & 0xFFFF) as u16;
     let res = sub_w(state, imm as u16, d);
-    state.micro.destination = (state.micro.destination & !0xFFFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFFFF) | (res as u32);
 }
 
 pub fn alu_subq_l_imm_mem(state: &mut CpuState, imm: u8, _reg_dst: u8) {
-    let d = state.micro.destination;
+    let d = state.micro().destination;
     let res = sub_l(state, imm as u32, d);
-    state.micro.destination = res;
+    state.micro_mut().destination = res;
 }
 
 // ============================================================================

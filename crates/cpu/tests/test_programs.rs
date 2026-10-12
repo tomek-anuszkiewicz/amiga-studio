@@ -185,7 +185,7 @@ fn test_program_dbf_array_sum() {
         0x002008,
         "A0 must point past the 4 words"
     );
-    assert_eq!(cpu.state.instruction_pc, 0x1010);
+    assert_eq!(cpu.state.instruction_pc(), 0x1010);
     for next in [0x1016, 0x1018, 0x101A] {
         retire_to(&mut cpu, &mut bus, next);
     }
@@ -526,13 +526,13 @@ fn rejected_opcodes_recover_through_an_adjusted_frame_to_the_user_stack() {
         assert_eq!(bus.read_word_debug(0x4FFE), 0x1000);
         for next in [0x2502, 0x2506, 0x1000 + skip] {
             retire_to(&mut cpu, &mut bus, next);
-            assert!(!cpu.state.reset_line_asserted && !cpu.state.stopped);
+            assert!(!cpu.state.is_reset_line_asserted() && !cpu.state.is_stopped());
         }
         assert_eq!(cpu.state.ssp(), 0x5000);
         assert_eq!(cpu.state.a_long(7), 0x6000);
         for offset in [2, 4, 6, 8, 10] {
             retire_to(&mut cpu, &mut bus, 0x1000 + skip + offset);
-            assert!(!cpu.state.reset_line_asserted && !cpu.state.stopped);
+            assert!(!cpu.state.is_reset_line_asserted() && !cpu.state.is_stopped());
         }
         assert_eq!(cpu.state.d_long(1), 43);
         assert_eq!(cpu.state.d_long(2), 53);

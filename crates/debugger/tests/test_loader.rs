@@ -22,9 +22,9 @@ fn test_inject_binary_with_auto_prime() {
     assert_eq!(bus.read_word_debug(0x001002), 0x4E75);
 
     // Verify PC primed: after prefetch of 2 words, PC is at $001004, IR is $4E71, IRC is $4E75
-    assert_eq!(cpu.state.pc, 0x001004);
-    assert_eq!(cpu.state.ir, 0x4E71);
-    assert_eq!(cpu.state.prefetch, 0x4E75);
+    assert_eq!(cpu.state.pc(), 0x001004);
+    assert_eq!(cpu.state.ir(), 0x4E71);
+    assert_eq!(cpu.state.prefetch(), 0x4E75);
 
     // Verify SP auto-initialized to 512KB Chip RAM top ($080000)
     assert_eq!(cpu.state.a_long(7), 0x080000);
@@ -41,7 +41,7 @@ fn test_inject_binary_without_auto_prime_preserves_cpu() {
     let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
 
-    cpu.state.pc = 0x005000;
+    cpu.state.set_pc(0x005000);
     cpu.state.set_a_long(7, 0x004000);
 
     let code: [u8; 2] = [0x4E, 0x71];
@@ -52,6 +52,6 @@ fn test_inject_binary_without_auto_prime_preserves_cpu() {
     assert_eq!(bus.read_word_debug(0x002000), 0x4E71);
 
     // CPU state was untouched
-    assert_eq!(cpu.state.pc, 0x005000);
+    assert_eq!(cpu.state.pc(), 0x005000);
     assert_eq!(cpu.state.a_long(7), 0x004000);
 }

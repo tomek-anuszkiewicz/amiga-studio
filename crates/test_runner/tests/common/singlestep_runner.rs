@@ -71,11 +71,12 @@ pub fn run_single_test_detail_with_bus(
     cpu.state.set_usp(test.initial.usp);
     cpu.state.set_ssp(test.initial.ssp);
     // Silicon vectors supply the formal opcode address; the primed PC is ahead by four.
-    cpu.state.pc = test.initial.pc.wrapping_add(4);
+    cpu.state.set_pc(test.initial.pc.wrapping_add(4));
     // Exception frames use the opcode address, four bytes behind the primed PC.
-    cpu.state.instruction_pc = cpu.state.pc.wrapping_sub(4);
-    cpu.state.ir = (test.initial.prefetch[0] & 0xFFFF) as u16;
-    cpu.state.prefetch = (test.initial.prefetch[1] & 0xFFFF) as u16;
+    cpu.state.set_instruction_pc(cpu.state.pc().wrapping_sub(4));
+    cpu.state.set_ir((test.initial.prefetch[0] & 0xFFFF) as u16);
+    cpu.state
+        .set_prefetch((test.initial.prefetch[1] & 0xFFFF) as u16);
 
     // Execute instruction
     let start_clocks = cpu.cycle_counter();
@@ -86,7 +87,11 @@ pub fn run_single_test_detail_with_bus(
             (cpu.cycle_counter().wrapping_sub(start_clocks) as u32).wrapping_add(2);
         let completed = cpu.step_cck(bus);
         let elapsed = cpu.cycle_counter().wrapping_sub(start_clocks) as u32;
-        if completed || cpu.state.halted || cpu.state.stopped || elapsed >= execution_limit {
+        if completed
+            || cpu.state.is_halted()
+            || cpu.state.is_stopped()
+            || elapsed >= execution_limit
+        {
             break;
         }
     }
@@ -161,10 +166,10 @@ pub fn run_single_test_detail_with_bus(
     }
 
     // Compare the formal next opcode address, not two alternative pipeline cursors.
-    let actual_pc = if cpu.state.stopped || cpu.state.halted {
-        cpu.state.pc
+    let actual_pc = if cpu.state.is_stopped() || cpu.state.is_halted() {
+        cpu.state.pc()
     } else {
-        cpu.state.instruction_pc
+        cpu.state.instruction_pc()
     };
     if actual_pc != test.final_state.pc {
         failure.diffs.push(StateDiff::ProgramCounter {
@@ -173,7 +178,10 @@ pub fn run_single_test_detail_with_bus(
         });
     }
 
-    for (word, actual) in [cpu.state.ir, cpu.state.prefetch].into_iter().enumerate() {
+    for (word, actual) in [cpu.state.ir(), cpu.state.prefetch()]
+        .into_iter()
+        .enumerate()
+    {
         let expected = test.final_state.prefetch[word] as u16;
         if actual != expected {
             failure.diffs.push(StateDiff::Prefetch {

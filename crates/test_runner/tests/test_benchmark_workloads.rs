@@ -24,7 +24,7 @@ fn signed_divide_valid_repeats_without_overflow() {
     program.inject_into(&mut cpu, &mut bus);
 
     for operation in 0..700 {
-        assert_eq!(cpu.state.instruction_pc, program.entry_pc + 2 * operation);
+        assert_eq!(cpu.state.instruction_pc(), program.entry_pc + 2 * operation);
         assert!(cpu.step_instruction(&mut bus) > 0);
         assert_eq!(
             cpu.state.sr() & 0x0002,
@@ -34,5 +34,5 @@ fn signed_divide_valid_repeats_without_overflow() {
     }
     assert_ne!(cpu.state.d_long(0) & 0xffff, 0);
     assert!(cpu.step_instruction(&mut bus) > 0);
-    assert_eq!(cpu.state.instruction_pc, program.exit_pc);
+    assert_eq!(cpu.state.instruction_pc(), program.exit_pc);
 }

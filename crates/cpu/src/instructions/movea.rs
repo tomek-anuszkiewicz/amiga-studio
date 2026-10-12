@@ -24,12 +24,12 @@ pub fn alu_movea_w_an(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_movea_w_mem(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.micro.source as i16 as i32) as u32;
+    let val = (state.micro().source as i16 as i32) as u32;
     state.set_a_long(reg_dst as usize, val);
 }
 
 pub fn alu_movea_w_imm(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.prefetch as i16 as i32) as u32;
+    let val = (state.prefetch() as i16 as i32) as u32;
     state.set_a_long(reg_dst as usize, val);
 }
 
@@ -48,7 +48,7 @@ pub fn alu_movea_l_an(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_movea_l_mem(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = state.micro.source;
+    let val = state.micro().source;
     state.set_a_long(reg_dst as usize, val);
 }
 

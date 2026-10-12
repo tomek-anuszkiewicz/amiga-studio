@@ -58,18 +58,18 @@ pub fn trigger_chk_trap(state: &mut CpuState, negative_only: bool) {
     state.set_supervisor(true);
     state.clear_trace();
 
-    let return_pc = state.pc.wrapping_sub(2);
-    state.micro.source = return_pc;
-    state.micro.destination = old_sr as u32;
-    state.micro.ea_addr = vector::addr(vector::CHK);
+    let return_pc = state.pc().wrapping_sub(2);
+    state.micro_mut().source = return_pc;
+    state.micro_mut().destination = old_sr as u32;
+    state.micro_mut().ea_addr = vector::addr(vector::CHK);
     // The upper-bound comparison precedes the negative test on silicon.
-    state.micro.current_steps = if negative_only {
+    state.micro_mut().current_steps = if negative_only {
         &STEPS_CHK_TRAP
     } else {
         &STEPS_CHK_TRAP[1..]
     };
-    state.micro.micro_step = 0;
-    state.micro.clocks_remaining = 0;
+    state.micro_mut().micro_step = 0;
+    state.micro_mut().clocks_remaining = 0;
 }
 
 // ============================================================================
@@ -99,12 +99,12 @@ pub fn alu_chk_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_chk_mem(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let bound = state.micro.source as u16 as i16;
+    let bound = state.micro().source as u16 as i16;
     execute_chk(state, bound, reg_dst);
 }
 
 pub fn latch_imm_chk(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.source = state.prefetch as u32;
+    state.micro_mut().source = state.prefetch() as u32;
 }
 
 // ============================================================================

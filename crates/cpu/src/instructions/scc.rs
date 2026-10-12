@@ -43,26 +43,26 @@ pub static STEPS_SCC_DN_TRUE: [MicroStep; 3] = [
 ];
 
 pub fn alu_scc_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let cond = ((state.ir >> 8) & 0x0F) as u8;
+    let cond = ((state.ir() >> 8) & 0x0F) as u8;
     let orig = state.d_long(reg_dst as usize);
     if state.eval_condition(cond) {
         state.set_d_long(reg_dst as usize, (orig & !0xFF) | 0xFF);
-        state.micro.current_steps = &STEPS_SCC_DN_TRUE;
+        state.micro_mut().current_steps = &STEPS_SCC_DN_TRUE;
     } else {
         state.set_d_long(reg_dst as usize, orig & !0xFF);
-        state.micro.current_steps = &STEPS_SCC_DN_FALSE;
+        state.micro_mut().current_steps = &STEPS_SCC_DN_FALSE;
     }
-    state.micro.micro_step = 0;
+    state.micro_mut().micro_step = 0;
 }
 
 pub fn alu_scc_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let cond = ((state.ir >> 8) & 0x0F) as u8;
+    let cond = ((state.ir() >> 8) & 0x0F) as u8;
     let byte_val = if state.eval_condition(cond) {
         0xFF
     } else {
         0x00
     };
-    state.micro.destination = (state.micro.destination & !0xFF) | byte_val;
+    state.micro_mut().destination = (state.micro().destination & !0xFF) | byte_val;
 }
 
 // ============================================================================

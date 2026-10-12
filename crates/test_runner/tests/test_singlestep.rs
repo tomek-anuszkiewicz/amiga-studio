@@ -621,11 +621,11 @@ fn test_stop() {
     let mut bus = PhysicalMemory::new();
     cpu.state.set_supervisor(true);
     cpu.state.set_sr(0x2700);
-    cpu.state.ir = 0x4E72; // STOP #$2000
-    cpu.state.prefetch = 0x2000;
+    cpu.state.set_ir(0x4E72); // STOP #$2000
+    cpu.state.set_prefetch(0x2000);
 
     cpu.step_instruction(&mut bus);
-    assert!(cpu.state.stopped);
+    assert!(cpu.state.is_stopped());
     assert_eq!(cpu.state.sr(), 0x2000);
 }
 

@@ -50,7 +50,7 @@ fn illegal_and_emulator_lines_stack_the_rejected_opcode_pc() {
                         .collect(),
                 );
                 run_instruction(&mut cpu, &mut bus, 34);
-                assert_eq!(cpu.state.instruction_pc, 0x2000);
+                assert_eq!(cpu.state.instruction_pc(), 0x2000);
                 assert_eq!(cpu.state.ssp(), 0x7ffa);
                 assert_eq!(cpu.state.usp(), 0x6000);
                 assert_eq!(cpu.state.sr(), 0x2015);
@@ -62,7 +62,7 @@ fn illegal_and_emulator_lines_stack_the_rejected_opcode_pc() {
 #[test]
 fn trace_precedes_pending_interrupt_and_stacks_the_next_opcode() {
     let (mut cpu, mut memory) = fixture(0x4e71, 0xa015);
-    cpu.state.ipl = 4;
+    cpu.state.set_ipl(4);
     assert_eq!(cpu.step_instruction(&mut memory), 4);
     assert_eq!(cpu.step_instruction(&mut memory), 34);
     assert_eq!(memory.read_word_debug(0x7ffa), 0xa015);
@@ -82,10 +82,10 @@ fn trace_is_sampled_before_an_instruction_clears_t_and_wakes_stop() {
         cpu.set_pc_and_prime_prefetch(0x1000, &mut memory);
         assert_eq!(cpu.step_instruction(&mut memory), clocks);
         assert_eq!(cpu.step_instruction(&mut memory), 34);
-        assert!(!cpu.state.stopped);
+        assert!(!cpu.state.is_stopped());
         assert_eq!(memory.read_word_debug(0x7ffa), 0x2000);
         assert_eq!(memory.read_word_debug(0x7ffe), return_pc);
-        assert_eq!(cpu.state.instruction_pc, 0x2000);
+        assert_eq!(cpu.state.instruction_pc(), 0x2000);
     }
 }
 
@@ -93,11 +93,11 @@ fn trace_is_sampled_before_an_instruction_clears_t_and_wakes_stop() {
 fn accepted_interrupt_level_survives_pin_change_before_entry() {
     let (mut cpu, mut memory) = fixture(0x4e71, 0x2000);
     memory.write_word_debug(25 * 4 + 2, 0x3000);
-    cpu.state.ipl = 4;
+    cpu.state.set_ipl(4);
     cpu.step_instruction(&mut memory);
-    cpu.state.ipl = 0;
+    cpu.state.set_ipl(0);
     cpu.step_instruction(&mut memory);
-    assert_eq!(cpu.state.instruction_pc, 0x2000);
+    assert_eq!(cpu.state.instruction_pc(), 0x2000);
     assert_eq!(cpu.state.interrupt_mask(), 4);
 }
 
@@ -112,7 +112,7 @@ fn group_zero_double_fault_stops_bus_activity_until_external_reset() {
             memory.write_word_debug(14, 0x2001);
         }
         cpu.step_instruction(&mut memory);
-        assert!(cpu.state.halted);
+        assert!(cpu.state.is_halted());
         let clocks = cpu.cycle_counter();
         assert_eq!(cpu.step_instruction(&mut memory), 0);
         assert!(!cpu.step_cck(&mut memory));
@@ -125,9 +125,9 @@ fn group_zero_double_fault_stops_bus_activity_until_external_reset() {
         memory.write_word_debug(0x1002, 0x5280);
         memory.write_word_debug(0x1004, 0x7235);
         cpu.reset_warm(&mut memory);
-        assert!(!cpu.state.halted);
-        assert_eq!(cpu.state.instruction_pc, 0x1000);
-        assert_eq!(cpu.state.pc, 0x1004);
+        assert!(!cpu.state.is_halted());
+        assert_eq!(cpu.state.instruction_pc(), 0x1000);
+        assert_eq!(cpu.state.pc(), 0x1004);
         assert_eq!(cpu.state.sr(), 0x2700);
         for next in [0x1002, 0x1004, 0x1006] {
             retire_to(&mut cpu, &mut memory, next);
@@ -226,7 +226,7 @@ fn trace_shared_frame_retries_preserve_transfer_order_and_add_only_wait_clocks()
         let script = frame(0x8000, 0x1002, 0xa015, 9);
         let mut bus = RecordingBus::new(memory, script.into_iter().map(|a| (a, waits)).collect());
         run_instruction(&mut cpu, &mut bus, 34);
-        assert_eq!(cpu.state.instruction_pc, 0x2000);
+        assert_eq!(cpu.state.instruction_pc(), 0x2000);
         assert_eq!(cpu.state.sr(), 0x2015);
     }
 }
@@ -265,7 +265,7 @@ fn interrupt_levels_one_through_six_select_their_autovectors() {
         let (mut cpu, mut memory) = fixture(0x4e71, 0x0015);
         memory.write_word_debug((24 + u32::from(level)) * 4, 0);
         memory.write_word_debug((24 + u32::from(level)) * 4 + 2, 0x2000);
-        cpu.state.ipl = level;
+        cpu.state.set_ipl(level);
         assert_eq!(cpu.step_instruction(&mut memory), 4);
         assert_eq!(cpu.step_instruction(&mut memory), 44);
         assert_eq!(cpu.state.interrupt_mask(), level);
@@ -287,7 +287,7 @@ fn external_reset_reads_vectors_without_sanitizing_or_stacking() {
         memory.write_word_debug(6, if odd_target { 0x1001 } else { 0x1000 });
         cpu.reset_warm(&mut memory);
         assert_eq!(cpu.state.ssp(), 0x1234_8001);
-        assert_eq!(cpu.state.halted, odd_target);
+        assert_eq!(cpu.state.is_halted(), odd_target);
         assert_eq!(cpu.state.d_long(0), 0x1234);
         assert_eq!(cpu.state.a_long(0), 0x5678);
         assert_eq!(cpu.state.usp(), 0x6000);
@@ -308,8 +308,8 @@ fn odd_short_frame_handler_enters_address_error_without_reading_the_target() {
     let (mut cpu, mut memory) = fixture(0x4e40, 0x2000);
     memory.write_word_debug(32 * 4 + 2, 0x2001);
     cpu.step_instruction(&mut memory);
-    assert!(!cpu.state.halted);
-    assert_eq!(cpu.state.instruction_pc, 0x2000);
+    assert!(!cpu.state.is_halted());
+    assert_eq!(cpu.state.instruction_pc(), 0x2000);
     assert_eq!(
         cpu.state.ssp(),
         0x7fec,
@@ -330,7 +330,7 @@ fn rte_enables_trace_for_the_following_instruction() {
     memory.write_word_debug(0x8002, 0);
     memory.write_word_debug(0x8004, 0x1002);
     assert_eq!(cpu.step_instruction(&mut memory), 20);
-    assert_eq!(cpu.state.instruction_pc, 0x1002);
+    assert_eq!(cpu.state.instruction_pc(), 0x1002);
     assert_eq!(cpu.step_instruction(&mut memory), 4);
     assert_eq!(cpu.step_instruction(&mut memory), 34);
     assert_eq!(memory.read_word_debug(0x8004), 0x1004);

@@ -75,21 +75,21 @@ pub fn alu_neg_l_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_neg_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = (state.micro.destination & 0xFF) as u8;
+    let d = (state.micro().destination & 0xFF) as u8;
     let res = neg_b(state, d);
-    state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFF) | (res as u32);
 }
 
 pub fn alu_neg_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = (state.micro.destination & 0xFFFF) as u16;
+    let d = (state.micro().destination & 0xFFFF) as u16;
     let res = neg_w(state, d);
-    state.micro.destination = (state.micro.destination & !0xFFFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFFFF) | (res as u32);
 }
 
 pub fn alu_neg_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = state.micro.destination;
+    let d = state.micro().destination;
     let res = neg_l(state, d);
-    state.micro.destination = res;
+    state.micro_mut().destination = res;
 }
 
 // ============================================================================

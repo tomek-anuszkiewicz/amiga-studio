@@ -62,9 +62,9 @@ fn test_binary_loader_and_prefetch_priming() {
     assert_eq!(bus.read_word_debug(0x002004), 0x4E75);
 
     // Prefetch verification
-    assert_eq!(cpu.state.ir, 0x4E71);
-    assert_eq!(cpu.state.prefetch, 0x4E71);
-    assert_eq!(cpu.state.pc, 0x002004); // Next prefetch target
+    assert_eq!(cpu.state.ir(), 0x4E71);
+    assert_eq!(cpu.state.prefetch(), 0x4E71);
+    assert_eq!(cpu.state.pc(), 0x002004); // Next prefetch target
 }
 
 #[test]
@@ -119,7 +119,7 @@ fn test_view_mode_and_arbitrary_binary_loading() {
     assert_eq!(written, 4);
     assert_eq!(bus.read_word_debug(custom_addr), 0x4E71);
     assert_eq!(bus.read_word_debug(custom_addr + 2), 0x3200);
-    assert_eq!(cpu.state.ir, 0x4E71);
+    assert_eq!(cpu.state.ir(), 0x4E71);
 
     // Verify ViewMode toggling
     let mut mode = ViewMode::ScreenOnly;
