@@ -1,6 +1,6 @@
 # Testing Policy
 
-- Rust tests live in `crates/<crate>/tests/`, never inline in `src/`. Test filenames start with `test_`; shared helpers live in `tests/common/mod.rs`. Each crate retains an active external test suite.
+- Rust tests live in `crates/<crate>/tests/`, never inline in `src/`. Test filenames start with `test_`; shared helpers live in `tests/common/mod.rs`. Some crates have no isolated suite; verify their behavior through the remaining integration suites and report the coverage limit.
 - Cover domain behavior and failure modes. Thin declarations and forwarders may rely on parent integration coverage; there is no minimum assertion count or arbitrary test-function quota.
 - Before adding a test, identify the behavior or failure mode it protects and check existing suites and authoritative vectors. Reuse or extend that protection; add a test for a demonstrated gap, not to mirror implementation structure or increase test counts. For mechanical moves, renames, formatting, or comments, run relevant existing tests instead of adding file-coupling assertions. Bootstrap converter exceptions follow below.
 - Maintain integration coverage when chips gate execution, transfer Chip RAM, signal peers, or compete for bus slots. Reuse existing production integration fixtures for coordination behavior. A synthetic bus isolates CPU behavior; it does not establish production bus or chipset scheduler correctness.

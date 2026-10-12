@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "blitter"
 status: "active"
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-10-12
 related: ["[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Copper.md](Copper.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/blitter"
@@ -50,16 +50,11 @@ The Blitter is encapsulated within its dedicated workspace crate `crates/blitter
 ```
 crates/blitter/
 ├── Cargo.toml
-├── src/
-│   ├── blitter.rs         // Blitter engine state machine, register dispatch, row stepping
-│   ├── line.rs            // Bresenham line drawing algorithms, octant tables, error stepping
-│   ├── minterm.rs         // 256 boolean minterm lookup and evaluation logic
-│   └── phase.rs           // Word processing pipeline phases (Fetch A, B, C -> ALU -> Write D)
-└── tests/
-    ├── test_blitter.rs    // Integration test suites (copies, shifts, masks, fills)
-    ├── test_line.rs       // Vector line drawer test vectors across all 8 octants
-    ├── test_minterm.rs    // Exhaustive 256-minterm truth table verification
-    └── test_phase.rs      // Word-by-word pipeline phase transition verification
+└── src/
+    ├── blitter.rs         // Blitter engine state machine, register dispatch, row stepping
+    ├── line.rs            // Bresenham line drawing algorithms, octant tables, error stepping
+    ├── minterm.rs         // 256 boolean minterm lookup and evaluation logic
+    └── phase.rs           // Word processing pipeline phases (Fetch A, B, C -> ALU -> Write D)
 ```
 
 ---

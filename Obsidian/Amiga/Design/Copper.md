@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "copper"
 status: "active"
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-10-12
 related: ["[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Blitter.md](Blitter.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/copper"
@@ -55,10 +55,8 @@ The Copper engine resides in its dedicated workspace crate `crates/copper`, full
 ```
 crates/copper/
 ├── Cargo.toml
-├── src/
-│   └── copper.rs          // Copper state machine, instruction decoding, comparators
-└── tests/
-    └── test_copper.rs     // Cycle-exact instruction validation & edge case suites
+└── src/
+    └── copper.rs          // Copper state machine, instruction decoding, comparators
 ```
 
 ### 2.1 State Machine Representation (`CopperState`)

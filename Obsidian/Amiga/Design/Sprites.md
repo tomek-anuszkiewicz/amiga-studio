@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "sprites"
 status: "active"
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-10-12
 related: ["[Denise.md](Denise.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/sprites"
@@ -53,10 +53,8 @@ The sprite engines are implemented in `crates/sprites`:
 ```
 crates/sprites/
 ├── Cargo.toml
-├── src/
-│   └── sprites.rs         // 8 sprite channels, comparators, serializers, priority mixer
-└── tests/
-    └── test_sprites.rs    // Positioning, clipping, attached mode, multiplexing tests
+└── src/
+    └── sprites.rs         // 8 sprite channels, comparators, serializers, priority mixer
 ```
 
 ### 2.1 Channel State (`SpriteChannel`)

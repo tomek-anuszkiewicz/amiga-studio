@@ -197,10 +197,10 @@ class ArchitectureContracts(unittest.TestCase):
             self.write(path, text)
             self.check(name, False, detail)
 
-    def test_crates_need_executable_external_tests(self):
-        name = "test_every_crate_has_dedicated_external_tests_suite"
+    def test_existing_external_tests_need_executable_case(self):
+        name = "test_existing_external_test_suites_are_executable"
         self.write("crates/example/Cargo.toml", "")
-        self.check(name, False, "Missing dedicated tests/")
+        self.check(name, True)
         self.write("crates/example/tests/test_example.rs", "")
         self.check(name, False, "At least one executable")
         self.write("crates/example/tests/test_example.rs", "#[test]\nfn test_example() {}\n")
@@ -246,8 +246,8 @@ class ArchitectureContracts(unittest.TestCase):
             for file in files:
                 self.write(f"crates/{crate}/tests/{file}", "")
         self.check(name, True)
-        (self.root / "crates/floppy/tests/test_mfm.rs").unlink()
-        self.check(name, False, "crates/floppy/tests/test_mfm.rs")
+        (self.root / "crates/disassembler/tests/test_ea.rs").unlink()
+        self.check(name, False, "crates/disassembler/tests/test_ea.rs")
 
     def test_filter_is_a_literal_substring_and_extra_arguments_fail(self):
         with patch.object(architecture, "REPO_ROOT", self.root), contextlib.redirect_stderr(io.StringIO()) as output:

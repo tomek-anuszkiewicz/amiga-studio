@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-10-11
+updated: 2026-10-12
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -69,9 +69,9 @@ graph TD
     classDef t3 fill:#3b1e36,stroke:#f72585,stroke-width:2px,color:#ffffff;
 
     subgraph Tier1["Tier 1: Isolated Unit Tests (L1 — Fast, Microsecond Scope)"]
-        U1["Single-Module Crates<br/><code>crates/*/tests/test_&lt;crate&gt;.rs</code>"]:::t1
-        U2["Existing Module Suites<br/><code>crates/disassembler/tests/test_*.rs</code><br/><code>crates/blitter/tests/test_*.rs</code><br/><code>crates/floppy/tests/test_*.rs</code>"]:::t1
-        U3["Crate Internals & ALU / Math<br/>Bit manipulation, BCD, MFM, Copper decoding"]:::t1
+        U1["Existing Crate Suites<br/><code>crates/cpu/tests/</code><br/><code>crates/config/tests/</code>"]:::t1
+        U2["Existing Module Suites<br/><code>crates/disassembler/tests/</code><br/><code>crates/physical_memory/tests/</code>"]:::t1
+        U3["Isolated Behavior<br/>Only where retained tests assert it"]:::t1
     end
 
     subgraph Tier2["Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)"]
@@ -103,15 +103,15 @@ is tested separately. See [CPU wait coverage](CPU%20SingleStepTests.md#8-ordinar
 
 ### Tier 1: Isolated Unit Tests (L1 — Fast, Unit Scope)
 - **Scope**: Single crate, single module in complete isolation. Zero multi-chip machine state.
-- **Execution Speed**: Microseconds to milliseconds (< 2 seconds total across all 24 peripheral and core crates).
+- **Execution Speed**: Depends on the remaining selected crate suites.
 - **Execution Command**: `python tools/verification/verify.py test rust unit`
 - **Responsibilities**:
   - Bitwise operations, register reads/writes, wrapping arithmetic, and state transitions.
-  - Bresenham line drawer math, octants, and 256-minterm Boolean truth tables ([`crates/blitter/tests/`](../../../../crates/blitter/tests)).
-  - MFM encoding, sector decoding, track sync words, and checksums ([`crates/floppy/tests/`](../../../../crates/floppy/tests)).
   - Disassembler opcode parsing, effective address modes, and Fibonacci branch heuristics ([`crates/disassembler/tests/`](../../../../crates/disassembler/tests)).
-  - MOS 8520 CIA cascaded timers, TOD clock, and shift register transfers ([`crates/cia/tests/`](../../../../crates/cia/tests)).
-  - Paula audio period division and volume scaling ([`crates/audio/tests/`](../../../../crates/audio/tests)).
+  - CPU instruction, memory, wait-state, and exception behavior ([`crates/cpu/tests/`](../../../../crates/cpu/tests)).
+  - Configuration and physical memory behavior ([`crates/config/tests/`](../../../../crates/config/tests), [`crates/physical_memory/tests/`](../../../../crates/physical_memory/tests)).
+
+The removed isolated chip and peripheral suites no longer establish their former register, algorithm, or boundary assertions. Production-machine integration tests cover only their stated cross-chip cases. [Roadmap step 3.3](../../../../ROADMAP.md) plans new HRM-derived subsystem tests.
 
 ### Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)
 - **Scope**: Multi-crate interaction, bus routing, and system loop orchestration.
@@ -246,17 +246,15 @@ Select existing checks for the actual change. The following categories describe 
    - Keeps runtime production code clean, uncluttered, and $\le 800$ lines.
 2. **Canonical Test Naming (`test_<name>.rs`)**:
    - In Cargo workspaces, every `.rs` file directly inside `crates/<crate>/tests/` compiles into an independent test binary.
-   - All test files must strictly start with `test_` (e.g. `test_line.rs`, `test_singlestep.rs`).
+   - All test files must strictly start with `test_` (e.g. `test_align.rs`, `test_singlestep.rs`).
    - Shared non-test helper modules must reside inside subdirectories (e.g. `tests/common/mod.rs`).
 3. **Existing Module Suite Layout**:
-   - The architecture gate retains required module-suite filenames for selected crates. Their presence does not prove behavioral coverage or require a new test file for every added submodule. Current examples:
-     - `crates/blitter`: `test_blitter.rs`, `test_line.rs`, `test_minterm.rs`.
+   - The architecture gate retains required module-suite filenames for selected crates that still have isolated tests. Their presence does not prove behavioral coverage or require a new test file for every added submodule. Current examples:
      - `crates/disassembler`: `test_align.rs`, `test_alu.rs`, `test_branch.rs`, `test_data.rs`, `test_ea.rs`, `test_disassembler_facade.rs`.
-     - `crates/floppy`: `test_floppy.rs`, `test_mfm.rs`.
      - `crates/config`: `test_config.rs`, `test_mutation.rs`.
-     - `crates/physical_memory`: `test_arbitration.rs`, `test_map.rs`, `test_physical_memory.rs`.
+     - `crates/physical_memory`: `test_address_bus.rs`, `test_map.rs`, `test_physical_memory.rs`, `test_presets.rs`.
 4. **Behavior Coverage**:
-   - Every workspace crate retains an active external test suite. Assess whether tests demonstrate the required behavior and failure modes; no assertion-count quota applies.
+   - Existing external test suites must contain an executable test. Crates without isolated suites depend on relevant integration fixtures until new domain tests are authored. Assess the behavior and failure modes actually checked; no assertion-count quota applies.
 
 ---
 
@@ -265,7 +263,8 @@ Select existing checks for the actual change. The following categories describe 
 | Tool / Script | Purpose | Enforcement Layer |
 | :--- | :--- | :--- |
 | [`tools/verification/verify.py`](../../../../tools/verification/verify.py) | Canonical commit/milestone quality gate and diagnostic frontend (`test rust`, `test python`, `test runner`, `check`, `runner`). | Explicit agent/developer command & CI |
-| [`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py) | Python checks validating source constraints, test naming and required suite files; passing them does not prove behavioral coverage. | `verify.py check architecture` & commit verification gate |
+| [`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py) | Python checks validating source constraints, test naming and retained required suite files; passing them does not prove behavioral coverage. | `verify.py check architecture` & commit verification gate |
+| [`tools/verification/checks/audit_code_quality.py`](../../../../tools/verification/checks/audit_code_quality.py) | Checks dead code, test-only code and accessor conventions. Observed-caller visibility suggestions are advisory because external public API use is outside the repository scan. | `verify.py check code` & commit verification gate |
 | [`$test-runner`](../../../../.agents/skills/test-runner/SKILL.md) | Standardized execution runner across tiers, writing snapshots to `.agent/tmp/singlestep/` and diffing regressions. | Codex skill |
 | [`$integration-test-sprint`](../../../../.agents/skills/integration-test-sprint/SKILL.md) | Orchestrates the 4-iteration cascading verification sweep and failure cluster triage. | Codex skill |
 | [`$synthesize-test-fixes`](../../../../.agents/skills/synthesize-test-fixes/SKILL.md) | Audits recent test patches, builds the 3-column diagnostic matrix, and synthesizes root causes into upstream crates. | Codex skill |

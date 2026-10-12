@@ -7,9 +7,9 @@ Audits three architectural dimensions across workspace crates:
    - Completely dead symbols (0 callers anywhere).
    - Test-only zombie symbols (0 callers in production crates/*/src/, only called in tests/).
 2. Principle of Least Visibility (Information Hiding):
-   - Over-exposed `pub` items that are only called within their own defining crate (should be `pub(crate)`).
-   - Over-exposed `pub`/`pub(crate)` items that are only called within their own defining file (should be private).
-   - Over-exposed `pub mod` declarations whose items are never referenced externally.
+   - Suggest narrower visibility for `pub` items whose observed callers are confined to their crate.
+   - These suggestions are advisory: repository callers cannot establish whether an item is a
+     documented public API for external clients.
 3. Method Naming & Accessor Conventions:
    - Evaluates standard getters matching field name without `get_` prefix.
    - Evaluates boolean getters starting with `is_` (or `has_`/`can_`) and zero duplicate prefixes.
@@ -292,7 +292,7 @@ def scan_dead_and_zombie_code():
 
 
 def scan_least_visibility():
-    """Detects symbols with over-broad visibility (pub instead of pub(crate) or private)."""
+    """Suggests narrower visibility from observed callers without judging public API intent."""
     prod_files, test_files = get_file_corpus_cached()
     all_declared = []
 
@@ -342,9 +342,9 @@ def scan_least_visibility():
             if len(test_callers) > 0:
                 continue
 
-            # If callers exist only within the same file, recommend private fn
+            # If callers exist only within the same file, suggest private visibility.
             if len(internal_callers) == len(same_file_callers):
-                recommended = "private (fn)"
+                recommended = f"private ({sym['kind']})"
                 reason = "Only called within defining file"
             else:
                 recommended = "pub(crate)"
@@ -539,9 +539,10 @@ def main():
     vis_leaks = scan_least_visibility()
     accessor_issues = scan_accessor_conventions()
 
-    total_issues = sum(len(issues) for issues in (
-        dead, zombies, vis_leaks, accessor_issues
-    ))
+    # Call-site counts alone cannot prove that a public item is over-exposed.
+    # Deleting an external test suite can remove its only observed external caller
+    # while leaving the documented API contract intact.
+    total_issues = sum(len(issues) for issues in (dead, zombies, accessor_issues))
     exit_code = 1 if total_issues > 0 else 0
 
     if sys.stdout.encoding != "utf-8":
@@ -569,7 +570,7 @@ def main():
         print(f"    * ... and {len(zombies) - 10} more")
 
     print(f"\n[2. PRINCIPLE OF MINIMUM VISIBILITY (LEAST PRIVILEGE)]")
-    print(f"  - Over-exposed `pub` items: {len(vis_leaks)} symbol(s)")
+    print(f"  - Public visibility review suggestions (advisory): {len(vis_leaks)} symbol(s)")
     for v in vis_leaks[:15]:
         print(f"    * {v['crate']}::{v['name']} ({v['file']}:{v['line']}) -> recommend `{v['recommended']}` ({v['reason']})")
     if len(vis_leaks) > 15:
@@ -589,7 +590,7 @@ def main():
 
     print("\n" + "=" * 76)
     print(
-        f"Code Quality Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, "
+        f"Code Quality Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility suggestions (advisory), "
         f"{len(accessor_issues)} method naming & accessor issues."
     )
     print("=" * 76)

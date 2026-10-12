@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "audio"
 status: "active"
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-10-12
 related: ["[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[CIA.md](CIA.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/audio"
@@ -55,10 +55,8 @@ flowchart TD
 ```
 crates/audio/
 ├── Cargo.toml
-├── src/
-│   └── audio.rs           // 4-channel audio engine, period counters, volume scaling, ring buffer
-└── tests/
-    └── test_audio.rs      // Sample clocking, stereo routing, volume scaling, modulation tests
+└── src/
+    └── audio.rs           // 4-channel audio engine, period counters, volume scaling, ring buffer
 ```
 
 ### 2.1 State Representation (`AudioChannel`)

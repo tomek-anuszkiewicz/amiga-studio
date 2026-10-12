@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "frame_builder"
 status: "active"
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-10-12
 related: ["[Denise.md](Denise.md)", "[Sprites.md](Sprites.md)", "[Agnus.md](Agnus.md)", "[GUI.md](Application/GUI.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/frame_builder"
@@ -50,10 +50,8 @@ flowchart TD
 ```
 crates/frame_builder/
 ├── Cargo.toml
-├── src/
-│   └── frame_builder.rs   // Raster compositor, DIW clipping, RGB444->ARGB32 conversion
-└── tests/
-    └── test_frame_builder.rs // Frame geometry, clipping, quantization, overscan tests
+└── src/
+    └── frame_builder.rs   // Raster compositor, DIW clipping, RGB444->ARGB32 conversion
 ```
 
 ### 2.1 Frame Buffer Geometry Constants
