@@ -5,6 +5,7 @@
 //! Tests full 32-entry color palette batch writes through the mutation delay pipeline,
 //! hardware sprite channel position comparators, sprite data arming, and DMA activation.
 
+use config::custom_reg;
 mod common;
 use common::MachineHarness;
 
@@ -14,7 +15,7 @@ fn test_denise_full_32_color_palette_batch_mutation() {
 
     // 1. Write unique RGB values into all 32 hardware color registers (COLOR00..COLOR31 at $DFF180..$DFF1BE)
     for i in 0..32u16 {
-        let reg_offset = 0x180 + i * 2;
+        let reg_offset = custom_reg::COLOR00 + i * 2;
         let color_val = 0x0100 + i; // Distinct 12-bit RGB444 color
         harness
             .machine
@@ -47,11 +48,11 @@ fn test_sprite_channel_vertical_window_and_data_arming() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x140, 0x2878);
+        .write_custom_word(custom_reg::SPR0POS, 0x2878);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x142, 0x3700);
+        .write_custom_word(custom_reg::SPR0CTL, 0x3700);
     harness.step_cck(2);
 
     assert_eq!(harness.machine.denise.sprites.channels[0].vstart(), 40);
@@ -65,11 +66,11 @@ fn test_sprite_channel_vertical_window_and_data_arming() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x144, 0xCCCC);
+        .write_custom_word(custom_reg::SPR0DATA, 0xCCCC);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x146, 0x3333);
+        .write_custom_word(custom_reg::SPR0DATB, 0x3333);
     harness.step_cck(2);
 
     // Channel should now be armed
@@ -107,7 +108,7 @@ fn test_sprite_dma_toggle_disarms_channels() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x096, 0x8220);
+        .write_custom_word(custom_reg::DMACON, 0x8220);
     harness.step_cck(2);
     assert!(harness
         .machine
@@ -118,11 +119,11 @@ fn test_sprite_dma_toggle_disarms_channels() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x140, 0x1020);
+        .write_custom_word(custom_reg::SPR0POS, 0x1020);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x144, 0xAAAA);
+        .write_custom_word(custom_reg::SPR0DATA, 0xAAAA);
     harness.step_cck(2);
     assert!(harness.machine.denise.sprites.channels[0].is_armed);
 
@@ -130,7 +131,7 @@ fn test_sprite_dma_toggle_disarms_channels() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x096, 0x0020);
+        .write_custom_word(custom_reg::DMACON, 0x0020);
     harness.step_cck(2);
     assert!(!harness
         .machine
@@ -141,7 +142,7 @@ fn test_sprite_dma_toggle_disarms_channels() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x142, 0x0000);
+        .write_custom_word(custom_reg::SPR0CTL, 0x0000);
     harness.step_cck(2);
     assert!(
         !harness.machine.denise.sprites.channels[0].is_armed,

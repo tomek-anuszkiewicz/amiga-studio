@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-14
+updated: 2026-10-12
 related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)"]
 tracked_paths:
   - "crates/machine_loop/src/save_state.rs"
@@ -186,7 +186,6 @@ pub struct DeniseState {
     pub bplcon0: u16,
     pub bplcon1: u16,
     pub bplcon2: u16,
-    pub bplcon3: u16,
     pub bpl1mod: i16,
     pub bpl2mod: i16,
     pub bpldat: [u16; 6],

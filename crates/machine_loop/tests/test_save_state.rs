@@ -2,6 +2,7 @@
 
 //! Integration tests for Amiga 500 Save State Serialization and Restoration
 
+use config::custom_reg;
 use config::{A500Config, A500Preset, VideoStandard};
 use machine_loop::{A500Machine, A500State, SAVE_STATE_VERSION};
 
@@ -75,8 +76,12 @@ fn snapshots_resume_reset_stop_and_a_refused_second_operand_half() {
         }
         if boundary == 1 {
             for target in [&mut machine, &mut restored] {
-                target.memory_bus().write_custom_word(0x09A, 0xC040);
-                target.memory_bus().write_custom_word(0x09C, 0x8040);
+                target
+                    .memory_bus()
+                    .write_custom_word(custom_reg::INTENA, 0xC040);
+                target
+                    .memory_bus()
+                    .write_custom_word(custom_reg::INTREQ, 0x8040);
             }
         }
         let mut finished = false;

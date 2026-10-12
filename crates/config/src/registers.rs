@@ -37,8 +37,8 @@ pub mod custom_reg {
         pub const STRVBL: u16 = 0x03A;
         /// Strobe register for horizontal sync
         pub const STRHOR: u16 = 0x03C;
-        /// Strobe register for vertical sync
-        pub const STRBUS: u16 = 0x03E;
+        /// Strobe register for long horizontal line identification
+        pub const STRLONG: u16 = 0x03E;
         /// Blitter control register 0 (channels, minterms, A-shift)
         pub const BLTCON0: u16 = 0x040;
         /// Blitter control register 1 (B-shift, line mode, fill, desc)
@@ -101,36 +101,20 @@ pub mod custom_reg {
         pub const DMACON: u16 = 0x096;
         /// Audio channel 0 pointer high (Location High)
         pub const AUD0LCH: u16 = 0x0A0;
-        /// Audio channel 0 pointer high alias
-        pub const AUD0PTH: u16 = 0x0A0;
         /// Audio channel 0 pointer low (Location Low)
         pub const AUD0LCL: u16 = 0x0A2;
-        /// Audio channel 0 pointer low alias
-        pub const AUD0PTL: u16 = 0x0A2;
         /// Audio channel 1 pointer high (Location High)
         pub const AUD1LCH: u16 = 0x0B0;
-        /// Audio channel 1 pointer high alias
-        pub const AUD1PTH: u16 = 0x0B0;
         /// Audio channel 1 pointer low (Location Low)
         pub const AUD1LCL: u16 = 0x0B2;
-        /// Audio channel 1 pointer low alias
-        pub const AUD1PTL: u16 = 0x0B2;
         /// Audio channel 2 pointer high (Location High)
         pub const AUD2LCH: u16 = 0x0C0;
-        /// Audio channel 2 pointer high alias
-        pub const AUD2PTH: u16 = 0x0C0;
         /// Audio channel 2 pointer low (Location Low)
         pub const AUD2LCL: u16 = 0x0C2;
-        /// Audio channel 2 pointer low alias
-        pub const AUD2PTL: u16 = 0x0C2;
         /// Audio channel 3 pointer high (Location High)
         pub const AUD3LCH: u16 = 0x0D0;
-        /// Audio channel 3 pointer high alias
-        pub const AUD3PTH: u16 = 0x0D0;
         /// Audio channel 3 pointer low (Location Low)
         pub const AUD3LCL: u16 = 0x0D2;
-        /// Audio channel 3 pointer low alias
-        pub const AUD3PTL: u16 = 0x0D2;
         /// Bitplane 1 pointer high
         pub const BPL1PTH: u16 = 0x0E0;
         /// Bitplane 1 pointer low
@@ -217,8 +201,6 @@ pub mod custom_reg {
         pub const BPLCON1: u16 = 0x102;
         /// Bitplane control 2 (playfield/sprite priority)
         pub const BPLCON2: u16 = 0x104;
-        /// Bitplane control 3 (ECS enhanced color & border features)
-        pub const BPLCON3: u16 = 0x106;
         /// Bitplane 1 data buffer
         pub const BPL1DAT: u16 = 0x110;
         /// Bitplane 2 data buffer

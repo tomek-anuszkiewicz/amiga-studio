@@ -424,12 +424,57 @@ impl Agnus {
             custom_reg::BPLCON0 => (4, MutationMode::OverwritePending), // BPLCON0 (Agnus DMA allocation)
             custom_reg::DDFSTRT | custom_reg::DDFSTOP => (4, MutationMode::OverwritePending),
             custom_reg::BPL1MOD | custom_reg::BPL2MOD => (2, MutationMode::OverwritePending),
-            custom_reg::BLTCON0..=custom_reg::BLTDPTL => (2, MutationMode::OverwritePending),
-            custom_reg::BLTCMOD..=custom_reg::BLTDMOD => (2, MutationMode::OverwritePending),
-            custom_reg::BLTCDAT..=custom_reg::BLTADAT => (1, MutationMode::Pipeline),
-            custom_reg::COP1LCH..=custom_reg::COP2LCL => (2, MutationMode::OverwritePending),
-            custom_reg::BPL1PTH..=custom_reg::BPL6PTL => (2, MutationMode::OverwritePending),
-            custom_reg::SPR0PTH..=custom_reg::SPR7PTL => (2, MutationMode::OverwritePending),
+            custom_reg::BLTCON0
+            | custom_reg::BLTCON1
+            | custom_reg::BLTAFWM
+            | custom_reg::BLTALWM
+            | custom_reg::BLTCPTH
+            | custom_reg::BLTCPTL
+            | custom_reg::BLTBPTH
+            | custom_reg::BLTBPTL
+            | custom_reg::BLTAPTH
+            | custom_reg::BLTAPTL
+            | custom_reg::BLTDPTH
+            | custom_reg::BLTDPTL => (2, MutationMode::OverwritePending),
+            custom_reg::BLTCMOD
+            | custom_reg::BLTBMOD
+            | custom_reg::BLTAMOD
+            | custom_reg::BLTDMOD => (2, MutationMode::OverwritePending),
+            custom_reg::BLTCDAT | custom_reg::BLTBDAT | custom_reg::BLTADAT => {
+                (1, MutationMode::Pipeline)
+            }
+            custom_reg::COP1LCH
+            | custom_reg::COP1LCL
+            | custom_reg::COP2LCH
+            | custom_reg::COP2LCL => (2, MutationMode::OverwritePending),
+            custom_reg::BPL1PTH
+            | custom_reg::BPL1PTL
+            | custom_reg::BPL2PTH
+            | custom_reg::BPL2PTL
+            | custom_reg::BPL3PTH
+            | custom_reg::BPL3PTL
+            | custom_reg::BPL4PTH
+            | custom_reg::BPL4PTL
+            | custom_reg::BPL5PTH
+            | custom_reg::BPL5PTL
+            | custom_reg::BPL6PTH
+            | custom_reg::BPL6PTL => (2, MutationMode::OverwritePending),
+            custom_reg::SPR0PTH
+            | custom_reg::SPR0PTL
+            | custom_reg::SPR1PTH
+            | custom_reg::SPR1PTL
+            | custom_reg::SPR2PTH
+            | custom_reg::SPR2PTL
+            | custom_reg::SPR3PTH
+            | custom_reg::SPR3PTL
+            | custom_reg::SPR4PTH
+            | custom_reg::SPR4PTL
+            | custom_reg::SPR5PTH
+            | custom_reg::SPR5PTL
+            | custom_reg::SPR6PTH
+            | custom_reg::SPR6PTL
+            | custom_reg::SPR7PTH
+            | custom_reg::SPR7PTL => (2, MutationMode::OverwritePending),
             custom_reg::DSKPTH | custom_reg::DSKPTL => (2, MutationMode::OverwritePending),
             custom_reg::AUD0LCH
             | custom_reg::AUD0LCL
@@ -539,8 +584,19 @@ impl Agnus {
             custom_reg::BLTADAT => self.blitter.bltadat = val,
 
             // Bitplane pointers
-            0x0E0..=0x0F6 => {
-                let plane = ((offset - 0x0E0) / 4) as usize;
+            custom_reg::BPL1PTH
+            | custom_reg::BPL1PTL
+            | custom_reg::BPL2PTH
+            | custom_reg::BPL2PTL
+            | custom_reg::BPL3PTH
+            | custom_reg::BPL3PTL
+            | custom_reg::BPL4PTH
+            | custom_reg::BPL4PTL
+            | custom_reg::BPL5PTH
+            | custom_reg::BPL5PTL
+            | custom_reg::BPL6PTH
+            | custom_reg::BPL6PTL => {
+                let plane = ((offset - custom_reg::BPL1PTH) / 4) as usize;
                 let is_low = (offset & 2) != 0;
                 if plane < 6 {
                     if is_low {
@@ -554,8 +610,23 @@ impl Agnus {
             }
 
             // Sprite pointers
-            0x120..=0x13E => {
-                let sprite = ((offset - 0x120) / 4) as usize;
+            custom_reg::SPR0PTH
+            | custom_reg::SPR0PTL
+            | custom_reg::SPR1PTH
+            | custom_reg::SPR1PTL
+            | custom_reg::SPR2PTH
+            | custom_reg::SPR2PTL
+            | custom_reg::SPR3PTH
+            | custom_reg::SPR3PTL
+            | custom_reg::SPR4PTH
+            | custom_reg::SPR4PTL
+            | custom_reg::SPR5PTH
+            | custom_reg::SPR5PTL
+            | custom_reg::SPR6PTH
+            | custom_reg::SPR6PTL
+            | custom_reg::SPR7PTH
+            | custom_reg::SPR7PTL => {
+                let sprite = ((offset - custom_reg::SPR0PTH) / 4) as usize;
                 let is_low = (offset & 2) != 0;
                 if sprite < 8 {
                     if is_low {
@@ -577,8 +648,15 @@ impl Agnus {
             }
 
             // Audio DMA location pointers (AUD0LCH/LCL..AUD3LCH/LCL)
-            0x0A0 | 0x0A2 | 0x0B0 | 0x0B2 | 0x0C0 | 0x0C2 | 0x0D0 | 0x0D2 => {
-                let ch = ((offset - 0x0A0) / 0x10) as usize;
+            custom_reg::AUD0LCH
+            | custom_reg::AUD0LCL
+            | custom_reg::AUD1LCH
+            | custom_reg::AUD1LCL
+            | custom_reg::AUD2LCH
+            | custom_reg::AUD2LCL
+            | custom_reg::AUD3LCH
+            | custom_reg::AUD3LCL => {
+                let ch = ((offset - custom_reg::AUD0LCH) / 0x10) as usize;
                 if ch < 4 {
                     if (offset & 2) == 0 {
                         self.audlc[ch] =

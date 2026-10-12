@@ -3,6 +3,7 @@
 //! Synchronized coprocessor executing MOVE, WAIT, and SKIP instructions
 //! driven in lockstep with the raster beam position.
 
+use config::custom_reg;
 use config::mask::copcon;
 use config::BeamPosition;
 use serde::{Deserialize, Serialize};
@@ -77,10 +78,10 @@ impl Copper {
     pub const WAKEUP_HPOS_LEAD: u16 = 2;
 
     /// Threshold below which Copper writes require CDANG (Copper Danger bit) in COPCON ($080)
-    pub const CDANG_REGISTER_LIMIT: u16 = 0x080;
+    pub const CDANG_REGISTER_LIMIT: u16 = custom_reg::agnus::COP1LCH;
 
     /// Absolute threshold below which Copper writes are forbidden even with CDANG on OCS ($040)
-    pub const OCS_MIN_REGISTER_LIMIT: u16 = 0x040;
+    pub const OCS_MIN_REGISTER_LIMIT: u16 = custom_reg::agnus::BLTCON0;
 
     /// 18-bit Chip RAM address mask for Copper program counter and list pointers (512 KB)
     pub const ADDRESS_MASK_512K: u32 = 0x0007_FFFE;

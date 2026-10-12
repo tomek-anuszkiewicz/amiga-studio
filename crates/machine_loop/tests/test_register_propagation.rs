@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use config::custom_reg;
 use config::{A500Config, VideoStandard};
 use machine_loop::BusResult;
 use machine_loop::{A500Machine, AddressBus};
@@ -10,7 +11,9 @@ fn test_cross_chip_bplcon0_broadcast_latencies() {
 
     // Write BPLCON0 ($DFF100) = 0x8200 (HIRES mode) via memory bus router
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF100, 0x8200),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::BPLCON0), 0x8200),
         BusResult::Ready(())
     );
 
@@ -42,7 +45,9 @@ fn test_cross_chip_dmacon_broadcast_to_agnus_and_paula() {
 
     // Write DMACON ($DFF096) = SET DMAEN (bit 9) + DSKEN (bit 4) + AUD0EN (bit 0) = 0x8211
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF096, 0x8211),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::DMACON), 0x8211),
         BusResult::Ready(())
     );
 
@@ -85,12 +90,16 @@ fn test_paula_interrupt_cascade_to_cpu_ipl() {
 
     // Write INTENA ($DFF09A) = 0xC020 (SET master INTEN + Level 3 VBlank)
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF09A, 0xC020),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::INTENA), 0xC020),
         BusResult::Ready(())
     );
     // Write INTREQ ($DFF09C) = 0x8020 (SET Level 3 VBlank request)
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF09C, 0x8020),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::INTREQ), 0x8020),
         BusResult::Ready(())
     );
 
@@ -106,19 +115,27 @@ fn test_bus_custom_registers_snapshot_sync_and_open_bus() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
 
     // Direct write to DMACON
-    machine.agnus.commit_register_write(0x096, 0x8200);
+    machine
+        .agnus
+        .commit_register_write(custom_reg::DMACON, 0x8200);
 
     // Step CCK syncs state
     machine.step_cck();
 
     // Reading DMACONR ($DFF002) from bus returns 0x0200
-    let BusResult::Ready(dmaconr) = machine.memory_bus().read_word(0xDFF002) else {
+    let BusResult::Ready(dmaconr) = machine
+        .memory_bus()
+        .read_word(0xDFF000 + u32::from(custom_reg::DMACONR))
+    else {
         panic!("Expected a completed bus read");
     };
     assert_eq!(dmaconr & 0x0200, 0x0200);
 
     // Reading write-only register (e.g. BPLCON0 at $DFF100) returns 0xFFFF (open bus)
-    let BusResult::Ready(bplcon0_read) = machine.memory_bus().read_word(0xDFF100) else {
+    let BusResult::Ready(bplcon0_read) = machine
+        .memory_bus()
+        .read_word(0xDFF000 + u32::from(custom_reg::BPLCON0))
+    else {
         panic!("Expected a completed bus read");
     };
     assert_eq!(bplcon0_read, 0xFFFF);
@@ -129,11 +146,15 @@ fn test_write_custom_word_and_byte_methods() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
 
     // Test write_custom_word directly on MemoryBus
-    machine.memory_bus().write_custom_word(0x180, 0x0F00);
+    machine
+        .memory_bus()
+        .write_custom_word(custom_reg::COLOR00, 0x0F00);
     assert_eq!(machine.denise.color[0], 0x0F00);
 
     // Test write_custom_byte with byte duplication
-    machine.memory_bus().write_custom_byte(0xDFF182, 0x33);
+    machine
+        .memory_bus()
+        .write_custom_byte(0xDFF000 + u32::from(custom_reg::COLOR01), 0x33);
     assert_eq!(machine.denise.color[1], 0x0333);
 }
 
@@ -145,7 +166,9 @@ fn test_dmacon_write_propagation_delay() {
     assert_eq!(machine.agnus.dmacon, 0);
 
     // Write DMACON = SET DMAEN (bit 9) + SPREN (bit 5) + BPLEN (bit 8) -> 0x8320
-    machine.memory_bus().write_custom_word(0x096, 0x8320);
+    machine
+        .memory_bus()
+        .write_custom_word(custom_reg::DMACON, 0x8320);
 
     // After 1 CCK: in-flight in mutation pipeline, not yet committed in Agnus (2 CCKs delay)
     machine.step_cck();
@@ -156,7 +179,9 @@ fn test_dmacon_write_propagation_delay() {
     assert_eq!(machine.agnus.dmacon, 0x0320);
 
     // Clear SPREN (bit 5)
-    machine.memory_bus().write_custom_word(0x096, 0x0020);
+    machine
+        .memory_bus()
+        .write_custom_word(custom_reg::DMACON, 0x0020);
     machine.step_cck();
     assert_eq!(machine.agnus.dmacon, 0x0320);
 

@@ -9,6 +9,7 @@ pub use interrupts::InterruptController;
 pub mod serial;
 pub use serial::SerialPort;
 
+use config::custom_reg::{agnus as agnus_reg, paula as reg};
 use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
@@ -143,14 +144,14 @@ impl Paula {
     #[inline]
     pub fn read_register(&self, offset: u16) -> u16 {
         match offset & 0x1FE {
-            0x010 => self.adkcon,
-            0x012 => self.pot0dat,
-            0x014 => self.pot1dat,
-            0x016 => self.potgor,
-            0x018 => self.serial_port.serdatr,
-            0x01A => self.peek_dskbytr(),
-            0x01C => self.interrupts.read_intenar(),
-            0x01E => self.interrupts.read_intreqr(),
+            reg::ADKCONR => self.adkcon,
+            reg::POT0DAT => self.pot0dat,
+            reg::POT1DAT => self.pot1dat,
+            reg::POTGOR => self.potgor,
+            reg::SERDATR => self.serial_port.serdatr,
+            reg::DSKBYTR => self.peek_dskbytr(),
+            reg::INTENAR => self.interrupts.read_intenar(),
+            reg::INTREQR => self.interrupts.read_intreqr(),
             _ => 0xFFFF,
         }
     }
@@ -244,21 +245,32 @@ impl Paula {
     pub fn write_register(&mut self, offset: u16, val: u16) -> Option<(u16, u16)> {
         let offset = offset & 0x1FE;
         let (delay, mode) = match offset {
-            0x09A | 0x09C => (1, MutationMode::OverwritePending), // INTENA, INTREQ (1 CCK)
-            0x09E => (2, MutationMode::OverwritePending),         // ADKCON (2 CCK)
-            0x096 => (2, MutationMode::OverwritePending),         // DMACON broadcast (2 CCK)
-            0x030 => (1, MutationMode::Pipeline),                 // SERDAT (1 CCK)
-            0x032 => (2, MutationMode::OverwritePending),         // SERPER (2 CCK)
-            0x034 => (2, MutationMode::OverwritePending),         // POTGO (2 CCK)
-            0x024 => (2, MutationMode::OverwritePending),         // DSKLEN (2 CCK)
-            0x07E => (2, MutationMode::OverwritePending),         // DSKSYNC (2 CCK)
-            0x0A0 | 0x0A2 | 0x0B0 | 0x0B2 | 0x0C0 | 0x0C2 | 0x0D0 | 0x0D2 => {
+            reg::INTENA | reg::INTREQ => (1, MutationMode::OverwritePending),
+            reg::ADKCON | reg::DMACON => (2, MutationMode::OverwritePending),
+            reg::SERDAT => (1, MutationMode::Pipeline),
+            reg::SERPER | reg::POTGO | reg::DSKLEN | reg::DSKSYNC => {
                 (2, MutationMode::OverwritePending)
-            } // AUDxLCH / AUDxLCL
-            0x0A4 | 0x0B4 | 0x0C4 | 0x0D4 => (2, MutationMode::OverwritePending), // AUDxLEN
-            0x0A6 | 0x0B6 | 0x0C6 | 0x0D6 => (2, MutationMode::OverwritePending), // AUDxPER
-            0x0A8 | 0x0B8 | 0x0C8 | 0x0D8 => (2, MutationMode::OverwritePending), // AUDxVOL
-            0x0AA | 0x0BA | 0x0CA | 0x0DA => (1, MutationMode::Pipeline), // AUDxDAT
+            }
+            agnus_reg::AUD0LCH
+            | agnus_reg::AUD0LCL
+            | agnus_reg::AUD1LCH
+            | agnus_reg::AUD1LCL
+            | agnus_reg::AUD2LCH
+            | agnus_reg::AUD2LCL
+            | agnus_reg::AUD3LCH
+            | agnus_reg::AUD3LCL => (2, MutationMode::OverwritePending),
+            reg::AUD0LEN | reg::AUD1LEN | reg::AUD2LEN | reg::AUD3LEN => {
+                (2, MutationMode::OverwritePending)
+            }
+            reg::AUD0PER | reg::AUD1PER | reg::AUD2PER | reg::AUD3PER => {
+                (2, MutationMode::OverwritePending)
+            }
+            reg::AUD0VOL | reg::AUD1VOL | reg::AUD2VOL | reg::AUD3VOL => {
+                (2, MutationMode::OverwritePending)
+            }
+            reg::AUD0DAT | reg::AUD1DAT | reg::AUD2DAT | reg::AUD3DAT => {
+                (1, MutationMode::Pipeline)
+            }
             _ => (2, MutationMode::OverwritePending),
         };
 
@@ -273,9 +285,9 @@ impl Paula {
     /// Commits a register write directly into active Paula silicon state
     pub fn commit_register_write(&mut self, offset: u16, val: u16) {
         match offset & 0x1FE {
-            0x09A => self.write_intena(val),
-            0x09C => self.write_intreq(val),
-            0x09E => {
+            reg::INTENA => self.write_intena(val),
+            reg::INTREQ => self.write_intreq(val),
+            reg::ADKCON => {
                 // ADKCON SET/CLR logic
                 if (val & 0x8000) != 0 {
                     self.adkcon |= val & 0x7FFF;
@@ -284,7 +296,7 @@ impl Paula {
                 }
                 self.audio.set_adkcon(self.adkcon);
             }
-            0x096 => {
+            reg::DMACON => {
                 // DMACON broadcast: update Paula's local channel enables (AUD0..3EN, DSKEN, DMAEN)
                 if (val & 0x8000) != 0 {
                     if (val & 0x0200) != 0 {
@@ -300,76 +312,76 @@ impl Paula {
                 self.audio
                     .set_dma_enables((self.dma_enables & 0x000F) as u8, self.dma_master);
             }
-            0x030 => self.serial_port.write_serdat(val),
-            0x032 => self.serial_port.write_serper(val),
-            0x034 => self.potgo = val,
-            0x024 => self.write_dsklen(val),
-            0x026 => self.dskdat = val,
-            0x07E => self.dsksync = val,
+            reg::SERDAT => self.serial_port.write_serdat(val),
+            reg::SERPER => self.serial_port.write_serper(val),
+            reg::POTGO => self.potgo = val,
+            reg::DSKLEN => self.write_dsklen(val),
+            reg::DSKDAT => self.dskdat = val,
+            reg::DSKSYNC => self.dsksync = val,
 
             // Audio channel 0 pointer
-            0x0A0 => {
+            agnus_reg::AUD0LCH => {
                 let high = (val as u32) << 16;
                 let low = self.audio.channels[0].lc & 0x0000FFFF;
                 self.audio.set_loc(0, high | low);
             }
-            0x0A2 => {
+            agnus_reg::AUD0LCL => {
                 let high = self.audio.channels[0].lc & 0xFFFF0000;
                 let low = val as u32;
                 self.audio.set_loc(0, high | low);
             }
-            0x0A4 => self.audio.set_len(0, val),
-            0x0A6 => self.audio.set_per(0, val),
-            0x0A8 => self.audio.set_vol(0, (val & 0x007F) as u8),
-            0x0AA => self.audio.set_dat(0, val),
+            reg::AUD0LEN => self.audio.set_len(0, val),
+            reg::AUD0PER => self.audio.set_per(0, val),
+            reg::AUD0VOL => self.audio.set_vol(0, (val & 0x007F) as u8),
+            reg::AUD0DAT => self.audio.set_dat(0, val),
 
             // Audio channel 1 pointer
-            0x0B0 => {
+            agnus_reg::AUD1LCH => {
                 let high = (val as u32) << 16;
                 let low = self.audio.channels[1].lc & 0x0000FFFF;
                 self.audio.set_loc(1, high | low);
             }
-            0x0B2 => {
+            agnus_reg::AUD1LCL => {
                 let high = self.audio.channels[1].lc & 0xFFFF0000;
                 let low = val as u32;
                 self.audio.set_loc(1, high | low);
             }
-            0x0B4 => self.audio.set_len(1, val),
-            0x0B6 => self.audio.set_per(1, val),
-            0x0B8 => self.audio.set_vol(1, (val & 0x007F) as u8),
-            0x0BA => self.audio.set_dat(1, val),
+            reg::AUD1LEN => self.audio.set_len(1, val),
+            reg::AUD1PER => self.audio.set_per(1, val),
+            reg::AUD1VOL => self.audio.set_vol(1, (val & 0x007F) as u8),
+            reg::AUD1DAT => self.audio.set_dat(1, val),
 
             // Audio channel 2 pointer
-            0x0C0 => {
+            agnus_reg::AUD2LCH => {
                 let high = (val as u32) << 16;
                 let low = self.audio.channels[2].lc & 0x0000FFFF;
                 self.audio.set_loc(2, high | low);
             }
-            0x0C2 => {
+            agnus_reg::AUD2LCL => {
                 let high = self.audio.channels[2].lc & 0xFFFF0000;
                 let low = val as u32;
                 self.audio.set_loc(2, high | low);
             }
-            0x0C4 => self.audio.set_len(2, val),
-            0x0C6 => self.audio.set_per(2, val),
-            0x0C8 => self.audio.set_vol(2, (val & 0x007F) as u8),
-            0x0CA => self.audio.set_dat(2, val),
+            reg::AUD2LEN => self.audio.set_len(2, val),
+            reg::AUD2PER => self.audio.set_per(2, val),
+            reg::AUD2VOL => self.audio.set_vol(2, (val & 0x007F) as u8),
+            reg::AUD2DAT => self.audio.set_dat(2, val),
 
             // Audio channel 3 pointer
-            0x0D0 => {
+            agnus_reg::AUD3LCH => {
                 let high = (val as u32) << 16;
                 let low = self.audio.channels[3].lc & 0x0000FFFF;
                 self.audio.set_loc(3, high | low);
             }
-            0x0D2 => {
+            agnus_reg::AUD3LCL => {
                 let high = self.audio.channels[3].lc & 0xFFFF0000;
                 let low = val as u32;
                 self.audio.set_loc(3, high | low);
             }
-            0x0D4 => self.audio.set_len(3, val),
-            0x0D6 => self.audio.set_per(3, val),
-            0x0D8 => self.audio.set_vol(3, (val & 0x007F) as u8),
-            0x0DA => self.audio.set_dat(3, val),
+            reg::AUD3LEN => self.audio.set_len(3, val),
+            reg::AUD3PER => self.audio.set_per(3, val),
+            reg::AUD3VOL => self.audio.set_vol(3, (val & 0x007F) as u8),
+            reg::AUD3DAT => self.audio.set_dat(3, val),
 
             _ => {}
         }
@@ -398,7 +410,7 @@ impl Paula {
         // Check if a SET INTREQ write is already pending in the mutation pipeline
         for slot in self.mutations.iter_mut() {
             if let Some(m) = slot {
-                if m.reg_offset == 0x09C && (m.value & 0x8000) != 0 {
+                if m.reg_offset == reg::INTREQ && (m.value & 0x8000) != 0 {
                     // Merge bit into existing pending SET write
                     m.value |= mask & 0x7FFF;
                     return;
@@ -408,8 +420,14 @@ impl Paula {
 
         // Otherwise stage a new 1-CCK mutation for INTREQ ($09C)
         let val = 0x8000 | (mask & 0x7FFF);
-        if !stage_mutation(&mut self.mutations, 0x09C, val, 1, MutationMode::Pipeline) {
-            self.commit_register_write(0x09C, val);
+        if !stage_mutation(
+            &mut self.mutations,
+            reg::INTREQ,
+            val,
+            1,
+            MutationMode::Pipeline,
+        ) {
+            self.commit_register_write(reg::INTREQ, val);
         }
     }
 

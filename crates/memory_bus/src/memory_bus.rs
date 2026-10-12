@@ -179,10 +179,76 @@ impl<'a> MemoryBus<'a> {
             | custom_reg::denise::BPLCON1
             | custom_reg::denise::CLXCON
             | custom_reg::denise::BPLCON2
-            | custom_reg::denise::BPLCON3
-            | custom_reg::denise::BPL1DAT..=custom_reg::denise::BPL6DAT
-            | custom_reg::denise::SPR0POS..=custom_reg::denise::SPR7DATB
-            | custom_reg::denise::COLOR00..=custom_reg::denise::COLOR31
+            | custom_reg::denise::BPL1DAT
+            | custom_reg::denise::BPL2DAT
+            | custom_reg::denise::BPL3DAT
+            | custom_reg::denise::BPL4DAT
+            | custom_reg::denise::BPL5DAT
+            | custom_reg::denise::BPL6DAT
+            | custom_reg::denise::SPR0POS
+            | custom_reg::denise::SPR0CTL
+            | custom_reg::denise::SPR0DATA
+            | custom_reg::denise::SPR0DATB
+            | custom_reg::denise::SPR1POS
+            | custom_reg::denise::SPR1CTL
+            | custom_reg::denise::SPR1DATA
+            | custom_reg::denise::SPR1DATB
+            | custom_reg::denise::SPR2POS
+            | custom_reg::denise::SPR2CTL
+            | custom_reg::denise::SPR2DATA
+            | custom_reg::denise::SPR2DATB
+            | custom_reg::denise::SPR3POS
+            | custom_reg::denise::SPR3CTL
+            | custom_reg::denise::SPR3DATA
+            | custom_reg::denise::SPR3DATB
+            | custom_reg::denise::SPR4POS
+            | custom_reg::denise::SPR4CTL
+            | custom_reg::denise::SPR4DATA
+            | custom_reg::denise::SPR4DATB
+            | custom_reg::denise::SPR5POS
+            | custom_reg::denise::SPR5CTL
+            | custom_reg::denise::SPR5DATA
+            | custom_reg::denise::SPR5DATB
+            | custom_reg::denise::SPR6POS
+            | custom_reg::denise::SPR6CTL
+            | custom_reg::denise::SPR6DATA
+            | custom_reg::denise::SPR6DATB
+            | custom_reg::denise::SPR7POS
+            | custom_reg::denise::SPR7CTL
+            | custom_reg::denise::SPR7DATA
+            | custom_reg::denise::SPR7DATB
+            | custom_reg::denise::COLOR00
+            | custom_reg::denise::COLOR01
+            | custom_reg::denise::COLOR02
+            | custom_reg::denise::COLOR03
+            | custom_reg::denise::COLOR04
+            | custom_reg::denise::COLOR05
+            | custom_reg::denise::COLOR06
+            | custom_reg::denise::COLOR07
+            | custom_reg::denise::COLOR08
+            | custom_reg::denise::COLOR09
+            | custom_reg::denise::COLOR10
+            | custom_reg::denise::COLOR11
+            | custom_reg::denise::COLOR12
+            | custom_reg::denise::COLOR13
+            | custom_reg::denise::COLOR14
+            | custom_reg::denise::COLOR15
+            | custom_reg::denise::COLOR16
+            | custom_reg::denise::COLOR17
+            | custom_reg::denise::COLOR18
+            | custom_reg::denise::COLOR19
+            | custom_reg::denise::COLOR20
+            | custom_reg::denise::COLOR21
+            | custom_reg::denise::COLOR22
+            | custom_reg::denise::COLOR23
+            | custom_reg::denise::COLOR24
+            | custom_reg::denise::COLOR25
+            | custom_reg::denise::COLOR26
+            | custom_reg::denise::COLOR27
+            | custom_reg::denise::COLOR28
+            | custom_reg::denise::COLOR29
+            | custom_reg::denise::COLOR30
+            | custom_reg::denise::COLOR31
             | custom_reg::denise::JOYTEST => {
                 self.denise.write_register(offset, val);
             }
@@ -192,7 +258,9 @@ impl<'a> MemoryBus<'a> {
             | custom_reg::paula::DSKDAT
             | custom_reg::paula::DSKLEN
             | custom_reg::paula::DSKSYNC
-            | custom_reg::paula::SERDAT..=custom_reg::paula::POTGO
+            | custom_reg::paula::SERDAT
+            | custom_reg::paula::SERPER
+            | custom_reg::paula::POTGO
             | custom_reg::paula::AUD0LEN
             | custom_reg::paula::AUD0PER
             | custom_reg::paula::AUD0VOL

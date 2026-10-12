@@ -3313,3 +3313,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: git diff --check
   - initial English scan failed on 78 unknown occurrences, resolved by expanding prose and user-approved hardware vocabulary
   - NOT RUN: full SingleStep and milestone profiles
+---
+
+### [2026-10-12 20:03 CEST] — Align OCS custom register names and explicit dispatch
+- **Affected Subsystems**:
+  - `config`
+  - `Agnus`
+  - `Copper`
+  - `Denise`
+  - `Paula`
+  - `MemoryBus`
+  - `machine integration`
+  - `SaveState design`
+- **What Was Changed (The Concrete Reality)**:
+  - Rename STRBUS to STRLONG and use AUDxLCH/LCL names from the register matrix
+  - remove unsupported BPLCON3 and DIWHIGH state and align SaveState documentation
+  - replace register-offset ranges and literals with named constants in chip dispatch and integration tests
+- **Architectural Rationale & Trade-Offs**:
+  - Keep OCS register access traceable to the canonical register definitions and prevent reserved offsets from acquiring chip state.
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit, including ordinary workspace tests, standard harness tests, Python contracts, English, formatting, Clippy, architecture, hardware and code quality checks
+  - PASS: focused Agnus, Copper, MemoryBus and machine_loop tests
+  - PASS: scoped design-specification review found no further corrections
+  - PASS: git diff --check
+  - NOT RUN: full SingleStep and milestone profiles

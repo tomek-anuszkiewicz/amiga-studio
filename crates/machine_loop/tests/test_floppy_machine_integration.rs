@@ -9,6 +9,7 @@
 //! 4. Chip RAM streaming at DSKPT with automatic address incrementation.
 //! 5. Level 1 IRQ_DSKBLK and Level 5 IRQ_DSKSYN interrupt assertion upon completion.
 
+use config::custom_reg;
 mod common;
 use common::MachineHarness;
 use floppy::{FORMATTED_DISK_BYTES, SECTORS_PER_TRACK, SECTOR_DATA_BYTES};
@@ -42,35 +43,35 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x020, 0x0000);
+        .write_custom_word(custom_reg::DSKPTH, 0x0000);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x022, 0x2000);
+        .write_custom_word(custom_reg::DSKPTL, 0x2000);
 
     // 4. Set DSKSYNC = $4489 ($DFF07E)
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x07E, 0x4489);
+        .write_custom_word(custom_reg::DSKSYNC, 0x4489);
 
     // 5. Enable WORDSYNC and FAST in ADKCON ($DFF09E): SET_CLR | WORDSYNC | FAST = 0x8500
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09E, 0x8500);
+        .write_custom_word(custom_reg::ADKCON, 0x8500);
 
     // 6. Enable master DMA and Disk DMA in DMACON ($DFF096): SET_CLR | DMAEN | DSKEN = 0x8210
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x096, 0x8210);
+        .write_custom_word(custom_reg::DMACON, 0x8210);
 
     // 7. Enable master INTENA and DSKBLK in INTENA ($DFF09A): SET_CLR | INTEN | DSKBLK = 0xC002
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09A, 0xC002);
+        .write_custom_word(custom_reg::INTENA, 0xC002);
 
     // Step 2 CCKs to commit initial register mutations
     harness.machine.step_cck();
@@ -83,7 +84,7 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x024, dsklen_val);
+        .write_custom_word(custom_reg::DSKLEN, dsklen_val);
     harness.machine.step_cck();
     harness.machine.step_cck();
     assert!(harness.machine.paula.dma_armed);
@@ -92,7 +93,7 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x024, dsklen_val);
+        .write_custom_word(custom_reg::DSKLEN, dsklen_val);
     harness.machine.step_cck();
     harness.machine.step_cck();
     assert!(harness.machine.paula.is_dsk_dma_active());

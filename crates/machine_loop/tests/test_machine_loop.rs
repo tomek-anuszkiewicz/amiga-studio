@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use config::custom_reg;
 use config::A500Config;
 use machine_loop::{A500Machine, AddressBus};
 
@@ -27,7 +28,9 @@ fn test_machine_interrupt_arbitration() {
 
     // Unmask Level 2 (PORTS) and Level 6 (EXTER) with master INTEN in Paula INTENA
     // 0x8000 (SET) | 0x4000 (INTEN) | 0x2000 (EXTER) | 0x0008 (PORTS) = 0xE008
-    machine.memory_bus().write_custom_word(0x09A, 0xE008);
+    machine
+        .memory_bus()
+        .write_custom_word(custom_reg::INTENA, 0xE008);
     machine.step_cycles(2);
 
     // Trigger CIA-A interrupt -> IPL 2
