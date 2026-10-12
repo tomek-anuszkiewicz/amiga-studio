@@ -3337,3 +3337,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: scoped design-specification review found no further corrections
   - PASS: git diff --check
   - NOT RUN: full SingleStep and milestone profiles
+---
+
+### [2026-10-12 20:38 CEST] — Centralize CIA register addresses and selectors
+- **Affected Subsystems**:
+  - `config`
+  - `CIA`
+- **What Was Changed (The Concrete Reality)**:
+  - Add named CIA-A and CIA-B byte addresses and shared register selectors
+  - Use named selectors in CIA read, debug peek, and write dispatch
+- **Architectural Rationale & Trade-Offs**:
+  - Keep both CIA address maps and chip-internal selector decoding traceable to one canonical register list without changing register behavior
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit on the code snapshot
+  - PASS: cargo test -p cia -p memory_bus (18 integration tests)
+  - PASS: all 30 addresses compared with CIA.md and selectors checked for both chips
+  - PASS: scoped review of CIA.md and Configuration.md found no corrections
+  - NOT RUN: full SingleStep and milestone profiles

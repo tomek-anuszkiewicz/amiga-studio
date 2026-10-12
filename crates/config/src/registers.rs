@@ -1,7 +1,7 @@
-//! Amiga 500 Custom Chip Registers & Bitfield Masks
+//! Amiga 500 register addresses and custom chip bitfield masks
 //!
-//! Authoritative register offset definitions and bitmask constants according to the
-//! Commodore-Amiga Hardware Reference Manual (HRM), Appendix A.
+//! Custom chip offsets follow the Commodore-Amiga Hardware Reference Manual (HRM),
+//! Appendix A. CIA byte addresses follow Appendices D and F.
 
 /// Custom chip register offsets in the $DFF000 - $DFFFFE range.
 ///
@@ -428,6 +428,114 @@ pub mod custom_reg {
     pub const DMACON: u16 = agnus::DMACON;
     pub const DMACONR: u16 = agnus::DMACONR;
     pub const BPLCON0: u16 = denise::BPLCON0;
+}
+
+/// Memory-mapped byte addresses of the two MOS 8520 interface adapters.
+///
+/// Each chip has the same register selectors but occupies a different byte lane.
+/// Selector $B is unconnected on both chips.
+pub mod cia_reg {
+    /// Register selectors shared by CIA-A and CIA-B (address bits 11..8).
+    pub mod selector {
+        /// Port A data.
+        pub const PRA: u8 = ((super::cia_a::PRA >> 8) & 0x0F) as u8;
+        /// Port B data.
+        pub const PRB: u8 = ((super::cia_a::PRB >> 8) & 0x0F) as u8;
+        /// Port A data direction.
+        pub const DDRA: u8 = ((super::cia_a::DDRA >> 8) & 0x0F) as u8;
+        /// Port B data direction.
+        pub const DDRB: u8 = ((super::cia_a::DDRB >> 8) & 0x0F) as u8;
+        /// Timer A low byte.
+        pub const TALO: u8 = ((super::cia_a::TALO >> 8) & 0x0F) as u8;
+        /// Timer A high byte.
+        pub const TAHI: u8 = ((super::cia_a::TAHI >> 8) & 0x0F) as u8;
+        /// Timer B low byte.
+        pub const TBLO: u8 = ((super::cia_a::TBLO >> 8) & 0x0F) as u8;
+        /// Timer B high byte.
+        pub const TBHI: u8 = ((super::cia_a::TBHI >> 8) & 0x0F) as u8;
+        /// Time-of-day low byte.
+        pub const TODLO: u8 = ((super::cia_a::TODLO >> 8) & 0x0F) as u8;
+        /// Time-of-day middle byte.
+        pub const TODMID: u8 = ((super::cia_a::TODMID >> 8) & 0x0F) as u8;
+        /// Time-of-day high byte.
+        pub const TODHI: u8 = ((super::cia_a::TODHI >> 8) & 0x0F) as u8;
+        /// Serial data.
+        pub const SDR: u8 = ((super::cia_a::SDR >> 8) & 0x0F) as u8;
+        /// Interrupt status and mask.
+        pub const ICR: u8 = ((super::cia_a::ICR >> 8) & 0x0F) as u8;
+        /// Timer A and serial control.
+        pub const CRA: u8 = ((super::cia_a::CRA >> 8) & 0x0F) as u8;
+        /// Timer B and time-of-day control.
+        pub const CRB: u8 = ((super::cia_a::CRB >> 8) & 0x0F) as u8;
+    }
+
+    /// CIA-A registers on the odd-byte lane ($BFE001–$BFEF01).
+    pub mod cia_a {
+        /// Port A data: game-port fire, floppy status, LED, and overlay.
+        pub const PRA: u32 = 0xBFE001;
+        /// Port B data: parallel port.
+        pub const PRB: u32 = 0xBFE101;
+        /// Port A data direction.
+        pub const DDRA: u32 = 0xBFE201;
+        /// Port B data direction.
+        pub const DDRB: u32 = 0xBFE301;
+        /// Timer A low byte: counter on read, latch on write.
+        pub const TALO: u32 = 0xBFE401;
+        /// Timer A high byte: counter on read, latch on write.
+        pub const TAHI: u32 = 0xBFE501;
+        /// Timer B low byte: counter on read, latch on write.
+        pub const TBLO: u32 = 0xBFE601;
+        /// Timer B high byte: counter on read, latch on write.
+        pub const TBHI: u32 = 0xBFE701;
+        /// Time-of-day low byte on read; time or alarm low byte on write.
+        pub const TODLO: u32 = 0xBFE801;
+        /// Time-of-day middle byte on read; time or alarm middle byte on write.
+        pub const TODMID: u32 = 0xBFE901;
+        /// Time-of-day high byte on read; time or alarm high byte on write.
+        pub const TODHI: u32 = 0xBFEA01;
+        /// Serial data: received byte on read, transmit byte on write.
+        pub const SDR: u32 = 0xBFEC01;
+        /// Interrupt status on read (clears pending bits), mask on write.
+        pub const ICR: u32 = 0xBFED01;
+        /// Timer A and serial control.
+        pub const CRA: u32 = 0xBFEE01;
+        /// Timer B and time-of-day control.
+        pub const CRB: u32 = 0xBFEF01;
+    }
+
+    /// CIA-B registers on the even-byte lane ($BFD000–$BFDF00).
+    pub mod cia_b {
+        /// Port A data: serial handshake and parallel control/status.
+        pub const PRA: u32 = 0xBFD000;
+        /// Port B data: floppy drive control.
+        pub const PRB: u32 = 0xBFD100;
+        /// Port A data direction.
+        pub const DDRA: u32 = 0xBFD200;
+        /// Port B data direction.
+        pub const DDRB: u32 = 0xBFD300;
+        /// Timer A low byte: counter on read, latch on write.
+        pub const TALO: u32 = 0xBFD400;
+        /// Timer A high byte: counter on read, latch on write.
+        pub const TAHI: u32 = 0xBFD500;
+        /// Timer B low byte: counter on read, latch on write.
+        pub const TBLO: u32 = 0xBFD600;
+        /// Timer B high byte: counter on read, latch on write.
+        pub const TBHI: u32 = 0xBFD700;
+        /// Time-of-day low byte on read; time or alarm low byte on write.
+        pub const TODLO: u32 = 0xBFD800;
+        /// Time-of-day middle byte on read; time or alarm middle byte on write.
+        pub const TODMID: u32 = 0xBFD900;
+        /// Time-of-day high byte on read; time or alarm high byte on write.
+        pub const TODHI: u32 = 0xBFDA00;
+        /// Serial data: received byte on read, transmit byte on write.
+        pub const SDR: u32 = 0xBFDC00;
+        /// Interrupt status on read (clears pending bits), mask on write.
+        pub const ICR: u32 = 0xBFDD00;
+        /// Timer A and serial control.
+        pub const CRA: u32 = 0xBFDE00;
+        /// Timer B and time-of-day control.
+        pub const CRB: u32 = 0xBFDF00;
+    }
 }
 
 /// Bitfield masks for custom chip control and status registers

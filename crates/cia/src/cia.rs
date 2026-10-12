@@ -3,6 +3,7 @@
 //! Reusable 8520 chip core with 16-bit decrementing Timers A & B,
 //! bidirectional 8-bit Ports A & B, 24-bit TOD clock, SDR, and ICR.
 
+use config::cia_reg::selector;
 use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
@@ -215,15 +216,15 @@ impl Cia {
     /// Reads CIA register ($0..$F) with clear-on-read for ICR and atomic latching for TOD
     pub fn read_register(&mut self, reg: u8) -> u8 {
         match reg & 0x0F {
-            0x0 => self.pra,
-            0x1 => self.prb,
-            0x2 => self.ddra,
-            0x3 => self.ddrb,
-            0x4 => (self.ta_counter & 0xFF) as u8,
-            0x5 => (self.ta_counter >> 8) as u8,
-            0x6 => (self.tb_counter & 0xFF) as u8,
-            0x7 => (self.tb_counter >> 8) as u8,
-            0x8 => {
+            selector::PRA => self.pra,
+            selector::PRB => self.prb,
+            selector::DDRA => self.ddra,
+            selector::DDRB => self.ddrb,
+            selector::TALO => (self.ta_counter & 0xFF) as u8,
+            selector::TAHI => (self.ta_counter >> 8) as u8,
+            selector::TBLO => (self.tb_counter & 0xFF) as u8,
+            selector::TBHI => (self.tb_counter >> 8) as u8,
+            selector::TODLO => {
                 // Reading TODLO unlatches TOD
                 let val = if self.tod_latched {
                     (self.tod_latch_val & 0xFF) as u8
@@ -233,27 +234,27 @@ impl Cia {
                 self.tod_latched = false;
                 val
             }
-            0x9 => {
+            selector::TODMID => {
                 if self.tod_latched {
                     ((self.tod_latch_val >> 8) & 0xFF) as u8
                 } else {
                     ((self.tod >> 8) & 0xFF) as u8
                 }
             }
-            0xA => {
+            selector::TODHI => {
                 // Reading TODHI freezes/latches TOD
                 self.tod_latched = true;
                 self.tod_latch_val = self.tod;
                 ((self.tod >> 16) & 0xFF) as u8
             }
-            0xC => self.sdr,
-            0xD => {
+            selector::SDR => self.sdr,
+            selector::ICR => {
                 let val = self.icr_data;
                 self.icr_data = 0; // Clear on read
                 val
             }
-            0xE => self.cra,
-            0xF => self.crb,
+            selector::CRA => self.cra,
+            selector::CRB => self.crb,
             _ => 0xFF,
         }
     }
@@ -262,21 +263,21 @@ impl Cia {
     #[inline]
     pub fn peek_register(&self, reg: u8) -> u8 {
         match reg & 0x0F {
-            0x0 => self.pra,
-            0x1 => self.prb,
-            0x2 => self.ddra,
-            0x3 => self.ddrb,
-            0x4 => (self.ta_counter & 0xFF) as u8,
-            0x5 => (self.ta_counter >> 8) as u8,
-            0x6 => (self.tb_counter & 0xFF) as u8,
-            0x7 => (self.tb_counter >> 8) as u8,
-            0x8 => (self.tod & 0xFF) as u8,
-            0x9 => ((self.tod >> 8) & 0xFF) as u8,
-            0xA => ((self.tod >> 16) & 0xFF) as u8,
-            0xC => self.sdr,
-            0xD => self.icr_data,
-            0xE => self.cra,
-            0xF => self.crb,
+            selector::PRA => self.pra,
+            selector::PRB => self.prb,
+            selector::DDRA => self.ddra,
+            selector::DDRB => self.ddrb,
+            selector::TALO => (self.ta_counter & 0xFF) as u8,
+            selector::TAHI => (self.ta_counter >> 8) as u8,
+            selector::TBLO => (self.tb_counter & 0xFF) as u8,
+            selector::TBHI => (self.tb_counter >> 8) as u8,
+            selector::TODLO => (self.tod & 0xFF) as u8,
+            selector::TODMID => ((self.tod >> 8) & 0xFF) as u8,
+            selector::TODHI => ((self.tod >> 16) & 0xFF) as u8,
+            selector::SDR => self.sdr,
+            selector::ICR => self.icr_data,
+            selector::CRA => self.cra,
+            selector::CRB => self.crb,
             _ => 0xFF,
         }
     }
@@ -351,33 +352,33 @@ impl Cia {
     /// Commits a register write directly into active CIA silicon state
     pub fn commit_register_write(&mut self, reg: u8, val: u8) {
         match reg & 0x0F {
-            0x0 => {
+            selector::PRA => {
                 self.prev_pra = self.pra;
                 self.pra = val;
                 self.pra_mutated = true;
             }
-            0x1 => {
+            selector::PRB => {
                 self.prev_prb = self.prb;
                 self.prb = val;
                 self.prb_mutated = true;
             }
-            0x2 => self.ddra = val,
-            0x3 => self.ddrb = val,
-            0x4 => self.ta_latch = (self.ta_latch & 0xFF00) | (val as u16),
-            0x5 => {
+            selector::DDRA => self.ddra = val,
+            selector::DDRB => self.ddrb = val,
+            selector::TALO => self.ta_latch = (self.ta_latch & 0xFF00) | (val as u16),
+            selector::TAHI => {
                 self.ta_latch = (self.ta_latch & 0x00FF) | ((val as u16) << 8);
                 if (self.cra & 0x01) == 0 {
                     self.ta_counter = self.ta_latch;
                 }
             }
-            0x6 => self.tb_latch = (self.tb_latch & 0xFF00) | (val as u16),
-            0x7 => {
+            selector::TBLO => self.tb_latch = (self.tb_latch & 0xFF00) | (val as u16),
+            selector::TBHI => {
                 self.tb_latch = (self.tb_latch & 0x00FF) | ((val as u16) << 8);
                 if (self.crb & 0x01) == 0 {
                     self.tb_counter = self.tb_latch;
                 }
             }
-            0x8 => {
+            selector::TODLO => {
                 if (self.crb & 0x80) != 0 {
                     self.tod_alarm = (self.tod_alarm & 0xFFFF00) | (val as u32);
                 } else {
@@ -385,14 +386,14 @@ impl Cia {
                     self.tod_halted = false; // Writing TODLO restarts counter
                 }
             }
-            0x9 => {
+            selector::TODMID => {
                 if (self.crb & 0x80) != 0 {
                     self.tod_alarm = (self.tod_alarm & 0xFF00FF) | ((val as u32) << 8);
                 } else {
                     self.tod = (self.tod & 0xFF00FF) | ((val as u32) << 8);
                 }
             }
-            0xA => {
+            selector::TODHI => {
                 if (self.crb & 0x80) != 0 {
                     self.tod_alarm = (self.tod_alarm & 0x00FFFF) | ((val as u32) << 16);
                 } else {
@@ -400,8 +401,8 @@ impl Cia {
                     self.tod_halted = true; // Writing TODHI halts counter until TODLO is written
                 }
             }
-            0xC => self.sdr = val,
-            0xD => {
+            selector::SDR => self.sdr = val,
+            selector::ICR => {
                 // SET/CLR bit 7 logic for ICR mask
                 if (val & 0x80) != 0 {
                     self.icr_mask |= val & 0x1F;
@@ -409,13 +410,13 @@ impl Cia {
                     self.icr_mask &= !(val & 0x1F);
                 }
             }
-            0xE => {
+            selector::CRA => {
                 self.cra = val;
                 if (val & 0x10) != 0 {
                     self.ta_counter = self.ta_latch; // Force load
                 }
             }
-            0xF => {
+            selector::CRB => {
                 self.crb = val;
                 if (val & 0x10) != 0 {
                     self.tb_counter = self.tb_latch; // Force load
