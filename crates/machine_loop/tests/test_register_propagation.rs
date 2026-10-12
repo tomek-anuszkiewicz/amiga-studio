@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use config::cia_reg;
 use config::custom_reg;
 use config::{A500Config, VideoStandard};
 use machine_loop::BusResult;
@@ -71,14 +72,14 @@ fn test_cia_a_ovl_pin_cascade_to_memory_bus() {
     assert!(machine.physical_memory.is_low_memory_overlay_active());
 
     // Write CIA-A Port A ($BFE001) bit 0 = 1 (Chip RAM engaged)
-    machine.cia_a.write_register(0x0, 0x01);
+    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x01);
 
     // Step CCK: machine loop observes CIA-A ovl_transition and disengages overlay
     machine.step_cck();
     assert!(!machine.physical_memory.is_low_memory_overlay_active());
 
     // Write bit 0 = 0 (Kickstart ROM overlay engaged)
-    machine.cia_a.write_register(0x0, 0x00);
+    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x00);
     machine.step_cck();
     assert!(machine.physical_memory.is_low_memory_overlay_active());
 }

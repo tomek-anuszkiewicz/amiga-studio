@@ -13,6 +13,7 @@
 //! - Hardware keyboard reset line (Ctrl-Amiga-Amiga): automatically executes warm reset.
 //! - Boot overlay engagement: verifies Kickstart overlay vs synthetic test mode fallback.
 
+use config::cia_reg;
 use config::A500Config;
 use machine_loop::{A500Machine, AddressBus};
 
@@ -194,8 +195,8 @@ fn test_cold_reset_full_flow() {
     machine.agnus.dma.write_dmacon(0x8200); // Enable master DMA
     machine.denise.color[0] = 0x0F00; // Red background
     machine.paula.write_intena(0x8080); // Enable Audio 0 IRQ
-    machine.cia_a.write_register(0x2, 0x03); // DDRA bits 0-1
-    machine.cia_a.write_register(0x0, 0x01); // PRA bit 0
+    machine.cia_a.write_register(cia_reg::cia_a::DDRA, 0x03); // DDRA bits 0-1
+    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x01); // PRA bit 0
 
     // 3. Modify CPU registers and state
     machine.cpu.state.set_d_long(0, 0x12345678);
@@ -656,8 +657,8 @@ fn test_reset_overlay_kickstart_vs_synthetic() {
     );
 
     // Disengage overlay via CIA-A Port A bit 0
-    machine.cia_a.write_register(0x2, 0x01); // DDRA bit 0 output
-    machine.cia_a.write_register(0x0, 0x01); // PRA bit 0 high (disengage _OVL)
+    machine.cia_a.write_register(cia_reg::cia_a::DDRA, 0x01); // DDRA bit 0 output
+    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x01); // PRA bit 0 high (disengage _OVL)
     for _ in 0..10 {
         machine.step_cck();
     }

@@ -5,8 +5,8 @@
 //! peripheral controllers (`CIA-A`, `CIA-B`), and expansion hardware (`RTC`).
 
 use agnus::Agnus;
-use cia::Cia;
-use config::custom_reg;
+use cia::{Cia, CiaId};
+use config::{cia_reg, custom_reg};
 use denise::Denise;
 use paula::Paula;
 use physical_memory::{AddressBus, BusResult, MemoryBank, PhysicalMemory};
@@ -32,14 +32,10 @@ impl<'a> MemoryBus<'a> {
     pub const BANK_RTC: u8 = 0xDC;
     pub const BANK_CUSTOM: u8 = 0xDF;
 
-    pub const CIA_B_START: u32 = 0xBFD000;
-    pub const CIA_B_END: u32 = 0xBFDF00;
-    pub const CIA_A_START: u32 = 0xBFE001;
-    pub const CIA_A_END: u32 = 0xBFEF01;
-
     pub const RTC_START: u32 = 0xDC0000;
     pub const RTC_END: u32 = 0xDC003F;
 
+    pub const CIA_REG_ADDRESS_MASK: u32 = 0xFFFF01;
     pub const CUSTOM_REG_OFFSET_MASK: u16 = 0x01FE;
 
     /// Reads a 16-bit custom register with live read side-effects (e.g. clearing CLXDAT, DSKBYTR)
@@ -96,68 +92,81 @@ impl<'a> MemoryBus<'a> {
         }
     }
 
+    fn decode_cia_register(addr: u32) -> Option<(CiaId, u32)> {
+        // A7..A1 are not wired to the CIA register selector.
+        let canonical_addr = addr & Self::CIA_REG_ADDRESS_MASK;
+        let (chip, reg) = match canonical_addr {
+            cia_reg::cia_a::PRA => (CiaId::A, cia_reg::cia_a::PRA),
+            cia_reg::cia_a::PRB => (CiaId::A, cia_reg::cia_a::PRB),
+            cia_reg::cia_a::DDRA => (CiaId::A, cia_reg::cia_a::DDRA),
+            cia_reg::cia_a::DDRB => (CiaId::A, cia_reg::cia_a::DDRB),
+            cia_reg::cia_a::TALO => (CiaId::A, cia_reg::cia_a::TALO),
+            cia_reg::cia_a::TAHI => (CiaId::A, cia_reg::cia_a::TAHI),
+            cia_reg::cia_a::TBLO => (CiaId::A, cia_reg::cia_a::TBLO),
+            cia_reg::cia_a::TBHI => (CiaId::A, cia_reg::cia_a::TBHI),
+            cia_reg::cia_a::TODLO => (CiaId::A, cia_reg::cia_a::TODLO),
+            cia_reg::cia_a::TODMID => (CiaId::A, cia_reg::cia_a::TODMID),
+            cia_reg::cia_a::TODHI => (CiaId::A, cia_reg::cia_a::TODHI),
+            cia_reg::cia_a::SDR => (CiaId::A, cia_reg::cia_a::SDR),
+            cia_reg::cia_a::ICR => (CiaId::A, cia_reg::cia_a::ICR),
+            cia_reg::cia_a::CRA => (CiaId::A, cia_reg::cia_a::CRA),
+            cia_reg::cia_a::CRB => (CiaId::A, cia_reg::cia_a::CRB),
+            cia_reg::cia_b::PRA => (CiaId::B, cia_reg::cia_b::PRA),
+            cia_reg::cia_b::PRB => (CiaId::B, cia_reg::cia_b::PRB),
+            cia_reg::cia_b::DDRA => (CiaId::B, cia_reg::cia_b::DDRA),
+            cia_reg::cia_b::DDRB => (CiaId::B, cia_reg::cia_b::DDRB),
+            cia_reg::cia_b::TALO => (CiaId::B, cia_reg::cia_b::TALO),
+            cia_reg::cia_b::TAHI => (CiaId::B, cia_reg::cia_b::TAHI),
+            cia_reg::cia_b::TBLO => (CiaId::B, cia_reg::cia_b::TBLO),
+            cia_reg::cia_b::TBHI => (CiaId::B, cia_reg::cia_b::TBHI),
+            cia_reg::cia_b::TODLO => (CiaId::B, cia_reg::cia_b::TODLO),
+            cia_reg::cia_b::TODMID => (CiaId::B, cia_reg::cia_b::TODMID),
+            cia_reg::cia_b::TODHI => (CiaId::B, cia_reg::cia_b::TODHI),
+            cia_reg::cia_b::SDR => (CiaId::B, cia_reg::cia_b::SDR),
+            cia_reg::cia_b::ICR => (CiaId::B, cia_reg::cia_b::ICR),
+            cia_reg::cia_b::CRA => (CiaId::B, cia_reg::cia_b::CRA),
+            cia_reg::cia_b::CRB => (CiaId::B, cia_reg::cia_b::CRB),
+            _ => return None,
+        };
+        Some((chip, reg))
+    }
+
     /// Reads an 8-bit byte from CIA register space ($BF0000..$BFFFFF)
     fn read_cia_byte(&mut self, addr: u32) -> u8 {
-        // CIA-B ($BFD000-$BFDF00): Even byte addresses (A0 = 0)
-        if (Self::CIA_B_START..=Self::CIA_B_END).contains(&addr) {
-            if (addr & 1) == 0 {
-                let reg = ((addr >> 8) & 0x0F) as u8;
-                return self.cia_b.read_register(reg);
-            }
-            return 0xFF;
+        match Self::decode_cia_register(addr) {
+            Some((CiaId::A, reg)) => self.cia_a.read_register(reg),
+            Some((CiaId::B, reg)) => self.cia_b.read_register(reg),
+            None => 0xFF,
         }
-        // CIA-A ($BFE001-$BFEF01): Odd byte addresses (A0 = 1)
-        if (Self::CIA_A_START..=Self::CIA_A_END).contains(&addr) {
-            if (addr & 1) == 1 {
-                let reg = ((addr >> 8) & 0x0F) as u8;
-                return self.cia_a.read_register(reg);
-            }
-            return 0xFF;
-        }
-        0xFF
     }
 
     /// Reads an 8-bit byte from CIA register space without side-effects for debugging inspection
     pub fn read_cia_byte_debug(&self, addr: u32) -> u8 {
-        if (Self::CIA_B_START..=Self::CIA_B_END).contains(&addr) {
-            if (addr & 1) == 0 {
-                let reg = ((addr >> 8) & 0x0F) as u8;
-                return self.cia_b.read_register_debug(reg);
-            }
-            return 0xFF;
+        match Self::decode_cia_register(addr) {
+            Some((CiaId::A, reg)) => self.cia_a.read_register_debug(reg),
+            Some((CiaId::B, reg)) => self.cia_b.read_register_debug(reg),
+            None => 0xFF,
         }
-        if (Self::CIA_A_START..=Self::CIA_A_END).contains(&addr) {
-            if (addr & 1) == 1 {
-                let reg = ((addr >> 8) & 0x0F) as u8;
-                return self.cia_a.read_register_debug(reg);
-            }
-            return 0xFF;
-        }
-        0xFF
     }
 
     /// Writes an 8-bit byte to CIA register space ($BF0000..$BFFFFF)
     fn write_cia_byte(&mut self, addr: u32, val: u8) {
-        // CIA-B ($BFD000-$BFDF00)
-        if (Self::CIA_B_START..=Self::CIA_B_END).contains(&addr) {
-            if (addr & 1) == 0 {
-                let reg = ((addr >> 8) & 0x0F) as u8;
+        match Self::decode_cia_register(addr) {
+            Some((CiaId::B, reg)) => {
                 self.cia_b.write_register(reg, val);
             }
-            return;
-        }
-        // CIA-A ($BFE001-$BFEF01)
-        if (Self::CIA_A_START..=Self::CIA_A_END).contains(&addr) && (addr & 1) == 1 {
-            let reg = ((addr >> 8) & 0x0F) as u8;
-            self.cia_a.write_register(reg, val);
-            // CIA-A bit 0 of Port A ($BFE001) controls the low-memory overlay (_OVL)
-            if reg == 0 {
-                if (val & 0x01) == 0 {
-                    self.mem.map_kickstart_to_low_memory();
-                } else {
-                    self.mem.map_chip_ram_to_low_memory();
+            Some((CiaId::A, reg)) => {
+                self.cia_a.write_register(reg, val);
+                // CIA-A bit 0 of Port A ($BFE001) controls the low-memory overlay (_OVL).
+                if reg == cia_reg::cia_a::PRA {
+                    if (val & 0x01) == 0 {
+                        self.mem.map_kickstart_to_low_memory();
+                    } else {
+                        self.mem.map_chip_ram_to_low_memory();
+                    }
                 }
             }
+            None => {}
         }
     }
 

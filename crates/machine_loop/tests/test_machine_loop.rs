@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use config::cia_reg;
 use config::custom_reg;
 use config::A500Config;
 use machine_loop::{A500Machine, AddressBus};
@@ -34,19 +35,19 @@ fn test_machine_interrupt_arbitration() {
     machine.step_cycles(2);
 
     // Trigger CIA-A interrupt -> IPL 2
-    machine.cia_a.write_register(0xD, 0x81); // Enable Timer A IRQ
-    machine.cia_a.write_register(0x4, 1);
-    machine.cia_a.write_register(0x5, 0);
-    machine.cia_a.write_register(0xE, 0x01); // Start Timer A
+    machine.cia_a.write_register(cia_reg::cia_a::ICR, 0x81); // Enable Timer A IRQ
+    machine.cia_a.write_register(cia_reg::cia_a::TALO, 1);
+    machine.cia_a.write_register(cia_reg::cia_a::TAHI, 0);
+    machine.cia_a.write_register(cia_reg::cia_a::CRA, 0x01); // Start Timer A
     machine.step_cycles(15);
     assert!(machine.cia_a.irq_pending());
     assert_eq!(machine.paula.pending_interrupt_level(), 2);
 
     // Trigger CIA-B interrupt -> IPL 6 (higher priority than Level 2)
-    machine.cia_b.write_register(0xD, 0x81);
-    machine.cia_b.write_register(0x4, 1);
-    machine.cia_b.write_register(0x5, 0);
-    machine.cia_b.write_register(0xE, 0x01);
+    machine.cia_b.write_register(cia_reg::cia_b::ICR, 0x81);
+    machine.cia_b.write_register(cia_reg::cia_b::TALO, 1);
+    machine.cia_b.write_register(cia_reg::cia_b::TAHI, 0);
+    machine.cia_b.write_register(cia_reg::cia_b::CRA, 0x01);
     machine.step_cycles(15);
     assert!(machine.cia_b.irq_pending());
     assert_eq!(machine.paula.pending_interrupt_level(), 6);

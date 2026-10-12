@@ -7,7 +7,7 @@
 
 use agnus::Agnus;
 use cia::{Cia, CiaId};
-use config::custom_reg;
+use config::{cia_reg, custom_reg};
 use config::{A500Config, RtcModel, VideoStandard};
 use denise::{Denise, DeniseModel};
 use memory_bus::MemoryBus;
@@ -214,10 +214,6 @@ fn test_memory_bus_canonical_constants() {
     assert_eq!(memory_bus::MemoryBus::BANK_CUSTOM, 0xDF);
     assert_eq!(memory_bus::MemoryBus::BANK_CIA, 0xBF);
     assert_eq!(memory_bus::MemoryBus::BANK_RTC, 0xDC);
-    assert_eq!(memory_bus::MemoryBus::CIA_A_START, 0xBFE001);
-    assert_eq!(memory_bus::MemoryBus::CIA_A_END, 0xBFEF01);
-    assert_eq!(memory_bus::MemoryBus::CIA_B_START, 0xBFD000);
-    assert_eq!(memory_bus::MemoryBus::CIA_B_END, 0xBFDF00);
     assert_eq!(memory_bus::MemoryBus::RTC_START, 0xDC0000);
     assert_eq!(memory_bus::MemoryBus::RTC_END, 0xDC003F);
     assert_eq!(memory_bus::MemoryBus::CUSTOM_REG_OFFSET_MASK, 0x01FE);
@@ -318,7 +314,7 @@ fn test_debug_read_and_register_method_conventions() {
     // 4. CIA debug byte read does not clear or alter state
     mb.cia_a.pra = 0xAA;
     let debug_cia = mb.router().read_cia_byte_debug(0xBFE001);
-    assert_eq!(debug_cia, mb.cia_a.read_register_debug(0));
+    assert_eq!(debug_cia, mb.cia_a.read_register_debug(cia_reg::cia_a::PRA));
     assert_eq!(debug_cia, 0xAA);
 }
 

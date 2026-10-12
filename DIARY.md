@@ -3402,3 +3402,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: graphify update .
   - PASS: scoped review of nine tracked design specifications found no corrections
   - NOT RUN: full SingleStep, milestone profile and whole-machine captures
+---
+
+### [2026-10-13 00:29 CET] — Use canonical CIA register addresses throughout bus and chip
+- **Affected Subsystems**:
+  - `crates/memory_bus`
+  - `crates/cia`
+  - `crates/config`
+  - `crates/machine_loop tests`
+  - `Obsidian/Amiga/Design/MemoryBus.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Decode all connected CIA addresses explicitly after masking mirror bits
+  - pass canonical full addresses into CIA register operations and delayed writes
+  - migrate direct callers and add routing and CIA regression tests
+  - describe the implemented CIA routing in MemoryBus design
+- **Architectural Rationale & Trade-Offs**:
+  - Keep register identity explicit across MemoryBus and CIA and avoid selector aliases that could mismatch the full register addresses
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit, including ordinary workspace tests, standard harness tests, Python contracts, English, formatting, Clippy, architecture, hardware and code-quality checks
+  - PASS: focused cia, memory_bus, machine_loop and config crate suites
+  - PASS: vault metadata and link audit
+  - PASS: graphify update . and git diff --check
+  - NOT RUN: full SingleStep, milestone profile and whole-machine captures

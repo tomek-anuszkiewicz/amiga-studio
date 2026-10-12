@@ -435,40 +435,6 @@ pub mod custom_reg {
 /// Each chip has the same register selectors but occupies a different byte lane.
 /// Selector $B is unconnected on both chips.
 pub mod cia_reg {
-    /// Register selectors shared by CIA-A and CIA-B (address bits 11..8).
-    pub mod selector {
-        /// Port A data.
-        pub const PRA: u8 = ((super::cia_a::PRA >> 8) & 0x0F) as u8;
-        /// Port B data.
-        pub const PRB: u8 = ((super::cia_a::PRB >> 8) & 0x0F) as u8;
-        /// Port A data direction.
-        pub const DDRA: u8 = ((super::cia_a::DDRA >> 8) & 0x0F) as u8;
-        /// Port B data direction.
-        pub const DDRB: u8 = ((super::cia_a::DDRB >> 8) & 0x0F) as u8;
-        /// Timer A low byte.
-        pub const TALO: u8 = ((super::cia_a::TALO >> 8) & 0x0F) as u8;
-        /// Timer A high byte.
-        pub const TAHI: u8 = ((super::cia_a::TAHI >> 8) & 0x0F) as u8;
-        /// Timer B low byte.
-        pub const TBLO: u8 = ((super::cia_a::TBLO >> 8) & 0x0F) as u8;
-        /// Timer B high byte.
-        pub const TBHI: u8 = ((super::cia_a::TBHI >> 8) & 0x0F) as u8;
-        /// Time-of-day low byte.
-        pub const TODLO: u8 = ((super::cia_a::TODLO >> 8) & 0x0F) as u8;
-        /// Time-of-day middle byte.
-        pub const TODMID: u8 = ((super::cia_a::TODMID >> 8) & 0x0F) as u8;
-        /// Time-of-day high byte.
-        pub const TODHI: u8 = ((super::cia_a::TODHI >> 8) & 0x0F) as u8;
-        /// Serial data.
-        pub const SDR: u8 = ((super::cia_a::SDR >> 8) & 0x0F) as u8;
-        /// Interrupt status and mask.
-        pub const ICR: u8 = ((super::cia_a::ICR >> 8) & 0x0F) as u8;
-        /// Timer A and serial control.
-        pub const CRA: u8 = ((super::cia_a::CRA >> 8) & 0x0F) as u8;
-        /// Timer B and time-of-day control.
-        pub const CRB: u8 = ((super::cia_a::CRB >> 8) & 0x0F) as u8;
-    }
-
     /// CIA-A registers on the odd-byte lane ($BFE001–$BFEF01).
     pub mod cia_a {
         /// Port A data: game-port fire, floppy status, LED, and overlay.

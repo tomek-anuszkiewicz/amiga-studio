@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "memory_bus"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-12
+updated: 2026-10-13
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[Machine Loop.md](Machine%20Loop.md)", "[DMA.md](DMA.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[RTC.md](RTC.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)"]
 tracked_paths:
   - "crates/memory_bus"
@@ -39,8 +39,8 @@ Every `MemoryBus` byte or word access masks the address to 24 bits and selects i
 | --- | --- |
 | `$000000-$07FFFF` | Kickstart ROM while the low-memory overlay is active; otherwise 512 KB Chip RAM. The physical-memory bank handlers make this selection. |
 | `$200000-$5FFFFF` | Optional 4 MB Fast RAM in the expanded preset. Other addresses without configured storage use open bus. |
-| `$BFD000-$BFDF00`, even bytes | CIA-B registers. |
-| `$BFE001-$BFEF01`, odd bytes | CIA-A registers. Other bytes in bank `$BF` read as `$FF` and ignore writes. |
+| `$BFD000-$BFDF00`, even bytes | CIA-B registers; address bits A7–A1 mirror each register. |
+| `$BFE001-$BFEF01`, odd bytes | CIA-A registers; address bits A7–A1 mirror each register. Other bytes in bank `$BF` read as `$FF` and ignore writes. |
 | `$C00000-$C7FFFF` | Optional 512 KB Slow RAM in standard and expanded presets. |
 | `$DC0000-$DC003F` | RTC byte interface; its device implementation accepts odd addresses when a clock is installed. Other addresses in bank `$DC` return the configured unmapped byte on reads and ignore writes. |
 | `$DF0000-$DFFFFF` | Custom-register routing, using the low register-offset bits. These addresses alias the same 512-byte register window in the current router. |
@@ -50,7 +50,7 @@ The preset table and installed storage are built in [`presets.rs`](../../../crat
 
 ### CIA and boot overlay
 
-Within bank `$BF`, the router accepts CIA-B on even bytes of its range and CIA-A on odd bytes of its range. Register selection is `(addr >> 8) & $0F`. A word access splits into two ordered byte accesses, then combines or separates them in big-endian order; only the connected lane reaches a CIA. Other lanes read `$FF` and discard writes.
+Within bank `$BF`, the router uses the named CIA-A and CIA-B register addresses in [`cia_reg`](../../../crates/config/src/registers.rs) as canonical addresses. Address bits A7–A1 do not select a register, so addresses with different values in those bits mirror the same register. Address bits A11–A8 choose the CIA register; the router passes each canonical address to the selected CIA instance, which matches that full address. Selector `$B` is unconnected. A word access splits into two ordered byte accesses, then combines or separates them in big-endian order; only the connected byte lane reaches a CIA. Other addresses read `$FF` and discard writes.
 
 Writing CIA-A Port A register zero through `MemoryBus` also updates the low-memory mapping: bit 0 clear calls `map_kickstart_to_low_memory()`, while bit 0 set calls `map_chip_ram_to_low_memory()`. `PhysicalMemory` changes banks `$00-$07` between ROM and Chip RAM handlers. The machine additionally applies CIA-A's reported overlay transition during its subsystem step. At construction and reset, `PhysicalMemory` engages the ROM overlay so reset vectors can be read from low memory. Cold reset clears RAM; warm reset preserves it. Those operations belong to physical memory and the machine, not to a persistent `MemoryBus` state.
 
