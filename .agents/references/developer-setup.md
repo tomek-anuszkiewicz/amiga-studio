@@ -43,12 +43,16 @@ trunk serve crates/gui/index.html --open
 <a id="2-external-reference-sources-verification-testbeds"></a><a id="2-external-reference-sources--verification-testbeds"></a><a id="3-external-reference-sources-verification-testbeds"></a>
 ## 2. External Reference Sources & Verification Testbeds
 
-The emulator core does not rely on guesswork or high-level approximations; it validates execution against authoritative external test suites, physical silicon captures, and clean-room reference implementations:
+The emulator uses external test suites, hardware measurements, and reference implementations. These sources serve different purposes; a hardware capture can establish observed signals, while emulator and FPGA code provide models to compare against them:
 
-- **M68000 CPU Testing (Tom Harte SingleStepTests):** Used for exhaustive, cycle-exact verification of the Motorola 68000 processor core. Evaluates instruction execution, prefetch queue progression, and Condition Code Register (CCR) flag calculations against ~1,000,000 test vectors captured directly from physical 68000 silicon pins.
-- **Whole-Machine & Chipset Verification (vAmiga Test Suite - vAmigaTS):** Used to test the emulator against golden Amiga 500 hardware behavior. Contains 2,077 test cases validating Copper timing, Blitter DMA, Denise display window clipping, and Paula audio by comparing rendered frames against golden 716×285 24-bit RGB viewport captures recorded from real Amigas.
-- **Clean-Room C++ Reference (vAmiga):** Used as an architectural and algorithmic reference implementation for custom chipset timing, bus arbitration, and register interactions.
-- **Hardware Diagnostics (Amiga Test Kit):** Bootable diagnostic floppy disk image used for end-to-end system loop verification, memory testing, and peripheral validation.
+- **[Tom Harte SingleStepTests](https://github.com/SingleStepTests/680x0):** Physical M68000 instruction test vectors.
+- **[vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS):** Amiga chipset regression tests and reference captures.
+- **[vAmiga](https://github.com/dirkwhoffmann/vAmiga):** C++ reference emulator for chipset behavior and timing.
+- **[Amiga Test Kit](https://github.com/keirf/amiga-stuff):** Bootable hardware diagnostics.
+- **[Amiga Replacement Project](https://github.com/nonarkitten/amiga_replacement_project):** Work-in-progress Verilog chip reconstructions; its Paula core still calls for verification on real hardware.
+- **[MiniMig](https://github.com/cristianoag/minimig):** FPGA Amiga 500 implementation for comparing chipset coordination.
+- **[MiniMig-AGA for MiSTer](https://github.com/MiSTer-devel/Minimig-AGA_MiSTer):** Later FPGA core supporting OCS, ECS, and AGA configurations.
+- **[Techtravels.org](https://www.techtravels.org/):** Amiga hardware investigations, including logic-analyzer measurements and Paula circuit analysis; distinguish measured pins from inferred internal behavior.
 
 > [!NOTE]
 > **Graphify Code Knowledge Graph Integration:** Downloaded reference source files (specifically `ref_src/vAmiga/` and test harnesses) are parsed and indexed directly into the unified **Graphify graph database** (`graphify-out/`) alongside active Rust crates (`crates/`). This allows developers and AI agents to query cross-codebase symbol definitions, trace call hierarchies, and compare Rust implementations against reference C++ algorithms via `graphify query` (see [Chapter 6: Code Structure & Relationships: Graphify](#6-code-structure-relationships-graphify)).

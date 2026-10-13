@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "draft"
 created: 2026-09-14
-updated: 2026-10-12
+updated: 2026-10-14
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[DMA.md](DMA.md)", "[Interrupts.md](Interrupts.md)", "[Game Ports.md](Game%20Ports.md)", "[Keyboard.md](Keyboard.md)"]
 ---
 
@@ -30,6 +30,20 @@ This is a hardware model for a future [machine coordinator](Machine%20Loop.md), 
 | `HSYNC*`, `VSYNC*`, `CSYNC*` | Agnus timing network → video path and other timing inputs | Horizontal, vertical, and composite sync. Agnus can instead accept external horizontal/vertical sync in its documented resync mode. Denise receives composite sync for video blanking. | S2, S5, S6; P, F |
 | `STREQU`, `STRVBL`, `STRHOR`, `STRLONG` on `RGA` | Agnus refresh-time address code → Denise; `STRHOR` also → Paula | Sync is also encoded as register-address strobes during refresh opportunities, distinct from physical `HSYNC*`/`VSYNC*` lines. | A, F |
 | `VSYNC*` or `EXTICK`; `HSYNC*` | Video timing/expansion tick → CIA-A TOD; horizontal sync → CIA-B TOD | The CIA-A TOD source is jumper-selected on this board; CIA-B counts horizontal sync events. These inputs are separate from the timer E-Clock. | S6, AF |
+
+### Paula–Agnus DMA request timing
+
+Agnus marks the beginning of a scan line with a horizontal sync strobe encoded on `RGA` during refresh. The Hardware Reference Manual lists `STRHOR` (`$03C`) for Paula as well as Denise. Thus Paula can synchronize its request sequence from the register-address bus and the shared clocks; it does not need a separate `HSYNC*` input. A [reconstructed Paula circuit](https://github.com/nonarkitten/amiga_replacement_project/blob/master/paula/Paula.v) resets its `DMAL` shift counter when it decodes a horizontal strobe and loads pending disk and audio requests for that line. This is a useful implementation model, not direct proof of Paula's internal sampling edge. The reconstruction also treats `STREQU` and `STRVBL` as horizontal strobes, whereas Appendix B explicitly lists Paula only for `STRHOR`.
+
+The physical A500 [logic-analyzer capture](https://www.techtravels.org/2026/08/from-flux-to-filenames-335ms-inside-paula/) shows that Paula sends a fixed 16-position frame over the single active-high `DMAL` wire at the start of each line, one bit per CCK (`$00`–`$0F`). Agnus knows the kind of request from its position in this frame; `DMAL` carries no address or channel number. Pending work in Paula's disk word queue or audio state machines supplies the bits. Agnus then decides whether and when to grant the corresponding transfer; the request itself moves no word.
+
+| `DMAL` position | Meaning | Corresponding transfer opportunity |
+| :--- | :--- | :--- |
+| `$00`–`$01` | Zero in the measured frame and reconstructed shift register. | None. |
+| `$02/$03`, `$04/$05`, `$06/$07` | Three disk pairs: direction bit followed by a request bit, one pair per queued word. For disk reads the direction bits are zero. | Requests at `$03`, `$05`, `$07` led to disk grants at `$07`, `$09`, `$0B` in the capture: four CCK later. |
+| `$08/$09`, `$0A/$0B`, `$0C/$0D`, `$0E/$0F` | One pair for each audio channel, 0 through 3. The reconstruction places a restart-related qualifier first and the channel's data request second. | The second-bit positions align four CCK before the audio transfer positions `$0D`, `$0F`, `$11`, `$13`; this audio timing is inferred from the reconstruction and [DMA slot schedule](DMA.md), not measured by the cited disk capture. |
+
+For disk reads, a queue with one, two, or three waiting words asserts the last request bit, the last two, or all three. The capture verifies the disk request positions and four-CCK request-to-grant interval. The exact audio pair semantics and the treatment of alternate horizontal strobes still need original-hardware confirmation before a pin-level emulator model is fixed. The `AUDxDR` and `AUDxDSR` names in the Hardware Reference Manual describe audio state-machine requests; they are encoded into `DMAL` rather than separate board wires.
 
 ## Interrupts and reset
 

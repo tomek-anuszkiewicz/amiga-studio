@@ -75,6 +75,7 @@ skylake
 spectre
 stritter
 swin
+techtravels
 tesseract
 tosec
 tredennick

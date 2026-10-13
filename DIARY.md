@@ -3608,3 +3608,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Roadmap check, vault link and frontmatter audit, and staged-content English scan passed
   - Commit profile failed on eight unknown-word occurrences in unrelated dirty documentation and a sandboxed RAG MCP launch timeout
   - All 13 RAG MCP contracts passed outside the sandbox; other commit-profile checks passed
+---
+
+### [2026-10-14 01:42 CEST] — Record chipset research sources and pending roadmap work
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `.agents/references/developer-setup.md`
+  - `Obsidian/Amiga/Design/Cross-Chip Signals and Action Dispatch Catalog.md`
+  - `Obsidian/Amiga/Design/Custom Chip Register Ownership and Access Matrix.md`
+  - `tools/verification/checks/english_words`
+- **What Was Changed (The Concrete Reality)**:
+  - Added optional FPGA references and a hardware web-evidence task
+  - Added a CPU benchmark task and renumbered Step 2 with its Step 3 reference
+  - Distinguished measured Paula DMAL timing from reconstructed audio behavior
+  - Corrected Paula participation in DMACON writes
+  - Added three user-approved vocabulary terms
+- **Architectural Rationale & Trade-Offs**:
+  - Keep future research and verification work discoverable while aligning shared-bus documentation with cited evidence
+- **Verification & Test Results**:
+  - English scan, roadmap check, vault link and frontmatter audit, and diff check passed
+  - Full commit verification passed outside the sandbox, including all RAG MCP contracts

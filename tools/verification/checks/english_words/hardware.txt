@@ -172,6 +172,7 @@ fff
 fffc
 fffd
 ffff
+fpga
 gameport
 gameports
 genlock
