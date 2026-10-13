@@ -1777,3 +1777,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick pre-flight passed
   - architecture rules passed 19 tests
   - no conversion run
+---
+
+### [2026-10-13 22:07 CEST] — Validate conversion responses and clarify PDF preparation
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Validate JSON responses before caching and on reuse
+  - report complete JSON failure context and handle attached imageView events
+  - centralize fixed OCR settings
+  - clarify page and table response prompts and table failure diagnostics
+- **Architectural Rationale & Trade-Offs**:
+  - Keep malformed conversion outputs out of the shared cache and make failures traceable while retaining the configured model and source data
+- **Verification & Test Results**:
+  - Shared conversion tests passed 32
+  - PDF preparation tests passed 37
+  - quick pre-flight passed
+  - architecture rules passed 19
+  - no live PDF conversion was run

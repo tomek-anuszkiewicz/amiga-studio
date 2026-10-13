@@ -1,6 +1,7 @@
 """Pinned app-server SDK transport, with isolated threads and explicit image detail."""
 
 from importlib.metadata import version
+import json
 from pathlib import Path
 import tempfile
 import threading
@@ -84,6 +85,7 @@ class CodexTransport:
             if thread.sandbox.root.type != "readOnly":
                 raise RuntimeError("Conversion requires a read-only thread")
             items = [{"type": "text", "text": prompt}]
+            input_images = {Path(p).resolve() for p in images}
             items.extend({"type": "localImage", "path": str(Path(p).resolve()), "detail": "original"} for p in images)
             options = {"model": selected.model, "effort": selected.reasoning_effort}
             turn = self._client.turn_start(thread.thread.id, items, options)
@@ -114,8 +116,17 @@ class CodexTransport:
                     usage = payload["tokenUsage"]["last"]
                 if event.method == "item/completed":
                     item = payload["item"]
+                    if item["type"] == "imageView" and isinstance(item.get("path"), str):
+                        viewed = (Path(self._directory.name) / item["path"]).resolve()
+                        if viewed in input_images:
+                            print(f"[conversion] allowed imageView of attached image: {viewed}", flush=True)
+                            continue
                     if item["type"] not in {"userMessage", "agentMessage", "reasoning"}:
-                        raise RuntimeError(f"Unexpected conversion tool/item: {item['type']}")
+                        context = {"thread_id": thread.thread.id, "turn_id": turn.turn.id,
+                                   "item": {key: item[key] for key in ("type", "id", "path") if key in item},
+                                   "input_images": [str(Path(p).resolve()) for p in images]}
+                        raise RuntimeError(f"Unexpected conversion tool/item: {item['type']}; "
+                                           f"context={json.dumps(context, ensure_ascii=False)}")
                     if item["type"] == "agentMessage" and item.get("phase") in (None, "final_answer"):
                         messages.append(item["text"])
                 if event.method == "turn/completed":

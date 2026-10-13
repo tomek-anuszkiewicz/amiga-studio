@@ -139,6 +139,28 @@ class ClientTests(unittest.TestCase):
                          '\n\nDocument Title: Sample\n\nHTML Content:\n```html\n' + source + '\n```')
         self.assertNotIn('schema', transport.calls[0][2])
 
+    def test_json_application_validator_runs_before_caching_and_on_reuse(self):
+        def check(value):
+            if value != {'signal': 'CCK'}:
+                raise ValueError('Changed source content')
+        transport = FakeTransport(text='{"signal":"wrong"}')
+        with CodexClient(config(), stage='html_to_markdown', transport=transport,
+                         cache=self.cache, operation='validated-json') as client:
+            with self.assertRaisesRegex(ValueError, 'Changed source content'):
+                client.generate_json('same request', validator=check)
+            transport.text = '{"signal":"CCK"}'
+            self.assertEqual(client.generate_json('same request', validator=check), {'signal': 'CCK'})
+            self.assertEqual(len(transport.calls), 2)
+        unused = FakeTransport(error=AssertionError('Should use validated cache'))
+        with CodexClient(config(), stage='html_to_markdown', transport=unused,
+                         cache=self.cache, operation='validated-json') as client:
+            self.assertEqual(client.generate_json('same request', validator=check), {'signal': 'CCK'})
+            def reject(value):
+                raise ValueError('New guard rejects this response')
+            with self.assertRaisesRegex(RuntimeError, 'Invalid cached conversion response'):
+                client.generate_json('same request', validator=reject)
+            self.assertEqual(unused.calls, [])
+
     def test_cache_hits_do_not_make_requests(self):
         image = Path(self.tmp.name) / "image.png"
         image.write_bytes(b"sample image")
@@ -294,6 +316,19 @@ class ClientTests(unittest.TestCase):
             self.assertEqual(len(transport.calls), 1)
         self.assertFalse(self.cache.directory.exists())
 
+    def test_invalid_json_reports_complete_response_and_request_context(self):
+        response = '{"format" "markdown", "md_text": "broken"}\n'
+        image = Path(self.tmp.name) / "table.png"
+        image.write_bytes(b"image fixture")
+        with self.assertRaises(json.JSONDecodeError) as caught:
+            self.client(FakeTransport(text=response)).generate_json("table", image_path=image)
+        diagnostic = json.loads(caught.exception.__notes__[0])
+        self.assertEqual(diagnostic["response"], response)
+        self.assertEqual(diagnostic["input_images"], [str(image.resolve())])
+        self.assertIn("stage", diagnostic)
+        self.assertIn("operation", diagnostic)
+        self.assertFalse(self.cache.directory.exists())
+
     def test_pdf_json_uses_prompt_without_local_schema_enforcement(self):
         pdf_config = {"llm": {"extra": True, "stages": {"03_page_conversion": {"model": "fixture", "reasoning_effort": "medium", "extra": "retained"}}}}
         transport = FakeTransport(text='{"segments": "unvalidated"}')
@@ -404,6 +439,38 @@ class TransportTests(unittest.TestCase):
         for wire in (WireClient(status="interrupted"), WireClient(item_type="commandExecution")):
             with self.assertRaises(RuntimeError):
                 self.transport(wire).run(selection(config(), "html_to_markdown"), "reject")
+
+    def test_unexpected_image_view_reports_path_and_request_context(self):
+        wire = WireClient()
+        payload = {"item": {"type": "imageView", "id": "image-item", "path": "requested.png"}}
+        wire.next_turn_notification = lambda _: SimpleNamespace(
+            method="item/completed", payload=SimpleNamespace(model_dump=lambda **_: payload))
+        with self.assertRaises(RuntimeError) as caught:
+            self.transport(wire).run(selection(config(), "html_to_markdown"), "inspect", images=[Path("input.png")])
+        for detail in ("requested.png", "image-item", "input.png", "thread_id", "turn_id"):
+            self.assertIn(detail, str(caught.exception))
+
+    def test_image_view_of_attached_image_keeps_waiting_for_final_answer(self):
+        wire = WireClient()
+        original = wire.next_turn_notification
+        payload = {"item": {"type": "imageView", "id": "image-item",
+                            "path": str(Path("input.png").resolve())}}
+        events = [SimpleNamespace(method="item/completed",
+                                  payload=SimpleNamespace(model_dump=lambda **_: payload))]
+        wire.next_turn_notification = lambda turn_id: events.pop() if events else original(turn_id)
+        result = self.transport(wire).run(selection(config(), "html_to_markdown"),
+                                          "inspect", images=[Path("input.png")])
+        self.assertEqual(result["text"], "complete")
+        self.assertEqual(result["status"], "completed")
+
+    def test_image_view_without_attached_image_or_path_is_rejected(self):
+        for path, images in ((str(Path("input.png").resolve()), []), (None, [Path("input.png")])):
+            wire = WireClient()
+            payload = {"item": {"type": "imageView", "path": path}}
+            wire.next_turn_notification = lambda _: SimpleNamespace(
+                method="item/completed", payload=SimpleNamespace(model_dump=lambda **_: payload))
+            with self.subTest(path=path), self.assertRaises(RuntimeError):
+                self.transport(wire).run(selection(config(), "html_to_markdown"), "inspect", images=images)
 
     def test_capacity_notification_aborts_runtime_retry(self):
         for info in ("rateLimitExceeded", "usageLimitExceeded", "serverOverloaded",

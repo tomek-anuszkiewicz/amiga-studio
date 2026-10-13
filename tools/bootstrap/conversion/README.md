@@ -1,6 +1,6 @@
 # Shared Conversion Client
 
-The PDF and HTML programs use `CodexClient` for authentication, request execution,
+The PDF, HTML and explicit Book Review Codex commands use `CodexClient` for authentication, request execution,
 completed-response caching and metrics. Their own README files document program
 configuration and invocation; their prompts define inference behavior.
 
@@ -16,6 +16,9 @@ Requests contain the prompt and source data, with applicable images sent at
 `detail: original`. No separate output schema is sent. The transport verifies
 the actual thread configuration and completion before returning a result.
 Failures stop conversion without switching model, effort or provider.
+An `imageView` event is accepted only when its resolved path matches an image
+attached to that request. The transport logs the repeated view and continues
+waiting for the final response. Other image paths and tool items are rejected.
 Rate, usage-budget and server-capacity error notifications close the affected
 transport immediately, including notifications for which the runtime proposes
 a retry. The converter does not retry those requests. PDF parallel workers own
@@ -33,6 +36,12 @@ operation ID, model/effort, pinned runtime, contract version, execution settings
 prompt, ordered image-byte hashes and image detail. Stage names and numbers are
 execution labels rather than cache identity.
 
-Only completed responses are cached; invalid JSON or invalid HTML-converter
-Markdown is not reused. Metrics distinguish new calls, cache hits and execution
+Only completed responses are cached; invalid JSON, invalid HTML-converter
+Markdown and JSON rejected by an explicitly supplied application validator are
+not cached. Cached responses are checked by that validator on reuse too.
+Metrics distinguish new calls, cache hits and execution
 time. Token usage returned from cache belongs to the original request.
+
+JSON parsing failures include the full model response, stage, operation and input
+image paths in exception notes printed to the console. Stage 05 also identifies
+the failing table. These diagnostics do not repair or cache invalid responses.

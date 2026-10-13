@@ -20,13 +20,18 @@ def convert_pages(workspace, config, pages=None):
     output = workspace / "03_page_conversion"
     output.mkdir(parents=True, exist_ok=True)
     def convert(codex, path):
+        print(f"[conversion] {path.stem}: requesting objects; image={path.with_suffix('.png').name}", flush=True)
         data = read_json(path)
         # Character rectangles belong to deterministic book import, not the model request.
         for block in data["blocks"]:
             block.pop("char_bboxes", None)
         request = (prompt + "\n\nSource data (complete extracted-text JSON):\n"
                    + json.dumps(data, ensure_ascii=False))
-        return codex.generate_json(request, image_path=path.with_suffix(".png"))
+        calls, cached = codex.call_count, codex.cached_call_count
+        result = codex.generate_json(request, image_path=path.with_suffix(".png"))
+        print(f"[conversion] {path.stem}: response received; "
+              f"calls={codex.call_count - calls}, cache_hits={codex.cached_call_count - cached}", flush=True)
+        return result
 
     def accept(path, value):
         page_id = path.stem

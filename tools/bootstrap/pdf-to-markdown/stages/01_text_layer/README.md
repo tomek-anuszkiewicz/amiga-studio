@@ -7,10 +7,12 @@ to request new preparation. The original PDF remains unchanged.
 
 Retain native text. For textless pages, run local Tesseract through PyMuPDF.
 The [pipeline configuration](../../config.yaml) stores shared `rendering.dpi`
-(default 300) and OCR settings under `stages.01_text_layer`: language, the URL
-and SHA-256 of the exact language model, RGB/alpha, compression and PDF save
-settings. Existing workspace configurations override these defaults without
-being rewritten. PyMuPDF detects the data directory or uses `TESSDATA_PREFIX`;
+(default 300) and the URL and SHA-256 of the exact language model under
+`stages.01_text_layer`. These configurable values use repository defaults when
+omitted, without rewriting workspace configuration. OCR uses fixed English
+(`eng`), RGB without alpha, compressed OCR output, and PDF save settings
+`deflate=True, garbage=4`, defined in the preparation code and recorded in
+provenance. PyMuPDF detects the data directory or uses `TESSDATA_PREFIX`;
 before new OCR the model bytes must match the configured hash. Overlay the OCR
 text while retaining the original page graphics. No model request is made.
 

@@ -2,6 +2,7 @@
 
 import json
 import os
+from pathlib import Path
 import time
 
 from .cache import ResponseCache, identity
@@ -66,9 +67,20 @@ class CodexClient:
         self.metrics.append(metric)
         record(metric)
 
-    def generate_json(self, prompt, *, image_path=None):
+    def generate_json(self, prompt, *, image_path=None, validator=None):
         images = [] if image_path is None else (image_path if isinstance(image_path, (list, tuple)) else [image_path])
-        return json.loads(self._generate(prompt, images, validator=json.loads))
+        def parse(text):
+            try:
+                value = json.loads(text)
+                if validator is not None:
+                    validator(value)
+                return value
+            except json.JSONDecodeError as error:
+                error.add_note(json.dumps({"stage": self.selected.stage, "operation": self.operation,
+                                           "input_images": [str(Path(p).resolve()) for p in images],
+                                           "response": text}, ensure_ascii=False))
+                raise
+        return parse(self._generate(prompt, images, validator=parse))
 
     def close(self):
         self.transport.close()

@@ -52,7 +52,11 @@ def transform_tables(workspace, config, pages=None):
             _, _, label, crop_path = job
             print(f"[table] {label}: transcribing...", flush=True)
             started = perf_counter()
-            result = codex.generate_json(prompt, image_path=crop_path)
+            try:
+                result = codex.generate_json(prompt, image_path=crop_path)
+            except Exception as error:
+                error.add_note(f"Table conversion failed: {label}")
+                raise
             print(f"[table] {label}: {result['format']} in "
                   f"{perf_counter() - started:.2f}s", flush=True)
             return result
