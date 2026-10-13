@@ -152,7 +152,7 @@ impl Paula {
             reg::DSKBYTR => self.peek_dskbytr(),
             reg::INTENAR => self.interrupts.read_intenar(),
             reg::INTREQR => self.interrupts.read_intreqr(),
-            _ => 0xFFFF,
+            _ => config::OPEN_BUS_WORD,
         }
     }
 

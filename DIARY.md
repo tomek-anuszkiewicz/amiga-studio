@@ -3455,3 +3455,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - conversion
   - RAG MCP
   - and verification CLI contracts
+---
+
+### [2026-10-13 18:24 CEST] — Use a fixed open-bus placeholder
+- **Affected Subsystems**:
+  - `config`
+  - `physical_memory`
+  - `memory_bus`
+  - `Agnus`
+  - `CIA`
+  - `Denise`
+  - `Paula`
+  - `RTC`
+  - `save state`
+  - `test_runner`
+  - `design specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Define shared open-bus byte and word constants at FF and FFFF
+  - Remove configurable unmapped values from production physical memory and route open-bus reads through the constants
+  - Expand motherboard tests across unmapped banks, CIA lanes, RTC responses, and custom registers
+  - Update affected design specifications and approve undriven as hardware vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Centralize the current fixed bus approximation while keeping the synthetic SingleStep memory fixture separately configurable
+- **Verification & Test Results**:
+  - python tools/verification/verify.py commit passed
+  - Obsidian vault audit passed for 36 specifications and 709 links
+  - full SingleStep suite was not run

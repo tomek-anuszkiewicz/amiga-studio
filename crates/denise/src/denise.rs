@@ -498,7 +498,7 @@ impl Denise {
             reg::JOY0DAT => self.joy0dat,
             reg::JOY1DAT => self.joy1dat,
             reg::CLXDAT => self.read_clxdat(),
-            _ => 0xFFFF,
+            _ => config::OPEN_BUS_WORD,
         }
     }
 
@@ -509,7 +509,7 @@ impl Denise {
             reg::JOY0DAT => self.joy0dat,
             reg::JOY1DAT => self.joy1dat,
             reg::CLXDAT => self.clxdat,
-            _ => 0xFFFF,
+            _ => config::OPEN_BUS_WORD,
         }
     }
 

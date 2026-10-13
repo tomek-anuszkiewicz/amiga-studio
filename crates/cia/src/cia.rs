@@ -257,7 +257,7 @@ impl Cia {
             }
             cia_a::CRA | cia_b::CRA => self.cra,
             cia_a::CRB | cia_b::CRB => self.crb,
-            _ => 0xFF,
+            _ => config::OPEN_BUS_BYTE,
         }
     }
 
@@ -280,7 +280,7 @@ impl Cia {
             cia_a::ICR | cia_b::ICR => self.icr_data,
             cia_a::CRA | cia_b::CRA => self.cra,
             cia_a::CRB | cia_b::CRB => self.crb,
-            _ => 0xFF,
+            _ => config::OPEN_BUS_BYTE,
         }
     }
 

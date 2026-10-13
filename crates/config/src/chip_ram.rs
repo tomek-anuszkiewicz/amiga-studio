@@ -12,14 +12,14 @@
 #[inline(always)]
 pub fn read_u16(ram: &[u8], addr: u32) -> u16 {
     if ram.is_empty() {
-        return 0xFFFF;
+        return crate::OPEN_BUS_WORD;
     }
     let mask = ram.len().wrapping_sub(1);
     let offset = (addr as usize & mask) & !1;
     if offset + 1 < ram.len() {
         u16::from_be_bytes([ram[offset], ram[offset + 1]])
     } else {
-        0xFFFF
+        crate::OPEN_BUS_WORD
     }
 }
 

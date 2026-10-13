@@ -89,7 +89,7 @@ impl RtcMsm6242b {
     pub fn read_byte(&self, addr: u32) -> u8 {
         // Unmapped or even byte addresses (A0 = 0) return floating open bus
         if self.model == RtcModel::None || (addr & 1) == 0 {
-            return 0xFF;
+            return config::OPEN_BUS_BYTE;
         }
 
         let reg = ((addr >> 2) & 0x0F) as usize;
@@ -103,7 +103,7 @@ impl RtcMsm6242b {
             }
             0xE => self.control_e & 0x0F,
             0xF => self.control_f & 0x0F,
-            _ => 0xFF,
+            _ => config::OPEN_BUS_BYTE,
         }
     }
 

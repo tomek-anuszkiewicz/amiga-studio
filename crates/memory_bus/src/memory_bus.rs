@@ -6,7 +6,7 @@
 
 use agnus::Agnus;
 use cia::{Cia, CiaId};
-use config::{cia_reg, custom_reg};
+use config::{cia_reg, custom_reg, OPEN_BUS_BYTE, OPEN_BUS_WORD};
 use denise::Denise;
 use paula::Paula;
 use physical_memory::{AddressBus, BusResult, MemoryBank, PhysicalMemory};
@@ -44,7 +44,7 @@ impl<'a> MemoryBus<'a> {
         let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
         match offset {
             // Early DMA reads are not ordinary CPU-readable registers.
-            custom_reg::agnus::BLTDDAT | custom_reg::paula::DSKDATR => 0xFFFF,
+            custom_reg::agnus::BLTDDAT | custom_reg::paula::DSKDATR => OPEN_BUS_WORD,
             custom_reg::agnus::DMACONR => self.agnus.dmaconr(),
             custom_reg::agnus::VPOSR => self.agnus.vposr(),
             custom_reg::agnus::VHPOSR => self.agnus.vhposr(),
@@ -61,13 +61,13 @@ impl<'a> MemoryBus<'a> {
             custom_reg::paula::INTREQR => self.paula.intreqr(),
             custom_reg::agnus::COPJMP1 => {
                 self.agnus.strobe_copjmp1();
-                0xFFFF
+                OPEN_BUS_WORD
             }
             custom_reg::agnus::COPJMP2 => {
                 self.agnus.strobe_copjmp2();
-                0xFFFF
+                OPEN_BUS_WORD
             }
-            _ => 0xFFFF,
+            _ => OPEN_BUS_WORD,
         }
     }
 
@@ -90,7 +90,7 @@ impl<'a> MemoryBus<'a> {
             custom_reg::paula::DSKBYTR => self.paula.peek_dskbytr(),
             custom_reg::paula::INTENAR => self.paula.intenar_debug(),
             custom_reg::paula::INTREQR => self.paula.intreqr_debug(),
-            _ => 0xFFFF,
+            _ => OPEN_BUS_WORD,
         }
     }
 
@@ -138,7 +138,7 @@ impl<'a> MemoryBus<'a> {
         match Self::decode_cia_register(addr) {
             Some((CiaId::A, reg)) => self.cia_a.read_register(reg),
             Some((CiaId::B, reg)) => self.cia_b.read_register(reg),
-            None => 0xFF,
+            None => OPEN_BUS_BYTE,
         }
     }
 
@@ -147,7 +147,7 @@ impl<'a> MemoryBus<'a> {
         match Self::decode_cia_register(addr) {
             Some((CiaId::A, reg)) => self.cia_a.read_register_debug(reg),
             Some((CiaId::B, reg)) => self.cia_b.read_register_debug(reg),
-            None => 0xFF,
+            None => OPEN_BUS_BYTE,
         }
     }
 
@@ -346,7 +346,7 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     BusResult::Ready(self.rtc.read_byte(addr))
                 } else {
-                    BusResult::Ready(self.mem.unmapped_byte())
+                    BusResult::Ready(OPEN_BUS_BYTE)
                 }
             }
             _ => self.mem.read_byte(addr),
@@ -370,13 +370,13 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 let b0 = if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     self.rtc.read_byte(addr)
                 } else {
-                    self.mem.unmapped_byte()
+                    OPEN_BUS_BYTE
                 };
                 let next_addr = addr.wrapping_add(1);
                 let b1 = if (Self::RTC_START..=Self::RTC_END).contains(&next_addr) {
                     self.rtc.read_byte(next_addr)
                 } else {
-                    self.mem.unmapped_byte()
+                    OPEN_BUS_BYTE
                 };
                 BusResult::Ready(u16::from_be_bytes([b0, b1]))
             }
@@ -470,13 +470,13 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 let b0 = if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     self.rtc.read_byte(addr)
                 } else {
-                    self.mem.unmapped_byte()
+                    OPEN_BUS_BYTE
                 };
                 let next_addr = addr.wrapping_add(1);
                 let b1 = if (Self::RTC_START..=Self::RTC_END).contains(&next_addr) {
                     self.rtc.read_byte(next_addr)
                 } else {
-                    self.mem.unmapped_byte()
+                    OPEN_BUS_BYTE
                 };
                 u16::from_be_bytes([b0, b1])
             }

@@ -21,7 +21,7 @@ The implementation has three cooperating parts:
 | --- | --- |
 | `A500Machine` | Owns CPU, storage, chips, peripherals, and the CCK counter; orders subsystem steps, DMA delivery, signals, resets, and CPU stepping. |
 | `MemoryBus` | Implements CPU byte/word bus operations and routes them by address; connects custom-register reads and writes to the appropriate chip interfaces. |
-| [`PhysicalMemory`](Physical%20Memory.md) | Owns Chip, Slow, and Fast RAM, Kickstart ROM, the bank dispatch table, overlay, open-bus value, and CPU memory contention state. |
+| [`PhysicalMemory`](Physical%20Memory.md) | Owns Chip, Slow, and Fast RAM, Kickstart ROM, the bank dispatch table, overlay, and CPU memory contention state. |
 
 The CPU knows the `AddressBus` interface, whose accesses return `BusResult::Ready(value)` or `BusResult::WaitState`. `PhysicalMemory` also implements that interface for direct or synthetic use; a production CPU step in `A500Machine::step_cck()` receives `MemoryBus`. The CPU handles instruction sequencing and address errors; the router does not decode instructions or advance time.
 
@@ -42,11 +42,11 @@ Every `MemoryBus` byte or word access masks the address to 24 bits and selects i
 | `$BFD000-$BFDF00`, even bytes | CIA-B registers; address bits A7–A1 mirror each register. |
 | `$BFE001-$BFEF01`, odd bytes | CIA-A registers; address bits A7–A1 mirror each register. Other bytes in bank `$BF` read as `$FF` and ignore writes. |
 | `$C00000-$C7FFFF` | Optional 512 KB Slow RAM in standard and expanded presets. |
-| `$DC0000-$DC003F` | RTC byte interface; its device implementation accepts odd addresses when a clock is installed. Other addresses in bank `$DC` return the configured unmapped byte on reads and ignore writes. |
+| `$DC0000-$DC003F` | RTC byte interface; its device implementation accepts odd addresses when a clock is installed. Other addresses in bank `$DC` return the fixed `$FF` placeholder on reads and ignore writes. |
 | `$DF0000-$DFFFFF` | Custom-register routing, using the low register-offset bits. These addresses alias the same 512-byte register window in the current router. |
 | `$F80000-$FFFFFF` | Kickstart ROM. A 256 KB image repeats across this 512 KB range; a 512 KB image fills it. CPU ROM writes are ignored. |
 
-The preset table and installed storage are built in [`presets.rs`](../../../crates/physical_memory/src/presets.rs) and `PhysicalMemory::from_config()`. Unmapped physical-memory reads use `unmapped_byte` (normally `$FF`); word reads use the corresponding 16-bit value. CIA inactive lanes and absent RTC responses return `$FF`. See the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access). The map above describes implemented dispatch rather than every address reserved by Amiga hardware.
+The preset table and installed storage are built in [`presets.rs`](../../../crates/physical_memory/src/presets.rs) and `PhysicalMemory::from_config()`. Unmapped physical-memory reads return the fixed `OPEN_BUS_BYTE` placeholder (`$FF`); word reads return `OPEN_BUS_WORD` (`$FFFF`). CIA inactive lanes and absent RTC responses use the same placeholder. See the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access). The map above describes implemented dispatch rather than every address reserved by Amiga hardware.
 
 ### CIA and boot overlay
 

@@ -12,7 +12,7 @@ use config::{A500Config, RtcModel, VideoStandard};
 use denise::{Denise, DeniseModel};
 use memory_bus::MemoryBus;
 use paula::Paula;
-use physical_memory::{AddressBus, BusResult, PhysicalMemory};
+use physical_memory::{AddressBus, BusResult, MemoryBank, PhysicalMemory};
 use rtc::RtcMsm6242b;
 
 struct TestMotherboard {
@@ -267,11 +267,68 @@ fn test_direct_custom_and_cia_register_writes() {
 }
 
 #[test]
-fn test_memory_bus_open_bus_read_byte() {
+fn test_open_bus_across_unmapped_banks_and_device_lanes() {
     let mut mb = TestMotherboard::new();
+    // These banks have no installed storage in the standard A500 preset.
+    let unmapped = [
+        0x080000, 0x100000, 0x180000, 0x200000, 0x600000, 0xC80000, 0xDD0000, 0xE00000,
+    ];
+    for addr in unmapped {
+        assert_eq!(
+            mb.mem.bank_map[(addr >> 16) as usize].bank,
+            MemoryBank::OpenBus
+        );
+    }
+
     let mut bus = mb.router();
-    let res = bus.read_byte(0x200000);
-    assert_eq!(res, BusResult::Ready(0xFF));
+    for addr in unmapped {
+        assert_eq!(bus.read_byte(addr), BusResult::Ready(0xFF), "{addr:06X}");
+        assert_eq!(bus.read_word(addr), BusResult::Ready(0xFFFF), "{addr:06X}");
+    }
+
+    // CIA-A uses the odd lane; CIA-B uses the even lane.
+    assert_eq!(bus.read_byte(0xBFEE00), BusResult::Ready(0xFF));
+    assert_eq!(bus.read_byte(0xBFDF01), BusResult::Ready(0xFF));
+    assert_eq!(bus.read_byte(0xBFEB01), BusResult::Ready(0xFF));
+    assert_eq!(bus.read_byte(0xBFDB00), BusResult::Ready(0xFF));
+    assert_eq!(bus.write_byte(0xBFEE01, 0x55), BusResult::Ready(()));
+    assert_eq!(bus.read_word(0xBFEE00), BusResult::Ready(0xFF55));
+
+    // The RTC drives odd addresses only; the rest of its bank is unmapped.
+    assert_eq!(bus.write_byte(0xDC0001, 0x07), BusResult::Ready(()));
+    assert_eq!(bus.read_byte(0xDC0000), BusResult::Ready(0xFF));
+    assert_eq!(bus.read_word(0xDC0000), BusResult::Ready(0xFF07));
+    assert_eq!(bus.read_word(0xDC0040), BusResult::Ready(0xFFFF));
+
+    // Early DMA addresses and write-only registers do not return their stored data.
+    for offset in [
+        custom_reg::BLTDDAT,
+        custom_reg::DSKDATR,
+        custom_reg::BLTCON0,
+        custom_reg::COLOR00,
+        custom_reg::AUD0LEN,
+    ] {
+        let addr = 0xDFF000 + u32::from(offset);
+        assert_eq!(bus.read_word(addr), BusResult::Ready(0xFFFF), "{addr:06X}");
+        assert_eq!(bus.read_byte(addr), BusResult::Ready(0xFF), "{addr:06X}");
+    }
+    assert_eq!(
+        bus.read_word(0xDFF000 + u32::from(custom_reg::COPJMP1)),
+        BusResult::Ready(0xFFFF)
+    );
+    assert_eq!(
+        bus.read_word(0xDFF000 + u32::from(custom_reg::COPJMP2)),
+        BusResult::Ready(0xFFFF)
+    );
+
+    // A populated bank and an active register still return driven data.
+    assert_eq!(bus.write_word(0x001000, 0x1234), BusResult::Ready(()));
+    assert_eq!(bus.read_word(0x001000), BusResult::Ready(0x1234));
+    assert_eq!(bus.read_byte(0xBFEE01), BusResult::Ready(0x55));
+    assert_eq!(bus.read_byte(0xDC0001), BusResult::Ready(0x07));
+
+    mb.rtc = RtcMsm6242b::new(RtcModel::None);
+    assert_eq!(mb.router().read_byte(0xDC0001), BusResult::Ready(0xFF));
 }
 
 #[test]

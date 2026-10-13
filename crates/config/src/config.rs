@@ -13,6 +13,11 @@ pub use registers::*;
 
 use serde::{Deserialize, Serialize};
 
+/// Fixed placeholder for an undriven byte lane in the current open-bus model.
+pub const OPEN_BUS_BYTE: u8 = 0xFF;
+/// Fixed placeholder for an undriven 16-bit data bus in the current model.
+pub const OPEN_BUS_WORD: u16 = u16::from_be_bytes([OPEN_BUS_BYTE; 2]);
+
 /// Master raster beam position counter (synchronized to Color Clock)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct BeamPosition {

@@ -37,7 +37,7 @@ pub struct A500State {
     pub config: A500Config,
     /// Motorola 68000 CPU register and micro-execution state
     pub cpu: CpuState,
-    /// 24-bit physical memory buffers, overlay flag, and open bus settings
+    /// 24-bit physical memory buffers and overlay flag
     pub physical_memory: PhysicalMemory,
     /// OKI MSM6242B Real-Time Clock
     pub rtc: rtc::RtcMsm6242b,

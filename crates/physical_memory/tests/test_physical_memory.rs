@@ -78,20 +78,6 @@ fn test_floating_bus_and_contention_targets() {
 }
 
 #[test]
-fn test_configurable_unmapped_byte_default_ff_and_test_mode() {
-    // 1. Real emulator mode: unmapped memory defaults to 0xFF (open bus floating high)
-    let mut real_bus = PhysicalMemory::new();
-    assert_eq!(real_bus.unmapped_byte(), 0xFF);
-    assert_eq!(real_bus.read_byte_debug(0x180000), 0xFF);
-    assert_eq!(real_bus.read_word_debug(0x180000), 0xFFFF);
-
-    // Can reconfigure open bus default if needed
-    real_bus.set_unmapped_byte(0xAA);
-    assert_eq!(real_bus.read_byte_debug(0x180000), 0xAA);
-    assert_eq!(real_bus.read_word_debug(0x180000), 0xAAAA);
-}
-
-#[test]
 fn test_bus_direct_read_write_and_byte_accesses() {
     let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();

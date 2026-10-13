@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-12
+updated: 2026-10-13
 related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](Verification/CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Physical Memory.md](Physical%20Memory.md)", "[DMA.md](DMA.md)", "[Interrupts.md](Interrupts.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/cpu"
@@ -87,7 +87,7 @@ depend on the operation, so it must not be inferred from host byte order.
 The CPU keeps 32-bit address arithmetic internally, while external accesses
 wrap to 24 bits. Odd-address word or long accesses cause Address Error before
 the rejected transfer. Unmapped reads use the [memory subsystem's](Physical%20Memory.md)
-configured open-bus value, normally $FF/$FFFF.
+fixed open-bus placeholder, $FF for a byte and $FFFF for a word.
 
 ### Sharing Chip RAM with DMA
 

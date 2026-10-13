@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-12
+updated: 2026-10-13
 related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)"]
 tracked_paths:
   - "crates/machine_loop/src/save_state.rs"
@@ -56,7 +56,7 @@ pub struct A500State {
     pub config: A500Config,
     /// Motorola 68000 CPU register and micro-execution state
     pub cpu: CpuState,
-    /// 24-bit physical memory buffers, overlay flag, and open bus settings
+    /// 24-bit physical memory buffers and overlay flag
     pub physical_memory: PhysicalMemory,
     /// OKI MSM6242B Real-Time Clock
     pub rtc: rtc::RtcMsm6242b,

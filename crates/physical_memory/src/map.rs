@@ -3,7 +3,7 @@
 //! Provides single-instruction O(1) memory bank dispatch using a 256-entry table
 //! of direct function pointers to bank read/write handler methods.
 
-use super::{BusResult, PhysicalMemory};
+use super::{BusResult, PhysicalMemory, OPEN_BUS_BYTE, OPEN_BUS_WORD};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Classification of a 64 KB physical memory bank
@@ -212,7 +212,7 @@ fn read_fast_ram_internal(bus: &PhysicalMemory, addr: u32) -> u8 {
         let offset = (addr - 0x200000) as usize;
         fast_ram[offset]
     } else {
-        bus.unmapped_byte
+        OPEN_BUS_BYTE
     }
 }
 
@@ -227,8 +227,7 @@ fn read_fast_ram_word_internal(bus: &PhysicalMemory, addr: u32) -> u16 {
         let offset = (addr - 0x200000) as usize;
         u16::from_be_bytes([fast_ram[offset], fast_ram[offset + 1]])
     } else {
-        let b = bus.unmapped_byte as u16;
-        (b << 8) | b
+        OPEN_BUS_WORD
     }
 }
 
@@ -293,7 +292,7 @@ fn read_slow_ram_internal(bus: &PhysicalMemory, addr: u32) -> u8 {
         let offset = (addr - 0xC00000) as usize;
         slow_ram[offset]
     } else {
-        bus.unmapped_byte
+        OPEN_BUS_BYTE
     }
 }
 
@@ -308,8 +307,7 @@ fn read_slow_ram_word_internal(bus: &PhysicalMemory, addr: u32) -> u16 {
         let offset = (addr - 0xC00000) as usize;
         u16::from_be_bytes([slow_ram[offset], slow_ram[offset + 1]])
     } else {
-        let b = bus.unmapped_byte as u16;
-        (b << 8) | b
+        OPEN_BUS_WORD
     }
 }
 
@@ -472,8 +470,8 @@ fn write_kickstart_rom_word(_bus: &mut PhysicalMemory, _addr: u32, _val: u16) ->
 }
 
 #[inline]
-fn read_open_bus_internal(bus: &PhysicalMemory, _addr: u32) -> u8 {
-    bus.unmapped_byte
+fn read_open_bus_internal(_bus: &PhysicalMemory, _addr: u32) -> u8 {
+    OPEN_BUS_BYTE
 }
 
 #[inline]
@@ -482,9 +480,8 @@ fn read_open_bus_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
 }
 
 #[inline]
-fn read_open_bus_word_internal(bus: &PhysicalMemory, _addr: u32) -> u16 {
-    let b = bus.unmapped_byte as u16;
-    (b << 8) | b
+fn read_open_bus_word_internal(_bus: &PhysicalMemory, _addr: u32) -> u16 {
+    OPEN_BUS_WORD
 }
 
 #[inline]

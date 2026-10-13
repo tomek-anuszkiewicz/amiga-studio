@@ -51,7 +51,7 @@ impl TestMemoryBus {
             storage: TestMemoryStorage::Sparse(HashMap::with_capacity(64)),
             transaction_log: None,
             callback_clock: 0,
-            unmapped_byte: 0xFF,
+            unmapped_byte: physical_memory::OPEN_BUS_BYTE,
         }
     }
 

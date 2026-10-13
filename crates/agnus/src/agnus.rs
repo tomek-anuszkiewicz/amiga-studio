@@ -412,7 +412,7 @@ impl Agnus {
             custom_reg::DMACONR => self.read_dmaconr(),
             custom_reg::VPOSR => self.vposr(),
             custom_reg::VHPOSR => self.vhposr(),
-            _ => 0xFFFF,
+            _ => config::OPEN_BUS_WORD,
         }
     }
 
