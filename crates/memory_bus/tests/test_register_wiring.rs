@@ -186,6 +186,41 @@ fn test_aud0lch_aud0lcl_routed_to_agnus() {
 }
 
 #[test]
+fn test_ocs_agnus_pointer_writes_ignore_bits_above_512k_chip_ram() {
+    let mut mb = TestMotherboard::new();
+
+    for (high, low) in [
+        (custom_reg::COP1LCH, custom_reg::COP1LCL),
+        (custom_reg::BLTAPTH, custom_reg::BLTAPTL),
+        (custom_reg::BPL1PTH, custom_reg::BPL1PTL),
+        (custom_reg::SPR0PTH, custom_reg::SPR0PTL),
+        (custom_reg::DSKPTH, custom_reg::DSKPTL),
+        (custom_reg::AUD0LCH, custom_reg::AUD0LCL),
+    ] {
+        assert_eq!(
+            mb.router().write_word(0xDFF000 + u32::from(high), 0x001D),
+            BusResult::Ready(())
+        );
+        assert_eq!(
+            mb.router().write_word(0xDFF000 + u32::from(low), 0x2345),
+            BusResult::Ready(())
+        );
+    }
+
+    let _ = mb.agnus.step_cck();
+    let _ = mb.agnus.step_cck();
+
+    let expected = 0x0005_2344;
+    assert_eq!(mb.agnus.copper.cop1lc, expected);
+    assert_eq!(mb.agnus.blitter.bltapt, expected);
+    assert_eq!(mb.agnus.bplpt[0], expected);
+    assert_eq!(mb.agnus.sprpt[0], expected);
+    assert_eq!(mb.agnus.dskpt, expected);
+    assert_eq!(mb.agnus.audlc[0], expected);
+    assert_eq!(mb.agnus.audpt[0], expected);
+}
+
+#[test]
 fn test_dmacon_routing_to_agnus_and_paula() {
     let mut mb = TestMotherboard::new();
 

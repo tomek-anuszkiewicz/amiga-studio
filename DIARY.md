@@ -3547,3 +3547,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Vault frontmatter and all 714 links passed
   - The complete commit profile passed outside the sandbox with these document edits present
   - Full SingleStep was not run
+---
+
+### [2026-10-13 22:25 CEST] — Bound OCS DMA addresses to 512 KB
+- **Affected Subsystems**:
+  - `crates/config`
+  - `crates/agnus`
+  - `crates/copper`
+  - `crates/blitter`
+  - `crates/memory_bus`
+  - `Obsidian/Amiga/Design`
+  - `.agents/rules`
+- **What Was Changed (The Concrete Reality)**:
+  - Define shared OCS DMA masks and bound Chip RAM DMA accesses
+  - mask Agnus register halves and DMA pointer arithmetic
+  - wrap Copper and Blitter pointers while preserving the line error accumulator
+  - add pointer-boundary regression tests
+  - align OCS model and address descriptions
+- **Architectural Rationale & Trade-Offs**:
+  - OCS 8370 and 8371 expose 18-bit word-address DMA pointers
+  - so writes and arithmetic must stay within the lower 512 KB
+- **Verification & Test Results**:
+  - Focused cargo tests for config, agnus, copper, blitter, and memory_bus passed: 40 tests
+  - vault audit passed: 36 specifications and 715 links
+  - Graphify update passed outside the sandbox after its native DLL load was denied inside the sandbox
+  - all 13 RAG MCP contracts passed outside the sandbox after the sandboxed Codex startup timed out
+  - full SingleStep and hardware captures were not run

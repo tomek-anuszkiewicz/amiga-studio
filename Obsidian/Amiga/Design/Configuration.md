@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "config"
 status: "active"
 created: 2026-09-05
-updated: 2026-10-12
+updated: 2026-10-13
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/config"
@@ -87,13 +87,9 @@ Because the emulator core is system-agnostic and decoupled from the host filesys
 
 ---
 
-## 5. Future Roadmap Extensions (Post-A500)
+## 5. Deferred Peripheral Extension
 
-*The following configurations are deferred to subsequent project milestones:*
-- **A500 Rev 6A / Late OCS:** 1 MB Chip RAM option selected via jumpers (Fat Agnus 8372A in OCS mode).
-- **A500 Plus (ECS):** 1 MB Chip RAM (`ChipRamSize::Mb1`), ECS Agnus 8372A (`AgnusModel::Ecs1Mb`), ECS Denise 8373 (`DeniseModel::Ecs8373`), Kickstart 2.04 (512 KB).
-- **Megachip / ECS 2MB:** 2 MB Chip RAM (`ChipRamSize::Mb2`), Agnus 8372B.
-- **A1200 (AGA):** 68EC020 CPU (32-bit), 2 MB Chip RAM, Alice (AGA Agnus), Lisa (AGA Denise), 24-bit color palette.
+*The following peripheral extension is deferred to a subsequent project milestone:*
 - **Extended Peripherals:** 4-Player Parallel Port Joystick adapter, analog proportional joysticks.
 
 ---
@@ -101,5 +97,5 @@ Because the emulator core is system-agnostic and decoupled from the host filesys
 ## 6. Reference Documentation & Upstream Ground Truth
 
 - [Amiga Hardware Reference Manual: Appendix D (System Memory Map)](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md): Memory map boundaries for 512 KB Chip, 512 KB Slow, and 8 MB Auto-Config address spaces.
-- [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md): Motherboard revision differences, jumper configurations (JP2 512K/1MB Agnus, JP1 50/60Hz tick), and expansion bus options.
+- [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md): Motherboard revision differences, video timing selection, and expansion bus options.
 - [Configuration Subsystem Implementation Source](../../../crates/config/src/config.rs): Rust implementation of `A500Config`, hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`), and video standards.

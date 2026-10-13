@@ -346,6 +346,7 @@ diw
 diwhigh
 diwstop
 diwstrt
+dll
 dlp
 dmaconr
 dmaon
@@ -904,6 +905,7 @@ runtimes
 rustflags
 rxx
 samply
+sandboxed
 sandboxing
 sanitization
 savestate

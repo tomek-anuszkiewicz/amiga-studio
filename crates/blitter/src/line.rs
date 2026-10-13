@@ -3,6 +3,7 @@
 //! Implements hardware vector line drawing, octant direction selection,
 //! slope error accumulator calculation, and single-point mode.
 
+use config::chip_ram::OCS_DMA_ADDRESS_MASK;
 use serde::{Deserialize, Serialize};
 
 /// Bresenham Line Drawer state machine
@@ -108,6 +109,8 @@ impl LineDrawer {
                 self.first_pixel_on_line = true;
             }
         }
+
+        *bltcpt &= OCS_DMA_ADDRESS_MASK;
 
         // Error accumulator step
         if use_a {

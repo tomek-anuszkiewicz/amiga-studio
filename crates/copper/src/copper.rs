@@ -3,6 +3,7 @@
 //! Synchronized coprocessor executing MOVE, WAIT, and SKIP instructions
 //! driven in lockstep with the raster beam position.
 
+use config::chip_ram::OCS_DMA_ADDRESS_MASK;
 use config::custom_reg;
 use config::mask::copcon;
 use config::BeamPosition;
@@ -29,9 +30,9 @@ pub enum CopperState {
 /// Agnus Copper coprocessor state and execution engine
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Copper {
-    /// First Copper list pointer (COP1LCH/COP1LCL, 18-bit Chip RAM address)
+    /// First Copper list pointer (COP1LCH/COP1LCL, 18-bit word address stored as bytes)
     pub cop1lc: u32,
-    /// Second Copper list pointer (COP2LCH/COP2LCL, 18-bit Chip RAM address)
+    /// Second Copper list pointer (COP2LCH/COP2LCL, 18-bit word address stored as bytes)
     pub cop2lc: u32,
     /// Active program counter
     pub cop_pc: u32,
@@ -83,9 +84,6 @@ impl Copper {
     /// Absolute threshold below which Copper writes are forbidden even with CDANG on OCS ($040)
     pub const OCS_MIN_REGISTER_LIMIT: u16 = custom_reg::agnus::BLTCON0;
 
-    /// 18-bit Chip RAM address mask for Copper program counter and list pointers (512 KB)
-    pub const ADDRESS_MASK_512K: u32 = 0x0007_FFFE;
-
     /// Creates a new uninitialized Copper instance
     pub fn new() -> Self {
         Self::default()
@@ -120,7 +118,7 @@ impl Copper {
     /// Restarts execution using Copper list 1 (COPJMP1 strobe)
     #[inline]
     pub fn restart_list1(&mut self) {
-        self.cop_pc = self.cop1lc & Self::ADDRESS_MASK_512K;
+        self.cop_pc = self.cop1lc & OCS_DMA_ADDRESS_MASK;
         self.is_running = true;
         self.is_waiting = false;
         self.state = CopperState::FetchIR1(2);
@@ -129,7 +127,7 @@ impl Copper {
     /// Restarts execution using Copper list 2 (COPJMP2 strobe)
     #[inline]
     pub fn restart_list2(&mut self) {
-        self.cop_pc = self.cop2lc & Self::ADDRESS_MASK_512K;
+        self.cop_pc = self.cop2lc & OCS_DMA_ADDRESS_MASK;
         self.is_running = true;
         self.is_waiting = false;
         self.state = CopperState::FetchIR1(2);
@@ -228,7 +226,7 @@ impl Copper {
             let skip_condition_met = self.eval_comparator(beam, blitter_busy);
             if skip_condition_met {
                 // Skip the next 4-byte instruction by advancing cop_pc by 4
-                self.cop_pc = self.cop_pc.wrapping_add(4) & Self::ADDRESS_MASK_512K;
+                self.cop_pc = self.cop_pc.wrapping_add(4) & OCS_DMA_ADDRESS_MASK;
             }
             self.state = CopperState::FetchIR1(2);
             None
@@ -262,7 +260,7 @@ impl Copper {
                 }
                 if cck_left <= 1 {
                     self.ir1 = config::chip_ram::read_u16(chip_ram, self.cop_pc);
-                    self.cop_pc = self.cop_pc.wrapping_add(2) & Self::ADDRESS_MASK_512K;
+                    self.cop_pc = self.cop_pc.wrapping_add(2) & OCS_DMA_ADDRESS_MASK;
                     self.state = CopperState::FetchIR2(2);
                 } else {
                     self.state = CopperState::FetchIR1(cck_left.wrapping_sub(1));
@@ -275,7 +273,7 @@ impl Copper {
                 }
                 if cck_left <= 1 {
                     self.ir2 = config::chip_ram::read_u16(chip_ram, self.cop_pc);
-                    self.cop_pc = self.cop_pc.wrapping_add(2) & Self::ADDRESS_MASK_512K;
+                    self.cop_pc = self.cop_pc.wrapping_add(2) & OCS_DMA_ADDRESS_MASK;
                     self.execute_instruction(beam, blitter_busy)
                 } else {
                     self.state = CopperState::FetchIR2(cck_left.wrapping_sub(1));

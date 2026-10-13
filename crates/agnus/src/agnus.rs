@@ -1,4 +1,4 @@
-//! Agnus (MOS 8370 / 8371 / 8372A) Architecture & Subsystem Coordinator
+//! Agnus (MOS 8370 / 8371) Architecture & Subsystem Coordinator
 //!
 //! Master bus controller, DMA arbiter, raster beam counter, and host for
 //! the Copper coprocessor and 4-channel DMA Blitter.
@@ -7,6 +7,7 @@ pub use blitter;
 pub use copper;
 pub use dma;
 
+use config::chip_ram::{OCS_DMA_ADDRESS_MASK, OCS_DMA_HIGH_MASK, OCS_DMA_LOW_MASK};
 use config::custom_reg;
 use config::mask::dmacon;
 pub use config::AgnusModel;
@@ -16,7 +17,7 @@ use serde::{Deserialize, Serialize};
 /// Agnus custom chip coordinator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Agnus {
-    /// Active Agnus chip hardware model (8370, 8371, 8372A)
+    /// Active Agnus chip hardware model (8370 or 8371)
     pub model: AgnusModel,
     /// Agnus Copper coprocessor
     pub copper: copper::Copper,
@@ -237,7 +238,7 @@ impl Agnus {
             }
             dma::DmaChannel::Disk => {
                 self.pending_dsk_dma_slot = Some(self.dskpt);
-                self.dskpt = self.dskpt.wrapping_add(2) & 0x0007_FFFE;
+                self.dskpt = self.dskpt.wrapping_add(2) & OCS_DMA_ADDRESS_MASK;
             }
             dma::DmaChannel::Bitplane(plane) => {
                 let p = plane as usize;
@@ -253,25 +254,27 @@ impl Agnus {
                     } else {
                         0
                     };
-                    self.bplpt[p] =
-                        self.bplpt[p].wrapping_add(2).wrapping_add(mod_inc as u32) & 0x0007_FFFE;
+                    self.bplpt[p] = self.bplpt[p].wrapping_add(2).wrapping_add(mod_inc as u32)
+                        & OCS_DMA_ADDRESS_MASK;
                 }
             }
             dma::DmaChannel::Sprite(sprite) => {
                 let s = sprite as usize;
                 if s < 8 && !chip_ram.is_empty() {
-                    let addr = (self.sprpt[s] as usize) & (chip_ram.len().wrapping_sub(1));
+                    let addr = (self.sprpt[s] & OCS_DMA_ADDRESS_MASK) as usize
+                        & chip_ram.len().wrapping_sub(1);
                     if addr + 1 < chip_ram.len() {
-                        self.sprpt[s] = self.sprpt[s].wrapping_add(2) & 0x0007_FFFE;
+                        self.sprpt[s] = self.sprpt[s].wrapping_add(2) & OCS_DMA_ADDRESS_MASK;
                     }
                 }
             }
             dma::DmaChannel::Audio(ch) => {
                 let c = ch as usize;
                 if c < 4 && !chip_ram.is_empty() {
-                    let addr = (self.audpt[c] as usize) & (chip_ram.len().wrapping_sub(1));
+                    let addr = (self.audpt[c] & OCS_DMA_ADDRESS_MASK) as usize
+                        & chip_ram.len().wrapping_sub(1);
                     if addr + 1 < chip_ram.len() {
-                        self.audpt[c] = self.audpt[c].wrapping_add(2) & 0x0007_FFFE;
+                        self.audpt[c] = self.audpt[c].wrapping_add(2) & OCS_DMA_ADDRESS_MASK;
                     }
                 }
             }
@@ -508,6 +511,12 @@ impl Agnus {
         }
     }
 
+    fn write_dma_pointer_high(pointer: u32, value: u16) -> u32 {
+        (pointer & u32::from(OCS_DMA_LOW_MASK)) | (u32::from(value & OCS_DMA_HIGH_MASK) << 16)
+    }
+    fn write_dma_pointer_low(pointer: u32, value: u16) -> u32 {
+        (pointer & (OCS_DMA_ADDRESS_MASK & 0xFFFF_0000)) | u32::from(value & OCS_DMA_LOW_MASK)
+    }
     /// Commits a register write directly into active Agnus silicon state
     pub fn commit_register_write(&mut self, offset: u16, val: u16) {
         match offset & 0x1FE {
@@ -527,18 +536,16 @@ impl Agnus {
             }
             custom_reg::COPCON => self.copper.set_copcon(val),
             custom_reg::COP1LCH => {
-                self.copper.cop1lc =
-                    (self.copper.cop1lc & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
+                self.copper.cop1lc = Self::write_dma_pointer_high(self.copper.cop1lc, val)
             }
             custom_reg::COP1LCL => {
-                self.copper.cop1lc = (self.copper.cop1lc & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
+                self.copper.cop1lc = Self::write_dma_pointer_low(self.copper.cop1lc, val)
             }
             custom_reg::COP2LCH => {
-                self.copper.cop2lc =
-                    (self.copper.cop2lc & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
+                self.copper.cop2lc = Self::write_dma_pointer_high(self.copper.cop2lc, val)
             }
             custom_reg::COP2LCL => {
-                self.copper.cop2lc = (self.copper.cop2lc & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
+                self.copper.cop2lc = Self::write_dma_pointer_low(self.copper.cop2lc, val)
             }
             custom_reg::COPJMP1 => self.strobe_copjmp1(),
             custom_reg::COPJMP2 => self.strobe_copjmp2(),
@@ -569,32 +576,28 @@ impl Agnus {
             custom_reg::BLTAFWM => self.blitter.bltafwm = val,
             custom_reg::BLTALWM => self.blitter.bltalwm = val,
             custom_reg::BLTCPTH => {
-                self.blitter.bltcpt =
-                    (self.blitter.bltcpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
+                self.blitter.bltcpt = Self::write_dma_pointer_high(self.blitter.bltcpt, val)
             }
             custom_reg::BLTCPTL => {
-                self.blitter.bltcpt = (self.blitter.bltcpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
+                self.blitter.bltcpt = Self::write_dma_pointer_low(self.blitter.bltcpt, val)
             }
             custom_reg::BLTBPTH => {
-                self.blitter.bltbpt =
-                    (self.blitter.bltbpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
+                self.blitter.bltbpt = Self::write_dma_pointer_high(self.blitter.bltbpt, val)
             }
             custom_reg::BLTBPTL => {
-                self.blitter.bltbpt = (self.blitter.bltbpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
+                self.blitter.bltbpt = Self::write_dma_pointer_low(self.blitter.bltbpt, val)
             }
             custom_reg::BLTAPTH => {
-                self.blitter.bltapt =
-                    (self.blitter.bltapt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
+                self.blitter.bltapt = Self::write_dma_pointer_high(self.blitter.bltapt, val)
             }
             custom_reg::BLTAPTL => {
-                self.blitter.bltapt = (self.blitter.bltapt & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
+                self.blitter.bltapt = Self::write_dma_pointer_low(self.blitter.bltapt, val)
             }
             custom_reg::BLTDPTH => {
-                self.blitter.bltdpt =
-                    (self.blitter.bltdpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
+                self.blitter.bltdpt = Self::write_dma_pointer_high(self.blitter.bltdpt, val)
             }
             custom_reg::BLTDPTL => {
-                self.blitter.bltdpt = (self.blitter.bltdpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
+                self.blitter.bltdpt = Self::write_dma_pointer_low(self.blitter.bltdpt, val)
             }
             custom_reg::BLTSIZE => self.blitter.trigger_blit(val),
             custom_reg::BLTCMOD => self.blitter.bltcmod = val as i16,
@@ -622,11 +625,9 @@ impl Agnus {
                 let is_low = (offset & 2) != 0;
                 if plane < 6 {
                     if is_low {
-                        self.bplpt[plane] =
-                            (self.bplpt[plane] & 0xFFFF_0000) | ((val & 0xFFFE) as u32);
+                        self.bplpt[plane] = Self::write_dma_pointer_low(self.bplpt[plane], val);
                     } else {
-                        self.bplpt[plane] =
-                            (self.bplpt[plane] & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16);
+                        self.bplpt[plane] = Self::write_dma_pointer_high(self.bplpt[plane], val);
                     }
                 }
             }
@@ -652,11 +653,9 @@ impl Agnus {
                 let is_low = (offset & 2) != 0;
                 if sprite < 8 {
                     if is_low {
-                        self.sprpt[sprite] =
-                            (self.sprpt[sprite] & 0xFFFF_0000) | ((val & 0xFFFE) as u32);
+                        self.sprpt[sprite] = Self::write_dma_pointer_low(self.sprpt[sprite], val);
                     } else {
-                        self.sprpt[sprite] =
-                            (self.sprpt[sprite] & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16);
+                        self.sprpt[sprite] = Self::write_dma_pointer_high(self.sprpt[sprite], val);
                     }
                 }
             }
@@ -688,10 +687,10 @@ impl Agnus {
 
             // Floppy Disk DMA pointer
             custom_reg::DSKPTH => {
-                self.dskpt = (self.dskpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16);
+                self.dskpt = Self::write_dma_pointer_high(self.dskpt, val);
             }
             custom_reg::DSKPTL => {
-                self.dskpt = (self.dskpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32);
+                self.dskpt = Self::write_dma_pointer_low(self.dskpt, val);
             }
 
             // Audio DMA location pointers (AUD0LCH/LCL..AUD3LCH/LCL)
@@ -706,10 +705,9 @@ impl Agnus {
                 let ch = ((offset - custom_reg::AUD0LCH) / 0x10) as usize;
                 if ch < 4 {
                     if (offset & 2) == 0 {
-                        self.audlc[ch] =
-                            (self.audlc[ch] & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16);
+                        self.audlc[ch] = Self::write_dma_pointer_high(self.audlc[ch], val);
                     } else {
-                        self.audlc[ch] = (self.audlc[ch] & 0xFFFF_0000) | ((val & 0xFFFE) as u32);
+                        self.audlc[ch] = Self::write_dma_pointer_low(self.audlc[ch], val);
                     }
                     self.audpt[ch] = self.audlc[ch];
                 }

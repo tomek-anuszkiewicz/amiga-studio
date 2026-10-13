@@ -29,6 +29,17 @@ duplicating the channel behavior here. This role and the supported models
 are separate questions: the table above describes the current emulator
 configuration, while the component notes describe hardware behavior.
 
+OCS Agnus stores DMA locations as 18-bit **word addresses**: 256K words in
+the lower 512 KB of Chip RAM. The paired write-only location registers retain
+three bits from the high word and 15 bits from the low word; the low byte-address
+bit is always zero. In the emulator these locations are represented as even
+byte addresses from `$000000` through `$07FFFE`. Writing either register half
+discards its unused bits, and subsequent pointer arithmetic wraps within this
+range. The shared [`OCS_DMA_ADDRESS_MASK`](../../../crates/config/src/chip_ram.rs)
+also bounds Chip RAM DMA accesses. This rule applies to Agnus DMA pointers,
+not to every custom-chip register; in Blitter line mode, `BLTAPT` is used as
+an error accumulator after loading.
+
 Agnus uses the vertical fields of `DIWSTRT` and `DIWSTOP` to allow bitplane
 DMA only on lines inside the display window. Its scheduler uses `DDFSTRT` and
 `DDFSTOP` for the horizontal fetch interval; [Denise](Denise.md) uses the
