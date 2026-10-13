@@ -3526,3 +3526,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - The commit profile hit a sandbox timeout in Codex MCP initialization
   - All 13 MCP tests passed outside the sandbox
   - Full SingleStep was not run
+---
+
+### [2026-10-13 20:23 CEST] — Replace copied design examples with concise descriptions
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/Application/SaveState.md`
+  - `Obsidian/Amiga/Design/egui Guidelines.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Link snapshot fields to the living Rust source instead of copying structs
+  - Mark differential snapshots and their wire format as proposals
+  - Explain complete forward and reverse restoration without stale code
+  - Replace the tooltip code sample with layout guidance
+- **Architectural Rationale & Trade-Offs**:
+  - Keep design intent readable and avoid duplicate implementation definitions
+  - Diff sizes remain illustrative rather than measured guarantees
+- **Verification & Test Results**:
+  - Scoped design review confirmed the snapshot field summary against save_state.rs
+  - No differential snapshot API was found in machine_loop
+  - No tracked code ownership mappings require additional design edits for these documentation changes
+  - Vault frontmatter and all 714 links passed
+  - The complete commit profile passed outside the sandbox with these document edits present
+  - Full SingleStep was not run

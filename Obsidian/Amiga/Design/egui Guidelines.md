@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-10
-updated: 2026-10-12
+updated: 2026-10-13
 related: ["[GUI.md](Application/GUI.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
 ---
 
@@ -119,15 +119,7 @@ Every inspectable or interactive element across all docks, panels, and modal dia
 `egui` evaluates UI commands on every frame. To ensure high performance while delivering rich documentation:
 - **Lazy Evaluation Invariance:** `egui` executes `.on_hover_ui` closures **only when the pointer actively hovers over the widget's bounding rect**. Rich layout code, tables, and typography inside hover closures execute with zero overhead during ordinary running frames.
 - **Static String Slices (`&'static str`):** Hardware specifications, bitfield definitions, and reference notes should use compile-time static strings to guarantee zero heap allocations.
-- **Structured Layouts in `.on_hover_ui`:** Use bold headings (`ui.heading`), monospace tables (`egui::Grid`), and bullet points for complex structures:
-  ```rust
-  response.on_hover_ui(|ui| {
-      ui.heading("Status Register (SR)");
-      ui.label("16-bit register combining System Byte and CCR:");
-      ui.monospace(" • Bit 13 [S]: Supervisor Mode (1=Supervisor, 0=User)");
-      ui.monospace(" • Bits 8-10 [IPL]: Interrupt Priority Level Mask (0-7)");
-  });
-  ```
+- **Structured Layouts in `.on_hover_ui`:** Give each tooltip a clear heading, a short explanation of the value, and aligned labels for related fields or bits. For example, a status-register tooltip can explain its system and condition-code fields, then list the supervisor bit and interrupt priority mask with their meanings. Use a grid when values need to line up in columns.
 
 ---
 
