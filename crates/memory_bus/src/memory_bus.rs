@@ -302,9 +302,82 @@ impl<'a> MemoryBus<'a> {
             | custom_reg::paula::AUD3DAT => {
                 self.paula.write_register(offset, val);
             }
-            _ => {
+            custom_reg::agnus::DSKPTH
+            | custom_reg::agnus::DSKPTL
+            | custom_reg::agnus::REFPTR
+            | custom_reg::agnus::VPOSW
+            | custom_reg::agnus::VHPOSW
+            | custom_reg::agnus::COPCON
+            | custom_reg::agnus::BLTCON0
+            | custom_reg::agnus::BLTCON1
+            | custom_reg::agnus::BLTAFWM
+            | custom_reg::agnus::BLTALWM
+            | custom_reg::agnus::BLTCPTH
+            | custom_reg::agnus::BLTCPTL
+            | custom_reg::agnus::BLTBPTH
+            | custom_reg::agnus::BLTBPTL
+            | custom_reg::agnus::BLTAPTH
+            | custom_reg::agnus::BLTAPTL
+            | custom_reg::agnus::BLTDPTH
+            | custom_reg::agnus::BLTDPTL
+            | custom_reg::agnus::BLTSIZE
+            | custom_reg::agnus::BLTCMOD
+            | custom_reg::agnus::BLTBMOD
+            | custom_reg::agnus::BLTAMOD
+            | custom_reg::agnus::BLTDMOD
+            | custom_reg::agnus::BLTCDAT
+            | custom_reg::agnus::BLTBDAT
+            | custom_reg::agnus::BLTADAT
+            | custom_reg::agnus::COP1LCH
+            | custom_reg::agnus::COP1LCL
+            | custom_reg::agnus::COP2LCH
+            | custom_reg::agnus::COP2LCL
+            | custom_reg::agnus::COPJMP1
+            | custom_reg::agnus::COPJMP2
+            | custom_reg::agnus::COPINS
+            | custom_reg::agnus::DDFSTRT
+            | custom_reg::agnus::DDFSTOP
+            | custom_reg::agnus::AUD0LCH
+            | custom_reg::agnus::AUD0LCL
+            | custom_reg::agnus::AUD1LCH
+            | custom_reg::agnus::AUD1LCL
+            | custom_reg::agnus::AUD2LCH
+            | custom_reg::agnus::AUD2LCL
+            | custom_reg::agnus::AUD3LCH
+            | custom_reg::agnus::AUD3LCL
+            | custom_reg::agnus::BPL1PTH
+            | custom_reg::agnus::BPL1PTL
+            | custom_reg::agnus::BPL2PTH
+            | custom_reg::agnus::BPL2PTL
+            | custom_reg::agnus::BPL3PTH
+            | custom_reg::agnus::BPL3PTL
+            | custom_reg::agnus::BPL4PTH
+            | custom_reg::agnus::BPL4PTL
+            | custom_reg::agnus::BPL5PTH
+            | custom_reg::agnus::BPL5PTL
+            | custom_reg::agnus::BPL6PTH
+            | custom_reg::agnus::BPL6PTL
+            | custom_reg::agnus::BPL1MOD
+            | custom_reg::agnus::BPL2MOD
+            | custom_reg::agnus::SPR0PTH
+            | custom_reg::agnus::SPR0PTL
+            | custom_reg::agnus::SPR1PTH
+            | custom_reg::agnus::SPR1PTL
+            | custom_reg::agnus::SPR2PTH
+            | custom_reg::agnus::SPR2PTL
+            | custom_reg::agnus::SPR3PTH
+            | custom_reg::agnus::SPR3PTL
+            | custom_reg::agnus::SPR4PTH
+            | custom_reg::agnus::SPR4PTL
+            | custom_reg::agnus::SPR5PTH
+            | custom_reg::agnus::SPR5PTL
+            | custom_reg::agnus::SPR6PTH
+            | custom_reg::agnus::SPR6PTL
+            | custom_reg::agnus::SPR7PTH
+            | custom_reg::agnus::SPR7PTL => {
                 self.agnus.write_register(offset, val);
             }
+            _ => {}
         }
     }
 

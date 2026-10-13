@@ -374,6 +374,36 @@ fn test_chip_namespaced_custom_register_dispatch() {
 }
 
 #[test]
+fn test_agnus_writes_are_explicit_and_reserved_offset_is_ignored() {
+    let mut mb = TestMotherboard::new();
+    let agnus_writes = [
+        (custom_reg::agnus::REFPTR, 0x1234),
+        (custom_reg::agnus::VPOSW, 0x0001),
+        (custom_reg::agnus::VHPOSW, 0x2345),
+        (custom_reg::agnus::COPINS, 0x5678),
+    ];
+
+    for (offset, value) in agnus_writes {
+        mb.router().write_custom_word(offset, value);
+        assert!(mb
+            .agnus
+            .mutations
+            .iter()
+            .flatten()
+            .any(|mutation| { mutation.reg_offset == offset && mutation.value == value }));
+    }
+
+    // $07C is reserved and must not consume an Agnus mutation slot.
+    mb.router().write_custom_word(0x07C, 0x9ABC);
+    assert!(mb
+        .agnus
+        .mutations
+        .iter()
+        .flatten()
+        .all(|mutation| mutation.reg_offset != 0x07C));
+}
+
+#[test]
 fn test_sprite_position_and_control_writes_reach_both_chips() {
     let mut mb = TestMotherboard::new();
 

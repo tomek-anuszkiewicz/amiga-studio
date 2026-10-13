@@ -3504,3 +3504,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: full Tier 2 integration before final alias correction
   - PASS: architecture, formatting, diff check, and Obsidian vault audit
   - NOT RUN: full SingleStep, milestone profile, and whole-machine captures
+---
+
+### [2026-10-13 20:21 CEST] — CUSTOM-REG-AGNUS-WRITES-01: Enumerate Agnus write destinations
+- **Affected Subsystems**:
+  - `crates/memory_bus`
+  - `Obsidian/Amiga/Design/MemoryBus.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace default Agnus forwarding with explicit register arms
+  - Keep a regression for named writes and ignored reserved offset 0x07C
+  - Correct the MemoryBus routing description
+- **Architectural Rationale & Trade-Offs**:
+  - Unmatched offsets must not consume delayed mutation slots
+  - REFPTR and VPOSW and VHPOSW and COPINS still have no implemented Agnus commit effect
+  - Close the router task while retaining those behavior limits as separate future work
+- **Verification & Test Results**:
+  - All ordinary Rust tests and standard harness tests passed
+  - Formatting and Clippy and architecture and hardware and code quality checks passed
+  - Static comparison found all 180 matrix write offsets with no missing or extra router offsets
+  - Vault audit passed for 36 documents and 714 links
+  - The commit profile hit a sandbox timeout in Codex MCP initialization
+  - All 13 MCP tests passed outside the sandbox
+  - Full SingleStep was not run
