@@ -3573,3 +3573,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify update passed outside the sandbox after its native DLL load was denied inside the sandbox
   - all 13 RAG MCP contracts passed outside the sandbox after the sandboxed Codex startup timed out
   - full SingleStep and hardware captures were not run
+---
+
+### [2026-10-14 00:48 CEST] — Clarify Paula DMACON state in DMA design
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/DMA.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Describe shared DMACON writes and audio and display DMA control flow
+  - clarify that Paula retains only DMAEN, DSKEN, and AUD0EN through AUD3EN
+- **Architectural Rationale & Trade-Offs**:
+  - Paula receives the shared register write but stores only the bits needed for local audio and disk DMA control
+  - Agnus retains the broader DMA state
+- **Verification & Test Results**:
+  - Scoped design review matched the Paula and Agnus register handlers
+  - vault audit passed for 36 specifications and 716 links
+  - initial commit profile passed ordinary tests, harness tests, formatting, Clippy, architecture, hardware, code quality, bootstrap, conversion, and verification contracts
+  - English scan found eight unknown-word occurrences in unrelated developer-setup.md and ROADMAP.md
+  - RAG MCP contract launch timed out inside sandbox, while all 13 contracts passed outside sandbox
+  - full SingleStep and hardware captures were not run

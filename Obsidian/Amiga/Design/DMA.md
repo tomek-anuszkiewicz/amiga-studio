@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "dma"
 status: "draft"
 created: 2026-09-19
-updated: 2026-10-13
+updated: 2026-10-14
 related: ["[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[MemoryBus.md](MemoryBus.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/dma"
@@ -38,14 +38,14 @@ Audio DMA control follows this signal flow:
 
 | Stage | Paula | Agnus |
 | :--- | :--- | :--- |
-| `DMACON` write | Latches local `DMAEN` and `AUDxEN` control. | Latches `DMAEN` and `AUDxEN` for DMA slot allocation. |
-| Audio DMA request | Signals on `DMAL` that it needs DMA access. | Checks `DMAEN` and the requested channel's `AUDxEN`; if enabled, performs the transfer. |
+| `DMACON` write | Retains only `DMAEN`, `DSKEN`, and `AUD0EN`–`AUD3EN` from the shared register bus for its audio and disk DMA control. | Latches the full `DMACON` state for DMA control. |
+| Audio DMA request | When a channel needs data, asserts its request on `DMAL` only if `DMAEN` and that channel's `AUDxEN` are enabled in Paula's retained control bits. | Responds only if `DMAEN` and the requested channel's `AUDxEN` are enabled in Agnus's copy of `DMACON`; then schedules the transfer in an eligible slot. |
 
 Display DMA follows a different path:
 
 | Stage | [Denise](Denise.md) | Agnus |
 | :--- | :--- | :--- |
-| `DMACON` write | Takes no action. | Latches `DMAEN`, `BPLEN`, and `SPREN`. |
+| `DMACON` write | Takes no action. | Latches the full `DMACON` state; `DMAEN`, `BPLEN`, and `SPREN` gate display DMA. |
 | Display window write | Latches the horizontal fields of `DIWSTRT` and `DIWSTOP` for pixel clipping. | Latches their vertical fields to gate bitplane DMA by line. |
 | Display fetch | Does not request DMA. | Uses the vertical display window and `DDFSTRT`/`DDFSTOP` horizontal fetch interval for bitplanes; sprite slots are scheduled separately. `DMAEN` and the relevant channel enable must also be set. |
 | Data transfer | Latches the selected `BPLxDAT` or sprite register from the shared data bus. | Reads Chip RAM and selects the destination register on `RGA`. |
