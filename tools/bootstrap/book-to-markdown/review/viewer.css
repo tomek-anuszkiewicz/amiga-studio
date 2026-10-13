@@ -10,7 +10,8 @@ main { display: grid; grid-template-columns: var(--pdf-width,600px) 8px repeat(2
 #pdf-splitter:hover, #pdf-splitter:focus-visible, body.resizing-pdf #pdf-splitter { background: #1e78c5; }
 body.resizing-pdf { cursor: col-resize; user-select: none; }
 main > section { display: flex; flex-direction: column; min-width: 0; min-height: 0; border: 1px solid #b6c5d1; border-radius: 5px; background: white; }
-h2 { font-size: 15px; margin: 0; padding: 7px 12px; background: #e3ebf2; }
+h2 { display: flex; align-items: baseline; gap: 12px; font-size: 15px; margin: 0; padding: 7px 12px; background: #e3ebf2; }
+.pane-location { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: normal; }
 .pane { overflow: auto; min-height: 0; flex: 1; overflow-anchor: none; scroll-behavior: auto; padding: 0; }
 .page { position: relative; width: 100%; background: white; margin-bottom: 10px; }
 #pdf > .page:not(:last-child)::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -6px; height: 1px; background: #c4d3df; pointer-events: none; }
@@ -20,6 +21,7 @@ h2 { font-size: 15px; margin: 0; padding: 7px 12px; background: #e3ebf2; }
 .overlay.selected { border: 2px solid #d67a00; background: #ffac1c1a; }
 .overlay.changed { border-left: 3px solid #df9224; }
 .chapter-toggle { width: 100%; text-align: left; border-radius: 0; border: 0; border-bottom: 1px solid #c4d3df; background: #edf3f8; padding: 8px 12px; }
+.chapter-toggle.changed { box-shadow: inset 5px 0 #df9224; }
 .chapter-content[hidden] { display: none; }.missing { padding: 10px; color: #7c4c15; font-style: italic; }
 .render-stage { position: fixed; top: 0; left: -100000px; visibility: hidden; pointer-events: none; }
 dialog { max-width: 440px; border: 1px solid #8399ab; border-radius: 8px; padding: 24px; }
@@ -36,5 +38,8 @@ dialog::backdrop { background: #132a3c66; } dialog h3 { margin-top: 0; } dialog 
 #markdown-dialog .markdown-tools { display: flex; gap: 10px; justify-content: flex-start; flex-wrap: wrap; margin: 12px 0; }
 #second-section { margin-top: 12px; }
 #markdown-error { color: #a32620; white-space: pre-wrap; }
+#codex-dialog { width: min(700px,94vw); max-width: 700px; }
+#codex-instruction { display: block; width: 100%; min-height: 150px; resize: vertical; margin-top: 8px; padding: 10px; font: inherit; }
+#codex-error { color: #a32620; white-space: pre-wrap; }
 .overlay.hidden-element { background-color: #8870b32b; }
 .overlay.hidden-element::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: radial-gradient(#73509699 1px,transparent 1.5px); background-size: 7px 7px; }

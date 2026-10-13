@@ -15,8 +15,8 @@ This focus remains active until the user changes it. When that happens, revise o
 PDF-to-Markdown and Book-to-Markdown target the current format only. Do not
 preserve backward compatibility, migrate old artifacts, add aliases/defaults to
 rescue obsolete data, or protect existing generated content from changes to the
-conversion or import process. Book import rebuilds its output and may overwrite
-existing generated content and authored choices.
+conversion or import process. Book import deletes Working and Accepted completely
+before rebuilding its output, replacing generated content and authored choices.
 
 Fix the current generating code or prompt. Do not add manual artifact patches,
 special repair code or extra inference to salvage existing conversion results or

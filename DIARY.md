@@ -1797,3 +1797,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - quick pre-flight passed
   - architecture rules passed 19
   - no live PDF conversion was run
+---
+
+### [2026-10-13 22:07 CEST] — Extend Book Review authoring and validation
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `tools/bootstrap/AGENTS.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add explicit Codex editing with content and revision guards and optional source validation
+  - support new chapter boundaries and location headers in review
+  - clear old Working, Accepted and copied PDF pages before import
+  - document the new commands and add focused tests
+- **Architectural Rationale & Trade-Offs**:
+  - Keep authoring changes traceable to selected source content while allowing explicit edits and rebuilding current-format outputs without stale artifacts
+- **Verification & Test Results**:
+  - Book Review tests passed 58
+  - shared conversion tests passed 32
+  - PDF preparation tests passed 37
+  - quick pre-flight passed
+  - architecture rules passed 19
+  - no live Codex editing or book regeneration run
+  - Optional staged language scan reported seven false positives in HTML names and regular expressions; no Polish prose was added

@@ -14,7 +14,7 @@ import uuid
 from PIL import Image
 
 from .model import (EDITABLE_TYPES, ELEMENT_ROLES, HEADING_TYPES, PROTECTED_TYPES, InputCache, authored_element, changes, confined, edit_markdown, elements, export_markdown, json_bytes,
-                    load_input, set_element_role, set_element_type, set_heading_level, update_markdown_heading, write_json)
+                    load_input, new_chapter, set_element_role, set_element_type, set_heading_level, update_markdown_heading, write_json)
 from .text_recipe import slice_template
 from .markdown import table_structure
 from .render import HERE, KATEX, Renderer
@@ -182,12 +182,12 @@ class ReviewState:
                         snapshot = renderer.render(self.root / "working", book, assets, fingerprint, previous)
                         with self.lock:
                             write_json(self.root / "working" / "rendered.json", snapshot)
+                            export_markdown(book, self.root / "working")
                             self.working = snapshot
                             self.pending = self.input_cache.load(self.root / "working")[2] != fingerprint
                             if self.accepted is None and not self.pending:
                                 replace_accepted(self.root, snapshot)
                                 self.accepted = read_snapshot(self.root / "accepted")
-                                export_markdown(book, self.root / "working")
                             self.failed_fingerprint, self.error = None, None
                             self.announce()
                             log(f"[render] {snapshot['revision']}: {snapshot['metrics']}")
@@ -263,6 +263,28 @@ class ReviewState:
             if element is None:
                 raise ValueError('Element no longer exists')
             edit_markdown(self.root, element, command['text'])
+        self.mutate(command['expected_revision'], update)
+
+    def codex(self, command):
+        from .codex_edit import run_command
+        return run_command(self, command)
+
+    def start_chapter(self, command):
+        def update(book):
+            for chapter_index, chapter in enumerate(book['chapters']):
+                position = next((i for i, element in enumerate(chapter['elements'])
+                                 if element['id'] == command['id']), None)
+                if position is None:
+                    continue
+                if position == 0:
+                    raise ValueError('This element already starts a chapter')
+                following = chapter['elements'][position:]
+                created = new_chapter(following, 'chapter-' + uuid.uuid4().hex,
+                                      [c.get('resolved_markdown_file', c['markdown_file']) for c in book['chapters']])
+                chapter['elements'] = chapter['elements'][:position]
+                book['chapters'].insert(chapter_index + 1, created)
+                return
+            raise ValueError('Element no longer exists')
         self.mutate(command['expected_revision'], update)
 
     def split(self, command):
@@ -518,6 +540,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.state.change_role(command)
             elif self.path == "/api/markdown":
                 self.state.markdown(command)
+            elif self.path == "/api/codex":
+                result.update(self.state.codex(command))
+            elif self.path == "/api/new-chapter":
+                self.state.start_chapter(command)
             elif self.path == "/api/split":
                 self.state.split(command)
             elif self.path == "/api/merge":

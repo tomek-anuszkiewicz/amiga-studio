@@ -21,6 +21,8 @@ const roleMenu = document.getElementById("role-menu");
 const markdownDialog = document.getElementById("markdown-dialog");
 const markdownText = document.getElementById("markdown-text");
 const markdownSecond = document.getElementById("markdown-second");
+const codexDialog = document.getElementById("codex-dialog");
+let codexCommand=null, codexRunning=false;
 let textCommand=null, splitting=false, merging=false, activeText=markdownText;
 const discardElementButton = document.getElementById("menu-discard");
 let selectedPane="working", selectedPage=null, menuCommand=null, pageCommand=null, menuReturnFocus=null, menuScrollPosition={};
@@ -50,6 +52,12 @@ function openMenu(x,y) {
     `${roleName(acceptedElement.role)} / ${roleName(element.role)}` : roleName((element ?? acceptedElement)?.role);
   roleLabel.textContent=`Role: ${roles}`;
   const editable=element && !state.pending && !loading;
+  document.getElementById("menu-codex").hidden=!element;
+  document.getElementById("menu-codex").disabled=!editable || codexRunning;
+  const newChapterButton=document.getElementById("menu-new-chapter");
+  newChapterButton.hidden=!element;
+  newChapterButton.disabled=!editable || elementIndex(state.working).get(element?.id)?.chapter.elements[0]?.id === element?.id;
+  newChapterButton.title="Start a chapter at this element and move the rest of its current chapter into it";
   menuCommand=element ? {id:element.id,expected_revision:state.authored_revision,
     accepted_revision:state.accepted?.revision,visible:element.visible === false} : null;
   visibilityButton.hidden=!element; visibilityButton.disabled=!editable;
@@ -508,6 +516,13 @@ function visibleNodes(pane, id = null) {
 }
 function highlight() {
   const changed = new Set((state?.changes || []).map(c => c.id));
+  const changedChapters = new Set((state?.changes || []).flatMap(c=>c.chapter_ids || []));
+  for(const version of ["accepted","working"]) {
+    for(const section of panes[version].querySelectorAll("[data-chapter]")) {
+      const toggle=section.querySelector(".chapter-toggle");
+      if(toggle)toggle.classList.toggle("changed",changedChapters.has(section.dataset.chapter));
+    }
+  }
   for (const entries of Object.values(nodes)) for (const entry of entries) {
     const hidden=(entry.source?.element || entry.element)?.visible === false;
     entry.node.classList.toggle("hidden-element",hidden);
@@ -547,6 +562,43 @@ function anchor(pane) {
   const before = heights.slice(0,entry.source.i).reduce((a,b)=>a+b,0), total=heights.reduce((a,b)=>a+b,0);
   return {id:entry.id, progress:(before+local*heights[entry.source.i])/Math.max(1,total),order};
 }
+function headingPath(version, id, depth) {
+  if(id === "generated-toc")return "Table of contents";
+  const chapter=elementIndex(state[version]).get(id)?.chapter;
+  if(!chapter)return "";
+  const entries=new Map(nodes[version].map(entry=>[entry.id,entry.node]));
+  const path=[];
+  for(const element of chapter.elements) {
+    if(element.visible !== false && state.heading_types.includes(element.type)) {
+      const level=element.heading_level || 1;
+      while(path.length && path[path.length-1].level>=level)path.pop();
+      const title=entries.get(element.id)?.textContent.replace(/\s+/g," ").trim();
+      if(title)path.push({level,title});
+    }
+    if(element.id === id)break;
+  }
+  return path.filter(heading=>heading.level<=depth).map(heading=>heading.title).join(" › ");
+}
+let locationFrame=null;
+function scheduleLocations() {
+  if(locationFrame!==null)return;
+  locationFrame=requestAnimationFrame(()=>{
+    locationFrame=null;
+    if(!state)return;
+    const viewport=panes.pdf.getBoundingClientRect(), line=viewport.top+.25*panes.pdf.clientHeight;
+    const pages=[...panes.pdf.querySelectorAll(".page")].filter(page=>!page.hidden);
+    const distance=page=>{
+      const rect=page.getBoundingClientRect();return Math.max(rect.top-line,line-rect.bottom,0);
+    };
+    pages.sort((a,b)=>distance(a)-distance(b));
+    document.getElementById("pdf-location").textContent=pages.length ? `Page ${pages[0].dataset.page}` : "";
+    const depth=Number(document.getElementById("toc-depth").value);
+    for(const version of ["accepted","working"]) {
+      const logical=anchor(version);
+      document.getElementById(`${version}-location`).textContent=logical ? headingPath(version,logical.id,depth) : "";
+    }
+  });
+}
 function position(pane, logical, fallback = true) {
   if (!logical) return;
   if(logical.id === "generated-toc" && pane === "pdf") return;
@@ -585,6 +637,7 @@ function sync(pane) {
   const logical=anchor(pane);
   if(pane===leader)lastLogical=logical;
   for(const follower of Object.keys(panes)) if(follower!==pane) position(follower,logical);
+  scheduleLocations();
 }
 function navigate(id, preferred="working") {
   selectedPane=preferred;selectedPage=(elementIndex(state[preferred]).get(id) || elementIndex(state.accepted).get(id))?.element.pdf_regions[0]?.page ?? null;closeMenu();
@@ -594,6 +647,7 @@ function navigate(id, preferred="working") {
   const logical={id,progress:0,order:[...elementIndex(snapshot).keys()]};
   for(const pane of Object.keys(panes)) position(pane,logical);
   lastLogical=logical;
+  scheduleLocations();
 }
 async function post(url, command) {
   const response=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(command)});
@@ -719,7 +773,7 @@ async function refresh() {
       status.textContent=state.error || (state.pending ? "Rendering pending…" : `${state.changes.length} ${state.changes.length===1 ? "change" : "changes"}`);
       closeMenu();highlight();
     }
-  } catch(error) {showError(error.message);} finally {loading=false;}
+  } catch(error) {showError(error.message);} finally {loading=false;scheduleLocations();}
 }
 for(const [name,pane] of Object.entries(panes)) {
   pane.addEventListener("pointermove",event=>{pointerX=event.clientX;});
@@ -727,6 +781,7 @@ for(const [name,pane] of Object.entries(panes)) {
     leader=name;suppressed.delete(name);if(state)lastLogical=anchor(name);
   },{passive:true});
   pane.addEventListener("scroll",()=>{
+    scheduleLocations();
     if(publishing)return;
     // A scroll queued before opening the menu must not close that new menu.
     if(elementMenu.hidden || pane.scrollTop !== menuScrollPosition[name])closeMenu();
@@ -754,6 +809,7 @@ document.getElementById("previous").onclick=()=>nextChange(-1);
 document.getElementById("next").onclick=()=>nextChange(1);
 document.getElementById("copy").onclick=async()=>{try{await navigator.clipboard.writeText(selected);}catch(error){showError(error.message);}};
 async function saveToc() {
+  scheduleLocations();
   try {await post("/api/toc",{depth:Number(document.getElementById("toc-depth").value),
     expected_revision:state.authored_revision});await refresh();}
   catch(error){showError(error.message);}
@@ -776,6 +832,36 @@ document.getElementById("save-markdown").onclick=async()=>{
   } catch(error) {
     const message=document.getElementById("markdown-error");message.textContent=error.message;message.hidden=false;
   } finally {button.disabled=false;}
+};
+document.getElementById("menu-new-chapter").onclick=async()=>{
+  const command={id:menuCommand.id,expected_revision:menuCommand.expected_revision};
+  closeMenu(true);
+  try{await post("/api/new-chapter",command);await refresh();}
+  catch(error){await refresh();showError(error.message);}
+};
+document.getElementById("menu-codex").onclick=()=>{
+  codexCommand={id:menuCommand.id,expected_revision:menuCommand.expected_revision};
+  closeMenu(true);
+  document.getElementById("codex-id").textContent=codexCommand.id;
+  document.getElementById("codex-instruction").value="";
+  document.getElementById("codex-error").hidden=true;
+  document.getElementById("codex-status").hidden=true;
+  codexDialog.showModal();document.getElementById("codex-instruction").focus();
+};
+codexDialog.addEventListener("cancel",event=>{if(codexRunning)event.preventDefault();});
+document.getElementById("run-codex").onclick=async()=>{
+  if(codexRunning)return;
+  const field=document.getElementById("codex-instruction"), error=document.getElementById("codex-error");
+  if(!field.value.trim()){error.textContent="Enter a Codex instruction.";error.hidden=false;field.focus();return;}
+  const button=document.getElementById("run-codex"), cancel=document.getElementById("cancel-codex"), progress=document.getElementById("codex-status");
+  codexRunning=true;button.disabled=true;cancel.disabled=true;field.disabled=true;error.hidden=true;
+  progress.textContent="Running Codex and checking content…";progress.hidden=false;
+  try {
+    await post("/api/codex",{...codexCommand,instruction:field.value});
+    codexDialog.close();await refresh();
+  } catch(failure) {
+    progress.hidden=true;error.textContent=failure.message;error.hidden=false;
+  } finally {codexRunning=false;button.disabled=false;cancel.disabled=false;field.disabled=false;}
 };
 const events=new EventSource("/api/events");events.onmessage=refresh;events.onopen=refresh;
 events.onerror=()=>showError("Connection interrupted; reconnecting…");

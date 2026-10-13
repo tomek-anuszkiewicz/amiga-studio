@@ -23,6 +23,8 @@
 <button id="menu-bold" role="menuitem">Bold</button>
 <button id="menu-remove-bold" role="menuitem">Remove Bold</button>
 <button id="menu-markdown" role="menuitem">Edit Markdown...</button>
+<button id="menu-codex" role="menuitem">Codex...</button>
+<button id="menu-new-chapter" role="menuitem">New chapter from here</button>
 <button id="menu-split" role="menuitem">Split...</button>
 <button id="menu-merge" role="menuitem">Merge with next...</button>
 <button id="menu-merge-tables" role="menuitem">Merge tables</button>
@@ -31,11 +33,11 @@
 <button id="menu-discard" role="menuitem">Discard</button>
 <button id="menu-copy" role="menuitem">Copy ID</button>
 </div>
-<main><section><h2>PDF</h2><div class="pane" id="pdf" tabindex="0"></div></section>
+<main><section><h2>PDF <span class="pane-location" id="pdf-location"></span></h2><div class="pane" id="pdf" tabindex="0"></div></section>
 <div id="pdf-splitter" role="separator" aria-label="PDF column width" aria-orientation="vertical"
  tabindex="0" title="Drag to resize the PDF column; arrow keys adjust its width"></div>
-<section><h2>Accepted</h2><div class="pane" id="accepted" tabindex="0"></div></section>
-<section><h2>Working</h2><div class="pane" id="working" tabindex="0"></div></section></main>
+<section><h2>Accepted <span class="pane-location" id="accepted-location"></span></h2><div class="pane" id="accepted" tabindex="0"></div></section>
+<section><h2>Working <span class="pane-location" id="working-location"></span></h2><div class="pane" id="working" tabindex="0"></div></section></main>
 <dialog id="markdown-dialog"><form method="dialog"><h3 id="markdown-title">Edit Markdown</h3>
 <p id="markdown-id"></p>
 <p id="markdown-help">Edit the Markdown source. Select text to add or remove bold; without a selection, the whole section is used.</p>
@@ -46,5 +48,14 @@
 <div id="second-section" hidden><label for="markdown-second">Second section</label><textarea id="markdown-second" spellcheck="false"></textarea></div>
 <p id="markdown-error" role="alert" hidden></p>
 <div class="dialog-actions"><button value="cancel" id="cancel-markdown">Cancel</button><button type="button" id="save-markdown">Save</button></div>
+</form></dialog>
+<dialog id="codex-dialog"><form method="dialog"><h3>Codex</h3>
+<p id="codex-id"></p>
+<label for="codex-instruction">Instruction</label>
+<textarea id="codex-instruction" placeholder="Convert this table to HTML, preserving all its text." spellcheck="false"></textarea>
+<p>Changes are applied to Working after checking that the original text is preserved.</p>
+<p id="codex-status" role="status" hidden></p>
+<p id="codex-error" role="alert" hidden></p>
+<div class="dialog-actions"><button id="cancel-codex" value="cancel">Cancel</button><button type="button" id="run-codex">Run Codex</button></div>
 </form></dialog>
 <script src="/viewer.js"></script></body></html>

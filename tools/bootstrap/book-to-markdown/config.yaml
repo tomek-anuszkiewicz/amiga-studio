@@ -1,0 +1,4 @@
+# Book Review uses the existing ChatGPT-authenticated Codex conversion transport.
+llm:
+  stages:
+    book_codex_edit: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

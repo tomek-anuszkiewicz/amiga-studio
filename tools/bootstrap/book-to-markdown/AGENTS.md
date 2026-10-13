@@ -24,6 +24,14 @@ These instructions supplement the [bootstrap instructions](../AGENTS.md).
   consuming code. Do not hand-edit generated `book.json` to conceal an importer
   or renderer defect. Regeneration is a separate operation, performed when requested;
   existing authored choices and generated bundles do not constrain that operation.
+- The explicit Codex editor command treats current authored text (including
+  existing literals) as its trusted baseline. Validate returned content against
+  the exact request snapshot before replacing one Working element; preserve its
+  ID, source regions, role and visibility. Do not impose the optional strict
+  source audit on model responses, imports or manual editor changes.
+- Table-to-graphic displays original PDF crops and retains its text. A graphic
+  without stored text uses positioned Stage 02 OCR; absent OCR must be reported,
+  not invented from the image. Changed or stale model responses must not save.
 - Keep implemented reconstruction separate from pending work. See the
   [documentation and RAG roadmap](../../../ROADMAP.md#step-1-manual-conversion-and-initial-knowledge-base) and [template contract](README.md#editing-and-publication).
 
@@ -32,7 +40,9 @@ These instructions supplement the [bootstrap instructions](../AGENTS.md).
 Use only the current recipe format. Do not implement backward compatibility,
 automatic migrations, legacy interpretation, manual patches or inference-based
 rescue of existing content. Import rebuilds its output and may overwrite an
-existing Working book; do not preserve old content or settings to avoid loss.
+existing Working and Accepted books. Import deletes both bundles before rebuilding
+Working; the first render creates Accepted from the new Working. Do not preserve
+old content, assets, renders or settings to avoid loss.
 Repair the generating code or prompt instead. Run import/regeneration only when
 the user requests it. Ordinary editor operations and current-format validation
 remain supported.

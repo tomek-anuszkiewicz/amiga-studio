@@ -164,7 +164,17 @@ class TextRecipeTest(unittest.TestCase):
             spec.loader.exec_module(stage)
             stage.repair_callouts(workspace)
             write_json(root / 'working/book.json', {'toc': {'depth': 3}, 'chapters': []})
+            obsolete = ['working/old-chapter.md', 'working/assets/old.png',
+                        'working/renders/old/document.html', 'accepted/book.json',
+                        'accepted/assets/old.png', 'pdf/pages/page_9999.png']
+            for relative in obsolete:
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('obsolete output', encoding='utf-8')
             imported = import_book(root)
+            for relative in obsolete:
+                self.assertFalse((root / relative).exists(), relative)
+            self.assertFalse((root / 'accepted').exists())
             self.assertEqual(imported['toc'], {'depth': 2})
             self.assertTrue(imported['chapters'][0]['elements'][0]['visible'])
             self.assertEqual([e['resolved_md_text'] for e in imported['chapters'][0]['elements']], expected)

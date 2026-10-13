@@ -115,13 +115,19 @@ def new_chapter(elements, chapter_id, existing_files=()):
 
 
 def import_book(root):
-    """Import final Stage 07 page objects and Stage 06 assets."""
+    """Replace book outputs with final Stage 07 objects and Stage 06 assets."""
     working = root / "working"
     workspace = root / "pdf-to-markdown"
     status = read_json(workspace / "stage_status.json")
     for stage in ("02", "06", "07"):
         if status.get(stage, {}).get("status") != "success":
             raise ValueError(f"Preparation stage {stage} is not successful")
+    outputs = [confined(root, name) for name in ("working", "accepted", "pdf/pages")]
+    if any(path == root.resolve() for path in outputs):
+        raise ValueError("Import cleanup must not target the book root")
+    for path in outputs:
+        if path.exists():
+            shutil.rmtree(path)
     elements = []
     assets = working / "assets"
     assets.mkdir(parents=True, exist_ok=True)
@@ -306,6 +312,9 @@ def element_markdown(element):
         text = element.get("resolved_md_text", element.get("md_text", ""))
         return preserve_line_breaks("#" * element["heading_level"] + " " + re.sub(r"^#{1,6}[ \t]*", "", text))
     text = element.get("resolved_md_text", element.get("md_text", ""))
+    if element['type'] == 'table' and element.get('text_format', element.get('table_format')) == 'csv':
+        fence = '`' * max(3, max((len(run) + 1 for run in re.findall(r'`+', text)), default=3))
+        return f'{fence}csv\n{text.rstrip()}\n{fence}'
     if element["type"] in {"code_block", "preformatted_text"} and not any(
             token.type == 'fence' for token in PARSER.parse(text)):
         fence = "`" * max(3, max((len(run) + 1 for run in re.findall(r"`+", text)), default=3))
@@ -341,9 +350,8 @@ def changes(accepted, working):
     common_chapters = {c["id"] for c in accepted["chapters"]} & {c["id"] for c in working["chapters"]}
     def indexed(snapshot):
         result = {}
-        chapter_position = 0
+        chapter_position, position = 0, 0
         for chapter in snapshot["chapters"]:
-            position = 0
             for e in chapter["elements"]:
                 data = dict(e)
                 result[e["id"]] = (chapter["id"], position, data,
@@ -355,10 +363,19 @@ def changes(accepted, working):
                 chapter_position += 1
         return result
     old, new = indexed(accepted), indexed(working)
+    old_chapters = {c['id'] for c in accepted['chapters']}
+    new_chapters = {c['id'] for c in working['chapters']} - old_chapters
+    boundaries = {}
+    for chapter in working['chapters']:
+        if chapter['id'] in new_chapters and chapter['elements']:
+            anchor = chapter['elements'][0]['id']
+            previous = old.get(anchor)
+            boundaries[anchor] = [previous[0], chapter['id']] if previous else [chapter['id']]
     old_hashes = accepted.get("asset_hashes", {})
     new_hashes = working.get("asset_hashes", {})
     result = []
-    if accepted["toc"]["depth"] != working["toc"]["depth"]:
+    if (accepted["toc"]["depth"] != working["toc"]["depth"]
+            or toc_markdown(accepted) != toc_markdown(working)):
         result.append({"id": "generated-toc", "kind": "changed",
                        "accepted": {"depth": accepted["toc"]["depth"]},
                        "working": {"depth": working["toc"]["depth"]}})
@@ -372,8 +389,15 @@ def changes(accepted, working):
     for identifier in order:
         before, after = old.get(identifier), new.get(identifier)
         names = asset_names(after[2] if after else before[2])
-        if before != after or any(old_hashes.get(name) != new_hashes.get(name) for name in names):
-            result.append({"id": identifier, "kind": "added" if before is None else "removed" if after is None else "changed",
+        comparison = after
+        if before and after and after[0] in new_chapters:
+            # A new chapter is one boundary change, not a text edit to every
+            # member. Global order and authored content still compare normally.
+            comparison = (before[0], after[1], after[2], *before[3:])
+        edited = before != comparison or any(old_hashes.get(name) != new_hashes.get(name) for name in names)
+        if edited or identifier in boundaries:
+            result.append({"id": identifier, "kind": "added" if before is None else "removed" if after is None else "changed" if edited else "chapter_boundary",
                            "accepted": "missing" if before is None else "visible" if before[2].get("visible", True) else "hidden",
-                           "working": "missing" if after is None else "visible" if after[2].get("visible", True) else "hidden"})
+                           "working": "missing" if after is None else "visible" if after[2].get("visible", True) else "hidden",
+                           **({'chapter_ids': boundaries[identifier]} if identifier in boundaries else {})})
     return result

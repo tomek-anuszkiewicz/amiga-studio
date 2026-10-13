@@ -2,7 +2,8 @@
 
 This directory implements a deterministic book importer, Markdown/TOC generator
 and local HTML review application. It consumes existing prepared data from
-[PDF-to-Markdown](../pdf-to-markdown/README.md); review makes no model calls.
+[PDF-to-Markdown](../pdf-to-markdown/README.md). Ordinary review is deterministic;
+the explicit Codex element command makes model calls.
 
 PDF preparation ends at Stage 07. The handoff uses Stage 02 original page PNGs
 and positioned text, final Stage 07 page objects, and Stage 06 graphic assets at
@@ -84,8 +85,11 @@ bundled Chromium, run `python -m playwright install chromium` and pass
 longer captures Markdown screenshots. The review browser displays the resulting
 HTML directly. Preparation and review use local resources.
 
-Use the existing Test Book variant. Import rebuilds Working and may overwrite
-its existing content and settings:
+Use the existing Test Book variant. After checking preparation statuses, import
+deletes Working, Accepted and the copied PDF page directory, then rebuilds Working
+and PDF pages from the prepared input. It retains no old exports, assets, renders
+or authored settings. The first render initializes a new Accepted bundle from
+the rebuilt Working:
 
 ```powershell
 $Book = "tools/bootstrap/book-to-markdown/books/test-book-example-4567/1cea0b35ee62"
@@ -141,6 +145,30 @@ or changing their authored models.
 
 ### Editing and publication
 
+**Element actions → New chapter from here** starts a chapter at the selected
+Working element. That element and the remaining elements of its current chapter
+move into a new chapter immediately after it; later chapters remain in place.
+Text, references, IDs, roles, heading levels and PDF regions are preserved. The
+title comes from the first heading in the new part, or `Draft Chapter` if none
+exists. The existing chapter constructor creates a unique Markdown filename.
+An element already at the beginning of a chapter cannot create an empty leading
+chapter. Each complete Working render publishes the current chapter/TOC exports.
+
+A new chapter is shown as one boundary change: the first element of that chapter
+gets the existing orange change marker in Accepted, Working and its PDF overlays.
+The affected chapter header bars are marked too, and the generated TOC is marked
+when its entries or export links change. Unedited body elements do not receive
+individual markers merely because they now belong to the new chapter. Separate
+content edits and order changes remain independently visible. Accepting or
+discarding the split clears its markers.
+
+**Discard Changes** restores the entire Accepted bundle, including chapter
+boundaries, titles, filenames, source recipes and exports. Files belonging only
+to discarded chapters are removed. This is a return to Accepted, not a one-action
+undo history. **Accept Working** establishes the new baseline; subsequent discard
+returns to that accepted chapter structure. Per-element **Discard** restores
+properties only and does not undo chapter membership or movement.
+
 Every `md_text` is a PDF text template using the syntax below.
 Chapter `title` and `markdown_file` use the same syntax: they can contain plain
 text, PDF references, or both. Resolution happens before chapter labels, export
@@ -155,10 +183,84 @@ Stage 07 supplies complete final pages, preserving transcribed tables and callou
 Positioned Stage 02 blocks intersecting the element region supply candidate text.
 Exact matching can reorder source selections, such as a wrapped label beside an
 assembly listing. Fences, their language tags and HTML tags/attributes remain
-literal structure. Unmatched transcription/corrections remain explicit literals;
-matching equal characters does not certify semantic attribution of repeated text.
+literal structure. Unmatched transcription/corrections currently remain explicit
+literals, which the optional strict source audit reports as noncompliant. Matching equal
+characters does not certify semantic attribution of repeated text.
 Loading a new recipe resolves PDF ranges without consulting converted page Markdown.
 Chapter titles retain the imported heading's recipe.
+
+### Source validation
+
+Run a read-only audit of the current Working model:
+
+```powershell
+python tools/bootstrap/book-to-markdown/book_review.py validate --book $Book
+```
+
+The command prints a JSON report and exits with code 1 for a noncompliant book.
+It checks element `md_text`, chapter titles and every referenced PDF character
+range. Filenames and IDs are structural metadata. Source text remains behind
+references; literal whitespace is limited to spaces and newlines. Markdown
+structure, recognized HTML tags/attributes, code fence language identifiers and
+math formatting commands are allowed, but literal cell text, code, math arguments
+and visible attribute text are reported. Visible math symbol commands without
+source references are reported too. Unsupported markup is reported rather than
+silently exempted.
+
+This is an optional diagnostic command. Import results and manual editor changes
+are trusted authoring input; normal loading, editing and status polling do not
+run this audit or display its findings. Existing reference resolution, model
+structure and stale-revision checks still apply. The audit does not repair or
+regenerate prepared results.
+
+The audit validates provenance syntax and literal content, not semantic source
+attribution, word order, duplication or transcription quality. A valid range
+does not prove that repeated letters were selected from the correct occurrence.
+
+### Codex element command
+
+Select an element, open **Element actions → Codex...**, enter an instruction and
+click **Run Codex**. The command works on that element's Working version using its
+Copy ID. The request contains its recipe, resolved text, chapter context and the
+original PDF-region crop. The model returns resolved text in JSON; the application
+preserves existing references while replacing the selected element in place.
+Accepted remains unchanged until normal acceptance. The viewer refreshes after
+the validated change. Failures appear in the dialog and leave Working unchanged.
+
+[config.yaml](config.yaml) selects the model and effort; the initial selection is
+`gpt-6.1-sol` / `medium`. [The prompt](prompts/codex-edit.md) defines the response
+contract. Requests reuse the [shared ChatGPT-authenticated conversion transport](../conversion/README.md)
+and completed-response cache. Responses rejected by the content guard are not
+cached. Request JSON, response JSON, crop, validation and errors are recorded under
+`.agent/tmp/book-codex/<request-id>/`; the console identifies that directory.
+
+Response validation compares returned content with the exact selected input snapshot sent to the
+model, not with the PDF text layer. Existing literals are part of this trusted
+baseline and are not grounds for rejection.
+
+Compare content after interpreting the explicitly selected input and output
+formats, rather than comparing raw Markdown, HTML or CSV bytes. Preserve all
+words, numbers, punctuation, case, repetitions and their order. Formatting and
+representation changes may alter markup and layout whitespace, but must not
+join or split words. Table conversions must preserve cell content and row/column
+association, including spans; a bag of words or flattened character count is
+insufficient. Reject additions, omissions or changes before replacing Working,
+report the differences, and require the input revision to remain current.
+Manual editor changes are outside this automated-content guard.
+
+Supported text representations are Markdown, HTML, CSV and plain text. CSV tables
+are displayed/exported as CSV code blocks. HTML/Markdown table cell content,
+order and row/column spans must remain identical. CSV cannot represent merged
+cells, so conversions that discard existing spans are rejected. The guard retains
+math expression syntax rather than claiming equivalence between different formulas.
+
+Table-to-graphic uses a crop of the original PDF region, retaining the authored
+text in `md_text`. Multiple regions are stacked in their existing order. On a
+graphic-to-table request, existing stored text is used; a graphic without stored
+text receives references to Stage 02 OCR characters in its source regions. Empty
+OCR stops the command. The returned text must match that baseline exactly; the
+image is context, not authorization to add text missing from OCR. When the baseline
+has only plain OCR, the model's new cell layout is left for user review.
 
 `{{text page=3 block=1 chars=0:6}}` selects Unicode characters from a Stage 02
 block, with a zero-based start and exclusive end. Ordered references can combine
@@ -412,7 +514,11 @@ change remains selected and the hidden-content checkbox is unchanged. Hidden/rem
 explicit side status, without invented counterpart highlights.
 
 Manual scrolling transfers leadership. A reference line at 25% of the viewport
-maps relative element progress to counterpart heights. PDF mapping uses ordered
+maps relative element progress to counterpart heights. The gray PDF header shows
+the physical page at that reference
+line; Accepted and Working show their own current heading paths, limited to the
+selected TOC depth. Hidden headings do not contribute to the path. Long paths
+are truncated to fit the panel header. PDF mapping uses ordered
 source regions, skips disconnected gaps and can move backwards or across text
 columns. Pointer horizontal position disambiguates PDF columns, preferring
 visible Working bindings. Follower scroll events do not acquire leadership.
