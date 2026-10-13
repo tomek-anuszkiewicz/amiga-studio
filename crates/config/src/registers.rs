@@ -85,6 +85,10 @@ pub mod custom_reg {
         pub const COPJMP2: u16 = 0x08A;
         /// Copper instruction fetch strobe
         pub const COPINS: u16 = 0x08C;
+        /// Display window start (vertical DMA boundary; horizontal bits also latched by Denise)
+        pub const DIWSTRT: u16 = 0x08E;
+        /// Display window stop (vertical DMA boundary; horizontal bits also latched by Denise)
+        pub const DIWSTOP: u16 = 0x090;
         /// Display data fetch start (horizontal bitplane DMA window start)
         pub const DDFSTRT: u16 = 0x092;
         /// Display data fetch stop (horizontal bitplane DMA window stop)
@@ -444,6 +448,8 @@ pub mod custom_reg {
     pub use paula::*;
 
     // Explicit disambiguation for registers decoded by multiple physical chips
+    pub const DIWSTRT: u16 = agnus::DIWSTRT;
+    pub const DIWSTOP: u16 = agnus::DIWSTOP;
     pub const DMACON: u16 = agnus::DMACON;
     pub const DMACONR: u16 = agnus::DMACONR;
     pub const BPLCON0: u16 = denise::BPLCON0;

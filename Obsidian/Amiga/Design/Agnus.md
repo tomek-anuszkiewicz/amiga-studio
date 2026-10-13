@@ -6,8 +6,8 @@ category: "Design"
 subsystem: "agnus"
 status: "active"
 created: 2026-09-06
-updated: 2026-10-12
-related: ["[Copper.md](Copper.md)", "[Blitter.md](Blitter.md)", "[DMA.md](DMA.md)"]
+updated: 2026-10-13
+related: ["[Copper.md](Copper.md)", "[Blitter.md](Blitter.md)", "[DMA.md](DMA.md)", "[Denise.md](Denise.md)"]
 tracked_paths:
   - "crates/agnus"
 ---
@@ -28,6 +28,11 @@ the data for its own function. [DMA](DMA.md) describes a transfer without
 duplicating the channel behavior here. This role and the supported models
 are separate questions: the table above describes the current emulator
 configuration, while the component notes describe hardware behavior.
+
+Agnus uses the vertical fields of `DIWSTRT` and `DIWSTOP` to allow bitplane
+DMA only on lines inside the display window. Its scheduler uses `DDFSTRT` and
+`DDFSTOP` for the horizontal fetch interval; [Denise](Denise.md) uses the
+horizontal DIW fields to clip the pixels produced from those words.
 
 ## Component structure
 

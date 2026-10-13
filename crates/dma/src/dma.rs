@@ -52,6 +52,10 @@ pub struct DmaScheduler {
     pub dmacon: u16,
     /// Bitplane Control 0 ($100, bits 12..14 planecount, bit 15 HIRES)
     pub bplcon0: u16,
+    /// Vertical display window start (DIWSTRT high byte)
+    pub vstart: u16,
+    /// Vertical display window stop (DIWSTOP high byte and implicit OCS ninth bit)
+    pub vstop: u16,
     /// Display Data Fetch Start ($092, default $0038)
     pub ddfstrt: u16,
     /// Display Data Fetch Stop ($094, default $00D0)
@@ -69,6 +73,8 @@ impl Default for DmaScheduler {
         Self {
             dmacon: 0,
             bplcon0: 0,
+            vstart: 0,
+            vstop: 0x100,
             ddfstrt: DDFSTRT_DEFAULT,
             ddfstop: DDFSTOP_DEFAULT,
             cpu_starvation_counter: 0,
@@ -88,6 +94,8 @@ impl DmaScheduler {
     pub fn reset(&mut self) {
         self.dmacon = 0;
         self.bplcon0 = 0;
+        self.vstart = 0;
+        self.vstop = 0x100;
         self.ddfstrt = DDFSTRT_DEFAULT;
         self.ddfstop = DDFSTOP_DEFAULT;
         self.cpu_starvation_counter = 0;
@@ -99,6 +107,18 @@ impl DmaScheduler {
     #[inline]
     pub fn set_bplcon0(&mut self, val: u16) {
         self.bplcon0 = val;
+    }
+
+    /// Sets the vertical bitplane DMA start line.
+    #[inline]
+    pub fn set_vstart(&mut self, vstart: u16) {
+        self.vstart = vstart;
+    }
+
+    /// Sets the vertical bitplane DMA stop line.
+    #[inline]
+    pub fn set_vstop(&mut self, vstop: u16) {
+        self.vstop = vstop;
     }
 
     /// Sets DDFSTRT register value ($092)
@@ -147,11 +167,10 @@ impl DmaScheduler {
         block_start == self.ddfstop
     }
 
-    /// Returns true if the vertical position is inside active display scanlines (outside vertical blanking)
+    /// Returns true if the vertical position is inside the DIW bitplane DMA window.
     #[inline]
     pub fn is_in_vertical_display(&self, vpos: u16) -> bool {
-        // Standard PAL active display scanlines: 0x2C (44) .. 0x12C (300)
-        vpos >= 0x2C && vpos < 0x12C
+        vpos >= self.vstart && (vpos < self.vstop || self.vstop < self.vstart)
     }
 
     /// Advances DMA scheduler by 1 Color Clock

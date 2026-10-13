@@ -192,6 +192,10 @@ impl<'a> MemoryBus<'a> {
                 self.denise.write_register(custom_reg::denise::BPLCON0, val);
                 self.agnus.write_register(custom_reg::agnus::BPLCON0, val);
             }
+            custom_reg::agnus::DIWSTRT | custom_reg::agnus::DIWSTOP => {
+                self.agnus.write_register(offset, val);
+                self.denise.write_register(offset, val);
+            }
             custom_reg::denise::SPR0POS
             | custom_reg::denise::SPR0CTL
             | custom_reg::denise::SPR1POS
@@ -211,9 +215,7 @@ impl<'a> MemoryBus<'a> {
                 self.denise.write_register(offset, val);
                 self.agnus.write_register(offset, val);
             }
-            custom_reg::denise::DIWSTRT
-            | custom_reg::denise::DIWSTOP
-            | custom_reg::denise::BPLCON1
+            custom_reg::denise::BPLCON1
             | custom_reg::denise::CLXCON
             | custom_reg::denise::BPLCON2
             | custom_reg::denise::BPL1DAT

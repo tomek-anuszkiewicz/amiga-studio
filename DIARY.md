@@ -3481,3 +3481,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - python tools/verification/verify.py commit passed
   - Obsidian vault audit passed for 36 specifications and 709 links
   - full SingleStep suite was not run
+---
+
+### [2026-10-13 20:04 CEST] — Gate bitplane DMA with the display window
+- **Affected Subsystems**:
+  - `crates/config`
+  - `crates/memory_bus`
+  - `crates/agnus`
+  - `crates/dma`
+  - `crates/denise`
+  - `crates/machine_loop tests`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Decode DIWSTRT and DIWSTOP in both Agnus and Denise namespaces and route writes to both chips
+  - use Agnus vertical DIW bounds with DDF to gate bitplane DMA and Denise horizontal bounds to clip pixels
+  - add failing-first integration and Denise regression tests
+  - update the register matrix and affected design specifications
+- **Architectural Rationale & Trade-Offs**:
+  - Match the documented split between vertical bitplane fetch selection and horizontal pixel clipping while retaining delayed chip-local register commits
+- **Verification & Test Results**:
+  - PASS: focused config, Denise, and machine-loop tests
+  - PASS: full Tier 2 integration before final alias correction
+  - PASS: architecture, formatting, diff check, and Obsidian vault audit
+  - NOT RUN: full SingleStep, milestone profile, and whole-machine captures

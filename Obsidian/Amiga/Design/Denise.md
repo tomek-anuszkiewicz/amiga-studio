@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "denise"
 status: "active"
 created: 2026-09-06
-updated: 2026-10-12
+updated: 2026-10-13
 related: ["[Sprites.md](Sprites.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[Game Ports.md](Game%20Ports.md)"]
 tracked_paths:
   - "crates/denise"
@@ -27,11 +27,12 @@ words are fetched, then skip the unused portion of a larger memory image
 before the next line. Thus the image in memory may be wider than the portion
 shown on screen.
 
-The data-fetch interval determines which memory words become available. The
-display window determines where the resulting picture is visible. They are
-separate controls: fetching more data can support scrolling or a wider image,
-while the window still clips what appears. Denise combines the playfield with
-[hardware sprites](Sprites.md) according to display priority and records
+The data-fetch interval determines which memory words become available. Agnus
+uses the vertical fields of `DIWSTRT` and `DIWSTOP` to gate bitplane DMA by
+line; Denise uses their horizontal fields to clip playfield pixels within a
+line. Fetching more data can support scrolling or a wider image, while the
+horizontal window still clips what appears. Denise combines the playfield
+with [hardware sprites](Sprites.md) according to display priority and records
 collisions.
 
 ## Amiga 500 display modes

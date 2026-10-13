@@ -11,7 +11,7 @@ use common::MachineHarness;
 use denise::frame_builder;
 
 #[test]
-fn test_denise_display_window_configuration_and_clipping() {
+fn test_display_window_register_configuration_and_geometry() {
     let mut harness = MachineHarness::new();
 
     // Standard PAL window: VSTART = 44 ($2C), VSTOP = 300 ($12C -> $2C with low-byte wrap)
@@ -32,7 +32,7 @@ fn test_denise_display_window_configuration_and_clipping() {
     assert_eq!(harness.machine.denise.diwstrt, diwstrt);
     assert_eq!(harness.machine.denise.diwstop, diwstop);
 
-    // Verify window coordinate checks on committed registers
+    // Verify logical window coordinates from the committed register words.
     assert!(frame_builder::is_in_display_window(
         130,
         45,
@@ -59,6 +59,79 @@ fn test_denise_display_window_configuration_and_clipping() {
         harness.machine.denise.diwstrt,
         harness.machine.denise.diwstop
     )); // Above VSTART
+}
+
+#[test]
+fn test_display_window_vertical_bounds_gate_bitplane_dma() {
+    let mut harness = MachineHarness::new();
+    let diwstrt = 0x6481; // VSTART = 100, HSTART = 129
+    let diwstop = 0xC8C1; // VSTOP = 200, HSTOP = 449
+
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(custom_reg::DIWSTRT, diwstrt);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(custom_reg::DIWSTOP, diwstop);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(custom_reg::BPLCON0, 0x1000);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(custom_reg::DMACON, 0x8300);
+    harness.step_cck(5);
+
+    assert_eq!(harness.machine.denise.diwstrt, diwstrt);
+    assert_eq!(harness.machine.denise.diwstop, diwstop);
+
+    let dma = &harness.machine.agnus.dma;
+    let fetch_slot = 0x3F; // First low-resolution BPL1 slot after DDFSTRT = $38.
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 99), None);
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 100), Some(0));
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 199), Some(0));
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 200), None);
+
+    harness.machine.physical_memory.chip_ram[0x1000] = 0xBE;
+    harness.machine.physical_memory.chip_ram[0x1001] = 0xEF;
+    harness.machine.agnus.bplpt[0] = 0x1000;
+    harness.machine.agnus.hpos = fetch_slot - 1;
+    harness.machine.agnus.vpos = 99;
+    harness.machine.step_cck();
+    assert_eq!(harness.machine.agnus.bplpt[0], 0x1000);
+    assert_eq!(harness.machine.denise.bpldat[0], 0);
+
+    harness.machine.agnus.hpos = fetch_slot - 1;
+    harness.machine.agnus.vpos = 100;
+    harness.machine.step_cck();
+    assert_eq!(harness.machine.agnus.bplpt[0], 0x1002);
+    assert_eq!(harness.machine.denise.bpldat[0], 0xBEEF);
+
+    // Denise sees the horizontal window earlier than Agnus updates the DMA boundary.
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(custom_reg::DIWSTRT, 0x2C81);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(custom_reg::DIWSTOP, 0x2CC1);
+    harness.step_cck(1);
+    assert_eq!(harness.machine.denise.diwstrt, 0x2C81);
+    assert_eq!(harness.machine.agnus.diwstrt, diwstrt);
+    let dma = &harness.machine.agnus.dma;
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 99), None);
+
+    harness.step_cck(3);
+    assert_eq!(harness.machine.agnus.diwstrt, 0x2C81);
+    assert_eq!(harness.machine.agnus.diwstop, 0x2CC1);
+    let dma = &harness.machine.agnus.dma;
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 99), Some(0));
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 299), Some(0));
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 300), None);
 }
 
 #[test]

@@ -7,7 +7,7 @@ subsystem: "dma"
 status: "draft"
 created: 2026-09-19
 updated: 2026-10-13
-related: ["[Agnus.md](Agnus.md)", "[Paula.md](Paula.md)", "[MemoryBus.md](MemoryBus.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
+related: ["[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[MemoryBus.md](MemoryBus.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/dma"
 ---
@@ -43,10 +43,11 @@ Audio DMA control follows this signal flow:
 
 Display DMA follows a different path:
 
-| Stage | Denise | Agnus |
+| Stage | [Denise](Denise.md) | Agnus |
 | :--- | :--- | :--- |
 | `DMACON` write | Takes no action. | Latches `DMAEN`, `BPLEN`, and `SPREN`. |
-| Display fetch | Does not request DMA. | Uses beam timing and the bitplane fetch window or sprite slots to schedule a fetch when `DMAEN` and the relevant enable bit are set. |
+| Display window write | Latches the horizontal fields of `DIWSTRT` and `DIWSTOP` for pixel clipping. | Latches their vertical fields to gate bitplane DMA by line. |
+| Display fetch | Does not request DMA. | Uses the vertical display window and `DDFSTRT`/`DDFSTOP` horizontal fetch interval for bitplanes; sprite slots are scheduled separately. `DMAEN` and the relevant channel enable must also be set. |
 | Data transfer | Latches the selected `BPLxDAT` or sprite register from the shared data bus. | Reads Chip RAM and selects the destination register on `RGA`. |
 
 There is no Denise-to-Agnus request or separate grant signal in this display

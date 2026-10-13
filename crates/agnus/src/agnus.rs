@@ -40,6 +40,10 @@ pub struct Agnus {
     // --- Active Latched Registers (Read is NOW) ---
     /// DMACON / DMACONR ($096 / $002) - active DMA channel enables
     pub dmacon: u16,
+    /// Display Window Start ($08E, vertical DMA start)
+    pub diwstrt: u16,
+    /// Display Window Stop ($090, vertical DMA stop)
+    pub diwstop: u16,
     /// Display Data Fetch Start ($092)
     pub ddfstrt: u16,
     /// Display Data Fetch Stop ($094)
@@ -116,6 +120,8 @@ impl Agnus {
             dsk_dma_req: false,
             pending_dsk_dma_slot: None,
             dmacon: 0,
+            diwstrt: 0,
+            diwstop: 0,
             ddfstrt: 0x0038,
             ddfstop: 0x00D0,
             bplcon0: 0,
@@ -146,6 +152,8 @@ impl Agnus {
         self.dsk_dma_req = false;
         self.pending_dsk_dma_slot = None;
         self.dmacon = 0;
+        self.diwstrt = 0;
+        self.diwstop = 0;
         self.ddfstrt = 0x0038;
         self.ddfstop = 0x00D0;
         self.bplcon0 = 0;
@@ -426,6 +434,7 @@ impl Agnus {
             custom_reg::COPJMP1 | custom_reg::COPJMP2 => (1, MutationMode::OverwritePending),
             custom_reg::BLTSIZE => (1, MutationMode::OverwritePending),
             custom_reg::BPLCON0 => (4, MutationMode::OverwritePending), // BPLCON0 (Agnus DMA allocation)
+            custom_reg::DIWSTRT | custom_reg::DIWSTOP => (4, MutationMode::OverwritePending),
             custom_reg::DDFSTRT | custom_reg::DDFSTOP => (4, MutationMode::OverwritePending),
             custom_reg::BPL1MOD | custom_reg::BPL2MOD => (2, MutationMode::OverwritePending),
             custom_reg::BLTCON0
@@ -533,6 +542,15 @@ impl Agnus {
             }
             custom_reg::COPJMP1 => self.strobe_copjmp1(),
             custom_reg::COPJMP2 => self.strobe_copjmp2(),
+            custom_reg::DIWSTRT => {
+                self.diwstrt = val;
+                self.dma.set_vstart(val >> 8);
+            }
+            custom_reg::DIWSTOP => {
+                self.diwstop = val;
+                let vstop = (val >> 8) | (if val & 0x8000 == 0 { 0x100 } else { 0 });
+                self.dma.set_vstop(vstop);
+            }
             custom_reg::DDFSTRT => {
                 self.ddfstrt = val & 0x00FC;
                 self.dma.set_ddfstrt(val & 0x00FC);

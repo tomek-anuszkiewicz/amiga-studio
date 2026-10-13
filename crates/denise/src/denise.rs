@@ -168,16 +168,7 @@ impl Denise {
         // Horizontal blanking occupies CCKs 0x12..0x23 (18..35)
         let in_hblank = beam.hpos >= 18 && beam.hpos <= 35;
 
-        // Track horizontal and vertical display window flip-flops
-        let vstart = (self.diwstrt >> 8) & 0xFF;
-        let vstop = ((self.diwstop >> 8) & 0xFF)
-            | (if (self.diwstop & 0x8000) != 0 {
-                0
-            } else {
-                0x100
-            });
-        let vflop = beam.vpos >= vstart && beam.vpos < vstop;
-
+        // Denise decodes the horizontal DIW bits; Agnus gates bitplane DMA by line.
         let hstrt = (self.diwstrt & 0xFF) | 1;
         let hstop = (self.diwstop & 0xFF) | 1 | 0x100;
 
@@ -185,7 +176,7 @@ impl Denise {
         if c0 == hstrt {
             self.hflop = true;
         }
-        let in_diw0 = self.hflop && vflop;
+        let in_diw0 = self.hflop;
         if c0 == hstop {
             self.hflop = false;
         }
@@ -194,7 +185,7 @@ impl Denise {
         if c1 == hstrt {
             self.hflop = true;
         }
-        let in_diw1 = self.hflop && vflop;
+        let in_diw1 = self.hflop;
         if c1 == hstop {
             self.hflop = false;
         }
@@ -327,7 +318,7 @@ impl Denise {
                     self.frame_builder.set_pixel(cck_base_x + 4, y, px4);
                     self.frame_builder.set_pixel(cck_base_x + 5, y, px5);
 
-                    let (px6, px7) = if self.hflop && vflop {
+                    let (px6, px7) = if self.hflop {
                         if hires {
                             let p4 = self.shift_pixel();
                             let p5 = self.shift_pixel();
