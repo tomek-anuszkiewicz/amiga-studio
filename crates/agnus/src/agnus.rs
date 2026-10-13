@@ -54,6 +54,10 @@ pub struct Agnus {
     pub bplpt: [u32; 6],
     /// Sprite DMA pointers 0..7 ($120-$13E)
     pub sprpt: [u32; 8],
+    /// Sprite position registers 0..7 ($140-$178)
+    pub sprpos: [u16; 8],
+    /// Sprite control registers 0..7 ($142-$17A)
+    pub sprctl: [u16; 8],
     /// Audio DMA pointers 0..3 ($0A0, $0B0, $0C0, $0D0)
     pub audpt: [u32; 4],
     /// Audio DMA start/loop locations 0..3 (AUDxLCH/AUDxLCL)
@@ -119,6 +123,8 @@ impl Agnus {
             bpl2mod: 0,
             bplpt: [0; 6],
             sprpt: [0; 8],
+            sprpos: [0; 8],
+            sprctl: [0; 8],
             audpt: [0; 4],
             audlc: [0; 4],
             dskpt: 0,
@@ -147,6 +153,8 @@ impl Agnus {
         self.bpl2mod = 0;
         self.bplpt.fill(0);
         self.sprpt.fill(0);
+        self.sprpos.fill(0);
+        self.sprctl.fill(0);
         self.audpt.fill(0);
         self.audlc.fill(0);
         self.dskpt = 0;
@@ -632,6 +640,31 @@ impl Agnus {
                         self.sprpt[sprite] =
                             (self.sprpt[sprite] & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16);
                     }
+                }
+            }
+
+            // Sprite position and control latches
+            custom_reg::agnus::SPR0POS
+            | custom_reg::agnus::SPR0CTL
+            | custom_reg::agnus::SPR1POS
+            | custom_reg::agnus::SPR1CTL
+            | custom_reg::agnus::SPR2POS
+            | custom_reg::agnus::SPR2CTL
+            | custom_reg::agnus::SPR3POS
+            | custom_reg::agnus::SPR3CTL
+            | custom_reg::agnus::SPR4POS
+            | custom_reg::agnus::SPR4CTL
+            | custom_reg::agnus::SPR5POS
+            | custom_reg::agnus::SPR5CTL
+            | custom_reg::agnus::SPR6POS
+            | custom_reg::agnus::SPR6CTL
+            | custom_reg::agnus::SPR7POS
+            | custom_reg::agnus::SPR7CTL => {
+                let sprite = ((offset - custom_reg::agnus::SPR0POS) / 8) as usize;
+                if (offset & 2) == 0 {
+                    self.sprpos[sprite] = val;
+                } else {
+                    self.sprctl[sprite] = val;
                 }
             }
 

@@ -3,6 +3,7 @@
 Applies to production `.rs` files under `crates/*/src/`; documentation and reference manuals have no line-count limit.
 
 - Organize each file around a behavioral aspect or capability, keeping related types and algorithms together. Avoid one-struct-per-file fragmentation.
+- Place new methods beside the existing methods for the same behavior or interface. Keep constants and construction methods at the start of an `impl` when that is the file's convention; do not prepend unrelated methods there.
 - Below 600 lines is the usual cohesive range; 600-800 lines triggers responsibility review. Above 800 lines requires decomposition unless covered by a registered exception.
 - Split independent responsibilities even below the limit. Separate serializable state from heavy simulation where coherent; keep tests outside `src/` per [unit-testing-policy.md](unit-testing-policy.md).
 - Recognized exceptions include static dispatch/LUT tables and indivisible linear instruction decoders or hardware state machines. Never add `LINE_COUNT_EXCEPTIONS` merely to silence a failure: decompose or present metrics and request explicit approval. Remove stale exceptions when a file disappears or reaches 800 lines or fewer.

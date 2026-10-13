@@ -3424,3 +3424,34 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: vault metadata and link audit
   - PASS: graphify update . and git diff --check
   - NOT RUN: full SingleStep, milestone profile and whole-machine captures
+---
+
+### [2026-10-13 18:02 CEST] — Custom register routing and hardware research
+- **Affected Subsystems**:
+  - `Agnus`
+  - `Denise`
+  - `Paula`
+  - `memory bus`
+  - `physical memory`
+  - `design specifications`
+  - `RAG MCP`
+- **What Was Changed (The Concrete Reality)**:
+  - Route sync strobes and sprite position/control writes to chip recipients
+  - Describe early DMA open-bus reads and DMA ownership in code and design specifications
+  - Add a hardware research agent and bounded RAG MCP reference retrieval
+  - Approve sprpos and sprctl hardware abbreviations in the English vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Keep custom register writes at the receiving chip boundary and document the bus semantics seen by CPU reads
+  - support hardware research with scoped reference lookup
+- **Verification & Test Results**:
+  - python tools/verification/verify.py commit passed on the staged snapshot
+  - including workspace and harness tests
+  - English policy
+  - formatting
+  - Clippy
+  - architecture
+  - hardware and code quality
+  - bootstrap
+  - conversion
+  - RAG MCP
+  - and verification CLI contracts

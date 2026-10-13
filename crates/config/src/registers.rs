@@ -31,14 +31,6 @@ pub mod custom_reg {
         pub const VHPOSW: u16 = 0x02C;
         /// Copper control register (CDANG bit enables blitter register writes)
         pub const COPCON: u16 = 0x02E;
-        /// Strobe register for light pen horizontal latch
-        pub const STREQU: u16 = 0x038;
-        /// Strobe register for light pen vertical latch
-        pub const STRVBL: u16 = 0x03A;
-        /// Strobe register for horizontal sync
-        pub const STRHOR: u16 = 0x03C;
-        /// Strobe register for long horizontal line identification
-        pub const STRLONG: u16 = 0x03E;
         /// Blitter control register 0 (channels, minterms, A-shift)
         pub const BLTCON0: u16 = 0x040;
         /// Blitter control register 1 (B-shift, line mode, fill, desc)
@@ -177,6 +169,23 @@ pub mod custom_reg {
         pub const SPR7PTH: u16 = 0x13C;
         /// Sprite 7 pointer low
         pub const SPR7PTL: u16 = 0x13E;
+        /// Sprite position registers also sampled by Agnus
+        pub const SPR0POS: u16 = 0x140;
+        pub const SPR0CTL: u16 = 0x142;
+        pub const SPR1POS: u16 = 0x148;
+        pub const SPR1CTL: u16 = 0x14A;
+        pub const SPR2POS: u16 = 0x150;
+        pub const SPR2CTL: u16 = 0x152;
+        pub const SPR3POS: u16 = 0x158;
+        pub const SPR3CTL: u16 = 0x15A;
+        pub const SPR4POS: u16 = 0x160;
+        pub const SPR4CTL: u16 = 0x162;
+        pub const SPR5POS: u16 = 0x168;
+        pub const SPR5CTL: u16 = 0x16A;
+        pub const SPR6POS: u16 = 0x170;
+        pub const SPR6CTL: u16 = 0x172;
+        pub const SPR7POS: u16 = 0x178;
+        pub const SPR7CTL: u16 = 0x17A;
     }
 
     /// Denise (MOS 8362 / 8373) Video Display & Serializer Registers
@@ -189,6 +198,14 @@ pub mod custom_reg {
         pub const CLXDAT: u16 = 0x00E;
         /// Joy/mouse test register
         pub const JOYTEST: u16 = 0x036;
+        /// Horizontal sync with vertical blank and equalization strobe
+        pub const STREQU: u16 = 0x038;
+        /// Horizontal sync with vertical blank strobe
+        pub const STRVBL: u16 = 0x03A;
+        /// Horizontal sync strobe
+        pub const STRHOR: u16 = 0x03C;
+        /// Long horizontal line identification strobe
+        pub const STRLONG: u16 = 0x03E;
         /// Display window start (upper-left coordinates)
         pub const DIWSTRT: u16 = 0x08E;
         /// Display window stop (lower-right coordinates)
@@ -375,6 +392,8 @@ pub mod custom_reg {
         pub const SERPER: u16 = 0x032;
         /// Potentiometer port data write and start
         pub const POTGO: u16 = 0x034;
+        /// Horizontal sync strobe shared with Denise
+        pub const STRHOR: u16 = 0x03C;
         /// Disk sync pattern register
         pub const DSKSYNC: u16 = 0x07E;
         /// DMA control write (set/clear bits for DMA channels)
@@ -428,6 +447,23 @@ pub mod custom_reg {
     pub const DMACON: u16 = agnus::DMACON;
     pub const DMACONR: u16 = agnus::DMACONR;
     pub const BPLCON0: u16 = denise::BPLCON0;
+    pub const STRHOR: u16 = denise::STRHOR;
+    pub const SPR0POS: u16 = denise::SPR0POS;
+    pub const SPR0CTL: u16 = denise::SPR0CTL;
+    pub const SPR1POS: u16 = denise::SPR1POS;
+    pub const SPR1CTL: u16 = denise::SPR1CTL;
+    pub const SPR2POS: u16 = denise::SPR2POS;
+    pub const SPR2CTL: u16 = denise::SPR2CTL;
+    pub const SPR3POS: u16 = denise::SPR3POS;
+    pub const SPR3CTL: u16 = denise::SPR3CTL;
+    pub const SPR4POS: u16 = denise::SPR4POS;
+    pub const SPR4CTL: u16 = denise::SPR4CTL;
+    pub const SPR5POS: u16 = denise::SPR5POS;
+    pub const SPR5CTL: u16 = denise::SPR5CTL;
+    pub const SPR6POS: u16 = denise::SPR6POS;
+    pub const SPR6CTL: u16 = denise::SPR6CTL;
+    pub const SPR7POS: u16 = denise::SPR7POS;
+    pub const SPR7CTL: u16 = denise::SPR7CTL;
 }
 
 /// Memory-mapped byte addresses of the two MOS 8520 interface adapters.

@@ -73,6 +73,58 @@ def rag_search(
 
 
 @mcp.tool()
+def rag_search_reference(query: str, limit: int = 5) -> str:
+    """Search only Amiga hardware references, excluding project design and code.
+
+    The shared ``amiga`` source tag also contains other project documents, so
+    validate each returned file path before exposing its content to the caller.
+    """
+    if not 1 <= limit <= 20:
+        return "Reference search limit must be between 1 and 20."
+
+    try:
+        results = run_rag_qdrant_json(build_search_command(query, ["amiga"], 100))
+    except RagQdrantCommandError as error:
+        return f"Error during reference search: {error}"
+
+    error = response_error(results)
+    if error:
+        return f"Error during reference search: {error}"
+    if not isinstance(results, list):
+        return "Error during reference search: rag_qdrant returned an unexpected JSON response."
+
+    reference_root = (PROJECT_ROOT / "Obsidian" / "Amiga" / "Reference").resolve()
+    accepted = []
+    for hit in results:
+        if not isinstance(hit, dict) or hit.get("source") != "amiga":
+            continue
+        raw_path = hit.get("file_path")
+        if not isinstance(raw_path, str) or not raw_path:
+            continue
+        path = Path(raw_path)
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        try:
+            path.resolve().relative_to(reference_root)
+        except ValueError:
+            continue
+        accepted.append(hit)
+        if len(accepted) == limit:
+            break
+
+    if not accepted:
+        return "No matching sections from Obsidian/Amiga/Reference were found in the first 100 Amiga results."
+
+    lines = [f"Found {len(accepted)} reference section(s):\n"]
+    for index, hit in enumerate(accepted, 1):
+        lines.append(f"--- [Result {index} | Score: {hit.get('score', 0.0)}] ---")
+        lines.append(f"File: {hit['file_path']}")
+        lines.append(f"Header: {hit.get('header', 'Untitled Section')}")
+        lines.append(f"\n{str(hit.get('content', '')).strip()}\n")
+    return "\n".join(lines)
+
+
+@mcp.tool()
 def rag_list_sources() -> str:
     """List source tags with cached file and vector counts."""
     try:

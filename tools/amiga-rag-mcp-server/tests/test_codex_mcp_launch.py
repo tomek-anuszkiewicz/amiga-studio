@@ -68,7 +68,7 @@ class CodexMcpLaunchTests(unittest.TestCase):
                 server = status["data"][0]
                 self.assertEqual(server["runtimeStatus"], "connected", server)
                 self.assertIsNone(server["toolsError"], server)
-                self.assertEqual(set(server["tools"]), {"rag_search", "rag_list_sources", "rag_status"})
+                self.assertEqual(set(server["tools"]), {"rag_search", "rag_search_reference", "rag_list_sources", "rag_status"})
             finally:
                 process.stdin.close()
                 try:

@@ -123,6 +123,34 @@ class CommandContractTests(unittest.TestCase):
             else:
                 os.environ["RAG_INDEX_JSON"] = original_index_json
 
+    def test_reference_search_exposes_only_reference_hits(self):
+        server = self.load_server()
+        calls = []
+        hits = [
+            {"source": "amiga", "file_path": "Obsidian/Amiga/Design/DMA.md", "content": "design secret"},
+            {"source": "devnotes", "file_path": "Obsidian/Amiga/Reference/Manual.md", "content": "other source"},
+            {"source": "amiga", "file_path": "Obsidian/Amiga/Reference/../Design/DMA.md", "content": "traversal secret"},
+            {"source": "amiga", "file_path": "Obsidian/Amiga/Reference/Manual.md", "header": "Copper", "content": "reference fact"},
+            {"source": "amiga", "file_path": str(REPOSITORY_ROOT / "Obsidian" / "Amiga" / "Reference" / "Other.md"), "content": "second fact"},
+        ]
+        server.run_rag_qdrant_json = lambda arguments: calls.append(arguments) or hits
+
+        result = server.rag_search_reference("Copper timing", 2)
+
+        self.assertEqual(calls, [["search", "Copper timing", "--source", "amiga", "--limit", "100", "--json"]])
+        self.assertIn("reference fact", result)
+        self.assertIn("second fact", result)
+        self.assertNotIn("secret", result)
+        self.assertNotIn("other source", result)
+
+    def test_reference_search_reports_empty_scoped_results(self):
+        server = self.load_server()
+        server.run_rag_qdrant_json = lambda _arguments: [
+            {"source": "amiga", "file_path": "Obsidian/Amiga/Design/DMA.md", "content": "design only"},
+        ]
+
+        self.assertIn("No matching sections", server.rag_search_reference("DMA"))
+
     def test_mcp_status_reports_the_cli_json_error(self):
         server = self.load_server()
         original_index_json = os.environ.get("RAG_INDEX_JSON")

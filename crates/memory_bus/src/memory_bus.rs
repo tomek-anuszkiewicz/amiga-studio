@@ -43,6 +43,8 @@ impl<'a> MemoryBus<'a> {
     pub fn read_custom_word(&mut self, offset: u16) -> u16 {
         let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
         match offset {
+            // Early DMA reads are not ordinary CPU-readable registers.
+            custom_reg::agnus::BLTDDAT | custom_reg::paula::DSKDATR => 0xFFFF,
             custom_reg::agnus::DMACONR => self.agnus.dmaconr(),
             custom_reg::agnus::VPOSR => self.agnus.vposr(),
             custom_reg::agnus::VHPOSR => self.agnus.vhposr(),
@@ -175,6 +177,13 @@ impl<'a> MemoryBus<'a> {
     pub fn write_custom_word(&mut self, offset: u16, val: u16) {
         let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
         match offset {
+            custom_reg::denise::STREQU
+            | custom_reg::denise::STRVBL
+            | custom_reg::denise::STRLONG => self.denise.receive_sync_strobe(offset),
+            custom_reg::denise::STRHOR => {
+                self.denise.receive_sync_strobe(offset);
+                self.paula.receive_horizontal_sync_strobe();
+            }
             custom_reg::agnus::DMACON => {
                 self.agnus.write_register(custom_reg::agnus::DMACON, val);
                 self.paula.write_register(custom_reg::paula::DMACON, val);
@@ -182,6 +191,25 @@ impl<'a> MemoryBus<'a> {
             custom_reg::denise::BPLCON0 => {
                 self.denise.write_register(custom_reg::denise::BPLCON0, val);
                 self.agnus.write_register(custom_reg::agnus::BPLCON0, val);
+            }
+            custom_reg::denise::SPR0POS
+            | custom_reg::denise::SPR0CTL
+            | custom_reg::denise::SPR1POS
+            | custom_reg::denise::SPR1CTL
+            | custom_reg::denise::SPR2POS
+            | custom_reg::denise::SPR2CTL
+            | custom_reg::denise::SPR3POS
+            | custom_reg::denise::SPR3CTL
+            | custom_reg::denise::SPR4POS
+            | custom_reg::denise::SPR4CTL
+            | custom_reg::denise::SPR5POS
+            | custom_reg::denise::SPR5CTL
+            | custom_reg::denise::SPR6POS
+            | custom_reg::denise::SPR6CTL
+            | custom_reg::denise::SPR7POS
+            | custom_reg::denise::SPR7CTL => {
+                self.denise.write_register(offset, val);
+                self.agnus.write_register(offset, val);
             }
             custom_reg::denise::DIWSTRT
             | custom_reg::denise::DIWSTOP
@@ -194,36 +222,20 @@ impl<'a> MemoryBus<'a> {
             | custom_reg::denise::BPL4DAT
             | custom_reg::denise::BPL5DAT
             | custom_reg::denise::BPL6DAT
-            | custom_reg::denise::SPR0POS
-            | custom_reg::denise::SPR0CTL
             | custom_reg::denise::SPR0DATA
             | custom_reg::denise::SPR0DATB
-            | custom_reg::denise::SPR1POS
-            | custom_reg::denise::SPR1CTL
             | custom_reg::denise::SPR1DATA
             | custom_reg::denise::SPR1DATB
-            | custom_reg::denise::SPR2POS
-            | custom_reg::denise::SPR2CTL
             | custom_reg::denise::SPR2DATA
             | custom_reg::denise::SPR2DATB
-            | custom_reg::denise::SPR3POS
-            | custom_reg::denise::SPR3CTL
             | custom_reg::denise::SPR3DATA
             | custom_reg::denise::SPR3DATB
-            | custom_reg::denise::SPR4POS
-            | custom_reg::denise::SPR4CTL
             | custom_reg::denise::SPR4DATA
             | custom_reg::denise::SPR4DATB
-            | custom_reg::denise::SPR5POS
-            | custom_reg::denise::SPR5CTL
             | custom_reg::denise::SPR5DATA
             | custom_reg::denise::SPR5DATB
-            | custom_reg::denise::SPR6POS
-            | custom_reg::denise::SPR6CTL
             | custom_reg::denise::SPR6DATA
             | custom_reg::denise::SPR6DATB
-            | custom_reg::denise::SPR7POS
-            | custom_reg::denise::SPR7CTL
             | custom_reg::denise::SPR7DATA
             | custom_reg::denise::SPR7DATB
             | custom_reg::denise::COLOR00

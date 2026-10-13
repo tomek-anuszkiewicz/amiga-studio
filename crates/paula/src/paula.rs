@@ -240,6 +240,9 @@ impl Paula {
         (floppy_dskbytr & DSKBYTR_DATA_MASK) | dmaon | diskwrite
     }
 
+    /// Receives the STRHOR address strobe on RGA. Its effect is not modeled yet.
+    pub fn receive_horizontal_sync_strobe(&mut self) {}
+
     /// Schedules a staged register write with appropriate propagation delay and overwrite mode.
     /// Returns `Some((offset, val))` if committed immediately, or `None` if staged in pipeline.
     pub fn write_register(&mut self, offset: u16, val: u16) -> Option<(u16, u16)> {

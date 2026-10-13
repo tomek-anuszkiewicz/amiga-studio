@@ -6,20 +6,21 @@ category: "Design"
 subsystem: "memory_bus"
 status: "active"
 created: 2026-09-14
-updated: 2026-10-12
+updated: 2026-10-13
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 ---
 
 # Custom Chip Register Ownership and Access Matrix
 
-This is a book-derived address map of the original custom-chip register block. The 68000 address is `$DFF000` plus the three-digit offset below. [Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md) supplies names, directions, chip listings, and short functions; [Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md) supplies the access cautions and the two explicit exceptions noted below. This matrix makes no claim about the emulator's current implementation.
+This is a book-derived address map of the original custom-chip register block. The 68000 address is `$DFF000` plus the three-digit offset below. [Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md) supplies names, directions, chip listings, and short functions; [Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md) supplies the access cautions and the two explicit exceptions noted below. Explicit design-model notes guide future implementation; the matrix makes no claim about the emulator's current implementation.
 
 ## Reading the matrix
 
 - `RO` and `WO` reproduce the manual's documented read or write direction. `—` means no **documented safe counterpart** at that offset. It does not mean that an opposite-direction bus cycle has no effect. Appendix A says a read of a write-only register can disturb it and a write to a read-only register can have unexpected results.
-- `ER` is an early DMA read initiated by Agnus timing, not an ordinary CPU register read. `COR` marks `CLXDAT`, whose documented read also clears collision state. `STROBE` marks an address-triggered action rather than stored register bits. Appendix A identifies `COPJMP2` as an example of a strobe that can respond to a read as well as a write; the other strobe reads are not classified here.
+- `ER` is an early DMA read initiated by Agnus timing, not an ordinary CPU register read. `COR` marks `CLXDAT`, whose documented read also clears collision state. `STROBE` marks an address-triggered action rather than stored register bits. Both `COPJMP1` and `COPJMP2` can trigger a Copper jump on a CPU read or write. The four sync strobes (`STREQU`, `STRVBL`, `STRHOR`, `STRLONG`) are documented as write-address strobes used by Agnus during refresh; their CPU reads have no documented safe strobe semantics. The read/write distinction does not make an opposite-direction access harmless.
 - A name suffix `&` means DMA-only use; `%` means usually DMA, sometimes processor; `+` marks a chip-memory pointer pair. A prefix `*` on the Appendix B address prohibits Copper writes. A prefix `-` permits Copper writes only with `COPCON.CDANG` set. These markers appear in the notes rather than the offset so the offset stays numeric.
 - `Scope` records only what the book supports: `Multiple chips listed` where Appendix B names more than one chip. A single listed chip does not establish that every downstream effect stays inside that chip, so other rows say `Not established`. The appendices do not provide a general per-register CCK propagation delay, so `Delay` is `Unknown`; it must not be interpreted as zero.
+- Chip listings reproduce the manual; they are not a register-write dispatch table. Use an explicit design-model note in a row to decide whether a listed chip needs a modeled write action.
 - `Reserved` reproduces an explicit Appendix B label. `Unlisted` applies only to `$1C0–$1DA`, which the address-order table skips without labeling. Neither classification establishes open-bus values or other silicon behavior. Appendix A advises against accessing unused registers.
 
 ## Address map
@@ -54,10 +55,10 @@ This is a book-derived address map of the original custom-chip register block. T
 | `$032` | — | `SERPER` (Paula) | WO | Not established | Unknown | Serial port period and control. Copper write prohibited. |
 | `$034` | — | `POTGO` (Paula) | WO | Not established | Unknown | Pot port data write and start. Copper write prohibited. |
 | `$036` | — | `JOYTEST` (Denise) | WO | Not established | Unknown | Write to all 4 joystick-mouse counters at once. Copper write prohibited. |
-| `$038` | — | `STREQU` & (Denise) | STROBE | Not established | Unknown | Strobe for horizontal sync with vertical blank and equalization. Copper write prohibited. |
-| `$03A` | — | `STRVBL` & (Denise) | STROBE | Not established | Unknown | Strobe for horizontal sync with vertical blank (vertical blank). Copper write prohibited. |
-| `$03C` | — | `STRHOR` & (Denise, Paula) | STROBE | Multiple chips listed | Unknown | Strobe for horizontal sync. Copper write prohibited. |
-| `$03E` | — | `STRLONG` & (Denise) | STROBE | Not established | Unknown | Strobe for identification of long horizontal line. Copper write prohibited. |
+| `$038` | — | `STREQU` & (Denise) | STROBE | Not established | Unknown | Write-address strobe for horizontal sync with vertical blank and equalization; Agnus emits it during refresh. Copper write prohibited. |
+| `$03A` | — | `STRVBL` & (Denise) | STROBE | Not established | Unknown | Write-address strobe for horizontal sync with vertical blank; Agnus emits it during refresh. Copper write prohibited. |
+| `$03C` | — | `STRHOR` & (Denise, Paula) | STROBE | Multiple chips listed | Unknown | Write-address strobe for horizontal sync; Agnus emits it during refresh. Copper write prohibited. |
+| `$03E` | — | `STRLONG` & (Denise) | STROBE | Not established | Unknown | Write-address strobe identifying a long horizontal line; Agnus emits it during refresh. Copper write prohibited. |
 | `$040` | — | `BLTCON0` (Agnus) | WO | Not established | Unknown | Blitter control register 0. Copper write requires `COPCON.CDANG`. |
 | `$042` | — | `BLTCON1` (Agnus) | WO | Not established | Unknown | Blitter control register 1. Copper write requires `COPCON.CDANG`. |
 | `$044` | — | `BLTAFWM` (Agnus) | WO | Not established | Unknown | Blitter first word mask for source A. Copper write requires `COPCON.CDANG`. |
@@ -94,14 +95,14 @@ This is a book-derived address map of the original custom-chip register block. T
 | `$082` | — | `COP1LCL` + (Agnus) | WO | Not established | Unknown | Coprocessor first location register (low 15 bits). |
 | `$084` | — | `COP2LCH` + (Agnus) | WO | Not established | Unknown | Coprocessor second location register (high 3 bits). |
 | `$086` | — | `COP2LCL` + (Agnus) | WO | Not established | Unknown | Coprocessor second location register (low 15 bits). |
-| `$088` | — | `COPJMP1` (Agnus) | STROBE | Not established | Unknown | Coprocessor restart at first location. |
-| `$08A` | `COPJMP2` (Agnus) | `COPJMP2` (Agnus) | STROBE | Not established | Unknown | Coprocessor restart at second location. Appendix A also cites a read-triggered strobe; avoid read-modify-write. |
+| `$088` | `COPJMP1` (Agnus) | `COPJMP1` (Agnus) | STROBE | Not established | Unknown | CPU read or write restarts the Copper at the first location; the manual demonstrates a read. Avoid read-modify-write. |
+| `$08A` | `COPJMP2` (Agnus) | `COPJMP2` (Agnus) | STROBE | Not established | Unknown | CPU read or write restarts the Copper at the second location; Appendix A explicitly identifies both triggers. Avoid read-modify-write. |
 | `$08C` | — | `COPINS` (Agnus) | WO | Not established | Unknown | Coprocessor instruction fetch identify. |
 | `$08E` | — | `DIWSTRT` (Agnus) | WO | Not established | Unknown | Display window start (upper left vertical-horizontal position). |
 | `$090` | — | `DIWSTOP` (Agnus) | WO | Not established | Unknown | Display window stop (lower right vertical and horizontal position). |
 | `$092` | — | `DDFSTRT` (Agnus) | WO | Not established | Unknown | Display bitplane data fetch start (horizontal position). |
 | `$094` | — | `DDFSTOP` (Agnus) | WO | Not established | Unknown | Display bitplane data fetch stop (horizontal position). |
-| `$096` | — | `DMACON` (Agnus, Denise, Paula) | WO | Multiple chips listed | Unknown | DMA control write (clear or set). |
+| `$096` | — | `DMACON` (Agnus, Denise, Paula) | WO | Multiple chips listed | Unknown | DMA control write (clear or set). Design model: Agnus latches the DMA enables; Denise and Paula have no `DMACON` write action or handler. Do not dispatch this write to either chip solely because the manual lists them; see [DMA](DMA.md). |
 | `$098` | — | `CLXCON` (Denise) | WO | Not established | Unknown | Collision control. |
 | `$09A` | — | `INTENA` (Paula) | WO | Not established | Unknown | Interrupt enable bits (clear or set bits). |
 | `$09C` | — | `INTREQ` (Paula) | WO | Not established | Unknown | Interrupt request bits (clear or set bits). |
@@ -286,4 +287,5 @@ This is a book-derived address map of the original custom-chip register block. T
 ## Reference Documentation & Upstream Ground Truth
 
 - [Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Address order, names, access symbols, chip listings, and concise functions used for every row.
-- [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md): Opposite-direction access caution, collision read-and-clear behavior, and the `COPJMP2` strobe caveat.
+- [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md): Opposite-direction access caution, collision read-and-clear behavior, Copper jump strobes, and Agnus refresh strobes.
+- [Hardware Reference Manual, Chapter 2](../Reference/Hardware%20Reference%20Manual/02%20-%20Chapter%202%20-%20Coprocessor%20Hardware.md): Demonstrates a CPU read of `COPJMP1` that reloads the Copper program counter.

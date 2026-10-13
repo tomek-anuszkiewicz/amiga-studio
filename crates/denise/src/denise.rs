@@ -513,6 +513,9 @@ impl Denise {
         }
     }
 
+    /// Receives a synchronization address strobe on RGA. Video effects are not modeled yet.
+    pub fn receive_sync_strobe(&mut self, _offset: u16) {}
+
     /// Schedules a staged register write with appropriate propagation delay and overwrite mode.
     /// Returns `Some((offset, val))` if committed immediately, or `None` if staged in pipeline.
     pub fn write_register(&mut self, offset: u16, val: u16) -> Option<(u16, u16)> {

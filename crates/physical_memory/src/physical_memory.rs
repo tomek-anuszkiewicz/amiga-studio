@@ -58,8 +58,8 @@ pub struct PhysicalMemory {
     /// Low-memory boot overlay (_OVL) active flag
     pub low_memory_overlay: bool,
 
-    /// Default byte value returned when reading unpopulated memory or unmapped open bus space.
-    /// In real Amiga hardware execution, this is 0xFF (floating open bus with pull-up resistors).
+    /// Byte returned for unpopulated memory or unmapped space; defaults to 0xFF.
+    /// See the [Platform Quirks and Invariants Catalog](../../../Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access).
     pub unmapped_byte: u8,
 }
 

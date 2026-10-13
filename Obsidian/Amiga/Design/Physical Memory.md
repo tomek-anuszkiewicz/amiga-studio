@@ -6,8 +6,8 @@ category: "Design"
 subsystem: "physical_memory"
 status: "active"
 created: 2026-10-12
-updated: 2026-10-12
-related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[Machine Loop.md](Machine%20Loop.md)", "[DMA.md](DMA.md)", "[RTC.md](RTC.md)"]
+updated: 2026-10-13
+related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[Machine Loop.md](Machine%20Loop.md)", "[DMA.md](DMA.md)", "[RTC.md](RTC.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/physical_memory"
 ---
@@ -46,7 +46,7 @@ Construction and both reset paths engage the ROM overlay by changing banks `$00-
 
 Chip RAM and installed Slow RAM handlers return `BusResult::WaitState` while `chip_ram_blocked` is set. The [machine loop](Machine%20Loop.md) copies Agnus's arbitration result into that flag before the CPU step; the CPU keeps its pending bus micro-step until a later grant. Fast RAM, ROM, and open-bus handlers do not test that flag. [DMA](DMA.md) defines the slot ownership; `PhysicalMemory` only enforces the supplied contention result. Direct Chip RAM word operations bypass this CPU wait state for machine-coordinated DMA.
 
-RAM word handlers store the high byte at the lower address and the low byte at the next address. Unmapped reads return the configured `unmapped_byte` (default `$FF`); word reads repeat it in both byte lanes (`$FFFF` by default). Unmapped writes complete without storage. This is a fixed open-bus approximation, not a history-dependent model of floating data lines. ROM writes through the normal CPU path likewise complete without modifying the image.
+RAM word handlers store the high byte at the lower address and the low byte at the next address. Unmapped reads return the configured `unmapped_byte` (default `$FF`); word reads repeat it in both byte lanes (`$FFFF` by default). See the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access) for the hardware limitation. Unmapped writes complete without storage. ROM writes through the normal CPU path likewise complete without modifying the image.
 
 The debug byte/word handlers bypass contention and device side effects. `write_bytes_debug()` uses them for memory injection, including ROM loading; unlike CPU ROM writes, debug writes to the ROM address range can update the ROM buffer. A direct debug access to `$BF`, `$DC`, or `$DF` sees the physical bank's placeholder behavior, not live peripheral registers. Use the [router's debug interface](MemoryBus.md) when inspection needs device-aware decoding.
 

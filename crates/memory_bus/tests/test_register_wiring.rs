@@ -102,7 +102,7 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
 }
 
 #[test]
-fn test_open_bus_on_write_only_custom_registers() {
+fn test_open_bus_on_early_dma_and_write_only_registers() {
     let mut mb = TestMotherboard::new();
 
     // Populate various internal registers with non-zero values
@@ -117,8 +117,8 @@ fn test_open_bus_on_write_only_custom_registers() {
 
     let mut bus = mb.router();
 
-    // Reading write-only registers via read_custom_word must return open bus $FFFF
-    assert_eq!(bus.read_custom_word(custom_reg::BLTDDAT), 0xFFFF); // BLTDDAT (write-only)
+    // CPU reads of the early DMA read address and write-only registers return $FFFF.
+    assert_eq!(bus.read_custom_word(custom_reg::BLTDDAT), 0xFFFF);
     assert_eq!(bus.read_custom_word(custom_reg::BLTCON0), 0xFFFF);
     assert_eq!(bus.read_custom_word(custom_reg::COP1LCH), 0xFFFF);
     assert_eq!(bus.read_custom_word(custom_reg::COP1LCL), 0xFFFF);
@@ -129,7 +129,7 @@ fn test_open_bus_on_write_only_custom_registers() {
     assert_eq!(bus.read_custom_word(custom_reg::DSKPTH), 0xFFFF); // DSKPTH
     assert_eq!(bus.read_custom_word(custom_reg::DSKPTL), 0xFFFF); // DSKPTL
 
-    // Peeking write-only registers via read_custom_word_debug must also return $FFFF
+    // Debug reads of those addresses also return $FFFF.
     assert_eq!(bus.read_custom_word_debug(custom_reg::BLTDDAT), 0xFFFF);
     assert_eq!(bus.read_custom_word_debug(custom_reg::BLTCON0), 0xFFFF);
     assert_eq!(bus.read_custom_word_debug(custom_reg::COP1LCH), 0xFFFF);
@@ -371,4 +371,34 @@ fn test_chip_namespaced_custom_register_dispatch() {
             .read_custom_word_debug(custom_reg::denise::JOY0DAT),
         0x4321
     );
+}
+
+#[test]
+fn test_sprite_position_and_control_writes_reach_both_chips() {
+    let mut mb = TestMotherboard::new();
+
+    for sprite in 0..8 {
+        for (register, value) in [(0, 0x2100 + sprite), (2, 0x4300 + sprite)] {
+            let offset = custom_reg::denise::SPR0POS + sprite * 8 + register;
+            mb.router().write_custom_word(offset, value);
+
+            let first = mb.agnus.step_cck();
+            let second = mb.agnus.step_cck();
+            assert!(first
+                .into_iter()
+                .chain(second)
+                .any(|write| write == Some((offset, value))));
+
+            let beam = mb.agnus.beam();
+            let _ = mb.denise.step_cck(beam);
+            let channel = &mb.denise.sprites.channels[usize::from(sprite)];
+            if register == 0 {
+                assert_eq!(mb.agnus.sprpos[usize::from(sprite)], value);
+                assert_eq!(channel.pos, value);
+            } else {
+                assert_eq!(mb.agnus.sprctl[usize::from(sprite)], value);
+                assert_eq!(channel.ctl, value);
+            }
+        }
+    }
 }

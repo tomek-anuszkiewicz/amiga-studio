@@ -328,3 +328,5 @@ rxd
 strlong
 trk
 txd
+sprpos
+sprctl
