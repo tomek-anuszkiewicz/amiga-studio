@@ -1760,3 +1760,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick preflight passed
   - Renderer syntax checks passed for inline math and literal hexadecimal prefixes and HTML overbars
   - No live conversion or account throughput measurement was run
+---
+
+### [2026-10-13 21:52 CEST] — Remove redundant image analyst role
+- **Affected Subsystems**:
+  - `.codex/agents`
+  - `docs/ai_agents.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Delete the image_analyst profile
+  - remove its inventory entry and usage guidance
+- **Architectural Rationale & Trade-Offs**:
+  - Keep visual descriptions in the authored book workflow and avoid maintaining an unused standalone agent profile
+- **Verification & Test Results**:
+  - Three remaining TOML profiles parsed
+  - no active image_analyst references found
+  - quick pre-flight passed
+  - architecture rules passed 19 tests
+  - no conversion run

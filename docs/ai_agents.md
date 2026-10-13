@@ -182,7 +182,7 @@ the staged scan. Invoke validation explicitly; use no lifecycle or Git hooks.
 
 ## 5. Native Codex Agents (`.codex/agents/`)
 
-Codex discovers standalone agent TOML files in `.codex/agents/`. Each defines `name`, `description`, and `developer_instructions`. All four project agents explicitly select `gpt-6.1-sol` and set `model_reasoning_effort`: `high` for `code_reviewer`, `cpu_verifier`, and `image_analyst`; `medium` for `doc_curator`. Tools and permissions inherit from the parent session unless a role configures an override; `image_analyst` sets `sandbox_mode = "workspace-write"` for assigned output assets. Delegate when the user or applicable project/skill instructions request it. These instructions define responsibilities, not executable tool allowlists. Verify effective model and effort in a fresh client session after changing these files before claiming runtime activation.
+Codex discovers standalone agent TOML files in `.codex/agents/`. Each defines `name`, `description`, and `developer_instructions`. All three project agents explicitly select `gpt-6.1-sol` and set `model_reasoning_effort`: `high` for `code_reviewer` and `cpu_verifier`; `medium` for `doc_curator`. Tools and permissions inherit from the parent session unless a role configures an override. Delegate when the user or applicable project/skill instructions request it. These instructions define responsibilities, not executable tool allowlists. Verify effective model and effort in a fresh client session after changing these files before claiming runtime activation.
 
 Subagents run in their own **isolated context windows** for assigned engineering
 tasks. The parent invokes each agent with an explicit scope and receives a compact
@@ -193,10 +193,9 @@ calls, and persisted outputs.
 | :--- | :--- | :--- | :--- |
 | **`cpu_verifier`** | [`cpu_verifier.toml`](../.codex/agents/cpu_verifier.toml) | 🔬 Precision / Low volume | Tom Harte single-step silicon test execution, cycle-exact ALU/CCR verification, and timing regression isolation. |
 | **`code_reviewer`** | [`code_reviewer.toml`](../.codex/agents/code_reviewer.toml) | 🔍 Adversarial / Medium volume | 18-point pre-commit and architectural compliance audit against AGENTS.md rules, file size limits, and inlining policy. |
-| **`image_analyst`** | [`image_analyst.toml`](../.codex/agents/image_analyst.toml) | Illustration / Scoped assets | Detailed descriptions of assigned illustrations, schematics, and diagrams; explicitly assigned lossless crop extraction and technical sidecars. |
 | **`doc_curator`** | [`doc_curator.toml`](../.codex/agents/doc_curator.toml) | 📐 Structural / Low volume | Semantic parity between `Obsidian/Amiga/Design/` specs and Rust code, vault graph integrity, ROADMAP.md pruning, DIARY.md compaction. |
 
-For separately assigned document illustrations, give `image_analyst` the source image, any crop region, and the requested description format. Assign output paths when requesting description files or crop assets. Crop coordinates are integer pixels on the original image, measured from the top left with exclusive upper bounds. The agent preserves the source and verifies saved crops; the parent integrates text, descriptions, and assets into the document. The parent handles GUI inspection through [egui-vision-debugger](../.agents/skills/egui-vision-debugger/SKILL.md).
+The parent handles GUI inspection through [egui-vision-debugger](../.agents/skills/egui-vision-debugger/SKILL.md).
 
 ### Documentation and Conversion Workflows
 
