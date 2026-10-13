@@ -109,7 +109,7 @@ is tested separately. See [CPU wait coverage](CPU%20SingleStepTests.md#8-ordinar
 Custom-chip and peripheral tests should check register behavior, algorithms,
 and boundary conditions against HRM-derived expectations in isolated fixtures.
 Production-machine integration tests check the cross-chip interactions they
-assert, but do not establish those isolated behaviors. [Roadmap step 3.3](../../../../ROADMAP.md)
+assert, but do not establish those isolated behaviors. [Roadmap step 3.5](../../../../ROADMAP.md)
 plans the subsystem coverage.
 
 ### Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)

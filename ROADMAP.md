@@ -36,7 +36,19 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
 
 ## Step 3: HRM-Aligned Custom Chipset Reconstruction
 
-- **3.1: Strategic Clean-Slate Reset of Custom Chips & Machine Loop (Baseline HRM Spec Alignment)**
+- **3.1: Model Old Gary Address Decoding on the A500 (`MEM-GARY-01`)**
+  - In every supported A500 preset, route banks `$A0-$BF` to the CIA decoder. A13/A12 are active-low selects: `00` selects both CIAs, `01` CIA-B, `10` CIA-A, and `11` neither. A11..A8 select the register; A7..A1 mirror it. `$BFC000` is one address in the `$BFC000-$BFCFFF` selected block, and the same selection pattern repeats in other mapped banks. CIA register selector `B` remains unconnected.
+  - With both CIAs selected, an even byte read uses CIA-B and an odd byte read CIA-A; a word read puts CIA-B in the high byte and CIA-A in the low byte. A byte write sends the same value to every selected CIA regardless of parity; a word write sends the high byte to selected CIA-B and the low byte to selected CIA-A. Pass full register identities to the existing CIA recipients and preserve CIA-A Port A overlay effects on every alias. Retain the documented fixed placeholder for an inactive read lane rather than assuming a physical data-bus latch.
+  - Route `$DE` and `$DF` through the same custom-register decoder, including its low-offset mirror, byte/word behavior, delayed mutations, side effects, and side-effect-free debug reads. Preserve installed Slow RAM and RTC precedence; evaluate other model-dependent mirrors separately. Update [MemoryBus](Obsidian/Amiga/Design/MemoryBus.md), [Physical Memory](Obsidian/Amiga/Design/Physical%20Memory.md), [CIA](Obsidian/Amiga/Design/CIA.md), and the [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md) together with the code. Recheck the HRM wording; WinUAE `cia.cpp`/`memory.cpp` and `ref_src/vAmiga-4.5/Core/Components/Memory/Memory.cpp` corroborate the decode but do not prove physical A500 wiring without schematic or measured evidence.
+  - **Gate:** First reproduce failures against the original router and bank table. Focused `memory_bus` and `physical_memory` tests cover dual selection, byte/word lanes and writes, nonzero register selectors, low-bit and `$A0-$BE` aliases, inactive selection, overlay effects, `$DE` reads/writes/debug reads, and Fast/Slow RAM and RTC boundaries. Then pass adjacent bus and machine integration checks.
+
+- **3.2: Enforce OCS Chip RAM DMA Pointer Invariants (`OCS-DMA-PTR-01`)**
+  - Compare the [Custom Chip Register Ownership and Access Matrix](Obsidian/Amiga/Design/Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) with register definitions, write routing, recipient fields, pointer arithmetic, and Chip RAM access sites; distinguish implemented storage from a named register or decoder branch. Inspect `DSKPTH/L`, `AUD0..3LCH/LCL`, `BPL1..6PTH/PTL`, `SPR0..7PTH/PTL`, `COP1/2LCH/LCL`, and `BLTA/B/C/DPTH/PTL`, plus Agnus `dskpt`/`audpt`/`audlc`/`bplpt`/`sprpt`, Copper `cop1lc`/`cop2lc`/`cop_pc`, and Blitter `bltapt`/`bltbpt`/`bltcpt`/`bltdpt`. Classify temporary and pending DMA addresses and `REFPTR` by their actual semantics. Keep CPU addresses, bus offsets, beam positions, lengths, and modulos outside this type.
+  - Put a shared `OcsDmaPointer` in `config` beside `OCS_DMA_ADDRESS_MASK` and derived half-register masks. Its private value represents 18 word-address bits: byte addresses `$000000-$07FFFE` with bit 0 clear. Provide checked or canonicalizing construction, byte-address extraction for bus access, high/low register writes, and named wrapping arithmetic in word or byte units; prevent unchecked mutation and deserialization. Model `BLTAPT` line mode separately because it becomes an error accumulator after loading, while preserving its observable register and snapshot behavior.
+  - Migrate affected fields, resets, register commits, arithmetic, DMA calls, debugger/state consumers, fixtures, and tests together. Preserve delayed write phases and Agnus ownership of DMA address generation. Remove redundant scattered masks while protecting primitive external/bus boundaries. Inspect the existing serialized field shape and old-snapshot loading before deciding compatibility; reject invalid restored pointers and resolve any format change explicitly.
+  - **Gate:** Test odd/out-of-range addresses, independent register-half writes, addition/subtraction across the 512 KB boundary, signed Blitter modulos, line-mode accumulation, snapshots, and affected DMA paths. Pass focused config, Agnus, Copper, Blitter, memory-bus, save-state, and machine integration checks; account for remaining raw pointer fields and mask uses.
+
+- **3.3: Strategic Clean-Slate Reset of Custom Chips & Machine Loop (Baseline HRM Spec Alignment)**
   - **Objective:** Cleanse and reset `crates/machine_loop` and all specialized custom chip subsystems (`agnus`, `denise`, `paula`, `cia`, `copper`, `blitter`, `floppy`) outside the CPU and physical memory to pure HRM architectural specifications, purging accumulated legacy scaffolding.
   - **Actionable Scope:**
     - Cleanse register definitions and reset states to align strictly with the official Commodore Amiga Hardware Reference Manual (HRM).
@@ -46,7 +58,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - `python tools/verification/verify.py check build`
     - `python tools/verification/verify.py check architecture`
 
-- **3.2: Signal Propagation Documentation Audit & Hardening**
+- **3.4: Signal Propagation Documentation Audit & Hardening**
   - **Objective:** Ensure that all agent governance files (rules, skills, workflows, design docs) accurately and completely describe the two signal propagation mechanisms so any future agent has zero ambiguity about how to implement them correctly.
   - **Actionable Scope:**
     - **Register-write propagation:** Verify that `hardware-bus-topology.md`, relevant design specs, and `MachineLoop` documentation clearly describe what happens clock-phase by clock-phase when a CPU or DMA write lands in a custom chip register (e.g. `COLOR00`, `BPLCON0`, `INTENA`). Update or author missing sections.
@@ -56,20 +68,20 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Run the scoped specification review and [vault link/frontmatter audit](.agents/skills/obsidian-vault-linking/SKILL.md); the milestone command does not execute documentation maintenance. At point closure, run commit and milestone profiles at their existing triggers.
     - The intended commit changes were reviewed against documents selected by `tracked_paths`; real corrections are included, and accurate documents remain untouched.
 
-- **3.3: HRM-Aligned Subsystem Test Suite Authoring**
+- **3.5: HRM-Aligned Subsystem Test Suite Authoring**
   - **Objective:** Write a clean, authoritative test suite for each custom chip subsystem derived strictly from the Amiga Hardware Reference Manual — not from source code inference. Tests must be simple, register-behavioral, and free from cycle-exact timing complexity.
   - **Actionable Scope:**
     - One test file per subsystem: `test_agnus.rs`, `test_denise.rs`, `test_paula.rs`, `test_cia.rs`, `test_copper.rs`, `test_blitter.rs`.
     - Each test: write a register value → advance minimum required clocks → assert observable output or state. No multi-chip timing chains in L1 tests.
     - Simple inter-subsystem interaction tests (L2): focus on the cleanest signal paths — e.g. CIA timer overflow → Paula `_INT` → CPU IPL change. Prefer to write inter-chip tests and any required implementation changes during horizontal blanking (hblank return) when bus is idle, to minimize contention complexity.
-    - Do **not** target vAmigaTS or silicon-level cycle accuracy in this step — that is Step 3.7 and Step 5.
+    - Do **not** target vAmigaTS or silicon-level cycle accuracy in this step — that is Step 3.9 and Step 5.
   - **Verification Gate:**
     - `python tools/verification/verify.py commit`
     - `python tools/verification/verify.py check architecture`
     - Tests verify subsystem behavior, boundary conditions, and relevant failure modes per unit-testing-policy; no assertion-count quota applies.
 
-- **3.4: Lockstep Differential Tracer vs. vAmiga (Contingency)**
-  - **Trigger:** Only if HRM-aligned tests (3.3) fail to isolate a regression — i.e. tests pass but behavior diverges from reference in ways not yet covered by the test suite.
+- **3.6: Lockstep Differential Tracer vs. vAmiga (Contingency)**
+  - **Trigger:** Only if HRM-aligned tests (3.5) fail to isolate a regression — i.e. tests pass but behavior diverges from reference in ways not yet covered by the test suite.
   - **Objective:** Build a cycle-exact co-simulation harness that runs the same ROM/ADF through both this emulator and vAmiga in lockstep, dumps a full machine state snapshot at every CCK boundary, and reports the first divergence point with a structured diff.
   - **Actionable Scope:**
     - Add a `StepTracer` trait (or feature-gated callback) to `MachineLoop`: at each `step_cck()`, serialize `CpuState` + all chip register banks into a compact binary or JSON snapshot. All state structs already implement `serde::Serialize` — snapshot is essentially `serde_json::to_string(&machine.snapshot())`.
@@ -80,7 +92,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Tracer successfully identifies the CCK and field of a known injected regression (synthetic test).
     - `python tools/verification/verify.py test rust crate test_runner suite test_lockstep_tracer` (smoke test against a trivial ROM loop).
 
-- **3.5: Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution**
+- **3.7: Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution**
 
   - **Objective:** Operationalize the authentic floppy disk subsystem and Kickstart ROM overlay bootloader sequence to load and execute genuine Amiga programs from disk images (`.adf`).
   - **Actionable Scope:**
@@ -91,7 +103,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Unit tests in `crates/floppy/tests/`
     - Machine loop boot integration tests in `crates/machine_loop/tests/`
 
-- **3.6: vAmigaTS Native Disk-Based Verification & Self-Testing**
+- **3.8: vAmigaTS Native Disk-Based Verification & Self-Testing**
   - **Objective:** Execute native Amiga disk-based test suites validating drive control, floppy DMA, and CPU coordination.
   - **Actionable Scope:**
     - Execute disk-based vAmigaTS tests verifying that the emulator can run native Amiga software to test itself.
@@ -99,7 +111,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
   - **Verification Gate:**
     - Automated test run reports for disk-based test suites passing with zero unexpected halts.
 
-- **3.7: Principled, Rule-Compliant Custom Chip & Register Verification**
+- **3.9: Principled, Rule-Compliant Custom Chip & Register Verification**
   - **Objective:** Advance custom chips and registers systematically from clean baseline specifications to fully validated cycle-exact implementations.
   - **Actionable Scope:**
     - Implement and calibrate custom chip features following the substrate-first causality chain (Layer 0 $\to$ Layer 4).

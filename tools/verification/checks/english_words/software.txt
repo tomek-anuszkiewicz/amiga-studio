@@ -108,6 +108,7 @@ blep
 blitting
 blk
 blockquote
+blta
 bltadat
 bltafwm
 bltalwm
@@ -193,6 +194,7 @@ cand
 canonicalization
 canonicalize
 canonicalizes
+canonicalizing
 capacitances
 cck1
 cck2
@@ -358,6 +360,7 @@ downclocking
 doy
 dpf
 dpi
+dpth
 draggable
 dropdown
 dropdowns

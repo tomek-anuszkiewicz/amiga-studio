@@ -3591,3 +3591,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - English scan found eight unknown-word occurrences in unrelated developer-setup.md and ROADMAP.md
   - RAG MCP contract launch timed out inside sandbox, while all 13 contracts passed outside sandbox
   - full SingleStep and hardware captures were not run
+---
+
+### [2026-10-14 01:37 CEST] — Record Gary decoding and OCS DMA pointer roadmap work
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `Obsidian/Amiga/Design/Verification/Testing Strategy and Quality Assurance.md`
+  - `tools/verification/checks/english_words/software.txt`
+- **What Was Changed (The Concrete Reality)**:
+  - Added self-contained Step 3.1 and 3.2 scope and acceptance gates
+  - Renumbered later Step 3 points and updated the testing specification reference
+  - Added three user-approved technical vocabulary terms
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve implementation contracts after the temporary task plans are removed while leaving earlier local roadmap work outside this commit
+- **Verification & Test Results**:
+  - Roadmap check, vault link and frontmatter audit, and staged-content English scan passed
+  - Commit profile failed on eight unknown-word occurrences in unrelated dirty documentation and a sandboxed RAG MCP launch timeout
+  - All 13 RAG MCP contracts passed outside the sandbox; other commit-profile checks passed
