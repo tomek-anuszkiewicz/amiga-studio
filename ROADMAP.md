@@ -4,48 +4,43 @@
 
 Author reviewed book recipes once, then bootstrap Markdown and searchable assets from those recipes and matching source PDFs. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
-- **1.1: Compare RunPod Document Models on the Test PDF (RUNPOD-PDF-MODELS)**
-  - Evaluate `Qwen3-VL-32B-Instruct`, `Chandra OCR 2`, and `olmOCR-2-7B-1025` on the 160-page test PDF, starting with a user-selected representative fragment before a full-book run. Compare their native PDF/page conversion workflows and their suitability for the existing converter separately.
-  - Qwen3-VL: assess OCR, page layout, controllable output and crop reanalysis. Chandra: assess PDF-to-Markdown/HTML/JSON, block positions and complex tables/layouts. olmOCR: establish a specialized baseline for text, tables and reading order.
-  - Measure source fidelity, reading order, register tables, ASCII art, figures/captions and block/crop geometry; record manual corrections and failed/retried pages. Record model/version, precision, GPU/VRAM, settings, page selection, startup/model-download time, processing time, throughput and actual RunPod cost per accepted page.
-  - Treat initial weight-memory figures as estimates to verify: Qwen3-VL-32B approximately 64 GB BF16 or 32 GB FP8; Chandra BF16 model files approximately 10.6 GB. Include runtime, vision and KV-cache overhead when sizing GPUs; determine olmOCR memory requirements from the selected release.
-  - **Gate:** Review the selected fragment against the source and compare accepted output, correction effort, elapsed time and cost with the Codex baseline. Choose a model and integration approach from measured evidence before full-book conversion; report Codex weekly usage separately from GPU cost and raw token counts.
+- **1.1: Evaluate SVG Extraction for PDF Graphics**
+  - Try extracting selected graphics directly from source PDF regions as SVG instead of rendering PNG crops. Check whether vector paths, text, and embedded images remain faithful to the source; a raster image wrapped in SVG does not count as vector extraction.
+  - **Gate:** Compare representative SVG outputs with the source PDF and current PNG crops for completeness, appearance, and usable bounds. Record which graphics can be preserved as SVG and which still require PNG because the source is raster or the extraction is incomplete.
 
-- **1.2: Assess PDF Conversion and Book Import on Selected Fragments**
-  - Request user-selected fragments and assess Stage 03 type/role decisions, source reading order and geometry, Stage 05 table transcription, Stage 07 callouts, and the imported book preview (task `PDF-INDEPENDENT-02D-02M`). Improve generating code or prompts rather than patching existing artifacts.
-  - **Gate:** User review establishes fidelity for the selected pages, including a table used as a legend and source text/formatting in the generated book. Technical execution alone does not certify transcription or the remaining pages.
-
-- **1.3: Review Source Regions and Author Book Groups**
-  - Add table/graphic region review during book authoring. Show each rectangle on its source page, allow deliberate coordinate edits, regenerate the preview/crop and repeat review until acceptance or an iteration-limit handoff.
-  - Persist stable element IDs, ordered physical-page regions, coordinate frames, review decisions and chapter placement in the recipe. Associate tables/graphics with caption, legend, note and footnote elements using role independently of representation type; proximity alone must not establish membership.
-  - **Gate:** A selected sample proves correction/review/acceptance, explicit unresolved-review handling, and reconstruction using the authored geometry. Groups retain source order and their associated text, including multi-page/disconnected regions.
-
-- **1.4: Author Table, Image, and ASCII-Art Descriptions**
+- **1.2: Author Table, Image, and ASCII-Art Descriptions**
   - Generate descriptions during recipe authoring from one prepared group and its source context. Store accepted descriptions as explicit recipe content so reconstruction does not call a model again. Preserve HTML table spans, graphics and text-fenced ASCII art.
   - Render descriptions directly below the associated element in closed, collapsed `<details><summary>...</summary>...</details>` blocks. Describe source-visible labels, values and spatial/logical/timing relationships; table descriptions retain a GFM fallback with cell order and span semantics.
   - Generate each image's `<asset filename>.txt` sidecar from the same stored description for RAG ingestion, rather than maintaining an independent transcription.
-  - **Gate:** User-reviewed samples establish faithful content and placement; repeated reconstruction produces matching descriptions/sidecars without duplicated blocks or new inference.
+  - Index representative generated content and test search queries separately for descriptions inside collapsed `<details>` blocks and for image `.txt` sidecars. Compare which terms and relationships are retrieved, result ranking, source attribution and duplicate results when both formats contain the same description.
+  - **Gate:** User-reviewed samples establish faithful content and placement; repeated reconstruction produces matching descriptions/sidecars without duplicated blocks or new inference. Record RAG queries and returned source fragments for both description formats, including any retrieval gaps before broad indexing.
 
-- **1.5: Define and Verify Portable Book Recipes (BOOK-RECIPE-PORTABLE)**
+- **1.3: Final Chapter Proofreading and Code Formatting**
+  - Once chapters are assembled, format code listings and add appropriate language tags for syntax highlighting without changing code, fixed-width text or ASCII-art alignment. Check uncertain words against the source PDF and correct supported OCR and typographical errors while preserving the author's wording.
+  - Refine the existing [chapter proofreading prompt](tools/bootstrap/book-to-markdown/prompts/proofreading.md) for a model-assisted final pass that aligns formatting across the completed chapters. Keep source ambiguities visible for review rather than allowing the model to invent corrections.
+  - **Gate:** Establish the final pass on a completed chapter by comparing it with the source PDF and rendered Markdown, then review the resulting changes across all completed chapters. Confirm source-supported word corrections, code formatting and highlighting, and preservation of tables, figures, links and technical values.
+
+- **1.4: Define and Verify Portable Book Recipes (BOOK-RECIPE-PORTABLE)**
   - Define the published current-format `book.json` boundary: reviewed order, type/role, visibility, chapter organization, heading depth, table/cell structure and spans, source selections, graphic regions and explicit authored corrections/descriptions. Publish recipes and source identification; PDFs and generated bundles remain local.
   - Keep source-derived text as ordered references to physical PDF pages, extracted block IDs and Unicode character ranges with exclusive ends. Keep Markdown/HTML syntax and explicit replacements as authored recipe data. Verify source attribution where repeated equal text makes character matching ambiguous; rectangles select candidates rather than defining exact text selections.
   - Define extraction order, coordinate frame, DPI and rotation rules, including disconnected/multi-page content. Reconstruct graphics from PDF regions instead of requiring local `assets/` files. Record source SHA-256 in `source.json` and the authoring OCR/extraction profile separately from element data.
   - **Gate:** A reviewed recipe reproduces selected text, headings, table cells/spans, code spacing, math, corrections and graphics from the matching PDF without Stage 03/05/07 inference artifacts or copied generated assets. Establish the supported cross-platform reconstruction boundary; version pins alone do not prove byte-identical PDFs or matching text extraction.
 
+- **1.5: Support Multiple Source PDFs in One Book Recipe**
+  - Allow one logical book's `book.json` to reference several catalogued source PDFs. Identify the exact PDF for each source-derived text or graphic selection and keep its page, block, character range and region mappings specific to that PDF; different scans or editions must not be assumed to share coordinates or text extraction.
+  - Support both assembly from multiple PDFs and reconstruction from any selected supported variant when the required content exists in that variant. Record explicit source-specific mappings and unresolved differences rather than silently substituting content from another PDF.
+  - **Gate:** With a representative book that has multiple source PDFs, rebuild a reviewed fragment using each supported variant and a fragment assembled from more than one PDF. Check the output against the selected sources and reject an unknown PDF hash or a missing source mapping.
+
 - **1.6: Implement Recipe-Based Markdown Bootstrap (BOOK-RECIPE-BOOTSTRAP)**
-  - Add a standalone bootstrap command that obtains catalogued source PDFs, checks all 64 SHA-256 characters against `source.json`, prepares native/OCR text with the recipe's authoring profile and extracts positioned text using the defined conventions. A directory suffix or an arbitrary existing OCR PDF is insufficient source/profile identity.
+  - Add a standalone bootstrap command that obtains catalogued source PDFs, checks all 64 SHA-256 characters against each source's `source.json`, prepares native/OCR text with the recipe's authoring profile and extracts positioned text using the defined conventions. A directory suffix or an arbitrary existing OCR PDF is insufficient source/profile identity.
   - Execute reviewed `book.json` recipes to rebuild chapter Markdown, the generated TOC, source graphics, descriptions and sidecars. Resolve authored chapter titles/filenames and preserve explicit formatting and corrections. Do not repeat model inference, classification or description generation.
   - Target the current format only. Reconstruction/import may overwrite generated content; do not add backward compatibility, migrations or artifact-rescue code. Local editor acceptance does not itself publish a portable recipe or establish end-to-end reproducibility.
-  - **Gate:** From a clean output directory and a reviewed recipe/source record, obtain the matching PDF and rebuild a user-selected book fragment without existing preparation directories, editor bundles or model calls. Demonstrate source/hash/profile mismatch handling and repeatable text/structure/assets under the supported extraction environment before expanding the run.
+  - **Gate:** From a clean output directory and a reviewed recipe/source record, obtain the selected source PDF or PDFs and rebuild a user-selected book fragment without existing preparation directories, editor bundles or model calls. Demonstrate source/hash/profile mismatch handling and repeatable text/structure/assets under the supported extraction environment before expanding the run.
 
 - **1.7: Reconstruct Reviewed Manuals and Verify RAG Ingestion**
   - After approving recipe authoring and standalone reconstruction, prepare reviewed recipes for the selected manuals and rebuild Markdown/assets through the recipe bootstrap. Check generated chapter links, source selections, tables, graphics and description sidecars before indexing.
   - Use canonical `rag_qdrant` ingestion into `projects_docs` with source `amiga`. Verify fresh and incremental indexing, hashing, chunk fidelity, embeddings and description retrieval. Project search covers `amiga` and `devnotes`; the owning DevNotes project remains responsible for indexing `devnotes`.
   - **Gate:** Reconstructed reviewed artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](docs/developers.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag). Unchanged input does not trigger unnecessary reindexing; changed content is reflected in retrieved source fragments and image descriptions.
-
-- **1.8: Remove Test Book Files from the Branch (TEST-BOOK-CLEANUP)**
-  - After reconstruction and RAG ingestion verification, remove all files under `Obsidian/Amiga/Reference/Test Book example-4567/` from the branch's tracked tree while preserving the local test fixture and conversion artifacts. Restore the directory's `.gitignore` rule.
-  - **Gate:** `git ls-files -- "Obsidian/Amiga/Reference/Test Book example-4567"` returns no files, and `git check-ignore` confirms that the local directory is ignored.
 
 ## Step 2: Understand Tests and Establish a Profiling Workflow
 

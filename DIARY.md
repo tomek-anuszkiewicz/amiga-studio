@@ -1818,3 +1818,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - architecture rules passed 19
   - no live Codex editing or book regeneration run
   - Optional staged language scan reported seven false positives in HTML names and regular expressions; no Polish prose was added
+
+---
+
+### [2026-10-14 01:52 CEST] — Refresh manual-conversion roadmap
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove former Step 1 items 1.1, 1.2, 1.3 and 1.8 at user direction
+  - Add SVG extraction evaluation and RAG retrieval checks for collapsed descriptions and image text sidecars
+  - Add final chapter proofreading and multi-PDF book recipe tasks
+  - Renumber the remaining Step 1 work and align bootstrap source selection with multiple PDFs
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the pending roadmap aligned with the user's current book priorities
+  - Treat SVG fidelity, RAG retrieval and interchangeable PDF variants as verification questions rather than implemented capabilities
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - Architecture rules passed 19 tests
+  - git diff --check passed
+  - No conversion, PDF reconstruction or live RAG search was run
