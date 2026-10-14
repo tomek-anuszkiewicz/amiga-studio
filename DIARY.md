@@ -3628,3 +3628,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - English scan, roadmap check, vault link and frontmatter audit, and diff check passed
   - Full commit verification passed outside the sandbox, including all RAG MCP contracts
+---
+
+### [2026-10-14 02:04 CEST] — Remove flat custom-register aliases
+- **Affected Subsystems**:
+  - `crates/config`
+  - `crates/agnus`
+  - `crates/machine_loop`
+  - `crates/memory_bus`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed flat custom-register exports and duplicate root constants
+  - Qualified production and test register references by chip context
+  - Kept shared register offsets and bus routing unchanged
+- **Architectural Rationale & Trade-Offs**:
+  - Make register references identify the chip that decodes each offset while retaining shared bus behavior
+- **Verification & Test Results**:
+  - Targeted cargo tests for config, agnus, memory_bus, and machine_loop passed
+  - `cargo check --workspace --all-targets` and `cargo fmt --all -- --check` passed
+  - All 218 chip constants retained their values and no flat Rust references remain
+  - Scoped design review required no edits
+  - Commit verification passed outside the sandbox; the sandbox run timed out in the RAG MCP launch contract
+  - `graphify update .` failed because DLL import was denied

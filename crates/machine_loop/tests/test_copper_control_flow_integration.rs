@@ -32,7 +32,7 @@ fn test_copper_skip_taken_when_beam_past_target() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::DMACON, 0x8280);
+        .write_custom_word(custom_reg::agnus::DMACON, 0x8280);
 
     // Advance beam to line 6 (past line 5)
     harness.step_scanlines(6);
@@ -41,7 +41,7 @@ fn test_copper_skip_taken_when_beam_past_target() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::COPJMP1, 0x0000); // COPJMP1
+        .write_custom_word(custom_reg::agnus::COPJMP1, 0x0000); // COPJMP1
 
     // Step a few CCKs to execute SKIP and the succeeding MOVE
     harness.step_cck(20);
@@ -73,13 +73,13 @@ fn test_copper_skip_not_taken_when_beam_before_target() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::DMACON, 0x8280);
+        .write_custom_word(custom_reg::agnus::DMACON, 0x8280);
 
     // Beam starts at line 0 (well before line 50)
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::COPJMP1, 0x0000); // COPJMP1
+        .write_custom_word(custom_reg::agnus::COPJMP1, 0x0000); // COPJMP1
     harness.step_cck(20);
 
     // Because beam is at line 0 (< 50), the Red write must NOT be skipped
@@ -106,14 +106,14 @@ fn test_copper_cdang_danger_mode_protection() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::DMACON, 0x8280);
+        .write_custom_word(custom_reg::agnus::DMACON, 0x8280);
 
     // Case 1: CDANG is 0 (default COPCON = 0)
     assert!(!harness.machine.agnus.copper.cdang);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::COPJMP1, 0x0000); // COPJMP1
+        .write_custom_word(custom_reg::agnus::COPJMP1, 0x0000); // COPJMP1
     harness.step_cck(20);
 
     assert_eq!(
@@ -125,7 +125,7 @@ fn test_copper_cdang_danger_mode_protection() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::COPCON, 0x0002);
+        .write_custom_word(custom_reg::agnus::COPCON, 0x0002);
     harness.step_cck(2);
     assert!(harness.machine.agnus.copper.cdang);
 
@@ -133,7 +133,7 @@ fn test_copper_cdang_danger_mode_protection() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::COPJMP1, 0x0000); // COPJMP1
+        .write_custom_word(custom_reg::agnus::COPJMP1, 0x0000); // COPJMP1
     harness.step_cck(20);
 
     assert_eq!(

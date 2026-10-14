@@ -75,7 +75,7 @@ fn test_custom_register_broadcast_and_routing() {
     {
         let mut bus = mb.router();
         // Write DMACON ($DFF096): set master DMA enable and Copper DMA enable ($8280)
-        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::DMACON), 0x8280);
+        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::agnus::DMACON), 0x8280);
     }
     // Check that Agnus staged DMACON mutation with physical propagation delay
     let agnus_staged = mb
@@ -83,7 +83,7 @@ fn test_custom_register_broadcast_and_routing() {
         .mutations
         .iter()
         .flatten()
-        .any(|m| m.reg_offset == custom_reg::DMACON && m.value == 0x8280);
+        .any(|m| m.reg_offset == custom_reg::agnus::DMACON && m.value == 0x8280);
     assert!(
         agnus_staged,
         "Agnus must stage DMACON write in mutation pipeline"
@@ -241,13 +241,13 @@ fn test_direct_custom_and_cia_register_writes() {
     {
         let mut bus = mb.router();
         // Denise: COLOR00 ($DFF180)
-        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::COLOR00), 0x0F00);
+        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::denise::COLOR00), 0x0F00);
         // Paula: INTENA ($DFF09A) - set bit 15 (SET) | bit 14 (INTEN) | bit 0 (TBE) = 0xC001
-        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::INTENA), 0xC001);
+        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::paula::INTENA), 0xC001);
         // Agnus: BLTCON0 ($DFF040)
-        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::BLTCON0), 0x09F0);
+        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::agnus::BLTCON0), 0x09F0);
         // Shared: BPLCON0 ($DFF100)
-        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::BPLCON0), 0x1200);
+        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::denise::BPLCON0), 0x1200);
         // CIA-A: CRA ($BFEE01)
         let _ = bus.write_byte(0xBFEE01, 0x55);
         // CIA-B: CRB ($BFDF00)
@@ -302,22 +302,22 @@ fn test_open_bus_across_unmapped_banks_and_device_lanes() {
 
     // Early DMA addresses and write-only registers do not return their stored data.
     for offset in [
-        custom_reg::BLTDDAT,
-        custom_reg::DSKDATR,
-        custom_reg::BLTCON0,
-        custom_reg::COLOR00,
-        custom_reg::AUD0LEN,
+        custom_reg::agnus::BLTDDAT,
+        custom_reg::paula::DSKDATR,
+        custom_reg::agnus::BLTCON0,
+        custom_reg::denise::COLOR00,
+        custom_reg::paula::AUD0LEN,
     ] {
         let addr = 0xDFF000 + u32::from(offset);
         assert_eq!(bus.read_word(addr), BusResult::Ready(0xFFFF), "{addr:06X}");
         assert_eq!(bus.read_byte(addr), BusResult::Ready(0xFF), "{addr:06X}");
     }
     assert_eq!(
-        bus.read_word(0xDFF000 + u32::from(custom_reg::COPJMP1)),
+        bus.read_word(0xDFF000 + u32::from(custom_reg::agnus::COPJMP1)),
         BusResult::Ready(0xFFFF)
     );
     assert_eq!(
-        bus.read_word(0xDFF000 + u32::from(custom_reg::COPJMP2)),
+        bus.read_word(0xDFF000 + u32::from(custom_reg::agnus::COPJMP2)),
         BusResult::Ready(0xFFFF)
     );
 

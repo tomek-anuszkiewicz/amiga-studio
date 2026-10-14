@@ -78,10 +78,10 @@ fn snapshots_resume_reset_stop_and_a_refused_second_operand_half() {
             for target in [&mut machine, &mut restored] {
                 target
                     .memory_bus()
-                    .write_custom_word(custom_reg::INTENA, 0xC040);
+                    .write_custom_word(custom_reg::paula::INTENA, 0xC040);
                 target
                     .memory_bus()
-                    .write_custom_word(custom_reg::INTREQ, 0x8040);
+                    .write_custom_word(custom_reg::paula::INTREQ, 0x8040);
             }
         }
         let mut finished = false;

@@ -8,7 +8,7 @@ pub use copper;
 pub use dma;
 
 use config::chip_ram::{OCS_DMA_ADDRESS_MASK, OCS_DMA_HIGH_MASK, OCS_DMA_LOW_MASK};
-use config::custom_reg;
+use config::custom_reg::agnus as reg;
 use config::mask::dmacon;
 pub use config::AgnusModel;
 use config::{stage_mutation, tick_mutations, BeamPosition, DelayedMutation, MutationMode};
@@ -420,9 +420,9 @@ impl Agnus {
     #[inline]
     pub fn read_register(&self, offset: u16) -> u16 {
         match offset & 0x1FE {
-            custom_reg::DMACONR => self.read_dmaconr(),
-            custom_reg::VPOSR => self.vposr(),
-            custom_reg::VHPOSR => self.vhposr(),
+            reg::DMACONR => self.read_dmaconr(),
+            reg::VPOSR => self.vposr(),
+            reg::VHPOSR => self.vhposr(),
             _ => config::OPEN_BUS_WORD,
         }
     }
@@ -433,73 +433,69 @@ impl Agnus {
     pub fn write_register(&mut self, offset: u16, val: u16) -> Option<(u16, u16)> {
         let offset = offset & 0x1FE;
         let (delay, mode) = match offset {
-            custom_reg::DMACON => (2, MutationMode::OverwritePending),
-            custom_reg::COPJMP1 | custom_reg::COPJMP2 => (1, MutationMode::OverwritePending),
-            custom_reg::BLTSIZE => (1, MutationMode::OverwritePending),
-            custom_reg::BPLCON0 => (4, MutationMode::OverwritePending), // BPLCON0 (Agnus DMA allocation)
-            custom_reg::DIWSTRT | custom_reg::DIWSTOP => (4, MutationMode::OverwritePending),
-            custom_reg::DDFSTRT | custom_reg::DDFSTOP => (4, MutationMode::OverwritePending),
-            custom_reg::BPL1MOD | custom_reg::BPL2MOD => (2, MutationMode::OverwritePending),
-            custom_reg::BLTCON0
-            | custom_reg::BLTCON1
-            | custom_reg::BLTAFWM
-            | custom_reg::BLTALWM
-            | custom_reg::BLTCPTH
-            | custom_reg::BLTCPTL
-            | custom_reg::BLTBPTH
-            | custom_reg::BLTBPTL
-            | custom_reg::BLTAPTH
-            | custom_reg::BLTAPTL
-            | custom_reg::BLTDPTH
-            | custom_reg::BLTDPTL => (2, MutationMode::OverwritePending),
-            custom_reg::BLTCMOD
-            | custom_reg::BLTBMOD
-            | custom_reg::BLTAMOD
-            | custom_reg::BLTDMOD => (2, MutationMode::OverwritePending),
-            custom_reg::BLTCDAT | custom_reg::BLTBDAT | custom_reg::BLTADAT => {
-                (1, MutationMode::Pipeline)
+            reg::DMACON => (2, MutationMode::OverwritePending),
+            reg::COPJMP1 | reg::COPJMP2 => (1, MutationMode::OverwritePending),
+            reg::BLTSIZE => (1, MutationMode::OverwritePending),
+            reg::BPLCON0 => (4, MutationMode::OverwritePending), // BPLCON0 (Agnus DMA allocation)
+            reg::DIWSTRT | reg::DIWSTOP => (4, MutationMode::OverwritePending),
+            reg::DDFSTRT | reg::DDFSTOP => (4, MutationMode::OverwritePending),
+            reg::BPL1MOD | reg::BPL2MOD => (2, MutationMode::OverwritePending),
+            reg::BLTCON0
+            | reg::BLTCON1
+            | reg::BLTAFWM
+            | reg::BLTALWM
+            | reg::BLTCPTH
+            | reg::BLTCPTL
+            | reg::BLTBPTH
+            | reg::BLTBPTL
+            | reg::BLTAPTH
+            | reg::BLTAPTL
+            | reg::BLTDPTH
+            | reg::BLTDPTL => (2, MutationMode::OverwritePending),
+            reg::BLTCMOD | reg::BLTBMOD | reg::BLTAMOD | reg::BLTDMOD => {
+                (2, MutationMode::OverwritePending)
             }
-            custom_reg::COP1LCH
-            | custom_reg::COP1LCL
-            | custom_reg::COP2LCH
-            | custom_reg::COP2LCL => (2, MutationMode::OverwritePending),
-            custom_reg::BPL1PTH
-            | custom_reg::BPL1PTL
-            | custom_reg::BPL2PTH
-            | custom_reg::BPL2PTL
-            | custom_reg::BPL3PTH
-            | custom_reg::BPL3PTL
-            | custom_reg::BPL4PTH
-            | custom_reg::BPL4PTL
-            | custom_reg::BPL5PTH
-            | custom_reg::BPL5PTL
-            | custom_reg::BPL6PTH
-            | custom_reg::BPL6PTL => (2, MutationMode::OverwritePending),
-            custom_reg::SPR0PTH
-            | custom_reg::SPR0PTL
-            | custom_reg::SPR1PTH
-            | custom_reg::SPR1PTL
-            | custom_reg::SPR2PTH
-            | custom_reg::SPR2PTL
-            | custom_reg::SPR3PTH
-            | custom_reg::SPR3PTL
-            | custom_reg::SPR4PTH
-            | custom_reg::SPR4PTL
-            | custom_reg::SPR5PTH
-            | custom_reg::SPR5PTL
-            | custom_reg::SPR6PTH
-            | custom_reg::SPR6PTL
-            | custom_reg::SPR7PTH
-            | custom_reg::SPR7PTL => (2, MutationMode::OverwritePending),
-            custom_reg::DSKPTH | custom_reg::DSKPTL => (2, MutationMode::OverwritePending),
-            custom_reg::AUD0LCH
-            | custom_reg::AUD0LCL
-            | custom_reg::AUD1LCH
-            | custom_reg::AUD1LCL
-            | custom_reg::AUD2LCH
-            | custom_reg::AUD2LCL
-            | custom_reg::AUD3LCH
-            | custom_reg::AUD3LCL => (2, MutationMode::OverwritePending),
+            reg::BLTCDAT | reg::BLTBDAT | reg::BLTADAT => (1, MutationMode::Pipeline),
+            reg::COP1LCH | reg::COP1LCL | reg::COP2LCH | reg::COP2LCL => {
+                (2, MutationMode::OverwritePending)
+            }
+            reg::BPL1PTH
+            | reg::BPL1PTL
+            | reg::BPL2PTH
+            | reg::BPL2PTL
+            | reg::BPL3PTH
+            | reg::BPL3PTL
+            | reg::BPL4PTH
+            | reg::BPL4PTL
+            | reg::BPL5PTH
+            | reg::BPL5PTL
+            | reg::BPL6PTH
+            | reg::BPL6PTL => (2, MutationMode::OverwritePending),
+            reg::SPR0PTH
+            | reg::SPR0PTL
+            | reg::SPR1PTH
+            | reg::SPR1PTL
+            | reg::SPR2PTH
+            | reg::SPR2PTL
+            | reg::SPR3PTH
+            | reg::SPR3PTL
+            | reg::SPR4PTH
+            | reg::SPR4PTL
+            | reg::SPR5PTH
+            | reg::SPR5PTL
+            | reg::SPR6PTH
+            | reg::SPR6PTL
+            | reg::SPR7PTH
+            | reg::SPR7PTL => (2, MutationMode::OverwritePending),
+            reg::DSKPTH | reg::DSKPTL => (2, MutationMode::OverwritePending),
+            reg::AUD0LCH
+            | reg::AUD0LCL
+            | reg::AUD1LCH
+            | reg::AUD1LCL
+            | reg::AUD2LCH
+            | reg::AUD2LCL
+            | reg::AUD3LCH
+            | reg::AUD3LCL => (2, MutationMode::OverwritePending),
             _ => (2, MutationMode::OverwritePending),
         };
 
@@ -520,7 +516,7 @@ impl Agnus {
     /// Commits a register write directly into active Agnus silicon state
     pub fn commit_register_write(&mut self, offset: u16, val: u16) {
         match offset & 0x1FE {
-            custom_reg::DMACON => {
+            reg::DMACON => {
                 // DMACON SET/CLR logic
                 if (val & dmacon::SET_CLR) != 0 {
                     self.dmacon |= val & 0x7FFF;
@@ -534,94 +530,94 @@ impl Agnus {
                 self.copper
                     .set_dma_enabled(self.is_dma_enabled(dmacon::COPEN));
             }
-            custom_reg::COPCON => self.copper.set_copcon(val),
-            custom_reg::COP1LCH => {
+            reg::COPCON => self.copper.set_copcon(val),
+            reg::COP1LCH => {
                 self.copper.cop1lc = Self::write_dma_pointer_high(self.copper.cop1lc, val)
             }
-            custom_reg::COP1LCL => {
+            reg::COP1LCL => {
                 self.copper.cop1lc = Self::write_dma_pointer_low(self.copper.cop1lc, val)
             }
-            custom_reg::COP2LCH => {
+            reg::COP2LCH => {
                 self.copper.cop2lc = Self::write_dma_pointer_high(self.copper.cop2lc, val)
             }
-            custom_reg::COP2LCL => {
+            reg::COP2LCL => {
                 self.copper.cop2lc = Self::write_dma_pointer_low(self.copper.cop2lc, val)
             }
-            custom_reg::COPJMP1 => self.strobe_copjmp1(),
-            custom_reg::COPJMP2 => self.strobe_copjmp2(),
-            custom_reg::DIWSTRT => {
+            reg::COPJMP1 => self.strobe_copjmp1(),
+            reg::COPJMP2 => self.strobe_copjmp2(),
+            reg::DIWSTRT => {
                 self.diwstrt = val;
                 self.dma.set_vstart(val >> 8);
             }
-            custom_reg::DIWSTOP => {
+            reg::DIWSTOP => {
                 self.diwstop = val;
                 let vstop = (val >> 8) | (if val & 0x8000 == 0 { 0x100 } else { 0 });
                 self.dma.set_vstop(vstop);
             }
-            custom_reg::DDFSTRT => {
+            reg::DDFSTRT => {
                 self.ddfstrt = val & 0x00FC;
                 self.dma.set_ddfstrt(val & 0x00FC);
             }
-            custom_reg::DDFSTOP => {
+            reg::DDFSTOP => {
                 self.ddfstop = val & 0x00FC;
                 self.dma.set_ddfstop(val & 0x00FC);
             }
-            custom_reg::BPLCON0 => self.set_bplcon0(val),
-            custom_reg::BPL1MOD => self.bpl1mod = val as i16,
-            custom_reg::BPL2MOD => self.bpl2mod = val as i16,
+            reg::BPLCON0 => self.set_bplcon0(val),
+            reg::BPL1MOD => self.bpl1mod = val as i16,
+            reg::BPL2MOD => self.bpl2mod = val as i16,
 
             // Blitter registers
-            custom_reg::BLTCON0 => self.blitter.bltcon0 = val,
-            custom_reg::BLTCON1 => self.blitter.bltcon1 = val,
-            custom_reg::BLTAFWM => self.blitter.bltafwm = val,
-            custom_reg::BLTALWM => self.blitter.bltalwm = val,
-            custom_reg::BLTCPTH => {
+            reg::BLTCON0 => self.blitter.bltcon0 = val,
+            reg::BLTCON1 => self.blitter.bltcon1 = val,
+            reg::BLTAFWM => self.blitter.bltafwm = val,
+            reg::BLTALWM => self.blitter.bltalwm = val,
+            reg::BLTCPTH => {
                 self.blitter.bltcpt = Self::write_dma_pointer_high(self.blitter.bltcpt, val)
             }
-            custom_reg::BLTCPTL => {
+            reg::BLTCPTL => {
                 self.blitter.bltcpt = Self::write_dma_pointer_low(self.blitter.bltcpt, val)
             }
-            custom_reg::BLTBPTH => {
+            reg::BLTBPTH => {
                 self.blitter.bltbpt = Self::write_dma_pointer_high(self.blitter.bltbpt, val)
             }
-            custom_reg::BLTBPTL => {
+            reg::BLTBPTL => {
                 self.blitter.bltbpt = Self::write_dma_pointer_low(self.blitter.bltbpt, val)
             }
-            custom_reg::BLTAPTH => {
+            reg::BLTAPTH => {
                 self.blitter.bltapt = Self::write_dma_pointer_high(self.blitter.bltapt, val)
             }
-            custom_reg::BLTAPTL => {
+            reg::BLTAPTL => {
                 self.blitter.bltapt = Self::write_dma_pointer_low(self.blitter.bltapt, val)
             }
-            custom_reg::BLTDPTH => {
+            reg::BLTDPTH => {
                 self.blitter.bltdpt = Self::write_dma_pointer_high(self.blitter.bltdpt, val)
             }
-            custom_reg::BLTDPTL => {
+            reg::BLTDPTL => {
                 self.blitter.bltdpt = Self::write_dma_pointer_low(self.blitter.bltdpt, val)
             }
-            custom_reg::BLTSIZE => self.blitter.trigger_blit(val),
-            custom_reg::BLTCMOD => self.blitter.bltcmod = val as i16,
-            custom_reg::BLTBMOD => self.blitter.bltbmod = val as i16,
-            custom_reg::BLTAMOD => self.blitter.bltamod = val as i16,
-            custom_reg::BLTDMOD => self.blitter.bltdmod = val as i16,
-            custom_reg::BLTCDAT => self.blitter.bltcdat = val,
-            custom_reg::BLTBDAT => self.blitter.bltbdat = val,
-            custom_reg::BLTADAT => self.blitter.bltadat = val,
+            reg::BLTSIZE => self.blitter.trigger_blit(val),
+            reg::BLTCMOD => self.blitter.bltcmod = val as i16,
+            reg::BLTBMOD => self.blitter.bltbmod = val as i16,
+            reg::BLTAMOD => self.blitter.bltamod = val as i16,
+            reg::BLTDMOD => self.blitter.bltdmod = val as i16,
+            reg::BLTCDAT => self.blitter.bltcdat = val,
+            reg::BLTBDAT => self.blitter.bltbdat = val,
+            reg::BLTADAT => self.blitter.bltadat = val,
 
             // Bitplane pointers
-            custom_reg::BPL1PTH
-            | custom_reg::BPL1PTL
-            | custom_reg::BPL2PTH
-            | custom_reg::BPL2PTL
-            | custom_reg::BPL3PTH
-            | custom_reg::BPL3PTL
-            | custom_reg::BPL4PTH
-            | custom_reg::BPL4PTL
-            | custom_reg::BPL5PTH
-            | custom_reg::BPL5PTL
-            | custom_reg::BPL6PTH
-            | custom_reg::BPL6PTL => {
-                let plane = ((offset - custom_reg::BPL1PTH) / 4) as usize;
+            reg::BPL1PTH
+            | reg::BPL1PTL
+            | reg::BPL2PTH
+            | reg::BPL2PTL
+            | reg::BPL3PTH
+            | reg::BPL3PTL
+            | reg::BPL4PTH
+            | reg::BPL4PTL
+            | reg::BPL5PTH
+            | reg::BPL5PTL
+            | reg::BPL6PTH
+            | reg::BPL6PTL => {
+                let plane = ((offset - reg::BPL1PTH) / 4) as usize;
                 let is_low = (offset & 2) != 0;
                 if plane < 6 {
                     if is_low {
@@ -633,23 +629,23 @@ impl Agnus {
             }
 
             // Sprite pointers
-            custom_reg::SPR0PTH
-            | custom_reg::SPR0PTL
-            | custom_reg::SPR1PTH
-            | custom_reg::SPR1PTL
-            | custom_reg::SPR2PTH
-            | custom_reg::SPR2PTL
-            | custom_reg::SPR3PTH
-            | custom_reg::SPR3PTL
-            | custom_reg::SPR4PTH
-            | custom_reg::SPR4PTL
-            | custom_reg::SPR5PTH
-            | custom_reg::SPR5PTL
-            | custom_reg::SPR6PTH
-            | custom_reg::SPR6PTL
-            | custom_reg::SPR7PTH
-            | custom_reg::SPR7PTL => {
-                let sprite = ((offset - custom_reg::SPR0PTH) / 4) as usize;
+            reg::SPR0PTH
+            | reg::SPR0PTL
+            | reg::SPR1PTH
+            | reg::SPR1PTL
+            | reg::SPR2PTH
+            | reg::SPR2PTL
+            | reg::SPR3PTH
+            | reg::SPR3PTL
+            | reg::SPR4PTH
+            | reg::SPR4PTL
+            | reg::SPR5PTH
+            | reg::SPR5PTL
+            | reg::SPR6PTH
+            | reg::SPR6PTL
+            | reg::SPR7PTH
+            | reg::SPR7PTL => {
+                let sprite = ((offset - reg::SPR0PTH) / 4) as usize;
                 let is_low = (offset & 2) != 0;
                 if sprite < 8 {
                     if is_low {
@@ -661,23 +657,23 @@ impl Agnus {
             }
 
             // Sprite position and control latches
-            custom_reg::agnus::SPR0POS
-            | custom_reg::agnus::SPR0CTL
-            | custom_reg::agnus::SPR1POS
-            | custom_reg::agnus::SPR1CTL
-            | custom_reg::agnus::SPR2POS
-            | custom_reg::agnus::SPR2CTL
-            | custom_reg::agnus::SPR3POS
-            | custom_reg::agnus::SPR3CTL
-            | custom_reg::agnus::SPR4POS
-            | custom_reg::agnus::SPR4CTL
-            | custom_reg::agnus::SPR5POS
-            | custom_reg::agnus::SPR5CTL
-            | custom_reg::agnus::SPR6POS
-            | custom_reg::agnus::SPR6CTL
-            | custom_reg::agnus::SPR7POS
-            | custom_reg::agnus::SPR7CTL => {
-                let sprite = ((offset - custom_reg::agnus::SPR0POS) / 8) as usize;
+            reg::SPR0POS
+            | reg::SPR0CTL
+            | reg::SPR1POS
+            | reg::SPR1CTL
+            | reg::SPR2POS
+            | reg::SPR2CTL
+            | reg::SPR3POS
+            | reg::SPR3CTL
+            | reg::SPR4POS
+            | reg::SPR4CTL
+            | reg::SPR5POS
+            | reg::SPR5CTL
+            | reg::SPR6POS
+            | reg::SPR6CTL
+            | reg::SPR7POS
+            | reg::SPR7CTL => {
+                let sprite = ((offset - reg::SPR0POS) / 8) as usize;
                 if (offset & 2) == 0 {
                     self.sprpos[sprite] = val;
                 } else {
@@ -686,23 +682,23 @@ impl Agnus {
             }
 
             // Floppy Disk DMA pointer
-            custom_reg::DSKPTH => {
+            reg::DSKPTH => {
                 self.dskpt = Self::write_dma_pointer_high(self.dskpt, val);
             }
-            custom_reg::DSKPTL => {
+            reg::DSKPTL => {
                 self.dskpt = Self::write_dma_pointer_low(self.dskpt, val);
             }
 
             // Audio DMA location pointers (AUD0LCH/LCL..AUD3LCH/LCL)
-            custom_reg::AUD0LCH
-            | custom_reg::AUD0LCL
-            | custom_reg::AUD1LCH
-            | custom_reg::AUD1LCL
-            | custom_reg::AUD2LCH
-            | custom_reg::AUD2LCL
-            | custom_reg::AUD3LCH
-            | custom_reg::AUD3LCL => {
-                let ch = ((offset - custom_reg::AUD0LCH) / 0x10) as usize;
+            reg::AUD0LCH
+            | reg::AUD0LCL
+            | reg::AUD1LCH
+            | reg::AUD1LCL
+            | reg::AUD2LCH
+            | reg::AUD2LCL
+            | reg::AUD3LCH
+            | reg::AUD3LCL => {
+                let ch = ((offset - reg::AUD0LCH) / 0x10) as usize;
                 if ch < 4 {
                     if (offset & 2) == 0 {
                         self.audlc[ch] = Self::write_dma_pointer_high(self.audlc[ch], val);

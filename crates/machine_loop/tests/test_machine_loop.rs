@@ -31,7 +31,7 @@ fn test_machine_interrupt_arbitration() {
     // 0x8000 (SET) | 0x4000 (INTEN) | 0x2000 (EXTER) | 0x0008 (PORTS) = 0xE008
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::INTENA, 0xE008);
+        .write_custom_word(custom_reg::paula::INTENA, 0xE008);
     machine.step_cycles(2);
 
     // Trigger CIA-A interrupt -> IPL 2

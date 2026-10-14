@@ -26,7 +26,7 @@ fn test_dmacon_routing_to_all_subsystems() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::DMACON), 0x83FF),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::DMACON), 0x83FF),
         BusResult::Ready(())
     );
 
@@ -49,7 +49,7 @@ fn test_dmacon_routing_to_all_subsystems() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::DMACON), 0x8400),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::DMACON), 0x8400),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -60,7 +60,7 @@ fn test_dmacon_routing_to_all_subsystems() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::DMACON), 0x0200),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::DMACON), 0x0200),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -85,13 +85,13 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::COP1LCH), 0x0004),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::COP1LCH), 0x0004),
         BusResult::Ready(())
     );
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::COP1LCL), 0x1000),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::COP1LCL), 0x1000),
         BusResult::Ready(())
     );
 
@@ -105,7 +105,7 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::COPJMP1), 0x0000),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::COPJMP1), 0x0000),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -118,13 +118,13 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::COP2LCH), 0x0005),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::COP2LCH), 0x0005),
         BusResult::Ready(())
     );
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::COP2LCL), 0x2000),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::COP2LCL), 0x2000),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -136,7 +136,7 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::COPJMP2), 0x0000),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::COPJMP2), 0x0000),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -154,19 +154,19 @@ fn test_blitter_size_triggers_busy_and_syncs_pointers() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::BLTAPTH), 0x0001),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::BLTAPTH), 0x0001),
         BusResult::Ready(())
     ); // BLTAPTH
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::BLTAPTL), 0x2344),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::BLTAPTL), 0x2344),
         BusResult::Ready(())
     ); // BLTAPTL
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::BLTCON0), 0x09F0),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::BLTCON0), 0x09F0),
         BusResult::Ready(())
     ); // BLTCON0
     machine.step_cck();
@@ -182,7 +182,7 @@ fn test_blitter_size_triggers_busy_and_syncs_pointers() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::BLTSIZE), 0x0404),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::BLTSIZE), 0x0404),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -254,7 +254,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::DMACON), 0x8210),
+            .write_word(0xDFF000 + u32::from(custom_reg::paula::DMACON), 0x8210),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -266,7 +266,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::DSKLEN), 0x9000),
+            .write_word(0xDFF000 + u32::from(custom_reg::paula::DSKLEN), 0x9000),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -280,7 +280,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::DSKLEN), 0x9000),
+            .write_word(0xDFF000 + u32::from(custom_reg::paula::DSKLEN), 0x9000),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -298,7 +298,7 @@ fn test_blitter_finish_asserts_blitint_and_escalates_ipl() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::INTENA), 0xC040),
+            .write_word(0xDFF000 + u32::from(custom_reg::paula::INTENA), 0xC040),
         BusResult::Ready(())
     );
     machine.step_cck(); // Mature INTENA write
@@ -328,7 +328,7 @@ fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::INTENA), 0xC080),
+            .write_word(0xDFF000 + u32::from(custom_reg::paula::INTENA), 0xC080),
         BusResult::Ready(())
     );
     machine.step_cck(); // Mature INTENA write
@@ -337,13 +337,13 @@ fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::AUD0LCH), 0x0002),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::AUD0LCH), 0x0002),
         BusResult::Ready(())
     );
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::AUD0LCL), 0x5000),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::AUD0LCL), 0x5000),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -400,7 +400,7 @@ fn test_floppy_ciab_prb_polling_and_dskbytr_paula_latching() {
     // CPU reads DSKBYTR from Paula via memory bus
     let val = match machine
         .memory_bus()
-        .read_word(0xDFF000 + u32::from(custom_reg::DSKBYTR))
+        .read_word(0xDFF000 + u32::from(custom_reg::paula::DSKBYTR))
     {
         BusResult::Ready(v) => v,
         _ => panic!("Expected Ready"),

@@ -7,7 +7,7 @@
 ///
 /// Register offsets are word-aligned ($000 to $1FE).
 /// Registers are organized by physical custom chip (Agnus, Denise, Paula),
-/// with root-level re-exports for flat addressing compatibility.
+/// with shared offsets declared in each chip namespace that decodes them.
 pub mod custom_reg {
     /// Agnus (MOS 8370 / 8371 / 8372) Address Generator & DMA Coprocessor Registers
     pub mod agnus {
@@ -441,35 +441,6 @@ pub mod custom_reg {
         /// Audio channel 3 data word
         pub const AUD3DAT: u16 = 0x0DA;
     }
-
-    // Flat re-exports for seamless compatibility and general access
-    pub use agnus::*;
-    pub use denise::*;
-    pub use paula::*;
-
-    // Explicit disambiguation for registers decoded by multiple physical chips
-    pub const DIWSTRT: u16 = agnus::DIWSTRT;
-    pub const DIWSTOP: u16 = agnus::DIWSTOP;
-    pub const DMACON: u16 = agnus::DMACON;
-    pub const DMACONR: u16 = agnus::DMACONR;
-    pub const BPLCON0: u16 = denise::BPLCON0;
-    pub const STRHOR: u16 = denise::STRHOR;
-    pub const SPR0POS: u16 = denise::SPR0POS;
-    pub const SPR0CTL: u16 = denise::SPR0CTL;
-    pub const SPR1POS: u16 = denise::SPR1POS;
-    pub const SPR1CTL: u16 = denise::SPR1CTL;
-    pub const SPR2POS: u16 = denise::SPR2POS;
-    pub const SPR2CTL: u16 = denise::SPR2CTL;
-    pub const SPR3POS: u16 = denise::SPR3POS;
-    pub const SPR3CTL: u16 = denise::SPR3CTL;
-    pub const SPR4POS: u16 = denise::SPR4POS;
-    pub const SPR4CTL: u16 = denise::SPR4CTL;
-    pub const SPR5POS: u16 = denise::SPR5POS;
-    pub const SPR5CTL: u16 = denise::SPR5CTL;
-    pub const SPR6POS: u16 = denise::SPR6POS;
-    pub const SPR6CTL: u16 = denise::SPR6CTL;
-    pub const SPR7POS: u16 = denise::SPR7POS;
-    pub const SPR7CTL: u16 = denise::SPR7CTL;
 }
 
 /// Memory-mapped byte addresses of the two MOS 8520 interface adapters.

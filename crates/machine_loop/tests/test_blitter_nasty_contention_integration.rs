@@ -30,39 +30,39 @@ fn test_blitter_nasty_blocks_chip_ram_and_allows_fast_ram() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::BLTCON0, 0x09CA);
+        .write_custom_word(custom_reg::agnus::BLTCON0, 0x09CA);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::BLTCON1, 0x0000); // BLTCON1
+        .write_custom_word(custom_reg::agnus::BLTCON1, 0x0000); // BLTCON1
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::BLTAPTH, 0x001000); // BLTAPTH/L
+        .write_custom_word(custom_reg::agnus::BLTAPTH, 0x001000); // BLTAPTH/L
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::BLTDPTH, 0x002000); // BLTDPTH/L
+        .write_custom_word(custom_reg::agnus::BLTDPTH, 0x002000); // BLTDPTH/L
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::BLTAMOD, 0); // BLTAMOD
+        .write_custom_word(custom_reg::agnus::BLTAMOD, 0); // BLTAMOD
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::BLTDMOD, 0); // BLTDMOD
+        .write_custom_word(custom_reg::agnus::BLTDMOD, 0); // BLTDMOD
 
     // Enable Blitter Nasty in DMACON: SET | DMAEN | BLTEN | BLTPRI -> 0x8640
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::DMACON, 0x8000 | 0x0200 | 0x0040 | 0x0400);
+        .write_custom_word(custom_reg::agnus::DMACON, 0x8000 | 0x0200 | 0x0040 | 0x0400);
 
     // Start Blitter: 10 lines x 2 words = 20 words
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::BLTSIZE, (10 << 6) | 2);
+        .write_custom_word(custom_reg::agnus::BLTSIZE, (10 << 6) | 2);
 
     // Step 2 CCKs for registers to commit and Blitter to engage
     harness.step_cck(2);
@@ -146,23 +146,23 @@ fn test_blitter_nasty_fast_ram_cpu_concurrency() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::BLTCON0, 0x09CA);
+        .write_custom_word(custom_reg::agnus::BLTCON0, 0x09CA);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::BLTAPTH, 0x001000);
+        .write_custom_word(custom_reg::agnus::BLTAPTH, 0x001000);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::BLTDPTH, 0x002000);
+        .write_custom_word(custom_reg::agnus::BLTDPTH, 0x002000);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::DMACON, 0x8640); // SET + DMAEN + BLTEN + BLTPRI
+        .write_custom_word(custom_reg::agnus::DMACON, 0x8640); // SET + DMAEN + BLTEN + BLTPRI
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::BLTSIZE, (200 << 6) | 2);
+        .write_custom_word(custom_reg::agnus::BLTSIZE, (200 << 6) | 2);
     harness.step_cck(2);
 
     assert!(harness.machine.agnus.blitter.is_busy);

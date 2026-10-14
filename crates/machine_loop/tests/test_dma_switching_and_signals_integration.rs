@@ -29,7 +29,7 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::DMACON, 0x82E0);
+        .write_custom_word(custom_reg::agnus::DMACON, 0x82E0);
     harness.step_cck(2); // Physical propagation delay
 
     assert_eq!(harness.machine.agnus.dmacon & 0x02E0, 0x02E0);
@@ -44,7 +44,7 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::DMACON, 0x0080);
+        .write_custom_word(custom_reg::agnus::DMACON, 0x0080);
     harness.step_cck(2);
 
     assert_eq!(harness.machine.agnus.dmacon & 0x0080, 0);
@@ -60,7 +60,7 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::DMACON, 0x0200);
+        .write_custom_word(custom_reg::agnus::DMACON, 0x0200);
     harness.step_cck(2);
 
     // Master DMA disabled: all individual channel activities must cease
@@ -85,7 +85,7 @@ fn test_register_write_electronic_propagation_delay() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::DIWSTRT, 0x2C81);
+        .write_custom_word(custom_reg::denise::DIWSTRT, 0x2C81);
 
     // Cycle 0: Write has just been staged into the mutation pipeline, NOT yet committed
     assert_eq!(

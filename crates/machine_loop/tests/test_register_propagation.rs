@@ -14,7 +14,7 @@ fn test_cross_chip_bplcon0_broadcast_latencies() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::BPLCON0), 0x8200),
+            .write_word(0xDFF000 + u32::from(custom_reg::denise::BPLCON0), 0x8200),
         BusResult::Ready(())
     );
 
@@ -48,7 +48,7 @@ fn test_cross_chip_dmacon_broadcast_to_agnus_and_paula() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::DMACON), 0x8211),
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::DMACON), 0x8211),
         BusResult::Ready(())
     );
 
@@ -93,14 +93,14 @@ fn test_paula_interrupt_cascade_to_cpu_ipl() {
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::INTENA), 0xC020),
+            .write_word(0xDFF000 + u32::from(custom_reg::paula::INTENA), 0xC020),
         BusResult::Ready(())
     );
     // Write INTREQ ($DFF09C) = 0x8020 (SET Level 3 VBlank request)
     assert_eq!(
         machine
             .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::INTREQ), 0x8020),
+            .write_word(0xDFF000 + u32::from(custom_reg::paula::INTREQ), 0x8020),
         BusResult::Ready(())
     );
 
@@ -118,7 +118,7 @@ fn test_bus_custom_registers_snapshot_sync_and_open_bus() {
     // Direct write to DMACON
     machine
         .agnus
-        .commit_register_write(custom_reg::DMACON, 0x8200);
+        .commit_register_write(custom_reg::agnus::DMACON, 0x8200);
 
     // Step CCK syncs state
     machine.step_cck();
@@ -126,7 +126,7 @@ fn test_bus_custom_registers_snapshot_sync_and_open_bus() {
     // Reading DMACONR ($DFF002) from bus returns 0x0200
     let BusResult::Ready(dmaconr) = machine
         .memory_bus()
-        .read_word(0xDFF000 + u32::from(custom_reg::DMACONR))
+        .read_word(0xDFF000 + u32::from(custom_reg::agnus::DMACONR))
     else {
         panic!("Expected a completed bus read");
     };
@@ -135,7 +135,7 @@ fn test_bus_custom_registers_snapshot_sync_and_open_bus() {
     // Reading write-only register (e.g. BPLCON0 at $DFF100) returns 0xFFFF (open bus)
     let BusResult::Ready(bplcon0_read) = machine
         .memory_bus()
-        .read_word(0xDFF000 + u32::from(custom_reg::BPLCON0))
+        .read_word(0xDFF000 + u32::from(custom_reg::denise::BPLCON0))
     else {
         panic!("Expected a completed bus read");
     };
@@ -149,13 +149,13 @@ fn test_write_custom_word_and_byte_methods() {
     // Test write_custom_word directly on MemoryBus
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::COLOR00, 0x0F00);
+        .write_custom_word(custom_reg::denise::COLOR00, 0x0F00);
     assert_eq!(machine.denise.color[0], 0x0F00);
 
     // Test write_custom_byte with byte duplication
     machine
         .memory_bus()
-        .write_custom_byte(0xDFF000 + u32::from(custom_reg::COLOR01), 0x33);
+        .write_custom_byte(0xDFF000 + u32::from(custom_reg::denise::COLOR01), 0x33);
     assert_eq!(machine.denise.color[1], 0x0333);
 }
 
@@ -169,7 +169,7 @@ fn test_dmacon_write_propagation_delay() {
     // Write DMACON = SET DMAEN (bit 9) + SPREN (bit 5) + BPLEN (bit 8) -> 0x8320
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::DMACON, 0x8320);
+        .write_custom_word(custom_reg::agnus::DMACON, 0x8320);
 
     // After 1 CCK: in-flight in mutation pipeline, not yet committed in Agnus (2 CCKs delay)
     machine.step_cck();
@@ -182,7 +182,7 @@ fn test_dmacon_write_propagation_delay() {
     // Clear SPREN (bit 5)
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::DMACON, 0x0020);
+        .write_custom_word(custom_reg::agnus::DMACON, 0x0020);
     machine.step_cck();
     assert_eq!(machine.agnus.dmacon, 0x0320);
 
