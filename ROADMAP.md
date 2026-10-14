@@ -2,33 +2,51 @@
 
 ## Step 1: Manual Conversion and Initial Knowledge Base
 
-Prepare source-faithful Markdown and searchable assets once, before routine emulator development. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
+Author reviewed book recipes once, then bootstrap Markdown and searchable assets from those recipes and matching source PDFs. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
-- **1.1: PNG-to-Markdown and Crops with OCR Text JSON**
-  - Request a source fragment and assess Stage 02 objects, decoded `md_text`, classifications and table/graphic crops through Stage 02.5 (task `PDF-INDEPENDENT-02D-02M`). Technical implementation and Stage 03 consumption of Stage 02 objects are available; user assessment remains pending.
-  - Connect the new stream explicitly to Stages 03-14 after review: preserve `md_text` without automatic reformatting, let text assembly ignore review boxes, and adapt table/asset handling. Never concatenate the branches or implicitly reinterpret old schemas.
-  - **Gate:** User-selected fragments establish source fidelity and reading order for those pages; technical JSON/lineage checks do not establish conversion quality. Verify explicit new-stream assembly, input identity and retained artifacts before later crop review and bulk conversion.
+- **1.1: Evaluate SVG Extraction for PDF Graphics**
+  - Try extracting selected graphics directly from source PDF regions as SVG instead of rendering PNG crops. Check whether vector paths, text, and embedded images remain faithful to the source; a raster image wrapped in SVG does not count as vector extraction.
+  - **Gate:** Compare representative SVG outputs with the source PDF and current PNG crops for completeness, appearance, and usable bounds. Record which graphics can be preserved as SVG and which still require PNG because the source is raster or the extraction is incomplete.
 
-- **1.2: Iterative Table and Image Crop Review**
-  - Add `02b_reclip` between segmentation and `03_build_raw_stream`. Review each rectangle on the full source-page PNG; apply corrections, regenerate the crop and annotated page, and review again until acceptance or an iteration limit requiring manual review.
-  - Persist stable segment IDs, verdicts, coordinate revisions, previews, and accepted crops for resumption. Raw-stream construction must consume finalized reclip output, preserve accepted geometry, and reject stale or unresolved results.
-  - **Gate:** Samples cover immediate acceptance, correction/review/acceptance, iteration-limit handoff, and resumption; saved artifacts prove review and downstream use without silent recropping.
+- **1.2: Author Table, Image, and ASCII-Art Descriptions**
+  - Generate descriptions during recipe authoring from one prepared group and its source context. Store accepted descriptions as explicit recipe content so reconstruction does not call a model again. Preserve HTML table spans, graphics and text-fenced ASCII art.
+  - Render descriptions directly below the associated element in closed, collapsed `<details><summary>...</summary>...</details>` blocks. Describe source-visible labels, values and spatial/logical/timing relationships; table descriptions retain a GFM fallback with cell order and span semantics.
+  - Generate each image's `<asset filename>.txt` sidecar from the same stored description for RAG ingestion, rather than maintaining an independent transcription.
+  - Index representative generated content and test search queries separately for descriptions inside collapsed `<details>` blocks and for image `.txt` sidecars. Compare which terms and relationships are retrieved, result ranking, source attribution and duplicate results when both formats contain the same description.
+  - **Gate:** User-reviewed samples establish faithful content and placement; repeated reconstruction produces matching descriptions/sidecars without duplicated blocks or new inference. Record RAG queries and returned source fragments for both description formats, including any retrieval gaps before broad indexing.
 
-- **1.3: Table, Image, and ASCII-Art Descriptions**
-  - Add a runnable stage consuming validated Markdown/assets and source context. Preserve HTML tables, images, and `text`-fenced ASCII art; place actual closed `<details><summary>...</summary>...</details>` HTML directly below each element, collapsed by default.
-  - Describe source-visible purpose, labels, values, and spatial/logical/timing relationships. Table descriptions cover headers and material relationships and include a GFM fallback preserving cell order and span semantics.
-  - Write each image's identical description beside its asset as `<asset filename>.txt`. Persist enriched Markdown and sidecars; rerunning must not duplicate blocks or create mismatches.
-  - **Gate:** Inspect rendered table/image/ASCII samples and written files for placement, faithful content, matching sidecars, and idempotent reruns.
+- **1.3: Final Chapter Proofreading and Code Formatting**
+  - Once chapters are assembled, format code listings and add appropriate language tags for syntax highlighting without changing code, fixed-width text or ASCII-art alignment. Check uncertain words against the source PDF and correct supported OCR and typographical errors while preserving the author's wording.
+  - Refine the existing [chapter proofreading prompt](tools/bootstrap/book-to-markdown/prompts/proofreading.md) for a model-assisted final pass that aligns formatting across the completed chapters. Keep source ambiguities visible for review rather than allowing the model to invent corrections.
+  - **Gate:** Establish the final pass on a completed chapter by comparing it with the source PDF and rendered Markdown, then review the resulting changes across all completed chapters. Confirm source-supported word corrections, code formatting and highlighting, and preservation of tables, figures, links and technical values.
 
-- **1.4: Validate Bulk Conversion and RAG Ingestion**
-  - After approving the sample pipeline, convert the manuals and validate Markdown, links, assets, and descriptions before indexing. Verify fresh and incremental `amiga` ingestion, hashing, chunk fidelity, embeddings, and sidecar retrieval through the canonical `rag_qdrant` CLI.
-  - **Gate:** Accepted converted artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](.agents/references/developer-setup.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag); unchanged input does not cause unnecessary reindexing.
+- **1.4: Define and Verify Portable Book Recipes (BOOK-RECIPE-PORTABLE)**
+  - Define the published current-format `book.json` boundary: reviewed order, type/role, visibility, chapter organization, heading depth, table/cell structure and spans, source selections, graphic regions and explicit authored corrections/descriptions. Publish recipes and source identification; PDFs and generated bundles remain local.
+  - Keep source-derived text as ordered references to physical PDF pages, extracted block IDs and Unicode character ranges with exclusive ends. Keep Markdown/HTML syntax and explicit replacements as authored recipe data. Verify source attribution where repeated equal text makes character matching ambiguous; rectangles select candidates rather than defining exact text selections.
+  - Define extraction order, coordinate frame, DPI and rotation rules, including disconnected/multi-page content. Reconstruct graphics from PDF regions instead of requiring local `assets/` files. Record source SHA-256 in `source.json` and the authoring OCR/extraction profile separately from element data.
+  - **Gate:** A reviewed recipe reproduces selected text, headings, table cells/spans, code spacing, math, corrections and graphics from the matching PDF without Stage 03/05/07 inference artifacts or copied generated assets. Establish the supported cross-platform reconstruction boundary; version pins alone do not prove byte-identical PDFs or matching text extraction.
 
-- **1.5: Bootstrap Optional FPGA Chipset References**
+- **1.5: Support Multiple Source PDFs in One Book Recipe**
+  - Allow one logical book's `book.json` to reference several catalogued source PDFs. Identify the exact PDF for each source-derived text or graphic selection and keep its page, block, character range and region mappings specific to that PDF; different scans or editions must not be assumed to share coordinates or text extraction.
+  - Support both assembly from multiple PDFs and reconstruction from any selected supported variant when the required content exists in that variant. Record explicit source-specific mappings and unresolved differences rather than silently substituting content from another PDF.
+  - **Gate:** With a representative book that has multiple source PDFs, rebuild a reviewed fragment using each supported variant and a fragment assembled from more than one PDF. Check the output against the selected sources and reject an unknown PDF hash or a missing source mapping.
+
+- **1.6: Implement Recipe-Based Markdown Bootstrap (BOOK-RECIPE-BOOTSTRAP)**
+  - Add a standalone bootstrap command that obtains catalogued source PDFs, checks all 64 SHA-256 characters against each source's `source.json`, prepares native/OCR text with the recipe's authoring profile and extracts positioned text using the defined conventions. A directory suffix or an arbitrary existing OCR PDF is insufficient source/profile identity.
+  - Execute reviewed `book.json` recipes to rebuild chapter Markdown, the generated TOC, source graphics, descriptions and sidecars. Resolve authored chapter titles/filenames and preserve explicit formatting and corrections. Do not repeat model inference, classification or description generation.
+  - Target the current format only. Reconstruction/import may overwrite generated content; do not add backward compatibility, migrations or artifact-rescue code. Local editor acceptance does not itself publish a portable recipe or establish end-to-end reproducibility.
+  - **Gate:** From a clean output directory and a reviewed recipe/source record, obtain the selected source PDF or PDFs and rebuild a user-selected book fragment without existing preparation directories, editor bundles or model calls. Demonstrate source/hash/profile mismatch handling and repeatable text/structure/assets under the supported extraction environment before expanding the run.
+
+- **1.7: Reconstruct Reviewed Manuals and Verify RAG Ingestion**
+  - After approving recipe authoring and standalone reconstruction, prepare reviewed recipes for the selected manuals and rebuild Markdown/assets through the recipe bootstrap. Check generated chapter links, source selections, tables, graphics and description sidecars before indexing.
+  - Use canonical `rag_qdrant` ingestion into `projects_docs` with source `amiga`. Verify fresh and incremental indexing, hashing, chunk fidelity, embeddings and description retrieval. Project search covers `amiga` and `devnotes`; the owning DevNotes project remains responsible for indexing `devnotes`.
+  - **Gate:** Reconstructed reviewed artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](.agents/references/developer-setup.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag). Unchanged input does not trigger unnecessary reindexing; changed content is reflected in retrieved source fragments and image descriptions.
+
+- **1.8: Bootstrap Optional FPGA Chipset References**
   - Add optional source selections for [MiniMig](https://github.com/cristianoag/minimig) and the [Amiga Replacement Project](https://github.com/nonarkitten/amiga_replacement_project) under `ref_src/`. Pin each downloaded source to a recorded upstream revision and keep the default test-source bootstrap independent of these research references.
   - **Gate:** Focused bootstrap checks verify selection, pinned source identity, repeat runs, and completeness for both references; the source inventory documents their local paths and revisions.
 
-- **1.6: Include Measured Web Evidence in Hardware Research**
+- **1.9: Include Measured Web Evidence in Hardware Research**
   - Check whether the [hardware researcher](.codex/agents/hardware_researcher.toml) can use web search when local manuals leave a hardware question open. If available, add focused `site:techtravels.org <hardware question>` searches and inspection of relevant results to the owning role or [domain rule](.agents/rules/amiga-rag.md). Otherwise route the search through an agent with web access or evaluate a scoped search tool. The existing [Amiga RAG MCP adapter](tools/amiga-rag-mcp-server/README.md) searches local indexed documents; extend it only if the selected route requires a new capability.
   - **Gate:** A representative Paula/`DMAL` question finds a relevant Techtravels.org page, cites the page and its supporting passage, and distinguishes measured signals from reconstructed circuitry without treating web results as indexed manual evidence.
 

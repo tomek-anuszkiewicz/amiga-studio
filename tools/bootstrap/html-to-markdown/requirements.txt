@@ -1,0 +1,2 @@
+-r ../conversion/requirements.txt
+beautifulsoup4==4.15.0

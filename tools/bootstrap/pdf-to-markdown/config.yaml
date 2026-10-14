@@ -1,27 +1,19 @@
 # Global configuration for the modular PDF-to-Markdown pipeline
+# Preparation ends at Stage 06; book generation is a separate program.
 
-render:
+# Shared rendering settings for Stages 01 and 02.
+rendering:
   dpi: 300
-  image_format: "png"
 
-ocr:
-  language: "eng"
-  tessdata: null  # Auto-detect or use TESSDATA_PREFIX; override locally if needed.
+stages:
+  # Stage 01: add a text layer to pages that need OCR.
+  01_text_layer:
+    traineddata_sha256: "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"
+    traineddata_url: "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/eng.traineddata"
 
 llm:
-  timeout_seconds: 180
-  concurrency: 1
+  # Maximum simultaneous page/table requests within one stage invocation.
+  concurrency: 4
   stages:
-    02_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    04_stream_reduction: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    06_detect_continuations: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    07_transform_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    08_transform_graphics: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    09_transform_prose: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    10_proofread_stream: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    12_generate_properties: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-    13_refine_first_chapter_name: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
-
-markers:
-  toc_start: "<!-- TOC34534 -->"
-  toc_end: "<!-- /TOC34534 -->"
+    03_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    05_transform_page_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

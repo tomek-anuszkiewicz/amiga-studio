@@ -58,9 +58,13 @@ needs investigation before changing code or expected results.
 <a id="processing-raw-documents-into-markdown"></a>
 Reference conversion prepares searchable Markdown and assets from raw PDF and
 HTML sources. It belongs to initial knowledge-base setup. See the
-[setup reference](../.agents/references/developer-setup.md#processing-raw-documents-into-markdown)
-and the [conversion contract](../tools/bootstrap/reference-conversion-contract.md)
-when working on those tools.
+[bootstrap instructions](../tools/bootstrap/AGENTS.md), the
+[PDF converter](../tools/bootstrap/pdf-to-markdown/README.md), the
+[HTML converter](../tools/bootstrap/html-to-markdown/README.md), and the
+[book review workflow](../tools/bootstrap/book-to-markdown/README.md).
+Reviewed book recipes and source identities are being prepared for a standalone
+Markdown reconstruction bootstrap; that end-to-end bootstrap is still planned
+in the [roadmap](../ROADMAP.md#step-1-manual-conversion-and-initial-knowledge-base).
 
 ## Navigate with RAG and Graphify
 

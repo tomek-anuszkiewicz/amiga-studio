@@ -1,0 +1,5 @@
+{
+  "name": "local-book-review-assets",
+  "private": true,
+  "dependencies": {"katex": "0.16.22"}
+}

@@ -108,6 +108,7 @@ blep
 blitting
 blk
 blockquote
+blockquotes
 blta
 bltadat
 bltafwm
@@ -336,8 +337,10 @@ diffing
 difflib
 diffs
 dirs
+disambiguates
 disasm
 disassemblers
+discardable
 discoverability
 discretized
 diskwrite
@@ -475,6 +478,7 @@ gp
 gpt
 gpu
 graphml
+grayscale
 grep
 gt
 gui
@@ -724,6 +728,7 @@ notcontains
 ns
 nt
 ntsc
+nullable
 numpad
 nx
 nz
@@ -741,6 +746,7 @@ operr
 oplus
 opmode
 org
+overbars
 overfit
 overscan
 ovr
@@ -785,6 +791,7 @@ pmem
 pmu
 pointwise
 popcount
+popup
 pos
 postinc
 pot0dat
@@ -797,6 +804,7 @@ pre
 prec
 precalculated
 precalculates
+precheck
 precomp
 precompensation
 predec
@@ -806,6 +814,7 @@ prefetches
 prefetching
 preformatted
 prefs
+preloaded
 premultiplied
 prepends
 preprocess
@@ -819,6 +828,7 @@ profilers
 profraw
 programmatically
 propto
+pseudocode
 pthread
 pwd
 px
@@ -954,7 +964,9 @@ skidmarks
 slugification
 smc
 snan
+snapshotted
 snapshotting
+spellcheck
 spmode
 spr
 sprpt
@@ -972,6 +984,7 @@ strikethrough
 strt
 structs
 strvbl
+stylesheet
 stylesheets
 subagents
 subcarrier
@@ -1074,13 +1087,17 @@ unencoded
 unencrypted
 unescaped
 unfilter
+unhide
 unifications
 unindexed
 uninstrumented
 unix
+unmanaged
 unmaps
 unmultiplied
 unoptimized
+unpadded
+unreferenced
 unrequested
 unreviewed
 unrotated
@@ -1096,10 +1113,12 @@ unthrottled
 untracked
 untrusted
 untyped
+unvalidated
 uri
 url
 urllib
 urlopen
+urls
 usb
 useturbo
 usr

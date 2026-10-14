@@ -204,6 +204,7 @@ lol
 longword
 longwords
 lores
+lpt
 lsb
 lsl
 lsr

@@ -7,14 +7,15 @@
     guides, and multi-page HTML crawls) into:
         Obsidian/Amiga/Reference/<Document_Name>-tmp/
 
-    Conversion workspaces stay with the downloaded sources. With -Markdown -Publish,
-    finished Markdown and assets are copied to an empty <Document_Name>/ directory.
+    Conversion workspaces stay with the downloaded sources. PDF preparation ends
+    at table transcription. For HTML, -Markdown -Publish copies finished Markdown
+    and assets to an empty <Document_Name>/ directory.
 
     Features:
     - Multi-source resilience: 2-3 verified mirrors per document with automated failover.
     - All-sources mode (-AllSources): downloads from all available mirrors
       for comprehensive testing or archival redundancy.
-    - Full web crawling for multi-page articles (e.g. Kuba Winnicki's 16-page 'Achtung! Amiga').
+    - Multi-page downloads (e.g. Kuba Winnicki's 'Achtung! Amiga' index and 17 subpages).
     - Clear error reporting if all mirror sources for an item are unavailable.
 
 .PARAMETER All
@@ -31,12 +32,13 @@
     Forces re-download even if target file already exists and byte size matches.
 
 .PARAMETER Markdown
-    Processes downloaded reference documentation (PDF scans, microarchitectural guides,
-    and HTML crawls) into publication-grade Markdown within their staging workspaces.
+    Prepares PDF page images, text and objects through table transcription, and
+    converts HTML sources to Markdown within their staging workspaces.
 
 .PARAMETER Publish
-    With -Markdown, copies finished Markdown and assets to the sibling book directory
-    without -tmp. An existing nonempty destination causes an error without overwriting it.
+    With -Markdown and HTML sources, copies finished Markdown and assets to the sibling
+    book directory without -tmp. PDFs are rejected before downloading. An existing
+    nonempty destination causes an error without overwriting it.
 
 .PARAMETER Hrm
     Processes only the Commodore Amiga Hardware Reference Manual.
@@ -248,10 +250,12 @@ $Catalog = @(
         Name        = "Undocumented features of OCS, ECS and AGA chipsets"
         Folder      = "Undocumented features of OCS, ECS and AGA chipsets"
         Type        = "Crawl"
-        Description = "Kuba Winnicki's 16-page publication on Copper, Sprites, DMA, UHRES (2002)"
+        Description = "Kuba Winnicki's publication on Copper, Sprites, DMA, UHRES (index, 17 subpages and assembly source)"
         SubPages    = @(
             "index.html",
+            "What_is_this_all_about.html",
             "Copper.html",
+            "More_register_changes_in_a_scanline.html",
             "Sprite_Hardware.html",
             "Freeing_the_DMA.html",
             "More_sprites_in_one_line.html",
@@ -262,11 +266,11 @@ $Catalog = @(
             "Other_Amiga_Native_Hardware.html",
             "CD32_Controller.html",
             "Battery_Backed_Clock.html",
+            "readclock.s",
             "Desaturation_Control_Bit.html",
             "Video_timings.html",
             "Links.html",
-            "Last_Words.html",
-            "What_is_this_all_about.html"
+            "Last_Words.html"
         )
         Mirrors     = @(
             @{
@@ -298,7 +302,7 @@ function Show-Usage {
     Write-Host "==========================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "NOTE: Downloads raw sources into Obsidian/Amiga/Reference/<Document_Name>-tmp/." -ForegroundColor Yellow
-    Write-Host "      -Markdown keeps output in staging; -Publish copies it to an empty <Document_Name>/."
+    Write-Host "      -Markdown keeps output in staging; -Publish supports HTML only."
     Write-Host "      Reference files are ignored by Git and do not affect emulator execution."
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
@@ -312,7 +316,7 @@ function Show-Usage {
     Write-Host "  -List                    : Display catalog of reference documents and mirrors"
     Write-Host "  -All                     : Process all reference materials in the catalog"
     Write-Host "  -Markdown                : Convert downloaded documents to publication-grade Markdown"
-    Write-Host "  -Publish                 : With -Markdown, copy finished output to an empty sibling book directory"
+    Write-Host "  -Publish                 : With -Markdown and HTML, copy output to an empty sibling book directory"
     Write-Host "  -Hrm                     : Process only Hardware Reference Manual"
     Write-Host "  -Trm                     : Process only A500 A2000 Technical Reference Manual"
     Write-Host "  -Prm                     : Process only 68000 Programmer's Reference Manual"
@@ -363,7 +367,7 @@ This book's `-tmp` directory contains raw reference materials downloaded by `too
 
 ## Operational Guidelines
 - **Preservation:** Keep sources and working artifacts until conversion output has been inspected. Removing this directory loses the source downloads and resumable PDF conversion state.
-- **Processing:** `-Markdown` keeps finished output in `workspace/`. Add `-Publish` to copy Markdown and assets to the sibling book directory without `-tmp`; an existing nonempty destination is rejected. This staging directory is not automatically deleted.
+- **Processing:** `-Markdown` keeps PDF preparation data or HTML Markdown in `workspace/`. For HTML, add `-Publish` to copy Markdown and assets to the sibling book directory without `-tmp`; an existing nonempty destination is rejected. PDF chapter generation is separate. This staging directory is not automatically deleted.
 '@
         Set-Content -Path $ReadmePath -Value $Content -Encoding UTF8
     }
@@ -607,9 +611,8 @@ function Convert-ToMarkdown {
     $Success = $false
     if ($Item.Type -eq "SingleFile" -and $Item.TargetFile -like "*.pdf") {
         $PdfScript = Join-Path $RepoRoot "tools\bootstrap\pdf-to-markdown\pipeline.py"
-        $PdfConfig = Join-Path $RepoRoot "tools\bootstrap\pdf-to-markdown\config.yaml"
         $PdfSource = Join-Path $SourceDir $Item.TargetFile
-        $Workspace = Join-Path $SourceDir "workspace"
+        $Workspace = Join-Path $SourceDir "pdf-to-markdown"
 
         if (-not (Test-Path $PdfSource)) {
             Write-Error "PDF source not found: $PdfSource"
@@ -619,10 +622,8 @@ function Convert-ToMarkdown {
         $cmdArgs = @(
             $PdfScript,
             "--pdf", $PdfSource,
-            "--workspace", $Workspace,
-            "--config", $PdfConfig
+            "--workspace", $Workspace
         )
-        if ($PublishOutput) { $cmdArgs += "--publish" }
         try {
             & python $cmdArgs
             $Success = ($LASTEXITCODE -eq 0)
@@ -737,6 +738,9 @@ $ItemsToProcess = @(
 
 # Reject every occupied destination before downloading or converting any selected book.
 if ($Publish) {
+    if (@($ItemsToProcess | Where-Object { $_.Type -eq "SingleFile" -and $_.TargetFile -like "*.pdf" }).Count -gt 0) {
+        throw "PDF preparation does not publish Markdown. Run without -Publish; book-to-markdown generation is separate."
+    }
     foreach ($entry in $ItemsToProcess) {
         $BookDir = Join-Path $Destination $entry.Folder
         if (Test-Path -LiteralPath $BookDir) {

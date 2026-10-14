@@ -220,20 +220,13 @@ For multi-page web publications, the bootstrapper incorporates an autonomous cra
 <a id="processing-raw-documents-into-markdown"></a>
 ##### Processing Raw Documents into Markdown
 
-The bootstrap converters prepare the initial reference knowledge base from raw scans and downloaded HTML. Each program has a Python CLI; later project work consumes the generated Markdown and assets. HTML and PDF use the shared pinned Codex SDK with ChatGPT authentication and explicit stage model/effort settings. Development follows the [developer-led workflow](../../tools/bootstrap/reference-conversion-contract.md#development-workflow): change the converter, run the fragment selected and requested by the user, and let the user assess the generated content. Automatic tests follow the [bootstrap converter scope](../rules/unit-testing-policy.md#bootstrap-converter-scope); no separate coverage or quality campaign is scheduled. Install the shared dependencies with `python -m pip install -r tools/bootstrap/conversion/requirements.txt` and sign in using `codex login`. API-key mode is rejected by the Codex client. The dispatcher is [`bootstrap_documentation.ps1`](../../tools/bootstrap/bootstrap_documentation.ps1); source fidelity is defined in the [conversion contract](../../tools/bootstrap/reference-conversion-contract.md).
+The bootstrap converters prepare the initial reference knowledge base from raw scans and downloaded HTML. PDF preparation, HTML conversion and book review have separate entry points in the [bootstrap instructions](../../tools/bootstrap/AGENTS.md). Shared Codex authentication, requests and caching are described in the [conversion client README](../../tools/bootstrap/conversion/README.md). Automatic tests follow the [bootstrap converter scope](../rules/unit-testing-policy.md#bootstrap-converter-scope). Run only the fragment requested by the user; the user assesses generated content.
 
-PDF conversion starts with [Stage 00](../../tools/bootstrap/pdf-to-markdown/stages/00_text_layer/README.md), which uses local Tesseract through PyMuPDF to publish `<source stem>-ocr.pdf` while preserving native text and source visuals. [Stage 01](../../tools/bootstrap/pdf-to-markdown/stages/01_preprocess/README.md) deterministically reads that PDF and persists positioned text JSON/PNG pairs with physical page identities. A new workspace can run `--from-stage 00 --to-stage 01`; restart at 01 retains validated preparation. Legacy workspaces need explicit restart at 00 with the original PDF. Fragment preparation certifies only the selected pages.
+1. **PDF preparation ([`pdf-to-markdown`](../../tools/bootstrap/pdf-to-markdown/README.md)):** Stage 01 prepares a native/OCR text layer, Stage 02 extracts page images and positioned text, and Stages 03–07 prepare ordered objects, tables, crops and callouts. See the program README for current stage commands and outputs.
+2. **Book review ([`book-to-markdown`](../../tools/bootstrap/book-to-markdown/README.md)):** Review prepared pages, roles and source selections. A standalone recipe-based Markdown reconstruction bootstrap is planned; local editor acceptance does not establish a portable recipe.
+3. **HTML conversion ([`html-to-markdown`](../../tools/bootstrap/html-to-markdown/README.md)):** Convert downloaded HTML files or crawls into Markdown and referenced assets. Its prompt owns transcription instructions.
 
-1. **PDF Scans to Markdown ([`pdf-to-markdown`](../../tools/bootstrap/pdf-to-markdown/README.md)):**
-   - Prepares a separate native/OCR PDF and matching positioned-text JSON/PNG pairs.
-   - Stage 02 uses Codex text and original-detail image input to group page objects and produce Markdown text, types and pixel boxes.
-   - Stage 02.5 renders frames and ordered labels for user assessment. Use `--to-stage 02.5` for review-only runs.
-   - Stage 03 consumes Stage 02 objects directly, preserving Markdown, classifications, order and continuation flags while providing point-based geometry and text fields for the existing downstream workers.
-
-2. **Web Crawls to Markdown ([`html-to-markdown`](../../tools/bootstrap/html-to-markdown/README.md)):**
-   - Converts downloaded multi-page HTML hierarchies (e.g. Kuba Winnicki's *Achtung! Amiga*).
-   - Strips legacy table formatting, inline styling, and obsolete navigational chrome.
-   - Normalizes cross-chapter hyperlinks into Obsidian internal vault links (`[[Chapter#Section]]`).
+The dispatcher is [`bootstrap_documentation.ps1`](../../tools/bootstrap/bootstrap_documentation.ps1). Authenticate with `codex login` before model-backed conversion; install dependencies from each program's requirements file.
 
 <a id="domain-hardware-rag-setup-rag"></a>
 #### 3. Domain Hardware RAG Setup (`-Rag`)

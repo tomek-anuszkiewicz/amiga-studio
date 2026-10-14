@@ -402,6 +402,40 @@ Every repository commit must include a new Section 10 entry for the changes it r
 
 ---
 
+### [2026-09-14 23:59 CEST] — Milestone Digest: Language Guardrails, HRM Alignment & vAmigaTS Verification Harness
+- **Timestamp & Context**: 2026-09-14 — Quality assurance infrastructure, verification suites, and hardware manual alignment.
+- **Affected Subsystems**: `crates/test_runner`, `.agents/rules/`, `tools/harness`, `Obsidian/Amiga/Reference/`.
+- **What Was Changed (The Concrete Reality)**:
+  - Codified the strict English language policy across code, documentation, and agent reasoning.
+  - Ingested Commodore Hardware Reference Manuals (HRM) and Amiga Hardware Reference Manual into local reference stores.
+  - Built the `vAmigaTS` headless test runner infrastructure in `crates/test_runner` supporting Tom Harte single-step CPU tests, Cartesian DMA contention suites, and RGB24 viewport golden master matchers.
+  - Implemented pre-flight gate scripts (`pre_flight.py`) to enforce formatting, architectural rules, and test coupling.
+- **Architectural Rationale & Trade-Offs**:
+  - *Headless Test Harness:* Driving test cases via synthetic headless runners avoids dependency on host UI rendering, enabling high-speed verification (< 5s for full suites).
+  - *Silicon-Exact Ground Truth:* Grounding execution against established single-step test vectors prevents subtle flag calculation divergences or bus cycle phase misalignments.
+- **Verification & Invariants**:
+  - `cargo test -p test_runner`: Architecture rule suite and single-step CPU validation tests.
+  - `pre_flight.py`: Pre-commit validation of formatting, API coverage, and rule compliance.
+
+---
+
+### [2026-09-15 23:59 CEST] — Milestone Digest: Custom Chipset Silicon Calibration & Phase 1 vAmigaTS Verification
+- **Timestamp & Context**: 2026-09-14 to 2026-09-15 — Hardware circuit timing calibration across Agnus (Copper/Blitter), Denise display pipeline, and whole-machine integration testing.
+- **Affected Subsystems**: `crates/copper`, `crates/blitter`, `crates/denise`, `crates/machine_loop`, `crates/test_runner/src/vamiga`.
+- **What Was Changed (The Concrete Reality)**:
+  - Calibrated Agnus Copper execution timing: 1-CCK instruction fetch pipeline, comparator race conditions against beam counters, `CDANG` danger mode handling, and cycle `$E0` DMA denial in PAL display scanlines.
+  - Fully implemented Blitter HRM Table 6.2 decomposition: 256-minterm Boolean ALU, barrel shifters, modulo pointer advancement, unconnected channel latch calibration, and area fill logic with 100% pass on Blitter regression suites.
+  - Calibrated Denise pixel serializer and display window flip-flops (`DIWSTRT`/`DIWSTOP`), aligning pipeline latency and bitplane shifter arming.
+  - Implemented the 4-iteration whole-machine cascading integration verification framework in `crates/machine_loop/tests/`, testing Copper, Blitter, Denise, and interrupt cascades without external GUI overhead.
+- **Architectural Rationale & Trade-Offs**:
+  - *Silicon-Exact Comparator Matching:* Rather than using abstract programmatic coordinates, Copper beam comparisons evaluate on exact physical clock phases, mirroring Agnus comparator silicon.
+  - *Table 6.2 Truth Table Decomposition:* Modeling Blitter logic as a pure 256-entry lookup table avoids branch cascades and executes at peak throughput on modern host CPU architectures.
+- **Verification & Invariants**:
+  - 100% pass on vAmigaTS Blitter area fill and line drawer tests.
+  - Full suite of Tier 2 whole-machine integration tests passing in `crates/machine_loop/tests/`.
+
+---
+
 ### [2026-09-16 12:00 CEST] — Milestone Digest: Multimodal Reference Ingestion & 14-Stage PDF-to-Markdown Pipeline
 - **Timestamp & Context**: 2026-09-15 to 2026-09-16 — Building the publication-grade technical manual ingestion and conversion pipeline.
 - **Affected Subsystems**: `.agents/skills/pdf-to-markdown/`, `tools/pdf/`, `Obsidian/Amiga/Reference/`.
@@ -433,6 +467,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Invariants**:
   - Offline CLI retrieval tests via `rag_qdrant`.
   - Sidecar validation in `audit_docs_quality.py`.
+
+---
+
+### [2026-09-16 23:59 CEST] — Historical Digest: Reference Conversion and Searchable Hardware Knowledge
+- **Timestamp & Context**: 2026-09-15 to 2026-09-16. Conversion infrastructure was followed by diagram descriptions and local retrieval.
+- **Affected Subsystems**: Historical PDF converter, reference vault, Qdrant/RAG tooling and agent rules.
+- **What Was Changed**:
+  - Built the original 14-stage multimodal pipeline with Gemini OCR, normalized bounds, graphic triage, HTML table spans and TOC extraction. Stage workspaces supported bounded context, fail-fast execution and recovery.
+  - Added searchable diagram sidecars and hardware/design indexing. Schematics retained textual descriptions; register layouts used ASCII/GFM representations for retrieval.
+  - Established root-cause resolution and practitioner documentation rules alongside the ingestion workflow.
+- **Architectural Rationale & Trade-Offs**: Prepare technical sources once, preserve their relationships in text and retrieve focused hardware context. Staged conversion separates model requests and recovery; sidecars expose visual circuit information to text search. Later converter and RAG changes are recorded at their own dates.
+- **Verification & Invariants**: The historical log reported validation on 20 reference pages with 100% table/diagram fidelity, offline CLI retrieval checks and sidecar validation. This preserves the original sample claim, not acceptance evidence for later converters or all books.
 
 ---
 
@@ -509,6 +555,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
 
 ---
 
+### [2026-09-21 23:59 CEST] — Historical Digest: Executable Quality Rules and CPU Specification Alignment
+- **Timestamp & Context**: 2026-09-19 to 2026-09-21. Quality/compiler foundations were followed by CPU cleanup and bidirectional specification review.
+- **Affected Subsystems**: Workspace configuration, CPU, harness audits, design specifications, agent rules and roadmap.
+- **What Was Changed**:
+  - Renamed m68000 to cpu, standardized crate roots/re-exports and established code, hardware and documentation audits. Workspace warnings became errors; selected Clippy checks, boolean naming and short-circuit conventions formed the compiler baseline.
+  - Consolidated prefetch storage to one u16 with explicit two-word pipeline dynamics. Replaced mechanical OOP accessors with register/slice operations and clarified restore/stack handling through a_long(7), usp and ssp.
+  - Reviewed CPU specifications against code, removed ghost features, clarified Fast RAM TAS behavior and consolidated platform quirks. Scope discipline and a pending-only roadmap made implementation boundaries explicit.
+- **Architectural Rationale & Trade-Offs**: Compile-time and executable checks catch structural violations; hardware registers remain transparent data rather than acquiring accessor boilerplate. Semantic review complements mechanical checks by explaining actual CPU behavior and boundaries.
+- **Verification & Invariants**: Historical records reported all 23 crates warning/Clippy-clean; documentation/code/hardware audit pillars passed 10/10, 7/7 and 5/5. The later review reported architecture 21/21 and full SingleStepTests passing. These are dated results; subsequent regressions and verification limits remain in later entries.
+
+---
+
 ### [2026-09-22 23:59 CEST] — Milestone Digest: RAG Tooling Reform, CLI Single Source of Truth & Documentation Scoping
 - **Timestamp & Context**: 2026-09-22 — Decoupling and hardening the Amiga RAG indexing infrastructure, CLI unification, and documentation scoping.
 - **Affected Subsystems**: `tools/amiga-rag-mcp-server/`, `tools/harness/rag_qdrant.py`, `.agents/rules/amiga-rag.md`, `.agents/skills/index-amiga-rag/`.
@@ -569,6 +627,14 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Invariants**:
   - `python tools/harness/pre_flight.py --quick` passed cleanly.
   - `cargo test -p test_runner --test test_architecture_rules` passed (20/20).
+---
+
+### [2026-09-29 01:50 CEST] — Historical Diary Compaction
+- **Affected Subsystems**: DIARY.md and diary/roadmap maintenance guidance.
+- **What Was Changed**: Consolidated more than 340 September 12-22 entries into ten digests at the time, reducing roughly 8,995 lines/930 KB to 620 lines/75 KB. Retained the then-active MachineLoop review and established milestone compaction guidance.
+- **Architectural Rationale & Trade-Offs**: Preserve decisions and historical verification while leaving transient micro-diffs in Git. Later compaction may combine related digests without changing event order.
+- **Verification & Invariants**: Historical quick pre-flight and architecture 20/20 passed.
+
 ---
 
 ### [2026-10-05 21:33 CEST] — Simplify agent guidance and clarify per-commit diary logging
@@ -644,6 +710,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Full documentation audit reports 8 remaining findings: 7 direct-reference findings and 1 unregistered diary rule
 ---
 
+### [2026-10-05 21:57 CEST] — Historical Digest: Agent Guidance and Procedure Consolidation
+- **Timestamp & Context**: 2026-10-05, 21:33 to 21:57. One sequence of instruction and tooling cleanup.
+- **Affected Subsystems**: Agent rules/skills, AGENTS.md, RAG adapter, harness checks and developer documentation.
+- **What Was Changed**:
+  - Shortened shared guidance, clarified per-commit logging and milestone compaction, aligned checkpoints/links and removed forced source/test coupling and assertion quotas.
+  - Bounded RAG retrieval through source selection, read-only metadata and the canonical CLI/MCP adapter; delegated indexing to its existing skill and removed the retired search stub.
+  - Condensed clean-break refactoring around complete internal migrations and explicit compatibility decisions, then separated concise policy rules from skill-owned procedures/examples. Retained 27 rules and mandatory Graphify navigation while removing its redundant redirect.
+- **Architectural Rationale & Trade-Offs**: Reduce duplicated instruction context while preserving hardware/golden-reference invariants, scope control and external/saved-data contracts. Keep obligations in rules, procedures in skills and mechanical coverage bounded to what checks observe.
+- **Verification & Invariants**: Historical quick gates passed throughout; architecture passed 20 tests initially and 19 after fixture changes. RAG tests passed 9 and the native MCP launch regression passed; harness fixtures grew from 32 to 41 passing tests. Selected governance/link/size audits passed, including 66 new links, TOML parsing and Python compilation. Earlier full-documentation audits still reported 9 then 8 findings; selected audit success did not close them. No emulator runtime source changed or full domain verification ran.
+
+---
+
 ### [2026-10-05 21:57 CET] — Separate agent policy from execution procedures
 - **Affected Subsystems**:
   - `.agents/rules`
@@ -714,6 +792,15 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - roadmap verification passed for 11 steps and 40 tasks with valid numbering, references and 20 local links
   - language and diff checks passed
   - no regeneration experiment or subsystem milestone was executed
+---
+
+### [2026-10-05 22:14 CEST] — Historical Digest: Roadmap Scope and Priority Consolidation
+- **Timestamp & Context**: 2026-10-05, 22:11 to 22:14. Backlog restructuring followed by narrowing the regeneration experiment.
+- **Affected Subsystems**: ROADMAP.md, roadmap rules/skill and review procedure.
+- **What Was Changed**: Prioritized manual conversion/ingestion, test orientation/profiling and chipset reconstruction; removed historical summaries and duplicate methodology while retaining deferred harness/eval capabilities. Limited Step 10 to the selected isolated documentation-to-code regeneration experiment, preserving its unit/integration gate.
+- **Architectural Rationale & Trade-Offs**: Keep pending work readable without losing source-fidelity requirements or acceptance gates. Surfaced the proposed chipset reset's conflict with timing/quirks invariants; restructuring neither authorizes that deviation nor completes implementation milestones.
+- **Verification & Invariants**: Historical quick and architecture checks passed (19/19); governance/MCP/discovery regressions passed 19 tests and documentation audit reported zero issues. Skill, language, numbering and local-link checks passed; the final backlog held 11 steps and 40 tasks. No regeneration experiment, subsystem semantic-parity review or milestone completion was performed.
+
 ---
 
 ### [2026-10-05 22:15 CEST] — Select Codex Vision for manual conversion
@@ -1244,6 +1331,15 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Converter semantic parity closure review preserved implemented behavior and bounded claims with no Python-code diff from 5a9add8
   - Settled implementation compaction reduced diary line count from 1253 to 1236 before adding this closure entry while preserving source-stream wrappers Unicode geometry restart cache regressions and sample evidence
   - No additional conversion model calls RAG ingestion unrelated Rust repair or golden-reference change performed
+---
+
+### [2026-10-06 01:12 CEST] — Historical Digest: Codex Conversion and PDF Text Preparation
+- **Timestamp & Context**: 2026-10-05 to 2026-10-06. Early migration and PDF-TEXT-1.1 closure; later digests record the replacement of experimental mechanisms.
+- **Affected Subsystems**: HTML/PDF converters, shared Codex transport/cache, bootstrap documentation and conversion plans.
+- **What Was Changed**: Replaced Gemini calls with shared subscription-authenticated Codex transport and explicit stage model/effort settings. Established positioned text JSON and matching PNG inputs, isolated attempts, restart handling and response reuse. Removed redundant configuration and temporary test trackers.
+- **Architectural Rationale & Trade-Offs**: Converter development follows a requested change, conversion of a user-selected fragment, then user assessment. Existing technical tests protect transport and execution; they do not certify reconstruction quality. Independent full-book pilots, quality matrices and routine crop-test expansion were excluded.
+- **Verification & Invariants**: Historical page-19 pilot completed the then-current 14-stage pipeline; replay used cache with zero new requests. PDF-TEXT-1.1 (`5a9add8`) was closed by user decision using page-64 OCR/render/geometry evidence. Native-copy, mixed, blank and real rotated/cropped categories remained unverified. Closure checks passed PDF/shared-client suites at 19/19 each; the milestone gate failed on 62 existing reference links and 22 unchanged Rust compound conditions, with architecture 18/19. This was scope closure, not certification of a repository milestone or later pipeline versions.
+
 ---
 
 ### [2026-10-06 01:16 CEST] — Remove closed execution plans as part of task closure
@@ -1998,25 +2094,6 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - no full-book conversion or new tests
 ---
 
-### [2026-10-06 CEST] — PDF-02-DEFERRED-TEXT: defer graphic table and cover content
-- **Affected Subsystems**:
-  - `PDF Stage 02`
-  - `page conversion validation`
-- **What Was Changed (The Concrete Reality)**:
-  - Require empty md_text for graphic/table/cover in the prompt and response/artifact validation
-  - Preserve complete classification and pixel bounds
-  - Update the conversion contract and existing contract test
-- **Architectural Rationale & Trade-Offs**:
-  - Defer internal transcription and content reconstruction until later image-crop processing
-  - Reject incompatible saved content rather than silently clearing it
-- **Verification & Test Results**:
-  - PDF conversion suite: 30 tests passed
-  - Quick pre-flight passed
-  - Architecture suite: 19 tests passed
-  - Graphify incremental update completed
-  - No source fragment conversion requested or run
----
-
 ### [2026-10-06 18:42 CET] — Classify aligned parameter assignments as code blocks
 - **Affected Subsystems**:
   - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion`
@@ -2165,6 +2242,976 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick preflight passed
   - architecture rules passed (19 tests)
   - documentation-only change, no conversion requested or run
+---
+
+### [2026-10-06 CEST] — PDF-02-DEFERRED-TEXT: defer graphic table and cover content
+- **Affected Subsystems**:
+  - `PDF Stage 02`
+  - `page conversion validation`
+- **What Was Changed (The Concrete Reality)**:
+  - Require empty md_text for graphic/table/cover in the prompt and response/artifact validation
+  - Preserve complete classification and pixel bounds
+  - Update the conversion contract and existing contract test
+- **Architectural Rationale & Trade-Offs**:
+  - Defer internal transcription and content reconstruction until later image-crop processing
+  - Reject incompatible saved content rather than silently clearing it
+- **Verification & Test Results**:
+  - PDF conversion suite: 30 tests passed
+  - Quick pre-flight passed
+  - Architecture suite: 19 tests passed
+  - Graphify incremental update completed
+  - No source fragment conversion requested or run
+---
+
+### [2026-10-07 18:43 CEST] — Historical Digest: Bootstrap Publication and PDF Execution Model
+- **Timestamp & Context**: 2026-10-06 to 2026-10-07. Settled execution decisions from the continuing book-reconstruction work.
+- **Affected Subsystems**: Bootstrap dispatcher, shared publication, HTML/PDF converters, Stage 00/01 preparation and attempt orchestration.
+- **What Was Changed**: Downloads use per-book temporary directories; publication is explicit, accepts only absent/empty destinations and preserves working sources. HTML transcription includes linked assembly sources. PDF preparation moved from model OCR and coordinate reconstruction to local Tesseract through PyMuPDF, retaining its original text geometry over source graphics. Stage 00 prepares/reuses a full-document sibling OCR PDF; downstream selection keeps physical source page identities.
+- **Architectural Rationale & Trade-Offs**: Named attempts live beside the source and preserve an existing attempt configuration. PDF-STATE-1 replaced manifests, snapshots, inventories, local validators and manual handoffs with stage-owned artifacts and atomic execution status. Restart explicitly clears the selected stage and all successors; successful execution is not artifact or fidelity certification. HTML retained its separate checks. Retired segmentation branches, duplicate dumps and one-time migration tools were removed rather than maintained as compatibility layers.
+- **Verification & Invariants**: At PDF-STATE-1 closure, historical offline PDF/shared/publication suites passed 25/25, 21/21 and 10/10, with quick pre-flight and architecture 19/19. The selected attempt migration preserved 645 result files without OCR or model calls. Publication safeguards passed offline tests; this did not demonstrate bulk publication, a complete book reconstruction or RAG ingestion. Earlier preparation validation and lineage mechanisms were subsequently removed by user direction; their historical test results do not describe current safeguards.
+
+---
+
+### [2026-10-08 17:36 CEST] — Progress Digest: Page Reconstruction, Tables and Visual Review
+- **Timestamp & Context**: 2026-10-07 to 2026-10-08, including earlier page-conversion groundwork. Ongoing converter refinement; repeated prompts, stage renames and TestBook reruns remain in Git rather than the diary.
+- **Affected Subsystems**: PDF page conversion/refinement, source filtering, table transcription/review, Markdown export and stream assembly.
+- **What Was Changed**: Added page-object reconstruction and optional refinements for callouts, table splits/classification, code classification/formatting, image rotation, reading order and graphic/prose separation. Review uses original-page geometry and resolved objects. Invocation-scoped physical page selection applies to page workers. Fractional stage IDs use two digits; obsolete later stages were removed.
+- **Architectural Rationale & Trade-Offs**: Preserve source order, technical content and meaningful graphic groupings; extract only independent descriptions. PDF-ORDER-2.46 closed at user request without certifying all reading-order observations. Deliberate filtering removes headers/footers, pre-TOC content, list/index pages and matching standalone NXP logos. Table transcription uses exact source crops, HTML spans for merged cells, deterministic empty-row cleanup and separate source/converted review. Both table formats retain source-image companions; only HTML receives saved RAG text. Review rendering and execution success remain separate from user fidelity acceptance.
+- **Verification & Invariants**: Historical user-selected fragments exercised these stages and produced retained review/export artifacts; prompt changes do not establish universal quality. Recent technical checks reached PDF execution 35 tests, review/selection 9 tests and architecture 19 tests, with quick pre-flight passing. Graphic pages 21 and 35 demonstrated retained coordinated descriptions versus independent prose extraction, still subject to user assessment. Bulk conversion, full downstream assembly acceptance and RAG ingestion remain pending; current implementation contracts live in converter documentation. Temporary reading-order diagnostics were removed; applied page overrides remain.
+
+---
+
+### [2026-10-08 17:55 CEST] — Historical Digest: Compact Artifacts and Response-Cache Identity
+- **Timestamp & Context**: 2026-10-08. Settled JSON/cache changes and user-approved TestBook snapshots.
+- **Affected Subsystems**: PDF artifact IO, shared request cache, replacement handling and tracked TestBook outputs.
+- **What Was Changed**: Adopted compact objects that omit defaults and retired replacement/lineage/image-only metadata without injecting defaults into model prompts. Preserved Stage 01 OCR input and downstream saved code Markdown. Temporary dual-key migration scaffolding was removed after cache preparation. Returning meaningful fields are inserted at response-contract positions so equivalent replacements retain request serialization order.
+- **Architectural Rationale & Trade-Offs**: Cache identity depends on exact prompt bytes as well as model, effort, schema and images. Equal JSON values with different field order caused avoidable misses; changed page geometry creates a genuinely different request. One-time aliases were limited to verified equivalent requests. The user chose to retain new page-54 geometry and its legitimate miss. Artifact snapshots record approved changes and review-directory migrations, not a complete pipeline checkpoint.
+- **Verification & Invariants**: Historical PDF/shared/review/callout suites passed 35/21/8/1 tests; compact cache replay made zero model calls. Stage 02.42 reconstruction found 138 hits and zero misses after equivalent-key repairs. Later Stage 02.44 audit found 81 hits and one legitimate page-54 miss, blocking that page's downstream cache audit at the time. User-approved snapshots verified equivalent JSON changes and unchanged PNG bytes where claimed; the later snapshot included reviewed differences. Quick pre-flight and architecture 19/19 passed for these changes. No bulk reconstruction or source-fidelity certification follows from cache hits or committed artifacts.
+
+---
+
+### [2026-10-08 18:15 CEST] — PDF-ORDER-2.48: Plan deterministic ordering within page rows
+- **Affected Subsystems**:
+  - `.agent/tasks/PDF-ORDER-2.48.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Record a planned Stage 02.48 after 02.47 and before 02.50
+  - define anchored inclusive 7-pixel top-coordinate groups of arbitrary size
+  - preserve objects and unrelated array positions
+  - record the pending X-versus-Y clarification with literal Y as the current request
+- **Architectural Rationale & Trade-Offs**:
+  - Use deterministic geometry for the requested row ordering
+  - keep planning separate from implementation and user-requested conversion
+  - page 81 remains an unresolved user quality observation
+- **Verification & Test Results**:
+  - Read-only grouping measurement completed for physical pages 81 and 90 and 91
+  - quick pre-flight passed
+  - architecture suite passed 19 tests
+  - no converter implementation or model calls or conversion runs
+---
+
+### [2026-10-08 18:19 CEST] — Book-Reconstruction Diary Compaction
+- **Affected Subsystems**: DIARY.md.
+- **What Was Changed**: Replaced 176 converter/TestBook entries with four historical/progress digests, preserving unrelated history and active PDF-ORDER-2.48.
+- **Architectural Rationale & Trade-Offs**: Keep durable decisions and evidence limits while omitting repeated experiments; conversion work remains ongoing.
+- **Verification & Invariants**: Quick pre-flight, architecture 19/19, preservation and whitespace checks passed. Full-file language scan retained two existing findings; staged additions passed. No conversion or milestone acceptance ran.
+
+---
+---
+
+### [2026-10-08 18:22 CEST] — Consolidate related historical diary entries
+- **Affected Subsystems**:
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Merge eleven adjacent entries into four chronological digests
+  - shorten two compaction records
+- **Architectural Rationale & Trade-Offs**:
+  - Group related engineering decisions rather than minor task numbers while retaining date ranges and historical verification limits
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture 19/19 passed
+  - untouched-entry preservation and chronological-order assertions passed
+  - scoped whitespace check passed
+---
+
+### [2026-10-08 18:22 CET] — PDF-ORDER-2.48: Implement deterministic ordering within page rows
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add JSON-only Stage 02.48 after 02.47 with anchored inclusive 7-pixel top-coordinate grouping for every object type
+  - sort each group by ascending Y with stable ties in its original occupied slots, preserving IDs, original objects and resolved page metadata
+  - integrate sparse resolution, registry, page selection, inspection and restart cleanup without inference settings
+  - update stage and consumer documentation and retained restart expectations
+  - close PDF-ORDER-2.48 and remove its execution plan in the closing workflow
+- **Architectural Rationale & Trade-Offs**:
+  - Implement the plan's literal Y axis because no X clarification was received
+  - preserve sparse predecessor resolution and downstream array order
+  - shared artifact IO keeps existing compact-object semantics
+  - page 81 remains an unresolved user quality observation and left-to-right ordering is not implied by Y
+- **Verification & Test Results**:
+  - Eight disposable geometry examples passed: arbitrary group size, inclusive 7-pixel boundary, 8-pixel exclusion, fixed anchors without chaining, stable ties, unrelated slots, object preservation and idempotence
+  - synthetic orchestrator checks passed for JSON-only selected-page processing, resolved 02.47 input, metadata preservation, zero model calls, incomplete-status blocking and restart removing an obsolete override on a no-change rerun
+  - the first disposable check invocation used incorrect config-loader arguments and was corrected before passing
+  - PDF conversion Codex 35 tests passed
+  - PDF review selection 9 tests passed
+  - quick pre-flight passed
+  - architecture rules 19 tests passed
+  - Graphify incremental AST refresh completed
+  - new documentation links resolve
+  - no book conversion, live inference or emulator domain changes
+---
+
+### [2026-10-08 18:28 CEST] — PDF-ORDER-2.48: Sort row objects left to right by X
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.48_order_page_rows`
+  - `PDF conversion documentation`
+  - `tests/test_pdf_review_selection.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Change the within-row sort key to bbox[0] with predecessor-position ties
+  - retain anchored inclusive 7-pixel Y grouping and original occupied JSON slots
+  - update active documentation to X ordering
+  - retain one regression covering page-64 geometry, equal-X stability, unrelated slots and JSON field preservation
+- **Architectural Rationale & Trade-Offs**:
+  - The user explicitly corrected the requested axis from Y to X after page 64 placed the right-hand prose before its left heading
+  - group by Y but order each group's JSON objects from left to right
+- **Verification & Test Results**:
+  - Focused regression failed with Y ordering before the change and passed with X
+  - PDF review selection 10 tests passed
+  - eight disposable geometry examples and synthetic orchestrator/restart/status/selection checks passed
+  - read-only page-64 predecessor check confirms left heading precedes right prose
+  - quick pre-flight passed
+  - architecture rules 19 tests passed
+  - Graphify AST refresh completed
+  - existing book conversion and review artifacts were not regenerated or staged
+  - no live model calls
+---
+
+### [2026-10-08 18:40 CEST] — PDF-ORDER-2.48: Remove deterministic row ordering at user request
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `PDF converter tests`
+  - `Test Book pages-all workspace`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove Stage 02.48 worker and README, registry entry, sparse resolver layer and page-range routing
+  - remove its regression and update retained restart expectations
+  - remove active documentation and temporary verification script
+  - delete the two generated row-order overrides on pages 63 and 144 and remove stage status
+  - restore page-144 review and its recorded checkpoint to the committed pre-stage versions
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested removal after strict coordinate ordering inverted NOTE and its body on page 144
+  - resume predecessor order through 02.47 before review/filtering
+  - retain historical diary records
+- **Verification & Test Results**:
+  - PDF review selection 9 tests passed
+  - PDF conversion Codex 35 tests passed
+  - quick pre-flight passed
+  - architecture rules 19 tests passed
+  - active code/test/documentation search found no 02.48 references
+  - removed CLI stage lookup and predecessor resolution for pages 63 and 144 verified
+  - page-144 current and committed review JSON and PNG pixels matched the corresponding ordered and predecessor inputs before restoration
+  - Graphify AST refresh completed
+  - no book conversion or live inference
+---
+
+### [2026-10-08 20:04 CEST] — BOOK-RECIPE-PROOFREAD-1: Add chapter proofreading instructions
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Create the tool directory with a starter README
+  - Adapt Stage 09 and Stage 10 prompts and worker behavior into a manual chapter proofreading instruction
+  - Preserve recipe-owned structure and require evidence for technical OCR substitutions
+- **Architectural Rationale & Trade-Offs**:
+  - Prepare the optional agent editing pass before implementing deterministic chapter generation
+  - Keep inferred naming and legacy stage orchestration outside the chapter prompt
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture rules 19 tests passed
+  - English-language scans passed
+  - All new relative documentation links resolve
+  - No live proofreading or book conversion was run
+---
+
+### [2026-10-08 20:14 CEST] — BOOK-RECIPE-PROOFREAD-2: Refine chapter inputs and HTML formatting
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Use Markdown-linked images only when proofreading requires inspection
+  - Remove supplied-source and frontmatter instructions plus crop and rotation metadata references
+  - Allow inline-code emphasis for technical terms
+  - Remove run-in heading formatting and add HTML code math and escaping rules
+  - Align README usage with the prompt
+- **Architectural Rationale & Trade-Offs**:
+  - Follow the user-defined chapter-only agent workflow and preserve the generator-owned layout
+  - Respect different inline syntax in raw HTML
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - Architecture rules 19 tests passed
+  - English-language scans and relative links passed
+  - Whitespace check passed
+  - No live proofreading run
+---
+
+### [2026-10-08 20:47 CET] — Remove obsolete PDF conversion stages
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/book-to-markdown`
+  - `tests`
+  - `docs/developers.md`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove stages 02.40-02.50, 02.82, 02.83, 03, 04, 05, 09, 10, 11 and 14 with their prompts, helpers and obsolete tests
+  - use explicit 02 to 02.80 to 02.81 to 02.90 handoffs
+  - publish the final page export
+  - update configuration, dependencies and documentation
+- **Architectural Rationale & Trade-Offs**:
+  - User requested pipeline simplification and explicitly included dependent stage 04
+  - retain the initial preparation, filtering, table conversion and page export path
+- **Verification & Test Results**:
+  - 58 converter and publication tests passed
+  - 3 page selection tests passed
+  - synthetic Stage 02.81 to 02.90 export copied the saved table asset and retained its source companion
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - Graphify incremental refresh completed
+  - no source fragment or full-book conversion requested or run
+---
+
+### [2026-10-08 20:52 CET] — Add draft table and image description prompts
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Add separate prompts for describing prepared table and image groups
+  - document supplied details sections with names, notes, legends and Markdown or HTML tables
+  - return descriptions for insertion without altering source content
+- **Architectural Rationale & Trade-Offs**:
+  - Use user-defined grouping as context for preliminary description prompts rather than rediscovering associations
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture suite passed 19 tests
+  - prompt and README references reviewed
+  - no model requests, fragment conversions or automatic insertion implemented
+---
+
+### [2026-10-08 20:55 CET] — Limit Stage 02.81 to table markup replacement
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `tests/test_pdf_review_selection.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Use one transcription request per table and temporary crops
+  - remove table group inference, RAG text, persistent source companions and their prompt
+  - emit converted table markup directly in Stage 02.90
+  - crop only raster fallbacks
+  - update documentation and the existing HTML selection regression
+- **Architectural Rationale & Trade-Offs**:
+  - User restricted Stage 02.81 to replacing a table with Markdown or HTML
+  - grouping and descriptions belong to later book processing
+- **Verification & Test Results**:
+  - 58 converter/publication tests and 3 selection tests passed
+  - HTML regression confirmed one request, preserved markup, no companion fields or persistent request assets and no details in page export
+  - quick preflight passed
+  - 19 architecture tests passed
+  - Graphify refreshed
+  - no source fragment conversion requested or run
+---
+
+### [2026-10-08 20:58 CET] — Define draft book element vocabulary
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Add an element list based on the Stage 02 source vocabulary
+  - define image_note and image_legend as separate image-associated source blocks
+  - link the catalog from the book tool README
+- **Architectural Rationale & Trade-Offs**:
+  - User requested an initial element catalog for book authoring with explicit image note and legend roles
+- **Verification & Test Results**:
+  - Verified all 23 Stage 02 types plus the two requested image roles and resolved local links
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - PDF schema and runtime unchanged
+  - no conversion requested or run
+---
+
+### [2026-10-08 21:03 CET] — Use generic book note and legend types
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace table_legend, image_note and image_legend in the book vocabulary with note and legend
+  - define authored group membership independently of type
+  - allow standalone notes in chapter text
+  - update the README
+- **Architectural Rationale & Trade-Offs**:
+  - User requested shared note and legend roles without table or image specialization
+- **Verification & Test Results**:
+  - Reviewed the catalog and README for consistent terminology
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - PDF response schema and runtime unchanged
+---
+
+### [2026-10-08 21:04 CET] — Represent book headings with explicit hierarchy levels
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Use heading for chapter, appendix and section titles
+  - define level as hierarchy depth and optional number as source numbering
+  - document numbered and unnumbered headings in the catalog and README
+- **Architectural Rationale & Trade-Offs**:
+  - User accepted heading plus level instead of chapter types encoding depth
+- **Verification & Test Results**:
+  - Documentation diff reviewed
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - PDF schema and runtime unchanged
+---
+
+### [2026-10-08 21:05 CET] — Treat dedicated book heading roles as level one
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Assign level-one treatment to toc_heading, index_heading, list_of_tables_heading and list_of_figures_heading
+  - retain semantic types while sharing heading hierarchy and Markdown rendering behavior
+  - update the catalog and README
+- **Architectural Rationale & Trade-Offs**:
+  - User specified that these dedicated headings should be treated like heading at level one
+- **Verification & Test Results**:
+  - Documentation diff reviewed
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - no runtime or PDF schema change
+---
+
+### [2026-10-08 21:06 CET] — Separate book code listings from preformatted text
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Restrict code_block to program and command listings
+  - add preformatted_text for ASCII art, dumps and aligned source layouts
+  - specify text fences and preservation of original character spacing and line breaks
+  - update the README
+- **Architectural Rationale & Trade-Offs**:
+  - User distinguished source code from fixed-width source material that must retain its original layout
+- **Verification & Test Results**:
+  - Catalog and proofreading instructions reviewed for consistency
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - no runtime or PDF schema change
+---
+
+### [2026-10-08 21:07 CET] — Align book caption terminology with graphic elements
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/elements.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace figure with graphic in the caption definition and its explanatory paragraph
+- **Architectural Rationale & Trade-Offs**:
+  - User requested terminology consistent with the graphic element type
+- **Verification & Test Results**:
+  - Diff reviewed
+  - quick preflight passed
+  - architecture suite passed 19 tests
+---
+
+### [2026-10-08 21:09 CEST] — Align page conversion prompt with the current book element vocabulary
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion/prompt.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace chapter with heading plus level and optional number
+  - distinguish code_block from preformatted_text
+  - replace table_legend with generic note and legend roles
+  - set dedicated listing headings to level one
+- **Architectural Rationale & Trade-Offs**:
+  - User explicitly selected prompt-only alignment
+  - the unchanged PDF response schema still uses older types and heading_level and remains incompatible with the revised prompt
+  - schema and downstream migration are outside this task
+- **Verification & Test Results**:
+  - Prompt vocabulary matches all 24 catalog types
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - no fragment conversion requested or run
+  - vocabulary-check command corrected for shell quoting and to exclude the separate heading-example table before passing
+---
+
+### [2026-10-08 21:14 CEST] — Simplify page classification for manual editor review
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02_page_conversion/prompt.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Reduce prompt from 284 to 84 lines
+  - remove cover and contents/index/table-list/figure-list classification
+  - define ordered checks starting with headers and footers then callouts and separate annotations
+  - identify tables before graphics and leave prose as the final fallback
+- **Architectural Rationale & Trade-Offs**:
+  - User will assign document-specific roles and correct approximate classification in a manual editor
+  - classification priority is explicit and separate from output reading order
+  - preserve the previously selected prompt-only scope and unchanged legacy response schema
+- **Verification & Test Results**:
+  - Classification order and excluded roles reviewed
+  - git diff --check passed
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - no conversion fragment requested or run
+---
+
+### [2026-10-08 21:16 CEST] — Limit automatic PDF filtering to page furniture and the fixed NXP logo
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.80_filter_page_content`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `tests/test_pdf_review_selection.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove pre-TOC boundary deletion and whole-page index/list exclusions
+  - retain editor-assigned roles even in older artifacts
+  - preserve header/footer and fixed NXP matching removals
+  - update the stage README and shared documentation
+  - adapt the existing selection regression to verify retained roles and removed page furniture
+- **Architectural Rationale & Trade-Offs**:
+  - The simplified Stage 02 prompt leaves cover and contents/index/list classification to later manual editing
+  - filtering must preserve that content rather than delete it based on legacy roles
+- **Verification & Test Results**:
+  - Three PDF selection and stage-consumer tests passed
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - git diff --check passed
+  - Graphify incremental code update completed
+  - no source conversion requested or run
+---
+
+### [2026-10-08 21:17 CEST] — Replace fixed NXP image exclusion with margin-logo classification
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Delete the NXP template and all image-comparison code
+  - filter only header and footer types without reading images
+  - classify recurring margin logos and publisher branding as header/footer in the page prompt
+  - remove the obsolete logo geometry test and update documentation and CLI stage description
+- **Architectural Rationale & Trade-Offs**:
+  - User removed the fixed logo-elimination mechanism
+  - page furniture classification handles margin branding while graphics remain for manual editing
+- **Verification & Test Results**:
+  - Three PDF selection tests and 26 PDF conversion tests passed
+  - quick preflight passed
+  - architecture suite passed 19 tests
+  - Graphify incremental code refresh completed
+  - no source conversion run and prompt effectiveness remains unevaluated
+---
+
+### [2026-10-08 22:33 CET] — Save only changed PDF table pages
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_pdf_review_selection.py`
+  - `tests/test_pdf_conversion_codex.py`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Stage 02.81 saves full page JSON only when table processing changes its data
+  - Stage 02.90 overlays changed pages on selected filtered input
+  - persist the table-stage invocation range in stage_status.json
+  - retain historical full-dataset export behavior
+- **Architectural Rationale & Trade-Offs**:
+  - Avoid copying pages without table changes while preserving unchanged selected pages and fragment boundaries in final export
+- **Verification & Test Results**:
+  - Reproduced redundant page writes and missing sparse export pages before repair
+  - 31 PDF selection/orchestration tests pass
+  - pre_flight.py --quick passes
+  - all 19 architecture tests pass
+  - git diff --check passes
+  - no live book rerun requested or performed
+---
+
+### [2026-10-08 22:34 CET] — Show live PDF table transcription progress
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/stages/02.81_transform_page_tables`
+  - `tools/bootstrap/pdf-to-markdown/pipeline.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Flush table request start and completion messages immediately with segment identity, page-local position, format and elapsed time
+  - log changed, unchanged and table-free pages
+  - flush stage banners before starting workers
+- **Architectural Rationale & Trade-Offs**:
+  - Make long table inference visible in the console instead of waiting for the final stage summary
+- **Verification & Test Results**:
+  - 31 existing PDF tests pass and exercise progress output
+  - quick preflight passes
+  - 19 architecture tests pass
+  - Graphify update completes
+  - no live book rerun performed
+---
+
+### [2026-10-08 22:38 CET] — Remove PDF page Markdown export stage
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `tools/bootstrap/book-to-markdown`
+  - `tests`
+  - `docs/developers.md`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove Stage 02.90 and unused page Markdown/crop emitter and overlay loader
+  - end PDF preparation at 02.81
+  - remove PDF publication option and reject bootstrap PDF publication before downloads
+  - update tests, documentation and book recipe plan for direct JSON/image handoff
+- **Architectural Rationale & Trade-Offs**:
+  - Prepare source objects and transcribed tables for separate chapter generation rather than emitting an intermediate page-ordered Markdown document
+- **Verification & Test Results**:
+  - 42 relevant PDF, publication and bootstrap tests pass
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - PDF CLI help confirms publication removal
+  - bootstrap PDF publication rejects before download as expected
+  - Graphify refresh completes
+  - existing workspace exports are preserved
+  - book generator remains unimplemented
+---
+
+### [2026-10-08 22:42 CET] — Separate HTML-only conversion elements from PDF infrastructure
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/pdf-to-markdown/common`
+  - `tools/bootstrap/html-to-markdown/support`
+  - `converter entry points and requirements`
+  - `tests`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Move HTML YAML loader, config validation, model catalog checks, text requests and publication into HTML support
+  - keep generic Codex execution, completion, cache identity and metrics shared
+  - move direct PDF config parsing into PDF common
+  - remove unused vision method, JSON schema enforcement branch, stage catalog and PDF constants
+  - split document dependencies by converter and remove unused jsonschema
+- **Architectural Rationale & Trade-Offs**:
+  - Determine ownership by individual functions, methods and constants rather than moving mixed modules wholesale
+  - preserve strict HTML configuration/Markdown checks and unvalidated PDF schema guidance
+- **Verification & Test Results**:
+  - Audited 50 top-level definitions and reviewed client/transport methods
+  - 63 existing conversion, PDF, publication and bootstrap tests pass
+  - quick preflight and all 19 architecture tests pass
+  - both CLI help commands load
+  - Graphify refresh completes
+  - no live conversion or dependency installation performed
+---
+
+### [2026-10-08 22:46 CET] — Renumber PDF preparation stages consecutively
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/book-to-markdown`
+  - `tests`
+  - `docs/developers.md`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Renumber OCR, preprocessing, page conversion, filtering and table transcription as 01 through 05
+  - rename stage directories and propagate IDs through predecessor routing, configuration, status, consumers, CLI examples, tests and book handoff documentation
+  - reject prior numbering before cleanup
+- **Architectural Rationale & Trade-Offs**:
+  - Keep stage order and directory names consistent without fractional identifiers or reinterpreting older attempt status records
+- **Verification & Test Results**:
+  - 64 conversion, PDF, publication and bootstrap tests pass, including legacy-attempt preservation
+  - quick preflight and 19 architecture tests pass
+  - local converter Markdown links resolve
+  - Graphify refresh completes
+  - existing workspaces and caches are not migrated and newly numbered inference stages use new cache keys
+  - no live conversion performed
+---
+
+### [2026-10-08 22:48 CET] — Simplify PDF preparation README documentation
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+  - `tools/bootstrap/pdf-to-markdown/stages/*/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Reduce six READMEs from 378 to 156 lines
+  - keep current five-stage inputs, outputs, invocation, selection and restart behavior
+  - replace duplicated classification and historical implementation details with prompt/contract links
+  - correct outdated claims about persisted source paths and source-free restarts
+- **Architectural Rationale & Trade-Offs**:
+  - Match documentation to the reduced preparation pipeline and keep operational instructions easy to find
+- **Verification & Test Results**:
+  - All local README links resolve
+  - CLI help matches documented options
+  - quick preflight and all 19 architecture tests pass
+  - git diff --check passes
+  - no code changes or conversion runs
+---
+
+### [2026-10-08 22:49 CET] — Initialize book source hash catalog
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books`
+- **What Was Changed (The Concrete Reality)**:
+  - Create four named book directories and 14 source variant directories using 12-character SHA-256 prefixes
+  - store the full source SHA-256 in each source.json
+  - leave PDFs in the existing local audit workspace
+- **Architectural Rationale & Trade-Offs**:
+  - Establish the requested minimal book and variant structure without copying source content or implementing recipe generation
+- **Verification & Test Results**:
+  - All 14 source hashes match existing local PDFs
+  - 14 JSON files and directory prefixes validated
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - no downloads or PDF copies performed
+---
+
+### [2026-10-08 22:50 CET] — Populate local book variant PDFs
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books`
+- **What Was Changed (The Concrete Reality)**:
+  - Copy each of the 14 audited PDF variants into its catalog directory as source.pdf
+  - add a catalog-local ignore rule to keep reference PDFs outside Git history
+- **Architectural Rationale & Trade-Offs**:
+  - Keep each local source beside its SHA-256 metadata while committing only catalog configuration and the acquisition record
+- **Verification & Test Results**:
+  - All 14 original and copied PDFs match their source.json SHA-256
+  - PDFs remain ignored by Git
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - no downloads performed
+---
+
+### [2026-10-08 22:54 CET] — Copy Test Book into the book catalog and verify reconstruction
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books/test-book-example-4567`
+- **What Was Changed (The Concrete Reality)**:
+  - Copy the complete local Test Book directory including its conversion workspace
+  - name the catalog directory and PDFs with lowercase hyphen-separated names matching existing books
+  - adapt the copied tracker source paths and matrix book identifiers to the books catalog
+  - reconstruct a separate 160-page PDF using the tracker mapping
+  - ignore local PDFs and workspace
+  - omit source.json
+- **Architectural Rationale & Trade-Offs**:
+  - Use catalog book identifiers and exact source hashes to reproduce the existing test selection while retaining the original directory and conversion provenance
+- **Verification & Test Results**:
+  - All 160 reconstructed pages match source pages and the original PDF in decoded streams, media boxes, rotation and RGB renders at 72 DPI
+  - inspected six-page visual preview
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - original directory preserved
+  - no inference or downloads performed
+---
+
+### [2026-10-08 22:56 CET] — Document author-managed book PDF acquisition
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Document manual titles and catalog directory names
+  - describe online acquisition, full SHA-256 verification and placement as source.pdf in the hash variant directory
+  - distinguish author preparation from ordinary chapter generation
+  - link the Test Book reconstruction tracker
+- **Architectural Rationale & Trade-Offs**:
+  - Make local source preparation reproducible using accepted source identities and the existing catalog convention
+- **Verification & Test Results**:
+  - All local README links resolve
+  - git diff --check passes
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - documentation-only change with no downloads or conversion runs
+---
+
+### [2026-10-08 22:57 CET] — Centralize book catalog ignore rules
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books`
+- **What Was Changed (The Concrete Reality)**:
+  - Move Test Book PDF and workspace ignore patterns to books/.gitignore
+  - remove the redundant Test Book .gitignore
+- **Architectural Rationale & Trade-Offs**:
+  - Apply one shared ignore policy to local book source files and conversion workspaces
+- **Verification & Test Results**:
+  - git check-ignore confirms Test Book PDF, workspace artifact and reference source PDF remain ignored
+  - git diff --check passes
+  - quick preflight passes
+  - all 19 architecture tests pass
+---
+
+### [2026-10-08 22:57 CET] — Rename Test Book tracker to snake case
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Rename TEST_PAGES_TRACKER.md to test_pages_tracker.md in the Test Book catalog directory
+  - update the README link
+- **Architectural Rationale & Trade-Offs**:
+  - Use the requested lowercase snake case filename
+- **Verification & Test Results**:
+  - Renamed file exists and no current catalog links use the old name
+  - git diff --check passes
+  - quick preflight passes
+  - all 19 architecture tests pass
+---
+
+### [2026-10-08 22:59 CET] — Ignore relocated book source cache
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books/.gitignore`
+- **What Was Changed (The Concrete Reality)**:
+  - Ignore the relocated books/.cache directory through the shared book catalog ignore file
+- **Architectural Rationale & Trade-Offs**:
+  - Keep local cache artifacts outside Git history at their new location
+- **Verification & Test Results**:
+  - git check-ignore confirms books/.cache is ignored
+  - scoped git diff --check passes
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - existing user deletions are left unstaged
+---
+
+### [2026-10-08 23:02 CET] — Point shared conversion cache to the book catalog
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion/cache.py`
+  - `tools/bootstrap/html-to-markdown/README.md`
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Resolve the shared default response cache from the bootstrap directory at book-to-markdown/books/.cache/codex
+  - update HTML and PDF cache location documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Reuse the relocated cache through one portable shared default while preserving existing explicit cache overrides and request identities
+- **Verification & Test Results**:
+  - Default ResponseCache resolves to the existing relocated directory
+  - 21 shared conversion tests and 26 PDF tests pass
+  - quick preflight passes
+  - all 19 architecture tests pass
+  - scoped diff check passes
+  - no old Reference/.cache paths remain in bootstrap code or Markdown
+  - no live conversion or cache content changes
+---
+
+### [2026-10-08 23:08 CET] — Simplify PDF pipeline workspace and configuration options
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Document and use the default workspace directory beside the source PDF
+  - copy bundled config.yaml only when workspace config is missing and preserve existing bytes
+  - remove pipeline config, cache-dir and verbose options
+  - force PDF workers to the shared cache
+  - update bootstrap invocation and existing regression checks
+- **Architectural Rationale & Trade-Offs**:
+  - Use stable development defaults and local attempt configuration without redundant CLI parameters or configuration rewrites
+- **Verification & Test Results**:
+  - 26 PDF tests and 21 shared conversion tests pass including default workspace creation, initial config copy and existing-config preservation
+  - removed CLI flags reject before execution
+  - CLI help matches README
+  - bootstrap PowerShell syntax passes
+  - quick preflight and all 19 architecture tests pass
+  - Graphify refresh completes
+  - scoped diff check passes
+  - no live book conversion performed
+---
+
+### [2026-10-08 23:10 CET] — Rename default PDF workspace directory
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tools/bootstrap/book-to-markdown/books/.gitignore`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Use pdf-to-markdown instead of workspace as the default attempt directory beside the source PDF and for status in the current directory
+  - update bootstrap invocation, documentation, existing default-workspace regression and catalog ignore rules
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the user-selected workspace directory name consistently
+- **Verification & Test Results**:
+  - 26 PDF tests pass
+  - quick preflight and all 19 architecture tests pass
+  - new catalog workspace is ignored by Git
+  - scoped diff check passes
+  - Graphify refresh completes
+  - existing workspace directories are not moved
+---
+
+### [2026-10-08 23:14 CET] — Apply hash-variant layout to the Test Book
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books/test-book-example-4567`
+  - `tools/bootstrap/book-to-markdown/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Calculate the Test Book original SHA-256 and move its current contents into variant 1cea0b35ee62
+  - rename the original PDF to source.pdf and add source.json with its full hash
+  - adjust tracker source paths for the additional directory depth
+  - document one hash-variant convention for all books and their default preparation workspace
+- **Architectural Rationale & Trade-Offs**:
+  - Treat the composite Test Book like other catalog books so subsequent preparation and recipe work use a consistent source identity and layout
+- **Verification & Test Results**:
+  - Moved PDF SHA-256 matches metadata
+  - tracker source paths and all local README links resolve
+  - source PDF remains ignored
+  - quick preflight and all 19 architecture tests pass
+  - scoped diff check passes
+  - no conversion or downloads performed
+---
+
+### [2026-10-08 23:19 CET] — Remove per-page OCR recovery caching
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove persistent per-page Tesseract PDFs, recovery metadata, identity fingerprints and temporary request images
+  - run OCR directly in memory
+  - remove the Stage 01 recovery retention exception and recovery status inspection
+  - update existing OCR tests and documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Use only the completed sibling OCR PDF for reuse
+  - interrupted preparation restarts from the source without per-page recovery state
+- **Verification & Test Results**:
+  - 26 PDF tests and 21 shared conversion tests pass
+  - quick preflight and all 19 architecture tests pass
+  - pipeline status works without recovery inspection
+  - scoped diff check passes
+  - Graphify refresh completes
+  - automatic command policy rejected deletion of existing Test Book recovery artifacts, which remain unused
+  - no live conversion performed
+---
+
+### [2026-10-08 23:21 CET] — Migrate matching Stage 03 Test Book cache entries
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books/.cache/codex`
+- **What Was Changed (The Concrete Reality)**:
+  - Add 159 local cache entries under the current 03_page_conversion identity from completed legacy 02_page_conversion entries
+  - preserve all legacy records and the existing current entry
+- **Architectural Rationale & Trade-Offs**:
+  - The stage rename invalidated cache digests although all 160 Test Book requests otherwise match exactly
+  - copy only entries with identical full request identities after substituting the renamed stage
+- **Verification & Test Results**:
+  - Offline replay through CodexClient returns 160 cache hits and zero model calls with transport forbidden
+  - prompts, images, model settings, execution instructions, schema and runtime identity match
+  - quick preflight and all 19 architecture tests pass
+  - no page outputs changed and no live conversion run
+  - migration script remains disposable in .agent/tmp and cache remains ignored
+---
+
+### [2026-10-08 23:25 CET] — Decouple response cache identity from stage naming
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/html-to-markdown/support/client.py`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_conversion_codex.py`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Require an explicit stable operation ID in the shared client and response identity
+  - remove stage names from cache keys while retaining them in model selection, status and metrics
+  - assign stable HTML, page-object and table-markup operations
+  - update consumers, existing invalidation tests and documentation
+  - migrate 520 compatible local completed entries without removing old records
+- **Architectural Rationale & Trade-Offs**:
+  - Stage numbering and directory names describe pipeline organization rather than inference semantics
+  - cache reuse must survive stage renames while remaining sensitive to operation, prompts, image bytes, models, instructions and schemas
+- **Verification & Test Results**:
+  - Stage-rename regression failed before implementation and passes afterward
+  - 22 shared conversion tests and 26 PDF tests pass
+  - operation and input changes still invalidate cache
+  - offline Test Book replay returns 160 cache hits and zero model calls
+  - quick preflight and all 19 architecture tests pass
+  - Graphify refresh completes
+  - scoped diff check passes
+  - no live inference and no generated page outputs changed
+---
+
+### [2026-10-09 00:53 CET] — Scope temporary textbook work to bootstrap guidance
+- **Affected Subsystems**:
+  - `AGENTS.md`
+  - `tools/bootstrap/AGENTS.md`
+  - `.agents/skills/textbook-pdf-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Add nested bootstrap instructions for the temporary textbook and PDF-to-Markdown priority
+  - add a focused local skill
+  - route root-started sessions to the nested instructions
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the current authoring priority scoped to bootstrap while preserving shared repository rules and user-directed conversion iterations
+- **Verification & Test Results**:
+  - Skill validator passed
+  - quick preflight passed
+  - all 19 architecture tests passed
+  - diff check passed
+  - no conversion run
+---
+
+### [2026-10-09 00:54 CET] — Move bootstrap agent workflows from program READMEs
+- **Affected Subsystems**:
+  - `tools/bootstrap/AGENTS.md`
+  - `tools/bootstrap/book-to-markdown/README.md`
+  - `tools/bootstrap/html-to-markdown/README.md`
+  - `tools/bootstrap/pdf-to-markdown/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Review all eight bootstrap READMEs
+  - move development iteration, source acquisition and manual chapter handling guidance into local AGENTS.md
+  - replace moved passages with contextual links
+  - retain program usage, catalog metadata and conversion contracts
+- **Architectural Rationale & Trade-Offs**:
+  - Make agent procedures discoverable in scoped instructions while keeping program documentation focused on usage and artifact behavior
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - all 19 architecture tests passed
+  - 29 local links and anchors resolve after excluding code examples
+  - no references to the renamed heading found in tools, rules, docs or roadmap
+  - diff check passed
+  - no conversion run
+---
+
+### [2026-10-09 00:56 CET] — Require commits at roadmap completion or user request
+- **Affected Subsystems**:
+  - `AGENTS.md`
+  - `.agents/rules/git-commits.md`
+  - `.agents/rules/roadmap-maintenance.md`
+  - `.agents/rules/structural-root-cause.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace per-task automatic commits with mandatory minor roadmap point and major milestone completion commits
+  - leave other commit timing to explicit user requests
+  - align roadmap closure and execution-plan retention
+- **Architectural Rationale & Trade-Offs**:
+  - Reduce repeated commit overhead during iterative work while retaining validated roadmap checkpoints and atomic commits
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - all 19 architecture tests passed
+  - scoped diff check passed
+  - obsolete per-task commit wording absent from shared instructions
+---
+
+### [2026-10-09 03:06 CET] — Add deterministic Stage 06 graphic extraction
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/book-to-markdown/README.md`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `docs/developers.md`
+  - `tests/test_pdf_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Register Stage 06 with predecessor requirements, selected page ranges and restart cleanup
+  - Extract graphic bounding boxes from original Stage 02 PNGs using Stage 04 objects with Stage 05 replacements
+  - Document the prepared asset handoff and update the existing restart test
+- **Architectural Rationale & Trade-Offs**:
+  - Prepare graphic assets independently of the future chapter generator without model calls or changes to predecessor artifacts. The PDF-MARKDOWN-WORKFLOW-1 plan retains unfinished book workflow scope.
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture suite passed 19 tests
+  - PDF conversion suite passed 26 tests
+  - PDF review selection suite passed 4 tests
+  - diff check passed before diary append
+  - no conversion or crop-quality evaluation run in this commit session
+  - no milestone completion claimed
+---
+
+### [2026-10-09 03:52 CET] — Implement editable book import and three-column bitmap review
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Implement PDF-MARKDOWN-WORKFLOW-1 import from Stage 04 with full Stage 05 replacements and Stage 06 assets
+  - add per-version authored models, deterministic chapter exports and stable-ID table of contents
+  - add full-context Edge measurement and cached immutable PNG strips
+  - add local HTTP/SSE rendering queue and three bitmap columns with linked overlays, navigation and proportional scrolling
+  - add revision-aware heading and TOC edits and explicit complete-bundle acceptance
+  - document dependencies, launch commands and artifact conventions
+- **Architectural Rationale & Trade-Offs**:
+  - Separate local editorial review from PDF inference and emulator runtime. Preserve source IDs and original page geometry, keep Accepted independent of Working, retain complete views during pending edits and failures, and reuse unchanged raster strips. Further user review and corrections remain active for the next session
+  - this commit does not close a roadmap milestone.
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture suite passed 19 tests
+  - PDF conversion suite passed 26 tests
+  - PDF review selection suite passed 4 tests
+  - Python compilation and JavaScript syntax passed. Earlier task-scoped renderer, queue and GUI checks passed, including stale edits, malformed JSON/math recovery, scrolling and copy-failure acceptance safety. Test Book import retained 1052 elements, 160 unchanged page PNGs and 56 assets
+  - final cold render produced 1047 strips in 285.417 seconds, warm render captured 0 strips. Graphify refresh completed and diff check passed. No new inference or conversion-quality assessment performed
+  - milestone gate not run.
 ---
 
 ### [2026-10-09 18:34 CEST] — VERIFY-01: Centralize change-aware completion verification
@@ -2329,6 +3376,77 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - no golden changes. Milestone execution not run.
 ---
 
+### [2026-10-10 00:17 CEST] — Centralize PDF preparation settings in YAML
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tests/test_pdf_ocr_profile.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Store shared rendering DPI and Stage 01 OCR settings in config.yaml
+  - remove the separate OCR profile and runtime version checks, retaining requirements.txt pins
+  - apply configured settings in Stages 01 and 02 with defaults for older workspace configs
+  - retain language-model hash checks and record effective settings and actual library versions
+  - update focused tests and documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Keep editable preparation settings in one configuration source while preserving exact language-model identity and existing prepared-PDF reuse
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture suite passed 19 tests
+  - OCR configuration suite passed 2 tests
+  - PDF conversion suite passed 28 tests
+  - prior configuration override and OCR parameter forwarding checks passed
+  - Graphify incremental refresh completed
+  - no source-book conversion or milestone completion claimed
+---
+
+### [2026-10-10 00:21 CEST] — Add source-text recipes and HTML book review
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/reference-conversion-contract.md`
+  - `tools/bootstrap/AGENTS.md`
+  - `docs/developers.md`
+  - `tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace bitmap review with responsive chapter HTML and KaTeX rendering
+  - reconstruct authored text from PDF block and character-range templates while preserving Markdown structure and legacy references
+  - add character geometry to Stage 02 without sending it to inference
+  - support visibility edits, page hiding, element and bundle discard, comparison hints and logical scroll anchors
+  - preserve accepted snapshots during render recovery
+  - retain unselected page artifacts during partial pipeline restarts and report last-run scope
+  - refine source paragraph and table transcription prompts
+  - document reconstruction limits and add a Windows review-server controller
+- **Architectural Rationale & Trade-Offs**:
+  - Keep source-backed reconstruction and editorial review coherent across preparation, authored templates and complete accepted bundles
+  - standalone reconstruction and automatic source acquisition remain pending
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture suite passed 19 tests
+  - book review and recipe suites passed 31 tests, including Edge browser interaction cases
+  - PDF conversion, selection and OCR suites passed 34 tests
+  - JavaScript and PowerShell syntax checks passed
+  - Graphify incremental refresh completed
+  - diff check passed
+  - no source-book conversion or milestone completion claimed
+---
+
+### [2026-10-10 00:21 CEST] — Clarify authorization boundaries for optional changes
+- **Affected Subsystems**:
+  - `AGENTS.md`
+  - `.agents/rules/structural-root-cause.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Require new behavior to follow a user requirement or technical necessity
+  - propose optional product and editorial features before implementation
+  - require a final scope review and preservation of pre-existing work
+- **Architectural Rationale & Trade-Offs**:
+  - Keep routine implementation autonomy while reserving product and editorial decisions for the user
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - architecture suite passed 19 tests
+  - staged diff check passed
+  - documentation-only change, no conversion or milestone completion
+---
+
 ### [2026-10-10 01:42 CEST] — Refresh SHIFT-04 trace after canonical mnemonic correction
 - **Affected Subsystems**:
   - `Benchmark execution traces`
@@ -2429,6 +3547,61 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - No indexing or golden changes
 ---
 
+### [2026-10-10 04:06 CEST] — Expand source-preserving book review editing
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/review`
+  - `tools/bootstrap/book-to-markdown/README.md`
+  - `tools/bootstrap/book-to-markdown/elements.md`
+  - `tests/test_book_review_hints.py`
+  - `tests/test_book_review_scroll.py`
+  - `tests/test_book_review_visibility.py`
+  - `tests/test_book_text_recipe.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add Markdown and bold editing, split/merge, and one-position element movement with PDF character-range and region preservation
+  - Add Markdown-only table joining with header, alignment and row validation, plus bulk callout repair with orphan warnings and styled previews
+  - Enable Working operations from every review column and restricted text-type changes
+  - Replace hover property tooltips with a disabled Accepted/Working type comparison in the context menu
+  - Cache input snapshots and dependency reads without hiding external book, PDF-text or asset changes
+  - Update scroll-test status fixtures for the expanded menu contract
+- **Architectural Rationale & Trade-Offs**:
+  - Keep reconstruction edits deterministic and revision-checked while retaining source provenance. Table and graphic type conversions remain excluded
+  - HTML table joining is unsupported
+  - and invalid bulk-callout pairs remain unchanged. The proposed separate role property is not implemented. This is a routine editor commit on bootstrap-codex-api
+  - not a roadmap milestone. Local working book data and unrelated converter changes are excluded.
+- **Verification & Test Results**:
+  - python tools/harness/pre_flight.py --quick passed
+  - cargo test -p test_runner --test test_architecture_rules -- --quiet passed 19 tests
+  - python -m unittest discover -s tests -p test_book*.py -q passed 35 tests after correcting three stale mocked-status failures
+  - Isolated browser checks for Markdown table merging and protected type changes passed
+  - Earlier isolated movement, callout repair, cross-column menus, type comparison and tooltip-removal checks passed
+  - git diff --cached --check passed. Conversion quality remains subject to author review.
+---
+
+### [2026-10-10 04:10 CEST] — Use prompt-only conversion contracts
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/html-to-markdown`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `converter tests and documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove transport output schemas and inherited conversion instructions so checked-in prompts define model output contracts
+  - Keep JSON parsing validation inside the shared generation path and align cache identities with the actual request
+  - Move HTML transcription requirements into its prompt and remove duplicated PDF request metadata
+  - Align PDF heading_level instructions and update converter regression tests and documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Keep conversion instructions in a single reviewable source while preserving JSON validation and existing stage processing
+  - Routine commit requested by the user on bootstrap-codex-api
+- **Verification & Test Results**:
+  - python tools/harness/pre_flight.py --quick passed
+  - Architecture rules suite passed 19 tests
+  - Conversion unittest discovery passed 60 tests
+  - PDF review selection passed 4 tests
+  - HTML assembly sources passed 2 tests
+  - git diff --check passed
+  - graphify update completed
+  - No real document conversion was run and output quality was not assessed
+---
+
 ### [2026-10-10 13:15 CEST] — Remove benchmark trace regressions and hash fixtures
 - **Affected Subsystems**:
   - `test_runner`
@@ -2462,6 +3635,64 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Publication tests passed 10/10
   - python tests/verify.py --commit passed all selected checks including ordinary Rust and benchmark tests plus Python tool contracts
   - No CPU or DMA implementation changed and dedicated silicon suites were not selected for this fixture-only change
+---
+
+### [2026-10-10 13:30 CEST] — Separate book element roles and finalize PDF preparation (BOOK-ELEMENT-ROLE)
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/book-to-markdown`
+  - `bootstrap tests and instructions`
+  - `ROADMAP.md`
+  - `docs/developers.md`
+  - `tools/bootstrap/conversion/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Classify representation type and nullable semantic role together in the Stage 03 image/text request and preserve roles into book.json
+  - Add role editing and Accepted/Working readouts in all three panes while retaining role during type changes and splits and rejecting merges with different roles
+  - Move callout assembly into new Stage 07 and remove the editor repair action and endpoint
+  - Filter thumb indexes in Stage 04 and keep standalone headings separate from prose in the prompt
+  - Require current-format roles and remove legacy normalization and converted-Markdown reference migration while allowing import to overwrite Working without retaining old settings
+  - Move book and PDF suites beside their owning bootstrap programs
+  - Remove redundant conversion-contract and reconstruction-design files and consolidate instructions and shared transport documentation
+  - Update pending roadmap work for portable recipes and PDF-based reconstruction before RAG ingestion
+- **Architectural Rationale & Trade-Offs**:
+  - Keep representation independent of caption/legend/note/footnote function and make preparation responsible for callout assembly
+  - Follow the explicit user decision against backward compatibility or artifact rescue
+  - Record BOOK-ELEMENT-ROLE closure and delete its temporary plan after this user-requested commit
+  - Roadmap reorganization does not certify completion of standalone reconstruction or RAG ingestion
+- **Verification & Test Results**:
+  - python tools/harness/pre_flight.py --quick passed
+  - Architecture rules suite passed 19 tests
+  - Book-to-Markdown suite passed 37 tests including role editing from all three panes and import overwrite
+  - PDF-to-Markdown suite passed 35 tests
+  - Staged diff whitespace checks passed
+  - Local documentation link and roadmap numbering checks passed during development
+  - Graphify was refreshed after source changes
+  - Existing local book reports missing role under the current-only contract and was not repaired
+  - No real-book conversion, import regeneration, indexing or milestone validation was run
+---
+
+### [2026-10-10 14:17 CEST] — Run bounded parallel PDF inference and clarify transcription prompts
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Add llm.concurrency with a default of two page or table requests per stage
+  - Give each worker an isolated Codex transport and serialize page writes and metrics
+  - Stop admission after failures and abort capacity-limit notifications without retrying
+  - Publish table pages only after every table succeeds
+  - Require Markdown for simple tables and define renderer-compatible math and literal hexadecimal notation
+- **Architectural Rationale & Trade-Offs**:
+  - Reduce sequential inference time while preserving page identity and source order
+  - Keep the concurrency limit local to one invocation rather than claiming a guaranteed provider limit
+  - Improve future transcription through prompts without repairing existing book artifacts
+- **Verification & Test Results**:
+  - Shared conversion tests: 27 passed
+  - PDF tests: 37 passed
+  - Architecture rules: 19 passed
+  - Quick preflight passed
+  - Renderer syntax checks passed for inline math and literal hexadecimal prefixes and HTML overbars
+  - No live conversion or account throughput measurement was run
 ---
 
 ### [2026-10-10 15:16 CEST] — Check English vocabulary across the repository and clarify documentation entry points
@@ -3549,6 +4780,65 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Full SingleStep was not run
 ---
 
+### [2026-10-13 21:52 CEST] — Remove redundant image analyst role
+- **Affected Subsystems**:
+  - `.codex/agents`
+  - `docs/ai_agents.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Delete the image_analyst profile
+  - remove its inventory entry and usage guidance
+- **Architectural Rationale & Trade-Offs**:
+  - Keep visual descriptions in the authored book workflow and avoid maintaining an unused standalone agent profile
+- **Verification & Test Results**:
+  - Three remaining TOML profiles parsed
+  - no active image_analyst references found
+  - quick pre-flight passed
+  - architecture rules passed 19 tests
+  - no conversion run
+---
+
+### [2026-10-13 22:07 CEST] — Validate conversion responses and clarify PDF preparation
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_conversion_codex.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Validate JSON responses before caching and on reuse
+  - report complete JSON failure context and handle attached imageView events
+  - centralize fixed OCR settings
+  - clarify page and table response prompts and table failure diagnostics
+- **Architectural Rationale & Trade-Offs**:
+  - Keep malformed conversion outputs out of the shared cache and make failures traceable while retaining the configured model and source data
+- **Verification & Test Results**:
+  - Shared conversion tests passed 32
+  - PDF preparation tests passed 37
+  - quick pre-flight passed
+  - architecture rules passed 19
+  - no live PDF conversion was run
+---
+
+### [2026-10-13 22:07 CEST] — Extend Book Review authoring and validation
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `tools/bootstrap/AGENTS.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add explicit Codex editing with content and revision guards and optional source validation
+  - support new chapter boundaries and location headers in review
+  - clear old Working, Accepted and copied PDF pages before import
+  - document the new commands and add focused tests
+- **Architectural Rationale & Trade-Offs**:
+  - Keep authoring changes traceable to selected source content while allowing explicit edits and rebuilding current-format outputs without stale artifacts
+- **Verification & Test Results**:
+  - Book Review tests passed 58
+  - shared conversion tests passed 32
+  - PDF preparation tests passed 37
+  - quick pre-flight passed
+  - architecture rules passed 19
+  - no live Codex editing or book regeneration run
+  - Optional staged language scan reported seven false positives in HTML names and regular expressions; no Polish prose was added
+
+---
+
 ### [2026-10-13 22:25 CEST] — Bound OCS DMA addresses to 512 KB
 - **Affected Subsystems**:
   - `crates/config`
@@ -3630,6 +4920,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Full commit verification passed outside the sandbox, including all RAG MCP contracts
 ---
 
+### [2026-10-14 01:52 CEST] — Refresh manual-conversion roadmap
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove former Step 1 items 1.1, 1.2, 1.3 and 1.8 at user direction
+  - Add SVG extraction evaluation and RAG retrieval checks for collapsed descriptions and image text sidecars
+  - Add final chapter proofreading and multi-PDF book recipe tasks
+  - Renumber the remaining Step 1 work and align bootstrap source selection with multiple PDFs
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the pending roadmap aligned with the user's current book priorities
+  - Treat SVG fidelity, RAG retrieval and interchangeable PDF variants as verification questions rather than implemented capabilities
+- **Verification & Test Results**:
+  - Quick preflight passed
+  - Architecture rules passed 19 tests
+  - git diff --check passed
+  - No conversion, PDF reconstruction or live RAG search was run
 ### [2026-10-14 02:04 CEST] — Remove flat custom-register aliases
 - **Affected Subsystems**:
   - `crates/config`
@@ -3731,3 +5037,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - vault audit passed for 36 specifications and 716 links
   - full SingleStep and hardware captures were not run
   - initial sandboxed source run timed out in the RAG MCP launch contract, but the target worktree run passed
+---
+
+### [2026-10-14 03:34 CEST] — Merge bootstrap-codex-api into master
+- **Affected Subsystems**:
+  - `tools/bootstrap`
+  - `tools/verification`
+  - `agent governance`
+  - `ROADMAP.md`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Integrated the bootstrap-codex-api branch through an explicit merge commit and reconciled 11 conflicts
+  - Kept master verification architecture and concise developer guidance while retaining the bootstrap conversion and book-review programs, tests, and instructions
+  - Reconciled roadmap numbering and diary history from both parents
+  - Excluded per-book records and the generated package lockfile from the English scan, then approved 119 technical terms and 17 exact-file literals
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve both branches of work without reviving obsolete conversion stages or weakening source validation.
+  - Book records follow external reference material and the lockfile contains generated hashes; their exclusions leave authored bootstrap code, tests, prompts, and documentation covered.
+- **Verification & Test Results**:
+  - PASS: conversion tests (40), PDF tests (37), book-review tests (58), and HTML assembly-source tests (2)
+  - PASS: roadmap and diff checks
+  - PASS: English scan (562 files, zero unknown words)
+  - PASS: final commit profile, including ordinary crate tests, formatting, Clippy, architecture, hardware and code quality, standard harness, and Python contracts
+  - Initial profile found the new diary word lockfile; the approved vocabulary entry cleared it before the final run
+  - No Rust or Design specification files changed; full SingleStep and hardware captures were not run

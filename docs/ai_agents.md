@@ -116,7 +116,6 @@ You can also request focused work from the configured roles in
 | --- | --- |
 | `code_reviewer` | An independent review of code, architecture and rule compliance. |
 | `cpu_verifier` | Diagnosis of cycle differences against physical 68000 silicon vectors. |
-| `image_analyst` | Inspection of an assigned illustration, schematic or diagram. |
 | `doc_curator` | Maintenance of design specifications and their links to implementation. |
 
 Delegation happens when requested by you or required by an applicable procedure.

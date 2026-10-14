@@ -4,14 +4,23 @@ This Python command-line program converts HTML documents (Microsoft Word exports
 
 `pipeline.py` orchestrates file processing and calls Codex through the shared [conversion client](../conversion/client.py). LLM transcription results are not guaranteed to be deterministic. Conversion instructions live in [`references/llm-transcription-prompt.md`](references/llm-transcription-prompt.md).
 
-For development, follow the [developer-led workflow](../reference-conversion-contract.md#development-workflow): make the requested change, convert the fragment selected by the user when requested, and let the user assess the output. Automatic tests follow the [bootstrap converter scope](../../../.agents/rules/unit-testing-policy.md#bootstrap-converter-scope).
+HTML-owned [support](support/__init__.py) implements strict YAML loading,
+configuration/model checks, validated text requests and protected publication.
+The shared conversion layer owns authentication, request execution, completion
+handling, response caching and metrics.
+
+Agent development guidance is in the [bootstrap instructions](../AGENTS.md#converter-development).
+
+Model requests contain the transcription prompt and source HTML/title. All
+conversion instructions live in the prompt file; the shared transport clears
+base/developer instructions and sends no output schema or additional examples.
 
 ## Quick Start
 
 Install the pinned SDK/runtime and dependencies, then sign in to Codex with ChatGPT. API-key mode is rejected:
 
 ```powershell
-python -m pip install -r tools/bootstrap/conversion/requirements.txt
+python -m pip install -r tools/bootstrap/html-to-markdown/requirements.txt
 codex login
 ```
 
@@ -25,6 +34,11 @@ python tools/bootstrap/html-to-markdown/pipeline.py `
 
 The input is a local HTML file or an already downloaded crawl directory. Markdown
 and referenced images stay in `<source-directory>/workspace/html_to_markdown/`.
+Relative links to local `.s` assembly sources are expanded into named code listings
+before transcription, for both single articles and crawls. Keep these files beside
+the referring HTML (or in its subdirectories); missing files and paths outside that
+source directory stop conversion. The prompt requires complete `m68k` listings
+inside the referring Markdown section, so no separate `.s` output link is needed.
 For a bootstrap crawl under `<book>-tmp/live/`, this workspace belongs to `<book>-tmp/`.
 The pipeline no longer accepts `--output-dir` or mirrors Markdown into `Reference`.
 Add `--publish` to copy finished Markdown and assets into the sibling book directory
@@ -37,9 +51,9 @@ for a disposable pilot cache. The baseline is `gpt-6.1-sol` / `medium`, concurre
 Invalid configuration, authentication and inference failures stop conversion; no PDF
 configuration or DOM result substitutes for Codex.
 
-The shared client caches only completed, validated responses under `Reference/.cache/codex` and writes `.conversion-metrics.json` beside the output. Cached usage belongs to the original request. See the [conversion contract](../reference-conversion-contract.md) for source fidelity and transport boundaries; development runs use the fragment requested by the user.
+The shared client caches only completed, validated responses under `tools/bootstrap/book-to-markdown/books/.cache/codex` and writes `.conversion-metrics.json` beside the output. Cached usage belongs to the original request. See the [conversion client README](../conversion/README.md) for execution and cache behavior.
 
-Optional rendering and comparison tools require Chrome, Chromium, or Edge; page rasterization also requires PyMuPDF, and comparison images require Pillow. See the operational workflow below for these tools and link validation.
+Optional page rendering requires Chrome, Chromium, or Edge and PyMuPDF. Image crop extraction requires Pillow. See the operational workflow below for these tools and link validation.
 
 > [!IMPORTANT]
 > **Conversion Model:**
@@ -65,7 +79,6 @@ tools/bootstrap/html-to-markdown/
 │   ├── download_assets.py                 # Scans HTML, copies/downloads images to assets/, creates .txt sidecars
 │   ├── html_to_pages.py                   # Headless Chrome HTML-to-PDF & PyMuPDF page PNG rasterizer
 │   ├── replace_placeholders.py            # Resolves <image placeholder> & <crop> tags, formats Markdown links
-│   ├── render_comparison.py               # Headless browser side-by-side visual comparison renderer
 │   └── validate_links.py                  # Anchor, image asset, and link integrity validator
 └── references/
     └── llm-transcription-prompt.md        # Unified LLM prompt (Obsidian frontmatter, Multi-page crawl, Non-text hierarchy, TOC rules)
@@ -77,7 +90,7 @@ tools/bootstrap/html-to-markdown/
 
 > [!IMPORTANT]
 > **Content Fidelity & Meaning:**
-> - **You may reformat and refine layout**, typography, indentations, and presentation.
+> - **You may reformat and polish layout**, typography, indentations, and presentation.
 > - **Preserve 100% of the original content and technical meaning.**
 > - **Do NOT add new content** (no invented text, commentary, or unverified claims).
 > - **Do NOT omit or summarize existing content** (no dropping footnotes, technical sidebars, or instruction tables).
@@ -232,17 +245,7 @@ python tools/bootstrap/html-to-markdown/scripts/replace_placeholders.py `
   --pages-dir "Obsidian/Amiga/Reference/html-sandbox/pages"
 ```
 
-### Phase 4: Headless Visual Comparison
-Generate a side-by-side visual comparison between the original HTML rendering and the converted Markdown:
-```powershell
-python tools/bootstrap/html-to-markdown/scripts/render_comparison.py `
-  --html "Obsidian/Amiga/Reference/DocFolder/doc.html" `
-  --markdown "Obsidian/Amiga/Reference/html-sandbox/doc.md" `
-  --output-dir "Obsidian/Amiga/Reference/html-sandbox"
-```
-Open `visual_comparison.png` to visually audit typography, alignment, and diagram placement.
-
-### Phase 5: Link Integrity & Asset Audit
+### Phase 4: Link Integrity & Asset Audit
 Run `validate_links.py` to verify 100% link, anchor, and image resolution:
 ```powershell
 python tools/bootstrap/html-to-markdown/scripts/validate_links.py `

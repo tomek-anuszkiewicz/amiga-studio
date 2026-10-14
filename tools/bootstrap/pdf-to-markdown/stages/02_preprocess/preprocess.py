@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+"""Extract positioned text and PNGs from the full-source prepared PDF."""
+
+import argparse
+from pathlib import Path
+import sys
+import pymupdf
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.pdf_config import load_config, preparation_settings
+from common.pdf_artifacts import write_json, prepared_text_metadata
+from common.pdf_geometry import SCHEMA_VERSION, COORDINATES, page_geometry, text_blocks, raster_transform
+from common.pdf_selection import parse_page_ranges
+
+
+def preprocess_pdf(pdf_path, workspace_dir, dpi=None, page_ranges=None):
+    if dpi is None:
+        dpi = preparation_settings({})["render_dpi"]
+    directory = Path(workspace_dir) / "02_preprocess"
+    directory.mkdir(parents=True, exist_ok=True)
+    for old in directory.glob("page_*.*"):
+        old.unlink()
+    with pymupdf.open(pdf_path) as document:
+        pages = parse_page_ranges(page_ranges) if page_ranges is not None else range(1, len(document) + 1)
+        for number in pages:
+            page_id = f"page_{number:04d}"
+            page = document[number - 1]
+            geometry = page_geometry(page)
+            pixmap = page.get_pixmap(dpi=dpi)
+            raster = raster_transform(page, pixmap, dpi)
+            pixmap.save(directory / f"{page_id}.png")
+            blocks = text_blocks(page, character_geometry=True)
+            data = {"schema_version": SCHEMA_VERSION, "page_id": page_id, "page": number,
+                    "source_index": number - 1, "prepared_index": number - 1,
+                    "geometry": geometry,
+                    "width": geometry["width"], "height": geometry["height"], "rotation": page.rotation,
+                    "coordinates": COORDINATES, "raster": raster, "blocks": blocks,
+                    **prepared_text_metadata(blocks)}
+            write_json(directory / f"{page_id}.json", data)
+            print(f"[extract] {page_id}: {len(blocks)} text blocks from {Path(pdf_path).name}")
+    print("[+] Stage 02 published page PNGs and text JSON; no OCR execution")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Stage 02: deterministic prepared-PDF preprocessing")
+    parser.add_argument("--pdf", type=Path, required=True, help="Full-source prepared PDF")
+    parser.add_argument("--workspace", type=Path, required=True)
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--page-ranges")
+    args = parser.parse_args()
+    config = load_config(args.config)
+    preprocess_pdf(args.pdf, args.workspace, preparation_settings(config)["render_dpi"], args.page_ranges)
+
+
+if __name__ == "__main__":
+    main()

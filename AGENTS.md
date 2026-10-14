@@ -3,11 +3,13 @@
 ## Working Agreements
 
 Read these shared rules before task work; linked files require explicit reads:
-- [Scoped changes and root-cause resolution](.agents/rules/structural-root-cause.md)
-- [Specification compliance](.agents/rules/spec-compliance.md)
-- [Path privacy](.agents/rules/no-external-paths.md)
-- [Atomic commits](.agents/rules/git-commits.md)
-- [Language policy](.agents/rules/language-policy.md)
+- [Scoped changes and root-cause resolution](.agents/rules/structural-root-cause.md): Stay within the requested task, reuse definitions, and fix mechanisms.
+- [Specification compliance](.agents/rules/spec-compliance.md): Surface conflicts with design specifications and never silently change golden references.
+- [Path privacy](.agents/rules/no-external-paths.md): Keep committed paths portable.
+- [Commit policy](.agents/rules/git-commits.md): Required commit points, user-controlled timing, validation, and diary entries.
+- [Language policy](.agents/rules/language-policy.md): Keep repository artifacts in English and answer in the user's language.
+
+Implement requested behavior and the technical changes necessary to make it work. Propose optional additions before implementing them; usefulness alone does not authorize a new feature. Leave product and editorial decisions to the user unless delegated explicitly. Before completion, review the diff against this boundary using the [scope rules](.agents/rules/structural-root-cause.md).
 
 Run validation commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks. Use `.agent/tasks/` for English execution plans and `.agent/tmp/` for disposable diagnostics and artifacts. Treat existing temporary artifacts as unverified until their assumptions are checked.
 
@@ -34,7 +36,8 @@ Read applicable domain rules before editing that domain. Use [Graphify](.agents/
 | PowerShell tooling | Use [write-powershell](.agents/skills/write-powershell/SKILL.md) for invocation behavior, parameter descriptions, and validation. |
 | Commit or milestone | [Diary](.agents/rules/diary-maintenance.md), [roadmap](.agents/rules/roadmap-maintenance.md), [design maintenance](.agents/rules/docs-maintenance.md) |
 | Merge or worktree | [Merge policy and required procedures](.agents/rules/git-merge-commits.md) |
-| Reference conversion bootstrap | [Conversion programs](.agents/references/developer-setup.md#processing-raw-documents-into-markdown), [developer-led workflow](tools/bootstrap/reference-conversion-contract.md#development-workflow), [converter testing scope](.agents/rules/unit-testing-policy.md#bootstrap-converter-scope) |
+| Reference conversion bootstrap | Read [bootstrap instructions](tools/bootstrap/AGENTS.md), then the applicable [PDF](tools/bootstrap/pdf-to-markdown/README.md) or [HTML](tools/bootstrap/html-to-markdown/README.md) program README and [converter testing scope](.agents/rules/unit-testing-policy.md#bootstrap-converter-scope) |
+| Long-running checks | [Parallel execution](.agents/rules/parallel-execution.md) |
 
 Skill names and descriptions in `.agents/skills/` guide selection. Read the selected
 `SKILL.md` and execute required procedures; discovery alone does not execute a skill.
@@ -48,6 +51,22 @@ applicable instructions. MCP configuration is `.codex/config.toml`.
 - The synchronization unit is the Color Clock (CCK), approximately 3.54 MHz PAL / 3.58 MHz NTSC. A 68000 bus cycle takes four CPU clocks, or two CCK cycles (CCK1 and CCK2). A blocked Chip RAM access returns `BusResult::WaitState`; the CPU waits without advancing its active micro-step.
 - The top-level machine owns CPU, memory bus, Agnus, Denise, Paula, and both CIAs, tracking master CCKs with `cck: u64`.
 - State snapshots remain queryable and serializable with `serde::Serialize` and `serde::Deserialize`, separate from runtime handles.
+- Follow physical dependencies when planning: bus arbitration and clocks, autonomous DMA, display, peripherals, then firmware integration.
+- Guest memory is big-endian. Use explicit endian conversion, never host-endian pointer casts or `transmute`. Bitwise operations and raw transfers may bypass swaps only when their semantics commute with byte reversal.
+- Guest execution must not panic the host. Unmapped reads return `$FF` / `$FFFF` (configurable); odd-address word/long accesses raise Address Error, Vector 3. Runtime emulation uses no `unwrap` or `expect`.
+- ALU operations and cycle counters use explicit wrapping arithmetic. Execution, memory access, and interrupt hot paths allocate no heap memory. Project rules prohibit custom `macro_rules!` and const-generic instruction handlers.
+
+## Verification and Completion
+
+Commits are mandatory when closing a minor roadmap point or major milestone. Otherwise, commit when the user explicitly requests it. Commits are atomic and written in English. **Every commit includes a new DIARY.md Section 10 entry.** At minor roadmap points or milestones, compact settled entries and synchronize affected design specifications and the remaining roadmap.
+
+Per-commit verification:
+```powershell
+python tools/verification/verify.py commit
+```
+The canonical commit profile selects standard suites and architecture checks. Run relevant focused tests during development; full SingleStepTests and additional milestone checks are selected by the verification workflow at their required trigger. Do not claim unrun checks passed.
+
+Milestone completion requires `python tools/verification/verify.py milestone`, [semantic parity review](.agents/skills/audit-semantic-parity/SKILL.md) of modified subsystems, design synchronization and checkpoint updates, diary compaction, and pruning completed roadmap steps. **Prohibition of Blind Golden Hash Modifications:** Never silently change golden hashes or cycle references; follow the conflict and approval procedure in specification-compliance rules.
 
 ## Authoritative References
 

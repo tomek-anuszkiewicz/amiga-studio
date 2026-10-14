@@ -38,6 +38,7 @@ helvetica
 hinnant
 hoffmann
 jaccard
+katex
 keir
 keirf
 kittest
@@ -47,10 +48,12 @@ llvm
 ltspice
 mame
 menlo
+mupdf
 musashi
 neo
 neoverse
 networkx
+nxp
 nyquist
 oagd
 openai

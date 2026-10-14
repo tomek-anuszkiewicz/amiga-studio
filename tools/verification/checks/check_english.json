@@ -19,11 +19,13 @@
     "graphify-out",
     "ref_src",
     "Obsidian/Amiga/Reference",
+    "tools/bootstrap/book-to-markdown/books",
     "tools/AmigaTestKit",
     "tools/blep_generator/output"
   ],
   "excluded_files": [
-    "tools/verification/checks/check_english.json"
+    "tools/verification/checks/check_english.json",
+    "tools/bootstrap/book-to-markdown/package-lock.json"
   ],
   "text_extensions": [
     ".rs",
@@ -127,6 +129,57 @@
       "ecooo",
       "hcooo",
       "ooo"
+    ],
+    "tools/bootstrap/book-to-markdown/prompts/proofreading.md": [
+      "audovol",
+      "coproc",
+      "essor",
+      "hardw",
+      "ield",
+      "playf"
+    ],
+    "tools/bootstrap/pdf-to-markdown/tests/test_pdf_conversion_codex.py": [
+      "obj"
+    ],
+    "tools/bootstrap/book-to-markdown/tests/test_book_text_recipe.py": [
+      "abc",
+      "hcooo",
+      "speci\ufb01ed"
+    ],
+    "tools/bootstrap/book-to-markdown/review/text_recipe.py": [
+      "za"
+    ],
+    "tools/bootstrap/pdf-to-markdown/stages/07_repair_callouts/repair_callouts.py": [
+      "za"
+    ],
+    "tools/bootstrap/book-to-markdown/review/model.py": [
+      "za"
+    ],
+    "tools/bootstrap/book-to-markdown/review/source_validation.py": [
+      "za"
+    ],
+    "tools/bootstrap/book-to-markdown/review/markdown.py": [
+      "za"
+    ],
+    "tools/bootstrap/book-to-markdown/tests/test_book_source_validation.py": [
+      "csi",
+      "madeup"
+    ],
+    "tools/bootstrap/book-to-markdown/tests/test_book_new_chapter.py": [
+      "eid",
+      "intro"
+    ],
+    "tools/bootstrap/book-to-markdown/tests/test_book_codex.py": [
+      "da"
+    ],
+    "tests/test_html_assembly_sources.py": [
+      "readclock"
+    ],
+    "tools/bootstrap/bootstrap_documentation.ps1": [
+      "readclock"
+    ],
+    "tools/bootstrap/book-to-markdown/tests/test_book_review_commands.py": [
+      "eid"
     ]
   }
 }
