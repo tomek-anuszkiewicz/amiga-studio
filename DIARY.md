@@ -5083,3 +5083,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Test Book mapping preserved: 160 identical rows
   - Commit verification passed, including ordinary crate tests, Clippy, architecture, quality audits, standard harness and all six Python contract suites
   - Full SingleStep and hardware captures were not run
+---
+
+### [2026-10-14 04:15 CEST] — Allow direct fast-forward reintegration
+- **Affected Subsystems**:
+  - `.agents/rules/git-merge-commits.md`
+  - `.agents/skills/git-resolve-merge/SKILL.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Make a successful git merge --ff-only complete reintegration without repeated review or verification
+  - Retain Markdown reconciliation and verification for divergent merge commits
+- **Architectural Rationale & Trade-Offs**:
+  - Advancing a branch pointer to an already committed source does not create a new merge result
+  - Divergent merges still require reconciliation and validation.
+- **Verification & Test Results**:
+  - PASS: git diff --check
+  - PASS: python tools/verification/verify.py commit
+  - No Design specifications selected by tracked_paths
+  - Full SingleStep and hardware captures not run

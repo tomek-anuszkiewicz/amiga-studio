@@ -1,11 +1,11 @@
 ---
 name: git-resolve-merge
-description: Reintegrate branches, manually reconcile changed Markdown including clean Git merges, resolve conflicts, and verify the result.
+description: Fast-forward branches directly; reconcile changed Markdown, conflicts, and verification for divergent merges.
 ---
 
 # Recipe: Git Branch Reintegration & Conflict Resolution
 
-This skill provides the operational procedure for managing Git worktrees, merging divergent branches, resolving merge conflicts, and formatting standardized merge commits per [`.agents/rules/git-merge-commits.md`](../../rules/git-merge-commits.md).
+This skill provides the fast-forward command and the operational procedure for divergent merges, conflict resolution, and merge commits per [`.agents/rules/git-merge-commits.md`](../../rules/git-merge-commits.md).
 
 ---
 
@@ -20,30 +20,30 @@ Activate this skill whenever:
 
 ## 2. Core Reintegration Principles
 
-1. **Ancestry Permits Fast-Forward:** If the target is an ancestor of the source, prefer `git merge --ff-only`. A conflict-free merge of diverged branches still needs a merge commit.
+1. **Fast-Forward:** Run `git merge --ff-only <source-branch>` in the target worktree. On success, stop without review, verification, a new commit, a diary entry, or worktree cleanup. A conflict-free merge of diverged branches still needs a merge commit.
 2. **Conflicting Merges $\to$ Explicit Merge Commit:** Never silently rebase away conflicts. Create an explicit merge commit documenting the conflict resolution strategy.
 3. **Holistic Resolution:** Never blindly accept `--ours` or `--theirs`. Merge conflicting code, unit tests, and documentation from both branches.
-4. **Markdown Review:** Git conflict detection is only a text merge. The agent reviews every changed tracked `.md` file before accepting the merged result, including files with no conflict markers.
+4. **Divergent-Merge Markdown Review:** Git conflict detection is only a text merge. The agent reviews every changed tracked `.md` file before accepting a divergent merge result, including files with no conflict markers.
 
 ---
 
 ## 3. Step-by-Step Execution Workflow
 
-### Step 1: Prepare Target Branch
-Ensure your target branch (`master`) is clean and up-to-date:
+### Step 1: Attempt Fast-Forward
+From the target branch's worktree, run:
 ```powershell
-git checkout master
-git status
+git merge --ff-only <source-branch>
 ```
+If it succeeds, the reintegration is complete. Do not perform the later steps or run checks for this branch advance. If it fails, diagnose the reason; use the divergent-merge steps only when the branches have diverged.
 
-### Step 2: Attempt Merge
-Check whether the target is an ancestor of the source:
+### Step 2: Merge Diverged Branches
+Ensure the target branch is clean, then start the merge without committing:
 ```powershell
-git merge-base --is-ancestor HEAD <source-branch>
+git status
+git merge <source-branch> --no-ff --no-commit
 ```
-- **Ancestor (exit 0):** Review the source's changed Markdown as described in Step 3 and verify its required results before `git merge --ff-only <source-branch>`; no new merge commit is created.
-- **Diverged (exit 1):** Use `git merge <source-branch> --no-ff --no-commit`, then inspect and validate the merged tree before committing. Other exit codes indicate an error to resolve.
-- **Merge conflicts:** Inspect conflicted files:
+- Inspect and validate the merged tree before committing.
+- For merge conflicts, inspect conflicted files:
   ```powershell
   git status
   ```
@@ -60,7 +60,7 @@ For each conflicted file:
    git add <resolved-file>
    ```
 
-Review Markdown independently of Git's conflict list. Before a fast-forward or before committing a divergent merge, identify the union of tracked `.md` paths changed from the common base to each branch. Use `--no-renames` to expose both sides of a move and `-z` to handle unusual path names:
+Review Markdown independently of Git's conflict list. Before committing a divergent merge, identify the union of tracked `.md` paths changed from the common base to each branch. Use `--no-renames` to expose both sides of a move and `-z` to handle unusual path names:
 
 ```powershell
 $base = git merge-base HEAD <source-branch>
@@ -73,7 +73,7 @@ For each path in that union, inspect the available base, target, and source vers
 Keep a per-path review checklist in `.agent/tmp/` during the merge. Do not finalize while any changed Markdown path is unreviewed or a substantive conflict remains unresolved. Summarize the reviewed scope and significant decisions in the merge commit and diary; do not describe automated checks as semantic approval.
 
 ### Step 4: Execute Pre-Commit Verification Gate
-Never finalize a merge commit without running the full repository verification gate:
+Never finalize a divergent merge commit without running the full repository verification gate:
 ```powershell
 python tools/verification/verify.py check formatting
 python tools/verification/verify.py commit
@@ -104,7 +104,7 @@ Verification:
 ```
 
 ### Step 6: Worktree Teardown & Cleanup (If Using Worktrees)
-If the branch was developed in an isolated worktree:
+After a divergent merge, if the branch was developed in an isolated worktree:
 1. Teardown the worktree using the automated script:
    ```powershell
    .\tools\worktree.ps1 remove <branch-name>
