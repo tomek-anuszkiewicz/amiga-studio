@@ -3671,3 +3671,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - The sandboxed RAG launch timed out
   - Graphify update passed outside the sandbox
   - Full SingleStep and hardware captures were not run
+---
+
+### [2026-10-14 02:23 CEST] — Consolidate shared custom-register writes
+- **Affected Subsystems**:
+  - `crates/memory_bus`
+  - `Obsidian/Amiga/Design/MemoryBus.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Grouped BPLCON0, DIWSTRT/DIWSTOP, and sprite position/control writes by their shared Denise and Agnus recipients
+  - Clarified sprite position/control routing in the MemoryBus design
+- **Architectural Rationale & Trade-Offs**:
+  - Keep shared-register fan-out explicit while removing duplicate routing branches and preserving each chip staged-write behavior
+- **Verification & Test Results**:
+  - Focused memory_bus and machine_loop tests passed
+  - cargo fmt and diff checks passed
+  - vault metadata and all 716 links passed
+  - Graphify update passed outside the sandbox after a DLL access failure inside it
+  - commit verification passed outside the sandbox, while its sandbox run timed out in the RAG MCP launch contract
+  - full SingleStep and hardware captures were not run

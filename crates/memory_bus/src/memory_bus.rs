@@ -188,15 +188,10 @@ impl<'a> MemoryBus<'a> {
                 self.agnus.write_register(custom_reg::agnus::DMACON, val);
                 self.paula.write_register(custom_reg::paula::DMACON, val);
             }
-            custom_reg::denise::BPLCON0 => {
-                self.denise.write_register(custom_reg::denise::BPLCON0, val);
-                self.agnus.write_register(custom_reg::agnus::BPLCON0, val);
-            }
-            custom_reg::agnus::DIWSTRT | custom_reg::agnus::DIWSTOP => {
-                self.agnus.write_register(offset, val);
-                self.denise.write_register(offset, val);
-            }
-            custom_reg::denise::SPR0POS
+            custom_reg::denise::BPLCON0
+            | custom_reg::agnus::DIWSTRT
+            | custom_reg::agnus::DIWSTOP
+            | custom_reg::denise::SPR0POS
             | custom_reg::denise::SPR0CTL
             | custom_reg::denise::SPR1POS
             | custom_reg::denise::SPR1CTL
