@@ -5100,3 +5100,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: python tools/verification/verify.py commit
   - No Design specifications selected by tracked_paths
   - Full SingleStep and hardware captures not run
+---
+
+### [2026-10-14 05:06 CEST] — Remove OCS DMA pointer roadmap item
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove roadmap point 3.3 (OCS-DMA-PTR-01) at user direction
+  - Retain existing identifiers for the remaining points
+- **Architectural Rationale & Trade-Offs**:
+  - Withdraw the planned pointer-type migration without changing current emulator behavior
+- **Verification & Test Results**:
+  - Diff scope reviewed; no Design specifications selected by tracked_paths
+  - Commit profile passed ordinary Rust tests, English, formatting, Clippy, architecture, quality, harness, and four Python suites
+  - Commit profile failed Book Review contracts (7 errors: missing local KaTeX assets and UI wait timeouts) and RAG MCP contracts (1 initialization timeout)
+  - Full SingleStep and hardware captures not run
