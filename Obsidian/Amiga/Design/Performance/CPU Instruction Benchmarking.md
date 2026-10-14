@@ -6,21 +6,48 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-10
-updated: 2026-10-12
+updated: 2026-10-14
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](../Verification/CPU%20SingleStepTests.md)", "[Performance Profiling and Optimization Strategy.md](Performance%20Profiling%20and%20Optimization%20Strategy.md)"]
 tracked_paths:
   - "crates/test_runner/Cargo.toml"
   - "crates/test_runner/benches"
   - "tools/verification/analyze_benchmarks.py"
+  - "tools/verification/benchmark_candidates.py"
+  - "tools/verification/analyze_candidate_benchmarks.py"
 ---
 
 # M68000 Instruction Benchmarking
 
-The instruction benchmark measures the host cost of executing representative M68000 workloads through the cycle-stepped CPU and a mapped `PhysicalMemory` bus. Its 108 catalog entries cover selected instruction families, operand sizes, addressing modes, and distinct execution paths. It helps locate expensive emulator paths and compare performance after a change. It is a performance experiment, not a proof that the CPU produced the correct result or used the correct number and timing of bus cycles.
+The decoder-derived benchmark measures host cost for representative M68000 instruction forms through the cycle-stepped CPU and mapped `PhysicalMemory`. It is a performance experiment, not a proof that the CPU matches silicon. The retained 108-case catalog runner and baseline remain available as historical evidence; their timings do not share the new workload fingerprints.
 
 The independent [SingleStep verification](../Verification/CPU%20SingleStepTests.md) supplies that correctness evidence: it compares CPU state, instruction duration, and timed bus callbacks with silicon-derived vectors on an isolated test bus. The [CPU model](../CPU%20Motorola%20M68000.md) and [micro-step specification](../CPU%20Micro-Step%20State%20Machine.md) define intended behavior; this benchmark reports how much host time the implementation spends executing it. Neither test runs the complete Amiga machine or establishes whole-system throughput.
 
-## 1. What we measure and why
+## Decoder-derived benchmark
+
+The [inventory](../../../../crates/test_runner/benches/bench_instructions/inventory.rs) enumerates the decoder's legal primary opcodes, excluding decode-exception entries, and groups entries by static micro-step sequence. The [candidate generator](../../../../tools/verification/benchmark_candidates.py) splits condition codes and MOVEM size/direction, selects representative register and operand encodings, and adds materially different branch, exception, division, shift, mask, A7-bank, and privilege paths. Each case has a stable ID. The generated `opcode_coverage.csv` maps every legal primary opcode to its group and distinguishes an executed representative from an alias that was not executed. The current decoder yields 45,821 legal entries, 19,715 decode exceptions, and 4,571 candidate workloads using 2,071 selected primary encodings. These numbers describe this source snapshot, not an architectural constant.
+
+The [fixture validator](../../../../crates/test_runner/benches/bench_instructions/candidate_probe.rs) builds bounded programs, normally with 700 target instructions; the two halting `STOP` paths use one target per block. It verifies target opcode and PC at each step, expected control path, target count, final exit or stopped state, permitted writes, and observed CPU clocks. It repeats each program and compares the complete final CPU and memory state, recording hashes of the prepared image/input and final state. This confirms that the benchmark executes its intended program consistently in this emulator. SingleStep vectors remain the independent source for CPU state, duration, and bus-callback correctness against silicon.
+
+The [measurement runner](../../../../crates/test_runner/benches/bench_instructions/candidate_measure.rs) reconstructs and checks the validated fixture before timing. CPU and memory reset occur outside each timer. Timed execution includes the host `step_instruction` loop and any guest helper instructions needed to make the block terminate. A short count-calibration pilot selects a fixed block count for three series near 400 ms, without a separate warm-up; the runner retains each calibration sample. A dispersion above 5% triggers one additional three-series attempt, with all samples retained. A same-session NOP control runs every 100 cases. The runner records normal process priority, verified affinity where available, host idle activity, and the active power plan; it does not change the system power plan. One-target `STOP` blocks reach the five-million-block cap and are explicitly marked as shorter series.
+
+The primary result is **host nanoseconds per validated target in the whole workload**. It includes executed guest helpers, so it is not isolated opcode latency. Observed `step_instruction` counts are **CPU clocks**, not CCK; the old catalog's estimated CCK annotations are not substituted for measured clocks. The [analysis tool](../../../../tools/verification/analyze_candidate_benchmarks.py) checks the raw JSONL against the fixture manifest, writes `cases.csv`, `controls.csv`, comparison tables, `summary.json`, and a readable report under `.agent/tmp/benchmarks/inventory/full_<run-id>/`. A complete validated analysis updates `latest_candidate_run.json` in the inventory directory. It accepts a targeted retry session only when candidate and validation hashes match. Different sessions retain their own NOP controls; addressing-mode and size deltas use only same-session cases. Protected baselines remain unchanged, and the 108-case baseline lacks the fixture and source provenance needed for direct comparison.
+
+The measured scope is deliberately bounded. Decode exceptions are excluded; legal register/operand aliases are represented rather than individually executed. Odd-address faults, global trace behavior, asynchronous interrupt acceptance, and every possible register alias are not claimed as benchmarked paths. The generated `path_scope.json` records these dispositions. Those behaviors require dedicated correctness or machine-level evidence before being added as performance cases.
+
+```powershell
+cargo bench -p test_runner --bench bench_instructions -- --inventory
+python tools/verification/benchmark_candidates.py
+cargo bench -p test_runner --bench bench_instructions -- --probe-candidates
+cargo bench -p test_runner --bench bench_instructions -- --measure-candidates
+cargo bench -p test_runner --bench bench_instructions -- --retry-candidates
+python tools/verification/analyze_candidate_benchmarks.py .agent/tmp/benchmarks/inventory/full_<run-id> --retry-dir .agent/tmp/benchmarks/inventory/retry_<run-id>
+```
+
+## Historical 108-case catalog runner
+
+The following sections describe the retained catalog and its old timing/reporting path. They remain useful for interpreting historical data but do not establish coverage or timing validity for the decoder-derived benchmark.
+
+### 1. What we measure and why
 
 | Evidence | Workload or comparison | Question it answers | Limit |
 | --- | --- | --- | --- |
@@ -32,7 +59,7 @@ The independent [SingleStep verification](../Verification/CPU%20SingleStepTests.
 
 The catalog selects representative registers such as `D0`, `D1`, `A0`, `A1`, `A6`, and `SP` to keep the suite practical. Its 108 entries are **selected variants**, not every register permutation, legal encoding, operand value, or instruction. Twelve effective-address forms are described below, but each instruction uses only forms legal and included for that instruction. Catalog CCK values are comparison metadata, including estimates for variable-duration operations; a row does not independently validate its own cycle count.
 
-## 2. How a workload runs
+### 2. How a workload runs
 
 The [catalog](../../../../crates/test_runner/benches/bench_instructions/catalog.rs) supplies an ID, syntax, opcode words, expected CCK count, category, and [construction strategy](../../../../crates/test_runner/benches/bench_instructions/builder.rs). The builder creates a program image in memory. The runner injects that image and initial registers into `Cpu` and `PhysicalMemory`, executes until the exit PC or another stopping condition, and repeats the program for timed passes. This is a synthetic CPU workload. It does not route accesses through the complete machine's DMA arbitration or peripherals.
 
@@ -40,7 +67,7 @@ The default unroll factor is $K=700$. A normal workload emits the target opcode 
 
 Each timed iteration calls `BenchmarkProgram::inject_into` again, resetting CPU state and selected Chip RAM bytes. The timer in the [runner](../../../../crates/test_runner/benches/bench_instructions/runner.rs) surrounds these injections and guest execution. Consequently `host_ns_per_instruction` divides **whole-iteration time** by nominal target operations; it includes setup and any companion/handler instructions. The unrolled guest block reduces branch overhead within the block, but the result is not the isolated latency of one host ALU operation. `std::hint::black_box` keeps the CPU state observable to the compiler after iterations; it does not verify the final state.
 
-### 2.1 Operand and state strategies
+#### 2.1 Operand and state strategies
 
 The [deterministic PRNG](../../../../crates/test_runner/benches/bench_instructions/prng.rs) seeds initial data registers and fills operand buffers. The builder overrides those seeds where a path needs a particular condition. Re-injection gives each iteration the same initial state. Immediate operands come from catalog opcode words; they are not a freshly generated random stream for every emitted instruction.
 
@@ -62,7 +89,7 @@ For return chains, the stack contains target addresses for the next instruction 
 
 The catalog's declared opcode words and the emitted program are different layers. The builder substitutes sequences for several strategies. For example, `FLOW-04` declares `6104` in [catalog data](../../../../crates/test_runner/benches/bench_instructions/catalog_data_b.rs), while the `SubroutineCall` builder emits `6102` inside its call/return block. The catalog table below retains the declared syntax and opcode metadata; use the builder or inspect an injected image to determine the actual timed instruction stream. Do not treat this mismatch as a validated reference correction.
 
-### 2.2 Sampling and termination
+#### 2.2 Sampling and termination
 
 | Profile | Measured passes | Iterations per pass | Nominal target operations, if all passes finish |
 | --- | ---: | ---: | ---: |
@@ -74,7 +101,7 @@ For each specification the runner performs one unmeasured warm-up pass, then tim
 
 The runner attempts to pin its thread to a selected core where supported and runs specifications sequentially. This is a host benchmark policy in [platform.rs](../../../../crates/test_runner/benches/bench_instructions/platform.rs), outside the portable emulation core. The pinning call's result is ignored, so the report's `p_core_pinning_active` field describes the requested/supported path, not confirmed OS affinity. Host load and thermal behavior still affect measurements. The runner stops a pass at an exit PC, a CPU stop/halt, zero clocks returned by a step, or a cycle cap based on ten times the nominal CCK budget (at least 1,000 CCK before multiplication). A cap hit produces a timeout anomaly; the mere absence of that flag does not prove that exactly $K$ target instructions executed.
 
-## 3. Results, comparisons, and interpretation
+### 3. Results, comparisons, and interpretation
 
 The [persistence module](../../../../crates/test_runner/benches/bench_instructions/persistence.rs) writes JSON and CSV under `.agent/tmp/benchmarks/<profile>/`. It preserves the preceding canonical files as `_previous`, writes `m68k_benchmark.json` and `.csv`, and copies them to `_latest`. Generated files are local artifacts. Reviewed reference files live in `baselines/benchmarks/` and are protected by the [reference-artifact rule](../../../../.agents/rules/spec-compliance.md); a timing difference alone does not authorize editing them.
 
@@ -88,7 +115,7 @@ $$T_{\text{ns/op}}=\frac{\text{median pass nanoseconds}}{K\times\text{iterations
 
 The anomaly classifier uses the NOP `ns/CCK` value as its supplied family baseline and flags a result above 2.5 times that value, jitter above 5%, or a cycle-cap timeout. Its memory-mode comparison currently receives the NOP `ns/op` value as a register baseline but compares it with the target's `ns/CCK`: those units differ, so that Type B verdict is not a reliable measure of memory overhead. These flags identify candidates for investigation, not demonstrated cache, branch predictor, or inlining defects. The runner also loads a historical JSON baseline when available. Matching variants are compared by raw `ns/op`; when architecture/OS differs or NOP time differs by more than 15%, it instead compares the target-to-NOP ratios. Changes above 3% receive a warning, and above 7% receive a severe label and report anomaly. Ratio normalization reduces some clock-rate effects but cannot make different machines equivalent or make the benchmark fail the process solely for a performance regression.
 
-### 3.1 Questions to ask of a report
+#### 3.1 Questions to ask of a report
 
 | Comparison | Calculation or observation | Interpretation check |
 | --- | --- | --- |
@@ -102,7 +129,7 @@ The [analysis script](../../../../tools/verification/analyze_benchmarks.py) prod
 
 For example, the retained CSV reports `MOVE.W D1,D0` at 16.20 ns/op (4 declared CCK), `MOVE.W (A0),D0` at 25.08 ns/op (8 CCK), and `MOVE.W 16(A0),D0` at 32.92 ns/op (12 CCK). The differences of 8.88 ns and 16.72 ns relative to register direct suggest increasing host cost with the selected effective-address paths. They do not isolate address calculation from guest clock stepping or timed injection. The same file reports `ADD.W D1,D0` at 15.96 ns/op and `SUB.W D1,D0` at 15.86 ns/op; that 0.10 ns difference is small compared with a cross-run performance claim. This example explains how to read a recorded dataset; its source run is not repeated or validated by this document.
 
-## 4. How we verify the benchmark and CPU
+### 4. How we verify the benchmark and CPU
 
 1. **Check the workload definition.** Compare an ID, opcode words, addressing mode, category, strategy, and CCK metadata with the [living catalog parts](../../../../crates/test_runner/benches/bench_instructions/catalog_data_a.rs) and [part B](../../../../crates/test_runner/benches/bench_instructions/catalog_data_b.rs). The catalog contains 108 IDs. Inspect the builder for strategies that replace or supplement declared opcodes. This is a static consistency review, not behavioral proof.
 2. **Check guest correctness separately.** Run focused SingleStep vectors for changed CPU behavior and the authoritative full suite when required by the project verification profile. The vectors compare state, clocks, and timed bus callbacks; the benchmark cannot replace them. For a memory or DMA change, use the relevant production-bus and machine tests as well, because this benchmark uses `PhysicalMemory` directly.
@@ -112,7 +139,7 @@ For example, the retained CSV reports `MOVE.W D1,D0` at 16.20 ns/op (4 declared 
 
 The benchmark does **not** currently assert the final register or memory state for each catalog row, compare an observed guest instruction count with the nominal count, or compare observed cycles with `amiga_cck_cycles`. Its metadata, timeout logic, and generated CSV therefore cannot independently establish execution correctness. A changed builder strategy deserves particular scrutiny because it can alter the timed sequence without changing the catalog row.
 
-### 4.1 Commands and artifacts
+#### 4.1 Commands and artifacts
 
 ```powershell
 # No profile prints help; a profile is required to measure.
@@ -129,7 +156,7 @@ python tools/verification/verify.py runner analyze .agent/tmp/benchmarks/thoroug
 
 Direct `cargo bench` runs measurement and persistence. `verify.py runner bench` invokes that same Cargo target and, only after success, runs the Python analysis into `.agent/tmp/benchmarks/<profile>/analysis_report.md`. The [verification README](../../../../tools/verification/README.md) owns further command options and SingleStep procedures. The CLI accepts one of `--quick`, `--standard`, `--thorough`, or help; internal `BenchmarkConfig.filter` supports constructed subsets but is not a Cargo CLI option. A profile run is not part of ordinary task completion unless the changed behavior or user request calls for it.
 
-## 5. Catalog: selected variants and addressing modes
+### 5. Catalog: selected variants and addressing modes
 
 The catalog table records **declared benchmark metadata**. It retains the 108 case IDs so a reader can map a report row to its strategy and the source definition. `~` marks a historical approximate CCK annotation; the executable catalog stores an integer. The code and its [Motorola timing reference](../../Reference/68000%20User%27s%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md) must be reviewed before treating a value as an exact cycle requirement.
 
@@ -150,7 +177,7 @@ Data and address registers use canonical representatives: destination `D0`, sour
 | PC index | `d8(PC,Xn)` | `111/011` | 1 |
 | Immediate | `#data` | `111/100` | 1 or 2 |
 
-### Category 0: Calibration Baseline (`NOP`)
+#### Category 0: Calibration Baseline (`NOP`)
 
 | ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
 | :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -159,7 +186,7 @@ Data and address registers use canonical representatives: destination `D0`, sour
 > [!TIP]
 > `BASE-00` supplies the within-run NOP comparison. The differential includes workload setup and cannot isolate a pure instruction cost.
 
-### Category 1: Data Movement (`MOVE`, `MOVEM`, `EXG`, `LEA`, `PEA`, `LINK`, `UNLK`)
+#### Category 1: Data Movement (`MOVE`, `MOVEM`, `EXG`, `LEA`, `PEA`, `LINK`, `UNLK`)
 
 | ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
 | :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -189,7 +216,7 @@ Data and address registers use canonical representatives: destination `D0`, sour
 
 ---
 
-### Category 2: Integer Arithmetic (`ADD`, `SUB`, `MUL`, `DIV`, `NEG`, `CLR`)
+#### Category 2: Integer Arithmetic (`ADD`, `SUB`, `MUL`, `DIV`, `NEG`, `CLR`)
 
 | ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
 | :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -225,7 +252,7 @@ Data and address registers use canonical representatives: destination `D0`, sour
 
 ---
 
-### Category 3: Logic & Bit Operations (`AND`, `OR`, `EOR`, `NOT`, `BTST`, `BSET`, `BCLR`, `BCHG`, `TAS`)
+#### Category 3: Logic & Bit Operations (`AND`, `OR`, `EOR`, `NOT`, `BTST`, `BSET`, `BCLR`, `BCHG`, `TAS`)
 
 | ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
 | :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -246,7 +273,7 @@ Data and address registers use canonical representatives: destination `D0`, sour
 
 ---
 
-### Category 4: Shift & Rotate (`ASL`, `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `SWAP`)
+#### Category 4: Shift & Rotate (`ASL`, `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `SWAP`)
 
 | ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
 | :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -261,7 +288,7 @@ Data and address registers use canonical representatives: destination `D0`, sour
 
 ---
 
-### Category 5: Comparisons & Tests (`CMP`, `CMPA`, `CMPM`, `CMPI`, `TST`, `CHK`)
+#### Category 5: Comparisons & Tests (`CMP`, `CMPA`, `CMPM`, `CMPI`, `TST`, `CHK`)
 
 | ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
 | :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -278,7 +305,7 @@ Data and address registers use canonical representatives: destination `D0`, sour
 
 ---
 
-### Category 6: Decimal / BCD Arithmetic (`ABCD`, `SBCD`, `NBCD`)
+#### Category 6: Decimal / BCD Arithmetic (`ABCD`, `SBCD`, `NBCD`)
 
 | ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
 | :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -290,7 +317,7 @@ Data and address registers use canonical representatives: destination `D0`, sour
 
 ---
 
-### Category 7: Control Flow & Subroutines (`BRA`, `Bcc`, `BSR`, `RTS`, `RTR`, `DBcc`)
+#### Category 7: Control Flow & Subroutines (`BRA`, `Bcc`, `BSR`, `RTS`, `RTR`, `DBcc`)
 
 | ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
 | :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
@@ -305,7 +332,7 @@ Data and address registers use canonical representatives: destination `D0`, sour
 
 ---
 
-### Category 8: System & Privileged (`MOVE to SR/CCR`, `RTE`, `TRAP`, `TRAPV`)
+#### Category 8: System & Privileged (`MOVE to SR/CCR`, `RTE`, `TRAP`, `TRAPV`)
 
 | ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
 | :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |

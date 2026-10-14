@@ -124,18 +124,32 @@ finalized automatically inside the aggregate SingleStep test.
 
 ```powershell
 cargo bench -p test_runner --bench bench_instructions -- --help
-cargo bench -p test_runner --bench bench_instructions -- --quick
+cargo bench -p test_runner --bench bench_instructions -- --inventory
+python tools/verification/benchmark_candidates.py
+cargo bench -p test_runner --bench bench_instructions -- --probe-candidates
+cargo bench -p test_runner --bench bench_instructions -- --measure-candidates
+cargo bench -p test_runner --bench bench_instructions -- --retry-candidates
+python tools/verification/analyze_candidate_benchmarks.py .agent/tmp/benchmarks/inventory/full_<run-id> --retry-dir .agent/tmp/benchmarks/inventory/retry_<run-id>
 ```
 
-Running without options prints instructions without measuring. Select one profile
-with `--quick`, `--standard` or `--thorough`; `--help` and `-h` print instructions.
-Unknown, repeated or combined options fail before measurement. The benchmark uses
-700 instructions per block, profile-defined measurement counts, the full catalog,
-and host core affinity when supported. Reports are saved under
-`.agent/tmp/benchmarks/<profile>/`.
+Running without options prints instructions without measuring. The decoder-derived
+inventory and validated candidate sequence above is the current benchmark workflow.
+It saves raw JSONL, fixture hashes, host settings, controls, and derived JSON/CSV
+reports under `.agent/tmp/benchmarks/inventory/`. A full run may exit with an
+unstable-case count; `--retry-candidates` remeasures unstable cases and cases
+covered by an unstable NOP control. The report
+accepts a retry only with matching candidate and validation hashes and keeps
+its host control separate. A complete validated analysis writes
+`latest_candidate_run.json` as the current report pointer. Most blocks execute 700 targets; halting `STOP`
+requires one target per block. The measured cost includes guest helpers and the
+host stepping loop.
 
-`verify.py runner bench` accepts only a profile and translates it to the native
-option. After successful measurement, it runs
+The retained 108-case runner is available with `--quick`, `--standard`, or
+`--thorough` as a historical workflow. Its reports are saved under
+`.agent/tmp/benchmarks/<profile>/`; they are not comparable with decoder-derived
+cases without matching executed fixtures and source provenance. `verify.py runner
+bench` still accepts only a legacy profile and translates it to the native
+option. After successful legacy measurement, it runs
 [analyze_benchmarks.py](analyze_benchmarks.py) on that profile's `m68k_benchmark.csv`
 and saves `analysis_report.md` in the same directory. A failed benchmark skips
 analysis; running without a profile prints help only. Direct `cargo bench` runs

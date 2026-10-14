@@ -5115,3 +5115,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Commit profile passed ordinary Rust tests, English, formatting, Clippy, architecture, quality, harness, and four Python suites
   - Commit profile failed Book Review contracts (7 errors: missing local KaTeX assets and UI wait timeouts) and RAG MCP contracts (1 initialization timeout)
   - Full SingleStep and hardware captures not run
+---
+
+### [2026-10-14 12:42 CEST] — CPU-BENCH-01: complete decoder-derived instruction benchmarks
+- **Affected Subsystems**:
+  - `crates/test_runner/benches`
+  - `tools/verification`
+  - `Obsidian/Amiga/Design/Performance`
+  - `Obsidian/Amiga/Design/Verification`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Enumerated 45,821 legal primary opcodes and generated 4,571 representative workloads with explicit path and alias coverage
+  - Validated each workload twice, then measured 4,571 cases with 27 targeted retries and 47 stable NOP controls
+  - Wrote local JSON, CSV, reports and source fingerprints while retaining the protected 108-case baseline
+  - Documented the current workflow and pruned the completed roadmap item
+- **Architectural Rationale & Trade-Offs**:
+  - Decoder semantics drive representative register and runtime path selection.
+  - Setup stays outside the timer, and raw series preserve noise evidence.
+  - Historical baseline data lack comparable fixture and source identity.
+- **Verification & Test Results**:
+  - All 4,571 workload replays matched fixture, final state and CPU clocks
+  - All 4,571 final timings passed analysis after 27 retries
+  - Focused Rust and Python tests, Clippy, formatting, vault audit and milestone profile passed
+  - Full SingleStep executed 1,002,739 vectors with zero failures
+  - Commit profile failed in pre-existing Book Review asset/UI contracts (7 errors) and RAG MCP initialization (1 timeout)
+  - Workspace semantic audit reported five existing MemoryBus findings outside the changed benchmark scope
+  - No protected baseline was modified

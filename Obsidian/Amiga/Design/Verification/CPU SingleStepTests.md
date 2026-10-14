@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-12
+updated: 2026-10-14
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -87,11 +87,7 @@ Saved reports without required fields such as `selection` fail to load; a parsed
 
 The [CPU instruction benchmark](../Performance/CPU%20Instruction%20Benchmarking.md) is a separate target in `crates/test_runner/benches/bench_instructions/`. It executes generated instruction workloads to measure host execution time; it does not turn SingleStep JSON timings into a host-speed benchmark. The SingleStep result answers whether the emulated instruction matches the hardware reference. The benchmark answers how much host time the emulator spends on its instruction workloads.
 
-```powershell
-python tools/verification/verify.py runner bench quick
-```
-
-The benchmark writes measurements, including `m68k_benchmark.csv`, under `.agent/tmp/benchmarks/<profile>/`. The verification frontend then runs benchmark analysis and writes `analysis_report.md` in that directory. The [benchmark specification](../Performance/CPU%20Instruction%20Benchmarking.md) owns workload construction and interpretation; the [verification reference](../../../../tools/verification/README.md#cpu-benchmark-entry-point) owns the quick, standard, and thorough commands.
+The decoder-derived inventory, validation, measurement, and report commands are in the [benchmark specification](../Performance/CPU%20Instruction%20Benchmarking.md#decoder-derived-benchmark). `verify.py runner bench quick` still runs the historical 108-case profile and writes `m68k_benchmark.csv` and `analysis_report.md` under `.agent/tmp/benchmarks/quick/`; those results are not directly comparable with the new workload measurements.
 
 ## 7. What the layers establish
 

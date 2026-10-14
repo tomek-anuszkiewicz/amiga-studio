@@ -75,9 +75,11 @@ enums
 eprintln
 eq
 etree
+extrasaction
 fdopen
 ffi
 figcaption
+fieldnames
 filename
 filenames
 fileno
@@ -130,8 +132,10 @@ issubset
 isupper
 iter
 iterdir
+itertools
 jpg
 json
+jsonl
 keepends
 keydown
 kwargs
@@ -305,6 +309,10 @@ webp
 wfile
 windll
 woff
+writeheader
+writeln
+writerow
+writerows
 xlink
 xml
 xmlns
