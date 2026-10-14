@@ -5061,3 +5061,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: final commit profile, including ordinary crate tests, formatting, Clippy, architecture, hardware and code quality, standard harness, and Python contracts
   - Initial profile found the new diary word lockfile; the approved vocabulary entry cleared it before the final run
   - No Rust or Design specification files changed; full SingleStep and hardware captures were not run
+---
+
+### [2026-10-14 04:03 CEST] — Review and repair bootstrap merge documentation
+- **Affected Subsystems**:
+  - `.agents/rules`
+  - `.agents/skills/git-resolve-merge`
+  - `tools/bootstrap`
+  - `tools/verification`
+  - `Obsidian/Amiga/Design/Verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Require manual review of every changed Markdown file during reintegration
+  - Reconcile bootstrap prompt, PDF stage, rule-link and Test Book tracker inconsistencies found after merge
+  - Include Book-to-Markdown contracts in focused and commit Python verification and update the testing specification
+- **Architectural Rationale & Trade-Offs**:
+  - A clean Git merge does not establish documentation coherence. The repair aligns active instructions and the completion gate with the merged bootstrap tools while preserving the Test Book source-page map.
+- **Verification & Test Results**:
+  - Initial selection test failed for the missing book suite, then passed after repair
+  - Focused verification passed: 56 verifier, 58 book, 40 conversion and 37 PDF tests
+  - Vault audit passed: 36 specifications and 716 links
+  - Test Book mapping preserved: 160 identical rows
+  - Commit verification passed, including ordinary crate tests, Clippy, architecture, quality audits, standard harness and all six Python contract suites
+  - Full SingleStep and hardware captures were not run

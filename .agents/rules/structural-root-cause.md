@@ -8,7 +8,7 @@
 ## Defect Resolution
 
 - When investigating a suspected defect, trace the failing data flow, clock phase, or state transition toward its cause before choosing a repair.
-- Before changing production behavior to fix a defect, identify or author a focused regression test and confirm that it fails on the original code for the expected reason. An existing isolated failing test is sufficient. Follow [repro-first.md](repro-first.md) for the detailed procedure.
+- Before changing production behavior to fix a defect, identify or author a focused regression test and confirm that it fails on the original code for the expected reason. An existing isolated failing test is sufficient.
 - Repair a shared upstream mechanism only when evidence establishes it. Reuse authoritative constants, types, and helpers; prove the mechanism on an isolated case before scaling.
 - Repair the demonstrated mechanism within the requested scope, then confirm the reproduction passes and run adjacent domain regressions.
 - Keep the regression protection after the fix; never delete or disable it merely to hide a failure. Rust test placement follows [unit-testing-policy.md](unit-testing-policy.md).

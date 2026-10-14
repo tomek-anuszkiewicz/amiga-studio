@@ -1,4 +1,4 @@
-# Test Book Page Tracker & Pipeline Objectives
+# Test Book Page Tracker and Historical Pipeline Objectives
 
 **Document:** `source.pdf`\
 **Total Pages:** 160\
@@ -7,11 +7,21 @@
 - `../../m68000-programmers-reference-manual/06e4864b78da/source.pdf` (Pages 13, 16, 22, 23, 29, 32, 42, 46, 65, 80, 97, 104, 105, 106–111, 112, 338, 597–598, 603, 632, 639) [26 pages]\
 - `../../amiga-a500-a2000-technical-reference-manual/adc8d1eecb72/source.pdf` (Pages 5, 7, 13–15, 20, 21, 29–31, 42–45, 109, 110, 113, 124, 126, 131, 135, 138, 139, 151–152, 155, 178, 184, 201, 202, 205, 207, 211, 228, 233, 235, 237, 247, 248) [39 pages]\
 - `../../amiga-hardware-reference-manual-2nd-edition/69bbdd2f8cfc/source.pdf` (Pages 26, 28, 35, 37, 42, 43, 57, 58, 71, 84, 88, 90, 109, 124, 136, 145, 151, 153, 155, 156, 159, 171, 176, 183, 186, 187, 191, 201, 203, 204, 206, 208, 210, 229, 234, 241, 256, 257, 267, 270, 271, 277, 279, 293, 301, 302, 303, 308, 312, 320, 321, 336, 346, 356, 362, 368, 369, 391) [58 pages]\
-**Status:** Assembled, optimized, and ready for pipeline verification.
+**Status:** Source assembly and page mapping recorded; current pipeline results
+have not been verified by this tracker.
 
 ### Local Reconstruction and Source Identification
 
-This tracker records page selection, technical facts, and test expectations. It does not contain the source pages or grant permission to use or redistribute the manuals. Reconstruct the test PDF locally from source copies you are authorized to process; keep the PDFs and converted book content outside Git.
+This tracker records page selection, technical facts, and historical test objectives. It does not contain the source pages or grant permission to use or redistribute the manuals. Reconstruct the test PDF locally from source copies you are authorized to process; keep the PDFs and converted book content outside Git.
+
+The numbered scenario descriptions and the matrix's Historical Pipeline Objective column
+were written for a retired pipeline. Their Stage 12–21 references, `image` type,
+automatic page fusion and index omission are historical expectations, not current
+acceptance criteria or commands. The current [PDF pipeline](../../../../pdf-to-markdown/README.md)
+ends at Stage 07 and uses `graphic`; the [book importer](../../../README.md)
+retains source elements for review. Keep the source-page mapping below when
+reconstructing the Test Book, and use the current program documentation when
+evaluating conversion output.
 
 Use the **Complete 160-Page Mapping Matrix** as the assembly order. Both `Test Page` and `Source PDF Page` are **1-based PDF page numbers**; `Printed Book Folio` is descriptive and must not be used as a PDF index. Resolve each source path relative to this tracker and verify its SHA-256 below, then append its selected pages in ascending `Test Page` order. The matrix uses book directory names from `books`; the source table selects the exact hash variant. The Test Book follows the same hash-variant convention: `source.json` records the full SHA-256 of its local `source.pdf`. Older scenario page references do not override the current matrix.
 
@@ -30,7 +40,7 @@ Alert examples below use placeholders to illustrate Markdown syntax. Verify the 
 
 ---
 
-## 1. Overview & Purpose
+## 1. Historical Scenario Inventory
 
 This composite test book isolates specific structural patterns and edge cases from technical retrocomputing documentation to test and validate pipeline stages without processing hundreds of pages:
 1. **Front Cover Graphics:** Detection and handling of title/cover graphics and logos.
@@ -153,7 +163,7 @@ This composite test book isolates specific structural patterns and edge cases fr
 
 ---
 
-## 2. Page Mapping & Test Objectives Matrix
+## 2. Page Mapping and Historical Test Objectives
 
 ### Source Manual Breakdown
 Test pages in this composite test book are sourced from four reference manuals:
@@ -216,7 +226,7 @@ Test pages in this composite test book are sourced from four reference manuals:
 
 ### Complete 160-Page Mapping Matrix
 
-| Test Page | Source Manual / Book | Source PDF Page | Printed Book Folio | Section / Content Description | Pipeline Test Objective |
+| Test Page | Source Manual / Book | Source PDF Page | Printed Book Folio | Section / Content Description | Historical Pipeline Objective |
 | :---: | :--- | :---: | :---: | :--- | :--- |
 | **1** | `m68000-users-manual-rev8` | Page 1 | *Unnumbered (Cover)* | Front Cover / Title Page (`M68000UM/AD`) with Motorola logo and graphic banner | **Graphics Handling:** Test detection, bounding box extraction, and classification as an image asset (`Stage 7 -> 8 -> 10 -> 16`). |
 | **2** | `m68000-users-manual-rev8` | Page 2 | *Unnumbered (Quick Ref)* | Quick Reference / Side Tab Bookmark Page (Recto) | **Tab / Index Filtering:** Test handling of edge navigation tabs ("Overview", "Introduction", etc.); verify they do not produce false visual asset crops. |
@@ -381,7 +391,7 @@ Test pages in this composite test book are sourced from four reference manuals:
 
 ---
 
-## 3. Key Pipeline Verification Focus Areas
+## 3. Historical Pipeline Verification Focus Areas
 
 ### A. Title Cover Graphics (Page 1)
 - Ensure the Motorola logo and cover artwork are isolated into a 1000x1000 `<crop>` tag during Stage 7.

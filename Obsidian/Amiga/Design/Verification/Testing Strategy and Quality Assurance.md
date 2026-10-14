@@ -15,6 +15,7 @@ tracked_paths:
   - "tools/bootstrap/tests"
   - "tools/bootstrap/conversion/tests"
   - "tools/bootstrap/pdf-to-markdown/tests"
+  - "tools/bootstrap/book-to-markdown/tests"
   - "tools/amiga-rag-mcp-server/tests"
 ---
 
@@ -32,7 +33,7 @@ are standard suites. The pilot checks the verifier using selected silicon cases;
 it does not run the full external suite. If no
 standard suites remain, it schedules no Cargo test command. Python contracts
 are discovered separately for bootstrap, shared conversion, PDF conversion,
-the RAG MCP adapter and verification tooling.
+book review, the RAG MCP adapter and verification tooling.
 
 The separate `milestone` profile always runs full SingleStepTests
 and the full English audit, including on a clean tree. It does not repeat

@@ -13,5 +13,6 @@ Later book processing copies these assets into its generated version directories
 Run through the [pipeline](../../README.md) with `--from-stage 06 --to-stage 06`
 after successful Stages 02, 04 and 05. `--page-ranges` applies to this invocation;
 omitting it processes all available Stage 04 pages. The status records the range.
-Pipeline restart removes the Stage 06 directory before rebuilding, including
-previous crops, while preserving predecessor outputs.
+Without `--page-ranges`, pipeline restart removes the Stage 06 directory before
+rebuilding. With a range, it clears only crops for the selected pages. Earlier
+stage outputs remain unchanged.

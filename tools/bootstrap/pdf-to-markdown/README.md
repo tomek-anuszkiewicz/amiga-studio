@@ -1,8 +1,8 @@
 # PDF-to-Markdown
 
 Prepare PDF page images, positioned text, logical objects and transcribed tables
-for [book-to-markdown](../book-to-markdown/README.md). Preparation ends at Stage 06;
-the separate chapter generator is not implemented yet.
+for [book-to-markdown](../book-to-markdown/README.md). Preparation ends at Stage 07;
+book chapter generation is handled by the separate Book-to-Markdown program.
 
 ## Run an attempt
 
@@ -12,7 +12,7 @@ and authenticate with `codex login`. Run from the repository root:
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py `
   --pdf "<PDF_DIRECTORY>/source.pdf" `
-  --page-ranges "2-3" --from-stage 01 --to-stage 06
+  --page-ranges "2-3" --from-stage 01 --to-stage 07
 ```
 
 Without `--workspace`, the program creates and uses `<PDF_DIRECTORY>/pdf-to-markdown/`.

@@ -179,8 +179,9 @@ to a coherent change, not after every edit. Repeat checks only after affected
 input changes, failures or unresolved concerns. `python tools/verification/verify.py test python` selects contracts
 whose owning tool inputs or shared dependencies have staged, unstaged or nonignored
 new changes; unrelated changes and a clean tree select no Python suites. Shared
-conversion changes select both conversion and PDF contracts. The full contract
-set remains mandatory before every authorized commit. Run a focused suite from the repository root
+conversion changes select conversion, PDF and book review contracts; PDF changes
+select PDF and book review contracts. The full contract set remains mandatory
+before every authorized commit. Run a focused suite from the repository root
 with `python tools/verification/verify.py test python directory <directory>`,
 optionally adding `file <test_file.py>` and `case <filter>` to narrow discovery.
 
@@ -189,6 +190,7 @@ optionally adding `file <test_file.py>` and `case <filter>` to narrow discovery.
 | [`tools/bootstrap/tests`](../../tools/bootstrap/tests/) | Bootstrap and Qdrant provisioning command contracts |
 | [`tools/bootstrap/conversion/tests`](../../tools/bootstrap/conversion/tests/) | Shared client, transport, cache and PDF/HTML publication contracts |
 | [`tools/bootstrap/pdf-to-markdown/tests`](../../tools/bootstrap/pdf-to-markdown/tests/) | PDF stage validation, artifacts, restart and resume contracts |
+| [`tools/bootstrap/book-to-markdown/tests`](../../tools/bootstrap/book-to-markdown/tests/) | Book import, recipe, editor and review contracts |
 | [`tools/amiga-rag-mcp-server/tests`](../../tools/amiga-rag-mcp-server/tests/) | RAG CLI adapter contracts and real Codex MCP discovery |
 | [`tools/verification/tests`](tests/) | Verification grammar, selection, preview and failure propagation |
 

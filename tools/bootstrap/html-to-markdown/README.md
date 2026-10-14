@@ -104,7 +104,8 @@ When converting formatted elements, follow the strict priority ladder in `refere
 1. **Priority 1: Code Blocks (` ```m68k `, ` ```assembly `, ` ```c `)**:
    - For all programming listings, opcode sequences, and memory maps.
    - Enforce explicit language tags (e.g. `assembly` or `m68k`).
-   - Cleanly align assembly columns (`Label:    Mnemonic    Operands    ; Comment`).
+   - For code transcribed directly from page HTML, align assembly columns where
+     formatting permits. Preserve embedded `.s` source listings exactly.
    - Regular English prose sentences with punctuation must **NEVER** be enclosed in code blocks.
 2. **Priority 2: Standard GitHub-Flavored Markdown (GFM) Tables**:
    - First choice for structured tabular data: register breakdowns, bus cycle sequences, instruction classification tables, and timing specifications.

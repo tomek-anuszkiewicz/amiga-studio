@@ -49,8 +49,11 @@ class SelectionTests(unittest.TestCase):
             ("tools/bootstrap/ensure_qdrant.ps1", {"Bootstrap contracts"}),
             ("tools/bootstrap/tests/test_bootstrap_contract.py", {"Bootstrap contracts"}),
             ("tools/bootstrap/html-to-markdown/pipeline.py", {"Conversion contracts"}),
-            ("tools/bootstrap/conversion/client.py", {"Conversion contracts", "PDF conversion contracts"}),
-            ("tools/bootstrap/pdf-to-markdown/pipeline.py", {"Conversion contracts", "PDF conversion contracts"}),
+            ("tools/bootstrap/conversion/client.py", {"Conversion contracts", "PDF conversion contracts",
+                                                      "Book review contracts"}),
+            ("tools/bootstrap/pdf-to-markdown/pipeline.py", {"Conversion contracts", "PDF conversion contracts",
+                                                              "Book review contracts"}),
+            ("tools/bootstrap/book-to-markdown/review/model.py", {"Book review contracts"}),
             ("tools/amiga-rag-mcp-server/server.py", {"RAG MCP contracts"}),
             (".codex/config.toml", {"RAG MCP contracts"}),
             ("tools/verification/commands.py", {"Verification CLI contracts"}),
@@ -110,7 +113,8 @@ class SelectionTests(unittest.TestCase):
         commands = selected("commit")
         self.assertTrue(any("llvm-cov" in item[1] for item in commands))
         self.assertTrue(any(any(part.endswith("checks/check_architecture.py") for part in item[1]) for item in commands))
-        self.assertEqual(sum("discover" in item[1] for item in commands), 5)
+        self.assertEqual(sum("discover" in item[1] for item in commands), 6)
+        self.assertTrue(any("tools/bootstrap/book-to-markdown/tests" in item[1] for item in commands))
 
     def test_focused_architecture_filter_does_not_select_other_checks(self):
         commands = selected("check architecture case test_file_size_limits")
