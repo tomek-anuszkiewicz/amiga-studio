@@ -11,6 +11,19 @@ use crate::micro::ea;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use crate::Cpu;
+use physical_memory::{AddressBus, BusResult};
+
+impl Cpu {
+    /// CCK2: identifies the TAS write so the platform can apply its RMW erratum.
+    pub fn step_bus_write_tas_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        bus.write_tas_byte(
+            self.state.micro().ea_addr & 0x00ff_ffff,
+            self.state.micro().destination as u8,
+        )
+    }
+}
+
+const WRITE_TAS_BYTE: MicroStep = MicroStep::cck(Cpu::step_bus_write_tas_byte);
 
 // ============================================================================
 // Micro-Step ALU Callbacks
@@ -31,9 +44,9 @@ pub static ALU_TAS_DN: MicroStep = MicroStep {
 };
 
 pub fn alu_tas_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let val = (state.micro.source & 0xFF) as u8;
+    let val = (state.micro().source & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val & 0x80) != 0, val == 0);
-    state.micro.destination = (val | 0x80) as u32;
+    state.micro_mut().destination = (val | 0x80) as u32;
 }
 
 pub static ALU_TAS_MEM_2CLK: MicroStep = MicroStep {
@@ -61,7 +74,7 @@ pub static STEPS_TAS_AI: [MicroStep; 7] = [
     common::BUS_READ_IDLE,
     ALU_TAS_MEM_2CLK,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE,
+    WRITE_TAS_BYTE,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
 ];
@@ -75,7 +88,7 @@ pub static STEPS_TAS_PI: [MicroStep; 7] = [
     common::BUS_READ_IDLE,
     ALU_TAS_MEM_2CLK,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE,
+    WRITE_TAS_BYTE,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
 ];
@@ -90,7 +103,7 @@ pub static STEPS_TAS_PD: [MicroStep; 8] = [
     common::BUS_READ_IDLE,
     ALU_TAS_MEM_2CLK,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE,
+    WRITE_TAS_BYTE,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
 ];
@@ -106,7 +119,7 @@ pub static STEPS_TAS_D16: [MicroStep; 9] = [
     common::BUS_READ_IDLE,
     ALU_TAS_MEM_2CLK,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE,
+    WRITE_TAS_BYTE,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
 ];
@@ -123,7 +136,7 @@ pub static STEPS_TAS_IDX: [MicroStep; 10] = [
     common::BUS_READ_IDLE,
     ALU_TAS_MEM_2CLK,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE,
+    WRITE_TAS_BYTE,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
 ];
@@ -139,7 +152,7 @@ pub static STEPS_TAS_AW: [MicroStep; 9] = [
     common::BUS_READ_IDLE,
     ALU_TAS_MEM_2CLK,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE,
+    WRITE_TAS_BYTE,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
 ];
@@ -161,7 +174,7 @@ pub static STEPS_TAS_AL: [MicroStep; 11] = [
     common::BUS_READ_IDLE,
     ALU_TAS_MEM_2CLK,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE,
+    WRITE_TAS_BYTE,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
 ];

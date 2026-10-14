@@ -1,5 +1,7 @@
 # How This Emulator Was Written: Pair-Programming with an AI Agent
 
+This retrospective explains the collaboration and design choices used while building the emulator. It describes the development process; the [architecture](architecture.md), [testing](testing.md) and [agent collaboration](ai_agents.md) guides are the entry points for understanding and working with the current project.
+
 Here is the honest breakdown of how this cycle-exact Amiga 500 emulator was built from scratch in Rust—and how an AI agent generated 100% of the implementation code, test suites, and documentation under human architectural direction.
 
 ---

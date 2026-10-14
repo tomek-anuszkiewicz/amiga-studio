@@ -59,10 +59,10 @@ pub fn alu_abcd_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_abcd_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let s = (state.micro.source & 0xFF) as u8;
-    let d = (state.micro.destination & 0xFF) as u8;
+    let s = (state.micro().source & 0xFF) as u8;
+    let d = (state.micro().destination & 0xFF) as u8;
     let res = abcd_b(state, s, d);
-    state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFF) | (res as u32);
 }
 
 // ============================================================================
@@ -70,13 +70,13 @@ pub fn alu_abcd_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_ABCD_DN_DN: [MicroStep; 3] = [
-    common::ALU_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_abcd_dn_dn),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_ABCD_PD_PD: [MicroStep; 9] = [

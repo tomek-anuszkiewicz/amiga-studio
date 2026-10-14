@@ -3,6 +3,7 @@
 //! Reusable 8520 chip core with 16-bit decrementing Timers A & B,
 //! bidirectional 8-bit Ports A & B, 24-bit TOD clock, SDR, and ICR.
 
+use config::cia_reg::{cia_a, cia_b};
 use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +12,7 @@ const CCK_PER_ECLOCK: u8 = 5;
 
 /// Total number of 8520 registers
 const CIA_REGISTER_COUNT: usize = 16;
+const CIA_ADDRESS_BANK_BASE: u32 = 0xBF0000;
 
 /// CIA-A Port A bit 6: /FIR0 (Port 1 left mouse button, active low)
 pub const CIAA_PRA_FIR0: u8 = 0x40;
@@ -133,7 +135,7 @@ impl Cia {
 
     /// Advances CIA internal timers and E-Clock prescaler by 1 Color Clock.
     /// Returns any register writes that matured and committed on this exact cycle.
-    pub fn step_cck(&mut self) -> [Option<(u8, u8)>; 4] {
+    pub fn step_cck(&mut self) -> [Option<(u32, u8)>; 4] {
         self.eclock_phase = self.eclock_phase.wrapping_add(1);
         if self.eclock_phase >= CCK_PER_ECLOCK {
             self.eclock_phase = 0;
@@ -144,13 +146,14 @@ impl Cia {
     }
 
     /// Ticks CIA timers on each E-Clock pulse (every 5 CCKs)
-    fn step_eclock(&mut self) -> [Option<(u8, u8)>; 4] {
+    fn step_eclock(&mut self) -> [Option<(u32, u8)>; 4] {
         // 1. Process in-flight mutations scheduled for this E-Clock
         let mut due = [None; 4];
         let mut due_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {
             if due_count < due.len() {
-                due[due_count] = Some((reg as u8, val as u8));
+                // CIA mutations retain the low 16 bits of a $BFxxxx register address.
+                due[due_count] = Some((CIA_ADDRESS_BANK_BASE | u32::from(reg), val as u8));
                 due_count += 1;
             }
         });
@@ -212,18 +215,18 @@ impl Cia {
         (self.icr_data & 0x80) != 0
     }
 
-    /// Reads CIA register ($0..$F) with clear-on-read for ICR and atomic latching for TOD
-    pub fn read_register(&mut self, reg: u8) -> u8 {
-        match reg & 0x0F {
-            0x0 => self.pra,
-            0x1 => self.prb,
-            0x2 => self.ddra,
-            0x3 => self.ddrb,
-            0x4 => (self.ta_counter & 0xFF) as u8,
-            0x5 => (self.ta_counter >> 8) as u8,
-            0x6 => (self.tb_counter & 0xFF) as u8,
-            0x7 => (self.tb_counter >> 8) as u8,
-            0x8 => {
+    /// Reads a mapped CIA register with clear-on-read for ICR and atomic latching for TOD.
+    pub fn read_register(&mut self, reg: u32) -> u8 {
+        match reg {
+            cia_a::PRA | cia_b::PRA => self.pra,
+            cia_a::PRB | cia_b::PRB => self.prb,
+            cia_a::DDRA | cia_b::DDRA => self.ddra,
+            cia_a::DDRB | cia_b::DDRB => self.ddrb,
+            cia_a::TALO | cia_b::TALO => (self.ta_counter & 0xFF) as u8,
+            cia_a::TAHI | cia_b::TAHI => (self.ta_counter >> 8) as u8,
+            cia_a::TBLO | cia_b::TBLO => (self.tb_counter & 0xFF) as u8,
+            cia_a::TBHI | cia_b::TBHI => (self.tb_counter >> 8) as u8,
+            cia_a::TODLO | cia_b::TODLO => {
                 // Reading TODLO unlatches TOD
                 let val = if self.tod_latched {
                     (self.tod_latch_val & 0xFF) as u8
@@ -233,70 +236,69 @@ impl Cia {
                 self.tod_latched = false;
                 val
             }
-            0x9 => {
+            cia_a::TODMID | cia_b::TODMID => {
                 if self.tod_latched {
                     ((self.tod_latch_val >> 8) & 0xFF) as u8
                 } else {
                     ((self.tod >> 8) & 0xFF) as u8
                 }
             }
-            0xA => {
+            cia_a::TODHI | cia_b::TODHI => {
                 // Reading TODHI freezes/latches TOD
                 self.tod_latched = true;
                 self.tod_latch_val = self.tod;
                 ((self.tod >> 16) & 0xFF) as u8
             }
-            0xC => self.sdr,
-            0xD => {
+            cia_a::SDR | cia_b::SDR => self.sdr,
+            cia_a::ICR | cia_b::ICR => {
                 let val = self.icr_data;
                 self.icr_data = 0; // Clear on read
                 val
             }
-            0xE => self.cra,
-            0xF => self.crb,
-            _ => 0xFF,
+            cia_a::CRA | cia_b::CRA => self.cra,
+            cia_a::CRB | cia_b::CRB => self.crb,
+            _ => config::OPEN_BUS_BYTE,
         }
     }
 
     /// Read-only inspection of register without side-effects (for debuggers)
     #[inline]
-    pub fn peek_register(&self, reg: u8) -> u8 {
-        match reg & 0x0F {
-            0x0 => self.pra,
-            0x1 => self.prb,
-            0x2 => self.ddra,
-            0x3 => self.ddrb,
-            0x4 => (self.ta_counter & 0xFF) as u8,
-            0x5 => (self.ta_counter >> 8) as u8,
-            0x6 => (self.tb_counter & 0xFF) as u8,
-            0x7 => (self.tb_counter >> 8) as u8,
-            0x8 => (self.tod & 0xFF) as u8,
-            0x9 => ((self.tod >> 8) & 0xFF) as u8,
-            0xA => ((self.tod >> 16) & 0xFF) as u8,
-            0xC => self.sdr,
-            0xD => self.icr_data,
-            0xE => self.cra,
-            0xF => self.crb,
-            _ => 0xFF,
+    pub fn peek_register(&self, reg: u32) -> u8 {
+        match reg {
+            cia_a::PRA | cia_b::PRA => self.pra,
+            cia_a::PRB | cia_b::PRB => self.prb,
+            cia_a::DDRA | cia_b::DDRA => self.ddra,
+            cia_a::DDRB | cia_b::DDRB => self.ddrb,
+            cia_a::TALO | cia_b::TALO => (self.ta_counter & 0xFF) as u8,
+            cia_a::TAHI | cia_b::TAHI => (self.ta_counter >> 8) as u8,
+            cia_a::TBLO | cia_b::TBLO => (self.tb_counter & 0xFF) as u8,
+            cia_a::TBHI | cia_b::TBHI => (self.tb_counter >> 8) as u8,
+            cia_a::TODLO | cia_b::TODLO => (self.tod & 0xFF) as u8,
+            cia_a::TODMID | cia_b::TODMID => ((self.tod >> 8) & 0xFF) as u8,
+            cia_a::TODHI | cia_b::TODHI => ((self.tod >> 16) & 0xFF) as u8,
+            cia_a::SDR | cia_b::SDR => self.sdr,
+            cia_a::ICR | cia_b::ICR => self.icr_data,
+            cia_a::CRA | cia_b::CRA => self.cra,
+            cia_a::CRB | cia_b::CRB => self.crb,
+            _ => config::OPEN_BUS_BYTE,
         }
     }
 
     /// Read-only inspection of register without side-effects for debugging
     #[inline(always)]
-    pub fn read_register_debug(&self, reg: u8) -> u8 {
+    pub fn read_register_debug(&self, reg: u32) -> u8 {
         self.peek_register(reg)
     }
 
-    /// Stages a register write with E-Clock delay in the mutation pipeline.
+    /// Stages a mapped register write with E-Clock delay in the mutation pipeline.
     /// Returns `Some((reg, val))` if committed immediately, or `None` if staged in pipeline.
     pub fn stage_write(
         &mut self,
-        reg: u8,
+        reg: u32,
         val: u8,
         delay_eclocks: u8,
         mode: MutationMode,
-    ) -> Option<(u8, u8)> {
-        let reg = reg & 0x0F;
+    ) -> Option<(u32, u8)> {
         if !stage_mutation(
             &mut self.mutations,
             reg as u16,
@@ -313,8 +315,7 @@ impl Cia {
 
     /// Writes CIA register directly upon completion of synchronous E-Clock bus cycle.
     /// Returns `Some((reg, val))` representing the committed write.
-    pub fn write_register(&mut self, reg: u8, val: u8) -> Option<(u8, u8)> {
-        let reg = reg & 0x0F;
+    pub fn write_register(&mut self, reg: u32, val: u8) -> Option<(u32, u8)> {
         self.commit_register_write(reg, val);
         Some((reg, val))
     }
@@ -349,35 +350,35 @@ impl Cia {
     }
 
     /// Commits a register write directly into active CIA silicon state
-    pub fn commit_register_write(&mut self, reg: u8, val: u8) {
-        match reg & 0x0F {
-            0x0 => {
+    pub fn commit_register_write(&mut self, reg: u32, val: u8) {
+        match reg {
+            cia_a::PRA | cia_b::PRA => {
                 self.prev_pra = self.pra;
                 self.pra = val;
                 self.pra_mutated = true;
             }
-            0x1 => {
+            cia_a::PRB | cia_b::PRB => {
                 self.prev_prb = self.prb;
                 self.prb = val;
                 self.prb_mutated = true;
             }
-            0x2 => self.ddra = val,
-            0x3 => self.ddrb = val,
-            0x4 => self.ta_latch = (self.ta_latch & 0xFF00) | (val as u16),
-            0x5 => {
+            cia_a::DDRA | cia_b::DDRA => self.ddra = val,
+            cia_a::DDRB | cia_b::DDRB => self.ddrb = val,
+            cia_a::TALO | cia_b::TALO => self.ta_latch = (self.ta_latch & 0xFF00) | (val as u16),
+            cia_a::TAHI | cia_b::TAHI => {
                 self.ta_latch = (self.ta_latch & 0x00FF) | ((val as u16) << 8);
                 if (self.cra & 0x01) == 0 {
                     self.ta_counter = self.ta_latch;
                 }
             }
-            0x6 => self.tb_latch = (self.tb_latch & 0xFF00) | (val as u16),
-            0x7 => {
+            cia_a::TBLO | cia_b::TBLO => self.tb_latch = (self.tb_latch & 0xFF00) | (val as u16),
+            cia_a::TBHI | cia_b::TBHI => {
                 self.tb_latch = (self.tb_latch & 0x00FF) | ((val as u16) << 8);
                 if (self.crb & 0x01) == 0 {
                     self.tb_counter = self.tb_latch;
                 }
             }
-            0x8 => {
+            cia_a::TODLO | cia_b::TODLO => {
                 if (self.crb & 0x80) != 0 {
                     self.tod_alarm = (self.tod_alarm & 0xFFFF00) | (val as u32);
                 } else {
@@ -385,14 +386,14 @@ impl Cia {
                     self.tod_halted = false; // Writing TODLO restarts counter
                 }
             }
-            0x9 => {
+            cia_a::TODMID | cia_b::TODMID => {
                 if (self.crb & 0x80) != 0 {
                     self.tod_alarm = (self.tod_alarm & 0xFF00FF) | ((val as u32) << 8);
                 } else {
                     self.tod = (self.tod & 0xFF00FF) | ((val as u32) << 8);
                 }
             }
-            0xA => {
+            cia_a::TODHI | cia_b::TODHI => {
                 if (self.crb & 0x80) != 0 {
                     self.tod_alarm = (self.tod_alarm & 0x00FFFF) | ((val as u32) << 16);
                 } else {
@@ -400,8 +401,8 @@ impl Cia {
                     self.tod_halted = true; // Writing TODHI halts counter until TODLO is written
                 }
             }
-            0xC => self.sdr = val,
-            0xD => {
+            cia_a::SDR | cia_b::SDR => self.sdr = val,
+            cia_a::ICR | cia_b::ICR => {
                 // SET/CLR bit 7 logic for ICR mask
                 if (val & 0x80) != 0 {
                     self.icr_mask |= val & 0x1F;
@@ -409,13 +410,13 @@ impl Cia {
                     self.icr_mask &= !(val & 0x1F);
                 }
             }
-            0xE => {
+            cia_a::CRA | cia_b::CRA => {
                 self.cra = val;
                 if (val & 0x10) != 0 {
                     self.ta_counter = self.ta_latch; // Force load
                 }
             }
-            0xF => {
+            cia_a::CRB | cia_b::CRB => {
                 self.crb = val;
                 if (val & 0x10) != 0 {
                     self.tb_counter = self.tb_latch; // Force load

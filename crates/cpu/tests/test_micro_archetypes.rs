@@ -12,6 +12,9 @@
 //!
 //! Also validates bus contention stalls (Agnus DMA locking Chip RAM during CCK1 for reads, CCK2 for writes).
 
+mod common;
+
+use common::{run_instruction, run_next_instruction, Access, RecordingBus};
 use cpu::Cpu;
 use physical_memory::PhysicalMemory;
 
@@ -23,16 +26,17 @@ fn setup_test_machine(base_pc: u32) -> (Cpu, PhysicalMemory) {
     let mut cpu = Cpu::new();
     // Default stack pointer to 0x008000
     cpu.state.set_a_long(7, 0x008000);
-    cpu.state.pc = base_pc;
+    cpu.state.set_pc(base_pc);
     (cpu, bus)
 }
 
 /// Initializes CPU prefetch queue from memory at `base_pc`
 fn prime_prefetch(cpu: &mut Cpu, bus: &mut PhysicalMemory) {
-    let pc = cpu.state.pc;
-    cpu.state.ir = bus.read_word_debug(pc);
-    cpu.state.prefetch = bus.read_word_debug(pc.wrapping_add(2));
-    cpu.state.pc = pc.wrapping_add(4);
+    let pc = cpu.state.pc();
+    cpu.state.set_ir(bus.read_word_debug(pc));
+    cpu.state
+        .set_prefetch(bus.read_word_debug(pc.wrapping_add(2)));
+    cpu.state.set_pc(pc.wrapping_add(4));
 }
 
 #[test]
@@ -46,7 +50,7 @@ fn test_archetype1_nop_4_clocks() {
 
     let clocks = cpu.step_instruction(&mut bus);
     assert_eq!(clocks, 4, "NOP must take exactly 4 CPU clocks (2 CCKs)");
-    assert_eq!(cpu.state.pc, 0x001006);
+    assert_eq!(cpu.state.pc(), 0x001006);
 }
 
 #[test]
@@ -115,12 +119,12 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     // Color Clock 1: instruction handler initiates bus read, but Gary withholds _DTACK at CCK1 -> WaitState
     let r1 = cpu.step_cck(&mut bus);
     assert!(!r1);
-    assert_eq!(cpu.state.micro.micro_step, 0);
+    assert_eq!(cpu.state.micro().micro_step, 0);
 
     // Color Clock 2: still blocked -> WaitState
     let r2 = cpu.step_cck(&mut bus);
     assert!(!r2);
-    assert_eq!(cpu.state.micro.micro_step, 0);
+    assert_eq!(cpu.state.micro().micro_step, 0);
 
     // Agnus completes DMA transfer and frees the bus
     bus.chip_ram_blocked = false;
@@ -128,7 +132,7 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     // Color Clock 3: CCK1 succeeds and advances to CCK2
     let r3 = cpu.step_cck(&mut bus);
     assert!(!r3);
-    assert_eq!(cpu.state.micro.micro_step, 1);
+    assert_eq!(cpu.state.micro().micro_step, 1);
 
     // Color Clock 4: CCK2 completes transaction and latches data
     let r4 = cpu.step_cck(&mut bus);
@@ -180,7 +184,7 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     // Color Clock 1: Initiates write cycle, outputs address/data on bus, finishes CCK1
     let r1 = cpu.step_cck(&mut bus);
     assert!(!r1);
-    assert_eq!(cpu.state.micro.micro_step, 1);
+    assert_eq!(cpu.state.micro().micro_step, 1);
 
     // Before CCK2 commit, Agnus DMA grabs Chip RAM
     bus.chip_ram_blocked = true;
@@ -188,13 +192,13 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     // Color Clock 2: CCK2 write blocked by DMA -> WaitState
     let r2 = cpu.step_cck(&mut bus);
     assert!(!r2);
-    assert_eq!(cpu.state.micro.micro_step, 1);
+    assert_eq!(cpu.state.micro().micro_step, 1);
     assert_ne!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Color Clock 3: still blocked -> WaitState
     let r3 = cpu.step_cck(&mut bus);
     assert!(!r3);
-    assert_eq!(cpu.state.micro.micro_step, 1);
+    assert_eq!(cpu.state.micro().micro_step, 1);
     assert_ne!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Agnus frees bus
@@ -203,7 +207,7 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     // Color Clock 4: CCK2 succeeds, write commits to Chip RAM
     let r4 = cpu.step_cck(&mut bus);
     assert!(!r4);
-    assert_eq!(cpu.state.micro.micro_step, 2);
+    assert_eq!(cpu.state.micro().micro_step, 2);
     assert_eq!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Next Color Clocks: Prefetch next instruction word (CCK1 and CCK2)
@@ -254,7 +258,8 @@ fn test_archetype5_bcc_untaken_8_clocks() {
         "Bcc.s untaken must take exactly 8 CPU clocks (4 CCKs)"
     );
     assert_eq!(
-        cpu.state.pc, 0x001006,
+        cpu.state.pc(),
+        0x001006,
         "PC should fall through sequentially to next instruction"
     );
 }
@@ -275,8 +280,12 @@ fn test_archetype5_bcc_taken_10_clocks() {
         clocks, 10,
         "Bcc.s taken / BRA.s must take exactly 10 CPU clocks (5 CCKs)"
     );
-    assert_eq!(cpu.state.ir, 0x4E71, "Target opcode must be loaded into IR");
-    assert_eq!(cpu.state.pc, 0x00100A, "PC must be primed at target + 4");
+    assert_eq!(
+        cpu.state.ir(),
+        0x4E71,
+        "Target opcode must be loaded into IR"
+    );
+    assert_eq!(cpu.state.pc(), 0x00100A, "PC must be primed at target + 4");
 }
 
 #[test]
@@ -345,10 +354,11 @@ fn test_archetype6_jsr_16_clocks() {
         "Return PC must point to next sequential instruction"
     );
     assert_eq!(
-        cpu.state.ir, 0x4E71,
+        cpu.state.ir(),
+        0x4E71,
         "Subroutine first opcode must be loaded into IR"
     );
-    assert_eq!(cpu.state.pc, 0x002004, "PC must be primed at target + 4");
+    assert_eq!(cpu.state.pc(), 0x002004, "PC must be primed at target + 4");
 }
 
 #[test]
@@ -417,4 +427,482 @@ fn test_condition_evaluation_and_defensive_bounds() {
         !state.eval_condition(0x01),
         "Condition 1 (False) must be false"
     );
+}
+
+// Refusals target named accesses, including later accesses after successful work.
+fn recording_machine(
+    opcode: u16,
+    extension: u16,
+    script: Vec<(Access, usize)>,
+) -> (Cpu, RecordingBus) {
+    let (mut cpu, mut memory) = setup_test_machine(0x1000);
+    memory.write_word_debug(0x1000, opcode);
+    memory.write_word_debug(0x1002, extension);
+    memory.write_word_debug(0x1004, 0x4E71);
+    memory.write_word_debug(0x1006, 0x4E71);
+    prime_prefetch(&mut cpu, &mut memory);
+    (cpu, RecordingBus::new(memory, script))
+}
+
+fn append_continuation(script: &mut Vec<(Access, usize)>, target: u32) {
+    // NOP; MOVEQ #42,D6; ADDQ.L #1,D6. Each retires one sequential fetch.
+    script.extend([4, 6, 8].map(|offset| (Access::ReadWord(target + offset), 0)));
+}
+
+fn load_continuation(bus: &mut RecordingBus, target: u32) {
+    bus.memory.write_word_debug(target, 0x4E71);
+    bus.memory.write_word_debug(target + 2, 0x7C2A);
+    bus.memory.write_word_debug(target + 4, 0x5286);
+    bus.memory.write_word_debug(target + 6, 0x4E71);
+    bus.memory.write_word_debug(target + 8, 0x4E71);
+}
+
+fn execute_continuation(cpu: &mut Cpu, bus: &mut RecordingBus, target: u32) {
+    for (offset, result) in [(2, 0), (4, 42), (6, 43)] {
+        run_next_instruction(cpu, bus, if offset == 6 { 8 } else { 4 });
+        assert_eq!(cpu.state.instruction_pc(), target + offset);
+        assert_eq!(cpu.state.d_long(6), result);
+    }
+    bus.assert_complete();
+}
+
+#[test]
+fn test_long_halves_and_address_updates_under_waits() {
+    for (first, second) in [(0, 0), (1, 0), (3, 0), (0, 1), (0, 3), (1, 1), (3, 3)] {
+        for opcode in [0x2010, 0x2020, 0x2080, 0x20C0, 0x2100] {
+            let is_read = opcode == 0x2010 || opcode == 0x2020;
+            let predecrement = opcode == 0x2020 || opcode == 0x2100;
+            let script = if is_read {
+                vec![
+                    (Access::ReadWord(0x2000), first),
+                    (Access::ReadWord(0x2002), second),
+                    (Access::ReadWord(0x1004), 0),
+                ]
+            } else if predecrement {
+                vec![
+                    (Access::ReadWord(0x1004), 1),
+                    (Access::WriteWord(0x2002, 0x5678), first),
+                    (Access::WriteWord(0x2000, 0x1234), second),
+                ]
+            } else {
+                vec![
+                    (Access::WriteWord(0x2000, 0x1234), first),
+                    (Access::WriteWord(0x2002, 0x5678), second),
+                    (Access::ReadWord(0x1004), 0),
+                ]
+            };
+            let (mut cpu, mut bus) = recording_machine(opcode, 0x4E71, script);
+            cpu.state
+                .set_a_long(0, if predecrement { 0x2004 } else { 0x2000 });
+            cpu.state
+                .set_d_long(0, if is_read { 0xDEAD_BEEF } else { 0x1234_5678 });
+            bus.memory
+                .write_word_debug(0x2000, if is_read { 0x1234 } else { 0xDEAD });
+            bus.memory
+                .write_word_debug(0x2002, if is_read { 0x5678 } else { 0xBEEF });
+            run_instruction(&mut cpu, &mut bus, if opcode == 0x2020 { 14 } else { 12 });
+            assert_eq!(cpu.state.d_long(0), 0x1234_5678);
+            assert_eq!(bus.memory.read_word_debug(0x2000), 0x1234);
+            assert_eq!(bus.memory.read_word_debug(0x2002), 0x5678);
+            assert_eq!(
+                cpu.state.a_long(0),
+                if opcode == 0x20C0 { 0x2004 } else { 0x2000 }
+            );
+            assert_eq!(cpu.state.pc(), 0x1006);
+            assert_eq!(cpu.state.ir(), 0x4E71);
+        }
+    }
+}
+
+#[test]
+fn test_rmw_retries_do_not_repeat_alu_or_completed_read() {
+    for (read_waits, write_waits) in [(0, 0), (1, 0), (3, 0), (0, 1), (0, 3), (1, 1), (3, 3)] {
+        let mut script = vec![
+            (Access::ReadWord(0x2000), read_waits),
+            (Access::ReadWord(0x1004), 3),
+            (Access::WriteWord(0x2000, 0x0035), write_waits),
+        ];
+        append_continuation(&mut script, 0x1002);
+        let (mut cpu, mut bus) = recording_machine(0xD150, 0x4E71, script);
+        load_continuation(&mut bus, 0x1002);
+        cpu.state.set_a_long(0, 0x2000);
+        cpu.state.set_d_long(0, 0x15);
+        bus.memory.write_word_debug(0x2000, 0x20);
+        run_next_instruction(&mut cpu, &mut bus, 12);
+        assert_eq!(bus.memory.read_word_debug(0x2000), 0x35);
+        assert_eq!(cpu.state.d_long(0), 0x15);
+        assert_eq!(cpu.state.ccr(), 0);
+        execute_continuation(&mut cpu, &mut bus, 0x1002);
+        assert_eq!(bus.memory.read_word_debug(0x2000), 0x35);
+        assert_eq!(cpu.state.a_long(0), 0x2000);
+    }
+}
+
+#[test]
+fn test_byte_lanes_and_postincrement_are_not_repeated() {
+    for (opcode, reg, stride) in [
+        (0x1018, 0, 1),
+        (0x10C0, 0, 1),
+        (0x101F, 7, 2),
+        (0x1EC0, 7, 2),
+    ] {
+        for lane in [0, 1] {
+            for waits in [0, 1, 3] {
+                let is_read = opcode == 0x1018 || opcode == 0x101F;
+                let addr = 0x2000 + lane;
+                let access = if is_read {
+                    Access::ReadByte(addr)
+                } else {
+                    Access::WriteByte(addr, 0xA5)
+                };
+                let (mut cpu, mut bus) = recording_machine(
+                    opcode,
+                    0x4E71,
+                    vec![(access, waits), (Access::ReadWord(0x1004), 1)],
+                );
+                cpu.state.set_a_long(reg, addr);
+                cpu.state.set_d_long(0, 0x1234_56A5);
+                bus.memory.write_word_debug(0x2000, 0xA5A5);
+                run_instruction(&mut cpu, &mut bus, 8);
+                assert_eq!(cpu.state.a_long(reg), addr + stride);
+                assert_eq!(cpu.state.d_long(0), 0x1234_56A5);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_extension_and_branch_target_waits_preserve_pipeline() {
+    for waits in [0, 1, 3] {
+        let (mut cpu, mut bus) = recording_machine(
+            0x3028,
+            4,
+            vec![
+                (Access::ReadWord(0x1004), waits),
+                (Access::ReadWord(0x2004), waits),
+                (Access::ReadWord(0x1006), waits),
+            ],
+        );
+        cpu.state.set_a_long(0, 0x2000);
+        bus.memory.write_word_debug(0x2004, 0xCAFE);
+        run_instruction(&mut cpu, &mut bus, 12);
+        assert_eq!(cpu.state.d_word(0), 0xCAFE);
+        assert_eq!(cpu.state.pc(), 0x1008);
+        let mut script = vec![
+            (Access::ReadWord(0x1006), waits),
+            (Access::ReadWord(0x1008), waits),
+        ];
+        append_continuation(&mut script, 0x1006);
+        let (mut cpu, mut bus) = recording_machine(0x6004, 0x4E71, script);
+        load_continuation(&mut bus, 0x1006);
+        run_next_instruction(&mut cpu, &mut bus, 10);
+        assert_eq!(cpu.state.pc(), 0x100A);
+        assert_eq!(cpu.state.ir(), 0x4E71);
+        assert_eq!(cpu.state.prefetch(), 0x7C2A);
+        execute_continuation(&mut cpu, &mut bus, 0x1006);
+    }
+}
+
+#[test]
+fn test_stack_push_pop_and_exception_waits_commit_once() {
+    for waits in [0, 1, 3] {
+        let (mut cpu, mut bus) = recording_machine(
+            0x4850,
+            0x4E71,
+            vec![
+                (Access::ReadWord(0x1004), waits),
+                (Access::WriteWord(0x5FFC, 0x1234), waits),
+                (Access::WriteWord(0x5FFE, 0x5678), waits),
+            ],
+        );
+        cpu.state.set_a_long(0, 0x1234_5678);
+        cpu.state.set_a_long(7, 0x6000);
+        run_instruction(&mut cpu, &mut bus, 12);
+        assert_eq!(cpu.state.a_long(7), 0x5FFC);
+        assert_eq!(bus.memory.read_word_debug(0x5FFC), 0x1234);
+        assert_eq!(bus.memory.read_word_debug(0x5FFE), 0x5678);
+
+        let script = vec![
+            (Access::ReadWord(0x2000), waits),
+            (Access::WriteWord(0x5FFC, 0), waits),
+            (Access::WriteWord(0x5FFE, 0x1002), waits),
+            (Access::ReadWord(0x2002), waits),
+        ];
+        let (mut cpu, mut bus) = recording_machine(0x4E90, 0x4E71, script);
+        cpu.state.set_a_long(0, 0x2000);
+        cpu.state.set_a_long(7, 0x6000);
+        bus.memory.write_word_debug(0x2000, 0x4E71);
+        bus.memory.write_word_debug(0x2002, 0x4E75);
+        run_instruction(&mut cpu, &mut bus, 16);
+        assert_eq!(cpu.state.a_long(7), 0x5FFC);
+        assert_eq!(cpu.state.pc(), 0x2004);
+        assert_eq!(bus.memory.read_word_debug(0x5FFE), 0x1002);
+
+        for (opcode, status, expected_sr) in [
+            (0x4E75, 0, 0x2700),
+            (0x4E77, 0xFFFF, 0x271F),
+            (0x4E73, 0x2700, 0x2700),
+            (0x4E73, 0x0015, 0x0015),
+        ] {
+            let restores_status = opcode != 0x4E75;
+            // Silicon reads PC high, status, PC low for RTR/RTE.
+            let mut script = if restores_status {
+                vec![
+                    (Access::ReadWord(0x6002), waits),
+                    (Access::ReadWord(0x6000), waits),
+                    (Access::ReadWord(0x6004), waits),
+                ]
+            } else {
+                vec![
+                    (Access::ReadWord(0x6000), waits),
+                    (Access::ReadWord(0x6002), waits),
+                ]
+            };
+            script.extend([
+                (Access::ReadWord(0x2000), waits),
+                (Access::ReadWord(0x2002), waits),
+            ]);
+            append_continuation(&mut script, 0x2000);
+            let (mut cpu, mut bus) = recording_machine(opcode, 0x4E71, script);
+            cpu.state.set_a_long(7, 0x6000);
+            cpu.state.set_usp(0x7000);
+            bus.memory.write_word_debug(0x6000, status);
+            bus.memory
+                .write_word_debug(0x6002, if restores_status { 0 } else { 0x2000 });
+            bus.memory.write_word_debug(0x6004, 0x2000);
+            load_continuation(&mut bus, 0x2000);
+            run_next_instruction(&mut cpu, &mut bus, if restores_status { 20 } else { 16 });
+            assert_eq!(cpu.state.sr(), expected_sr);
+            assert_eq!(
+                cpu.state.ssp(),
+                if restores_status { 0x6006 } else { 0x6004 }
+            );
+            assert_eq!(cpu.state.usp(), 0x7000);
+            assert_eq!(
+                cpu.state.a_long(7),
+                if expected_sr & 0x2000 == 0 {
+                    0x7000
+                } else {
+                    cpu.state.ssp()
+                }
+            );
+            assert_eq!(cpu.state.pc(), 0x2004);
+            execute_continuation(&mut cpu, &mut bus, 0x2000);
+            assert_eq!(
+                cpu.state.ssp(),
+                if restores_status { 0x6006 } else { 0x6004 }
+            );
+            assert_eq!(cpu.state.usp(), 0x7000);
+        }
+        for (opcode, old_sr, return_pc, vector_addr) in [
+            (0x4E40, 0x2700, 0x1002, 0x80),
+            (0x4E73, 0x0000, 0x1000, 0x20),
+        ] {
+            let script = vec![
+                (Access::WriteWord(0x5FFE, return_pc), waits),
+                (Access::WriteWord(0x5FFA, old_sr), waits),
+                (Access::WriteWord(0x5FFC, 0), waits),
+                (Access::ReadWord(vector_addr), waits),
+                (Access::ReadWord(vector_addr + 2), waits),
+                (Access::ReadWord(0x2000), waits),
+                (Access::ReadWord(0x2002), waits),
+            ];
+            let (mut cpu, mut bus) = recording_machine(opcode, 0x4E71, script);
+            cpu.state.set_ssp(0x6000);
+            cpu.state.set_usp(0x7000);
+            cpu.state.set_sr(old_sr);
+            cpu.state.set_instruction_pc(0x1000);
+            bus.memory.write_word_debug(vector_addr, 0);
+            bus.memory.write_word_debug(vector_addr + 2, 0x2000);
+            bus.memory.write_word_debug(0x2000, 0x4E71);
+            bus.memory.write_word_debug(0x2002, 0x4E75);
+            run_instruction(&mut cpu, &mut bus, 34);
+            assert_eq!(cpu.state.ssp(), 0x5FFA);
+            assert_eq!(cpu.state.usp(), 0x7000);
+            assert_eq!(cpu.state.pc(), 0x2004);
+            assert_eq!(cpu.state.ir(), 0x4E71);
+        }
+    }
+}
+
+#[test]
+fn test_movep_waits_retain_byte_stride_and_shift_state() {
+    for (opcode, is_read, bytes) in [
+        (0x0108, true, 2),
+        (0x0148, true, 4),
+        (0x0188, false, 2),
+        (0x01C8, false, 4),
+    ] {
+        for waits in [0, 1, 3] {
+            let data = if bytes == 2 {
+                vec![0x56, 0x78]
+            } else {
+                vec![0x12, 0x34, 0x56, 0x78]
+            };
+            let mut script = vec![(Access::ReadWord(0x1004), waits)];
+            for (index, &byte) in data.iter().enumerate() {
+                let addr = 0x2004 + index as u32 * 2;
+                script.push((
+                    if is_read {
+                        Access::ReadByte(addr)
+                    } else {
+                        Access::WriteByte(addr, byte)
+                    },
+                    waits,
+                ));
+            }
+            script.push((Access::ReadWord(0x1006), waits));
+            append_continuation(&mut script, 0x1004);
+            let (mut cpu, mut bus) = recording_machine(opcode, 4, script);
+            load_continuation(&mut bus, 0x1004);
+            cpu.state.set_a_long(0, 0x2000);
+            cpu.state
+                .set_d_long(0, if is_read { 0xAAAA_0000 } else { 0x1234_5678 });
+            for (index, &byte) in data.iter().enumerate() {
+                bus.memory
+                    .write_byte_debug(0x2004 + index as u32 * 2, if is_read { byte } else { 0xEE });
+                bus.memory.write_byte_debug(0x2005 + index as u32 * 2, 0xCC);
+            }
+            run_next_instruction(&mut cpu, &mut bus, if bytes == 2 { 16 } else { 24 });
+            execute_continuation(&mut cpu, &mut bus, 0x1004);
+            assert_eq!(cpu.state.a_long(0), 0x2000);
+            if is_read {
+                assert_eq!(
+                    cpu.state.d_long(0),
+                    if bytes == 2 { 0xAAAA_5678 } else { 0x1234_5678 }
+                );
+            }
+            for (index, &byte) in data.iter().enumerate() {
+                assert_eq!(bus.memory.read_byte_debug(0x2004 + index as u32 * 2), byte);
+                assert_eq!(bus.memory.read_byte_debug(0x2005 + index as u32 * 2), 0xCC);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_movem_waits_preserve_register_word_and_terminal_progress() {
+    // Two nonadjacent registers exercise mask scanning and later-register retries.
+    for (opcode, is_read, predecrement, postincrement, long) in [
+        (0x4890, false, false, false, false),
+        (0x48D0, false, false, false, true),
+        (0x48A0, false, true, false, false),
+        (0x48E0, false, true, false, true),
+        (0x4C90, true, false, false, false),
+        (0x4CD0, true, false, false, true),
+        (0x4C98, true, false, true, false),
+        (0x4CD8, true, false, true, true),
+    ] {
+        for empty in [false, true] {
+            for waits in [0, 1, 3] {
+                let mut script = vec![(Access::ReadWord(0x1004), waits)];
+                let mut words = Vec::new();
+                let mut addr = if predecrement { 0x2010 } else { 0x2000 };
+                if !empty {
+                    let values = if predecrement {
+                        [0x5566_7788u32, 0x1122_3344]
+                    } else {
+                        [0x1122_3344u32, 0x5566_7788]
+                    };
+                    for value in values {
+                        let halves = if long {
+                            if predecrement {
+                                vec![value as u16, (value >> 16) as u16]
+                            } else {
+                                vec![(value >> 16) as u16, value as u16]
+                            }
+                        } else {
+                            vec![value as u16]
+                        };
+                        for data in halves {
+                            if predecrement {
+                                addr -= 2;
+                            }
+                            words.push((addr, data));
+                            script.push((
+                                if is_read {
+                                    Access::ReadWord(addr)
+                                } else {
+                                    Access::WriteWord(addr, data)
+                                },
+                                waits,
+                            ));
+                            if !predecrement {
+                                addr += 2;
+                            }
+                        }
+                    }
+                }
+                if is_read {
+                    script.push((Access::ReadWord(addr), waits));
+                }
+                script.push((Access::ReadWord(0x1006), waits));
+                let continues = opcode == 0x48E0 || opcode == 0x4CD8;
+                if continues {
+                    append_continuation(&mut script, 0x1004);
+                }
+                let mask = if empty {
+                    0
+                } else if predecrement {
+                    0xA000
+                } else {
+                    5
+                };
+                let (mut cpu, mut bus) = recording_machine(opcode, mask, script);
+                if continues {
+                    load_continuation(&mut bus, 0x1004);
+                }
+                cpu.state
+                    .set_a_long(0, if predecrement { 0x2010 } else { 0x2000 });
+                cpu.state.set_d_long(0, 0x1122_3344);
+                cpu.state.set_d_long(2, 0x5566_7788);
+                for &(target, data) in &words {
+                    bus.memory
+                        .write_word_debug(target, if is_read { data } else { 0xDEAD });
+                }
+                let base = if is_read { 12 } else { 8 };
+                run_next_instruction(&mut cpu, &mut bus, base + 4 * words.len() as u64);
+                assert_eq!(cpu.state.pc(), 0x1008);
+                if continues {
+                    execute_continuation(&mut cpu, &mut bus, 0x1004);
+                } else {
+                    bus.assert_complete();
+                }
+                for &(target, data) in &words {
+                    assert_eq!(bus.memory.read_word_debug(target), data);
+                }
+                assert_eq!(
+                    cpu.state.a_long(0),
+                    if predecrement || postincrement {
+                        addr
+                    } else {
+                        0x2000
+                    }
+                );
+                if is_read && !empty {
+                    assert_eq!(cpu.state.d_long(0), if long { 0x1122_3344 } else { 0x3344 });
+                    assert_eq!(cpu.state.d_long(2), if long { 0x5566_7788 } else { 0x7788 });
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn test_status_change_refill_waits_preserve_both_queue_words() {
+    for waits in [0, 1, 3] {
+        let mut script = vec![
+            (Access::ReadWord(0x1002), waits),
+            (Access::ReadWord(0x1004), waits),
+        ];
+        append_continuation(&mut script, 0x1002);
+        let (mut cpu, mut bus) = recording_machine(0x46C0, 0x4E71, script);
+        cpu.state.set_d_long(0, 0x2700);
+        load_continuation(&mut bus, 0x1002);
+        run_next_instruction(&mut cpu, &mut bus, 12);
+        assert_eq!(cpu.state.pc(), 0x1006);
+        assert_eq!(cpu.state.ir(), 0x4E71);
+        assert_eq!(cpu.state.prefetch(), 0x7C2A);
+        execute_continuation(&mut cpu, &mut bus, 0x1002);
+    }
 }

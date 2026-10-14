@@ -5,11 +5,11 @@
 //! peripheral controllers (`CIA-A`, `CIA-B`), and expansion hardware (`RTC`).
 
 use agnus::Agnus;
-use cia::Cia;
-use config::custom_reg;
+use cia::{Cia, CiaId};
+use config::{cia_reg, custom_reg, OPEN_BUS_BYTE, OPEN_BUS_WORD};
 use denise::Denise;
 use paula::Paula;
-use physical_memory::{AddressBus, BusResult, PhysicalMemory};
+use physical_memory::{AddressBus, BusResult, MemoryBank, PhysicalMemory};
 use rtc::RtcMsm6242b;
 
 pub use physical_memory;
@@ -32,14 +32,10 @@ impl<'a> MemoryBus<'a> {
     pub const BANK_RTC: u8 = 0xDC;
     pub const BANK_CUSTOM: u8 = 0xDF;
 
-    pub const CIA_B_START: u32 = 0xBFD000;
-    pub const CIA_B_END: u32 = 0xBFDF00;
-    pub const CIA_A_START: u32 = 0xBFE001;
-    pub const CIA_A_END: u32 = 0xBFEF01;
-
     pub const RTC_START: u32 = 0xDC0000;
     pub const RTC_END: u32 = 0xDC003F;
 
+    pub const CIA_REG_ADDRESS_MASK: u32 = 0xFFFF01;
     pub const CUSTOM_REG_OFFSET_MASK: u16 = 0x01FE;
 
     /// Reads a 16-bit custom register with live read side-effects (e.g. clearing CLXDAT, DSKBYTR)
@@ -47,6 +43,8 @@ impl<'a> MemoryBus<'a> {
     pub fn read_custom_word(&mut self, offset: u16) -> u16 {
         let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
         match offset {
+            // Early DMA reads are not ordinary CPU-readable registers.
+            custom_reg::agnus::BLTDDAT | custom_reg::paula::DSKDATR => OPEN_BUS_WORD,
             custom_reg::agnus::DMACONR => self.agnus.dmaconr(),
             custom_reg::agnus::VPOSR => self.agnus.vposr(),
             custom_reg::agnus::VHPOSR => self.agnus.vhposr(),
@@ -63,13 +61,13 @@ impl<'a> MemoryBus<'a> {
             custom_reg::paula::INTREQR => self.paula.intreqr(),
             custom_reg::agnus::COPJMP1 => {
                 self.agnus.strobe_copjmp1();
-                0xFFFF
+                OPEN_BUS_WORD
             }
             custom_reg::agnus::COPJMP2 => {
                 self.agnus.strobe_copjmp2();
-                0xFFFF
+                OPEN_BUS_WORD
             }
-            _ => 0xFFFF,
+            _ => OPEN_BUS_WORD,
         }
     }
 
@@ -92,72 +90,85 @@ impl<'a> MemoryBus<'a> {
             custom_reg::paula::DSKBYTR => self.paula.peek_dskbytr(),
             custom_reg::paula::INTENAR => self.paula.intenar_debug(),
             custom_reg::paula::INTREQR => self.paula.intreqr_debug(),
-            _ => 0xFFFF,
+            _ => OPEN_BUS_WORD,
         }
+    }
+
+    fn decode_cia_register(addr: u32) -> Option<(CiaId, u32)> {
+        // A7..A1 are not wired to the CIA register selector.
+        let canonical_addr = addr & Self::CIA_REG_ADDRESS_MASK;
+        let (chip, reg) = match canonical_addr {
+            cia_reg::cia_a::PRA => (CiaId::A, cia_reg::cia_a::PRA),
+            cia_reg::cia_a::PRB => (CiaId::A, cia_reg::cia_a::PRB),
+            cia_reg::cia_a::DDRA => (CiaId::A, cia_reg::cia_a::DDRA),
+            cia_reg::cia_a::DDRB => (CiaId::A, cia_reg::cia_a::DDRB),
+            cia_reg::cia_a::TALO => (CiaId::A, cia_reg::cia_a::TALO),
+            cia_reg::cia_a::TAHI => (CiaId::A, cia_reg::cia_a::TAHI),
+            cia_reg::cia_a::TBLO => (CiaId::A, cia_reg::cia_a::TBLO),
+            cia_reg::cia_a::TBHI => (CiaId::A, cia_reg::cia_a::TBHI),
+            cia_reg::cia_a::TODLO => (CiaId::A, cia_reg::cia_a::TODLO),
+            cia_reg::cia_a::TODMID => (CiaId::A, cia_reg::cia_a::TODMID),
+            cia_reg::cia_a::TODHI => (CiaId::A, cia_reg::cia_a::TODHI),
+            cia_reg::cia_a::SDR => (CiaId::A, cia_reg::cia_a::SDR),
+            cia_reg::cia_a::ICR => (CiaId::A, cia_reg::cia_a::ICR),
+            cia_reg::cia_a::CRA => (CiaId::A, cia_reg::cia_a::CRA),
+            cia_reg::cia_a::CRB => (CiaId::A, cia_reg::cia_a::CRB),
+            cia_reg::cia_b::PRA => (CiaId::B, cia_reg::cia_b::PRA),
+            cia_reg::cia_b::PRB => (CiaId::B, cia_reg::cia_b::PRB),
+            cia_reg::cia_b::DDRA => (CiaId::B, cia_reg::cia_b::DDRA),
+            cia_reg::cia_b::DDRB => (CiaId::B, cia_reg::cia_b::DDRB),
+            cia_reg::cia_b::TALO => (CiaId::B, cia_reg::cia_b::TALO),
+            cia_reg::cia_b::TAHI => (CiaId::B, cia_reg::cia_b::TAHI),
+            cia_reg::cia_b::TBLO => (CiaId::B, cia_reg::cia_b::TBLO),
+            cia_reg::cia_b::TBHI => (CiaId::B, cia_reg::cia_b::TBHI),
+            cia_reg::cia_b::TODLO => (CiaId::B, cia_reg::cia_b::TODLO),
+            cia_reg::cia_b::TODMID => (CiaId::B, cia_reg::cia_b::TODMID),
+            cia_reg::cia_b::TODHI => (CiaId::B, cia_reg::cia_b::TODHI),
+            cia_reg::cia_b::SDR => (CiaId::B, cia_reg::cia_b::SDR),
+            cia_reg::cia_b::ICR => (CiaId::B, cia_reg::cia_b::ICR),
+            cia_reg::cia_b::CRA => (CiaId::B, cia_reg::cia_b::CRA),
+            cia_reg::cia_b::CRB => (CiaId::B, cia_reg::cia_b::CRB),
+            _ => return None,
+        };
+        Some((chip, reg))
     }
 
     /// Reads an 8-bit byte from CIA register space ($BF0000..$BFFFFF)
     fn read_cia_byte(&mut self, addr: u32) -> u8 {
-        // CIA-B ($BFD000-$BFDF00): Even byte addresses (A0 = 0)
-        if (Self::CIA_B_START..=Self::CIA_B_END).contains(&addr) {
-            if (addr & 1) == 0 {
-                let reg = ((addr >> 8) & 0x0F) as u8;
-                return self.cia_b.read_register(reg);
-            }
-            return 0xFF;
+        match Self::decode_cia_register(addr) {
+            Some((CiaId::A, reg)) => self.cia_a.read_register(reg),
+            Some((CiaId::B, reg)) => self.cia_b.read_register(reg),
+            None => OPEN_BUS_BYTE,
         }
-        // CIA-A ($BFE001-$BFEF01): Odd byte addresses (A0 = 1)
-        if (Self::CIA_A_START..=Self::CIA_A_END).contains(&addr) {
-            if (addr & 1) == 1 {
-                let reg = ((addr >> 8) & 0x0F) as u8;
-                return self.cia_a.read_register(reg);
-            }
-            return 0xFF;
-        }
-        0xFF
     }
 
     /// Reads an 8-bit byte from CIA register space without side-effects for debugging inspection
     pub fn read_cia_byte_debug(&self, addr: u32) -> u8 {
-        if (Self::CIA_B_START..=Self::CIA_B_END).contains(&addr) {
-            if (addr & 1) == 0 {
-                let reg = ((addr >> 8) & 0x0F) as u8;
-                return self.cia_b.read_register_debug(reg);
-            }
-            return 0xFF;
+        match Self::decode_cia_register(addr) {
+            Some((CiaId::A, reg)) => self.cia_a.read_register_debug(reg),
+            Some((CiaId::B, reg)) => self.cia_b.read_register_debug(reg),
+            None => OPEN_BUS_BYTE,
         }
-        if (Self::CIA_A_START..=Self::CIA_A_END).contains(&addr) {
-            if (addr & 1) == 1 {
-                let reg = ((addr >> 8) & 0x0F) as u8;
-                return self.cia_a.read_register_debug(reg);
-            }
-            return 0xFF;
-        }
-        0xFF
     }
 
     /// Writes an 8-bit byte to CIA register space ($BF0000..$BFFFFF)
     fn write_cia_byte(&mut self, addr: u32, val: u8) {
-        // CIA-B ($BFD000-$BFDF00)
-        if (Self::CIA_B_START..=Self::CIA_B_END).contains(&addr) {
-            if (addr & 1) == 0 {
-                let reg = ((addr >> 8) & 0x0F) as u8;
+        match Self::decode_cia_register(addr) {
+            Some((CiaId::B, reg)) => {
                 self.cia_b.write_register(reg, val);
             }
-            return;
-        }
-        // CIA-A ($BFE001-$BFEF01)
-        if (Self::CIA_A_START..=Self::CIA_A_END).contains(&addr) && (addr & 1) == 1 {
-            let reg = ((addr >> 8) & 0x0F) as u8;
-            self.cia_a.write_register(reg, val);
-            // CIA-A bit 0 of Port A ($BFE001) controls the low-memory overlay (_OVL)
-            if reg == 0 {
-                if (val & 0x01) == 0 {
-                    self.mem.map_kickstart_to_low_memory();
-                } else {
-                    self.mem.map_chip_ram_to_low_memory();
+            Some((CiaId::A, reg)) => {
+                self.cia_a.write_register(reg, val);
+                // CIA-A bit 0 of Port A ($BFE001) controls the low-memory overlay (_OVL).
+                if reg == cia_reg::cia_a::PRA {
+                    if (val & 0x01) == 0 {
+                        self.mem.map_kickstart_to_low_memory();
+                    } else {
+                        self.mem.map_chip_ram_to_low_memory();
+                    }
                 }
             }
+            None => {}
         }
     }
 
@@ -166,23 +177,96 @@ impl<'a> MemoryBus<'a> {
     pub fn write_custom_word(&mut self, offset: u16, val: u16) {
         let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
         match offset {
+            custom_reg::denise::STREQU
+            | custom_reg::denise::STRVBL
+            | custom_reg::denise::STRLONG => self.denise.receive_sync_strobe(offset),
+            custom_reg::denise::STRHOR => {
+                self.denise.receive_sync_strobe(offset);
+                self.paula.receive_horizontal_sync_strobe();
+            }
             custom_reg::agnus::DMACON => {
                 self.agnus.write_register(custom_reg::agnus::DMACON, val);
                 self.paula.write_register(custom_reg::paula::DMACON, val);
             }
-            custom_reg::denise::BPLCON0 => {
-                self.denise.write_register(custom_reg::denise::BPLCON0, val);
-                self.agnus.write_register(custom_reg::agnus::BPLCON0, val);
+            custom_reg::denise::BPLCON0
+            | custom_reg::agnus::DIWSTRT
+            | custom_reg::agnus::DIWSTOP
+            | custom_reg::denise::SPR0POS
+            | custom_reg::denise::SPR0CTL
+            | custom_reg::denise::SPR1POS
+            | custom_reg::denise::SPR1CTL
+            | custom_reg::denise::SPR2POS
+            | custom_reg::denise::SPR2CTL
+            | custom_reg::denise::SPR3POS
+            | custom_reg::denise::SPR3CTL
+            | custom_reg::denise::SPR4POS
+            | custom_reg::denise::SPR4CTL
+            | custom_reg::denise::SPR5POS
+            | custom_reg::denise::SPR5CTL
+            | custom_reg::denise::SPR6POS
+            | custom_reg::denise::SPR6CTL
+            | custom_reg::denise::SPR7POS
+            | custom_reg::denise::SPR7CTL => {
+                self.denise.write_register(offset, val);
+                self.agnus.write_register(offset, val);
             }
-            custom_reg::denise::DIWSTRT
-            | custom_reg::denise::DIWSTOP
-            | custom_reg::denise::BPLCON1
+            custom_reg::denise::BPLCON1
             | custom_reg::denise::CLXCON
             | custom_reg::denise::BPLCON2
-            | custom_reg::denise::BPLCON3
-            | custom_reg::denise::BPL1DAT..=custom_reg::denise::BPL6DAT
-            | custom_reg::denise::SPR0POS..=custom_reg::denise::SPR7DATB
-            | custom_reg::denise::COLOR00..=custom_reg::denise::COLOR31
+            | custom_reg::denise::BPL1DAT
+            | custom_reg::denise::BPL2DAT
+            | custom_reg::denise::BPL3DAT
+            | custom_reg::denise::BPL4DAT
+            | custom_reg::denise::BPL5DAT
+            | custom_reg::denise::BPL6DAT
+            | custom_reg::denise::SPR0DATA
+            | custom_reg::denise::SPR0DATB
+            | custom_reg::denise::SPR1DATA
+            | custom_reg::denise::SPR1DATB
+            | custom_reg::denise::SPR2DATA
+            | custom_reg::denise::SPR2DATB
+            | custom_reg::denise::SPR3DATA
+            | custom_reg::denise::SPR3DATB
+            | custom_reg::denise::SPR4DATA
+            | custom_reg::denise::SPR4DATB
+            | custom_reg::denise::SPR5DATA
+            | custom_reg::denise::SPR5DATB
+            | custom_reg::denise::SPR6DATA
+            | custom_reg::denise::SPR6DATB
+            | custom_reg::denise::SPR7DATA
+            | custom_reg::denise::SPR7DATB
+            | custom_reg::denise::COLOR00
+            | custom_reg::denise::COLOR01
+            | custom_reg::denise::COLOR02
+            | custom_reg::denise::COLOR03
+            | custom_reg::denise::COLOR04
+            | custom_reg::denise::COLOR05
+            | custom_reg::denise::COLOR06
+            | custom_reg::denise::COLOR07
+            | custom_reg::denise::COLOR08
+            | custom_reg::denise::COLOR09
+            | custom_reg::denise::COLOR10
+            | custom_reg::denise::COLOR11
+            | custom_reg::denise::COLOR12
+            | custom_reg::denise::COLOR13
+            | custom_reg::denise::COLOR14
+            | custom_reg::denise::COLOR15
+            | custom_reg::denise::COLOR16
+            | custom_reg::denise::COLOR17
+            | custom_reg::denise::COLOR18
+            | custom_reg::denise::COLOR19
+            | custom_reg::denise::COLOR20
+            | custom_reg::denise::COLOR21
+            | custom_reg::denise::COLOR22
+            | custom_reg::denise::COLOR23
+            | custom_reg::denise::COLOR24
+            | custom_reg::denise::COLOR25
+            | custom_reg::denise::COLOR26
+            | custom_reg::denise::COLOR27
+            | custom_reg::denise::COLOR28
+            | custom_reg::denise::COLOR29
+            | custom_reg::denise::COLOR30
+            | custom_reg::denise::COLOR31
             | custom_reg::denise::JOYTEST => {
                 self.denise.write_register(offset, val);
             }
@@ -192,7 +276,9 @@ impl<'a> MemoryBus<'a> {
             | custom_reg::paula::DSKDAT
             | custom_reg::paula::DSKLEN
             | custom_reg::paula::DSKSYNC
-            | custom_reg::paula::SERDAT..=custom_reg::paula::POTGO
+            | custom_reg::paula::SERDAT
+            | custom_reg::paula::SERPER
+            | custom_reg::paula::POTGO
             | custom_reg::paula::AUD0LEN
             | custom_reg::paula::AUD0PER
             | custom_reg::paula::AUD0VOL
@@ -211,9 +297,82 @@ impl<'a> MemoryBus<'a> {
             | custom_reg::paula::AUD3DAT => {
                 self.paula.write_register(offset, val);
             }
-            _ => {
+            custom_reg::agnus::DSKPTH
+            | custom_reg::agnus::DSKPTL
+            | custom_reg::agnus::REFPTR
+            | custom_reg::agnus::VPOSW
+            | custom_reg::agnus::VHPOSW
+            | custom_reg::agnus::COPCON
+            | custom_reg::agnus::BLTCON0
+            | custom_reg::agnus::BLTCON1
+            | custom_reg::agnus::BLTAFWM
+            | custom_reg::agnus::BLTALWM
+            | custom_reg::agnus::BLTCPTH
+            | custom_reg::agnus::BLTCPTL
+            | custom_reg::agnus::BLTBPTH
+            | custom_reg::agnus::BLTBPTL
+            | custom_reg::agnus::BLTAPTH
+            | custom_reg::agnus::BLTAPTL
+            | custom_reg::agnus::BLTDPTH
+            | custom_reg::agnus::BLTDPTL
+            | custom_reg::agnus::BLTSIZE
+            | custom_reg::agnus::BLTCMOD
+            | custom_reg::agnus::BLTBMOD
+            | custom_reg::agnus::BLTAMOD
+            | custom_reg::agnus::BLTDMOD
+            | custom_reg::agnus::BLTCDAT
+            | custom_reg::agnus::BLTBDAT
+            | custom_reg::agnus::BLTADAT
+            | custom_reg::agnus::COP1LCH
+            | custom_reg::agnus::COP1LCL
+            | custom_reg::agnus::COP2LCH
+            | custom_reg::agnus::COP2LCL
+            | custom_reg::agnus::COPJMP1
+            | custom_reg::agnus::COPJMP2
+            | custom_reg::agnus::COPINS
+            | custom_reg::agnus::DDFSTRT
+            | custom_reg::agnus::DDFSTOP
+            | custom_reg::agnus::AUD0LCH
+            | custom_reg::agnus::AUD0LCL
+            | custom_reg::agnus::AUD1LCH
+            | custom_reg::agnus::AUD1LCL
+            | custom_reg::agnus::AUD2LCH
+            | custom_reg::agnus::AUD2LCL
+            | custom_reg::agnus::AUD3LCH
+            | custom_reg::agnus::AUD3LCL
+            | custom_reg::agnus::BPL1PTH
+            | custom_reg::agnus::BPL1PTL
+            | custom_reg::agnus::BPL2PTH
+            | custom_reg::agnus::BPL2PTL
+            | custom_reg::agnus::BPL3PTH
+            | custom_reg::agnus::BPL3PTL
+            | custom_reg::agnus::BPL4PTH
+            | custom_reg::agnus::BPL4PTL
+            | custom_reg::agnus::BPL5PTH
+            | custom_reg::agnus::BPL5PTL
+            | custom_reg::agnus::BPL6PTH
+            | custom_reg::agnus::BPL6PTL
+            | custom_reg::agnus::BPL1MOD
+            | custom_reg::agnus::BPL2MOD
+            | custom_reg::agnus::SPR0PTH
+            | custom_reg::agnus::SPR0PTL
+            | custom_reg::agnus::SPR1PTH
+            | custom_reg::agnus::SPR1PTL
+            | custom_reg::agnus::SPR2PTH
+            | custom_reg::agnus::SPR2PTL
+            | custom_reg::agnus::SPR3PTH
+            | custom_reg::agnus::SPR3PTL
+            | custom_reg::agnus::SPR4PTH
+            | custom_reg::agnus::SPR4PTL
+            | custom_reg::agnus::SPR5PTH
+            | custom_reg::agnus::SPR5PTL
+            | custom_reg::agnus::SPR6PTH
+            | custom_reg::agnus::SPR6PTL
+            | custom_reg::agnus::SPR7PTH
+            | custom_reg::agnus::SPR7PTL => {
                 self.agnus.write_register(offset, val);
             }
+            _ => {}
         }
     }
 
@@ -257,7 +416,7 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     BusResult::Ready(self.rtc.read_byte(addr))
                 } else {
-                    BusResult::Ready(self.mem.unmapped_byte())
+                    BusResult::Ready(OPEN_BUS_BYTE)
                 }
             }
             _ => self.mem.read_byte(addr),
@@ -281,13 +440,13 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 let b0 = if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     self.rtc.read_byte(addr)
                 } else {
-                    self.mem.unmapped_byte()
+                    OPEN_BUS_BYTE
                 };
                 let next_addr = addr.wrapping_add(1);
                 let b1 = if (Self::RTC_START..=Self::RTC_END).contains(&next_addr) {
                     self.rtc.read_byte(next_addr)
                 } else {
-                    self.mem.unmapped_byte()
+                    OPEN_BUS_BYTE
                 };
                 BusResult::Ready(u16::from_be_bytes([b0, b1]))
             }
@@ -315,6 +474,21 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 BusResult::Ready(())
             }
             _ => self.mem.write_byte(addr, val),
+        }
+    }
+
+    #[inline]
+    fn write_tas_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
+        let addr = addr & 0x00FF_FFFF;
+        let bank = self.mem.bank_map[(addr >> 16) as usize].bank;
+        if matches!(bank, MemoryBank::ChipRam | MemoryBank::SlowRam) {
+            if self.mem.chip_ram_blocked {
+                BusResult::WaitState
+            } else {
+                BusResult::Ready(())
+            }
+        } else {
+            self.write_byte(addr, val)
         }
     }
 
@@ -366,13 +540,13 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 let b0 = if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     self.rtc.read_byte(addr)
                 } else {
-                    self.mem.unmapped_byte()
+                    OPEN_BUS_BYTE
                 };
                 let next_addr = addr.wrapping_add(1);
                 let b1 = if (Self::RTC_START..=Self::RTC_END).contains(&next_addr) {
                     self.rtc.read_byte(next_addr)
                 } else {
-                    self.mem.unmapped_byte()
+                    OPEN_BUS_BYTE
                 };
                 u16::from_be_bytes([b0, b1])
             }

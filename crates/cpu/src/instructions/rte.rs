@@ -16,9 +16,9 @@ use crate::state::CpuState;
 
 pub fn alu_rte_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     if !state.is_supervisor() {
-        state.micro.current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
-        state.micro.micro_step = 0;
-        state.micro.clocks_remaining = 0;
+        state.micro_mut().current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
+        state.micro_mut().micro_step = 0;
+        state.micro_mut().clocks_remaining = 0;
     }
 }
 
@@ -30,13 +30,13 @@ pub static ALU_RTE_INIT: MicroStep = MicroStep {
 
 pub static STEPS_RTE: [MicroStep; 11] = [
     ALU_RTE_INIT,
+    common::RETURN_HIGH_READ,
+    common::BUS_READ_IDLE,
     common::POP_STACK_SR_READ,
-    common::POP_STACK_SR_FINISH,
-    common::POP_STACK_HIGH_READ,
-    common::POP_STACK_HIGH_FINISH,
+    common::RETURN_STATUS_IDLE,
     common::POP_STACK_LOW_READ,
     common::POP_STACK_RTE_FINISH,
-    common::READ_TARGET_OPCODE_READ,
+    common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,

@@ -12,8 +12,8 @@ fn test_and_trace_all_sample_binaries() {
         .unwrap()
         .parent()
         .unwrap()
-        .join("tests")
-        .join("bin");
+        .join("examples")
+        .join("m68k");
 
     // 1. Fibonacci
     trace_program(
@@ -184,7 +184,7 @@ fn trace_program<F>(
     println!("{:-<92}", "");
 
     while step_count < max_steps {
-        let pc = session.machine.cpu.state.pc.wrapping_sub(4);
+        let pc = session.machine.cpu.state.pc().wrapping_sub(4);
         if pc == halt_addr {
             println!(
                 "   --> HALT reached at ${:06X} after {} instructions.",

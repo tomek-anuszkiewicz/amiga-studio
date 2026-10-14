@@ -10,7 +10,7 @@ use crate::state::CpuState;
 /// Taken branch execution steps (10 CPU clocks / 5 CCKs)
 pub static STEPS_BRANCH_TAKEN: [MicroStep; 5] = [
     common::ALU_IDLE,
-    common::READ_TARGET_OPCODE_READ,
+    common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
@@ -35,30 +35,30 @@ pub static STEPS_BRANCH_NOT_TAKEN_WORD: [MicroStep; 6] = [
 ];
 
 pub fn alu_bcc_short(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let cond = ((state.ir >> 8) & 0x0F) as u8;
+    let cond = ((state.ir() >> 8) & 0x0F) as u8;
     if state.eval_condition(cond) {
-        let d8 = (state.ir & 0xFF) as i8;
-        let base_pc = state.pc.wrapping_sub(2);
-        state.micro.ea_addr = base_pc.wrapping_add(d8 as i32 as u32);
-        state.micro.current_steps = &STEPS_BRANCH_TAKEN;
+        let d8 = (state.ir() & 0xFF) as i8;
+        let base_pc = state.pc().wrapping_sub(2);
+        state.micro_mut().ea_addr = base_pc.wrapping_add(d8 as i32 as u32);
+        state.micro_mut().current_steps = &STEPS_BRANCH_TAKEN;
     } else {
-        state.micro.current_steps = &STEPS_BRANCH_NOT_TAKEN_SHORT;
+        state.micro_mut().current_steps = &STEPS_BRANCH_NOT_TAKEN_SHORT;
     }
-    state.micro.micro_step = 0;
+    state.micro_mut().micro_step = 0;
 }
 
 pub fn alu_bcc_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let cond = ((state.ir >> 8) & 0x0F) as u8;
+    let cond = ((state.ir() >> 8) & 0x0F) as u8;
     if state.eval_condition(cond) {
-        let disp = state.prefetch as i16 as i32;
-        let base_pc = state.pc.wrapping_sub(2);
-        state.micro.ea_addr = base_pc.wrapping_add(disp as u32);
-        state.micro.current_steps = &STEPS_BRANCH_TAKEN;
+        let disp = state.prefetch() as i16 as i32;
+        let base_pc = state.pc().wrapping_sub(2);
+        state.micro_mut().ea_addr = base_pc.wrapping_add(disp as u32);
+        state.micro_mut().current_steps = &STEPS_BRANCH_TAKEN;
     } else {
-        state.micro.ea_addr = state.pc;
-        state.micro.current_steps = &STEPS_BRANCH_NOT_TAKEN_WORD;
+        state.micro_mut().ea_addr = state.pc();
+        state.micro_mut().current_steps = &STEPS_BRANCH_NOT_TAKEN_WORD;
     }
-    state.micro.micro_step = 0;
+    state.micro_mut().micro_step = 0;
 }
 
 /// Bcc.S condition evaluation step

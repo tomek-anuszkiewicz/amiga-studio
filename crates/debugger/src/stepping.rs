@@ -37,14 +37,14 @@ impl Debugger {
 
     /// Steps exactly one M68000 instruction, recording to trace history, and returns instruction clocks
     pub fn step_instruction(&mut self, cpu: &mut Cpu, bus: &mut PhysicalMemory) -> u32 {
-        let pc = cpu.state.instruction_pc; // Address of opcode currently in IR
+        let pc = cpu.state.instruction_pc(); // Address of opcode currently in IR
         let (disasm, _) = self.disassemble_at(pc, bus);
 
         // Record trace entry before stepping
         self.trace.record(
             self.current_cck,
             pc,
-            cpu.state.ir,
+            cpu.state.ir(),
             disasm.format_line(),
             cpu.state.clone(),
         );
@@ -63,15 +63,15 @@ impl Debugger {
         max_instructions: usize,
     ) -> usize {
         for steps in 0..max_instructions {
-            let next_pc = cpu.state.instruction_pc;
+            let next_pc = cpu.state.instruction_pc();
             if self.breakpoints.check_pc_with_state(next_pc, &cpu.state) {
                 return steps;
             }
-            if cpu.state.halted || cpu.state.stopped {
+            if cpu.state.is_halted() || cpu.state.is_stopped() {
                 return steps;
             }
             self.step_instruction(cpu, bus);
-            if cpu.state.halted || cpu.state.stopped {
+            if cpu.state.is_halted() || cpu.state.is_stopped() {
                 return steps + 1;
             }
         }

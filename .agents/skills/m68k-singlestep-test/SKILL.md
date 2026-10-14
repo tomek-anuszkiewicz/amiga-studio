@@ -1,6 +1,6 @@
 ---
 name: m68k-singlestep-test
-description: Run and diagnose M68000 instructions against cycle-exact Tom Harte physical silicon SingleStepTests test vectors.
+description: Run and diagnose M68000 instructions against Tom Harte silicon vectors, always comparing state, instruction clocks and timed bus callbacks; sampling limits input count only.
 ---
 
 # M68000 SingleStepTests Verification & Debugging Runbook
@@ -13,22 +13,23 @@ This skill guides the validation and debugging of the M68000 CPU implementation 
 ## 1. Test Suite Locations & Structure
 
 - **Path:** `ref_src/SingleStepTests-680x0/68000/v1/<INSTRUCTION>.<size>.json`
-- **Specification Document:** Complete architecture, comparative matrix, and Rust data structures are in [CPU SingleStepTests.md](../../../Obsidian/Amiga/Design/CPU%20SingleStepTests.md).
+- **Specification Document:** Complete architecture, comparative matrix, and Rust data structures are in [CPU SingleStepTests.md](../../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md).
 
 ---
 
 ## 2. Test JSON Schema Summary
 
 Each test case contains:
-1. `name`: Descriptive test case title with opcode and addressing mode.
+1. `name`: Human-readable description only; it never selects a test format or CPU setup.
 2. `initial`:
    - `d0`-`d7`, `a0`-`a6`, `usp`, `ssp`, `sr`, `pc`
    - `prefetch`: `[pf0, pf1]` (two 16-bit words already in the queue)
    - `ram`: Array of `[address, byte_value]` pairs
 3. `final`:
-   - Expected values for all registers, active stack pointer (`usp`/`ssp`), `sr`, `pc`, `prefetch`, and final `ram` entries.
+   - Expected values for all registers, active stack pointer (`usp`/`ssp`), `sr`, `pc` and `prefetch`. Final `ram` entries remain in the source format but are not compared by the CPU runner.
 4. `transactions`:
-   - Array of bus cycle activities: `r` (read), `w` (write), `n` (idle), `t` (TAS), `re` (read address error), `we` (write address error).
+   - Array of bus cycle activities: `r` (read), `w` (write), `n` (idle), `t` (TAS).
+   - Bus records have six fields; idle records have two. Byte data is always 0..255.
 5. `length`: Total execution clock cycles.
 
 ---
@@ -37,18 +38,29 @@ Each test case contains:
 
 ### Running SingleStepTests via Cargo Test Runner
 ```powershell
-# Fast sample run (default: 50 cases per suite, ~5.8s):
-cargo test -p test_runner --test test_singlestep
+# Explicit sample run (50 cases per ordinary suite):
+python tools/verification/verify.py test runner singlestep sample 50
 
-# Full exhaustive verification (~300,000 cases across all 77 suites, ~14s):
-$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
+# Run all ordinary suite inputs with complete verification:
+python tools/verification/verify.py test runner singlestep full
 
 # Full exhaustive run for a single instruction:
-$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep -- test_add_b
+python tools/verification/verify.py test runner singlestep case test_add_b full
 
 # Custom sample limit (e.g. 500 cases):
-$env:SINGLESTEP_LIMIT = "500"; cargo test -p test_runner --test test_singlestep -- test_move_w
+python tools/verification/verify.py test runner singlestep case test_move_w sample 500
 ```
+
+Every executed vector compares state, instruction clocks and timed bus callbacks.
+There are no weaker modes. Sampling limits only how many vectors execute. The
+tracked [SingleStep override catalog](../../../crates/test_runner/tests/overrides/singlestep/README.md)
+applies approved corrections to exact reference records; report executed overrides
+separately from unmodified inputs. Original reference files remain untouched. The
+matcher retains internal delays in the expected timeline, and the driver records
+observed callback clocks while stepping CPU CCKs. Inspect existing state masks and
+unobserved signal boundaries in [CPU SingleStepTests.md](../../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification).
+A new comparison rule can reveal a pre-existing divergence; older saved results
+from weaker verification are not a comparable regression baseline.
 
 ---
 
@@ -73,7 +85,8 @@ When a test fails, follow this systematic diagnostic checklist:
 - Remember the M68000 two-word prefetch pipeline:
   - `IR` (Instruction Register): holds the opcode being executed.
   - `IRC` (Prefetch Queue): holds the next prefetched 16-bit word.
-- At instruction completion, the test asserts that `pc` and `prefetch: [pf0, pf1]` match the expected post-instruction state.
+- The fixture primes the prefetch state. The shared comparator checks the formal next opcode PC and both final queue words independently. Stopped or halted execution uses its current cursor; it does not accept an alternative PC four bytes ahead. Inspect the PC and each prefetch diagnostic when diagnosing a pipeline failure.
+- Silicon `initial.pc` is the formal opcode address. SingleStep sets the primed internal PC to `initial.pc.wrapping_add(4)` and the instruction address to `initial.pc`.
 - If `pc` is 2 or 4 bytes ahead or behind:
   - Verify that immediate operands or extension words (`.w` / `.l`) were fetched from the prefetch queue and refilled from memory.
   - Verify whether the final instruction prefetch step occurred before instruction retirement.
@@ -101,13 +114,15 @@ When a test fails, follow this systematic diagnostic checklist:
 
 The test harness automatically tracks test outcomes, diffs, and regressions across executions:
 
-### A. Results Directory Structure (`.test_results/`)
-- `.test_results/latest/<suite_name>.json`: Detailed outcomes of the most recent test run.
-- `.test_results/previous/<suite_name>.json`: Rotated snapshot of the previous run used for regression diffing.
-- `.test_results/summary.json`: Global repository-wide pass/fail matrix, percentages, and active failure names.
+### A. Results Directory Structure (`.agent/tmp/singlestep/`)
+- `.agent/tmp/singlestep/latest/<suite_name>.json`: Detailed outcomes of the most recent test run.
+- `.agent/tmp/singlestep/previous/<suite_name>.json`: Rotated snapshot of the previous run used for regression diffing.
+- `.agent/tmp/singlestep/summary.json`: Global repository-wide pass/fail matrix, percentages, and active failure names.
+- `.agent/tmp/singlestep/summary.md`: Automatically generated readable summary and all failing cases.
+- `.agent/tmp/singlestep/diff.md`: Automatically generated status changes and missing baselines.
 
 ### B. Automated Regression & Progress Alerts
-When running tests via `cargo test -p test_runner`, the test runner automatically compares the current run against the previous run:
+SingleStep suite execution saves results and compares them with previous saved results. Saved reports can contain suites not executed by the current filtered run; distinguish current evidence from older snapshots:
 - 🔴 **Regressions**: Tests that previously passed but failed after your changes:
   ```text
   ⚠️  [REGRESSION DETECTED] Suite 'Real68k::ADD.b': 1 test(s) that previously PASSED now FAILED!
@@ -119,18 +134,8 @@ When running tests via `cargo test -p test_runner`, the test runner automaticall
      🟢 Fixed:  "3c7a [MOVEA.w (d16, PC), A6] 19"
   ```
 
-### C. Agent Inspection CLI Commands
-Agents can quickly inspect test coverage or check for regressions without searching log outputs:
-```powershell
-# Check whether your latest code edits caused any regressions
-cargo run -p test_runner -- --diff
-
-# Print a tabular summary of pass rates and active failure cases across all opcodes
-cargo run -p test_runner -- --summary
-
-# Run a specific opcode suite with live diagnostics
-cargo run -p test_runner -- --suite ADD.b
-```
+### C. Automatic Inspection Reports
+Inspect `.agent/tmp/singlestep/summary.md` and `diff.md` after execution for saved suite statistics and regressions. Both reports are updated automatically with suite results; no separate report command is exposed.
 
 ---
 

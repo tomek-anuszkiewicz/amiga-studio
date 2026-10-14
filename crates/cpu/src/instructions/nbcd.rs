@@ -38,9 +38,9 @@ pub fn alu_nbcd_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_nbcd_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = (state.micro.destination & 0xFF) as u8;
+    let d = (state.micro().destination & 0xFF) as u8;
     let res = nbcd_b(state, d);
-    state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFF) | (res as u32);
 }
 
 // ============================================================================
@@ -48,13 +48,13 @@ pub fn alu_nbcd_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_NBCD_DN: [MicroStep; 3] = [
-    common::ALU_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_nbcd_dn),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_NBCD_AI: [MicroStep; 6] = [
@@ -91,12 +91,13 @@ pub static STEPS_NBCD_PI: [MicroStep; 6] = [
     common::WRITE_DST_BYTE,
 ];
 
-pub static STEPS_NBCD_PD: [MicroStep; 6] = [
+pub static STEPS_NBCD_PD: [MicroStep; 7] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_dst_byte),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_b),
         base_clocks: 2,
     },
+    common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),

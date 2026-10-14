@@ -1,103 +1,47 @@
 ---
 name: code-review
-description: Independent adversarial code, architecture, and specification compliance audit against constitutional rules.
+description: Independently review a completed change against repository rules, specifications, and available verification evidence when a review is requested or a major delivery needs one.
 ---
 
-# Code & Specification Compliance Reviewer
+# Independent Code Review
 
-This skill guides an agent (or subagent reviewer) through performing a strict post-implementation audit against [AGENTS.md](../../../AGENTS.md) and repository design guidelines.
+Use this skill for a requested double-check, a completed roadmap milestone or substantial feature PR, or an assigned reviewer task. Ordinary edits and commits do not invoke it. A review-only request authorizes inspection and a report, not file changes, staging, or a commit.
 
----
+## Establish the Reviewed Scope
 
-## When to Activate
+Identify the exact patch or revision under review, its intended behavior, and the affected domains. Include explicitly selected new files; `git diff` alone does not show untracked files. For a proposed commit, use the intended snapshot described in [sync-design-docs](../sync-design-docs/SKILL.md#1-establish-the-intended-snapshot). State any paths or behavior outside the reviewed scope.
 
-- Upon completing a roadmap milestone or substantial feature PR.
-- When performing a double-check / review requested by the user.
-- As a subagent reviewer tasked with auditing code diffs.
+Read [AGENTS.md](../../../AGENTS.md) and the rules it routes to for the affected domains. Use the current rule text as the source of requirements. Do not reproduce its detailed checklists here or treat an example in this skill as a new requirement.
 
----
+For a review that is not preparing an authorized commit, assess known specification requirements and encountered conflicts, but leave code/design synchronization and parity review to the pre-commit or milestone workflow unless explicitly requested.
 
-## Review Procedure
+## Check Whether the Rules Were Met
 
-### Step 1: Automated Architecture, Compiler & Formatting Verification
-Verify formatting compliance, run compiler/clippy verification, and run the automated architectural test suite in `test_runner`:
-```powershell
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets
-cargo test -p test_runner --test test_architecture_rules
-```
-Report failed checks as findings and distinguish pre-existing failures from regressions in the reviewed change. Continue independent diff review when evidence permits; do not modify files during a review-only task. Approval requires the applicable gates to pass or an explicit decision about a known failure.
+For each applicable rule group, ask whether the reviewed change and available evidence demonstrate compliance. Cite the concrete changed code, test, specification, or verification result behind each material conclusion. Mark an obligation **unverified** when the needed evidence is absent; a passing check establishes only what that check actually covers.
 
-### Step 2: Diff Inspection (`git diff`)
-Analyze all modified and added files using `git diff`:
-1. **Zero Panics**: Search for `.unwrap()` or `.expect(` in `crates/*/src/`. Emulated guest execution must never crash or panic the host.
-2. **Endianness**: Verify Big-Endian multi-byte decoding (`u16::from_be_bytes`, `u32::from_be_bytes`).
-3. **Wrapping Math**: Check ALU operations and cycle additions for wrapping arithmetic (`wrapping_add`, `wrapping_sub`).
-4. **Rust Source File Sizes & Flat Instructions**: Ensure no Rust source file in `crates/*/src/` exceeds 800 lines (excluding recognized exceptions in `LINE_COUNT_EXCEPTIONS`). Confirm strict flat instruction hierarchy: zero subdirectories in `crates/cpu/src/instructions/` (all instructions are single `<mnemonic>.rs` files, 1:1 mnemonic alignment, zero umbrella files like `mul.rs`, `div.rs`, `link_unlk.rs`, `bcd.rs`, `privileged.rs`). Technical documentation and specifications have NO line count limits.
-5. **Host CPU Performance & Readability**:
-   - Verify branch-minimization: hot loops favor flattened dispatch instead of nested `match`/`if` cascades ("code may be expansive").
-   - Verify zero-allocations in hot execution paths (no `Vec`, `Box`, `format!`, dynamic boxed iterators).
-   - Endianness Bypass: bitwise operations (`AND`, `OR`, `EOR`, `NOT`, `CLR`) and block copies avoid redundant byte swapping in hot loops.
-   - **Readability, Macro & Const-Generic Prohibition**: Confirm code is clean, idiomatic Rust, self-documenting, strictly free of user-defined macros (`macro_rules!`), and free of const-generic handler functions (`<const N: ...>`). In the era of LLMs, code generation is cheap; macros and const-generic matrices break code navigation and add unnecessary cognitive complexity.
-6. **Inlining Rules (Verified automatically by test_architecture_rules)**:
-   - Small accessors & cross-crate helpers (e.g. config getters, rtc setters): `#[inline]`.
-   - CCR condition code flags, register Dn/An accessors & leaf ALU calculations (`add_b`, `sub_w`, `and_l`): `#[inline(always)]`.
-   - Cold exception handlers & diagnostic paths (`trigger_address_error`, `trigger_chk_trap`, `trigger_divide_by_zero`): `#[inline(never)]`.
-   - Large functions (>15–20 lines) and indirect dispatch targets (`AluFn`, `StepFn`, bank handlers): strictly no inlining.
-7. **WASM Portability & Host Isolation**:
-   - Core emulation crates (`m68000`, `memory_bus`, `config`, `rtc`) must contain zero OS-specific calls (`no std::time::Instant`, `no std::thread`, `no std::fs`).
-   - All I/O operates on external decoupled byte buffers (`&[u8]`).
-8. **Decoupled State & Save States**:
-   - State structs (`CpuState`, `MemoryBus`, chip states) derive `Serialize` & `Deserialize`.
-   - Zero circular handles (`Rc<RefCell<...>>`) between peer subsystems.
-9. **Specification Integrity (Anti-Hack Rule)**:
-   - Zero silent deviations from hardware specs or ad-hoc special-casing just to force synthetic tests green.
-10. **Path Privacy**: Ensure no host paths (`C:\Users\`, `/home/`, personal disk paths) are present.
-11. **Idle Micro-Step Naming & Common Primitives**:
-   - Ensure all micro-steps where the memory bus does not perform an active transfer or address strobe explicitly feature `IDLE` (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`).
-   - Strictly prohibit anonymous idle structs (`MicroStep { bus_fn: None, alu_fn: None, ... }`) and legacy aliases (`READ_WORD_FINISH`, `PREFETCH_NEXT_RETIRE`, `REFILL_FIRST_FINISH`, `REFILL_SECOND_FINISH`).
-12. **Comprehensive Unit Test Coverage**:
-   - Verify that every newly created or modified Rust source file containing testable domain logic, state machines, hardware models, math/ALU operations, algorithms, statistics, parsers, or program builders has dedicated unit tests strictly in dedicated external test files (`crates/<crate>/tests/test_<name>.rs` per `unit-testing-policy.md`; zero inline tests in `src/`).
-   - Modules must not be declared complete without tests covering happy paths, boundary conditions, zero/empty states, and failure modes.
-13. **Language Policy & English Purity**:
-   - Verify that `git diff` introduces ZERO non-English words, identifiers, or prompt echoes in source code, docstrings, or inline comments (per `language-policy.md`).
-   - Quoting Polish prompt phrases or metaphors in comments—even parenthetically or in quotation marks—is strictly prohibited; all concepts must be translated into idiomatic English before writing to code.
-14. **Practitioner Voice & Tone**:
-   - Verify that documentation and comments adhere to `practitioner-voice-and-tone.md`: written from a hands-on lead architect perspective (in-depth tech blog standard) with zero academic dissertation jargon or thesis tags.
+| Rule owner | Review question |
+| --- | --- |
+| [Scope and root cause](../../rules/structural-root-cause.md), [specification compliance](../../rules/spec-compliance.md) | Does the change address the demonstrated mechanism without an ad-hoc workaround or an unsupported change to protected references? Were specification conflicts handled as required? |
+| [Rust practices](../../rules/rust-best-practices.md), [performance and readability](../../rules/performance-and-readability.md), [file cohesion](../../rules/file-size-and-cohesion.md), [workspace boundaries](../../rules/workspace-structure-and-reexports.md), [clean refactoring](../../rules/clean-break-refactoring.md) | Do the implementation and affected callers follow the applicable code and architecture rules? Inspect behavior and maintainability beyond the mechanical checks. |
+| [Testing policy](../../rules/unit-testing-policy.md) | Do existing or changed tests protect the relevant behavior and failure modes, including integration boundaries where applicable? Identify a demonstrated gap rather than requiring a test per source file. |
+| [Documentation maintenance](../../rules/docs-maintenance.md), [diary](../../rules/diary-maintenance.md), [roadmap](../../rules/roadmap-maintenance.md) | For the actual delivery stage, were affected specifications, completion records, and remaining backlog handled as required? |
+| [Language policy](../../rules/language-policy.md), [path privacy](../../rules/no-external-paths.md) | Are repository text and paths compliant within the reviewed change? Distinguish scanner findings from confirmed language violations. |
+| [Atomic commits](../../rules/git-commits.md) | If a commit is under review, does its intended snapshot, verification, documentation review, diary entry, and staging satisfy the commit procedure? |
 
-### Step 3: Living Documentation & Defect Retrospection Audit
-1. **Defect Retrospection (if bug fix / refactor)**: Did the author perform root-cause analysis ("Why did this happen?")? Are dedicated regression tests in place covering edge cases? Were systemic safeguards (architectural rules, lints, or DoD criteria) added to ensure this class of defect never recurs?
-2. **Design Documents**: If documented architecture changed or a milestone completed, were affected specifications reconciled and checkpoints updated per `docs-maintenance.md`? Mechanical changes can rely on existing documentation. Remove obsolete proposals and duplicate implemented code where the affected documents require it.
-3. **Engineering Diary (`DIARY.md`)**: Does every commit under review include its own Section 10 entry describing changes, rationale, and actual verification? At a completed minor roadmap point or milestone, were its settled entries compacted into a dedicated digest? Routine commits log entries; they do not trigger compaction.
-4. **Roadmap**: If a step in `ROADMAP.md` is fully implemented and verified, was it removed from the active backlog per [`roadmap-maintenance`](../roadmap-maintenance/SKILL.md)? Keep only remaining scope for partial delivery and preserve completion evidence in diary and Git.
-5. **Crate Graph**: Were crate dependencies in `General Architecture.md` updated if `Cargo.toml` was touched?
+Apply other domain rules routed by [AGENTS.md](../../../AGENTS.md) when relevant, especially CPU opcode, chip/bus, GUI, and PowerShell rules. For hardware or regression review, use the reference evidence required by [specification compliance](../../rules/spec-compliance.md). For a milestone, check its completion requirements through [roadmap maintenance](../../rules/roadmap-maintenance.md). Do not infer that every conditional rule applies to every patch.
 
+## Review Beyond Mechanical Gates
 
-### Step 4: Issue Audit Report
-Provide the audit report using the following standard template:
+- Trace the changed behavior through its callers, state transitions, and boundaries. Look for unintended effects and assumptions that the tests or static checks do not exercise.
+- Compare claims of correctness with the actual test fixture, reference, and observed result. Distinguish isolated behavior from production integration and a static audit from behavioral proof.
+- Check whether a passing gate was run on the reviewed snapshot. Separate pre-existing failures from regressions and identify checks that were not run or whose results are stale.
+- Read relevant results from `python tools/verification/verify.py commit` or `milestone` when those profiles apply. Their owning workflow selects and runs the gates; do not rerun formatting, Clippy, architecture, or other completion checks solely because this skill was invoked. If evidence is missing, report the gap rather than claiming a pass. Invoke [audit-code-quality](../audit-code-quality/SKILL.md) only under its own trigger, not automatically as part of this review.
 
-```markdown
-### 🛡️ Code & Architecture Compliance Review:
-- [ ] **Code Formatting Compliance:** `cargo fmt --all -- --check` passed cleanly across workspace.
-- [ ] **Compiler & Clippy Compliance:** `cargo clippy --workspace --all-targets` passed cleanly (zero warnings/errors).
-- [ ] **Architecture Test Suite:** `cargo test -p test_runner --test test_architecture_rules` passed.
-- [ ] **Unit Test Coverage:** Every module with testable logic has dedicated unit tests in `crates/*/tests/` (zero inline tests in `src/`).
-- [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.
-- [ ] **Host CPU Performance & Sympathy:** Flattened dispatch (branch-minimization), zero heap allocations in hot path, endianness bypass on bitwise ops.
-- [ ] **Readability, Zero Macros & No Const-Generic Handlers:** Clean idiomatic Rust, zero cryptic hacks, zero custom macros (`macro_rules!`), and concrete handlers without const generics.
-- [ ] **WASM Core Purity:** Zero OS calls (`Instant`, `thread`, `fs`) in core emulation crates.
-- [ ] **Decoupled SaveState:** Subsystem state derives `Serialize`/`Deserialize`, zero circular references (`Rc<RefCell>`).
-- [ ] **Anti-Hack & Spec Integrity:** Zero ad-hoc test workarounds; hardware specifications followed strictly.
-- [ ] **Anti-Tamper & Golden Hash Invariance:** Zero blind updates to golden master hashes (`GOLDEN_*_HASH`), reference cycle counts, or test fixtures to silence failing tests.
-- [ ] **Rust File Size, Cohesion & Flat Instructions:** All Rust source files in `crates/*/src/` <= 800 lines (or recognized exception). Zero subdirectories in `crates/cpu/src/instructions/` (strict flat instruction hierarchy, 1:1 mnemonic files, zero umbrella files). Technical documentation has no line limits.
-- [ ] **Inlining Strategy:** Cross-crate `#[inline]`, CCR `#[inline(always)]`, cold paths `#[inline(never)]`.
-- [ ] **Defect Retrospection & Prevention:** Root cause analyzed, regression tests added, systemic safeguards/docs updated (if bug fix).
-- [ ] **Design Docs Pruning, Roadmap & Diary:** Living docs updated, speculative code pruned, code snippets removed, verified roadmap steps deleted, and `DIARY.md` chronological changelog updated.
-- [ ] **Path Privacy:** Zero external host paths.
-- [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
-- [ ] **Practitioner Voice & Tone:** Documentation written from hands-on lead architect perspective (tech blog standard), zero academic jargon, and top-down information hierarchy.
-- [ ] **Domain Verification:** Required suites for the changed domain pass; existing coverage is sufficient or relevant tests were updated. Report checks not run and unresolved coverage gaps.
+## Report
 
-**Verdict:** [APPROVED | CHANGES REQUESTED]
-**Observations / Required Actions:** (if any)
-```
+Lead with actionable findings, ordered by impact. For each finding, give the affected path and location, the violated rule or observed behavior, and the evidence. Then summarize:
+
+- Reviewed patch or revision and any scope limits.
+- Applicable rule groups: **satisfied**, **violated**, **unverified**, or **not applicable**, with brief evidence or a reason.
+- Verification actually observed, including snapshot freshness, failures, and checks not run.
+- Verdict: **APPROVED** only when applicable requirements are met and required evidence is current; otherwise **CHANGES REQUESTED** with concrete next actions. Do not present an unchecked template as a passed audit.

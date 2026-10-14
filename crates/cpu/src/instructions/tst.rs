@@ -49,17 +49,17 @@ pub fn alu_tst_l_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_tst_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = (state.micro.destination & 0xFF) as u8;
+    let d = (state.micro().destination & 0xFF) as u8;
     tst_b(state, d);
 }
 
 pub fn alu_tst_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = (state.micro.destination & 0xFFFF) as u16;
+    let d = (state.micro().destination & 0xFFFF) as u16;
     tst_w(state, d);
 }
 
 pub fn alu_tst_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = state.micro.destination;
+    let d = state.micro().destination;
     tst_l(state, d);
 }
 

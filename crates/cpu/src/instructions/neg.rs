@@ -75,21 +75,21 @@ pub fn alu_neg_l_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_neg_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = (state.micro.destination & 0xFF) as u8;
+    let d = (state.micro().destination & 0xFF) as u8;
     let res = neg_b(state, d);
-    state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFF) | (res as u32);
 }
 
 pub fn alu_neg_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = (state.micro.destination & 0xFFFF) as u16;
+    let d = (state.micro().destination & 0xFFFF) as u16;
     let res = neg_w(state, d);
-    state.micro.destination = (state.micro.destination & !0xFFFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFFFF) | (res as u32);
 }
 
 pub fn alu_neg_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = state.micro.destination;
+    let d = state.micro().destination;
     let res = neg_l(state, d);
-    state.micro.destination = res;
+    state.micro_mut().destination = res;
 }
 
 // ============================================================================
@@ -139,12 +139,13 @@ pub static STEPS_NEG_B_PI: [MicroStep; 6] = [
     common::WRITE_DST_BYTE,
 ];
 
-pub static STEPS_NEG_B_PD: [MicroStep; 6] = [
+pub static STEPS_NEG_B_PD: [MicroStep; 7] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_dst_byte),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_b),
         base_clocks: 2,
     },
+    common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
@@ -286,12 +287,13 @@ pub static STEPS_NEG_W_PI: [MicroStep; 6] = [
     common::WRITE_DST_WORD,
 ];
 
-pub static STEPS_NEG_W_PD: [MicroStep; 6] = [
+pub static STEPS_NEG_W_PD: [MicroStep; 7] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_dst_word),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_w),
         base_clocks: 2,
     },
+    common::READ_DST_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
@@ -391,13 +393,13 @@ pub static STEPS_NEG_W_ABSL: [MicroStep; 10] = [
 // ============================================================================
 
 pub static STEPS_NEG_L_DN: [MicroStep; 3] = [
-    common::ALU_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_neg_l_dn),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_NEG_L_AI: [MicroStep; 10] = [
@@ -416,9 +418,9 @@ pub static STEPS_NEG_L_AI: [MicroStep; 10] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 pub static STEPS_NEG_L_PI: [MicroStep; 10] = [
@@ -437,17 +439,18 @@ pub static STEPS_NEG_L_PI: [MicroStep; 10] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
-pub static STEPS_NEG_L_PD: [MicroStep; 10] = [
+pub static STEPS_NEG_L_PD: [MicroStep; 11] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_dst_long_high),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_l),
         base_clocks: 2,
     },
+    common::READ_DST_LONG_HIGH,
     common::BUS_READ_IDLE,
     common::READ_DST_LONG_LOW,
     common::BUS_READ_IDLE,
@@ -458,9 +461,9 @@ pub static STEPS_NEG_L_PD: [MicroStep; 10] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 pub static STEPS_NEG_L_D16: [MicroStep; 12] = [
@@ -481,9 +484,9 @@ pub static STEPS_NEG_L_D16: [MicroStep; 12] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 pub static STEPS_NEG_L_IDX: [MicroStep; 13] = [
@@ -505,9 +508,9 @@ pub static STEPS_NEG_L_IDX: [MicroStep; 13] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 pub static STEPS_NEG_L_ABSW: [MicroStep; 12] = [
@@ -528,9 +531,9 @@ pub static STEPS_NEG_L_ABSW: [MicroStep; 12] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 pub static STEPS_NEG_L_ABSL: [MicroStep; 14] = [
@@ -557,9 +560,9 @@ pub static STEPS_NEG_L_ABSL: [MicroStep; 14] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 // ============================================================================

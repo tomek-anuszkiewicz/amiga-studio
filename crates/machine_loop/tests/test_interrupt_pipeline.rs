@@ -6,6 +6,7 @@
 //! (Paula Audio, CIA-A, Agnus VBlank), through Paula INTREQ/INTENA and
 //! machine arbitration, to M68000 autovector exception processing and RTE.
 
+use config::cia_reg;
 use config::A500Config;
 use machine_loop::A500Machine;
 
@@ -69,7 +70,7 @@ fn test_end_to_end_audio_interrupt_to_cpu_isr_and_rte() {
 
     // Step machine Color Clocks until CPU completes NOP and enters the ISR at $002000
     let mut cck_count = 0;
-    while machine.cpu.state.instruction_pc != 0x002000 {
+    while machine.cpu.state.instruction_pc() != 0x002000 {
         machine.step_cck();
         cck_count += 1;
         assert!(
@@ -79,7 +80,7 @@ fn test_end_to_end_audio_interrupt_to_cpu_isr_and_rte() {
     }
 
     // Assert CPU is now inside the ISR at $002000
-    assert_eq!(machine.cpu.state.instruction_pc, 0x002000);
+    assert_eq!(machine.cpu.state.instruction_pc(), 0x002000);
     // Interrupt mask should have been raised to Level 4
     assert_eq!(machine.cpu.state.interrupt_mask(), 4);
     // Supervisor mode active
@@ -94,14 +95,14 @@ fn test_end_to_end_audio_interrupt_to_cpu_isr_and_rte() {
 
     // Execute RTE to return to main thread ($001002)
     machine.step_instruction();
-    assert_eq!(machine.cpu.state.instruction_pc, 0x001002);
+    assert_eq!(machine.cpu.state.instruction_pc(), 0x001002);
 
     // 7. Step through resumed main thread: execute MOVEQ #1, D0
     machine.step_instruction();
 
     // Verify main thread resumed and committed D0 = 1
     assert_eq!(machine.cpu.state.d_long(0), 1);
-    assert_eq!(machine.cpu.state.instruction_pc, 0x001004);
+    assert_eq!(machine.cpu.state.instruction_pc(), 0x001004);
 }
 
 #[test]
@@ -124,10 +125,10 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
     machine.paula.write_intena(0xC008);
 
     // Trigger CIA-A Timer A underflow
-    machine.cia_a.write_register(0xD, 0x81); // Enable Timer A IRQ in ICR
-    machine.cia_a.write_register(0x4, 1);
-    machine.cia_a.write_register(0x5, 0);
-    machine.cia_a.write_register(0xE, 0x01); // Start Timer A
+    machine.cia_a.write_register(cia_reg::cia_a::ICR, 0x81); // Enable Timer A IRQ in ICR
+    machine.cia_a.write_register(cia_reg::cia_a::TALO, 1);
+    machine.cia_a.write_register(cia_reg::cia_a::TAHI, 0);
+    machine.cia_a.write_register(cia_reg::cia_a::CRA, 0x01); // Start Timer A
 
     // Step machine until CIA underflows and asserts IRQ
     let mut cck_count = 0;
@@ -143,11 +144,11 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
     // Verify CIA-A asserts IRQ and Paula reflects PORTS bit 3
     assert!(machine.cia_a.irq_pending());
     assert_eq!(machine.paula.interrupts.intreq & 0x0008, 0x0008);
-    assert_eq!(machine.cpu.state.ipl, 2);
+    assert_eq!(machine.cpu.state.ipl(), 2);
 
     // Step until CPU enters the ISR at $003000
     let mut cck_count = 0;
-    while machine.cpu.state.instruction_pc != 0x003000 {
+    while machine.cpu.state.instruction_pc() != 0x003000 {
         machine.step_cck();
         cck_count += 1;
         assert!(
@@ -156,11 +157,11 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
         );
     }
 
-    assert_eq!(machine.cpu.state.instruction_pc, 0x003000);
+    assert_eq!(machine.cpu.state.instruction_pc(), 0x003000);
     assert_eq!(machine.cpu.state.interrupt_mask(), 2);
 
     // Acknowledge CIA interrupt by reading ICR (clears IRQ line)
-    machine.cia_a.read_register(0xD);
+    machine.cia_a.read_register(cia_reg::cia_a::ICR);
     machine.paula.write_intreq(0x0008);
 
     // Step through ISR: execute MOVEQ #88, D2
@@ -205,11 +206,11 @@ fn test_end_to_end_vblank_interrupt_to_cpu() {
 
     // Verify VBlank asserted
     assert_eq!(machine.paula.interrupts.intreq & 0x0020, 0x0020);
-    assert_eq!(machine.cpu.state.ipl, 3);
+    assert_eq!(machine.cpu.state.ipl(), 3);
 
     // Step CPU until it enters the ISR at $004000
     let mut cck_count = 0;
-    while machine.cpu.state.instruction_pc != 0x004000 {
+    while machine.cpu.state.instruction_pc() != 0x004000 {
         machine.step_cck();
         cck_count += 1;
         assert!(
@@ -218,7 +219,7 @@ fn test_end_to_end_vblank_interrupt_to_cpu() {
         );
     }
 
-    assert_eq!(machine.cpu.state.instruction_pc, 0x004000);
+    assert_eq!(machine.cpu.state.instruction_pc(), 0x004000);
     assert_eq!(machine.cpu.state.interrupt_mask(), 3);
 
     // Clear VERTB request
@@ -257,8 +258,8 @@ fn test_master_intena_masking_suppresses_cpu_interrupt() {
 
     // INTREQ bit 7 is set, but because INTEN is 0, IPL remains 0
     assert_eq!(machine.paula.interrupts.intreq & 0x0080, 0x0080);
-    assert_eq!(machine.cpu.state.ipl, 0);
+    assert_eq!(machine.cpu.state.ipl(), 0);
     // CPU continues normal execution without entering ISR
-    assert_ne!(machine.cpu.state.instruction_pc, 0x002000);
-    assert_eq!(machine.cpu.state.instruction_pc, 0x001000);
+    assert_ne!(machine.cpu.state.instruction_pc(), 0x002000);
+    assert_eq!(machine.cpu.state.instruction_pc(), 0x001000);
 }

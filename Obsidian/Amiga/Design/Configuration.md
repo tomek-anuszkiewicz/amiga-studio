@@ -6,19 +6,17 @@ category: "Design"
 subsystem: "config"
 status: "active"
 created: 2026-09-05
-updated: 2026-09-12
-related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
+updated: 2026-10-13
+related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/config"
-last_synced_commit: "da55c088654f1b218e4694ed91559b5c3604dc52"
-last_synced_date: "2026-09-19"
 ---
 # Amiga 500 Configuration Specification (`A500Config`)
 
 > [!NOTE]
 > All ROM binaries, disk images, and memory configurations are injected into the core externally as raw byte slices (`&[u8]`), preserving WASM portability and system independence (see [AGENTS.md](../../../AGENTS.md)).
 > Implementation resides in the dedicated foundational crate [`crates/config`](../../../crates/config).
-> Physical memory layout is applied in [MemoryBus.md](MemoryBus.md), RTC models in [RTC.md](RTC.md), chipset variants in [Agnus.md](Agnus.md) and [Denise.md](Denise.md), and system coordinator setup in [Main loop A500.md](Main%20loop%20A500.md).
+> Physical memory layout is applied in [Physical Memory.md](Physical%20Memory.md), motherboard routing in [MemoryBus.md](MemoryBus.md), RTC models in [RTC.md](RTC.md), chipset variants in [Agnus.md](Agnus.md) and [Denise.md](Denise.md), and system coordinator setup in [Machine Loop.md](Machine%20Loop.md).
 
 ---
 
@@ -66,7 +64,7 @@ The master configuration is encapsulated in [`A500Config`](../../../crates/confi
 
 ## 3. ROM & Image Injection Interfaces
 
-Because the emulator core is system-agnostic and decoupled from the host filesystem (Rule 1.1 and Rule 2.5 in [AGENTS.md](../../../AGENTS.md)), all ROMs and disk images are injected strictly as external byte slices (`&[u8]`):
+Because the emulator core is system-agnostic and decoupled from the host filesystem, all ROMs and disk images are injected strictly as external byte slices (`&[u8]`):
 - **Kickstart ROM Injection**: The top-level machine constructor accepts `kickstart_rom: &[u8]`, validating exact length (256 KB or 512 KB) before loading into `MemoryBus` and executing initial cold reset.
 - **Floppy ADF Injection**: Disk drives accept ADF images as raw byte slices `&[u8]`, enabling seamless operation in both desktop environments and WebAssembly canvas contexts.
 - **Zero Host I/O in Core**: No `std::fs` operations exist inside the core emulation engine.
@@ -89,13 +87,9 @@ Because the emulator core is system-agnostic and decoupled from the host filesys
 
 ---
 
-## 5. Future Roadmap Extensions (Post-A500)
+## 5. Deferred Peripheral Extension
 
-*The following configurations are deferred to subsequent project milestones:*
-- **A500 Rev 6A / Late OCS:** 1 MB Chip RAM jumperable option (Fat Agnus 8372A in OCS mode).
-- **A500 Plus (ECS):** 1 MB Chip RAM (`ChipRamSize::Mb1`), ECS Agnus 8372A (`AgnusModel::Ecs1Mb`), ECS Denise 8373 (`DeniseModel::Ecs8373`), Kickstart 2.04 (512 KB).
-- **Megachip / ECS 2MB:** 2 MB Chip RAM (`ChipRamSize::Mb2`), Agnus 8372B.
-- **A1200 (AGA):** 68EC020 CPU (32-bit), 2 MB Chip RAM, Alice (AGA Agnus), Lisa (AGA Denise), 24-bit color palette.
+*The following peripheral extension is deferred to a subsequent project milestone:*
 - **Extended Peripherals:** 4-Player Parallel Port Joystick adapter, analog proportional joysticks.
 
 ---
@@ -103,5 +97,5 @@ Because the emulator core is system-agnostic and decoupled from the host filesys
 ## 6. Reference Documentation & Upstream Ground Truth
 
 - [Amiga Hardware Reference Manual: Appendix D (System Memory Map)](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md): Memory map boundaries for 512 KB Chip, 512 KB Slow, and 8 MB Auto-Config address spaces.
-- [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md): Motherboard revision differences, jumper configurations (JP2 512K/1MB Agnus, JP1 50/60Hz tick), and expansion bus options.
+- [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md): Motherboard revision differences, video timing selection, and expansion bus options.
 - [Configuration Subsystem Implementation Source](../../../crates/config/src/config.rs): Rust implementation of `A500Config`, hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`), and video standards.

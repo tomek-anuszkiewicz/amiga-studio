@@ -26,6 +26,12 @@ __pycache__/
 # Local agent execution plans and disposable diagnostics.
 .agent/tasks/
 .agent/tmp/
+# Legacy generated SingleStep reports; current runs use .agent/tmp/singlestep.
+/tests/singlestep/
+# Legacy generated benchmark reports; tracked baselines and traces remain visible.
+/tests/benchmarks/quick/
+/tests/benchmarks/standard/
+/tests/benchmarks/thorough/
 
 # ------------------------------------------------------------------------------
 # 5. Rust Cargo Build Outputs (Safe to delete / Regenerated on build)
@@ -34,24 +40,13 @@ __pycache__/
 # prevent concurrent Cargo compiler locks.
 target/
 
-# ------------------------------------------------------------------------------
-# 6. Local Test & Benchmark Execution Outputs (Regenerated on test runs)
-# ------------------------------------------------------------------------------
-# Run artifacts, CSV results, and execution traces produced by local benchmark
-# and SingleStep test harness invocations.
-tests/benchmarks/quick/
-tests/benchmarks/standard/
-tests/benchmarks/thorough/
-tests/singlestep/
-
 # ==============================================================================
 # 7. PRESERVED EXTERNAL ASSETS & REFERENCE DATA (CRITICAL - DO NOT PURGE / DELETE!)
 # ==============================================================================
 # The items below are excluded from Git history to avoid committing multi-gigabyte
 # external binaries, but THEY CONTAIN CRITICAL DATA AND MUST NEVER BE DELETED.
 #
-# They are automatically linked into isolated Git worktrees via zero-cost NTFS
-# directory junctions (0 ms, 0 bytes) using `tools/git/worktree.ps1`:
+# They are physically copied into isolated Git worktrees by `tools/worktree.ps1`:
 # ==============================================================================
 
 # Physical 68000 silicon test vectors (SingleStepTests, 6.5 GB) & clean-room
@@ -77,5 +72,5 @@ Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analys
 # Keir Fraser Amiga Test Kit floppy disk images (.adf), debug symbols, and release docs.
 /tools/AmigaTestKit*/
 
-# not worthy roadmap.md and git history itsefl
+# not worthy roadmap.md and git history itself
 TODO.md

@@ -5,6 +5,8 @@
 //! Verifies CIA-A and CIA-B timer underflows, Paula INTREQ cross-chip signaling,
 //! CPU IPL 2 and IPL 6 escalation, and 50 Hz VBlank TOD ticking in the machine loop.
 
+use config::cia_reg;
+use config::custom_reg;
 mod common;
 use common::MachineHarness;
 
@@ -16,22 +18,34 @@ fn test_cia_a_timer_underflow_triggers_level2_interrupt() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09A, 0xC008); // SET/CLR + INTEN + PORTS
+        .write_custom_word(custom_reg::paula::INTENA, 0xC008); // SET/CLR + INTEN + PORTS
 
     // 2. Configure CIA-A Timer A:
     // Latch = 5 E-Clocks (each E-Clock = 5 CCKs -> 25 CCKs total)
-    harness.machine.cia_a.commit_register_write(0x04, 5); // TALO
-    harness.machine.cia_a.commit_register_write(0x05, 0); // TAHI (also reloads ta_counter when stopped)
+    harness
+        .machine
+        .cia_a
+        .commit_register_write(cia_reg::cia_a::TALO, 5); // TALO
+    harness
+        .machine
+        .cia_a
+        .commit_register_write(cia_reg::cia_a::TAHI, 0); // TAHI (also reloads ta_counter when stopped)
 
     // Unmask Timer A underflow in CIA-A ICR (bit 7 SET + bit 0 = 0x81)
-    harness.machine.cia_a.commit_register_write(0x0D, 0x81);
+    harness
+        .machine
+        .cia_a
+        .commit_register_write(cia_reg::cia_a::ICR, 0x81);
 
     // Assert initially no interrupt is pending
     assert!(!harness.machine.cia_a.irq_pending());
     assert_eq!(harness.machine.paula.pending_interrupt_level(), 0);
 
     // Start Timer A in continuous mode (CRA bit 0 = 1)
-    harness.machine.cia_a.commit_register_write(0x0E, 0x01);
+    harness
+        .machine
+        .cia_a
+        .commit_register_write(cia_reg::cia_a::CRA, 0x01);
 
     // Step 4 E-Clocks (20 CCKs): should not have underflowed yet
     harness.step_cck(20);
@@ -69,20 +83,32 @@ fn test_cia_b_timer_underflow_triggers_level6_interrupt() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09A, 0xE000); // SET/CLR + INTEN + EXTER
+        .write_custom_word(custom_reg::paula::INTENA, 0xE000); // SET/CLR + INTEN + EXTER
 
     // 2. Configure CIA-B Timer A for 4 E-Clocks
-    harness.machine.cia_b.commit_register_write(0x04, 4); // TALO
-    harness.machine.cia_b.commit_register_write(0x05, 0); // TAHI
+    harness
+        .machine
+        .cia_b
+        .commit_register_write(cia_reg::cia_b::TALO, 4); // TALO
+    harness
+        .machine
+        .cia_b
+        .commit_register_write(cia_reg::cia_b::TAHI, 0); // TAHI
 
     // Unmask Timer A in CIA-B ICR (0x81)
-    harness.machine.cia_b.commit_register_write(0x0D, 0x81);
+    harness
+        .machine
+        .cia_b
+        .commit_register_write(cia_reg::cia_b::ICR, 0x81);
 
     assert!(!harness.machine.cia_b.irq_pending());
     assert_eq!(harness.machine.paula.pending_interrupt_level(), 0);
 
     // Start Timer A in continuous mode (CRA bit 0 = 1)
-    harness.machine.cia_b.commit_register_write(0x0E, 0x01);
+    harness
+        .machine
+        .cia_b
+        .commit_register_write(cia_reg::cia_b::CRA, 0x01);
 
     // Step 30 CCKs (6 E-Clocks, guaranteeing underflow)
     harness.step_cck(30);
@@ -130,19 +156,34 @@ fn test_poll_peripheral_pins_isolation_from_cia_interrupts() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09A, 0xC008);
+        .write_custom_word(custom_reg::paula::INTENA, 0xC008);
 
     // 2. Configure CIA-A Timer A and cause underflow
-    harness.machine.cia_a.commit_register_write(0x04, 1);
-    harness.machine.cia_a.commit_register_write(0x05, 0);
-    harness.machine.cia_a.commit_register_write(0x0D, 0x81);
-    harness.machine.cia_a.commit_register_write(0x0E, 0x01);
+    harness
+        .machine
+        .cia_a
+        .commit_register_write(cia_reg::cia_a::TALO, 1);
+    harness
+        .machine
+        .cia_a
+        .commit_register_write(cia_reg::cia_a::TAHI, 0);
+    harness
+        .machine
+        .cia_a
+        .commit_register_write(cia_reg::cia_a::ICR, 0x81);
+    harness
+        .machine
+        .cia_a
+        .commit_register_write(cia_reg::cia_a::CRA, 0x01);
 
     harness.step_cck(25);
     assert!(harness.machine.cia_a.irq_pending());
 
     // 3. Clear Paula INTREQ bit 3 to simulate clean state
-    harness.machine.paula.commit_register_write(0x09C, 0x0008);
+    harness
+        .machine
+        .paula
+        .commit_register_write(custom_reg::paula::INTREQ, 0x0008);
     assert_eq!(harness.machine.paula.interrupts.intreq & 0x0008, 0);
 
     // 4. Calling poll_peripheral_pins() must NOT assert Paula's INT2 pin

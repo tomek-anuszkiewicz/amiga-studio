@@ -37,7 +37,7 @@ Activate this skill whenever:
 ### Step 1: Detect Oversized Files
 Run the architecture rule test to identify files exceeding the limit:
 ```powershell
-cargo test -p test_runner --test test_architecture_rules -- test_file_size_limits
+python tools/verification/verify.py check architecture case test_file_size_limits
 ```
 Or check line counts directly:
 ```powershell
@@ -71,19 +71,19 @@ Ensure extracted code adheres to project invariants:
 ### Step 5: Verify Compilation & Architecture Gates
 1. Run workspace compilation:
    ```powershell
-   cargo check --workspace
+   python tools/verification/verify.py check build
    ```
 2. Run test suites for the modified crate:
    ```powershell
-   cargo test -p <modified_crate>
+   python tools/verification/verify.py test rust crate <modified_crate>
    ```
 3. Run the automated architecture rule test:
    ```powershell
-   cargo test -p test_runner --test test_architecture_rules
+   python tools/verification/verify.py check architecture
    ```
 4. Format code:
    ```powershell
-   cargo fmt --all -- --check
+   python tools/verification/verify.py check formatting
    ```
 
 ---
@@ -104,5 +104,5 @@ Ensure extracted code adheres to project invariants:
   | :--- | :--- | :--- |
   | `pub struct Foo` | `crates/.../foo.rs` | `crates/.../<crate>.rs::Foo` |
   | `fn internal_bar` | `crates/.../bar.rs` | `pub(crate) use bar::internal_bar` |
-- **Architecture Validation:** `test_architecture_rules` passed (0 files exceeding 800 lines).
+- **Architecture Validation:** `check_architecture.py` passed (0 files exceeding 800 lines).
 ```

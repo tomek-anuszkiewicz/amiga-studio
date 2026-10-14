@@ -6,7 +6,7 @@ Parses external sampling profiler outputs (samply / Firefox Profiler Gecko JSON,
 collapsed/folded stack files, or sample logs) and computes execution time percentages
 for canonical chip and module entry methods (e.g. `step_cck` across CPU, Agnus, Denise, Paula, CIAs).
 
-Updates or verifies `tests/benchmarks/chipset_benchmark_baseline.json`.
+Updates or verifies `baselines/benchmarks/chipset_benchmark_baseline.json`.
 """
 
 import argparse

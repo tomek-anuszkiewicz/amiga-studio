@@ -22,65 +22,95 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
 
 - **1.4: Validate Bulk Conversion and RAG Ingestion**
   - After approving the sample pipeline, convert the manuals and validate Markdown, links, assets, and descriptions before indexing. Verify fresh and incremental `amiga` ingestion, hashing, chunk fidelity, embeddings, and sidecar retrieval through the canonical `rag_qdrant` CLI.
-  - **Gate:** Accepted converted artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](docs/developers.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag); unchanged input does not cause unnecessary reindexing.
+  - **Gate:** Accepted converted artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](.agents/references/developer-setup.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag); unchanged input does not cause unnecessary reindexing.
 
-## Step 2: Understand Tests and Establish a Profiling Workflow
+- **1.5: Bootstrap Optional FPGA Chipset References**
+  - Add optional source selections for [MiniMig](https://github.com/cristianoag/minimig) and the [Amiga Replacement Project](https://github.com/nonarkitten/amiga_replacement_project) under `ref_src/`. Pin each downloaded source to a recorded upstream revision and keep the default test-source bootstrap independent of these research references.
+  - **Gate:** Focused bootstrap checks verify selection, pinned source identity, repeat runs, and completeness for both references; the source inventory documents their local paths and revisions.
 
-- **2.1: Test Suite Review and Structural Orientation**
-  - Review `test_runner` and per-crate tests: execution commands, fixtures, golden references, L1/L2/L3 boundaries, and subsystem coverage. Identify obsolete tests, behavioral gaps, missing regression evidence, and any harness/layout changes needed before the HRM test sprint.
-  - **Gate:** A gap matrix in `Obsidian/Amiga/Design/Test Coverage Matrix.md` explains the test paths and priorities, supported by `python tools/harness/audit_code_quality.py --dead-code`.
+- **1.6: Include Measured Web Evidence in Hardware Research**
+  - Check whether the [hardware researcher](.codex/agents/hardware_researcher.toml) can use web search when local manuals leave a hardware question open. If available, add focused `site:techtravels.org <hardware question>` searches and inspection of relevant results to the owning role or [domain rule](.agents/rules/amiga-rag.md). Otherwise route the search through an agent with web access or evaluate a scoped search tool. The existing [Amiga RAG MCP adapter](tools/amiga-rag-mcp-server/README.md) searches local indexed documents; extend it only if the selected route requires a new capability.
+  - **Gate:** A representative Paula/`DMAL` question finds a relevant Techtravels.org page, cites the page and its supporting passage, and distinguishes measured signals from reconstructed circuitry without treating web results as indexed manual evidence.
+
+## Step 2: CPU Benchmarking and Profiling
+
+- **2.1: Rebuild CPU Instruction Benchmarks and Comparison Reports (`CPU-BENCH-01`)**
+  - Derive an inventory of implemented legal instruction forms from the CPU decoder, excluding decode-exception entries. Cover each instruction, size, permitted addressing mode, direction, and materially distinct execution path with representative registers; add A7 cases where stack-pointer behavior differs. Give each case a stable ID and workload fingerprint covering its actual opcode, extension fixture, path, inputs, and recipe. Report included, excluded, and unsupported forms with reasons, and estimate full-run duration before executing it; the existing 108 rows do not establish full coverage.
+  - Build deterministic, terminating workloads, aiming for about 700 target executions per block where safe and using separate constructions for control flow, exceptions, large encodings, and stateful operations. Verify the emitted target/helper sequence, actual counts, path, final PC/state, memory bounds, and observed CPU clocks before accepting a timing row. Preserve failed or wrong-path cases as diagnostic records, never as valid performance samples.
+  - Inject and reset outside the timer; measure only the host CPU stepping loop through the intended exit, including its control overhead and any executed guest helpers. Warm up, pilot a series of about 100 ms, then hold its execution count fixed for four measured series. Retain raw durations and actual counts, report median/min/max/dispersion, and use bounded, recorded retries for unstable cases. Keep CPU clocks and CCK distinct and resolve the documented unit conflict through [specification compliance](.agents/rules/spec-compliance.md).
+  - Report raw elapsed time per validated target execution as the primary composite cost. Include a same-session NOP control; isolate helper cost only when a matched paired workload validates subtraction. Record operands and paths for data-dependent instructions. Persist versioned JSON/CSV and a readable report under `.agent/tmp/benchmarks/`, with source and dirty-patch identity, harness/toolchain/build/host settings, pinning outcome, units, controls, retries, and anomalies.
+  - Generate machine-readable case comparisons and analyses of comparable addressing-mode increments, byte/word/long scaling, complex/system workloads, and host time versus observed CPU clocks. Match cases by executed encoding, fixture, path, and workload, not label or row order; show missing or incompatible cases. Attribute a speed change to CPU source only after a controlled old/new rerun with the same harness and comparable host conditions. Treat the retained baseline without source provenance as historical context.
+  - **Gate:** A full decoder-derived inventory and candidate run account for every included case, omission, failure, measured series, dispersion, actual runtime, and source/harness identity; JSON/CSV agree and comparisons exclude invalid or incomparable cells. Focused tests protect demonstrated workload, termination, counting, timer-boundary, and serialization failures. Supersede the old generated report only after validating its replacement. Present any tracked baseline retirement or replacement, with checksums and limitations, for a separate explicit reference decision; a generated report does not change the protected baseline.
 
 - **2.2: Sampling and Counter Profiling Feasibility**
   - Try `cargo flamegraph` on headless execution; use the [external profiling workflow](.agents/skills/profile-external/SKILL.md) and `samply` when host constraints require it. Evaluate `cargo-profiler`/Callgrind/Cachegrind or `perf` as complementary tools and compare available hot-symbol results.
-  - **Gate:** Record a working manual invocation, post-processing, baseline throughput, and available flamegraph output in `Obsidian/Amiga/Design/CPU Instruction Benchmarking.md`; document host/WASM limitations and a suitable alternative platform for unavailable tools.
+  - **Gate:** Record a working manual invocation, post-processing, baseline throughput, and available flamegraph output in `Obsidian/Amiga/Design/Performance/CPU Instruction Benchmarking.md`; document host/WASM limitations and a suitable alternative platform for unavailable tools.
 
 ## Step 3: HRM-Aligned Custom Chipset Reconstruction
 
-- **3.1: Strategic Clean-Slate Reset of Custom Chips & Machine Loop (Baseline HRM Spec Alignment)**
+- **3.1: Verify Custom Register Paths and Physical Signal Routing**
+  - Inventory every custom-register and CIA-A/CIA-B address decoded by `memory_bus.rs` against the register definitions and [ownership matrix](Obsidian/Amiga/Design/Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md). For each writable register, trace CPU and Copper access where applicable through byte/word decoding, all intended recipients, delayed mutation staging and commit where applicable, and the receiving chip's own state or explicit action. Account for multi-chip fan-out, set/clear semantics, and strobes without requiring a stored field where hardware behavior does not call for one; repair missing routes and missing commit effects for queued writes.
+  - For each readable register, verify that live and debug reads use the correct chip state or computed value, including read side effects, CIA selection and lane behavior, documented dummy addresses, and the modeled open-bus fallback.
+  - Compare A500 wiring and the [cross-chip signals catalog](Obsidian/Amiga/Design/Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md) with `memory_bus.rs` and `machine_loop.rs`. Trace register-bus strobes, DMA requests and grants, interrupts, sync, reset, and peripheral pins from source output through machine routing to recipient input at the required CCK phase; resolve missing, reversed, or direct peer connections against hardware evidence.
+  - **Gate:** Record a register-by-register route, recipient, commit/state or action, and read-result inventory, distinguishing implemented behavior from a decoder branch or queued mutation. Focused chip, bus, and machine integration tests cover each distinct register behavior and signal path, including exceptions and multi-chip writes. No mapped write silently disappears or remains queued without its intended effect; identify hardware behavior that remains unproven rather than inventing it.
+
+- **3.2: Model Old Gary Address Decoding on the A500 (`MEM-GARY-01`)**
+  - In every supported A500 preset, route banks `$A0-$BF` to the CIA decoder. A13/A12 are active-low selects: `00` selects both CIAs, `01` CIA-B, `10` CIA-A, and `11` neither. A11..A8 select the register; A7..A1 mirror it. `$BFC000` is one address in the `$BFC000-$BFCFFF` selected block, and the same selection pattern repeats in other mapped banks. CIA register selector `B` remains unconnected.
+  - With both CIAs selected, an even byte read uses CIA-B and an odd byte read CIA-A; a word read puts CIA-B in the high byte and CIA-A in the low byte. A byte write sends the same value to every selected CIA regardless of parity; a word write sends the high byte to selected CIA-B and the low byte to selected CIA-A. Pass full register identities to the existing CIA recipients and preserve CIA-A Port A overlay effects on every alias. Retain the documented fixed placeholder for an inactive read lane rather than assuming a physical data-bus latch.
+  - Route `$DE` and `$DF` through the same custom-register decoder, including its low-offset mirror, byte/word behavior, delayed mutations, side effects, and side-effect-free debug reads. Preserve installed Slow RAM and RTC precedence; evaluate other model-dependent mirrors separately. Update [MemoryBus](Obsidian/Amiga/Design/MemoryBus.md), [Physical Memory](Obsidian/Amiga/Design/Physical%20Memory.md), [CIA](Obsidian/Amiga/Design/CIA.md), and the [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md) together with the code. Recheck the HRM wording; WinUAE `cia.cpp`/`memory.cpp` and `ref_src/vAmiga-4.5/Core/Components/Memory/Memory.cpp` corroborate the decode but do not prove physical A500 wiring without schematic or measured evidence.
+  - **Gate:** First reproduce failures against the original router and bank table. Focused `memory_bus` and `physical_memory` tests cover dual selection, byte/word lanes and writes, nonzero register selectors, low-bit and `$A0-$BE` aliases, inactive selection, overlay effects, `$DE` reads/writes/debug reads, and Fast/Slow RAM and RTC boundaries. Then pass adjacent bus and machine integration checks.
+
+- **3.3: Enforce OCS Chip RAM DMA Pointer Invariants (`OCS-DMA-PTR-01`)**
+  - Compare the [Custom Chip Register Ownership and Access Matrix](Obsidian/Amiga/Design/Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) with register definitions, write routing, recipient fields, pointer arithmetic, and Chip RAM access sites; distinguish implemented storage from a named register or decoder branch. Inspect `DSKPTH/L`, `AUD0..3LCH/LCL`, `BPL1..6PTH/PTL`, `SPR0..7PTH/PTL`, `COP1/2LCH/LCL`, and `BLTA/B/C/DPTH/PTL`, plus Agnus `dskpt`/`audpt`/`audlc`/`bplpt`/`sprpt`, Copper `cop1lc`/`cop2lc`/`cop_pc`, and Blitter `bltapt`/`bltbpt`/`bltcpt`/`bltdpt`. Classify temporary and pending DMA addresses and `REFPTR` by their actual semantics. Keep CPU addresses, bus offsets, beam positions, lengths, and modulos outside this type.
+  - Put a shared `OcsDmaPointer` in `config` beside `OCS_DMA_ADDRESS_MASK` and derived half-register masks. Its private value represents 18 word-address bits: byte addresses `$000000-$07FFFE` with bit 0 clear. Provide checked or canonicalizing construction, byte-address extraction for bus access, high/low register writes, and named wrapping arithmetic in word or byte units; prevent unchecked mutation and deserialization. Model `BLTAPT` line mode separately because it becomes an error accumulator after loading, while preserving its observable register and snapshot behavior.
+  - Migrate affected fields, resets, register commits, arithmetic, DMA calls, debugger/state consumers, fixtures, and tests together. Preserve delayed write phases and Agnus ownership of DMA address generation. Remove redundant scattered masks while protecting primitive external/bus boundaries. Inspect the existing serialized field shape and old-snapshot loading before deciding compatibility; reject invalid restored pointers and resolve any format change explicitly.
+  - **Gate:** Test odd/out-of-range addresses, independent register-half writes, addition/subtraction across the 512 KB boundary, signed Blitter modulos, line-mode accumulation, snapshots, and affected DMA paths. Pass focused config, Agnus, Copper, Blitter, memory-bus, save-state, and machine integration checks; account for remaining raw pointer fields and mask uses.
+
+- **3.4: Strategic Clean-Slate Reset of Custom Chips & Machine Loop (Baseline HRM Spec Alignment)**
   - **Objective:** Cleanse and reset `crates/machine_loop` and all specialized custom chip subsystems (`agnus`, `denise`, `paula`, `cia`, `copper`, `blitter`, `floppy`) outside the CPU and physical memory to pure HRM architectural specifications, purging accumulated legacy scaffolding.
   - **Actionable Scope:**
     - Cleanse register definitions and reset states to align strictly with the official Commodore Amiga Hardware Reference Manual (HRM).
     - Establish an "idealistic", pure architectural baseline with zero ad-hoc hacks.
     - **Decision required before implementation:** The proposed removal/deferment of timing and hardware quirks conflicts with the current design invariants. Review it against [specification compliance](.agents/rules/spec-compliance.md) and the [Platform Quirks Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md); preserve documented behavior unless an explicit specification change is approved.
   - **Verification Gate:**
-    - `cargo check --workspace`
-    - `cargo test -p test_runner --test test_architecture_rules`
+    - `python tools/verification/verify.py check build`
+    - `python tools/verification/verify.py check architecture`
 
-- **3.2: Signal Propagation Documentation Audit & Hardening**
+- **3.5: Signal Propagation Documentation Audit & Hardening**
   - **Objective:** Ensure that all agent governance files (rules, skills, workflows, design docs) accurately and completely describe the two signal propagation mechanisms so any future agent has zero ambiguity about how to implement them correctly.
   - **Actionable Scope:**
     - **Register-write propagation:** Verify that `hardware-bus-topology.md`, relevant design specs, and `MachineLoop` documentation clearly describe what happens clock-phase by clock-phase when a CPU or DMA write lands in a custom chip register (e.g. `COLOR00`, `BPLCON0`, `INTENA`). Update or author missing sections.
     - **Special inter-chip signal lines:** Verify documentation for DMA request/grant (`RGA` bus), interrupt lines (`_IPL0`–`_IPL2`, `_INTREQ`/`_INTENA` propagation through Paula → CIA → CPU), and any other active signal paths (e.g. blitter busy, disk DMA, copper WAIT/SKIP). Ensure polling methods and timing are documented with cycle-phase precision.
-    - Sync any divergence between documentation and actual `MachineLoop` poll-and-route implementation found in Step 2.1.
+    - Sync any divergence between documentation and the actual `MachineLoop` poll-and-route implementation.
   - **Verification Gate:**
-    - `python tools/harness/pre_flight.py --milestone` (Docs Quality pillar).
-    - All updated design docs have `last_synced_commit` checkpoint bumped.
+    - Run the scoped specification review and [vault link/frontmatter audit](.agents/skills/obsidian-vault-linking/SKILL.md); the milestone command does not execute documentation maintenance. At point closure, run commit and milestone profiles at their existing triggers.
+    - The intended commit changes were reviewed against documents selected by `tracked_paths`; real corrections are included, and accurate documents remain untouched.
 
-- **3.3: HRM-Aligned Subsystem Test Suite Authoring**
+- **3.6: HRM-Aligned Subsystem Test Suite Authoring**
   - **Objective:** Write a clean, authoritative test suite for each custom chip subsystem derived strictly from the Amiga Hardware Reference Manual — not from source code inference. Tests must be simple, register-behavioral, and free from cycle-exact timing complexity.
   - **Actionable Scope:**
     - One test file per subsystem: `test_agnus.rs`, `test_denise.rs`, `test_paula.rs`, `test_cia.rs`, `test_copper.rs`, `test_blitter.rs`.
     - Each test: write a register value → advance minimum required clocks → assert observable output or state. No multi-chip timing chains in L1 tests.
     - Simple inter-subsystem interaction tests (L2): focus on the cleanest signal paths — e.g. CIA timer overflow → Paula `_INT` → CPU IPL change. Prefer to write inter-chip tests and any required implementation changes during horizontal blanking (hblank return) when bus is idle, to minimize contention complexity.
-    - Do **not** target vAmigaTS or silicon-level cycle accuracy in this step — that is Step 3.7 and Step 5.
+    - Do **not** target vAmigaTS or silicon-level cycle accuracy in this step — that is Step 3.10 and Step 5.
   - **Verification Gate:**
-    - `python tools/harness/pre_flight.py --quick`
-    - `cargo test -p test_runner --test test_architecture_rules`
+    - `python tools/verification/verify.py commit`
+    - `python tools/verification/verify.py check architecture`
     - Tests verify subsystem behavior, boundary conditions, and relevant failure modes per unit-testing-policy; no assertion-count quota applies.
 
-- **3.4: Lockstep Differential Tracer vs. vAmiga (Contingency)**
-  - **Trigger:** Only if HRM-aligned tests (3.3) fail to isolate a regression — i.e. tests pass but behavior diverges from reference in ways not yet covered by the test suite.
+- **3.7: Lockstep Differential Tracer vs. vAmiga (Contingency)**
+  - **Trigger:** Only if HRM-aligned tests (3.6) fail to isolate a regression — i.e. tests pass but behavior diverges from reference in ways not yet covered by the test suite.
   - **Objective:** Build a cycle-exact co-simulation harness that runs the same ROM/ADF through both this emulator and vAmiga in lockstep, dumps a full machine state snapshot at every CCK boundary, and reports the first divergence point with a structured diff.
   - **Actionable Scope:**
     - Add a `StepTracer` trait (or feature-gated callback) to `MachineLoop`: at each `step_cck()`, serialize `CpuState` + all chip register banks into a compact binary or JSON snapshot. All state structs already implement `serde::Serialize` — snapshot is essentially `serde_json::to_string(&machine.snapshot())`.
     - Wire vAmiga's existing headless state-dump mode (`ref_src/vAmiga`) to emit equivalent snapshots at the same CCK boundaries.
-    - Harness (`tools/harness/lockstep_diff.py`): load both snapshot streams, walk them in parallel, and stop at the first CCK where any field diverges — output: `CCK #N | field | expected (vAmiga) | actual (ours)`.
+    - Harness (`tools/verification/lockstep_diff.py`): load both snapshot streams, walk them in parallel, and stop at the first CCK where any field diverges — output: `CCK #N | field | expected (vAmiga) | actual (ours)`.
     - Keep tracer behind a feature flag (`--features tracer`) so zero overhead in production builds.
   - **Verification Gate:**
     - Tracer successfully identifies the CCK and field of a known injected regression (synthetic test).
-    - `cargo test -p test_runner --test test_lockstep_tracer` (smoke test against a trivial ROM loop).
+    - `python tools/verification/verify.py test rust crate test_runner suite test_lockstep_tracer` (smoke test against a trivial ROM loop).
 
-- **3.5: Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution**
+- **3.8: Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution**
 
   - **Objective:** Operationalize the authentic floppy disk subsystem and Kickstart ROM overlay bootloader sequence to load and execute genuine Amiga programs from disk images (`.adf`).
   - **Actionable Scope:**
@@ -91,7 +121,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Unit tests in `crates/floppy/tests/`
     - Machine loop boot integration tests in `crates/machine_loop/tests/`
 
-- **3.6: vAmigaTS Native Disk-Based Verification & Self-Testing**
+- **3.9: vAmigaTS Native Disk-Based Verification & Self-Testing**
   - **Objective:** Execute native Amiga disk-based test suites validating drive control, floppy DMA, and CPU coordination.
   - **Actionable Scope:**
     - Execute disk-based vAmigaTS tests verifying that the emulator can run native Amiga software to test itself.
@@ -99,27 +129,27 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
   - **Verification Gate:**
     - Automated test run reports for disk-based test suites passing with zero unexpected halts.
 
-- **3.7: Principled, Rule-Compliant Custom Chip & Register Verification**
+- **3.10: Principled, Rule-Compliant Custom Chip & Register Verification**
   - **Objective:** Advance custom chips and registers systematically from clean baseline specifications to fully validated cycle-exact implementations.
   - **Actionable Scope:**
     - Implement and calibrate custom chip features following the substrate-first causality chain (Layer 0 $\to$ Layer 4).
-    - Strictly adhere to repro-first defect resolution (`.agents/rules/repro-first.md`) and 4-tier integration archetypes (`.agents/rules/unit-testing-policy.md`).
+    - Strictly adhere to defect resolution (`.agents/rules/structural-root-cause.md`) and 4-tier integration archetypes (`.agents/rules/unit-testing-policy.md`).
   - **Verification Gate:**
-    - `cargo test -p machine_loop`
-    - `python tools/harness/run_tests.py --integration`
+    - `python tools/verification/verify.py test rust crate machine_loop`
+    - `python tools/verification/verify.py test rust integration`
 
 ---
 
 ## Step 4: Developer Studio GUI & Diagnostic Tooling Hardening (Ongoing Companion Track)
 
-- **4.1: Continuous Testing & Polish of Developer Studio (Debugger View)**
+- **4.1: Continuous Testing & Refinement of Developer Studio (Debugger View)**
   - **Objective:** Actively test, harden, and refine the Developer Studio GUI (`crates/gui`) under live emulation across all display tiers and interactive workflows.
   - **Actionable Scope:**
     - Test interactive panels under live stepping: Disassembly infinite stream browsing, in-place instruction patching, Memory Hex selection and row-wrapping keyboard navigation, register/CCR editing, Microcode Inspector step progression, and breakpoint/watchpoint triggers.
     - Verify layout stability, margin geometry, scrollbar ergonomics, and responsive display tiers (`LayoutTier::FullHdWide`, `LayoutTier::StandardDesktop`, `LayoutTier::Compact`).
     - Test upcoming Save State management (`State` menu, in-memory quick slots 1–5, `F6`/`F9` shortcuts, and native file dialogs).
   - **Verification Gate:**
-    - `cargo test -p gui --test test_interactions` (all headless egui interaction tests passing).
+    - `python tools/verification/verify.py test rust crate gui suite test_interactions` (all headless egui interaction tests passing).
 
 - **4.2: Developer Studio & Debugger Keyboard Shortcuts Documentation & Discoverability**
   - **Objective:** Complete audit, documentation, and user-facing surfacing of all implemented keyboard shortcuts across Developer Studio and Game View modes, ensuring zero hidden keys.
@@ -138,12 +168,12 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
   - **Objective:** Enforce strict gating and categorization for tests requiring hardware beyond the baseline A500 OCS configuration.
   - **Actionable Scope:**
     - Maintain and audit formal gate categories: FPU Coprocessors (206 tests deferred to the scope decision in Step 11.2), ECS & AGA Silicon (112 tests deferred to Steps 11.1 and 11.2), 68010 CPU Architecture (91 tests deferred to Step 11.2), AmigaOS Floppy MFM Bootblock (7 tests deferred to Step 9.1), and Non-Visual Register Assertions (193 tests deferred to Step 5.2.6).
-    - Ensure test runner automatically filters deferred tests when executing baseline OCS suites.
+    - A future capture entry point must classify supported and deferred tests before executing baseline OCS suites; the previous runner has been removed.
   - **Verification Gate:**
-    - `cargo test -p test_runner --test test_vamiga_runner -- test_vamiga_deferred_reasons_audit`
+    - Demonstrate supported/deferred selection through the future capture entry point before executing its baseline; no current Cargo suite provides this gate.
 
 - **5.2: Targeted Subsystem Verification Sub-Suites Execution Track (1,468 Active Baseline Tests)**
-  - **Objective:** Progressively execute and pass the 1,468 active baseline vAmigaTS tests in strict substrate-first causal order (Layer 0 $\to$ Layer 4), tracking progress in [vAmigaTS Verification Scorecard](Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md).
+  - **Objective:** Progressively execute and pass the 1,468 active baseline vAmigaTS tests in strict substrate-first causal order (Layer 0 $\to$ Layer 4). Re-establish the reporting format when this verification track resumes.
   - **Actionable Scope:**
     - **Sub-Suite 5.2.1: Agnus Master DMA Contention & Bus Arbitration (Layer 0 Substrate, 225 tests):** `Agnus/` (`DMACON/`, `BplDma/`, `DIW/`, `DDF/`, `bususage/`), verifying Color Clock phase allocation (odd/even), refresh cycles, CPU wait-state generation, and Blitter Nasty (`BLTPRI`).
     - **Sub-Suite 5.2.2: Agnus Blitter & Copper Coprocessor Engines (Layer 1 Coprocessors, 364 tests):** `Agnus/Blitter/` (250 tests: `line/`, `fill/`, `sblit/`, `timing/`, `bbusy/`, `bltint/`) and `Agnus/Copper/` (114 tests: `Wait/`, `Skip/`, `coptim/`, `coprace/`, `copvbl/`), verifying autonomous bus master operations, 256-minterm ALU, barrel shifts, modulos, and Copper 4-CCK timing.
@@ -153,18 +183,17 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - **Sub-Suite 5.2.6: Mainboard, Memory & Peripheral Assertions (Layer 4 System, 58 visual + 193 non-visual tests):** `Mainboard/`, `Memory/`, `Misc/`, verifying address decoding, port registers, and RAM expansion configurations.
     - **Sub-Suite 5.2.7: M68000 CPU Silicon Pipeline (Layer 4 System Integration, 503 tests):** `CPU/` (ALU, bitwise, shifts, exceptions, traps, IPL autovectors).
   - **Verification Gate:**
-    - Scorecard synchronization in `Obsidian/Amiga/Design/vAmigaTS Verification Scorecard.md`.
-    - `cargo run -p test_runner -- vamiga --category <CAT> --summary`
+    - Restore a capture-runner entry point and verify each selected vAmigaTS category against its hardware reference captures.
 
 - **5.3: Dynamic Agnus DMA Slot Arbitration Optimization (Deferred Performance Track)**
   - **Objective:** Optimize the dynamic per-CCK DMA slot priority evaluation into a clean, pre-computed scanline slot lookup table (`[DmaSlot; 227]`).
   - **Actionable Scope:**
     - Localize optimization strictly within the Agnus DMA scheduler (`crates/dma/` / `crates/agnus/src/dma/`).
     - Preserve code simplicity and readability, with zero complex asynchronous event wheels or timing skips.
-    - Re-evaluate with `--profile` across vAmigaTS suites to measure empirical throughput gains.
+    - Once a representative whole-machine workload is executable, compare fresh throughput and external sampling profiles before and after the optimization; CPU-only benchmarks do not measure Agnus scheduling.
   - **Verification Gate:**
     - Zero regression across all active baseline OCS vAmigaTS suites.
-    - `cargo test -p test_runner --test test_dma_cartesian`
+    - Run DMA, Agnus and production memory_bus regression tests, including contention and pending CPU-request arbitration; CPU-only waiting tests do not validate scheduler changes.
 
 ---
 
@@ -263,6 +292,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Visual snapshot cards containing embedded thumbnail screenshots captured at the moment of saving.
     - Formatted creation date and time timestamps and user-defined state labels/descriptions.
     - Configuration integrity guard verifying matching hardware profiles before restoring state to prevent guest crashes.
+    - Preserve the active CPU execution path when restoring a snapshot during a redirected branch or exception; opcode-only slice reconstruction does not establish this. Gate with interrupted execution and identical continuation after serialization.
   - **Verification Gate:**
     - Save state serialization unit tests and UI state manager tests in `crates/gui/tests/`.
 
@@ -279,13 +309,13 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - vAmigaTS test runner passing all MFM and OS-level tests.
 
 - **9.2: End-to-End Bootable ADF Integration Testing**
-  - **Objective:** Boot and execute genuine Amiga benchmarks and diagnostic suites directly from floppy disk images (`cargo test -p test_runner --test test_boot_adf`).
+  - **Objective:** Boot and execute genuine Amiga benchmarks and diagnostic suites directly from floppy disk images (`python tools/verification/verify.py test rust crate test_runner suite test_boot_adf`).
   - **Actionable Scope:**
     - Load and execute `AmigaTestKit.adf`, `SysInfo.adf`, and Dhrystone on the authentic Kickstart / Amiga chipset stack.
     - Leverage address guards, breakpoint traps, and instruction bounds for parameterized termination.
     - Assert functional correctness, numerical determinism, and measure baseline throughput (MIPS, host CPU cycle cost per emulated CCK).
   - **Verification Gate:**
-    - `cargo test -p test_runner --test test_boot_adf` passing cleanly.
+    - `python tools/verification/verify.py test rust crate test_runner suite test_boot_adf` passing cleanly.
 
 - **9.3: Real-Workload Host Cache Miss & Footprint Impact**
   - **Objective:** Profile host L1i/L1d cache misses, Last Level Cache (LLC) misses, and branch mispredictions during continuous execution of genuine Amiga software.
@@ -317,7 +347,7 @@ Prepare source-faithful Markdown and searchable assets once, before routine emul
     - Ensure every optimized handler retains 100% cycle-exact Color Clock fidelity.
     - Pass the full exhaustive SingleStepTests suite ($env:SINGLESTEP_FULL = "1") and full workspace unit/integration test suites.
   - **Verification Gate:**
-    - `$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep`
+    - `python tools/verification/verify.py test runner singlestep full`
     - `cargo test --workspace`
 
 ---

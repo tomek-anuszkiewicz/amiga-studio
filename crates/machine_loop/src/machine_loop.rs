@@ -108,7 +108,10 @@ impl A500Machine {
             game_ports,
         };
         machine.poll_peripheral_pins();
-        machine.cpu.state.ipl = machine.paula.pending_interrupt_level();
+        machine
+            .cpu
+            .state
+            .set_ipl(machine.paula.pending_interrupt_level());
         machine
     }
 
@@ -126,7 +129,7 @@ impl A500Machine {
         self.game_ports.reset();
         self.cpu.reset(&mut self.physical_memory);
         self.poll_peripheral_pins();
-        self.cpu.state.ipl = self.paula.pending_interrupt_level();
+        self.cpu.state.set_ipl(self.paula.pending_interrupt_level());
     }
 
     /// Performs warm reset: preserves RAM, re-engages overlay, restarts execution
@@ -143,7 +146,7 @@ impl A500Machine {
         self.game_ports.reset();
         self.cpu.reset_warm(&mut self.physical_memory);
         self.poll_peripheral_pins();
-        self.cpu.state.ipl = self.paula.pending_interrupt_level();
+        self.cpu.state.set_ipl(self.paula.pending_interrupt_level());
     }
 
     /// Resets all external devices (custom chips, CIAs, peripherals, overlay)
@@ -158,7 +161,7 @@ impl A500Machine {
         self.floppy.reset();
         self.game_ports.reset();
         self.poll_peripheral_pins();
-        self.cpu.state.ipl = self.paula.pending_interrupt_level();
+        self.cpu.state.set_ipl(self.paula.pending_interrupt_level());
     }
 
     /// Polls peripheral sensing lines into CIA input pins and custom chip port latches
@@ -299,7 +302,7 @@ impl A500Machine {
 
         // 8. Central interrupt priority line (IPL 1-6) arbitration
         let ipl = self.paula.pending_interrupt_level();
-        self.cpu.state.ipl = ipl;
+        self.cpu.state.set_ipl(ipl);
     }
 
     /// Advances the entire machine by exactly 1 Color Clock (~280 ns).
@@ -319,11 +322,8 @@ impl A500Machine {
             return false;
         }
 
-        // 4. M68000 external RESET instruction pulse
-        if self.cpu.state.reset_line_asserted {
-            self.cpu.state.reset_line_asserted = false;
-            self.reset_external_devices();
-        }
+        // 4. Sample the CPU output before stepping to detect its assertion edge.
+        let reset_was_asserted = self.cpu.state.is_reset_line_asserted();
 
         // 5. Step CPU Color Clock phase with bus reference
         let mut bus = MemoryBus {
@@ -335,7 +335,11 @@ impl A500Machine {
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
         };
-        self.cpu.step_cck(&mut bus)
+        let completed = self.cpu.step_cck(&mut bus);
+        if !reset_was_asserted && self.cpu.state.is_reset_line_asserted() {
+            self.reset_external_devices();
+        }
+        completed
     }
 
     /// Advances the machine by a given number of Color Clocks
@@ -349,7 +353,7 @@ impl A500Machine {
     pub fn step_instruction(&mut self) {
         loop {
             let completed = self.step_cck();
-            if completed || self.cpu.state.halted || self.cpu.state.stopped {
+            if completed || self.cpu.state.is_halted() || self.cpu.state.is_stopped() {
                 break;
             }
         }

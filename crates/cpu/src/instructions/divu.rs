@@ -62,7 +62,7 @@ pub fn alu_divu_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_divu_mem(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let divisor = state.micro.source as u16;
+    let divisor = state.micro().source as u16;
     let dividend = state.d_long(reg_dst as usize);
     execute_divu(state, dividend, divisor, reg_dst);
 }
@@ -75,7 +75,7 @@ fn execute_divu(state: &mut CpuState, dividend: u32, divisor: u16, reg_dst: u8) 
 
     if (dividend >> 16) >= (divisor as u32) {
         state.set_ccr_v_clear_c();
-        state.micro.clocks_remaining = 6;
+        state.micro_mut().clocks_remaining = 6;
         return;
     }
 
@@ -86,7 +86,7 @@ fn execute_divu(state: &mut CpuState, dividend: u32, divisor: u16, reg_dst: u8) 
 
     let q16 = quotient as u16;
     state.set_ccr_nz_clear_vc((q16 as i16) < 0, q16 == 0);
-    state.micro.clocks_remaining = calc_divu_internal_clocks(dividend, divisor);
+    state.micro_mut().clocks_remaining = calc_divu_internal_clocks(dividend, divisor);
 }
 
 // ============================================================================

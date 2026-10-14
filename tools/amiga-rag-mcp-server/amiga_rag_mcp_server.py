@@ -1,6 +1,5 @@
 """FastMCP adapter for the PATH-resolved ``rag_qdrant`` CLI."""
 
-import os
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -16,14 +15,7 @@ from rag_qdrant_command import (
 
 mcp = FastMCP("amiga-rag")
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-RAG_INDEX_JSON_VARIABLE = "RAG_INDEX_JSON"
 load_environment_file(PROJECT_ROOT / ".env")
-
-
-def configured_index_json() -> Optional[str]:
-    """Return the CLI state file configured for this shared collection."""
-    value = os.environ.get(RAG_INDEX_JSON_VARIABLE, "").strip()
-    return value or None
 
 
 def response_error(response: object) -> Optional[str]:
@@ -51,12 +43,8 @@ def rag_search(
     This read-only tool does not index documents. Empty results and failures
     return explanatory messages.
     """
-    index_json = configured_index_json()
-    if index_json is None:
-        return "RAG commands require RAG_INDEX_JSON to name the shared CLI state file."
-
     try:
-        results = run_rag_qdrant_json(build_search_command(query, sources, limit, index_json))
+        results = run_rag_qdrant_json(build_search_command(query, sources, limit))
     except RagQdrantCommandError as error:
         return f"Error during RAG search: {error}"
 
@@ -85,14 +73,62 @@ def rag_search(
 
 
 @mcp.tool()
-def rag_list_sources() -> str:
-    """List source tags with cached file and vector counts."""
-    index_json = configured_index_json()
-    if index_json is None:
-        return "RAG commands require RAG_INDEX_JSON to name the shared CLI state file."
+def rag_search_reference(query: str, limit: int = 5) -> str:
+    """Search only Amiga hardware references, excluding project design and code.
+
+    The shared ``amiga`` source tag also contains other project documents, so
+    validate each returned file path before exposing its content to the caller.
+    """
+    if not 1 <= limit <= 20:
+        return "Reference search limit must be between 1 and 20."
 
     try:
-        sources = run_rag_qdrant_json(["--list-sources", "--index-json", index_json, "--json"])
+        results = run_rag_qdrant_json(build_search_command(query, ["amiga"], 100))
+    except RagQdrantCommandError as error:
+        return f"Error during reference search: {error}"
+
+    error = response_error(results)
+    if error:
+        return f"Error during reference search: {error}"
+    if not isinstance(results, list):
+        return "Error during reference search: rag_qdrant returned an unexpected JSON response."
+
+    reference_root = (PROJECT_ROOT / "Obsidian" / "Amiga" / "Reference").resolve()
+    accepted = []
+    for hit in results:
+        if not isinstance(hit, dict) or hit.get("source") != "amiga":
+            continue
+        raw_path = hit.get("file_path")
+        if not isinstance(raw_path, str) or not raw_path:
+            continue
+        path = Path(raw_path)
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        try:
+            path.resolve().relative_to(reference_root)
+        except ValueError:
+            continue
+        accepted.append(hit)
+        if len(accepted) == limit:
+            break
+
+    if not accepted:
+        return "No matching sections from Obsidian/Amiga/Reference were found in the first 100 Amiga results."
+
+    lines = [f"Found {len(accepted)} reference section(s):\n"]
+    for index, hit in enumerate(accepted, 1):
+        lines.append(f"--- [Result {index} | Score: {hit.get('score', 0.0)}] ---")
+        lines.append(f"File: {hit['file_path']}")
+        lines.append(f"Header: {hit.get('header', 'Untitled Section')}")
+        lines.append(f"\n{str(hit.get('content', '')).strip()}\n")
+    return "\n".join(lines)
+
+
+@mcp.tool()
+def rag_list_sources() -> str:
+    """List source tags with cached file and vector counts."""
+    try:
+        sources = run_rag_qdrant_json(["--list-sources", "--json"])
     except RagQdrantCommandError as error:
         return f"Error listing RAG sources: {error}"
 
@@ -121,12 +157,8 @@ def rag_list_sources() -> str:
 @mcp.tool()
 def rag_status() -> str:
     """Report Qdrant connectivity and the active collection status."""
-    index_json = configured_index_json()
-    if index_json is None:
-        return "RAG commands require RAG_INDEX_JSON to name the shared CLI state file."
-
     try:
-        status = run_rag_qdrant_json(["--status", "--index-json", index_json, "--json"])
+        status = run_rag_qdrant_json(["--status", "--json"])
     except RagQdrantCommandError as error:
         return f"Qdrant connection error: {error}"
 

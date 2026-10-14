@@ -5,8 +5,74 @@
 //! Verifies Paula INTENA/INTREQ priority encoding, master INTEN masking,
 //! multi-interrupt escalation order (Levels 1..6), and CPU autovector exception handling.
 
+use config::custom_reg;
 mod common;
+use common::continuation::retire;
 use common::MachineHarness;
+
+#[test]
+fn guest_interrupt_handler_clears_paula_source_and_returns_after_lowering_mask() {
+    for clears_source in [false, true] {
+        let mut harness = MachineHarness::new();
+        harness.machine.cpu.state.set_sr(0x2700);
+        harness.set_vector(27, 0x1000);
+        harness.load_cpu_code(
+            0x2000,
+            &[
+                0x46FC, 0x2000, // MOVE.W #$2000,SR: unmask pending level 3
+                0x702A, 0x5280, 0x7235, 0x60FE,
+            ],
+        );
+        let handler = if clears_source {
+            vec![0x5282, 0x33FC, 0x0040, 0x00DF, 0xF09C, 0x4E73]
+        } else {
+            vec![0x5282, 0x4E73]
+        };
+        harness.load_cpu_code(0x1000, &handler);
+        harness.machine.set_pc_and_prime_prefetch(0x2000);
+        harness.machine.denise.color[0] = 0x00A5;
+        harness
+            .machine
+            .memory_bus()
+            .write_custom_word(custom_reg::paula::INTENA, 0xC040);
+        harness
+            .machine
+            .memory_bus()
+            .write_custom_word(custom_reg::paula::INTREQ, 0x8040);
+        let machine = &mut harness.machine;
+        retire(machine, 0x2004);
+        assert_eq!(machine.paula.pending_interrupt_level(), 3);
+        retire(machine, 0x1000);
+        assert_eq!(machine.physical_memory.read_word_debug(0x6FFFA), 0x2000);
+        assert_eq!(machine.physical_memory.read_word_debug(0x6FFFE), 0x2004);
+        retire(machine, 0x1002);
+        if clears_source {
+            retire(machine, 0x100A);
+        }
+        retire(machine, 0x2004);
+        if clears_source {
+            for next in [0x2006, 0x2008, 0x200A] {
+                retire(machine, next);
+            }
+            for _ in 0..8 {
+                retire(machine, 0x200A);
+            }
+            assert_eq!(machine.paula.pending_interrupt_level(), 0);
+            assert_eq!(machine.cpu.state.d_long(0), 43);
+            assert_eq!(machine.cpu.state.d_long(1), 53);
+            assert_eq!(machine.cpu.state.d_long(2), 1);
+            assert_eq!(machine.cpu.state.ssp(), 0x70000);
+        } else {
+            // The live request must trigger a second entry after RTE unmasks it.
+            retire(machine, 0x1000);
+            retire(machine, 0x1002);
+            assert_eq!(machine.cpu.state.d_long(2), 2);
+            assert_eq!(machine.cpu.state.d_long(0), 0);
+        }
+        assert_eq!(machine.denise.color[0], 0x00A5);
+        assert!(!machine.cpu.state.is_reset_line_asserted());
+    }
+}
 
 #[test]
 fn test_multiple_simultaneous_interrupts_priority_order() {
@@ -14,16 +80,16 @@ fn test_multiple_simultaneous_interrupts_priority_order() {
 
     // Enable Level 1 (DSKBLK 0x0002), Level 3 (BLIT 0x0040), Level 4 (AUD0 0x0080), Level 6 (EXTER 0x2000)
     // plus master INTEN (bit 14 = 0x4000) with SET/CLR (bit 15 = 0x8000)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(0x09A, 0x8000 | 0x4000 | 0x2000 | 0x0080 | 0x0040 | 0x0002);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::INTENA,
+        0x8000 | 0x4000 | 0x2000 | 0x0080 | 0x0040 | 0x0002,
+    );
 
     // Request Level 1, Level 3, and Level 4 simultaneously in INTREQ
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09C, 0x8000 | 0x0080 | 0x0040 | 0x0002);
+        .write_custom_word(custom_reg::paula::INTREQ, 0x8000 | 0x0080 | 0x0040 | 0x0002);
 
     // Wait 2 CCKs for write to commit through delay pipeline
     harness.step_cck(2);
@@ -39,7 +105,7 @@ fn test_multiple_simultaneous_interrupts_priority_order() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09C, 0x0080);
+        .write_custom_word(custom_reg::paula::INTREQ, 0x0080);
     harness.step_cck(2);
 
     // Next pending level should be Level 3 (Blitter)
@@ -53,7 +119,7 @@ fn test_multiple_simultaneous_interrupts_priority_order() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09C, 0x0040);
+        .write_custom_word(custom_reg::paula::INTREQ, 0x0040);
     harness.step_cck(2);
 
     // Next pending level should be Level 1 (Disk block)
@@ -67,7 +133,7 @@ fn test_multiple_simultaneous_interrupts_priority_order() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09C, 0x0002);
+        .write_custom_word(custom_reg::paula::INTREQ, 0x0002);
     harness.step_cck(2);
 
     assert_eq!(
@@ -85,7 +151,7 @@ fn test_intena_master_and_individual_channel_masking() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09C, 0x8000 | 0x0080 | 0x0040);
+        .write_custom_word(custom_reg::paula::INTREQ, 0x8000 | 0x0080 | 0x0040);
     harness.step_cck(2);
 
     // With INTENA = 0 (or master INTEN disabled), no IPL is asserted
@@ -99,7 +165,7 @@ fn test_intena_master_and_individual_channel_masking() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09A, 0x8000 | 0x4000 | 0x0040);
+        .write_custom_word(custom_reg::paula::INTENA, 0x8000 | 0x4000 | 0x0040);
     harness.step_cck(2);
 
     // Although Level 4 is in INTREQ, it is masked in INTENA, so Level 3 should be resolved
@@ -113,7 +179,7 @@ fn test_intena_master_and_individual_channel_masking() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09A, 0x4000);
+        .write_custom_word(custom_reg::paula::INTENA, 0x4000);
     harness.step_cck(2);
 
     assert_eq!(
@@ -126,7 +192,7 @@ fn test_intena_master_and_individual_channel_masking() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09A, 0xC000);
+        .write_custom_word(custom_reg::paula::INTENA, 0xC000);
     harness.step_cck(2);
 
     assert_eq!(
@@ -157,12 +223,12 @@ fn test_cpu_autovector_exception_dispatch() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09A, 0xC040);
+        .write_custom_word(custom_reg::paula::INTENA, 0xC040);
     // Request Level 3 in INTREQ
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09C, 0x8040);
+        .write_custom_word(custom_reg::paula::INTREQ, 0x8040);
     harness.step_cck(2);
 
     assert_eq!(harness.machine.paula.pending_interrupt_level(), 3);
@@ -173,7 +239,8 @@ fn test_cpu_autovector_exception_dispatch() {
 
     // Verify PC entered the Level 3 ISR
     assert_eq!(
-        harness.machine.cpu.state.instruction_pc, isr_level3_addr,
+        harness.machine.cpu.state.instruction_pc(),
+        isr_level3_addr,
         "CPU PC should vector to Level 3 ISR address ($001000)"
     );
 

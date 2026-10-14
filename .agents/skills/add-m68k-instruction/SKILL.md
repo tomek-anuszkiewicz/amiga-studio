@@ -44,7 +44,7 @@ The M68000 core models execution via the **Cycle-Exact Micro-Step State Machine*
 5. **Strict Prohibitions**:
    - Zero custom macros (`macro_rules!` is strictly forbidden).
    - Zero const-generic matrices (`fn op<const S: usize>` is strictly forbidden).
-   - **Strict Flat Instruction Hierarchy**: Every instruction must reside in a single flat file `crates/cpu/src/instructions/<mnemonic>.rs`. Subdirectories under `instructions/` are strictly forbidden. If an instruction exceeds 800 lines due to exhaustive addressing modes (e.g. `add.rs`, `sub.rs`, `and.rs`), it must remain a single flat file and be registered under `LINE_COUNT_EXCEPTIONS` in `test_architecture_rules.rs`. Other non-instruction source files $\le 800$ lines.
+   - **Strict Flat Instruction Hierarchy**: Every instruction must reside in a single flat file `crates/cpu/src/instructions/<mnemonic>.rs`. Subdirectories under `instructions/` are strictly forbidden. If an instruction exceeds 800 lines due to exhaustive addressing modes (e.g. `add.rs`, `sub.rs`, `and.rs`), it must remain a single flat file and be registered under `LINE_COUNT_EXCEPTIONS` in `check_architecture.py`. Other non-instruction source files $\le 800$ lines.
 
 ---
 
@@ -67,7 +67,7 @@ Every micro-step where the physical memory bus does not perform an active read/w
 | **Internal ALU Idle** | 2 | `common::ALU_IDLE` | 2-clock internal execution delay with zero external bus activity (e.g. `CMPA.W`, `Bcc`, `BSET`, `CLR.L`). |
 | **Internal Execution Idle (4-clock)** | 4 | `common::ALU_IDLE_4CLK` | 4-clock internal execution delay (e.g. 32-bit register arithmetic `ADD.L Dn, Dn`, `SUBA.L`). |
 | **Internal Exception Idle (8-clock)** | 8 | `common::ALU_IDLE_8CLK` | 8-clock internal exception processing delay (`CHK` trap, `DIV` divide-by-zero). |
-| **Reset Idle (128-clock)** | 128 | `common::ALU_IDLE_128CLK` | 128-clock external bus idle countdown for `RESET`. |
+| **Reset Assertion Idle (124-clock)** | 124 | `reset::RESET_ASSERT_IDLE` | CPU-owned external `RESET` output interval; four released internal clocks precede it. |
 | **Stack Push Setup Idle** | 2 | `common::PUSH_STACK_HIGH_IDLE`<br>`common::EXCEPTION_PUSH_*_IDLE`<br>`common::AERR_PUSH_*_IDLE` | CCK1 SP decrement and alignment check; bus idle for DMA prior to CCK2 write. |
 
 > [!IMPORTANT]
@@ -447,32 +447,32 @@ fn test_sub_w() {
 ```
 Run targeted tests:
 ```powershell
-cargo test -p test_runner --test test_singlestep -- test_sub
+python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_sub
 ```
 
-### Tier 2 — Cartesian DMA Contention Verification
-Integrate the instruction into `crates/test_runner/tests/test_dma_cartesian.rs`:
-```rust
-#[test]
-fn test_dma_cartesian_sub() {
-    run_cartesian_for_opcodes(&["SUB.b", "SUB.w", "SUB.l", "SUBA.w", "SUBA.l"]);
-}
-```
-Run Cartesian stress tests (validating cycle invariance $C = C_0 + 2 \times \text{wait\_states}$, Fast RAM immunity, and state invariance across the entire $2^k \times 2^M$ space):
+### Ordinary CPU Wait-State Coverage
+
+Reuse `crates/cpu/tests/test_cck_bus.rs` and `test_micro_archetypes.rs` for shared
+transfer behavior. Add focused coverage when an instruction introduces a distinct
+retry state or side effect. Test phase, stable address/data, repeated refusal,
+one successful transfer and independently counted waiting cost. Do not register
+every opcode in a separate contention suite.
+
 ```powershell
-cargo test -p test_runner --test test_dma_cartesian -- test_dma_cartesian_sub
+python tools/verification/verify.py test rust crate cpu
 ```
 
 ### Architecture, Inlining & Formatting Gate
 Always verify before declaring complete:
 ```powershell
-cargo fmt --all -- --check
-cargo test -p test_runner --test test_architecture_rules
+python tools/verification/verify.py check formatting
+python tools/verification/verify.py check architecture
 ```
 > [!IMPORTANT]
-> The automated test `test_inlining_guidelines_compliance` automatically validates that all leaf ALU functions have `#[inline(always)]`, all cold exception/trap triggers have `#[inline(never)]`, and CCR mutators have `#[inline(always)]`. If an inlining attribute is missing or misconfigured, `test_architecture_rules` will fail immediately.
+> The automated test `test_inlining_guidelines_compliance` automatically validates that all leaf ALU functions have `#[inline(always)]`, all cold exception/trap triggers have `#[inline(never)]`, and CCR mutators have `#[inline(always)]`. If an inlining attribute is missing or misconfigured, `check_architecture.py` will fail immediately.
 
-Before completing any CPU change, run the full, exhaustive SingleStepTests without limits:
+Before completing a CPU change, stage the intended snapshot and run:
 ```powershell
-$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
+python tools/verification/verify.py commit
 ```
+The verifier owns full SingleStepTests selection; targeted commands above remain diagnostic tools.

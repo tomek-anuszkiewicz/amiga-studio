@@ -6,16 +6,15 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-09-10
-updated: 2026-09-17
-related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[PowerShell Guidelines.md](PowerShell%20Guidelines.md)"]
+updated: 2026-10-12
+related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[PowerShell tooling skill](../../../.agents/skills/write-powershell/SKILL.md)"]
 ---
 
 # Amiga 500 Rust Engineering Guidelines & Best Practices
 
 - **Parent Specification:** [General Architecture.md](General%20Architecture.md)
-- **Frontend Guidelines:** [egui Guidelines.md](egui%20Guidelines.md) | **Tooling Guidelines:** [PowerShell Guidelines.md](PowerShell%20Guidelines.md)
+- **Frontend Guidelines:** [egui Guidelines.md](egui%20Guidelines.md) | **Tooling Guidelines:** [PowerShell tooling skill](../../../.agents/skills/write-powershell/SKILL.md)
 - **Rules & Policies:** [performance-and-readability.md](../../../.agents/rules/performance-and-readability.md) | [rust-best-practices.md](../../../.agents/rules/rust-best-practices.md) | [unit-testing-policy.md](../../../.agents/rules/unit-testing-policy.md)
-- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
 
 > [!NOTE]
 > This document defines the engineering standards, idioms, and best practices for writing Rust code across the Amiga 500 emulator workspace.
@@ -107,7 +106,7 @@ To keep the codebase maintainable and prevent monolithic files:
 - **< 300 lines:** Baseline for focused modules, state structs, and handlers.
 - **300–600 lines:** Sweet spot combining types, enums, and operational logic.
 - **600–800 lines:** Review trigger for separable submodules.
-- **> 800 lines:** Split mandate into cohesive submodules, unless covered by registered exceptions in `test_architecture_rules.rs` (`LINE_COUNT_EXCEPTIONS`).
+- **> 800 lines:** Split mandate into cohesive submodules, unless covered by registered exceptions in `check_architecture.py` (`LINE_COUNT_EXCEPTIONS`).
 - **1:1 Flat Instruction Files:** Every distinct CPU mnemonic resides in its own dedicated flat file directly under `crates/cpu/src/instructions/<mnemonic>.rs` with zero subdirectories.
 
 ---
@@ -116,17 +115,16 @@ To keep the codebase maintainable and prevent monolithic files:
 
 Every implementation or bugfix must satisfy:
 1. **Targeted Unit Tests:** Verification of edge cases, register side effects, and boundary conditions.
-2. **Automated Architecture Compliance:** Zero-macro, no-unwrap, file size, and inlining rules verified by `cargo test -p test_runner --test test_architecture_rules`.
+2. **Automated Architecture Compliance:** Zero-macro, no-unwrap, file size, and inlining rules verified by `python tools/verification/verify.py check architecture`.
 3. **Format & Lints:** Code formatted with `cargo fmt --all` and validated with `cargo check --all-targets`.
 
 ---
 
 ## 6. Reference Documentation & Upstream Ground Truth
 
-- [Rust Systems Rules & Guidelines (AGENTS.md)](../../../AGENTS.md): Complete repository guidelines, memory model, and Definition of Done.
 - [Performance & Readability Rule](../../../.agents/rules/performance-and-readability.md): Lean execution paths, zero macros, and flat dispatch.
 - [Rust Best Practices Rule](../../../.agents/rules/rust-best-practices.md): Safe borrowing, wrapping math, and inlining policies.
 - [Unit Testing Policy](../../../.agents/rules/unit-testing-policy.md): Unit and integration testing mandates.
 - [General Architecture Specification](General%20Architecture.md): Machine topology, bus interfaces, and crate layout.
-- [Architecture Verification Test Suite](../../../crates/test_runner/tests/test_architecture_rules.rs): Automated enforcement of systems and architecture rules.
+- [Architecture Verification Test Suite](../../../tools/verification/checks/check_architecture.py): Automated enforcement of systems and architecture rules.
 

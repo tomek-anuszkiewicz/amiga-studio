@@ -1,6 +1,10 @@
 # Amiga RAG MCP Server
 
-This project-specific FastMCP server exposes Amiga documentation retrieval and health inspection through `rag_search`, `rag_list_sources`, and `rag_status`.
+This project-specific FastMCP server exposes Amiga documentation retrieval and health inspection through `rag_search`, `rag_search_reference`, `rag_list_sources`, and `rag_status`.
+
+`rag_search_reference` searches the shared `amiga` tag, then returns only hits
+whose resolved file paths are under `Obsidian/Amiga/Reference/`. It scans at
+most the first 100 ranked Amiga hits and reports when none are in scope.
 
 It does not import Qdrant, its cache, or the indexer. It invokes the standalone
 `rag_qdrant` command from `PATH` for query execution and status inspection, so the CLI and its dependencies must be installed independently.
@@ -41,7 +45,7 @@ directory, creates an ephemeral session at the repository root without a model
 turn, and verifies the server connects and exposes all three tools:
 
 ```powershell
-python -m unittest discover -s tests -p test_codex_mcp_launch.py -q
+python tools/verification/verify.py test python directory tools/amiga-rag-mcp-server/tests file test_codex_mcp_launch.py
 ```
 
 This check requires the Codex CLI on `PATH`, a trusted project, and the server
@@ -49,8 +53,14 @@ requirements installed in the configured Python environment. It skips when
 Codex or FastMCP is absent. Verify backend connectivity with `rag_status` and a
 source-filtered `rag_search` in the refreshed Codex session.
 
-Create the ignored project `.env` file with the CLI state-file location shared
-by every command operating on `projects_docs`:
+Run all adapter and launch contracts from the repository root with:
+
+```powershell
+python tools/verification/verify.py test python directory tools/amiga-rag-mcp-server/tests --log-level full
+```
+
+Read-only MCP tools use the service configuration and do not require a local
+index-state path. Configure the ignored project `.env` only for indexing:
 
 ```dotenv
 RAG_INDEX_JSON=<shared-rag-index-state-file>
@@ -64,7 +74,7 @@ Documentation indexing is a heavy batch process handled strictly outside the MCP
 - `Obsidian/Amiga/Design`
 - `Obsidian/Amiga/Reference`
 
-The CLI uses the `amiga` source tag and passes `RAG_INDEX_JSON` to every invocation. It hashes every Markdown file on each run and processes only modified or added files.
+The CLI uses the `amiga` source tag and passes `RAG_INDEX_JSON` only to indexing invocations. It hashes every Markdown file on each run and processes only modified or added files.
 
 When the MCP `rag_search` tool receives multiple source tags, it passes the
 deduplicated tags as the CLI's supported comma-separated `--source` value.

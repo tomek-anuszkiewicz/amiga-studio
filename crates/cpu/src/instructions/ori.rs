@@ -13,7 +13,7 @@ use crate::Cpu;
 // ============================================================================
 
 pub fn alu_ori_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.prefetch & 0xFF) as u8;
+    let s = (state.prefetch() & 0xFF) as u8;
     let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
     let res = crate::instructions::or::or_b(state, s, d);
     let orig = state.d_long(reg_dst as usize);
@@ -21,7 +21,7 @@ pub fn alu_ori_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_ori_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.prefetch;
+    let s = state.prefetch();
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
     let res = crate::instructions::or::or_w(state, s, d);
     let orig = state.d_long(reg_dst as usize);
@@ -29,73 +29,73 @@ pub fn alu_ori_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_ori_l_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.micro.source;
+    let s = state.micro().source;
     let d = state.d_long(reg_dst as usize);
     let res = crate::instructions::or::or_l(state, s, d);
     state.set_d_long(reg_dst as usize, res);
 }
 
 pub fn latch_imm_b(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.source = (state.prefetch & 0xFF) as u32;
+    state.micro_mut().source = (state.prefetch() & 0xFF) as u32;
 }
 
 pub fn latch_imm_w(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.source = state.prefetch as u32;
+    state.micro_mut().source = state.prefetch() as u32;
 }
 
 pub fn latch_imm_b_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.source = (state.prefetch & 0xFF) as u32;
+    state.micro_mut().source = (state.prefetch() & 0xFF) as u32;
     ea::ea_calc_dst_ai(state, 0, reg_dst);
 }
 
 pub fn latch_imm_b_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.source = (state.prefetch & 0xFF) as u32;
+    state.micro_mut().source = (state.prefetch() & 0xFF) as u32;
     ea::ea_calc_dst_pi_b(state, 0, reg_dst);
 }
 
 pub fn latch_imm_w_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.source = state.prefetch as u32;
+    state.micro_mut().source = state.prefetch() as u32;
     ea::ea_calc_dst_ai(state, 0, reg_dst);
 }
 
 pub fn latch_imm_w_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.source = state.prefetch as u32;
+    state.micro_mut().source = state.prefetch() as u32;
     ea::ea_calc_dst_pi_w(state, 0, reg_dst);
 }
 
 pub fn latch_imm_l_lo_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.source |= state.prefetch as u32;
+    state.micro_mut().source |= state.prefetch() as u32;
     ea::ea_calc_dst_ai(state, 0, reg_dst);
 }
 
 pub fn latch_imm_l_lo_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.source |= state.prefetch as u32;
+    state.micro_mut().source |= state.prefetch() as u32;
     ea::ea_calc_dst_pi_l(state, 0, reg_dst);
 }
 
 pub fn latch_imm_l_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.source |= state.prefetch as u32;
+    state.micro_mut().source |= state.prefetch() as u32;
 }
 
 pub fn alu_ori_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let s = (state.micro.source & 0xFF) as u8;
-    let d = (state.micro.destination & 0xFF) as u8;
+    let s = (state.micro().source & 0xFF) as u8;
+    let d = (state.micro().destination & 0xFF) as u8;
     let res = crate::instructions::or::or_b(state, s, d);
-    state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFF) | (res as u32);
 }
 
 pub fn alu_ori_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let s = (state.micro.source & 0xFFFF) as u16;
-    let d = (state.micro.destination & 0xFFFF) as u16;
+    let s = (state.micro().source & 0xFFFF) as u16;
+    let d = (state.micro().destination & 0xFFFF) as u16;
     let res = crate::instructions::or::or_w(state, s, d);
-    state.micro.destination = (state.micro.destination & !0xFFFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFFFF) | (res as u32);
 }
 
 pub fn alu_ori_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let s = state.micro.source;
-    let d = state.micro.destination;
+    let s = state.micro().source;
+    let d = state.micro().destination;
     let res = crate::instructions::or::or_l(state, s, d);
-    state.micro.destination = res;
+    state.micro_mut().destination = res;
 }
 
 // ============================================================================
@@ -483,13 +483,13 @@ pub static STEPS_ORI_L_DN: [MicroStep; 7] = [
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
-    common::ALU_IDLE_4CLK,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_ori_l_imm_dn),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
 pub static STEPS_ORI_L_AI: [MicroStep; 14] = [
@@ -516,9 +516,9 @@ pub static STEPS_ORI_L_AI: [MicroStep; 14] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 pub static STEPS_ORI_L_PI: [MicroStep; 14] = [
@@ -545,9 +545,9 @@ pub static STEPS_ORI_L_PI: [MicroStep; 14] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 pub static STEPS_ORI_L_PD: [MicroStep; 15] = [
@@ -579,9 +579,9 @@ pub static STEPS_ORI_L_PD: [MicroStep; 15] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 pub static STEPS_ORI_L_D16_AN: [MicroStep; 16] = [
@@ -614,9 +614,9 @@ pub static STEPS_ORI_L_D16_AN: [MicroStep; 16] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 pub static STEPS_ORI_L_IDX_AN: [MicroStep; 17] = [
@@ -650,9 +650,9 @@ pub static STEPS_ORI_L_IDX_AN: [MicroStep; 17] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 pub static STEPS_ORI_L_ABSW: [MicroStep; 16] = [
@@ -685,9 +685,9 @@ pub static STEPS_ORI_L_ABSW: [MicroStep; 16] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 pub static STEPS_ORI_L_ABSL: [MicroStep; 18] = [
@@ -726,9 +726,9 @@ pub static STEPS_ORI_L_ABSL: [MicroStep; 18] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_HIGH,
-    common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_LONG_HIGH,
 ];
 
 // ============================================================================

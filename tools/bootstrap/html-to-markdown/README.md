@@ -66,8 +66,6 @@ tools/bootstrap/html-to-markdown/
 │   ├── html_to_pages.py                   # Headless Chrome HTML-to-PDF & PyMuPDF page PNG rasterizer
 │   ├── replace_placeholders.py            # Resolves <image placeholder> & <crop> tags, formats Markdown links
 │   ├── render_comparison.py               # Headless browser side-by-side visual comparison renderer
-│   ├── audit_conversion.py                # Automated semantic sanity auditor (catches prose-in-code leaks)
-│   ├── diff_reference.py                  # Structural AST comparator against reference ground truth
 │   └── validate_links.py                  # Anchor, image asset, and link integrity validator
 └── references/
     └── llm-transcription-prompt.md        # Unified LLM prompt (Obsidian frontmatter, Multi-page crawl, Non-text hierarchy, TOC rules)
@@ -79,7 +77,7 @@ tools/bootstrap/html-to-markdown/
 
 > [!IMPORTANT]
 > **Content Fidelity & Meaning:**
-> - **You may reformat and polish layout**, typography, indentations, and presentation.
+> - **You may reformat and refine layout**, typography, indentations, and presentation.
 > - **Preserve 100% of the original content and technical meaning.**
 > - **Do NOT add new content** (no invented text, commentary, or unverified claims).
 > - **Do NOT omit or summarize existing content** (no dropping footnotes, technical sidebars, or instruction tables).

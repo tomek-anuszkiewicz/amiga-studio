@@ -32,13 +32,13 @@ pub fn alu_move_b_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_move_b_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.micro.source & 0xFF) as u8;
+    let val = (state.micro().source & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
     state.set_d_byte(reg_dst as usize, val);
 }
 
 pub fn alu_move_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.prefetch & 0xFF) as u8;
+    let val = (state.prefetch() & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
     state.set_d_byte(reg_dst as usize, val);
 }
@@ -46,22 +46,22 @@ pub fn alu_move_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 pub fn alu_move_b_src_dn(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let val = (state.d_long(reg_src as usize) & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
 }
 
 pub fn alu_move_b_dn_dst_ai(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = (state.d_long(reg_src as usize) & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
-    state.micro.destination = val as u32;
-    state.micro.ea_addr = state.a_long(reg_dst as usize);
+    state.micro_mut().destination = val as u32;
+    state.micro_mut().ea_addr = state.a_long(reg_dst as usize);
 }
 
 pub fn alu_move_b_dn_dst_pi(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = (state.d_long(reg_src as usize) & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
     let an = state.a_long(reg_dst as usize);
-    state.micro.ea_addr = an;
+    state.micro_mut().ea_addr = an;
     let inc = if reg_dst == 7 { 2 } else { 1 };
     state.set_a_long(reg_dst as usize, an.wrapping_add(inc));
 }
@@ -69,50 +69,50 @@ pub fn alu_move_b_dn_dst_pi(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 pub fn alu_move_b_dn_dst_pd(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = (state.d_long(reg_src as usize) & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
     let dec = if reg_dst == 7 { 2 } else { 1 };
     let an = state.a_long(reg_dst as usize).wrapping_sub(dec);
     state.set_a_long(reg_dst as usize, an);
-    state.micro.ea_addr = an;
+    state.micro_mut().ea_addr = an;
 }
 
 pub fn alu_move_b_mem_dst_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.micro.source & 0xFF) as u8;
+    let val = (state.micro().source & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
-    state.micro.destination = val as u32;
-    state.micro.ea_addr = state.a_long(reg_dst as usize);
+    state.micro_mut().destination = val as u32;
+    state.micro_mut().ea_addr = state.a_long(reg_dst as usize);
 }
 
 pub fn alu_move_b_mem_dst_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.micro.source & 0xFF) as u8;
+    let val = (state.micro().source & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
     let an = state.a_long(reg_dst as usize);
-    state.micro.ea_addr = an;
+    state.micro_mut().ea_addr = an;
     let inc = if reg_dst == 7 { 2 } else { 1 };
     state.set_a_long(reg_dst as usize, an.wrapping_add(inc));
 }
 
 pub fn alu_move_b_mem_dst_pd(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.micro.source & 0xFF) as u8;
+    let val = (state.micro().source & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
     let dec = if reg_dst == 7 { 2 } else { 1 };
     let an = state.a_long(reg_dst as usize).wrapping_sub(dec);
     state.set_a_long(reg_dst as usize, an);
-    state.micro.ea_addr = an;
+    state.micro_mut().ea_addr = an;
 }
 
 pub fn alu_move_b_src_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let val = (state.micro.source & 0xFF) as u8;
+    let val = (state.micro().source & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
 }
 
 pub fn alu_move_b_src_imm(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let val = (state.prefetch & 0xFF) as u8;
+    let val = (state.prefetch() & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
-    state.micro.destination = val as u32;
+    state.micro_mut().destination = val as u32;
 }
 
 const READ_SRC_IDLE_MOVE_B: MicroStep = MicroStep {
@@ -365,13 +365,13 @@ pub static STEPS_MOVE_B_AI_ABSL: [MicroStep; 10] = [
     },
     FETCH_EXT_FINISH,
     MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
-    BUS_WRITE_IDLE,
     WRITE_DST_BYTE,
+    FETCH_EXT_READ,
+    FETCH_EXT_FINISH,
     PREFETCH_NEXT_READ,
     BUS_READ_IDLE,
 ];
@@ -506,13 +506,13 @@ pub static STEPS_MOVE_B_PI_ABSL: [MicroStep; 10] = [
     },
     FETCH_EXT_FINISH,
     MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
-    BUS_WRITE_IDLE,
     WRITE_DST_BYTE,
+    FETCH_EXT_READ,
+    FETCH_EXT_FINISH,
     PREFETCH_NEXT_READ,
     BUS_READ_IDLE,
 ];
@@ -655,13 +655,13 @@ pub static STEPS_MOVE_B_PD_ABSL: [MicroStep; 11] = [
     },
     FETCH_EXT_FINISH,
     MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
-    BUS_WRITE_IDLE,
     WRITE_DST_BYTE,
+    FETCH_EXT_READ,
+    FETCH_EXT_FINISH,
     PREFETCH_NEXT_READ,
     BUS_READ_IDLE,
 ];
@@ -812,13 +812,13 @@ pub static STEPS_MOVE_B_D16_AN_ABSL: [MicroStep; 12] = [
     },
     FETCH_EXT_FINISH,
     MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
-    BUS_WRITE_IDLE,
     WRITE_DST_BYTE,
+    FETCH_EXT_READ,
+    FETCH_EXT_FINISH,
     PREFETCH_NEXT_READ,
     BUS_READ_IDLE,
 ];
@@ -977,13 +977,13 @@ pub static STEPS_MOVE_B_IDX_AN_ABSL: [MicroStep; 13] = [
     },
     FETCH_EXT_FINISH,
     MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
-    BUS_WRITE_IDLE,
     WRITE_DST_BYTE,
+    FETCH_EXT_READ,
+    FETCH_EXT_FINISH,
     PREFETCH_NEXT_READ,
     BUS_READ_IDLE,
 ];
@@ -1134,13 +1134,13 @@ pub static STEPS_MOVE_B_ABSW_ABSL: [MicroStep; 12] = [
     },
     FETCH_EXT_FINISH,
     MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
-    BUS_WRITE_IDLE,
     WRITE_DST_BYTE,
+    FETCH_EXT_READ,
+    FETCH_EXT_FINISH,
     PREFETCH_NEXT_READ,
     BUS_READ_IDLE,
 ];
@@ -1339,13 +1339,13 @@ pub static STEPS_MOVE_B_ABSL_ABSL: [MicroStep; 14] = [
     },
     FETCH_EXT_FINISH,
     MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
-    BUS_WRITE_IDLE,
     WRITE_DST_BYTE,
+    FETCH_EXT_READ,
+    FETCH_EXT_FINISH,
     PREFETCH_NEXT_READ,
     BUS_READ_IDLE,
 ];
@@ -1496,13 +1496,13 @@ pub static STEPS_MOVE_B_D16_PC_ABSL: [MicroStep; 12] = [
     },
     FETCH_EXT_FINISH,
     MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
-    BUS_WRITE_IDLE,
     WRITE_DST_BYTE,
+    FETCH_EXT_READ,
+    FETCH_EXT_FINISH,
     PREFETCH_NEXT_READ,
     BUS_READ_IDLE,
 ];
@@ -1661,13 +1661,13 @@ pub static STEPS_MOVE_B_IDX_PC_ABSL: [MicroStep; 13] = [
     },
     FETCH_EXT_FINISH,
     MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
-    BUS_WRITE_IDLE,
     WRITE_DST_BYTE,
+    FETCH_EXT_READ,
+    FETCH_EXT_FINISH,
     PREFETCH_NEXT_READ,
     BUS_READ_IDLE,
 ];

@@ -5,7 +5,7 @@ description: Execute test suites across tiers, snapshot results to disk, and tra
 
 # Recipe: Test Runner & Regression Tracker
 
-This skill standardizes test execution across the 4 testing tiers, persists execution snapshots into `.test_results/`, and automatically computes regression diffs (🔴 newly failing tests vs 🟢 newly passing tests).
+Use this skill to select relevant existing tests and report their evidence. The aggregate SingleStep test saves snapshots and finalizes regression reports once after group execution in `.agent/tmp/singlestep/`; ordinary crate tests do not create those reports. Direct Cargo execution also finalizes reports inside the aggregate test; the [verification reference](../../../tools/verification/README.md#saved-singlestep-reports) owns group selection and report isolation.
 
 ---
 
@@ -13,67 +13,76 @@ This skill standardizes test execution across the 4 testing tiers, persists exec
 
 | Tier | Scope | Target Command | Typical Runtime |
 | :---: | :--- | :--- | :---: |
-| **Tier 1** | Unit tests (isolated crates) | `python tools/harness/run_tests.py --unit` | $< 2$s |
-| **Tier 2** | Machine loop integration | `python tools/harness/run_tests.py --integration` | $3$–$15$s |
-| **Tier 3** | SingleStep CPU silicon vectors | `cargo test -p test_runner --test test_singlestep` | $6$–$15$s |
-| **Tier 4** | vAmigaTS whole-machine captures | `target/release/test_runner.exe vamiga --category <cat>` | $10$–$60$s |
-| **Arch** | Architecture rules & gates | `cargo test -p test_runner --test test_architecture_rules` | $< 2$s |
+| **Tier 1** | Unit tests (isolated crates) | `python tools/verification/verify.py test rust unit` | $< 2$s |
+| **Tier 2** | Machine loop integration | `python tools/verification/verify.py test rust integration` | $3$–$15$s |
+| **Tier 3** | SingleStep CPU silicon vectors | `python tools/verification/verify.py test runner singlestep` | Depends on build cache, host and report history |
+| **Tier 4** | vAmigaTS whole-machine captures | Unavailable; requires a future capture execution entry point | Not measured |
+| **Arch** | Architecture rules & gates | `python tools/verification/verify.py check architecture` | $< 2$s |
 
 ---
 
 ## Focused Defect Reproduction
 
-Follow [repro-first.md](../../rules/repro-first.md) when repairing behavior:
+Follow [defect resolution](../../rules/structural-root-cause.md#defect-resolution) when repairing behavior:
 
-1. Identify an existing isolated regression or add a focused test in the owning suite. For Rust, use `crates/<crate>/tests/`; harness fixtures use `tests/`.
+1. Identify existing regression protection, including authoritative vectors. Extend it or add a focused test only for a demonstrated gap. State the checked behavior and expected-result source under [unit-testing-policy.md](../../rules/unit-testing-policy.md). For Rust, use `crates/<crate>/tests/`; Python tool contracts use the owning tool's `tests/` directory, listed in [tools/verification/README.md](../../../tools/verification/README.md).
 2. Run it before the repair and confirm the expected failure, rather than a missing fixture or unrelated setup error:
    ```powershell
-   cargo test -p <crate> --test <suite> -- <filter>
-   python -m unittest discover -s tests -p <fixture_file.py> -q
+   python tools/verification/verify.py test rust crate <crate> suite <suite> case <filter>
+   python tools/verification/verify.py test python directory <tool_directory>/tests file <fixture_file.py>
    ```
 3. Repair the demonstrated mechanism, rerun the focused case, and retain its regression protection.
-4. Run adjacent domain tests and the per-commit gates. Before completing CPU changes, run full silicon vectors; CPU/bus changes also require full Cartesian DMA verification:
+4. For ordinary task completion without a commit, run relevant focused tests and checks. Use `python tools/verification/verify.py test python` to select Python tool contracts affected by staged, unstaged and nonignored new paths, including shared dependencies. Unchanged tool suites are skipped; an explicit directory selector remains available for diagnosis.
+5. Before an authorized commit, run the completion verifier on the intended working-tree source; staging is optional:
    ```powershell
-   $env:SINGLESTEP_FULL = "1"
-   cargo test -p test_runner --test test_singlestep -- --quiet
-   cargo test -p test_runner --test test_dma_cartesian -- --quiet
+   python tools/verification/verify.py commit
    ```
-   GUI interaction regressions use `cargo test -p gui --test test_interactions`.
+   The commit profile runs standard suites and all Python contracts, without full SingleStep.
+   Full `test runner singlestep` runs remain available for explicit diagnosis or user requests.
+   After the commit verification above, run `python tools/verification/verify.py milestone` for stage completion.
+   Milestone runs full SingleStep and the language audit, including on clean trees, without repeating other commit checks. Use `--plan` to inspect either set.
+   Focused commands validate ordinary tasks; they do not replace the full pre-commit profile.
 
 ## Background Checks and Result Collection
 
-- Use targeted filters during iteration; collect required full results before completion.
+- Validate coherent changes with targeted tests. Do not run tests after every edit or repeat passed checks without affected input changes, failures or unresolved concerns. Collect full results only at the required commit or milestone trigger.
 - Start long checks with a short supported initial yield, retain returned session IDs, and resume only running sessions when their result is needed.
 - Parallelize independent checks; Cargo commands sharing a target directory may serialize. Do not edit the validated source snapshot while a check runs.
 - Keep successful output concise with a single quiet-flag placement, preserving exit codes and failure diagnostics. Report checks not run separately from passing results.
 
-## 2. Directory Structure for Snapshots (`.test_results/`)
+## 2. Directory Structure for Snapshots (`.agent/tmp/singlestep/`)
 
-Test executions maintain rotating state to detect regressions across runs:
-- `.test_results/latest/<suite_name>.json`: Machine-readable results of the most recent run.
-- `.test_results/previous/<suite_name>.json`: Results from the previous baseline for differential comparison.
-- `.test_results/summary.json`: Global repository-wide pass/fail matrix, totals, and percentages.
+SingleStep executions maintain rotating state to detect regressions across runs:
+- `.agent/tmp/singlestep/latest/<suite_name>.json`: Machine-readable results of the most recent run.
+- `.agent/tmp/singlestep/previous/<suite_name>.json`: Results from the previous baseline for differential comparison.
+- `.agent/tmp/singlestep/summary.json`: Saved SingleStep suite totals and percentages, which may include results from earlier runs.
+- `.agent/tmp/singlestep/summary.md`: Automatically generated readable summary and all failing cases.
+- `.agent/tmp/singlestep/diff.md`: Automatically generated regressions, improvements, and missing baselines.
+
+Dedicated commands use optimized `verification` artifacts with debug assertions
+and overflow checks preserved. An explicit generic Rust `test_singlestep` target
+uses unoptimized `test` artifacts. Both execute one aggregate Rust test which finalizes reports once before its
+final assertion, including group failures. `case` selects internal group names;
+libtest sees one test. Direct Cargo group filtering uses `SINGLESTEP_CASE`. Current group completion and report/vector counts are separate from saved
+history totals; unmatched or interrupted execution is incomplete. Full CMP and
+filtered CMPM have distinct identities. Reports missing required fields fail to
+load; explicit empty selections and different sample limits are not comparable baselines.
 
 ---
 
 ## 3. Invocation & Zero-Parameter Execution
 
 When invoked without parameters (e.g. `$test-runner`):
-1. Runs the quick regression gate:
+1. Read `.agent/tmp/singlestep/diff.md` when present to inspect saved regressions and improvements.
+2. Read `.agent/tmp/singlestep/summary.md` when present for saved suite statistics and failing cases. Report the freshness of this evidence.
+3. Identify the current task's changed behavior and select its owning crate,
+   integration suite or Python directory. A dirty tree or missing snapshots
+   alone do not justify broad unit and integration runs:
    ```powershell
-   cargo run -p test_runner -- --diff
+   python tools/verification/verify.py test rust crate <crate> suite <suite>
+   python tools/verification/verify.py test python directory <tool_directory>/tests
    ```
-2. Displays the tabular summary across opcodes and subsystems:
-   ```powershell
-   cargo run -p test_runner -- --summary
-   ```
-3. If the working tree is dirty or no snapshots exist, run Tier 1 and machine
-   integration verification:
-   ```powershell
-   python tools/harness/run_tests.py --unit
-   cargo test -p machine_loop
-   ```
-   Establish an initial snapshot when none exists; report freshness of existing results.
+   Unit and machine integration tests do not create SingleStep snapshots. Full SingleStep tests run automatically at milestones; standalone runs require explicit diagnosis or a user request. Their results automatically generate the reports.
 
 ---
 
@@ -95,10 +104,10 @@ When comparing the current run against the previous baseline:
 
 ## 5. Output Contract
 
-Conclude every test run with a concise executive summary:
-- **Suite Run:** `<tier_or_suite_name>`
-- **Total Tests:** `<total_run>`
-- **Pass Rate:** `<passed> / <total> (<percentage>%)`
-- **Diff vs Baseline:** `+<fixed> improved, -<broken> regressions`
-- **Regression Alert:** Identify newly failing tests immediately.
-- **Action Required:** `[CLEAN | REGRESSIONS NEED TRIAGE]`
+Report the executed command, result, fixture scope and material limitations.
+For SingleStep, sampling changes input count only: every executed vector compares
+state, instruction clocks and timed bus callbacks. Older saved results from weaker
+verification are not a comparable regression baseline.
+Use the [CPU verification specification](../../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md)
+for current comparison limits. Report saved diffs only when their input scope and
+freshness are comparable; do not present old suite totals as the current run.

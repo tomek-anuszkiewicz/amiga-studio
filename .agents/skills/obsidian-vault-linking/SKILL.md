@@ -5,7 +5,7 @@ description: Audit and repair YAML frontmatter properties, dual-layer linking, a
 
 # Recipe: Obsidian Properties & Dual-Layer Vault Linking
 
-This skill defines the complete operational checklist and formatting template for maintaining knowledge graph integrity and dual-layer linking across [Obsidian/Amiga/Design/](../../../Obsidian/Amiga/Design/) per [`.agents/rules/vault-linking-and-graph-integrity.md`](../../rules/vault-linking-and-graph-integrity.md).
+This skill defines the complete operational checklist and formatting template for maintaining knowledge graph integrity and dual-layer linking across [Obsidian/Amiga/Design/](../../../Obsidian/Amiga/Design/) per [docs-maintenance.md](../../rules/docs-maintenance.md#vault-metadata-and-link-integrity).
 
 ---
 
@@ -34,7 +34,7 @@ related: ["[SiblingDoc.md](SiblingDoc.md)"]
 ---
 ```
 **Audit Check:**
-- Is `updated` set to today's date (`YYYY-MM-DD`)?
+- If substantive content changed, is `updated` set to today (`YYYY-MM-DD`)? A review without content corrections must leave dates unchanged.
 - Does `status` reflect current implementation maturity?
 - Are `related` links formatted as valid relative markdown links?
 
@@ -62,18 +62,25 @@ Every design specification must conclude with a dedicated reference section:
 - Does every entry include a concise 1-sentence analytical rationale?
 
 ### Step 4: Verify Path Depth & Zero Broken Links
-Verify that all relative paths strictly adhere to the depth matrix:
+Scan all design notes recursively, including organizational subdirectories.
+Resolve each relative link from the parent directory of its source document.
+The following examples apply to a note directly in the Design root:
 - Sibling Design Doc: `[File.md](File.md)`
 - Reference Manual: `[Title](../Reference/<Folder>/<File>.md)`
 - Workspace Crates: `[`crates/<crate>/...`](../../../crates/<crate>/...)`
 - Operational Rules: `[`rule.md`](../../../.agents/rules/<rule>.md)`
 - Reference Sources: `[`ref_src/...`](../../../ref_src/<path>)`
 
+For a note in `Design/Application/`, `Design/Verification/`, or
+`Design/Performance/`, add one `../` when linking to the repository or Reference
+roots. Link sibling notes using their actual relative position; for example,
+`[MemoryBus.md](../MemoryBus.md)` or `[CPU SingleStepTests.md](../Verification/CPU%20SingleStepTests.md)`.
+
 Run automated verification:
 ```powershell
-cargo test -p test_runner --test test_architecture_rules
+python .agents/skills/obsidian-vault-linking/scripts/audit_vault.py --vault-links --frontmatter
 ```
-Ensure `test_obsidian_design_docs_links_integrity` passes with 0 broken links.
+Ensure both checks complete with zero issues.
 
 ---
 
@@ -87,5 +94,5 @@ Ensure `test_obsidian_design_docs_links_integrity` passes with 0 broken links.
   | Document | Broken Link Target | Corrected Relative Path |
   | :--- | :--- | :--- |
   | `Obsidian/Amiga/Design/...` | `[Wrong.md]` | `[Correct.md](Correct.md)` |
-- **Architecture Test Result:** `test_obsidian_design_docs_links_integrity` (0 broken links).
+- **Script Result:** <actual link/frontmatter results; report missing checks>.
 ```

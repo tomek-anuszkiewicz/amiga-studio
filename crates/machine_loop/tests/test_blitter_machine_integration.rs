@@ -5,6 +5,7 @@
 //! Tests Blitter 2D memory operations (copy, fill), Chip RAM mutation,
 //! DMA scheduling, and cross-chip completion signaling (_BLITINT) to Paula.
 
+use config::custom_reg;
 mod common;
 use common::MachineHarness;
 
@@ -36,12 +37,12 @@ fn test_blitter_copy_and_interrupt_propagation() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x096, 0x8240);
+        .write_custom_word(custom_reg::agnus::DMACON, 0x8240);
     // Enable Paula Blitter IRQ in INTENA ($DFF09A): Master + Blit IRQ bit 6 -> $C040
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x09A, 0xC040);
+        .write_custom_word(custom_reg::paula::INTENA, 0xC040);
     harness.step_cck(2); // Commit pipeline mutations
 
     // 3. Program Blitter registers:
@@ -49,48 +50,48 @@ fn test_blitter_copy_and_interrupt_propagation() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x040, 0x09F0);
+        .write_custom_word(custom_reg::agnus::BLTCON0, 0x09F0);
     // BLTCON1 ($042): 0
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x042, 0x0000);
+        .write_custom_word(custom_reg::agnus::BLTCON1, 0x0000);
     // BLTAFWM / BLTALWM ($044 / $046): $FFFF
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x044, 0xFFFF);
+        .write_custom_word(custom_reg::agnus::BLTAFWM, 0xFFFF);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x046, 0xFFFF);
+        .write_custom_word(custom_reg::agnus::BLTALWM, 0xFFFF);
     // Modulos ($064, $066): 0
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x064, 0x0000);
+        .write_custom_word(custom_reg::agnus::BLTAMOD, 0x0000);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x066, 0x0000);
+        .write_custom_word(custom_reg::agnus::BLTDMOD, 0x0000);
     // BLTAPTH / BLTAPTL ($050 / $052)
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x050, (src_addr >> 16) as u16);
+        .write_custom_word(custom_reg::agnus::BLTAPTH, (src_addr >> 16) as u16);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x052, (src_addr & 0xFFFF) as u16);
+        .write_custom_word(custom_reg::agnus::BLTAPTL, (src_addr & 0xFFFF) as u16);
     // BLTDPTH / BLTDPTL ($054 / $056)
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x054, (dst_addr >> 16) as u16);
+        .write_custom_word(custom_reg::agnus::BLTDPTH, (dst_addr >> 16) as u16);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x056, (dst_addr & 0xFFFF) as u16);
+        .write_custom_word(custom_reg::agnus::BLTDPTL, (dst_addr & 0xFFFF) as u16);
 
     harness.step_cck(2); // Commit setup
 
@@ -99,7 +100,7 @@ fn test_blitter_copy_and_interrupt_propagation() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x058, 0x0104);
+        .write_custom_word(custom_reg::agnus::BLTSIZE, 0x0104);
     harness.step_cck(2);
 
     // Assert Blitter is running
@@ -164,7 +165,7 @@ fn test_blitter_fill_operation_mutates_ram() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x096, 0x8240);
+        .write_custom_word(custom_reg::agnus::DMACON, 0x8240);
     harness.step_cck(2);
 
     // Program Blitter to Fill with 1s (USED only, LF = $FF)
@@ -172,30 +173,30 @@ fn test_blitter_fill_operation_mutates_ram() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x040, 0x01FF);
+        .write_custom_word(custom_reg::agnus::BLTCON0, 0x01FF);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x042, 0x0000);
+        .write_custom_word(custom_reg::agnus::BLTCON1, 0x0000);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x066, 0x0000); // D modulo = 0
+        .write_custom_word(custom_reg::agnus::BLTDMOD, 0x0000); // D modulo = 0
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x054, (dst_addr >> 16) as u16);
+        .write_custom_word(custom_reg::agnus::BLTDPTH, (dst_addr >> 16) as u16);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x056, (dst_addr & 0xFFFF) as u16);
+        .write_custom_word(custom_reg::agnus::BLTDPTL, (dst_addr & 0xFFFF) as u16);
     harness.step_cck(2);
 
     // Start Blit: 2 rows of 4 words
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x058, 0x0084);
+        .write_custom_word(custom_reg::agnus::BLTSIZE, 0x0084);
     harness.step_cck(2);
 
     // Step until complete

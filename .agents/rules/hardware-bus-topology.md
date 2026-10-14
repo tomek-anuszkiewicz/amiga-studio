@@ -5,8 +5,9 @@ Applies to chip, DMA, bus, interrupt, and peripheral coordination. Read the affe
 - Chips hold no direct peer pointers and never invoke peer mutations, callbacks, or private backchannels. The machine loop and memory bus route physical signals.
 - Coordination follows chip execution, motherboard polling of output pins, then driving target inputs at the modeled phase and propagation delay. Preserve explicit pin/state interfaces.
 - Agnus exclusively arbitrates Chip RAM DMA, owns and updates bitplane, sprite, audio, disk, Copper, and Blitter pointers, and drives the memory address and RGA buses.
+- The active OCS Agnus models retain 18-bit word-address DMA pointers. Use the shared `OCS_DMA_ADDRESS_MASK` and its derived register-half masks for writes, pointer arithmetic, and Chip RAM DMA accesses, as specified in [Agnus](../../Obsidian/Amiga/Design/Agnus.md).
 - Denise and Paula passively latch shared-bus data on matching register strobes. They neither read PhysicalMemory directly nor retain Chip RAM views or autonomous DMA address generators.
 - Disk DMA is bidirectional; Agnus still generates addresses and bus cycles while Paula supplies or receives holding-register data.
 - Route DMA requests, interrupts, reset, sync, TOD, and peripheral port signals through the coordinator according to their authoritative signal definitions. Do not replace physical dependencies with software shortcuts.
 
-Use [audit-hardware-quality](../skills/audit-hardware-quality/SKILL.md) for the review procedure. Specifications own detailed signal names, directions, register lists, and timing tables.
+Specifications own detailed signal names, directions, register lists, and timing tables.

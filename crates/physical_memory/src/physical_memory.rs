@@ -10,6 +10,7 @@ pub mod presets;
 pub use address_bus::{AddressBus, BusResult};
 pub use config::{
     A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
+    OPEN_BUS_BYTE, OPEN_BUS_WORD,
 };
 pub use map::{
     BankHandler, BankReadByteDebugFn, BankReadByteFn, BankReadWordDebugFn, BankReadWordFn,
@@ -57,16 +58,6 @@ pub struct PhysicalMemory {
 
     /// Low-memory boot overlay (_OVL) active flag
     pub low_memory_overlay: bool,
-
-    /// Default byte value returned when reading unpopulated memory or unmapped open bus space.
-    /// In real Amiga hardware execution, this is 0xFF (floating open bus with pull-up resistors).
-    #[serde(default = "default_unmapped_byte")]
-    pub unmapped_byte: u8,
-}
-
-#[inline(always)]
-fn default_unmapped_byte() -> u8 {
-    0xFF
 }
 
 impl Default for PhysicalMemory {
@@ -79,18 +70,6 @@ impl PhysicalMemory {
     /// Creates a standard A500 PhysicalMemory using default configuration (Standard 1 MB, PAL)
     pub fn new() -> Self {
         Self::from_config(A500Config::default())
-    }
-
-    /// Returns the byte value returned when reading unpopulated test memory or unmapped open bus
-    #[inline]
-    pub fn unmapped_byte(&self) -> u8 {
-        self.unmapped_byte
-    }
-
-    /// Sets the byte value returned when reading unpopulated test memory or unmapped open bus
-    #[inline]
-    pub fn set_unmapped_byte(&mut self, val: u8) {
-        self.unmapped_byte = val;
     }
 
     /// Creates PhysicalMemory configured per the provided A500Config
@@ -124,7 +103,6 @@ impl PhysicalMemory {
             kickstart_rom,
             chip_ram_blocked: false,
             low_memory_overlay: true,
-            unmapped_byte: 0xFF,
         };
         bus.map_kickstart_to_low_memory();
         bus

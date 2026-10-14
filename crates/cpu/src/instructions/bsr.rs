@@ -9,17 +9,17 @@ use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
 pub fn alu_bsr_short(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d8 = (state.ir & 0xFF) as i8;
-    let base_pc = state.pc.wrapping_sub(2);
-    state.micro.ea_addr = base_pc.wrapping_add(d8 as i32 as u32);
-    state.micro.destination = base_pc; // return_pc = opcode_pc + 2
+    let d8 = (state.ir() & 0xFF) as i8;
+    let base_pc = state.pc().wrapping_sub(2);
+    state.micro_mut().ea_addr = base_pc.wrapping_add(d8 as i32 as u32);
+    state.micro_mut().destination = base_pc; // return_pc = opcode_pc + 2
 }
 
 pub fn alu_bsr_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let disp = state.prefetch as i16 as i32;
-    let base_pc = state.pc.wrapping_sub(2);
-    state.micro.ea_addr = base_pc.wrapping_add(disp as u32);
-    state.micro.destination = state.pc; // return_pc = opcode_pc + 4
+    let disp = state.prefetch() as i16 as i32;
+    let base_pc = state.pc().wrapping_sub(2);
+    state.micro_mut().ea_addr = base_pc.wrapping_add(disp as u32);
+    state.micro_mut().destination = state.pc(); // return_pc = opcode_pc + 4
 }
 
 /// BSR.S (8-bit short displacement, 18 CPU clocks / 9 CCKs)
@@ -33,7 +33,7 @@ pub static STEPS_BSR_SHORT: [MicroStep; 9] = [
     common::PUSH_STACK_HIGH_WRITE,
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
-    common::READ_TARGET_OPCODE_READ,
+    common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
@@ -50,7 +50,7 @@ pub static STEPS_BSR_WORD: [MicroStep; 9] = [
     common::PUSH_STACK_HIGH_WRITE,
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
-    common::READ_TARGET_OPCODE_READ,
+    common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,

@@ -1,171 +1,75 @@
 ---
-title: "Agnus DMA Architecture, Slot Scheduling & Bus Arbitration Specification"
-aliases: ["DMA", "DMA Scheduler", "DMA Arbitration", "DMACON", "DMACONR"]
-tags: ["amiga", "design", "dma", "arbitration", "agnus", "scheduling"]
+title: "Agnus DMA Scheduling"
+aliases: ["DMA", "DMA Scheduler", "DMA Arbitration"]
+tags: ["amiga", "design", "dma", "agnus", "scheduling"]
 category: "Design"
 subsystem: "dma"
-status: "active"
+status: "draft"
 created: 2026-09-19
-updated: 2026-09-19
-related: ["[Agnus.md](Agnus.md)", "[Copper.md](Copper.md)", "[Blitter.md](Blitter.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)"]
+updated: 2026-10-14
+related: ["[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[MemoryBus.md](MemoryBus.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/dma"
-last_synced_commit: "859017971b0453661ce25cc2c6f4de6b7475f2df"
-last_synced_date: "2026-09-19"
 ---
-# Agnus DMA Architecture, Slot Scheduling & Bus Arbitration Specification
+# Agnus DMA Scheduling
 
-> [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
-> Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
-> Coprocessor execution is documented in [Copper.md](Copper.md) and [Blitter.md](Blitter.md). Video display fetching is coordinated with [Denise.md](Denise.md), and audio/floppy streaming with [Paula.md](Paula.md).
+DMA is part of [Agnus](Agnus.md). It schedules access to the Chip RAM bus shared
+with the CPU, deciding which requester may use each available memory slot.
 
----
+For a DMA transfer, Agnus drives the memory address on the Chip RAM address bus
+and the destination register address on its internal register address (RGA) bus.
+DMA selection signals and register strobes travel over the modeled electrical
+connections. The selected chip recognizes its signal and latches or supplies the
+word on the shared data bus. [MemoryBus.md](MemoryBus.md) describes CPU contention;
+the [cross-chip signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)
+describes the connections between chips.
 
-## 1. Core Decisions & Architectural Principles
+## From an opportunity to a transfer
 
-Agnus is the sole bus master and direct memory access (DMA) arbiter for the Amiga Chip RAM bus. Every horizontal scanline ($227.5$ Color Clocks) is partitioned into discrete time slots synchronized with the display beam.
+Some DMA activity starts with a request from the device that needs data, such as
+an audio or disk channel. Other opportunities follow the beam position and an
+enabled display function: bitplane and sprite fetching have scheduled places in
+the line, while memory refresh occurs independently of a device data request.
+An allocated opportunity does not by itself mean that a word is transferred.
+If the relevant channel has no work, its opportunity can be used by another
+eligible bus user.
 
-```mermaid
-flowchart TD
-    subgraph Scanline ["Horizontal Scanline (227.5 CCKs)"]
-        REF["CCK 1, 3, 5, 226/E2:\n4 DRAM Refresh Slots (Odd Cycles)"]
-        DISK["CCK 7, 9, 11:\n3 Floppy Disk Slots (Odd Cycles)"]
-        AUD["CCK 13, 15, 17, 19:\n4 Audio Slots (Odd Cycles)"]
-        SPR["CCK 21..51:\n16 Sprite Slots (8 Sprites x 2 Words)"]
-        BPL["DDFSTRT..DDFSTOP ($38..$D0):\nDynamic Bitplane DMA Window"]
-        EVEN["Even Cycles (0, 2, 4..52):\nDedicated to 68000 CPU"]
-        RESID["Free Unallocated Cycles:\nCopper, Blitter, or CPU"]
-    end
+Audio DMA control follows this signal flow:
 
-    Scanline --> ARB{"Agnus 8-Tier\nPriority Arbiter"}
-    ARB -->|Slot Claimed| CRAM["Chip RAM Bus Master"]
-    ARB -->|Owner != CPU| WAIT["Assert chip_ram_blocked\n(CPU Wait States)"]
-```
+| Stage | Paula | Agnus |
+| :--- | :--- | :--- |
+| `DMACON` write | Retains only `DMAEN`, `DSKEN`, and `AUD0EN`–`AUD3EN` from the shared register bus for its audio and disk DMA control. | Latches the full `DMACON` state for DMA control. |
+| Audio DMA request | When a channel needs data, asserts its request on `DMAL` only if `DMAEN` and that channel's `AUDxEN` are enabled in Paula's retained control bits. | Responds only if `DMAEN` and the requested channel's `AUDxEN` are enabled in Agnus's copy of `DMACON`; then schedules the transfer in an eligible slot. |
 
-### 1.1 Core Hardware Invariants
-1. **Exclusive DMA Address Mastership:** Agnus exclusively owns and generates all DMA pointer addresses (`BPLxPT`, `SPRxPT`, `AUDxPT`, `DSKPT`, `COPxLC`, `BLTxPT`).
-2. **Passive Peer Latching (Zero Direct Memory Reads):** Peer chips ([Denise.md](Denise.md), [Paula.md](Paula.md)) contain zero DMA address generators and never read `PhysicalMemory` directly. Agnus drives the Chip RAM address and internal `RGA` bus, and peer chips passively latch data off the shared data bus.
-3. **Strict Priority Hierarchy:** Contention is resolved on every single Color Clock cycle according to Commodore HRM Figure 6-9.
-4. **Fast RAM Immunity:** CPU memory cycles targeting Fast RAM (`$200000`–`$9FFFFF`) bypass Chip RAM arbitration completely and execute with zero wait states even under 100% DMA bus saturation.
+Display DMA follows a different path:
 
----
+| Stage | [Denise](Denise.md) | Agnus |
+| :--- | :--- | :--- |
+| `DMACON` write | Takes no action. | Latches the full `DMACON` state; `DMAEN`, `BPLEN`, and `SPREN` gate display DMA. |
+| Display window write | Latches the horizontal fields of `DIWSTRT` and `DIWSTOP` for pixel clipping. | Latches their vertical fields to gate bitplane DMA by line. |
+| Display fetch | Does not request DMA. | Uses the vertical display window and `DDFSTRT`/`DDFSTOP` horizontal fetch interval for bitplanes; sprite slots are scheduled separately. `DMAEN` and the relevant channel enable must also be set. |
+| Data transfer | Latches the selected `BPLxDAT` or sprite register from the shared data bus. | Reads Chip RAM and selects the destination register on `RGA`. |
 
-## 2. Module Architecture & Crate Containment (`crates/dma`)
+There is no Denise-to-Agnus request or separate grant signal in this display
+DMA model. The `RGA` register selection and shared data bus deliver the fetched
+word to Denise; this is not the Paula `DMAL` request path.
 
-The DMA scheduler is encapsulated in `crates/dma`:
+When a channel is granted a memory cycle, Agnus selects its Chip RAM address and
+the destination on the shared custom-chip bus. For a read, Chip RAM supplies a
+word and the selected display or audio circuit latches it. For a disk write or
+other memory-bound operation, the data flows in the opposite direction under
+the same Agnus-controlled address and bus grant. The transfer then advances
+the channel's position in its data stream; completion or a need for more data
+is signaled by the responsible component. Refresh is different: it occupies a
+memory opportunity but does not deliver a word to a peripheral.
 
-```
-crates/dma/
-├── Cargo.toml
-├── src/
-│   └── dma.rs             // 227.5 CCK slot scheduler, priority arbiter, starvation counters
-└── tests/
-    └── test_dma.rs        // Slot timing assertions, cycle stealing, Blitter Nasty tests
-```
+## Reference Documentation & Upstream Ground Truth
 
-### 2.1 State Representation (`DmaScheduler`)
-```rust
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DmaScheduler {
-    pub dmacon: u16,
-    pub bplcon0: u16,
-    pub ddfstrt: u16,
-    pub ddfstop: u16,
-    pub cpu_starvation_counter: u8,
-    pub current_owner: DmaChannel,
-    pub chip_ram_blocked: bool,
-}
-```
-
----
-
-## 3. 8-Tier Master DMA Priority Hierarchy
-
-On every Color Clock cycle, Agnus evaluates bus mastership across 8 prioritized tiers:
-
-1. **DRAM Refresh (Priority 1):**
-   - 4 fixed odd memory cycles per scanline: `CCK 1, 3, 5, 226` (`$E2`).
-   - Unconditionally locks the Chip RAM bus to maintain DRAM cell charge.
-2. **Floppy Disk DMA (Priority 2):**
-   - 3 fixed odd memory cycles: `CCK 7, 9, 11`.
-   - Active when `DSKEN` (bit 4) and `DMAEN` (bit 9) are set in `DMACON` and disk pointer is non-zero.
-3. **Audio DMA (Priority 3):**
-   - 4 fixed odd cycles: `CCK 13` (Channel 0), `15` (Channel 1), `17` (Channel 2), `19` (Channel 3).
-   - Active when individual channel bits (`AUD0EN`..`AUD3EN`) and `DMAEN` are set in `DMACON`.
-4. **Bitplane DMA (Priority 4):**
-   - Dynamically scheduled within the Display Data Fetch window (`DDFSTRT`..=`DDFSTOP`, default `$0038`..`$00D0`).
-   - Plane schedule depends on resolution and plane count (`BPLCON0`):
-     - **Low-Res (1–4 planes):** Even phases (0, 2, 4, 6) claim planes 1–4. Odd cycles remain free for CPU.
-     - **Low-Res (5–6 planes):** Cycle stealing active. Odd phases 1 and 3 are stolen by planes 5 and 6, taking 25% or 50% of CPU memory bandwidth.
-     - **Hi-Res (1–4 planes):** Double data rate. Planes consume both even and odd cycles, completely locking out the CPU during active display fetch.
-5. **Sprite DMA (Priority 5):**
-   - 16 fixed odd cycles (`CCK 21..=51`): 2 words per sprite channel (`SPR0`–`SPR7`).
-   - Active when `SPREN` (bit 5) and `DMAEN` are set in `DMACON`.
-6. **Copper Coprocessor (Priority 6):**
-   - Active when `COPEN` (bit 7) and `DMAEN` are set, and the Copper is actively fetching instruction words.
-7. **Blitter DMA (Priority 7):**
-   - Active when `BLTEN` (bit 6) and `DMAEN` are set, and the Blitter is busy.
-8. **Motorola 68000 CPU (Priority 8):**
-   - Awarded the bus whenever no higher-priority custom chip channel claims the cycle. Even cycles in horizontal blanking (0, 2, 4..52) are unallocated and always available for the CPU.
-
----
-
-## 4. Blitter Nasty & CPU Starvation Yield
-
-The interaction between Blitter and CPU bus requests is controlled by `BLTPRI` (bit 10 of `DMACON`):
-
-### 4.1 Blitter Nasty Mode (`BLTPRI == 1`)
-- The Blitter asserts mastership over all remaining bus cycles (both even and odd).
-- The 68000 CPU is completely locked out of Chip RAM until the Blitter finishes its transfer.
-
-### 4.2 Normal Blitter Mode (`BLTPRI == 0`) & 3-Cycle Starvation Counter
-- Agnus monitors CPU memory starvation via `cpu_starvation_counter`.
-- If custom chip DMA or the Blitter prevents the CPU from accessing Chip RAM for **3 consecutive cycles**, Agnus forces the Blitter to yield the 4th cycle unconditionally to the CPU (`DmaChannel::Cpu`).
-- Upon yielding, `cpu_starvation_counter` resets to 0, ensuring CPU progress even during massive blits.
-
----
-
-## 5. Chip RAM Contention & Wait-State Mechanics
-
-Agnus communicates bus contention directly to `MemoryBus`:
-- **`chip_ram_blocked` Flag:** Asserted (`true`) whenever `current_owner != DmaChannel::Cpu`.
-- **CPU Stalling:** Any CPU read or write targeting Chip RAM (`$000000`–`$07FFFF`) or Slow RAM (`$C00000`–`$C7FFFF`) while `chip_ram_blocked` is true returns `BusResult::WaitState`.
-- The CPU micro-step execution stalls without advancing micro-operations until the bus is released.
-
----
-
-## 6. Register Memory Map & Delayed Mutations
-
-| Address | R/W | Symbol | Description |
-| :--- | :---: | :--- | :--- |
-| **`$DFF002`** | R | **`DMACONR`** | DMA Control Read (Channel status flags, Blitter Nasty, Blitter Zero/Busy) |
-| **`$DFF092`** | W | **`DDFSTRT`** | Display Data Fetch Start (default `$0038`) |
-| **`$DFF094`** | W | **`DDFSTOP`** | Display Data Fetch Stop (default `$00D0`) |
-| **`$DFF096`** | W | **`DMACON`** | DMA Control Write (Bit 15: SET/CLR, bits 0–14: channel enables) |
-
-### 6.1 `DMACON` Bitfield Allocation
-```
-Bit 15: SET/CLR (1 = set masked bits, 0 = clear masked bits)
-Bit 14: BBUSY   (Blitter busy status - read only in DMACONR)
-Bit 13: BZERO   (Blitter zero status - read only in DMACONR)
-Bit 10: BLTPRI  (Blitter Nasty: 1 = Blitter priority over CPU, 0 = normal)
-Bit  9: DMAEN   (Master DMA Enable)
-Bit  8: BPLEN   (Bitplane DMA Enable)
-Bit  7: COPEN   (Copper DMA Enable)
-Bit  6: BLTEN   (Blitter DMA Enable)
-Bit  5: SPREN   (Sprite DMA Enable)
-Bit  4: DSKEN   (Disk DMA Enable)
-Bit  3: AUD3EN  (Audio Channel 3 DMA Enable)
-Bit  2: AUD2EN  (Audio Channel 2 DMA Enable)
-Bit  1: AUD1EN  (Audio Channel 1 DMA Enable)
-Bit  0: AUD0EN  (Audio Channel 0 DMA Enable)
-```
-
----
-
-## 7. Reference Documentation & Upstream Ground Truth
-
-- [Amiga Hardware Reference Manual: Chapter 6 (Blitter Hardware - DMA Architecture)](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md): Authoritative Figure 6-9 DMA slot allocation map and priority hierarchy.
-- [Agnus Architecture Specification](Agnus.md): Master Agnus beam synchronization and register dispatch.
-- [Memory Bus Specification](MemoryBus.md): Bus wait-state mechanics, Chip RAM address decoding, and Fast RAM immunity.
+- [Fat Agnus technical reference](../Reference/A500%20A2000%20Technical%20Reference%20Manual/11%20-%20Section%206%20-%20Fat%20Agnus%20Chip.md): Describes Agnus address generation and DMA signals.
+- [Amiga Hardware Reference Manual, Chapter 3](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md): Describes bitplane DMA and display data fetch.
+- [Amiga Hardware Reference Manual, Chapter 4](../Reference/Hardware%20Reference%20Manual/04%20-%20Chapter%204%20-%20Sprite%20Hardware.md): Describes sprite DMA channels and automatic fetches.
+- [Amiga Hardware Reference Manual, Chapter 5](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md): Describes audio channel enables and DMA requests.
+- [Amiga Hardware Reference Manual, Chapter 6](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md): Explains allocated memory opportunities and bus priority.
+- [Amiga Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Identifies the chips selected by `DMACON` writes and `DMACONR` reads.
+- [DMA scheduler source](../../../crates/dma/src/dma.rs): Implements the current arbitration model.
+- [vAmiga Agnus register handling](../../../ref_src/vAmiga-4.5/Core/Components/Agnus/AgnusRegs.cpp) and [DMA events](../../../ref_src/vAmiga-4.5/Core/Components/Agnus/AgnusEvents.cpp): Reference implementation of `DMACON` gating and scheduled bitplane transfers.

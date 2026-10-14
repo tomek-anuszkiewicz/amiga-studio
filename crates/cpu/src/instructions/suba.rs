@@ -38,19 +38,19 @@ pub fn alu_suba_l_an_an(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_suba_w_mem_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.micro.source as i16 as i32) as u32;
+    let s = (state.micro().source as i16 as i32) as u32;
     let d = state.a_long(reg_dst as usize);
     state.set_a_long(reg_dst as usize, d.wrapping_sub(s));
 }
 
 pub fn alu_suba_l_mem_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.micro.source;
+    let s = state.micro().source;
     let d = state.a_long(reg_dst as usize);
     state.set_a_long(reg_dst as usize, d.wrapping_sub(s));
 }
 
 pub fn alu_suba_w_imm_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.prefetch as i16 as i32) as u32;
+    let s = (state.prefetch() as i16 as i32) as u32;
     let d = state.a_long(reg_dst as usize);
     state.set_a_long(reg_dst as usize, d.wrapping_sub(s));
 }
@@ -61,26 +61,26 @@ pub fn alu_suba_w_imm_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 // Word: <ea>, An
 pub static STEPS_SUBA_W_DN_AN: [MicroStep; 3] = [
-    common::ALU_IDLE_4CLK,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_suba_w_dn_an),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
 pub static STEPS_SUBA_W_AN_AN: [MicroStep; 3] = [
-    common::ALU_IDLE_4CLK,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_suba_w_an_an),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
-pub static STEPS_SUBA_W_AI_AN: [MicroStep; 4] = [
+pub static STEPS_SUBA_W_AI_AN: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_ai),
@@ -93,9 +93,10 @@ pub static STEPS_SUBA_W_AI_AN: [MicroStep; 4] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
-pub static STEPS_SUBA_W_PI_AN: [MicroStep; 4] = [
+pub static STEPS_SUBA_W_PI_AN: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_pi_w),
@@ -108,14 +109,16 @@ pub static STEPS_SUBA_W_PI_AN: [MicroStep; 4] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
-pub static STEPS_SUBA_W_PD_AN: [MicroStep; 4] = [
+pub static STEPS_SUBA_W_PD_AN: [MicroStep; 6] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_src_word),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
         base_clocks: 2,
     },
+    common::READ_SRC_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
@@ -123,9 +126,10 @@ pub static STEPS_SUBA_W_PD_AN: [MicroStep; 4] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
-pub static STEPS_SUBA_W_D16_AN_AN: [MicroStep; 6] = [
+pub static STEPS_SUBA_W_D16_AN_AN: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -140,9 +144,10 @@ pub static STEPS_SUBA_W_D16_AN_AN: [MicroStep; 6] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
-pub static STEPS_SUBA_W_IDX_AN_AN: [MicroStep; 7] = [
+pub static STEPS_SUBA_W_IDX_AN_AN: [MicroStep; 8] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -158,9 +163,10 @@ pub static STEPS_SUBA_W_IDX_AN_AN: [MicroStep; 7] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
-pub static STEPS_SUBA_W_ABSW_AN: [MicroStep; 6] = [
+pub static STEPS_SUBA_W_ABSW_AN: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
@@ -175,9 +181,10 @@ pub static STEPS_SUBA_W_ABSW_AN: [MicroStep; 6] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
-pub static STEPS_SUBA_W_ABSL_AN: [MicroStep; 8] = [
+pub static STEPS_SUBA_W_ABSL_AN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
@@ -198,9 +205,10 @@ pub static STEPS_SUBA_W_ABSL_AN: [MicroStep; 8] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
-pub static STEPS_SUBA_W_D16_PC_AN: [MicroStep; 6] = [
+pub static STEPS_SUBA_W_D16_PC_AN: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -215,9 +223,10 @@ pub static STEPS_SUBA_W_D16_PC_AN: [MicroStep; 6] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
-pub static STEPS_SUBA_W_IDX_PC_AN: [MicroStep; 7] = [
+pub static STEPS_SUBA_W_IDX_PC_AN: [MicroStep; 8] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -233,9 +242,10 @@ pub static STEPS_SUBA_W_IDX_PC_AN: [MicroStep; 7] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
-pub static STEPS_SUBA_W_IMM_AN: [MicroStep; 4] = [
+pub static STEPS_SUBA_W_IMM_AN: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(alu_suba_w_imm_an),
@@ -244,30 +254,31 @@ pub static STEPS_SUBA_W_IMM_AN: [MicroStep; 4] = [
     common::FETCH_EXT_FINISH,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
 // Long: <ea>, An
 pub static STEPS_SUBA_L_DN_AN: [MicroStep; 3] = [
-    common::ALU_IDLE_4CLK,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_suba_l_dn_an),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
 pub static STEPS_SUBA_L_AN_AN: [MicroStep; 3] = [
-    common::ALU_IDLE_4CLK,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_suba_l_an_an),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
-pub static STEPS_SUBA_L_AI_AN: [MicroStep; 6] = [
+pub static STEPS_SUBA_L_AI_AN: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_long_high),
         alu_fn: Some(ea::ea_calc_src_ai),
@@ -282,9 +293,10 @@ pub static STEPS_SUBA_L_AI_AN: [MicroStep; 6] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
-pub static STEPS_SUBA_L_PI_AN: [MicroStep; 6] = [
+pub static STEPS_SUBA_L_PI_AN: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_long_high),
         alu_fn: Some(ea::ea_calc_src_pi_l),
@@ -299,14 +311,16 @@ pub static STEPS_SUBA_L_PI_AN: [MicroStep; 6] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
-pub static STEPS_SUBA_L_PD_AN: [MicroStep; 6] = [
+pub static STEPS_SUBA_L_PD_AN: [MicroStep; 8] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_src_long_high),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_l),
         base_clocks: 2,
     },
+    common::READ_SRC_LONG_HIGH,
     common::BUS_READ_IDLE,
     common::READ_SRC_LONG_LOW,
     common::BUS_READ_IDLE,
@@ -316,9 +330,10 @@ pub static STEPS_SUBA_L_PD_AN: [MicroStep; 6] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
-pub static STEPS_SUBA_L_D16_AN_AN: [MicroStep; 8] = [
+pub static STEPS_SUBA_L_D16_AN_AN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -335,9 +350,10 @@ pub static STEPS_SUBA_L_D16_AN_AN: [MicroStep; 8] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
-pub static STEPS_SUBA_L_IDX_AN_AN: [MicroStep; 9] = [
+pub static STEPS_SUBA_L_IDX_AN_AN: [MicroStep; 10] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -355,9 +371,10 @@ pub static STEPS_SUBA_L_IDX_AN_AN: [MicroStep; 9] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
-pub static STEPS_SUBA_L_ABSW_AN: [MicroStep; 8] = [
+pub static STEPS_SUBA_L_ABSW_AN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
@@ -374,9 +391,10 @@ pub static STEPS_SUBA_L_ABSW_AN: [MicroStep; 8] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
-pub static STEPS_SUBA_L_ABSL_AN: [MicroStep; 10] = [
+pub static STEPS_SUBA_L_ABSL_AN: [MicroStep; 11] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
@@ -399,9 +417,10 @@ pub static STEPS_SUBA_L_ABSL_AN: [MicroStep; 10] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
-pub static STEPS_SUBA_L_D16_PC_AN: [MicroStep; 8] = [
+pub static STEPS_SUBA_L_D16_PC_AN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -418,9 +437,10 @@ pub static STEPS_SUBA_L_D16_PC_AN: [MicroStep; 8] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
-pub static STEPS_SUBA_L_IDX_PC_AN: [MicroStep; 9] = [
+pub static STEPS_SUBA_L_IDX_PC_AN: [MicroStep; 10] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -438,9 +458,10 @@ pub static STEPS_SUBA_L_IDX_PC_AN: [MicroStep; 9] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE,
 ];
 
-pub static STEPS_SUBA_L_IMM_AN: [MicroStep; 6] = [
+pub static STEPS_SUBA_L_IMM_AN: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_imm_l_hi),
@@ -459,6 +480,7 @@ pub static STEPS_SUBA_L_IMM_AN: [MicroStep; 6] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
+    common::ALU_IDLE_4CLK,
 ];
 
 // ============================================================================

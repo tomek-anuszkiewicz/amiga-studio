@@ -44,16 +44,16 @@ pub fn alu_muls_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = (src as i32) * (dst as i32);
     state.set_d_long(reg_dst as usize, res as u32);
     state.set_ccr_nz_clear_vc(res < 0, res == 0);
-    state.micro.clocks_remaining = calc_muls_internal_clocks(src as u16);
+    state.micro_mut().clocks_remaining = calc_muls_internal_clocks(src as u16);
 }
 
 pub fn alu_muls_mem(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let src = state.micro.source as i16;
+    let src = state.micro().source as i16;
     let dst = state.d_word(reg_dst as usize) as i16;
     let res = (src as i32) * (dst as i32);
     state.set_d_long(reg_dst as usize, res as u32);
     state.set_ccr_nz_clear_vc(res < 0, res == 0);
-    state.micro.clocks_remaining = calc_muls_internal_clocks(src as u16);
+    state.micro_mut().clocks_remaining = calc_muls_internal_clocks(src as u16);
 }
 
 // ============================================================================

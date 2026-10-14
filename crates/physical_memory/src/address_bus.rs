@@ -25,15 +25,6 @@ impl<T> BusResult<T> {
         matches!(self, BusResult::Ready(_))
     }
 
-    /// Converts `BusResult<T>` to `Option<T>`
-    #[inline(always)]
-    pub fn ok(self) -> Option<T> {
-        match self {
-            BusResult::Ready(val) => Some(val),
-            BusResult::WaitState => None,
-        }
-    }
-
     /// Unwraps the value or returns a default fallback
     #[inline(always)]
     pub fn unwrap_or(self, default: T) -> T {
@@ -57,6 +48,12 @@ pub trait AddressBus {
 
     /// Writes a single byte to the 24-bit address space
     fn write_byte(&mut self, addr: u32, val: u8) -> BusResult<()>;
+
+    /// TAS write phase within a read-modify-write cycle. Generic backplanes
+    /// accept the byte; a platform bus may suppress it for its memory controller.
+    fn write_tas_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
+        self.write_byte(addr, val)
+    }
 
     /// Writes a 16-bit word to the 24-bit address space (must be even address)
     fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()>;

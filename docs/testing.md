@@ -1,106 +1,97 @@
-# Amiga 500 Test Suite & Verification Architecture
+# How the Emulator Is Verified
 
-This document details the multi-tiered verification framework used to ensure 100% cycle-exact fidelity against real Motorola 68000 silicon and Amiga 500 hardware.
+This guide explains what the project's tests check and how to interpret their
+results. It gives users and developers an overview of the evidence behind the
+emulator and starting points for investigating a failure. Exact commands and
+verification routing are documented in [tools/verification/README.md](../tools/verification/README.md)
+and the verifier's command-line help.
 
----
+## Different Tests Answer Different Questions
 
-## 1. M68000 SingleStepTests (Physical Hardware Silicon Verification)
+The emulator has to produce the right state at the right time. A correct value
+at the end of an instruction can still conceal a bus access performed in the
+wrong clock phase. Verification therefore uses several complementary approaches:
 
-The CPU core is validated against **Tom Harte's `SingleStepTests-680x0`** suite ([`ref_src/SingleStepTests-680x0/68000/v1/`](../ref_src/SingleStepTests-680x0/68000/v1/)), consisting of 124 per-instruction test files and ~1,000,000 randomized test vectors captured directly from physical 68000 silicon pins.
+| Evidence | Question it helps answer |
+| --- | --- |
+| Crate tests | Does an individual component behave as expected? |
+| Integration tests | Do the CPU, bus, machine loop and peripherals coordinate correctly? |
+| 68000 silicon vectors | Does an instruction match captured state, instruction clocks and the timed bus callback sequence? |
+| CPU wait-state crate tests | Does the CPU retain and retry a refused transfer correctly? |
+| Whole-machine captures | Does a selected hardware program produce the expected visible result? |
+| Performance measurements | How much host time does an emulated workload consume? |
 
-### Execution Modes
+Architecture and quality checks complement these tests by checking project
+constraints. They do not establish hardware timing by themselves.
 
-#### A. Fast Smoke Test (Sampled)
-By default, each instruction suite evaluates a sampled subset of 50 test cases (~5 seconds total):
-```powershell
-# Run sampled SingleStepTests across all implemented opcodes
-cargo test -p test_runner --test test_singlestep
+## CPU Accuracy and Bus Waiting
 
-# Run tests for a specific instruction or family
-cargo test -p test_runner --test test_singlestep test_nop
-cargo test -p test_runner --test test_singlestep test_add_b
-cargo test -p test_runner --test test_singlestep test_move_w
-```
+The CPU harness uses Tom Harte's SingleStepTests, a large collection of instruction
+cases captured from physical 68000 hardware. Every executed vector compares
+registers, instruction clocks and timed bus callbacks with its JSON reference.
+Sampling limits the number of inputs and never weakens those
+comparisons. SingleStep uses the silicon-vector format;
+test names are descriptions and do not select how registers or bus data are
+interpreted. Internal delays advance the expected transaction timeline, so correct
+total clocks do not conceal an early or late read or write. Existing state masks
+and the callback interface's signal limits are documented in the
+[CPU verification specification](../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification).
 
-#### B. Full Exhaustive Verification (`SINGLESTEP_FULL`)
-Setting `SINGLESTEP_FULL=1` disables sampling limits and executes **100% of all ~1,000,000 test vectors** across all suites in parallel (typically completes in ~5–6 seconds):
+SingleStep uses the [reviewed SingleStep override catalog](../crates/test_runner/tests/overrides/singlestep/README.md)
+for approved corrections to exact records, with the originals retained in `ref_src`.
 
-- **PowerShell (Windows):**
-  ```powershell
-  $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
-  ```
-- **Bash / Linux / macOS:**
-  ```bash
-  SINGLESTEP_FULL=1 cargo test -p test_runner --test test_singlestep
-  ```
+Ordinary CPU tests use PhysicalMemory and a small recording wrapper to refuse
+specific transfers zero, once or repeatedly, then release them. They check CCK
+phases, stable retry identity, exactly one successful transfer and waiting cost
+from independently counted refusals. Long halves, address updates, prefetch,
+stack/exception paths, read-modify-write and MOVEM/MOVEP progress have focused
+coverage. These tests run with ordinary CPU crate tests. They do not verify
+production Agnus arbitration or the complete chipset scheduler; those
+relationships need integration tests. Memory-placement and DMA-schedule
+permutation tests have been removed.
 
-#### C. Custom Sample Limit (`SINGLESTEP_LIMIT`)
-To evaluate an arbitrary sample size (e.g. 200 or 500 test cases per opcode):
-```powershell
-$env:SINGLESTEP_LIMIT = "500"; cargo test -p test_runner --test test_singlestep
-```
+For source and procedure details, start with [test_runner](../crates/test_runner/)
+and the [silicon verification skill](../.agents/skills/m68k-singlestep-test/SKILL.md).
 
-#### D. Automated Archive Decompression (`tools/bootstrap/bootstrap.ps1 -Sources`)
-Running `.\tools\bootstrap\bootstrap.ps1 -Sources` automatically scans for compressed archives (`*.json.gz`, `*.gz`, or `.zip`) under `ref_src/SingleStepTests-680x0/` and decompresses them into native `.json` files in `68000/v1/` using native .NET decompression (idempotent, zero external dependencies).
+## Whole-Machine Behavior and Performance
 
----
+External hardware programs and reference captures provide another view: the
+combined effect of instruction timing, DMA, video and peripheral behavior.
+The available vAmigaTS reference captures support investigation, but the previous
+capture runner has been removed. There is currently no executable capture
+comparison entry point. Whole-machine capture verification remains future work.
 
-## 2. Cartesian DMA Contention Verification
+Performance also needs separate evidence. A benchmark measures host execution
+time, whereas a cycle assertion measures emulated time. Stored benchmark results
+provide a comparison reference; fresh measurements and sampling profiles run
+explicitly. Benchmark regression test targets and the old chipset throughput
+runner have been removed. The [benchmark design](../Obsidian/Amiga/Design/Performance/CPU%20Instruction%20Benchmarking.md)
+explains the measurement model.
 
-Validates cycle-exact M68000 micro-stepping and wait-state handling under Agnus DMA bus contention across the full combinatorial Cartesian product:
+<a id="completion-verification"></a>
+## Run Verification and Read the Result
 
-- **Address Permutations ($2^k$):** Sweeps all role assignments of memory cells touched by the instruction (`ChipRam` vs `FastRam`).
-- **DMA Schedule Permutations ($2^M$):** Sweeps every bit pattern of stalled vs free CCK slots across the execution window.
-- **Asserted State Constraints:**
-  1. *Cycle Invariance:* $C = C_0 + 2 \times \text{wait\_states}$
-  2. *Fast RAM Immunity:* $C = C_0$ with zero wait states when memory addresses point to Fast RAM.
-  3. *State Invariance:* Register values and RAM contents are 100% bit-identical to the uncontended golden run.
-
-```powershell
-# Run full Cartesian DMA contention test suite
-cargo test -p test_runner --test test_dma_cartesian
-
-# Run specific sub-suite
-cargo test -p test_runner --test test_dma_cartesian test_dma_cartesian_system_and_traps
-```
-
----
-
-## 3. Automated Architecture Rules Compliance
-
-Enforces architectural rules defined in [`AGENTS.md`](../AGENTS.md) (code formatting, file size limits $\le 800$ lines, zero runtime panics, zero custom macros, path privacy, and inlining rules):
-```powershell
-cargo test -p test_runner --test test_architecture_rules
-```
-
----
-
-## 4. CLI Diagnostic Tools & Regression Tracking
-
-The `test_runner` crate provides a standalone CLI tool for inspecting coverage matrices, live failure diagnostics, and detecting regressions:
+For an authorized commit, run from the repository root:
 
 ```powershell
-# Display global pass/fail matrix and coverage summary across all opcodes
-cargo run -p test_runner -- --summary
-
-# Detect regressions and fixed tests compared to previous run
-cargo run -p test_runner -- --diff
-
-# Execute a single opcode suite directly with live diagnostic failure output
-cargo run -p test_runner -- --suite ADD.b
+python tools/verification/verify.py commit
 ```
 
-- 🔴 **Regressions:** Tests that previously passed but now fail are highlighted with `⚠️ [REGRESSION DETECTED]`.
-- 🟢 **Improvements:** Tests that previously failed but now pass are highlighted with `🎉 [PROGRESS / FIX]`.
+It runs standard tests and quality checks on the current working tree, including
+unchanged files where the check's scope requires them. Staging is not required,
+and the command does not create a commit. Ordinary task completion uses relevant
+focused checks. Full silicon verification runs automatically at
+milestone closure or explicitly for diagnosis; changes alone do not select it
+in the commit profile. CPU waiting tests run with ordinary crate tests. Use
+`python tools/verification/verify.py --help` for the available profiles and
+[tools/verification/README.md](../tools/verification/README.md#completion-verification) for execution details.
 
----
+The report includes code coverage for ordinary crate tests. Coverage shows which
+code was executed; it does not tell you whether the assertions were sufficient,
+whether all hardware cases were represented, or whether execution was fast.
 
-## 5. Autonomous Testing Workflows & Slash Commands
-
-For interactive pair-programming sessions with the AI Agent in the IDE chat, three repository skills drive the testing lifecycle:
-
-| Skill | Role in Verification Lifecycle | When to Trigger |
-| :--- | :--- | :--- |
-| [`$test-runner`](../.agents/skills/test-runner/SKILL.md) | **Execution & Telemetry Engine** | Run tests across tiers, update snapshots in `.test_results/`, and report red/green regression diffs. |
-| [`$integration-test-sprint`](../.agents/skills/integration-test-sprint/SKILL.md) | **Cascading Verification Protocol** | Drive multi-chip test sweeps (Tier 2 machine loop & Tier 4 vAmigaTS), filter non-runnable tests, and cluster failures with a 2–3 attempt cap. |
-| [`$synthesize-test-fixes`](../.agents/skills/synthesize-test-fixes/SKILL.md) | **Root-Cause Consolidation** | Audit recent commits or git diff, construct the 3-column diagnostic matrix (`[Symptom] \| [Location] \| [Mechanism]`), find the shared hardware law (common denominator), and strip local ad-hoc patches. |
+When assessing a result, check which suites actually ran, whether they used full
+or sampled inputs, and whether failures or unavailable assets limited the run.
+A pass applies to the executed cases and assertions. For the broader design and
+verification strategy, follow the
+[testing specification](../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md).

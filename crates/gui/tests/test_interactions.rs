@@ -309,7 +309,7 @@ fn test_simulated_breakpoint_form_and_trigger() {
 
     // Execution should have stopped precisely at breakpoint $001002
     assert_eq!(app.session.instructions_executed, 1);
-    assert_eq!(app.session.machine.cpu.state.pc.wrapping_sub(4), 0x001002);
+    assert_eq!(app.session.machine.cpu.state.pc().wrapping_sub(4), 0x001002);
 }
 
 #[test]
@@ -334,7 +334,13 @@ fn test_simulated_temporal_time_travel_navigation() {
     app.session.step_backward();
     assert_eq!(app.session.temporal.scrub_cursor, Some(0));
     assert!(
-        !app.session.machine.cpu.state.micro.current_steps.is_empty(),
+        !app.session
+            .machine
+            .cpu
+            .state
+            .micro()
+            .current_steps
+            .is_empty(),
         "Scrubbing backward must re-hydrate CPU micro-steps via restore_state"
     );
 
@@ -347,7 +353,13 @@ fn test_simulated_temporal_time_travel_navigation() {
     app.session.jump_to_live_head();
     assert_eq!(app.session.temporal.scrub_cursor, None);
     assert!(
-        !app.session.machine.cpu.state.micro.current_steps.is_empty(),
+        !app.session
+            .machine
+            .cpu
+            .state
+            .micro()
+            .current_steps
+            .is_empty(),
         "Returning to live head must re-hydrate CPU micro-steps via restore_state"
     );
 }
@@ -381,16 +393,16 @@ fn test_startup_clean_memory() {
     assert!(!app.session.is_running);
     assert!(!app.session.temporal.is_recording());
     // Verify startup PC counter points to $000000 (0th cell) with valid SSP ($080000) and primed prefetch
-    assert_eq!(app.session.machine.cpu.state.instruction_pc, 0x000000);
-    assert_eq!(app.session.machine.cpu.state.pc, 0x000004);
+    assert_eq!(app.session.machine.cpu.state.instruction_pc(), 0x000000);
+    assert_eq!(app.session.machine.cpu.state.pc(), 0x000004);
     assert_eq!(app.session.machine.cpu.state.a_long(7), 0x080000);
     assert_eq!(app.session.machine.cpu.state.ssp(), 0x080000);
     assert!(
-        app.session.machine.cpu.state.ir == 0xFFFF
-            || app.session.machine.cpu.state.ir == 0x0000
-            || app.session.machine.cpu.state.ir == 0x0008,
+        app.session.machine.cpu.state.ir() == 0xFFFF
+            || app.session.machine.cpu.state.ir() == 0x0000
+            || app.session.machine.cpu.state.ir() == 0x0008,
         "Expected unpopulated Kickstart ROM ($FFFF), zeroed Chip RAM ($0000), or synthetic boot vector ($0008), got ${:04X}",
-        app.session.machine.cpu.state.ir
+        app.session.machine.cpu.state.ir()
     );
     assert_eq!(app.goto_addr_str, "000000");
 
@@ -465,10 +477,10 @@ fn test_pc_instruction_address_normalization() {
     app.session.load_binary(0x001000, &code, true);
 
     // Hardware prefetch advances PC bus register to $001004
-    assert_eq!(app.session.machine.cpu.state.pc, 0x001004);
+    assert_eq!(app.session.machine.cpu.state.pc(), 0x001004);
 
     // Displayed/active instruction address is normalized to state.pc - 4 = $001000
-    let instruction_pc = app.session.machine.cpu.state.pc.wrapping_sub(4) & 0x00FF_FFFF;
+    let instruction_pc = app.session.machine.cpu.state.pc().wrapping_sub(4) & 0x00FF_FFFF;
     assert_eq!(instruction_pc, 0x001000);
 }
 
@@ -603,8 +615,8 @@ fn test_microcode_toggle_and_clock_metrics() {
     app.session.step_cck();
     let state = &app.session.machine.cpu.state;
     // MOVE.W has 2 steps of 2 clocks each; after 1 CCK, step 0 has completed and step 1 is active
-    assert!(state.micro.micro_step <= state.micro.current_steps.len() as u16);
-    assert!(!state.micro.current_steps.is_empty());
+    assert!(state.micro().micro_step <= state.micro().current_steps.len() as u16);
+    assert!(!state.micro().current_steps.is_empty());
 }
 
 #[test]
@@ -976,7 +988,7 @@ fn test_disassembly_stepping_multi_word_invariance() {
     app.session.load_binary(0x001000, &fibonacci_code, true);
 
     // 1. Initial instruction PC must be exactly $001000
-    assert_eq!(app.session.machine.cpu.state.instruction_pc, 0x001000);
+    assert_eq!(app.session.machine.cpu.state.instruction_pc(), 0x001000);
 
     // Render frame 1
     let _ = ctx.run(RawInput::default(), |ctx| app.update_ui(ctx));
@@ -996,7 +1008,8 @@ fn test_disassembly_stepping_multi_word_invariance() {
 
     // Instruction PC must STILL be $001000 even though hardware prefetch PC advanced!
     assert_eq!(
-        app.session.machine.cpu.state.instruction_pc, 0x001000,
+        app.session.machine.cpu.state.instruction_pc(),
+        0x001000,
         "Mid-instruction CCK step must preserve active instruction_pc"
     );
 
@@ -1015,7 +1028,8 @@ fn test_disassembly_stepping_multi_word_invariance() {
 
     // Instruction PC must transition to $001006 (CLR.W D0)
     assert_eq!(
-        app.session.machine.cpu.state.instruction_pc, 0x001006,
+        app.session.machine.cpu.state.instruction_pc(),
+        0x001006,
         "Retiring LEA must advance instruction_pc to $001006 (CLR.W)"
     );
 
@@ -1034,7 +1048,8 @@ fn test_disassembly_stepping_multi_word_invariance() {
         |ctx| app.update_ui(ctx),
     );
     assert_eq!(
-        app.session.machine.cpu.state.instruction_pc, 0x001008,
+        app.session.machine.cpu.state.instruction_pc(),
+        0x001008,
         "Retiring CLR.W must advance instruction_pc to $001008 (MOVE.W)"
     );
 }
@@ -1094,7 +1109,7 @@ fn test_disassembly_active_line_highlight_and_column_alignment() {
         },
         |ctx| app.update_ui(ctx),
     );
-    assert_eq!(app.session.machine.cpu.state.instruction_pc, 0x001006);
+    assert_eq!(app.session.machine.cpu.state.instruction_pc(), 0x001006);
 
     let output_step1 = ctx.run(RawInput::default(), |ctx| app.update_ui(ctx));
     assert!(

@@ -1,6 +1,6 @@
 # Developer Studio & Time-Travel Debugger
 
-The Amiga 500 emulator provides a built-in immediate-mode **Developer Studio and Time-Travel Debugger** implemented in `crates/gui` and `crates/debugger`.
+This guide introduces the Developer Studio for users and developers who want to inspect the emulated machine, pause execution or investigate a program. It covers the main views and everyday controls; implementation details are linked at the end.
 
 ---
 
@@ -36,8 +36,8 @@ The Amiga 500 emulator provides a built-in immediate-mode **Developer Studio and
 
 ## 3. Core Debugger Subsystems
 
-### A. Time-Travel Rewind ($\ge 1.0\text{s}$ PAL History)
-A high-capacity ring buffer records cycle-exact CPU and bus snapshots with zero dynamic heap allocations in hot paths:
+### A. Execution History and Rewind
+Recorded execution history lets you inspect earlier states within the retained history:
 - **Instruction Scrubbing:** Step backward and forward through past instructions to locate bugs or crashes.
 - **Frame Scrubbing:** Jump backward by entire 50 Hz PAL video frames (~70,824 CCK cycles).
 - **Cycle-Exact Timestamps:** Inspect exact Color Clock cycle timestamps and register states at each step.
@@ -68,6 +68,6 @@ Live memory viewer displaying memory banks across Chip RAM, Slow RAM, and Fast R
 ## 4. Architecture & Upstream References
 
 For complete data structure definitions, temporal trace buffer schemas, and integration details, consult:
-- **Obsidian Design Spec:** [`Obsidian/Amiga/Design/Debugger.md`](../Obsidian/Amiga/Design/Debugger.md)
+- **Obsidian Design Spec:** [`Obsidian/Amiga/Design/Application/Debugger.md`](../Obsidian/Amiga/Design/Application/Debugger.md)
 - **Frontend Guidelines:** [`Obsidian/Amiga/Design/egui Guidelines.md`](../Obsidian/Amiga/Design/egui%20Guidelines.md)
 - **Source Crates:** [`crates/debugger/`](../crates/debugger/) and [`crates/disassembler/`](../crates/disassembler/)

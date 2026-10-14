@@ -6,6 +6,7 @@
 pub use frame_builder;
 pub use sprites;
 
+use config::custom_reg::{denise as reg, paula as paula_reg};
 pub use config::DeniseModel;
 use config::{stage_mutation, tick_mutations, BeamPosition, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
@@ -30,13 +31,9 @@ pub struct Denise {
     pub bplcon1: u16,
     /// Bitplane Control 2 (playfield and sprite priority arbitration)
     pub bplcon2: u16,
-    /// Bitplane Control 3 (ECS border color, enhanced sprite control)
-    pub bplcon3: u16,
     /// Display Window Start ($08E, upper-left corner: VSTART, HSTART)
     pub diwstrt: u16,
     pub diwstop: u16,
-    /// Display Window High ($1E4, ECS 10-bit DIW positions)
-    pub diwhigh: u16,
     /// Internal Denise horizontal display window flip-flop
     pub hflop: bool,
     /// Display Data Fetch Start ($092)
@@ -96,10 +93,8 @@ impl Denise {
             bplcon0: 0,
             bplcon1: 0,
             bplcon2: 0,
-            bplcon3: 0,
             diwstrt: 0,
             diwstop: 0,
-            diwhigh: 0,
             hflop: false,
             ddfstrt: 0,
             ddfstop: 0,
@@ -129,10 +124,8 @@ impl Denise {
         self.bplcon0 = 0;
         self.bplcon1 = 0;
         self.bplcon2 = 0;
-        self.bplcon3 = 0;
         self.diwstrt = 0;
         self.diwstop = 0;
-        self.diwhigh = 0;
         self.hflop = false;
         self.ddfstrt = 0;
         self.ddfstop = 0;
@@ -175,34 +168,15 @@ impl Denise {
         // Horizontal blanking occupies CCKs 0x12..0x23 (18..35)
         let in_hblank = beam.hpos >= 18 && beam.hpos <= 35;
 
-        // Track horizontal and vertical display window flip-flops
-        let vstart = (self.diwstrt >> 8) & 0xFF;
-        let vstop = ((self.diwstop >> 8) & 0xFF)
-            | (if (self.diwstop & 0x8000) != 0 {
-                0
-            } else {
-                0x100
-            });
-        let vflop = beam.vpos >= vstart && beam.vpos < vstop;
-
-        let hstrt = ((self.diwstrt & 0xFF) | 1)
-            | (if (self.diwhigh & (1 << 5)) != 0 {
-                0x100
-            } else {
-                0
-            });
-        let hstop = ((self.diwstop & 0xFF) | 1)
-            | (if (self.diwhigh & (1 << 13)) != 0 || self.diwhigh == 0 {
-                0x100
-            } else {
-                0
-            });
+        // Denise decodes the horizontal DIW bits; Agnus gates bitplane DMA by line.
+        let hstrt = (self.diwstrt & 0xFF) | 1;
+        let hstop = (self.diwstop & 0xFF) | 1 | 0x100;
 
         let c0 = beam.hpos * 2 + 2;
         if c0 == hstrt {
             self.hflop = true;
         }
-        let in_diw0 = self.hflop && vflop;
+        let in_diw0 = self.hflop;
         if c0 == hstop {
             self.hflop = false;
         }
@@ -211,7 +185,7 @@ impl Denise {
         if c1 == hstrt {
             self.hflop = true;
         }
-        let in_diw1 = self.hflop && vflop;
+        let in_diw1 = self.hflop;
         if c1 == hstop {
             self.hflop = false;
         }
@@ -344,7 +318,7 @@ impl Denise {
                     self.frame_builder.set_pixel(cck_base_x + 4, y, px4);
                     self.frame_builder.set_pixel(cck_base_x + 5, y, px5);
 
-                    let (px6, px7) = if self.hflop && vflop {
+                    let (px6, px7) = if self.hflop {
                         if hires {
                             let p4 = self.shift_pixel();
                             let p5 = self.shift_pixel();
@@ -476,13 +450,6 @@ impl Denise {
         self.bplcon2 = val;
     }
 
-    /// Action method: sets display window clipping coordinates
-    #[inline]
-    pub fn set_diw(&mut self, strt: u16, stop: u16) {
-        self.diwstrt = strt;
-        self.diwstop = stop;
-    }
-
     /// Returns the active number of bitplanes (0..6)
     #[inline]
     pub fn bitplane_count(&self) -> u8 {
@@ -519,10 +486,10 @@ impl Denise {
     /// Write-only registers return floating open bus $FFFF.
     pub fn read_register(&mut self, offset: u16) -> u16 {
         match offset & 0x1FE {
-            0x00A => self.joy0dat,
-            0x00C => self.joy1dat,
-            0x00E => self.read_clxdat(),
-            _ => 0xFFFF,
+            reg::JOY0DAT => self.joy0dat,
+            reg::JOY1DAT => self.joy1dat,
+            reg::CLXDAT => self.read_clxdat(),
+            _ => config::OPEN_BUS_WORD,
         }
     }
 
@@ -530,24 +497,93 @@ impl Denise {
     #[inline]
     pub fn peek_register(&self, offset: u16) -> u16 {
         match offset & 0x1FE {
-            0x00A => self.joy0dat,
-            0x00C => self.joy1dat,
-            0x00E => self.clxdat,
-            _ => 0xFFFF,
+            reg::JOY0DAT => self.joy0dat,
+            reg::JOY1DAT => self.joy1dat,
+            reg::CLXDAT => self.clxdat,
+            _ => config::OPEN_BUS_WORD,
         }
     }
+
+    /// Receives a synchronization address strobe on RGA. Video effects are not modeled yet.
+    pub fn receive_sync_strobe(&mut self, _offset: u16) {}
 
     /// Schedules a staged register write with appropriate propagation delay and overwrite mode.
     /// Returns `Some((offset, val))` if committed immediately, or `None` if staged in pipeline.
     pub fn write_register(&mut self, offset: u16, val: u16) -> Option<(u16, u16)> {
         let offset = offset & 0x1FE;
         let (delay, mode) = match offset {
-            0x100 | 0x102 | 0x104 | 0x106 => (1, MutationMode::OverwritePending), // BPLCON0..3
-            0x098 => (1, MutationMode::OverwritePending),                         // CLXCON
-            0x08E | 0x090 => (1, MutationMode::OverwritePending), // DIWSTRT, DIWSTOP
-            0x180..=0x1BE => (0, MutationMode::OverwritePending), // COLOR00..31 (commits on active cycle)
-            0x110..=0x11A => (1, MutationMode::Pipeline),         // BPL1DAT..6DAT
-            0x140..=0x17E => (1, MutationMode::OverwritePending), // SPRx
+            reg::BPLCON0 | reg::BPLCON1 | reg::BPLCON2 => (1, MutationMode::OverwritePending),
+            reg::CLXCON | reg::DIWSTRT | reg::DIWSTOP => (1, MutationMode::OverwritePending),
+            reg::COLOR00
+            | reg::COLOR01
+            | reg::COLOR02
+            | reg::COLOR03
+            | reg::COLOR04
+            | reg::COLOR05
+            | reg::COLOR06
+            | reg::COLOR07
+            | reg::COLOR08
+            | reg::COLOR09
+            | reg::COLOR10
+            | reg::COLOR11
+            | reg::COLOR12
+            | reg::COLOR13
+            | reg::COLOR14
+            | reg::COLOR15
+            | reg::COLOR16
+            | reg::COLOR17
+            | reg::COLOR18
+            | reg::COLOR19
+            | reg::COLOR20
+            | reg::COLOR21
+            | reg::COLOR22
+            | reg::COLOR23
+            | reg::COLOR24
+            | reg::COLOR25
+            | reg::COLOR26
+            | reg::COLOR27
+            | reg::COLOR28
+            | reg::COLOR29
+            | reg::COLOR30
+            | reg::COLOR31 => (0, MutationMode::OverwritePending),
+            reg::BPL1DAT
+            | reg::BPL2DAT
+            | reg::BPL3DAT
+            | reg::BPL4DAT
+            | reg::BPL5DAT
+            | reg::BPL6DAT => (1, MutationMode::Pipeline),
+            reg::SPR0POS
+            | reg::SPR0CTL
+            | reg::SPR0DATA
+            | reg::SPR0DATB
+            | reg::SPR1POS
+            | reg::SPR1CTL
+            | reg::SPR1DATA
+            | reg::SPR1DATB
+            | reg::SPR2POS
+            | reg::SPR2CTL
+            | reg::SPR2DATA
+            | reg::SPR2DATB
+            | reg::SPR3POS
+            | reg::SPR3CTL
+            | reg::SPR3DATA
+            | reg::SPR3DATB
+            | reg::SPR4POS
+            | reg::SPR4CTL
+            | reg::SPR4DATA
+            | reg::SPR4DATB
+            | reg::SPR5POS
+            | reg::SPR5CTL
+            | reg::SPR5DATA
+            | reg::SPR5DATB
+            | reg::SPR6POS
+            | reg::SPR6CTL
+            | reg::SPR6DATA
+            | reg::SPR6DATB
+            | reg::SPR7POS
+            | reg::SPR7CTL
+            | reg::SPR7DATA
+            | reg::SPR7DATB => (1, MutationMode::OverwritePending),
             _ => (1, MutationMode::OverwritePending),
         };
 
@@ -562,36 +598,101 @@ impl Denise {
     /// Commits a register write directly into active Denise silicon state
     pub fn commit_register_write(&mut self, offset: u16, val: u16) {
         match offset & 0x1FE {
-            0x100 => self.set_bplcon0(val),
-            0x102 => self.set_bplcon1(val),
-            0x104 => self.set_bplcon2(val),
-            0x106 => self.bplcon3 = val,
-            0x08E => self.diwstrt = val,
-            0x090 => self.diwstop = val,
-            0x1E4 => self.diwhigh = val,
-            0x098 => self.clxcon = val,
-            0x034 => self.potgo = val,
+            reg::BPLCON0 => self.set_bplcon0(val),
+            reg::BPLCON1 => self.set_bplcon1(val),
+            reg::BPLCON2 => self.set_bplcon2(val),
+            reg::DIWSTRT => self.diwstrt = val,
+            reg::DIWSTOP => self.diwstop = val,
+            reg::CLXCON => self.clxcon = val,
+            paula_reg::POTGO => self.potgo = val,
 
             // Color palette $180..$1BE
-            0x180..=0x1BE => {
-                let idx = ((offset - 0x180) / 2) as usize;
+            reg::COLOR00
+            | reg::COLOR01
+            | reg::COLOR02
+            | reg::COLOR03
+            | reg::COLOR04
+            | reg::COLOR05
+            | reg::COLOR06
+            | reg::COLOR07
+            | reg::COLOR08
+            | reg::COLOR09
+            | reg::COLOR10
+            | reg::COLOR11
+            | reg::COLOR12
+            | reg::COLOR13
+            | reg::COLOR14
+            | reg::COLOR15
+            | reg::COLOR16
+            | reg::COLOR17
+            | reg::COLOR18
+            | reg::COLOR19
+            | reg::COLOR20
+            | reg::COLOR21
+            | reg::COLOR22
+            | reg::COLOR23
+            | reg::COLOR24
+            | reg::COLOR25
+            | reg::COLOR26
+            | reg::COLOR27
+            | reg::COLOR28
+            | reg::COLOR29
+            | reg::COLOR30
+            | reg::COLOR31 => {
+                let idx = ((offset - reg::COLOR00) / 2) as usize;
                 if idx < Self::COLOR_PALETTE_SIZE {
                     self.color[idx] = val & 0x0FFF;
                 }
             }
 
             // Bitplane parallel data latches
-            0x110..=0x11A => {
-                let plane = ((offset - 0x110) / 2) as usize;
+            reg::BPL1DAT
+            | reg::BPL2DAT
+            | reg::BPL3DAT
+            | reg::BPL4DAT
+            | reg::BPL5DAT
+            | reg::BPL6DAT => {
+                let plane = ((offset - reg::BPL1DAT) / 2) as usize;
                 if plane < 6 {
                     self.bpldat[plane] = val;
                 }
             }
 
             // Sprite registers
-            0x140..=0x17E => {
-                let spr = ((offset - 0x140) / 8) as usize;
-                let sub = ((offset - 0x140) % 8) / 2;
+            reg::SPR0POS
+            | reg::SPR0CTL
+            | reg::SPR0DATA
+            | reg::SPR0DATB
+            | reg::SPR1POS
+            | reg::SPR1CTL
+            | reg::SPR1DATA
+            | reg::SPR1DATB
+            | reg::SPR2POS
+            | reg::SPR2CTL
+            | reg::SPR2DATA
+            | reg::SPR2DATB
+            | reg::SPR3POS
+            | reg::SPR3CTL
+            | reg::SPR3DATA
+            | reg::SPR3DATB
+            | reg::SPR4POS
+            | reg::SPR4CTL
+            | reg::SPR4DATA
+            | reg::SPR4DATB
+            | reg::SPR5POS
+            | reg::SPR5CTL
+            | reg::SPR5DATA
+            | reg::SPR5DATB
+            | reg::SPR6POS
+            | reg::SPR6CTL
+            | reg::SPR6DATA
+            | reg::SPR6DATB
+            | reg::SPR7POS
+            | reg::SPR7CTL
+            | reg::SPR7DATA
+            | reg::SPR7DATB => {
+                let spr = ((offset - reg::SPR0POS) / 8) as usize;
+                let sub = ((offset - reg::SPR0POS) % 8) / 2;
                 if spr < 8 {
                     match sub {
                         0 => self.sprites.channels[spr].pos = val,

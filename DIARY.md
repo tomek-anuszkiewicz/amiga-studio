@@ -142,7 +142,7 @@ Still focusing on the minimal instruction subset, Stage 2 was born out of the hu
 - ALU operations and instruction evaluation logic remained largely linear and immediate.
 - However, all memory bus operations (reads, writes, prefetches) were deferred and pushed onto a dedicated "command/action buffer".
 - A separate, decoupled execution loop processed this bus buffer, providing a mechanism for the CPU to stall and hold on wait states when blocked by Chip RAM contention.
-- **The Architectural Breakdown:** While this successfully proved that memory wait states could stall execution against SingleStepTests, the resulting architecture was awkward and fragmented ("rozpieprzony"):
+- **The Architectural Breakdown:** While this successfully proved that memory wait states could stall execution against SingleStepTests, the resulting architecture was awkward and fragmented:
   - ALU math ran upfront while bus operations lagged behind in the queue.
   - Pipelined prefetch queue progression ($IR$/$IRC$) became decoupled from memory reads.
   - Mid-instruction Address Error exceptions (Vector 3) across this boundary were completely unnatural: an address error occurring on an unaligned memory read would trigger *after* the ALU had already mutated guest registers!
@@ -385,13 +385,13 @@ Every repository commit must include a new Section 10 entry for the changes it r
 
 ---
 
-### [2026-09-14 23:59 CEST] — Milestone Digest: Language Guardrails, HRM Alignment & vAmigaTS Verification Harness
+### [2026-09-14 23:59 CEST] — Milestone Digest: Language Guardrails, HRM Alignment & CPU Verification
 - **Timestamp & Context**: 2026-09-14 — Quality assurance infrastructure, verification suites, and hardware manual alignment.
 - **Affected Subsystems**: `crates/test_runner`, `.agents/rules/`, `tools/harness`, `Obsidian/Amiga/Reference/`.
 - **What Was Changed (The Concrete Reality)**:
   - Codified the strict English language policy across code, documentation, and agent reasoning.
   - Ingested Commodore Hardware Reference Manuals (HRM) and Amiga Hardware Reference Manual into local reference stores.
-  - Built the `vAmigaTS` headless test runner infrastructure in `crates/test_runner` supporting Tom Harte single-step CPU tests, Cartesian DMA contention suites, and RGB24 viewport golden master matchers.
+  - Built headless verification infrastructure in `crates/test_runner` for Tom Harte single-step CPU tests and Cartesian DMA contention suites.
   - Implemented pre-flight gate scripts (`pre_flight.py`) to enforce formatting, architectural rules, and test coupling.
 - **Architectural Rationale & Trade-Offs**:
   - *Headless Test Harness:* Driving test cases via synthetic headless runners avoids dependency on host UI rendering, enabling high-speed verification (< 5s for full suites).
@@ -399,23 +399,6 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Invariants**:
   - `cargo test -p test_runner`: Architecture rule suite and single-step CPU validation tests.
   - `pre_flight.py`: Pre-commit validation of formatting, API coverage, and rule compliance.
-
----
-
-### [2026-09-15 23:59 CEST] — Milestone Digest: Custom Chipset Silicon Calibration & Phase 1 vAmigaTS Verification
-- **Timestamp & Context**: 2026-09-14 to 2026-09-15 — Hardware circuit timing calibration across Agnus (Copper/Blitter), Denise display pipeline, and whole-machine integration testing.
-- **Affected Subsystems**: `crates/copper`, `crates/blitter`, `crates/denise`, `crates/machine_loop`, `crates/test_runner/src/vamiga`.
-- **What Was Changed (The Concrete Reality)**:
-  - Calibrated Agnus Copper execution timing: 1-CCK instruction fetch pipeline, comparator race conditions against beam counters, `CDANG` danger mode handling, and cycle `$E0` DMA denial in PAL display scanlines.
-  - Fully implemented Blitter HRM Table 6.2 decomposition: 256-minterm Boolean ALU, barrel shifters, modulo pointer advancement, unconnected channel latch calibration, and area fill logic with 100% pass on Blitter regression suites.
-  - Calibrated Denise pixel serializer and display window flip-flops (`DIWSTRT`/`DIWSTOP`), aligning pipeline latency and bitplane shifter arming.
-  - Implemented the 4-iteration whole-machine cascading integration verification framework in `crates/machine_loop/tests/`, testing Copper, Blitter, Denise, and interrupt cascades without external GUI overhead.
-- **Architectural Rationale & Trade-Offs**:
-  - *Silicon-Exact Comparator Matching:* Rather than using abstract programmatic coordinates, Copper beam comparisons evaluate on exact physical clock phases, mirroring Agnus comparator silicon.
-  - *Table 6.2 Truth Table Decomposition:* Modeling Blitter logic as a pure 256-entry lookup table avoids branch cascades and executes at peak throughput on modern host CPU architectures.
-- **Verification & Invariants**:
-  - 100% pass on vAmigaTS Blitter area fill and line drawer tests.
-  - Full suite of Tier 2 whole-machine integration tests passing in `crates/machine_loop/tests/`.
 
 ---
 
@@ -562,22 +545,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
 
 ---
 
-### [2026-09-29 01:50 CEST] — Historical Section 10 Compaction into 10 Architectural Milestone Digests
+### [2026-09-29 01:50 CEST] — Historical Section 10 Compaction into Architectural Milestone Digests
 - **Affected Subsystems**:
   - `DIARY.md` (Section 10 synthesized per `.agents/skills/compact-diary/SKILL.md`)
   - `.agents/rules/diary-maintenance.md`, `.agents/rules/roadmap-maintenance.md`, `.agents/skills/compact-diary/SKILL.md`
 - **What Was Changed (The Concrete Reality)**:
-  - Audited and compacted 340+ historical chronological entries in Section 10 (September 12–22, 2026) spanning over 8,500 lines into 10 high-signal Architectural Milestone Digests covering all major project phases:
+  - Audited and compacted 340+ historical chronological entries in Section 10 (September 12–22, 2026) spanning over 8,500 lines into high-signal Architectural Milestone Digests covering all major project phases:
     1. Disassembler Extraction, Memory Banking & Core Machine Setup (2026-09-12)
-    2. Language Guardrails, HRM Alignment & vAmigaTS Verification Harness (2026-09-14)
-    3. Custom Chipset Silicon Calibration & Phase 1 vAmigaTS Verification (2026-09-15)
-    4. Multimodal Reference Ingestion & 14-Stage PDF-to-Markdown Pipeline (2026-09-16)
-    5. RAG Knowledge Base, Diagram Sidecars & Attractor Elimination (2026-09-16)
-    6. Tooling Ergonomics, Zero-Junction Invariant & Full Worktree Storage Isolation (2026-09-17)
-    7. MemoryBus Streamlining, Agnus DMA Mastership & Decoupled State Serialization (2026-09-18)
-    8. Tripartite Quality Audits, Crate Renaming (m68000 -> cpu), and Compiler Lints Baseline (2026-09-19)
-    9. Strict Compilation Policy, CPU Semantic Parity & Scope Discipline (2026-09-21)
-    10. RAG Tooling Reform, CLI Single Source of Truth & Documentation Scoping (2026-09-22)
+    2. Language Guardrails, HRM Alignment & CPU Verification (2026-09-14)
+    3. Multimodal Reference Ingestion & 14-Stage PDF-to-Markdown Pipeline (2026-09-16)
+    4. RAG Knowledge Base, Diagram Sidecars & Attractor Elimination (2026-09-16)
+    5. Tooling Ergonomics, Zero-Junction Invariant & Full Worktree Storage Isolation (2026-09-17)
+    6. MemoryBus Streamlining, Agnus DMA Mastership & Decoupled State Serialization (2026-09-18)
+    7. Tripartite Quality Audits, Crate Renaming (m68000 -> cpu), and Compiler Lints Baseline (2026-09-19)
+    8. Strict Compilation Policy, CPU Semantic Parity & Scope Discipline (2026-09-21)
+    9. RAG Tooling Reform, CLI Single Source of Truth & Documentation Scoping (2026-09-22)
   - Purged obsolete raw micro-diffs, transient command traces, and uncompacted historical duplication while permanently preserving every major subsystem accomplishment, architectural dilemma, and verification result.
   - Retained the active September 29 roadmap milestone entry (Step 1.4: MachineLoop Architecture Review) in full granular detail.
   - Updated diary maintenance rules and skills to formally allow compaction upon completing minor roadmap points or when Section 10 exceeds operational size thresholds.
@@ -979,7 +961,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Python compilation and PDF CLI help passed
   - Quick pre-flight passed
   - Architecture suite: 18 passed and 1 failed because Design links target 62 missing Reference materials
-  - Staged English scan reported the Python standard-library identifier copytree as Polish; manually verified this false positive without changing the scanner
+  - Staged English scan reported the Python standard-library identifier copytree as an English vocabulary violation; manually verified this false positive without changing the scanner
   - Graphify code refresh completed without inference
 ---
 
@@ -2183,3 +2165,1569 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Quick preflight passed
   - architecture rules passed (19 tests)
   - documentation-only change, no conversion requested or run
+---
+
+### [2026-10-09 18:34 CEST] — VERIFY-01: Centralize change-aware completion verification
+- **Affected Subsystems**:
+  - `tools/harness`
+  - `tests`
+  - `agent governance`
+  - `testing documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace pre_flight.py with verify.py --commit and --milestone
+  - Select real-component crate tests through reverse workspace dependencies and route synthetic CPU suites separately
+  - Route Python contracts by their tool environment and reject incomplete staging or changing snapshots
+  - Centralize completion instructions while retaining focused diagnostic commands
+- **Architectural Rationale & Trade-Offs**:
+  - Completion commands must be selected mechanically from the actual test environment rather than agent judgement
+  - Milestone includes all test suites plus chipset throughput and runnable vAmiga capture comparison without rewriting goldens
+- **Verification & Test Results**:
+  - Nine verifier regression tests passed
+  - Vault links and script governance passed
+  - Existing PDF publication test fails in unchanged code with expected 16 versus actual 1
+  - Commit verification passed including 19 architecture tests and five affected Python fixture suites
+  - Milestone selection plan inspected; full milestone not run
+---
+
+### [2026-10-09 19:01 CEST] — VERIFY-02: Keep standard verification unconditional and expose CPU suite overrides
+- **Affected Subsystems**:
+  - `tools/harness`
+  - `verification tests`
+  - `agent instructions`
+  - `testing documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Always run ordinary workspace tests, standard test_runner suites and Python contracts for commit verification
+  - Retain staged-path triggers only for Cartesian DMA and full SingleStepTests
+  - Add independent additive --verify-dma and --verify-singlestep switches
+  - Keep milestone as the complete profile including both CPU suites
+  - Remove reverse dependency and Python fixture selection machinery
+- **Architectural Rationale & Trade-Offs**:
+  - Measured runtimes support a fixed standard profile with only the two expensive synthetic CPU suites selected conditionally
+  - Explicit overrides allow verification without altering trigger paths or disabling normal tests
+- **Verification & Test Results**:
+  - Nine routing and CLI regressions passed
+  - Commit verification ran all standard tests and omitted both expensive suites in 36.86 seconds
+  - Quality gates including 19 architecture tests and all ordinary crate tests passed
+  - Existing golden trace, Copper, matcher and PDF publication failures remain and produce a failed gate
+  - Generated trace outputs were preserved under .agent/tmp and restored
+  - Full milestone not run
+---
+
+### [2026-10-09 19:15 CEST] — VERIFY-03: Allow independent DMA and SingleStep test sets
+- **Affected Subsystems**:
+  - `tools/harness`
+  - `verifier regressions`
+  - `agent instructions`
+  - `testing documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Allow --verify-dma and --verify-singlestep without --commit or --milestone
+  - Standalone selectors run only their explicit sets on the current working tree without staging or quality gates
+  - Preserve automatic commit triggers, complete milestone coverage and additive deduplicated combinations
+  - Reject empty and conflicting completion selections
+- **Architectural Rationale & Trade-Offs**:
+  - Targeted CPU verification must be callable independently from completion profiles without implicitly executing the standard commit suite
+- **Verification & Test Results**:
+  - Eleven CLI and selection regressions passed
+  - Combined standalone command ran only the two requested sets in 58.08 seconds
+  - Cartesian DMA passed and full SingleStepTests retained the existing DIVU failure
+  - Link and governance checks passed
+  - Commit profile retains known golden trace, Copper, matcher and PDF publication failures
+  - No goldens or expectations changed
+  - Full milestone not run
+---
+
+### [2026-10-09 19:22 CEST] — VERIFY-04: Separate milestone checks from commit verification
+- **Affected Subsystems**:
+  - `tools/harness`
+  - `verifier regressions`
+  - `agent rules and skills`
+  - `testing documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Milestone runs only its four additional audits, chipset throughput and full vAmiga capture checks
+  - Remove implicit commit tests and DMA/SingleStep selection from milestone
+  - Retain explicit CPU-set selectors alongside either profile
+  - Update every active milestone workflow to run commit once for the same snapshot before milestone
+- **Architectural Rationale & Trade-Offs**:
+  - Verification profiles must have independent execution scopes and avoid repeating standard commit checks during stage closure
+- **Verification & Test Results**:
+  - Eleven verifier regression tests passed including disjoint gate and command selection
+  - Vault links and script governance passed
+  - Commit baseline retains previously recorded golden trace, Copper, matcher and PDF publication failures
+  - Milestone selection inspected without running the complete capture catalog
+  - No golden expectations changed
+---
+
+### [2026-10-09 20:15 CEST] — VERIFY-05: Allow verification without staging
+- **Affected Subsystems**:
+  - `Verification harness`
+  - `agent workflow`
+  - `testing documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Allow commit and milestone sets on clean or dirty working trees
+  - Select expensive CPU suites from staged, unstaged and nonignored new paths
+  - Fingerprint untracked file contents and retain mutation detection
+  - Update regression tests and remove staging prerequisites from guidance
+- **Architectural Rationale & Trade-Offs**:
+  - Verification profiles describe test sets and must be runnable on demand
+  - independently of Git staging.
+- **Verification & Test Results**:
+  - 12 verifier regression tests passed
+  - documentation scripts, vault links and governance passed
+  - Graphify updated
+  - full commit verification ran without staging: quality gates and ordinary crate tests passed, existing test_benchmark_trace, test_vamiga_copper, test_vamiga_harness and PDF publication contract failures remain. Trace tests rewrote tracked reference outputs, causing snapshot rejection
+  - generated traces preserved under ignored diagnostics and original references restored. Milestone execution not run.
+---
+
+### [2026-10-09 20:17 CEST] — VERIFY-06: Show verification instructions without arguments
+- **Affected Subsystems**:
+  - `Verification CLI`
+  - `testing documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Print detailed help and exit successfully when no arguments are provided
+  - Explain commit and milestone sets, conditional CPU-suite selection, explicit selectors and plan-only behavior
+  - Preserve invalid argument errors and add a regression proving help performs no verification
+- **Architectural Rationale & Trade-Offs**:
+  - Expose the available verification sets and their selection rules directly at the command entry point.
+- **Verification & Test Results**:
+  - 13 verifier regression tests passed
+  - manual no-argument and help output checked
+  - documentation links and governance passed
+  - Graphify updated
+  - full commit verification retains existing trace, Copper, capture matcher and PDF publication failures plus snapshot rejection from generated traces. Generated reference traces restored without changing goldens. Milestone execution not run.
+---
+
+### [2026-10-09 20:22 CEST] — VERIFY-07: Limit crate-root architecture scanning to Cargo source trees
+- **Affected Subsystems**:
+  - `Architecture verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Scan crates and immediate Cargo helper-tool directories for prohibited lib.rs files instead of traversing the repository
+  - Retain crate root and Cargo.toml entry-point validation
+- **Architectural Rationale & Trade-Offs**:
+  - Repository artifacts and external reference sources are outside the workspace naming policy and dominated traversal time. Helper Cargo tools remain covered by the existing policy.
+- **Verification & Test Results**:
+  - All 19 architecture tests passed in 0.13-0.14s versus previous approximately 4.55s
+  - verifier Architecture Rules total 0.38s versus previous 4.78s
+  - temporary scope probes confirmed detection in crates and Cargo helpers and exclusion of diagnostics
+  - Graphify updated. Full commit verification retains existing benchmark trace, Copper, capture matcher and PDF publication failures. Generated tracked traces restored
+  - no golden references changed. Milestone execution not run.
+---
+
+### [2026-10-09 20:26 CEST] — VERIFY-08: Remove redundant quality preview from execution output
+- **Affected Subsystems**:
+  - `Verification console output`
+- **What Was Changed (The Concrete Reality)**:
+  - Print the Quality preview only in plan mode
+  - Preserve quality gate execution and RUN/PASS/FAIL progress messages
+- **Architectural Rationale & Trade-Offs**:
+  - Normal execution already reports each quality check and its result
+  - making the initial list redundant.
+- **Verification & Test Results**:
+  - 13 verifier regression tests passed
+  - inspected normal output without Quality preview and plan output retaining it
+  - Graphify updated
+  - full commit verification retains known benchmark trace, Copper, capture matcher and PDF publication failures. Generated tracked traces restored
+  - no golden changes. Milestone execution not run.
+---
+
+### [2026-10-10 01:42 CEST] — Refresh SHIFT-04 trace after canonical mnemonic correction
+- **Affected Subsystems**:
+  - `Benchmark execution traces`
+- **What Was Changed (The Concrete Reality)**:
+  - Refresh SHIFT-04 instruction labels from ROXL/ROXR to ASL/ASR
+  - Preserve opcodes, register deltas, CCK timings and existing golden hashes
+- **Architectural Rationale & Trade-Offs**:
+  - Align the tracked trace artifact with the canonical disassembler output and the golden hash approved in commit c621cdc. Scoped design review selected Performance Profiling and Optimization Strategy
+  - no documentation change is required for this artifact refresh.
+- **Verification & Test Results**:
+  - SHIFT-04 normalized FNV-1a matches the existing golden hash 0xA7B1BA76B22AC2C7
+  - python tests/verify.py --commit ran: ordinary crate tests, coverage reporting, formatting, Clippy, architecture, hardware quality and code quality passed
+  - Standard harness suite failed on BCD-02 and BCD-04 trace hash mismatches
+  - Python tool contracts failed in test_validated_pdf_resume_publishes_workspace_output
+  - No golden constants changed
+  - Milestone verification not run
+---
+
+### [2026-10-10 02:02 CEST] — Reorganize verification tooling and scope automated test coverage
+- **Affected Subsystems**:
+  - `Verification harness`
+  - `quality checks`
+  - `agent governance`
+  - `test_runner`
+  - `frame_builder tests`
+  - `design documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Move verification and coverage reporting to tests and concrete audits to tests/checks
+  - Move skill-owned documentation, semantic, diary and roadmap checks into their skill script directories
+  - Move benchmark analysis into test_runner and worktree utility into tools/harness
+  - Remove standalone harness utility tests, vAmigaTS regression suites, viewport extraction tests and selected Python audit regression tests while retaining emulator execution and golden-result checks
+  - Automatically report ordinary-crate LLVM coverage and preserve diagnostic tier selectors
+  - Consolidate quality audit scope and make milestone verification the staged English audit
+  - Require scoped design review before authorized commits, remove obsolete synchronization checkpoints and align instructions with the new layout
+  - Refresh eight remaining canonical-mnemonic trace artifacts without changing golden constants
+  - Add tracked-path ownership for benchmark analysis and verification
+- **Architectural Rationale & Trade-Offs**:
+  - Record all user-authorized pending changes as one verification and agent-workflow reorganization. Documentation review covered changed design metadata and the benchmark, testing, frame-buffer and profiling contracts
+  - production emulator behavior was not changed. Removed suites reduce automated regression coverage
+  - retained manual tools do not replace that coverage.
+- **Verification & Test Results**:
+  - python tests/verify.py --commit ran: ordinary workspace crate tests and formatting, Clippy, architecture, hardware and code quality gates passed
+  - Ordinary-crate line coverage 52.41 percent, functions 58.62 percent and regions 49.80 percent, without a threshold
+  - Standard harness verification failed on existing BCD-02 and BCD-04 golden trace mismatches
+  - Python contracts failed in test_validated_pdf_resume_publishes_workspace_output
+  - All eight changed trace artifacts match existing golden hashes
+  - Vault links and frontmatter checks passed for 42 documents and 1054 links
+  - Roadmap retention check and git diff --check passed
+  - Graphify code graph updated
+  - Milestone closure, full SingleStepTests, Cartesian DMA and manual capture/performance runs not performed
+---
+
+### [2026-10-10 03:02 CET] — Initialize opcode PC in silicon and DMA test fixtures
+- **Affected Subsystems**:
+  - `test_runner`
+  - `CPU SingleStepTests specification`
+- **What Was Changed (The Concrete Reality)**:
+  - Initialize instruction_pc from the primed PC in SingleStep and DMA fixtures
+  - Document opcode-address initialization and add scoped tracked-path ownership
+  - Retain existing silicon-vector coverage without the user-rejected additional regression test
+- **Architectural Rationale & Trade-Offs**:
+  - The first instruction previously inherited a zero opcode address
+  - corrupting the divide-by-zero exception frame for DIVU vector 5744. Existing full SingleStepTests cover the demonstrated failure.
+- **Verification & Test Results**:
+  - python tests/verify.py --commit executed: full SingleStepTests 127/127 and 962412/962412 vectors passed
+  - Cartesian DMA 20/20 passed
+  - Ordinary crate tests and formatting, Clippy, architecture, hardware and code quality gates passed
+  - Standard harness retains existing BCD-02 and BCD-04 trace hash failures
+  - Python contracts retain the existing PDF publication failure
+  - Vault frontmatter and all 1054 links passed
+  - Milestone verification not run
+  - Golden references unchanged
+---
+
+### [2026-10-10 03:03 CET] — Use service-owned configuration for read-only RAG tools
+- **Affected Subsystems**:
+  - `Amiga RAG MCP adapter`
+  - `bootstrap RAG commands`
+  - `developer documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove index-state configuration and arguments from MCP search, status and source listing
+  - Keep explicit source and state-file selection for indexing
+  - Update bootstrap status invocations, documentation and command contract tests
+  - Integrate with Qdrant read-contract commit e8b9b14
+- **Architectural Rationale & Trade-Offs**:
+  - Read-only clients should not choose an indexing ledger. The persistent service owns the read configuration
+  - so worktree-local state paths no longer block retrieval. Scoped tooling and documentation review required no additional emulator specification changes.
+- **Verification & Test Results**:
+  - python tests/verify.py --commit executed: ordinary crate tests, formatting, Clippy, architecture, hardware and code quality passed
+  - All 10 MCP and 4 bootstrap contract tests passed
+  - Python contracts retained only the existing PDF publication failure
+  - Standard harness retained existing BCD-02 and BCD-04 trace hash failures
+  - Qdrant preflight --full passed with 35 tests
+  - After service restart live CLI status, source listing and search passed, and fresh stdio MCP status and search passed
+  - Already connected MCP process still requires client-side reload
+  - Graphify updated
+  - Milestone verification not run
+  - No indexing or golden changes
+---
+
+### [2026-10-10 13:15 CEST] — Remove benchmark trace regressions and hash fixtures
+- **Affected Subsystems**:
+  - `test_runner`
+  - `benchmark documentation`
+  - `verification policy`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed benchmark tracing APIs and CLI option plus all 108 reference traces
+  - Removed golden hash tables and checks in favor of direct CSV reference comparisons
+  - Moved generated benchmark reports into ignored .agent/tmp directories while preserving tracked performance baseline lookup
+  - Updated selected specifications and reference-integrity rules
+- **Architectural Rationale & Trade-Offs**:
+  - Microbenchmarks retain program generation and execution without comparing historical diagnostic output
+  - Authoritative SingleStep and DMA suites remain the CPU and contention correctness checks
+- **Verification & Test Results**:
+  - Final-source verification passed ordinary Rust tests and quality gates plus benchmark tests
+  - Full SingleStepTests passed 127/127 and Cartesian DMA passed 20/20
+  - Vault link and frontmatter audit passed
+  - Commit verification remains failing solely on the pre-existing test_validated_pdf_resume_publishes_workspace_output Python contract
+---
+
+### [2026-10-10 13:23 CEST] — Align PDF publication resume fixture with completed stages
+- **Affected Subsystems**:
+  - `tests/test_conversion_publish.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Populate the simulated resume state with completion records for every registered PDF stage
+  - Preserve the full-prefix validation assertion and add a merge note to discard this local adjustment in favor of the converter development branch
+- **Architectural Rationale & Trade-Offs**:
+  - The fixture mocked all stages as complete while retaining only Stage 00 in state
+  - Keep this correction limited to the test because the separate branch owns the evolving lineage and resume contracts
+- **Verification & Test Results**:
+  - Publication tests passed 10/10
+  - python tests/verify.py --commit passed all selected checks including ordinary Rust and benchmark tests plus Python tool contracts
+  - No CPU or DMA implementation changed and dedicated silicon suites were not selected for this fixture-only change
+---
+
+### [2026-10-10 15:16 CEST] — Check English vocabulary across the repository and clarify documentation entry points
+- **Affected Subsystems**:
+  - `tests/checks`
+  - `tests/verify.py`
+  - `docs`
+  - `.agents`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the former language detector with pyspellchecker and explicit approved vocabulary
+  - Scan unchanged tracked and nonignored new text files on every commit and milestone using the maintained check_english.json scope
+  - Use half the available logical CPUs with one to six processes and deterministic reports
+  - Require a user decision before correcting unknown words or expanding vocabulary exceptions
+  - Organize docs as reader orientation and move operational procedures to agent references and tests/README.md
+  - Update affected links and approved vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Check English words directly while keeping large generated and external collections outside the audit
+  - Keep English findings visible until the user decides how to resolve them
+  - Separate project orientation from operational details
+- **Verification & Test Results**:
+  - PASS python tests/verify.py --commit on final code and documentation
+  - PASS one-process and six-process comparison across 574 files including unknown words and read errors
+  - PASS process count bounds and full scans of 571 files at about one second
+  - PASS 42 design documents and 1048 vault links
+  - PASS 267 local documentation links and git diff --check
+  - Graphify code graph refreshed
+  - Full SingleStep and Cartesian DMA were not selected because no emulator source changed
+---
+
+### [2026-10-10 15:48 CEST] — Organize verification assets and tool contract tests
+- **Affected Subsystems**:
+  - `test_runner`
+  - `debugger tests`
+  - `verification tooling`
+  - `bootstrap and RAG MCP contracts`
+  - `agent skills`
+- **What Was Changed (The Concrete Reality)**:
+  - Move tracked benchmark baselines to baselines/benchmarks and debugger examples to examples/m68k
+  - Move local benchmark reports and SingleStep snapshots into ignored .agent/tmp directories and update worktree copying
+  - Move six Python contract files beside their owning tools and discover four suites independently from verify.py
+  - Remove the redundant silicon vector prerequisite and the worktree source assertion test
+  - Move the frontmatter parser into its sole consumer audit_vault.py
+  - Update documentation links and tracked path ownership without changing baseline content
+- **Architectural Rationale & Trade-Offs**:
+  - Separate executable tests from examples and reference data while keeping local results outside authored source
+  - Keep contract tests beside their tools and preserve the existing verification entry point
+  - Retain existing benchmark files without overwriting newer local results
+- **Verification & Test Results**:
+  - PASS commit verification before the final documentation review including all four Python contract suites and full SingleStepTests
+  - PASS discovery of all 74 retained Python test methods
+  - PASS final vault audit across 42 specifications and 1048 links
+  - PASS byte preservation during relocation of 266 files and unchanged tracked baseline content
+  - PASS worktree script syntax validation
+  - Milestone verification and Cartesian DMA were not run for this organization change
+---
+
+### [2026-10-10 17:30 CEST] — VERIFY-CLI-01: centralize verification tools and commands
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `tools/worktree.ps1`
+  - `tools/log_diary.py`
+  - `crates/cpu/tests`
+  - `agent rules and skills`
+  - `design and developer documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Move verification orchestration and checks from tests to tools/verification and shared worktree and diary utilities to tools
+  - Replace switch-based selection with commit, milestone, test, check and runner commands and route skill diagnostics through Verify
+  - Port 17 architecture inspection checks to Python and retain the compiled opcode coverage test unchanged in CPU tests
+  - Remove the unused HTML conversion audit and reference comparison scripts
+  - Update active callers, command references, ownership mappings and approved programming vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Verification describes repository checks and diagnostics rather than emulator fixtures
+  - Architecture source inspection requires no Rust compilation
+  - Preserve quality gates, ordinary crate coverage, change-aware silicon selection, logging and source/index stability
+  - Keep bootstrap, conversion, indexing, worktree operations and reference recording outside verification
+- **Verification & Test Results**:
+  - Commit verification passed ordinary crate coverage, all quality gates, standard harness suites, full SingleStepTests, Cartesian DMA and all five Python contract directories
+  - Verification contracts passed 35 tests
+  - Rust and Python architecture implementations matched on 47 fixture outcomes across 17 controls
+  - Scoped design review covered eight specifications with no unmapped crate paths
+  - Vault audit passed 42 specifications and 1049 links
+  - No roadmap milestone closure or reference baseline changes
+---
+
+### [2026-10-10 17:54 CEST] — DESIGN-ORGANIZATION: organize design specifications and authoring guidance
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design`
+  - `agent rules and skills`
+  - `verification tooling`
+  - `test_runner documentation references`
+- **What Was Changed (The Concrete Reality)**:
+  - Keep system hardware and peripheral specifications plus Frame Buffer in the Design root
+  - Move 11 application verification and performance documents into three subdirectories and update incoming links
+  - Combine machine-loop specifications under Machine Loop.md with crate ownership and execution details
+  - Replace PowerShell Guidelines with the write-powershell skill and remove the vAmigaTS scorecard and its maintenance requirements
+  - Make link and metadata audits recursive and resolve links from each source directory with regression coverage
+  - Apply the user-approved wording correction in the PowerShell skill
+- **Architectural Rationale & Trade-Offs**:
+  - Group specifications by responsibility while preserving existing hardware content
+  - Keep authoring procedures with their owning skill and preserve simple no-argument PowerShell execution
+  - Retain the unresolved DMA slot-description discrepancy without changing hardware expectations or protected references
+- **Verification & Test Results**:
+  - Commit verification passed ordinary crate tests with coverage and all quality gates including the full English audit
+  - Standard harness suites and all five Python contract directories passed
+  - Vault audit passed 39 specifications and 1026 links
+  - Scoped pre-commit design review found no unmapped changed crate paths and confirmed 37 documents changed only in their links
+  - All 19 architecture contract tests passed including nested-note regressions
+  - Skill validation passed and the code graph was refreshed
+  - Milestone verification and full SingleStepTests and DMA sets were not required or run for this documentation change
+---
+
+### [2026-10-10 18:16 CEST] — TEST-RUNNER-CLI-01: adopt sentence-style diagnostic commands
+- **Affected Subsystems**:
+  - `crates/test_runner`
+  - `tools/verification`
+  - `agent skills`
+  - `design specifications`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace diagnostic command switches with summary diff suite bench chipset and vamiga sentences
+  - Parse selector values into execution configurations before running workloads
+  - Forward the same sentence selectors through verification and external profiling
+  - Update command examples and specification ownership for the new CLI module
+- **Architectural Rationale & Trade-Offs**:
+  - Keep diagnostic invocation consistent with the verification grammar
+  - Reject unknown or repeated selectors and invalid counts with exit code 2
+  - Apply benchmark profile defaults before explicit overrides independently of argument order
+  - Preserve standalone reference recording and block it through verification
+- **Verification & Test Results**:
+  - Commit verification passed ordinary crate coverage all quality gates standard harness suites and all five Python contract directories
+  - Three Rust CLI tests passed including real binary help and argument error checks
+  - Scoped documentation review covered three specifications and resolved the new CLI module ownership
+  - Vault audit passed 39 specifications and 1026 links before the added parser link
+  - Initial Clippy visibility findings were corrected and the final Clippy check passed
+  - Graphify code graph refreshed
+  - Full SingleStepTests Cartesian DMA milestone checks hardware captures and performance measurements were not selected or run for this CLI change
+---
+
+### [2026-10-10 18:40 CEST] — VAMIGA-HARNESS-REMOVE-01: remove the previous capture harness
+- **Affected Subsystems**:
+  - `crates/test_runner`
+  - `crates/frame_builder`
+  - `crates/denise`
+  - `tools/verification`
+  - `baselines/benchmarks`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the vAmigaTS execution module and its library exports command routing and CLI test cases
+  - Remove the dependent coptim1 chipset benchmark and its stored baseline
+  - Remove capture viewport extraction and the orphaned Denise display window setter while retaining equivalent test input state
+  - Classify step_frame as the documented host stepping API in the code quality audit
+  - Remove the earlier chipset calibration digest and its summary references
+- **Architectural Rationale & Trade-Offs**:
+  - Retire the previous test-driven chipset integration before future implementation work
+  - Keep CPU benchmarks SingleStepTests Cartesian DMA and host frame stepping
+  - Preserve bootstrap documentation roadmap external sources and older local artifacts at the user request
+  - Retained documentation still contains commands for the removed integration
+- **Verification & Test Results**:
+  - Final implementation verification passed ordinary crate coverage all quality gates standard harness suites full SingleStepTests Cartesian DMA and all five Python contract directories
+  - Focused CLI and Denise pixel pipeline tests passed
+  - Pre-commit design review covered five mapped specifications and the Machine Loop stepping contract
+  - Library export and removed harness paths lacked tracked path ownership and mapping edits were deferred because the user retained documentation unchanged
+  - Initial test-only API findings and formatting failure were resolved
+  - Graphify code graph refreshed and git diff --check passed
+  - Milestone verification vault audits hardware captures and performance measurements were not run
+---
+
+### [2026-10-10 23:28 CET] — TEST-RUNNER-TARGETS-01: separate Cargo test and benchmark targets
+- **Affected Subsystems**:
+  - `crates/test_runner`
+  - `crates/physical_memory`
+  - `crates/machine_loop/tests`
+  - `tools/verification`
+  - `agent rules and skills`
+  - `design specifications`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Move benchmark implementation into the Cargo benchmark target and shared silicon helpers into tests/common
+  - Remove the test_runner application and benchmark validation suites while retaining measurement reports and reference baselines
+  - Generate SingleStep summary and diff reports automatically
+  - Route benchmark analysis and profiling through verification tooling
+  - Separate commit checks from milestone CPU suites and select Python contracts by affected inputs during development
+  - Prevent empty standard harness selection from running every Cargo test target
+  - Remove the unused BusResult::ok helper and its dedicated assertions with user approval and preserve machine integration checks through explicit Ready matching
+  - Retain set_unmapped_byte as documented host configuration API
+  - Add user-approved tomllib vocabulary and correct moved-module visibility and formatting
+  - Synchronize specification paths command examples dependencies and completion policy
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the verification package as Cargo test and benchmark targets with no runtime application
+  - Preserve existing benchmark measurements and protected reference artifacts
+  - Keep full synthetic CPU suites at milestone or explicit diagnosis boundaries
+  - Resolve audit findings against actual symbol users and intentional host APIs
+- **Verification & Test Results**:
+  - Focused CLI contracts passed after an empty-standard-selection regression reproduced the original failure
+  - Workspace compilation passed
+  - Vault audit passed 39 specifications and 1020 links
+  - Scoped design review covered benchmark silicon memory and verification specifications including both sides of moved paths
+  - Initial commit checks exposed vocabulary visibility and unused API findings and the obsolete helper assertions
+  - Final python tools/verification/verify.py commit passed ordinary crate tests with coverage all quality gates the full English audit and all five Python contract directories
+  - Final commit profile selected no standard harness command because only the explicitly excluded CPU targets remain
+  - Full SingleStepTests Cartesian DMA performance measurements and milestone checks were not selected for the final source snapshot
+  - Graphify code graph refreshed
+  - No roadmap milestone closure performance recording or baseline update
+---
+
+### [2026-10-11 01:26 CEST] — SINGLESTEP-FULL-01 and CPU-CYCLE-01: enforce timed comparison and repair register ADD.l
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/test_runner`
+  - `agent rules and skills`
+  - `design specifications`
+  - `docs/testing.md`
+  - `tools/verification/README.md`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove weaker SingleStep comparison modes and require state clocks and timed bus callbacks for every executed vector
+  - Preserve internal intervals in the reference clock sequence and record observed CCK callback clocks
+  - Add missing MOVEP suites remove the redundant PEA sample and execute formerly skipped ASL cases
+  - Add a comparator regression that rejects a shifted read with unchanged data and total clocks
+  - Move the four internal clocks after prefetch in ADD.l Dn,Dn and ADD.l An,Dn
+  - Correct retired capture and benchmark commands and document synthetic fixture and comparison limits
+- **Architectural Rationale & Trade-Offs**:
+  - A correct result and total clock count do not prove the correct bus phase
+  - Keep silicon references unchanged and sampling limited to input count
+  - Repair CPU behavior in small batches with review evidence under CPU-CYCLE-01
+  - Earlier state-focused results are not a current complete-comparison baseline
+- **Verification & Test Results**:
+  - The pre-repair exhaustive run selected 124 files and 978542 vectors with 519902 failures under stronger comparison
+  - Batch 01 now passes all 787 register ADD.l vectors and all 10042 selected vectors including NOP and register ADD.b and ADD.w controls
+  - Extra batch diagnostics checked final prefetch and formal PC
+  - The full containing ADD.l file gains exactly 787 passes with no regressions and still fails 6757 of 8065 cases outside batch 01
+  - Focused ADD and ADDX Cartesian tests full NOP comparator regression formatting architecture Clippy and vault checks passed
+  - Scoped design review selected six specifications with no unmapped crate paths and left the CPU programmer model unchanged
+  - python tools/verification/verify.py commit passed ordinary crate tests with coverage all quality gates the full English audit the transaction checker and all five Python contract directories
+  - No milestone closure full final CPU run hardware capture performance measurement reference change or human acceptance is claimed
+---
+
+### [2026-10-11 01:49 CEST] — Centralize the hardware-derived DMA schedule
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design`
+  - `tools/verification/checks/english_words`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the duplicate DMA timetable and arbitration narrative from Machine Loop and the cross-chip catalog
+  - Rebuild DMA.md from HRM allocation diagrams and Fat Agnus signal descriptions with explicit coordinate and phase limits
+  - Record the observed fifth refresh allocation on long NTSC lines without changing runtime behavior
+  - Add user-approved RAS CAS and unrequested vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Keep scheduling in the DMA specification and signal routing in the coordinator and connection catalog
+  - Treat the existing scheduler as implementation evidence rather than hardware authority
+  - Preserve the unresolved refresh boundary and whole-machine verification limits
+- **Verification & Test Results**:
+  - Scoped design review selected the three changed design notes and Testing Strategy by tracked_paths with no missing ownership and no further corrections
+  - Vault frontmatter and link audit passed 39 specifications and 1048 links
+  - Focused DMA and Agnus tests passed 10 and 24 tests
+  - Production Agnus observation covered eight complete PAL and NTSC lines with forced disk requests and the existing audio request path and observed five refresh selections on long NTSC lines
+  - python tools/verification/verify.py commit passed ordinary crate tests with coverage standard transaction tests all quality gates the full English audit and all five Python contract directories
+  - Full SingleStepTests Cartesian DMA hardware captures and milestone closure were not run or claimed
+---
+
+### [2026-10-11 02:34 CEST] — SINGLESTEP-FORMAT-01: use one silicon-vector contract
+- **Affected Subsystems**:
+  - `crates/test_runner`
+  - `CPU verification documentation`
+  - `silicon test skill`
+  - `docs/testing.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove both name-based is_harte detectors and always prime the internal PC from the formal input PC plus four
+  - Remove the comparator format argument and legacy byte-lane conversion and optional UDS/LDS handling
+  - Update existing comparator calls and describe the silicon-only schema without unsupported strict-validation claims
+  - Close SINGLESTEP-FORMAT-01 after commit verification and retire its execution plan
+- **Architectural Rationale & Trade-Offs**:
+  - Test names are human descriptions with no execution semantics
+  - Only the current physical-silicon vectors are supported and future external datasets require their own code changes
+  - The user requested removal of both newly added regression tests and the additional tag and record-length validator
+  - RAM comparison exceptions remain assigned to SINGLESTEP-RAM-01 and CPU repairs remain assigned to CPU-CYCLE-01
+- **Verification & Test Results**:
+  - The existing transaction timing test passed after the final parser simplification
+  - Earlier focused NOP and TST.b checks each passed 8065 silicon vectors and sampled Cartesian TST passed
+  - Structural inspection covered all 1000060 input vectors and found only the expected silicon tags and field counts
+  - Scoped design review selected two specifications with no missing mappings and left the testing strategy unchanged
+  - Vault audit passed 39 documents and 1049 links
+  - python tools/verification/verify.py commit passed ordinary crate tests with coverage the existing transaction timing test all quality gates the full English audit and all five Python contract directories
+  - No full final CPU run or milestone closure is claimed and no CPU implementation or reference vectors changed
+---
+
+### [2026-10-11 03:07 CEST] — CPU-CYCLE-01 batch 02: repair ADD predecrement timing and reconcile instruction classes
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `CPU Micro-Step State Machine`
+  - `CPU Motorola M68000`
+- **What Was Changed (The Concrete Reality)**:
+  - Separate predecrement address calculation from the operand read in four ADD byte/word source and read-modify-write sequences
+  - Validate word alignment during the initial internal CCK through step_check_ea_read_word_idle so previously correct Address Error timing remains intact
+  - Remove the register ADD.l comment requested by the user
+  - Reconcile the existing Class 1, Class 3 and Class 5 descriptions and tables with the current ADD sequences
+  - Correct the main CPU timing list to distinguish four-clock postincrement reads from six-clock predecrement reads
+  - Require instruction-class specification updates for every microcode change in the active CPU-CYCLE-01 execution plan
+- **Architectural Rationale & Trade-Offs**:
+  - Normal predecrement ADD lacked two internal clocks before reading the operand
+  - Delaying the original fused read would regress the 322 passing word predecrement fault vectors
+  - Keep the specification as the current class model and retain diagnostic history in the batch review packet
+  - Other exception entry paths and full CPU agreement remain separate active work
+- **Verification & Test Results**:
+  - All 6,372 selected normal memory vectors pass state/RAM/clocks/timed callbacks and extra exact final prefetch/formal-PC checks
+  - Gain 1,257 passing vectors: 825 byte and 432 word predecrement cases, with no lost passes in either containing file
+  - All 322 previously passing predecrement Address Error cases retain their passing result
+  - All 10,042 register ADD/NOP controls pass including exact final prefetch/formal-PC checks
+  - Focused synthetic ADD/ADDX Cartesian DMA and CPU crate tests pass
+  - Full ADD.b remains 7,604/8,065 passing with 461 failures outside this batch, and full ADD.w remains 5,001/8,065 with 3,064 outside failures
+  - Formatting/architecture/Clippy and specification links/frontmatter/English checks pass for the recorded batch source
+  - Final commit profile command: python tools/verification/verify.py commit, with its result retained in .agent/tmp/CPU-CYCLE-01/batch-02/commit-profile.log and the commit message
+  - Synthetic DMA covers CPU plus TestMemoryBus waiting invariance rather than production Agnus arbitration
+  - Existing RAM masks and unobserved signal limits remain, and no silicon vectors or expected timing references changed
+  - CPU-CYCLE-01 remains active for later batches, with no milestone closure or final full CPU pass claimed
+---
+
+### [2026-10-11 13:05 CEST] — CPU-CYCLE-01 batch 03: Address Error entry and predecrement phases
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `Obsidian/Amiga/Design/CPU Micro-Step State Machine.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Start Address Error processing in the rejected-access CCK without an operand transfer
+  - Latch data-access frame PC from the progressed stream before exception initialization and retain the existing program-space policy
+  - Separate 44 fused word/long predecrement reads into internal address calculation and common operand reads
+  - Remove the temporary early-alignment helper and align the direct-trigger fixture with the primed stream PC
+  - Update the execution flowchart and instruction classes 3, 5 and 12
+- **Architectural Rationale & Trade-Offs**:
+  - Rejected transfers consume no separate bus phase. Predecrement must finish its internal address phase before alignment validation in the operand read
+  - Scoped design review selected both CPU specifications through valid tracked paths. The main CPU specification already describes progressed PC and predecrement timing and remains unchanged
+- **Verification & Test Results**:
+  - Fresh python tools/verification/verify.py commit passed: ordinary workspace tests with coverage, full repository English audit, formatting, Clippy, architecture, hardware and code quality checks, standard transaction harness and all Python contracts
+  - Fresh vault audit passed for 39 specifications and 1050 links with valid frontmatter
+  - Rechecked archived batch-03 evidence: all 87 CPU source hashes, 124 reference hashes and 20 evidence hashes match current inputs. Diagnostics were not rerun during this commit workflow
+  - Source-matched diagnostics passed all 1772 selected ADD.w operand faults and 6372 normal ADD.b/w vectors. Scoped predecrement faults passed 15053/15053 and normal vectors passed 10112/19520, with no lost prior passes
+  - The broad archived Address Error diagnostic passed 145346/178088 and retains 32742 failures in other instruction families. Containing ADD.b/w/l suites still fail outside this batch
+  - RAM comparison masks, the final-PC allowance and unobserved electrical signals remain limits. Full SingleStepTests, full Cartesian DMA and milestone verification were not run. CPU-CYCLE-01, CPU-PC-01 and SINGLESTEP-RAM-01 remain active
+---
+
+### [2026-10-11 14:57 CEST] — CPU-CYCLE-01: repair selected arithmetic and shift sequences with reviewed reference overrides
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/test_runner`
+  - `Obsidian/Amiga/Design`
+  - `.agents/rules/docs-maintenance.md`
+  - `.agents/skills`
+  - `tools/verification/README.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Repair static sequences for batches 06.01, 06.02, 06.03, 06.07 and 06.10: separate byte predecrement phases, place size-dependent internal delays after prefetch and write long RMW low word before high word
+  - Apply two approved ASL.b overrides through the shared SingleStep/DMA loader, checking original SHA-256 identities and reporting corrected executed cases
+  - Preserve original references, the complete comparator and all leaf ALU/decoder/engine implementations
+  - Consolidate instruction-class descriptions and require shared mechanisms to be described once rather than repeated for each mnemonic
+- **Architectural Rationale & Trade-Offs**:
+  - SingleStep expectations and approved overrides determine observable CPU behavior. The user explicitly authorized correcting conflicting code-derived descriptions throughout CPU-CYCLE-01 without repeated specification-approval questions
+  - The ASL byte records incorrectly modify upper register bytes. Upstream issue 4 and analogous MAME records support the three approved final-field replacements, without establishing identical full-state or physical-capture evidence
+  - Missing, ambiguous or changed override targets fail loading. No vector is counted as passed without execution
+- **Verification & Test Results**:
+  - Selected complete comparisons pass: 06.01 1065/1065, 06.02 40325/40325, 06.03 48390/48390, 06.07 96780/96780 and 06.10 177314/177314 with two overrides. Exact final prefetch and formal PC pass in each selected scope
+  - Standard full-input ASL.b passes 8065/8065 with both override names recorded. Earlier full SUB, ADDX, CLR, NEG and NOT filters also pass. Controls retain 10042/10042 passes
+  - CPU crate tests, focused Cartesian arithmetic/unary/shift/CMP checks and five override-loader contract tests pass. DMA uses a synthetic TestMemoryBus and sampled bounded schedules, not production bus or chipset arbitration
+  - All 124 reference hashes are unchanged. CPU source hashes match the validated batch packet. Vault links/frontmatter and scoped English checks pass, with existing vocabulary findings retained only in the ignored task plan
+  - The required per-commit profile is executed separately for this snapshot. No full whole-CPU SingleStep, full Cartesian or milestone closure is claimed. CPU-CYCLE-01, CPU-PC-01 and SINGLESTEP-RAM-01 remain active
+---
+
+### [2026-10-11 15:25 CEST] — CPU-CYCLE-01: correct BCD phases and verify batches 06.11 through 06.14
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `Obsidian/Amiga/Design`
+  - `CPU-BENCH-01`
+  - `SINGLESTEP-MUTATION-01`
+- **What Was Changed (The Concrete Reality)**:
+  - Move the two-clock register ABCD/SBCD/NBCD idle after prefetch; retain six-clock totals and existing ALU/flag behavior
+  - Separate NBCD byte predecrement calculation from the operand read; use a seven-step sequence with the required two-clock address phase
+  - Correct the MULU range comment and existing CPU class/timing descriptions; multiplication and division execution otherwise remain unchanged
+  - Record local CPU-BENCH-01 and SINGLESTEP-MUTATION-01 plans for benchmark measurement validity and verifier sensitivity; implementation remains pending
+- **Architectural Rationale & Trade-Offs**:
+  - Authoritative vectors require prefetch before the BCD register tail and an independent NBCD predecrement phase
+  - Scoped design review selected the two CPU specifications; shared phase descriptions remain concise and no reference files or comparison masks changed
+  - Benchmark planning identified historical CPU-clock values labeled CCK and estimated work counts; mutation planning targets observable fields plus current PC/prefetch/RAM comparison gaps
+- **Verification & Test Results**:
+  - Source-matched diagnostics pass 06.11 16246/16246, 06.12 16130/16130, 06.13 16130/16130 and 06.14 24195/24195; exact final prefetch and formal PC pass all 72701 selected vectors
+  - BCD improves from 13596 to 24195 complete passes with no lost prior passes; NOP/register ADD controls retain 10042/10042
+  - Standard full-input BCD, focused Cartesian BCD/multiply-divide/shift fixtures, CPU crate tests, CPU Clippy, formatting, architecture, English and vault checks passed during implementation
+  - All 124 original reference hashes and the validated packet match current inputs; selected scopes execute no overrides
+  - DIVU includes one zero-divisor vector; DIVS contains none. DMA uses the existing 5% sample and bounded synthetic contention rather than production arbitration
+  - Benchmark and mutation plans passed English/link checks; fresh benchmark measurements and mutation execution have not started. Historical benchmark warnings do not establish a current CPU regression
+  - The required commit profile runs separately for this frozen snapshot. Full CPU SingleStep, full Cartesian and milestone closure are not claimed; all related plans remain active
+---
+
+### [2026-10-11 15:56 CEST] — CPU-CYCLE-01: repair logic, bit operation and EXG timing
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/test_runner`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Repair batches 06.06, 06.08 and 06.09: separate byte logic predecrement phases, complete prefetch before internal register delays and write long logic RMW low word before high word
+  - Use the existing countdown for register bit modifications, preserving original bit numbers for aliases and accounting for the selected register word
+  - Move the EXG delay after prefetch and add its missing Cartesian register operation fixture
+  - Correct two stale local BSET bit-4 assertions to six clocks, supported by all 40 matching original silicon records
+  - At the user request, shorten the documentation to corrected prefetch semantics and the register-bit timing dependency, removing repeated timing tables and instruction lists
+- **Architectural Rationale & Trade-Offs**:
+  - Silicon vectors constrain bus phases and clock totals independently, so correct final state alone is insufficient
+  - Shared execution, leaf ALU formulas, decoders, comparator masks and original reference files remain unchanged
+  - Scoped design review selected both CPU specifications and both verification specifications, with valid tracked paths and no missing mappings
+  - Keep shared delay and word-order descriptions general, and leave already accurate verification specifications unchanged
+- **Verification & Test Results**:
+  - Source-matched diagnostics pass 06.06 72585/72585, 06.08 32260/32260 and 06.09 32260/32260, including exact final prefetch and formal PC
+  - Gain 31540 with no lost prior passes, and controls retain 10042/10042 passes
+  - All 17 selected standard SingleStep suites, focused Cartesian logic/bit/register fixtures and CPU crate tests pass
+  - DMA uses the existing 5 percent sample and bounded synthetic contention, not production bus arbitration
+  - All 124 original references retain their hashes, and no override executes in the selected scopes
+  - Formatting, architecture, Clippy, English and vault checks passed during implementation, with explicit Graphify AST refresh
+  - The per-commit profile is run separately for the final snapshot, with its outcome recorded in the commit message and local batch log
+  - No whole-CPU SingleStep, exhaustive Cartesian or milestone closure is claimed, and CPU-CYCLE-01 remains active
+---
+
+### [2026-10-11 16:32 CEST] — CPU-CYCLE-01: correct comparison timing and verify batches 06.04 and 06.05
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Separate the CMP.b predecrement address CCK from its operand read
+  - Prefetch before the two-clock register CMP.l and CMPA tail, correcting the excessive CMP.l Dn delay
+  - Add the missing two-clock tail after long CMP memory and immediate reads
+  - Execute the CMPI.l register comparison with prefetch and move its internal CCK afterward
+  - Preserve already correct CMPM and TST microprograms
+  - Add the explicitly approved term microprograms to the software vocabulary
+  - Update instruction classes with comparison tails and the distinct dual-read CMPM layout
+- **Architectural Rationale & Trade-Offs**:
+  - Silicon bus phases and clock totals constrain comparison timing independently from flags and final registers
+  - Reuse existing shared microsteps without changing the common engine, decoders, addressing helpers or flag formulas
+  - Scoped design review selected the parent CPU specification and explicit microstep specification, with valid tracked paths and no missing code mappings
+  - The parent CPU specification remains accurate and unchanged
+- **Verification & Test Results**:
+  - Source-matched diagnostics pass CMPM 2677/2677 and CMP/CMPI/CMPA/TST 61843/61843, including exact final prefetch and formal PC
+  - Repair 9702 timing divergences with no lost prior passes, while NOP/register ADD controls retain 10042/10042 passes
+  - All eight containing SingleStep suites and three filtered CMPM tests pass, along with CPU crate tests and focused comparison/TST Cartesian tests
+  - Cartesian validation retains the existing 5 percent sample and bounded synthetic contention rather than production arbitration
+  - All 124 original reference files retain their hashes and no override executes in the selected scopes
+  - Formatting, architecture, Clippy, English and vault checks passed, with explicit Graphify AST refresh
+  - The initial commit profile passed all tests and other checks but rejected microprograms as unknown vocabulary, which the user subsequently approved
+  - The required per-commit profile runs separately on the isolated commit snapshot, with its outcome recorded in commit-profile.log and the commit message
+  - Existing RAM masks and unobserved electrical signals remain verification limits, and no full whole-CPU suite or milestone closure is claimed
+  - CPU-CYCLE-01 remains active
+---
+
+### [2026-10-11 17:04 CEST] — CPU-CYCLE-01: complete data-transfer timing batches 06.15 through 06.20
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/test_runner/tests`
+  - `Obsidian/Amiga/Design`
+  - `tools/verification/checks/english_words`
+- **What Was Changed (The Concrete Reality)**:
+  - Check MOVE word/long destination alignment in CCK1 setup
+  - retain executing IR while predecrement prefetch advances PC and retire only after the successful store
+  - write memory-source absolute-long destinations before the remaining stream fetch
+  - complete MOVEM stores in the final write CCK and prefetch directly for empty store masks
+  - implement MOVEP word/long transfers through spaced bytes with wait-safe staged addresses and data
+  - split LEA/PEA indexed calculation around the extension pair and push absolute PEA operands before prefetch
+  - add MOVEP and LEA/PEA fixtures to the existing Cartesian harness
+  - correct Class 4/11 descriptions and the predecrement quirks catalog under the recorded SingleStep authority decision
+  - preserve already correct MOVE/MOVEA register/immediate and MOVEQ sequences
+  - add the explicitly approved busfn vocabulary term
+- **Architectural Rationale & Trade-Offs**:
+  - Repair demonstrated bus phases and retirement mechanisms without changing silicon references or comparison strength
+  - preserve source acquisition before destination addressing and retain state while waiting
+  - keep instruction semantics in the parent specification and shared phases in the micro-step specification
+  - scoped sync-design-docs review selected the CPU and micro-step specifications plus the quirks catalog and both verification specifications
+  - existing verification descriptions remain accurate and unchanged
+- **Verification & Test Results**:
+  - All 96780 selected vectors pass complete state, clocks and timed callbacks plus independent exact final prefetch/formal PC checks
+  - improve from 66502 passes with no lost prior pass and retain 10042 passing NOP/register ADD controls
+  - all 124 original reference files are unchanged and no override executes
+  - full-input test_move, test_lea, test_pea and adjacent BTST/BCHG/BCLR/BSET tests pass
+  - focused synthetic DMA fixtures and CPU crate tests pass
+  - formatting, architecture, Clippy, English and affected Verification CLI Python contracts pass
+  - vault audit passes for 39 specifications and 1063 links
+  - explicit Graphify AST refresh completes
+  - python tools/verification/verify.py commit passes for this snapshot, including quality gates, architecture, all ordinary crate and standard harness tests, all Python contracts and the full English audit
+  - evidence is retained in .agent/tmp/CPU-CYCLE-01/batch-06-15-20
+  - DMA uses a 5 percent seeded sample and at most six contention CCKs against the same uncontended CPU on TestMemoryBus
+  - existing RAM masks, unobserved electrical signals and unavailable partial-transfer bus errors remain limits
+  - no whole-CPU or milestone closure is claimed
+---
+
+### [2026-10-11 18:52 CEST] — SINGLESTEP-PERF-01: finalize aggregate execution and reporting
+- **Affected Subsystems**:
+  - `test_runner`
+  - `verification tooling`
+  - `design specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Run selected SingleStep groups in parallel inside one aggregate Rust test
+  - finalize reports once after all groups
+  - preserve failure exits and distinct CMP/CMPM selection identities
+  - build optimized verification artifacts with runtime checks
+  - add launcher completion and ownership contracts
+  - rename launcher tests to test_run_singlestep.py
+  - add user-approved API vocabulary
+  - close SINGLESTEP-PERF-01 and retire its execution plan after this commit
+- **Architectural Rationale & Trade-Offs**:
+  - Remove repeated global aggregation while retaining vector comparisons, diagnostics, history and explicit incomplete-run handling. Keep commands selection, generic process execution and SingleStep launch procedure separate. No vector-loading optimization was adopted
+  - CPU correctness remains tracked by CPU-CYCLE-01.
+- **Verification & Test Results**:
+  - Six renamed launcher tests passed. Initial commit verification passed ordinary crate coverage/tests, formatting, Clippy, architecture, hardware/code quality, standard harness and all Python contracts
+  - its language gate identified API names subsequently approved by the user. Vault audit passed 39 documents and 1071 links
+  - Graphify refresh completed. Full CPU and DMA suites were not rerun during commit preparation. Prior task evidence recorded 128 completed groups, 924967 passing and 77770 failing JSON vectors, with unchanged diagnostic checksums and aggregate runs of 3.273 and 3.184 seconds
+  - these measurements are retained task evidence, not a new passing CPU result.
+  - Final `python tools/verification/verify.py commit` passed all gates, ordinary crate and standard harness tests, and all Python contracts after the approved vocabulary update. No milestone closure is claimed.
+---
+
+### [2026-10-11 19:38 CEST] — CPU-WAIT-01: replace Cartesian contention with ordinary CPU wait tests
+- **Affected Subsystems**:
+  - `crates/cpu/tests`
+  - `crates/test_runner/tests`
+  - `tools/verification`
+  - `agent instructions and design specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the complete Cartesian memory and DMA schedule permutation suite and its exclusive helper state
+  - Add a PhysicalMemory-backed recording wrapper and extend the existing CPU suites
+  - Exercise all 52 distinct public transfer handlers with zero, one and three refusals and real instruction retry sequences
+  - Remove DMA and harness selectors and reconcile milestone selection, policies, skills and specifications
+  - Close CPU-WAIT-01 and retire its execution plan after this commit
+- **Architectural Rationale & Trade-Offs**:
+  - Count actual bus refusals independently and require stable retry identity, retained state, one successful transfer and exact waiting cost
+  - Cover CCK phases, long halves, address updates, RMW, prefetch, stack, exceptions, MOVEM and MOVEP without arbitrary schedule permutations
+  - Keep production DMA arbitration separate and preserve CPU runtime behavior, silicon references and comparison strength
+  - Scoped sync-design-docs review selects the parent CPU specification and six changed design documents with no missing or invalid mappings
+  - The parent CPU specification remains accurate and unchanged
+- **Verification & Test Results**:
+  - CPU crate tests, standard harness and verification Python contracts pass
+  - CPU and test_runner Clippy with warnings denied, formatting and architecture pass
+  - Vault audit passes 39 specifications and 1073 links and the roadmap check passes
+  - MOVEP SingleStep sample passes 100 of 100 vectors across both selected groups with state, clocks and timed callbacks
+  - Five cached timing runs measure the selected wait cases at a median 0.065 seconds including test-process startup
+  - Changed files pass scoped English checks and Graphify code refresh completes
+  - Required final commit-profile verification is recorded in the commit message
+  - Full SingleStep and milestone profiles are not run and no roadmap milestone closure is claimed
+---
+
+### [2026-10-11 19:50 CET] — CPU-CYCLE-01: repair frame, jump and return batches
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Repair batches 06.21, 06.22, 06.27 and 06.29 through 06.31
+  - Restore the missing UNLK low-word read completion CCK
+  - Read PC high before status in RTR and RTE and retain staged status until its restore phase
+  - Capture target minus four and instruction-not for odd JMP/JSR/RTS/RTR/RTE target frames
+  - Preserve already correct LINK and JSR return-address calculations
+  - Extend existing CPU retry fixtures for both new reads, CCR restoration, banked RTE return and privilege entry
+  - Reconcile the existing instruction classes and parent fault-PC description
+- **Architectural Rationale & Trade-Offs**:
+  - Repair demonstrated silicon phases and frame capture without changing original references, comparator masks or the generic branch target path
+  - Scoped sync-design-docs review selects both CPU specifications with no missing or invalid tracked mappings
+  - CPU-CYCLE-01 remains active and this commit does not close a milestone
+- **Verification & Test Results**:
+  - All 56455 selected vectors pass complete comparison plus independent exact final PC and both prefetch words, improving by 35940 cases with no lost prior pass
+  - NOP remains 8065 of 8065
+  - Eight full-input official SingleStep groups, CPU crate tests, formatting, architecture, Clippy and the full repository English audit pass during implementation
+  - All 124 original reference hashes match and zero overrides execute
+  - Vault links and frontmatter pass and Graphify AST refresh completes
+  - Initial synthetic privilege fixture failed because it lacked opcode-PC initialization, corrected before the final passing CPU crate run
+  - Supplied stack addresses are aligned and initial execution is supervisor, so odd-stack and partial bus-error behavior lack selected silicon inputs
+  - Privilege and retry controls are synthetic CPU fixtures rather than production arbitration
+  - Existing RAM masks and electrical signal limits remain
+  - python tools/verification/verify.py commit passes all quality gates, ordinary crate and standard harness tests, Python contracts and the full repository English audit; output remains in the local commit-profile.log
+  - Full CPU SingleStep and milestone profiles are not run
+---
+
+### [2026-10-11 19:59 CEST] — CPU-CYCLE-01: repair branch frames and Scc predecrement timing
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Repair batches 06.23 through 06.26 and 06.28
+  - Reuse control-target reads for odd BRA, taken Bcc/DBcc and BSR targets, capturing target minus four and information bit 3
+  - Separate Scc predecrement address calculation from its byte read, restoring the missing internal CCK
+  - Preserve BSR return-address writes before target faults and leave untaken paths unchanged
+  - Reconcile both affected CPU specifications and retain CPU-CYCLE-01 as an active plan
+- **Architectural Rationale & Trade-Offs**:
+  - Fix mechanisms demonstrated by original silicon inputs without changing references, comparison strength or masks. Reuse shared read phases rather than adding handlers.
+  - Scoped sync-design-docs review selects the parent CPU specification and the explicitly changed micro-step specification, with no missing or invalid ownership paths. This commit does not close a roadmap point or milestone.
+- **Verification & Test Results**:
+  - All 32260 selected vectors pass complete comparison plus independent exact final PC and both prefetch words, improving by 9446 cases without losing a prior pass
+  - Five official full-input SingleStep groups pass, including 8065 NOP controls
+  - CPU crate tests, formatting, architecture, Clippy and full repository English audit pass
+  - All 124 original reference hashes match and zero overrides execute
+  - Vault audit passes 39 specifications and 1083 links and Graphify AST refresh completes
+  - Supplied DBcc vectors contain no expired counters, so independent expiry timing is not established
+  - Initial mode is supervisor and BSR stacks are aligned
+  - Existing RAM masks, partial bus-error and electrical signal limits remain
+  - Retry controls use synthetic CPU buses rather than production chipset arbitration
+  - python tools/verification/verify.py commit passes all quality gates, ordinary crate and standard harness tests, all Python contracts and the full repository English audit. Output remains in the local commit-profile.log
+  - Full CPU SingleStep and milestone profiles are not run
+---
+
+### [2026-10-11 20:14 CEST] — CPU-CYCLE-01: repair system instruction timing and RESET output ownership
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/machine_loop`
+  - `Obsidian/Amiga/Design`
+  - `opcode implementation skill`
+- **What Was Changed (The Concrete Reality)**:
+  - Deliver batches 06.32 through 06.36 plus 06.38 and 06.39
+  - Prefetch before CHK and taken TRAPV exception entry and restore CHK bound-dependent internal timing and indexed address cost
+  - Complete STOP at four clocks before suspension and preserve the PC after its immediate word
+  - Hold RESET output for 124 clocks and release before prefetch while the machine observes its assertion edge without clearing CPU state
+  - Preserve already correct SR/CCR/USP and TRAP behavior and add focused privilege and wait controls
+  - Reconcile CPU and machine specifications and replace the obsolete RESET idle constant in the opcode procedure
+- **Architectural Rationale & Trade-Offs**:
+  - Repair mechanisms demonstrated by unchanged silicon vectors and focused failing STOP/RESET tests without weakening comparisons or masks
+  - Scoped sync-design-docs review selects both CPU specifications and Machine Loop with no missing or invalid ownership paths
+  - CPU-CYCLE-01 remains active and no roadmap point or milestone is closed
+- **Verification & Test Results**:
+  - All 120975 selected silicon vectors pass complete comparison plus independent exact formal PC and both final prefetch words with 9734 gained passes and no lost prior pass
+  - All 16 official full-input groups pass including 8065 NOP controls and all 124 original reference hashes match with zero overrides
+  - CPU crate tests and production machine reset integration pass together with formatting architecture Clippy English and vault checks
+  - STOP has no supplied silicon file and RESET vectors do not capture output pin duration independently so these timing controls use synthetic CPU fixtures and production machine observation
+  - Cold warm and keyboard reset tests currently stop before verified instruction continuation and no explicit test rules out repeated peripheral reset after the pulse
+  - Existing RAM masks and unobserved electrical signals remain limits and full CPU SingleStep and milestone profiles are not run
+  - python tools/verification/verify.py commit passes all quality gates ordinary crate and standard harness tests all Python contracts and the full repository English audit. Output remains in the local commit-profile.log
+---
+
+### [2026-10-11 20:28 CEST] — CPU-CYCLE-01: repair remaining SingleStep timing and expose TAS platform writes
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/test_runner`
+  - `crates/machine_loop`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Add missing ADD long memory and ADDA internal tails
+  - Move ADDI and ADDQ internal delays after prefetch and separate ADDQ byte predecrement
+  - Write low word before high word for ADD/ADDI/ADDQ long memory operands
+  - Expand TAS reference intervals into exact byte read and write phases with a comparator regression
+  - Add production machine TAS tests for Chip Slow and Fast RAM across 36 constructed cases
+  - Reconcile affected micro-step and SingleStep specifications
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve original silicon references and the two approved ASL byte corrections without new masks or overrides
+  - Keep TAS Chip/Slow write suppression as an exposed platform defect rather than changing expected behavior
+  - User authorized committing after the two failing platform tests were reported
+  - Scoped sync-design-docs review selects five specifications with no missing ownership and leaves already accurate documents untouched
+  - CPU-CYCLE-01 remains active and no roadmap point or milestone closes
+- **Verification & Test Results**:
+  - Full SingleStep passes all 128 selected groups across 124 original files containing 1000060 vectors
+  - Independent diagnostic passes 48390 selected vectors with exact formal PC and both final prefetch words
+  - Required python tools/verification/verify.py commit fails solely on the two TAS Chip/Slow RAM tests and all other ordinary tests pass
+  - Fast RAM TAS and flags across all 36 constructed cases pass while Chip/Slow wrongly set memory bit seven
+  - Standard harness tests all Python contracts formatting architecture Clippy hardware and code quality and full English audit pass
+  - Vault audit passes 39 specifications and 1094 links and Graphify code refresh completes
+  - Original reference hashes remain unchanged and no milestone verification is run
+  - Commit profile log is retained in .agent/tmp/CPU-CYCLE-01/remainder/commit-profile.log
+---
+
+### [2026-10-11 20:33 CEST] — Separate memory access helpers from debug handlers
+- **Affected Subsystems**:
+  - `crates/physical_memory`
+- **What Was Changed (The Concrete Reality)**:
+  - Extract 20 private internal byte and word access helpers for Chip RAM Fast RAM Slow RAM Kickstart ROM and open bus
+  - Route ordinary and debug handlers directly to internal helpers with inline attributes
+  - Preserve contention checks and ordinary ROM write protection
+- **Architectural Rationale & Trade-Offs**:
+  - Keep storage operations independent of debug entry points without duplicating memory logic. Scoped sync-design-docs review selects MemoryBus with valid ownership paths and requires no specification changes. No roadmap point or milestone closes.
+- **Verification & Test Results**:
+  - cargo test -p physical_memory passes all 33 tests
+  - cargo clippy -p physical_memory --all-targets -- -D warnings and focused rustfmt and diff checks pass
+  - Graphify code refresh completes
+  - Required commit profile output is retained in .agent/tmp/memory-internal-commit.log
+  - python tools/verification/verify.py commit fails only on the two existing TAS Chip and Slow RAM integration tests. All other ordinary tests and all quality gates standard harness tests and Python contracts pass.
+  - Existing TAS Chip and Slow RAM integration failures remain unresolved and are documented in the preceding diary entry
+  - Full SingleStep and milestone profiles are not run
+---
+
+---
+
+### [2026-10-11 22:08 CEST] — CPU-CYCLE-01, CPU-PC-01, CPU-DOCS-01: close supported CPU reconciliation
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/memory_bus`
+  - `crates/physical_memory/src/address_bus.rs`
+  - `crates/machine_loop/tests`
+  - `CPU specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Implement Illegal and Line A/F exceptions with rejected opcode PC
+  - Sample T at instruction entry and process Trace before accepted IRQ, including STOP and RTE
+  - Retain the accepted interrupt level independently of live IPL
+  - Route TAS write context to MemoryBus and suppress Chip/Slow writes while preserving waits and ordinary stores
+  - Reconstruct CPU and micro-step specifications and clarify PC phases
+  - Close CPU-CYCLE-01, CPU-PC-01 and CPU-DOCS-01 after the closure commit, then remove only their execution plans
+- **Architectural Rationale & Trade-Offs**:
+  - Retain the phase-dependent PC model without another global frame-PC register
+  - Follow original Motorola PDF Section 6.3.8 where converted Trace prose differs, leaving imported references untouched
+  - At the user request exclude external level-seven NMI from A500 implementation scope, removing sampled_ipl and nmi_pending while retaining SR mask 7 and trace_pending
+  - Keep silicon vectors, approved overrides and comparison rules unchanged
+  - Retain redirected snapshot restoration in roadmap Save State scope and keep CPU-BENCH-01, CPU-CONTINUE-01, CPU-MICRO-STRUCTURE-01, SINGLESTEP-MUTATION-01 and SINGLESTEP-RAM-01 active
+- **Verification & Test Results**:
+  - Final-source exact PC and both prefetch words pass for all 1000060 vectors across 124 files, including 178087 Address Error entries
+  - All 124 original reference hashes remain unchanged
+  - Synthetic exception, trace and IRQ fixtures do not establish production interrupt or electrical pin correctness
+  - BERR/device IACK, timed host reset, electrical locking and existing RAM masks remain explicit limits
+  - Final commit profile passes all ordinary workspace tests, standard harness tests, five Python contract suites, quality gates and the full repository English audit
+  - Final milestone profile passes: full SingleStep completes 128 of 128 groups with zero failures, 1002737 reported current executions plus the two-record override control
+  - Static semantic consistency, roadmap structure, diary ordering and vault metadata/link checks pass for 39 documents and 1089 links
+  - Scoped design ownership review has no unmapped code paths
+---
+
+### [2026-10-11 22:58 CEST] — CPU-CONTINUE-01: verify continued execution and reconcile CPU documentation
+- **Affected Subsystems**:
+  - `CPU`
+  - `Machine Loop`
+  - `Design Documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Close CPU-CONTINUE-01 with 15 added test functions and extended existing fixtures for reset, exceptions, status, returns, completed waits and snapshots
+  - Execute meaningful following instructions with bounded CPU and production-machine helpers, including device markers and guest interrupt-source clearing
+  - Correct CHK saved-PC documentation and continuation expectations to the following instruction under the user-approved SingleStep precedence decision
+  - Correct eight document/code discrepancies for MOVEM, ABCD/SBCD, PC-relative operand space, indexed EA width, condition fields, CCK latch phases and DIVU descriptors
+  - Clarify active-slice snapshot reconstruction limits, document ownership and level 7 scope, and correct two RTS comments without changing runtime behavior
+- **Architectural Rationale & Trade-Offs**:
+  - Final PC and queue assertions alone do not establish useful execution after reset, exception return or a completed transfer. The fixtures exercise subsequent guest effects and expected repeat controls.
+  - Documentation follows executable statements and supplied reference evidence rather than stale comments. Reference vectors, overrides and production behavior remain unchanged.
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit, covering all ordinary crates with coverage, standard harness tests, full English audit, formatting, Clippy, architecture, hardware/code checks and all Python tool contracts
+  - PASS: vault links and frontmatter for 39 documents and 1095 links, configured static semantic checks, scoped English and diff checks
+  - Scoped pre-commit design review selected both CPU documents and Machine Loop.md, which needed no edit
+  - Earlier controlled fixture mutations detected a lost device marker, an extra completed write and a lost restored marker, then original source bytes were restored
+  - Full SingleStep and milestone profiles were not run. CPU bus scripts do not establish every callback timestamp or DMA arbitration. Physical keyboard hold timing, external BERR, level 7 NMI and arbitrary in-flight snapshot reconstruction remain outside this verified scope.
+---
+
+### [2026-10-11 23:29 CEST] — SINGLESTEP-MUTATION-01: check JSON sensitivity and tighten shared comparison
+- **Affected Subsystems**:
+  - `SingleStep Harness`
+  - `CPU Verification`
+  - `Testing Strategy`
+- **What Was Changed (The Concrete Reality)**:
+  - Close the bounded SINGLESTEP-MUTATION-01 pilot with eleven original silicon seeds and 1003 raw JSON mutations loaded through the shared pipeline
+  - Retain the ordinary mutation target with diagnostic-category assertions and untouched controls after every mutation, automatically selected by the standard harness profile
+  - Compare the exact formal next opcode PC and both final prefetch words, and require expected transaction durations to sum to JSON length
+  - Validate prefetch and RAM widths plus transaction tags, record lengths and numeric ranges in shared loader and parser paths
+  - Gate legacy RAM allowances on observed Address Error entry so normal RAM near SSP is checked independently of filename
+  - Synchronize CPU verification and testing strategy descriptions and the SingleStep skill while leaving CPU execution, reference files and approved overrides unchanged
+- **Architectural Rationale & Trade-Offs**:
+  - Unchanged passing vectors do not establish that every expectation is checked
+  - The original comparator failed retained sensitivity assertions while positive controls passed, so repairs belong in the shared comparison path rather than a diagnostic-only filter
+  - Preserve explicit evidence boundaries and transfer unresolved frame-mask investigation to the active SINGLESTEP-RAM-01 task
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit, including all ordinary crate tests with coverage, all standard harness tests including mutations, full English, formatting, Clippy, architecture, hardware/code checks and all Python tool contracts
+  - Pilot: 748 observable mutations rejected by comparison, 165 invalid copies rejected by format and 33 equivalent controls passed, with every unchanged control passing
+  - Ten full affected SingleStep groups passed 80650 executions with zero failures: NOP, ADD.l, ASL.w, MULS, DIVU, DIVS, ADDX.l, ABCD, RTE and TAS
+  - PASS: scoped Clippy and English, vault links/frontmatter for 39 documents and 1098 links, configured static semantic checks, diff checks and source/reference hash integrity
+  - Eight false Address Error frame RAM expectations still survive legacy allowances and belong to SINGLESTEP-RAM-01. The 49 valid FC changes have no observed signal and do not count as detection
+  - The exhaustive 128-group suite and milestone profile were not run. Callback timing and four-clock bus-model checks are not independent electrical pin observations. Full field sensitivity is not claimed
+---
+
+### [2026-10-11 23:50 CEST] — SINGLESTEP-RAM-01: remove final RAM assertions from CPU vectors
+- **Affected Subsystems**:
+  - `SingleStep Harness`
+  - `CPU Verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove `final.ram` comparison, Address Error RAM allowances, exception-entry tracking used by those allowances and RAM mismatch diagnostics
+  - Retire obsolete RAM mutation probes and retain eleven passing `final.ram` controls
+  - Validate only `initial.ram` ranges and reconcile the SingleStep specification, CPU design note, testing overview and runbook
+- **Architectural Rationale & Trade-Offs**:
+  - Successful writes in the synthetic test bus commit the same data that timed callbacks report. Comparing `final.ram` against that bus checks fixture consistency rather than independently verifying CPU writes.
+  - The user explicitly removed `final.ram` from the CPU SingleStep comparison contract. Silicon vectors, reviewed overrides and CPU execution are unchanged.
+- **Verification & Test Results**:
+  - PASS: `python tools/verification/verify.py commit`, including ordinary crate and standard harness tests, full English audit, formatting, Clippy, architecture and Python contracts
+  - PASS: focused `test_singlestep_mutations` target with eleven changed-`final.ram` controls
+  - PASS: full ASL.w, MOVE.w and DIVU groups, 8065 of 8065 each
+  - PASS: 39-document vault frontmatter and 1097-link audit, diff check and Graphify source refresh
+  - Scoped design review selected CPU SingleStepTests and Testing Strategy; the latter already matched the contract. The CPU design note was corrected for its direct reference.
+  - Full SingleStep and milestone profiles were not run. Synthetic callbacks do not verify production memory commits.
+---
+
+### [2026-10-12 01:41 CET] — CPU-BENCH-01: keep repeated DIVS on valid division path
+- **Affected Subsystems**:
+  - `test_runner CPU instruction benchmark`
+  - `benchmark strategy specification`
+- **What Was Changed (The Concrete Reality)**:
+  - Seed the normal `DIVS` workload with D1 = 1 and D0 = 0x1234 before the unrolled opcode block.
+  - Add a 700-instruction regression test for the valid signed division path.
+  - Correct the benchmark strategy description and map it to its source directory.
+- **Architectural Rationale & Trade-Offs**:
+  - The previous shared division seed let repeated signed divisions enter quotient overflow, so the measurement did not represent normal `DIVS` execution. A stable quotient preserves the intended path across all repetitions.
+- **Verification & Test Results**:
+  - PASS: focused benchmark workload test.
+  - PASS: `python tools/verification/verify.py commit`, including ordinary crates, standard `test_runner` harnesses, Python contracts, formatting, Clippy, architecture and English checks.
+  - PASS: Obsidian vault link and frontmatter audit.
+---
+
+### [2026-10-12 02:49 CET] — Remove obsolete peripheral test suites
+- **Affected Subsystems**:
+  - `Crate tests`
+  - `Architecture verification`
+  - `Testing policy`
+  - `Design documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove 30 selected chip and peripheral test files
+  - Keep architecture checks for executable retained suites and required retained module files
+  - Update testing policy and design notes to describe remaining coverage
+  - Keep documented public APIs unchanged; make observed-caller visibility suggestions advisory while retaining dead-code and accessor failures
+- **Architectural Rationale & Trade-Offs**:
+  - The removed isolated tests are no longer part of the accepted verification snapshot
+  - Remaining machine integration tests cover only their stated scenarios, and roadmap step 3.3 plans new HRM-derived subsystem tests
+  - Repository call sites cannot prove whether public APIs have external clients. Deleting their test callers exposed 87 visibility suggestions without establishing an API defect.
+- **Verification & Test Results**:
+  - PASS: architecture gate
+  - PASS: vault frontmatter and links for 39 documents and 1098 links
+  - Initial commit profile passed ordinary crate and standard harness tests, English, formatting, Clippy, architecture, hardware and Python contracts; code quality failed on 87 call-site visibility suggestions before the auditor contract was corrected
+  - PASS: final `python tools/verification/verify.py commit` profile on the documented source snapshot, including ordinary crate tests with 51.55% line coverage (no threshold), standard harness tests, all five Python contract suites and quality checks
+  - Code-quality review still reports 87 advisory visibility suggestions; it found zero dead or test-only symbols and zero accessor issues
+  - Removed isolated register, algorithm and boundary assertions are no longer covered by those deleted suites
+  - Full SingleStep and milestone profiles not run
+---
+
+### [2026-10-12 13:04 CEST] — Consolidate design specifications and agent guidance
+- **Affected Subsystems**:
+  - `Design specifications`
+  - `agent governance`
+  - `verification documentation`
+  - `CPU benchmark references`
+- **What Was Changed (The Concrete Reality)**:
+  - Condense subsystem specifications and introduce a dedicated Physical Memory note
+  - Consolidate GUI and CPU benchmark documentation and remove superseded notes
+  - Simplify agent rules and skills while retaining their owning procedures
+  - Update links and benchmark source references, and remove selected stale AGENTS.md descriptions and numbered-rule citations
+- **Architectural Rationale & Trade-Offs**:
+  - Keep architectural ownership and verification limits readable in their owning documents. Remove duplicated instructions and preserve direct links to active procedures. Benchmark source changes update comments and docstrings only
+  - runtime behavior is unchanged.
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit on the intended source, including ordinary crate and standard harness tests, quality checks, English audit, and Python contracts
+  - PASS: vault frontmatter and links for 36 design specifications and 664 links
+  - PASS: git diff --check
+  - NOT RUN: full SingleStep and milestone profiles
+---
+
+### [2026-10-12 13:49 CEST] — Document custom-register and board signal maps
+- **Affected Subsystems**:
+  - `Amiga design specifications`
+  - `verification vocabulary`
+- **What Was Changed (The Concrete Reality)**:
+  - Add a book-derived 256-offset custom-chip register map and CIA-A/B address tables
+  - document board-level cross-chip signal paths with evidence and uncertainty
+  - expand prose abbreviations and approve 17 verified hardware signal terms
+- **Architectural Rationale & Trade-Offs**:
+  - Give the planned machine coordinator an evidence-bounded hardware map while separating documented circuit behavior from current emulator coverage and unknown timing
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit on the final documentation and vocabulary edits, including ordinary crate tests, standard harness tests, Python contracts, English, formatting, Clippy, architecture, hardware and code quality checks
+  - PASS: vault audit for 36 specifications and 678 links
+  - PASS: 256 even custom-register offsets present once in order
+  - PASS: git diff --check
+  - initial English scan failed on 78 unknown occurrences, resolved by expanding prose and user-approved hardware vocabulary
+  - NOT RUN: full SingleStep and milestone profiles
+---
+
+### [2026-10-12 20:03 CEST] — Align OCS custom register names and explicit dispatch
+- **Affected Subsystems**:
+  - `config`
+  - `Agnus`
+  - `Copper`
+  - `Denise`
+  - `Paula`
+  - `MemoryBus`
+  - `machine integration`
+  - `SaveState design`
+- **What Was Changed (The Concrete Reality)**:
+  - Rename STRBUS to STRLONG and use AUDxLCH/LCL names from the register matrix
+  - remove unsupported BPLCON3 and DIWHIGH state and align SaveState documentation
+  - replace register-offset ranges and literals with named constants in chip dispatch and integration tests
+- **Architectural Rationale & Trade-Offs**:
+  - Keep OCS register access traceable to the canonical register definitions and prevent reserved offsets from acquiring chip state.
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit, including ordinary workspace tests, standard harness tests, Python contracts, English, formatting, Clippy, architecture, hardware and code quality checks
+  - PASS: focused Agnus, Copper, MemoryBus and machine_loop tests
+  - PASS: scoped design-specification review found no further corrections
+  - PASS: git diff --check
+  - NOT RUN: full SingleStep and milestone profiles
+---
+
+### [2026-10-12 20:38 CEST] — Centralize CIA register addresses and selectors
+- **Affected Subsystems**:
+  - `config`
+  - `CIA`
+- **What Was Changed (The Concrete Reality)**:
+  - Add named CIA-A and CIA-B byte addresses and shared register selectors
+  - Use named selectors in CIA read, debug peek, and write dispatch
+- **Architectural Rationale & Trade-Offs**:
+  - Keep both CIA address maps and chip-internal selector decoding traceable to one canonical register list without changing register behavior
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit on the code snapshot
+  - PASS: cargo test -p cia -p memory_bus (18 integration tests)
+  - PASS: all 30 addresses compared with CIA.md and selectors checked for both chips
+  - PASS: scoped review of CIA.md and Configuration.md found no corrections
+  - NOT RUN: full SingleStep and milestone profiles
+---
+
+### [2026-10-12 21:51 CEST] — Remove implicit persisted-field defaults and obsolete legacy tests
+- **Affected Subsystems**:
+  - `machine snapshots`
+  - `CPU and chip state`
+  - `GUI preferences`
+  - `SingleStep reporting`
+  - `conversion and verification tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove Serde defaults from serialized state, preferences, and report fields while retaining defaults for skipped runtime-only fields
+  - remove two legacy compatibility test cases
+  - remove the unused open-bus default helper
+  - align SaveState and SingleStep specifications plus reporting instructions with the current read behavior
+- **Architectural Rationale & Trade-Offs**:
+  - Require current non-Option fields during deserialization without claiming that old version-1 snapshots remain compatible
+  - preserve explicit null handling for Option fields and reconstruction of skipped runtime state
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit on the code and documentation before this diary entry, including ordinary crates, standard harness, Python contracts, English, formatting, Clippy, architecture, hardware and code-quality checks
+  - PASS: focused Tier 1 and Tier 2 Rust suites and cargo check -p test_runner --tests
+  - PASS: vault audit of 36 specifications and 678 links
+  - PASS: graphify update . and git diff --check
+  - Initial focused Tier 1 compile failed due to the now-unused default_unmapped_byte helper, which was removed before the passing rerun
+  - The post-diary English scan rejected an abbreviated title; the title was spelled out before the final rerun
+  - NOT RUN: full SingleStep, milestone profile, and whole-machine hardware captures
+---
+
+### [2026-10-12 22:25 CET] — Encapsulate CPU state fields
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/machine_loop`
+  - `crates/debugger`
+  - `crates/gui`
+  - `crates/test_runner`
+- **What Was Changed (The Concrete Reality)**:
+  - Make PC, prefetch, IR, IPL, trace, instruction position, stop and halt flags, reset output, micro-state and cycle counter private in CpuState
+  - replace direct callers with accessors and setters across production code, fixtures and benchmarks
+  - retain a mutable micro-state accessor for existing engine and benchmark mutations
+- **Architectural Rationale & Trade-Offs**:
+  - Narrow field visibility and centralize state access without changing CPU timing, serialization or snapshot data
+  - keep public methods where cross-crate callers require them and crate-visible methods for internal signals
+- **Verification & Test Results**:
+  - PASS: cargo check --workspace --all-targets --quiet
+  - PASS: cargo fmt --all --check and git diff --check
+  - PASS: cargo test -p cpu -p machine_loop -p debugger -p gui -p test_runner --lib --tests --quiet
+  - PASS: graphify update .
+  - PASS: scoped review of nine tracked design specifications found no corrections
+  - NOT RUN: full SingleStep, milestone profile and whole-machine captures
+---
+
+### [2026-10-13 00:29 CET] — Use canonical CIA register addresses throughout bus and chip
+- **Affected Subsystems**:
+  - `crates/memory_bus`
+  - `crates/cia`
+  - `crates/config`
+  - `crates/machine_loop tests`
+  - `Obsidian/Amiga/Design/MemoryBus.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Decode all connected CIA addresses explicitly after masking mirror bits
+  - pass canonical full addresses into CIA register operations and delayed writes
+  - migrate direct callers and add routing and CIA regression tests
+  - describe the implemented CIA routing in MemoryBus design
+- **Architectural Rationale & Trade-Offs**:
+  - Keep register identity explicit across MemoryBus and CIA and avoid selector aliases that could mismatch the full register addresses
+- **Verification & Test Results**:
+  - PASS: python tools/verification/verify.py commit, including ordinary workspace tests, standard harness tests, Python contracts, English, formatting, Clippy, architecture, hardware and code-quality checks
+  - PASS: focused cia, memory_bus, machine_loop and config crate suites
+  - PASS: vault metadata and link audit
+  - PASS: graphify update . and git diff --check
+  - NOT RUN: full SingleStep, milestone profile and whole-machine captures
+---
+
+### [2026-10-13 18:02 CEST] — Custom register routing and hardware research
+- **Affected Subsystems**:
+  - `Agnus`
+  - `Denise`
+  - `Paula`
+  - `memory bus`
+  - `physical memory`
+  - `design specifications`
+  - `RAG MCP`
+- **What Was Changed (The Concrete Reality)**:
+  - Route sync strobes and sprite position/control writes to chip recipients
+  - Describe early DMA open-bus reads and DMA ownership in code and design specifications
+  - Add a hardware research agent and bounded RAG MCP reference retrieval
+  - Approve sprpos and sprctl hardware abbreviations in the English vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Keep custom register writes at the receiving chip boundary and document the bus semantics seen by CPU reads
+  - support hardware research with scoped reference lookup
+- **Verification & Test Results**:
+  - python tools/verification/verify.py commit passed on the staged snapshot
+  - including workspace and harness tests
+  - English policy
+  - formatting
+  - Clippy
+  - architecture
+  - hardware and code quality
+  - bootstrap
+  - conversion
+  - RAG MCP
+  - and verification CLI contracts
+---
+
+### [2026-10-13 18:24 CEST] — Use a fixed open-bus placeholder
+- **Affected Subsystems**:
+  - `config`
+  - `physical_memory`
+  - `memory_bus`
+  - `Agnus`
+  - `CIA`
+  - `Denise`
+  - `Paula`
+  - `RTC`
+  - `save state`
+  - `test_runner`
+  - `design specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Define shared open-bus byte and word constants at FF and FFFF
+  - Remove configurable unmapped values from production physical memory and route open-bus reads through the constants
+  - Expand motherboard tests across unmapped banks, CIA lanes, RTC responses, and custom registers
+  - Update affected design specifications and approve undriven as hardware vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Centralize the current fixed bus approximation while keeping the synthetic SingleStep memory fixture separately configurable
+- **Verification & Test Results**:
+  - python tools/verification/verify.py commit passed
+  - Obsidian vault audit passed for 36 specifications and 709 links
+  - full SingleStep suite was not run
+---
+
+### [2026-10-13 20:04 CEST] — Gate bitplane DMA with the display window
+- **Affected Subsystems**:
+  - `crates/config`
+  - `crates/memory_bus`
+  - `crates/agnus`
+  - `crates/dma`
+  - `crates/denise`
+  - `crates/machine_loop tests`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Decode DIWSTRT and DIWSTOP in both Agnus and Denise namespaces and route writes to both chips
+  - use Agnus vertical DIW bounds with DDF to gate bitplane DMA and Denise horizontal bounds to clip pixels
+  - add failing-first integration and Denise regression tests
+  - update the register matrix and affected design specifications
+- **Architectural Rationale & Trade-Offs**:
+  - Match the documented split between vertical bitplane fetch selection and horizontal pixel clipping while retaining delayed chip-local register commits
+- **Verification & Test Results**:
+  - PASS: focused config, Denise, and machine-loop tests
+  - PASS: full Tier 2 integration before final alias correction
+  - PASS: architecture, formatting, diff check, and Obsidian vault audit
+  - NOT RUN: full SingleStep, milestone profile, and whole-machine captures
+---
+
+### [2026-10-13 20:21 CEST] — CUSTOM-REG-AGNUS-WRITES-01: Enumerate Agnus write destinations
+- **Affected Subsystems**:
+  - `crates/memory_bus`
+  - `Obsidian/Amiga/Design/MemoryBus.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace default Agnus forwarding with explicit register arms
+  - Keep a regression for named writes and ignored reserved offset 0x07C
+  - Correct the MemoryBus routing description
+- **Architectural Rationale & Trade-Offs**:
+  - Unmatched offsets must not consume delayed mutation slots
+  - REFPTR and VPOSW and VHPOSW and COPINS still have no implemented Agnus commit effect
+  - Close the router task while retaining those behavior limits as separate future work
+- **Verification & Test Results**:
+  - All ordinary Rust tests and standard harness tests passed
+  - Formatting and Clippy and architecture and hardware and code quality checks passed
+  - Static comparison found all 180 matrix write offsets with no missing or extra router offsets
+  - Vault audit passed for 36 documents and 714 links
+  - The commit profile hit a sandbox timeout in Codex MCP initialization
+  - All 13 MCP tests passed outside the sandbox
+  - Full SingleStep was not run
+---
+
+### [2026-10-13 20:23 CEST] — Replace copied design examples with concise descriptions
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/Application/SaveState.md`
+  - `Obsidian/Amiga/Design/egui Guidelines.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Link snapshot fields to the living Rust source instead of copying structs
+  - Mark differential snapshots and their wire format as proposals
+  - Explain complete forward and reverse restoration without stale code
+  - Replace the tooltip code sample with layout guidance
+- **Architectural Rationale & Trade-Offs**:
+  - Keep design intent readable and avoid duplicate implementation definitions
+  - Diff sizes remain illustrative rather than measured guarantees
+- **Verification & Test Results**:
+  - Scoped design review confirmed the snapshot field summary against save_state.rs
+  - No differential snapshot API was found in machine_loop
+  - No tracked code ownership mappings require additional design edits for these documentation changes
+  - Vault frontmatter and all 714 links passed
+  - The complete commit profile passed outside the sandbox with these document edits present
+  - Full SingleStep was not run
+---
+
+### [2026-10-13 22:25 CEST] — Bound OCS DMA addresses to 512 KB
+- **Affected Subsystems**:
+  - `crates/config`
+  - `crates/agnus`
+  - `crates/copper`
+  - `crates/blitter`
+  - `crates/memory_bus`
+  - `Obsidian/Amiga/Design`
+  - `.agents/rules`
+- **What Was Changed (The Concrete Reality)**:
+  - Define shared OCS DMA masks and bound Chip RAM DMA accesses
+  - mask Agnus register halves and DMA pointer arithmetic
+  - wrap Copper and Blitter pointers while preserving the line error accumulator
+  - add pointer-boundary regression tests
+  - align OCS model and address descriptions
+- **Architectural Rationale & Trade-Offs**:
+  - OCS 8370 and 8371 expose 18-bit word-address DMA pointers
+  - so writes and arithmetic must stay within the lower 512 KB
+- **Verification & Test Results**:
+  - Focused cargo tests for config, agnus, copper, blitter, and memory_bus passed: 40 tests
+  - vault audit passed: 36 specifications and 715 links
+  - Graphify update passed outside the sandbox after its native DLL load was denied inside the sandbox
+  - all 13 RAG MCP contracts passed outside the sandbox after the sandboxed Codex startup timed out
+  - full SingleStep and hardware captures were not run
+---
+
+### [2026-10-14 00:48 CEST] — Clarify Paula DMACON state in DMA design
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/DMA.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Describe shared DMACON writes and audio and display DMA control flow
+  - clarify that Paula retains only DMAEN, DSKEN, and AUD0EN through AUD3EN
+- **Architectural Rationale & Trade-Offs**:
+  - Paula receives the shared register write but stores only the bits needed for local audio and disk DMA control
+  - Agnus retains the broader DMA state
+- **Verification & Test Results**:
+  - Scoped design review matched the Paula and Agnus register handlers
+  - vault audit passed for 36 specifications and 716 links
+  - initial commit profile passed ordinary tests, harness tests, formatting, Clippy, architecture, hardware, code quality, bootstrap, conversion, and verification contracts
+  - English scan found eight unknown-word occurrences in unrelated developer-setup.md and ROADMAP.md
+  - RAG MCP contract launch timed out inside sandbox, while all 13 contracts passed outside sandbox
+  - full SingleStep and hardware captures were not run
+---
+
+### [2026-10-14 01:37 CEST] — Record Gary decoding and OCS DMA pointer roadmap work
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `Obsidian/Amiga/Design/Verification/Testing Strategy and Quality Assurance.md`
+  - `tools/verification/checks/english_words/software.txt`
+- **What Was Changed (The Concrete Reality)**:
+  - Added self-contained Step 3.1 and 3.2 scope and acceptance gates
+  - Renumbered later Step 3 points and updated the testing specification reference
+  - Added three user-approved technical vocabulary terms
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve implementation contracts after the temporary task plans are removed while leaving earlier local roadmap work outside this commit
+- **Verification & Test Results**:
+  - Roadmap check, vault link and frontmatter audit, and staged-content English scan passed
+  - Commit profile failed on eight unknown-word occurrences in unrelated dirty documentation and a sandboxed RAG MCP launch timeout
+  - All 13 RAG MCP contracts passed outside the sandbox; other commit-profile checks passed
+---
+
+### [2026-10-14 01:42 CEST] — Record chipset research sources and pending roadmap work
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `.agents/references/developer-setup.md`
+  - `Obsidian/Amiga/Design/Cross-Chip Signals and Action Dispatch Catalog.md`
+  - `Obsidian/Amiga/Design/Custom Chip Register Ownership and Access Matrix.md`
+  - `tools/verification/checks/english_words`
+- **What Was Changed (The Concrete Reality)**:
+  - Added optional FPGA references and a hardware web-evidence task
+  - Added a CPU benchmark task and renumbered Step 2 with its Step 3 reference
+  - Distinguished measured Paula DMAL timing from reconstructed audio behavior
+  - Corrected Paula participation in DMACON writes
+  - Added three user-approved vocabulary terms
+- **Architectural Rationale & Trade-Offs**:
+  - Keep future research and verification work discoverable while aligning shared-bus documentation with cited evidence
+- **Verification & Test Results**:
+  - English scan, roadmap check, vault link and frontmatter audit, and diff check passed
+  - Full commit verification passed outside the sandbox, including all RAG MCP contracts
+---
+
+### [2026-10-14 02:04 CEST] — Remove flat custom-register aliases
+- **Affected Subsystems**:
+  - `crates/config`
+  - `crates/agnus`
+  - `crates/machine_loop`
+  - `crates/memory_bus`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed flat custom-register exports and duplicate root constants
+  - Qualified production and test register references by chip context
+  - Kept shared register offsets and bus routing unchanged
+- **Architectural Rationale & Trade-Offs**:
+  - Make register references identify the chip that decodes each offset while retaining shared bus behavior
+- **Verification & Test Results**:
+  - Targeted cargo tests for config, agnus, memory_bus, and machine_loop passed
+  - `cargo check --workspace --all-targets` and `cargo fmt --all -- --check` passed
+  - All 218 chip constants retained their values and no flat Rust references remain
+  - Scoped design review required no edits
+  - Commit verification passed outside the sandbox; the sandbox run timed out in the RAG MCP launch contract
+  - `graphify update .` failed because DLL import was denied
+---
+
+### [2026-10-14 02:17 CEST] — Mask OCS audio addresses and retire direct RAM fetch
+- **Affected Subsystems**:
+  - `crates/audio`
+  - `crates/paula`
+  - `Obsidian/Amiga/Design/General Architecture.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Mask Paula audio register halves and stored audio locations
+  - Mask audio pointer reloads
+  - Remove the unused direct Chip RAM fetch path from audio
+  - Add address-mask regression tests and declare the config dependency
+- **Architectural Rationale & Trade-Offs**:
+  - Agnus owns Chip RAM DMA addresses and audio location state must remain within the word-aligned OCS range.
+- **Verification & Test Results**:
+  - Focused regressions failed before the repair and passed afterward
+  - Memory bus and machine-loop audio integration tests passed
+  - Vault audit passed for 36 specifications and 716 links
+  - Commit verification passed outside the sandbox, including all 13 RAG MCP contracts
+  - The sandboxed RAG launch timed out
+  - Graphify update passed outside the sandbox
+  - Full SingleStep and hardware captures were not run
+---
+
+### [2026-10-14 02:23 CEST] — Consolidate shared custom-register writes
+- **Affected Subsystems**:
+  - `crates/memory_bus`
+  - `Obsidian/Amiga/Design/MemoryBus.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Grouped BPLCON0, DIWSTRT/DIWSTOP, and sprite position/control writes by their shared Denise and Agnus recipients
+  - Clarified sprite position/control routing in the MemoryBus design
+- **Architectural Rationale & Trade-Offs**:
+  - Keep shared-register fan-out explicit while removing duplicate routing branches and preserving each chip staged-write behavior
+- **Verification & Test Results**:
+  - Focused memory_bus and machine_loop tests passed
+  - cargo fmt and diff checks passed
+  - vault metadata and all 716 links passed
+  - Graphify update passed outside the sandbox after a DLL access failure inside it
+  - commit verification passed outside the sandbox, while its sandbox run timed out in the RAG MCP launch contract
+  - full SingleStep and hardware captures were not run
+---
+
+### [2026-10-14 02:42 CEST] — Update roadmap priorities and add register routing audit
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `Obsidian/Amiga/Design/Verification/Testing Strategy and Quality Assurance.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed the test-suite orientation task and renumbered profiling
+  - Added a register, read-path, and physical-signal audit as roadmap 3.1
+  - Renumbered later chipset tasks and corrected the testing-strategy reference
+- **Architectural Rationale & Trade-Offs**:
+  - Prioritize end-to-end register and signal verification while keeping roadmap references coherent. No emulator behavior changed.
+- **Verification & Test Results**:
+  - PASS: roadmap check and diff check
+  - PASS: vault links and frontmatter (36 documents, 716 links)
+  - PASS: commit verification outside the sandbox
+  - Initial sandbox run failed because Codex app-server could not find its home directory
+  - PASS: focused Codex launch test outside the sandbox
+  - Milestone profile not run because no roadmap point was completed
+---
+
+### [2026-10-14 02:53 CEST] — Merge vamigats into master with an explicit merge point
+- **Affected Subsystems**:
+  - `master`
+  - `vamigats`
+  - `crates/test_runner`
+  - `Obsidian/Amiga/Design/Verification`
+  - `tools/verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Merged 64 vamigats commits without conflicts while retaining both parents
+  - mapped test_runner source to the testing strategy design
+  - excluded legacy generated SingleStep and benchmark reports from Git status and authored-text scanning
+  - removed two inherited trailing-whitespace lines in the SaveState design
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the branch integration point and keep generated report data outside source validation without excluding tracked baselines or traces
+- **Verification & Test Results**:
+  - No merge conflicts
+  - Rust workspace tests passed
+  - commit profile passed on the merged tree including ordinary tests, formatting, Clippy, architecture, hardware and code quality, standard harness, and Python contracts
+  - vault audit passed for 36 specifications and 716 links
+  - full SingleStep and hardware captures were not run
+  - initial sandboxed source run timed out in the RAG MCP launch contract, but the target worktree run passed

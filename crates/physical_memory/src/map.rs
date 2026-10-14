@@ -3,7 +3,7 @@
 //! Provides single-instruction O(1) memory bank dispatch using a 256-entry table
 //! of direct function pointers to bank read/write handler methods.
 
-use super::{BusResult, PhysicalMemory};
+use super::{BusResult, PhysicalMemory, OPEN_BUS_BYTE, OPEN_BUS_WORD};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Classification of a 64 KB physical memory bank
@@ -128,91 +128,129 @@ impl<'de> Deserialize<'de> for BankHandler {
     }
 }
 
-#[inline(always)]
-fn read_chip_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
+#[inline]
+fn read_chip_ram_internal(bus: &PhysicalMemory, addr: u32) -> u8 {
     bus.chip_ram[addr as usize]
 }
 
-#[inline(always)]
-fn read_chip_ram_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
+#[inline]
+fn read_chip_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
+    read_chip_ram_internal(bus, addr)
+}
+
+#[inline]
+fn read_chip_ram_word_internal(bus: &PhysicalMemory, addr: u32) -> u16 {
     bus.read_chip_word(addr)
 }
 
-#[inline(always)]
-fn write_chip_ram_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
+#[inline]
+fn read_chip_ram_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
+    read_chip_ram_word_internal(bus, addr)
+}
+
+#[inline]
+fn write_chip_ram_internal(bus: &mut PhysicalMemory, addr: u32, val: u8) {
     bus.chip_ram[addr as usize] = val;
 }
 
-#[inline(always)]
-fn write_chip_ram_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
+#[inline]
+fn write_chip_ram_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
+    write_chip_ram_internal(bus, addr, val);
+}
+
+#[inline]
+fn write_chip_ram_word_internal(bus: &mut PhysicalMemory, addr: u32, val: u16) {
     bus.write_chip_word(addr, val);
 }
 
-#[inline(always)]
+#[inline]
+fn write_chip_ram_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
+    write_chip_ram_word_internal(bus, addr, val);
+}
+
+#[inline]
 fn read_chip_ram(bus: &PhysicalMemory, addr: u32) -> BusResult<u8> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
-        BusResult::Ready(read_chip_ram_debug(bus, addr))
+        BusResult::Ready(read_chip_ram_internal(bus, addr))
     }
 }
 
-#[inline(always)]
+#[inline]
 fn read_chip_ram_word(bus: &PhysicalMemory, addr: u32) -> BusResult<u16> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
-        BusResult::Ready(read_chip_ram_word_debug(bus, addr))
+        BusResult::Ready(read_chip_ram_word_internal(bus, addr))
     }
 }
 
-#[inline(always)]
+#[inline]
 fn write_chip_ram(bus: &mut PhysicalMemory, addr: u32, val: u8) -> BusResult<()> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
-        write_chip_ram_debug(bus, addr, val);
+        write_chip_ram_internal(bus, addr, val);
         BusResult::Ready(())
     }
 }
 
-#[inline(always)]
+#[inline]
 fn write_chip_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> BusResult<()> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
-        write_chip_ram_word_debug(bus, addr, val);
+        write_chip_ram_word_internal(bus, addr, val);
         BusResult::Ready(())
     }
 }
 
-fn read_fast_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
+#[inline]
+fn read_fast_ram_internal(bus: &PhysicalMemory, addr: u32) -> u8 {
     if let Some(fast_ram) = &bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
         fast_ram[offset]
     } else {
-        bus.unmapped_byte
+        OPEN_BUS_BYTE
     }
 }
 
-fn read_fast_ram_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
+#[inline]
+fn read_fast_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
+    read_fast_ram_internal(bus, addr)
+}
+
+#[inline]
+fn read_fast_ram_word_internal(bus: &PhysicalMemory, addr: u32) -> u16 {
     if let Some(fast_ram) = &bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
         u16::from_be_bytes([fast_ram[offset], fast_ram[offset + 1]])
     } else {
-        let b = bus.unmapped_byte as u16;
-        (b << 8) | b
+        OPEN_BUS_WORD
     }
 }
 
-fn write_fast_ram_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
+#[inline]
+fn read_fast_ram_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
+    read_fast_ram_word_internal(bus, addr)
+}
+
+#[inline]
+fn write_fast_ram_internal(bus: &mut PhysicalMemory, addr: u32, val: u8) {
     if let Some(fast_ram) = &mut bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
         fast_ram[offset] = val;
     }
 }
 
-fn write_fast_ram_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
+#[inline]
+fn write_fast_ram_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
+    write_fast_ram_internal(bus, addr, val);
+}
+
+#[inline]
+fn write_fast_ram_word_internal(bus: &mut PhysicalMemory, addr: u32, val: u16) {
     if let Some(fast_ram) = &mut bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
         let bytes = val.to_be_bytes();
@@ -221,51 +259,78 @@ fn write_fast_ram_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
     }
 }
 
+#[inline]
+fn write_fast_ram_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
+    write_fast_ram_word_internal(bus, addr, val);
+}
+
+#[inline]
 fn read_fast_ram(bus: &PhysicalMemory, addr: u32) -> BusResult<u8> {
-    BusResult::Ready(read_fast_ram_debug(bus, addr))
+    BusResult::Ready(read_fast_ram_internal(bus, addr))
 }
 
+#[inline]
 fn read_fast_ram_word(bus: &PhysicalMemory, addr: u32) -> BusResult<u16> {
-    BusResult::Ready(read_fast_ram_word_debug(bus, addr))
+    BusResult::Ready(read_fast_ram_word_internal(bus, addr))
 }
 
+#[inline]
 fn write_fast_ram(bus: &mut PhysicalMemory, addr: u32, val: u8) -> BusResult<()> {
-    write_fast_ram_debug(bus, addr, val);
+    write_fast_ram_internal(bus, addr, val);
     BusResult::Ready(())
 }
 
+#[inline]
 fn write_fast_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> BusResult<()> {
-    write_fast_ram_word_debug(bus, addr, val);
+    write_fast_ram_word_internal(bus, addr, val);
     BusResult::Ready(())
 }
 
-fn read_slow_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
+#[inline]
+fn read_slow_ram_internal(bus: &PhysicalMemory, addr: u32) -> u8 {
     if let Some(slow_ram) = &bus.slow_ram {
         let offset = (addr - 0xC00000) as usize;
         slow_ram[offset]
     } else {
-        bus.unmapped_byte
+        OPEN_BUS_BYTE
     }
 }
 
-fn read_slow_ram_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
+#[inline]
+fn read_slow_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
+    read_slow_ram_internal(bus, addr)
+}
+
+#[inline]
+fn read_slow_ram_word_internal(bus: &PhysicalMemory, addr: u32) -> u16 {
     if let Some(slow_ram) = &bus.slow_ram {
         let offset = (addr - 0xC00000) as usize;
         u16::from_be_bytes([slow_ram[offset], slow_ram[offset + 1]])
     } else {
-        let b = bus.unmapped_byte as u16;
-        (b << 8) | b
+        OPEN_BUS_WORD
     }
 }
 
-fn write_slow_ram_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
+#[inline]
+fn read_slow_ram_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
+    read_slow_ram_word_internal(bus, addr)
+}
+
+#[inline]
+fn write_slow_ram_internal(bus: &mut PhysicalMemory, addr: u32, val: u8) {
     if let Some(slow_ram) = &mut bus.slow_ram {
         let offset = (addr - 0xC00000) as usize;
         slow_ram[offset] = val;
     }
 }
 
-fn write_slow_ram_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
+#[inline]
+fn write_slow_ram_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
+    write_slow_ram_internal(bus, addr, val);
+}
+
+#[inline]
+fn write_slow_ram_word_internal(bus: &mut PhysicalMemory, addr: u32, val: u16) {
     if let Some(slow_ram) = &mut bus.slow_ram {
         let offset = (addr - 0xC00000) as usize;
         let bytes = val.to_be_bytes();
@@ -274,49 +339,63 @@ fn write_slow_ram_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
     }
 }
 
+#[inline]
+fn write_slow_ram_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
+    write_slow_ram_word_internal(bus, addr, val);
+}
+
+#[inline]
 fn read_slow_ram(bus: &PhysicalMemory, addr: u32) -> BusResult<u8> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
-        BusResult::Ready(read_slow_ram_debug(bus, addr))
+        BusResult::Ready(read_slow_ram_internal(bus, addr))
     }
 }
 
+#[inline]
 fn read_slow_ram_word(bus: &PhysicalMemory, addr: u32) -> BusResult<u16> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
-        BusResult::Ready(read_slow_ram_word_debug(bus, addr))
+        BusResult::Ready(read_slow_ram_word_internal(bus, addr))
     }
 }
 
+#[inline]
 fn write_slow_ram(bus: &mut PhysicalMemory, addr: u32, val: u8) -> BusResult<()> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
-        write_slow_ram_debug(bus, addr, val);
+        write_slow_ram_internal(bus, addr, val);
         BusResult::Ready(())
     }
 }
 
+#[inline]
 fn write_slow_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> BusResult<()> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
-        write_slow_ram_word_debug(bus, addr, val);
+        write_slow_ram_word_internal(bus, addr, val);
         BusResult::Ready(())
     }
 }
 
-#[inline(always)]
-fn read_kickstart_rom_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
+#[inline]
+fn read_kickstart_rom_internal(bus: &PhysicalMemory, addr: u32) -> u8 {
     let mask = bus.kickstart_rom.len() - 1;
     let idx = (addr as usize) & mask;
     bus.kickstart_rom[idx]
 }
 
-#[inline(always)]
-fn read_kickstart_rom_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
+#[inline]
+fn read_kickstart_rom_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
+    read_kickstart_rom_internal(bus, addr)
+}
+
+#[inline]
+fn read_kickstart_rom_word_internal(bus: &PhysicalMemory, addr: u32) -> u16 {
     let mask = bus.kickstart_rom.len() - 1;
     let idx = (addr as usize) & mask;
     if idx + 1 < bus.kickstart_rom.len() {
@@ -326,7 +405,13 @@ fn read_kickstart_rom_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
     }
 }
 
-fn write_kickstart_rom_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
+#[inline]
+fn read_kickstart_rom_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
+    read_kickstart_rom_word_internal(bus, addr)
+}
+
+#[inline]
+fn write_kickstart_rom_internal(bus: &mut PhysicalMemory, addr: u32, val: u8) {
     if addr >= 0x00F8_0000 {
         let offset = (addr - 0x00F8_0000) as usize;
         if offset >= bus.kickstart_rom.len() && bus.kickstart_rom.len() < 512 * 1024 {
@@ -338,7 +423,13 @@ fn write_kickstart_rom_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
     }
 }
 
-fn write_kickstart_rom_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
+#[inline]
+fn write_kickstart_rom_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
+    write_kickstart_rom_internal(bus, addr, val);
+}
+
+#[inline]
+fn write_kickstart_rom_word_internal(bus: &mut PhysicalMemory, addr: u32, val: u16) {
     if addr >= 0x00F8_0000 {
         let offset = (addr - 0x00F8_0000) as usize;
         if offset + 1 >= bus.kickstart_rom.len() && bus.kickstart_rom.len() < 512 * 1024 {
@@ -353,49 +444,86 @@ fn write_kickstart_rom_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16)
     }
 }
 
-#[inline(always)]
+#[inline]
+fn write_kickstart_rom_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
+    write_kickstart_rom_word_internal(bus, addr, val);
+}
+
+#[inline]
 fn read_kickstart_rom(bus: &PhysicalMemory, addr: u32) -> BusResult<u8> {
-    BusResult::Ready(read_kickstart_rom_debug(bus, addr))
+    BusResult::Ready(read_kickstart_rom_internal(bus, addr))
 }
 
-#[inline(always)]
+#[inline]
 fn read_kickstart_rom_word(bus: &PhysicalMemory, addr: u32) -> BusResult<u16> {
-    BusResult::Ready(read_kickstart_rom_word_debug(bus, addr))
+    BusResult::Ready(read_kickstart_rom_word_internal(bus, addr))
 }
 
+#[inline]
 fn write_kickstart_rom(_bus: &mut PhysicalMemory, _addr: u32, _val: u8) -> BusResult<()> {
     BusResult::Ready(())
 }
 
+#[inline]
 fn write_kickstart_rom_word(_bus: &mut PhysicalMemory, _addr: u32, _val: u16) -> BusResult<()> {
     BusResult::Ready(())
 }
 
-fn read_open_bus_debug(bus: &PhysicalMemory, _addr: u32) -> u8 {
-    bus.unmapped_byte
+#[inline]
+fn read_open_bus_internal(_bus: &PhysicalMemory, _addr: u32) -> u8 {
+    OPEN_BUS_BYTE
 }
 
-fn read_open_bus_word_debug(bus: &PhysicalMemory, _addr: u32) -> u16 {
-    let b = bus.unmapped_byte as u16;
-    (b << 8) | b
+#[inline]
+fn read_open_bus_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
+    read_open_bus_internal(bus, addr)
 }
 
-fn write_open_bus_debug(_bus: &mut PhysicalMemory, _addr: u32, _val: u8) {}
-fn write_open_bus_word_debug(_bus: &mut PhysicalMemory, _addr: u32, _val: u16) {}
+#[inline]
+fn read_open_bus_word_internal(_bus: &PhysicalMemory, _addr: u32) -> u16 {
+    OPEN_BUS_WORD
+}
 
+#[inline]
+fn read_open_bus_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
+    read_open_bus_word_internal(bus, addr)
+}
+
+#[inline]
+fn write_open_bus_internal(_bus: &mut PhysicalMemory, _addr: u32, _val: u8) {}
+
+#[inline]
+fn write_open_bus_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
+    write_open_bus_internal(bus, addr, val);
+}
+
+#[inline]
+fn write_open_bus_word_internal(_bus: &mut PhysicalMemory, _addr: u32, _val: u16) {}
+
+#[inline]
+fn write_open_bus_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
+    write_open_bus_word_internal(bus, addr, val);
+}
+
+#[inline]
 fn read_open_bus(bus: &PhysicalMemory, addr: u32) -> BusResult<u8> {
-    BusResult::Ready(read_open_bus_debug(bus, addr))
+    BusResult::Ready(read_open_bus_internal(bus, addr))
 }
 
+#[inline]
 fn read_open_bus_word(bus: &PhysicalMemory, addr: u32) -> BusResult<u16> {
-    BusResult::Ready(read_open_bus_word_debug(bus, addr))
+    BusResult::Ready(read_open_bus_word_internal(bus, addr))
 }
 
-fn write_open_bus(_bus: &mut PhysicalMemory, _addr: u32, _val: u8) -> BusResult<()> {
+#[inline]
+fn write_open_bus(bus: &mut PhysicalMemory, addr: u32, val: u8) -> BusResult<()> {
+    write_open_bus_internal(bus, addr, val);
     BusResult::Ready(())
 }
 
-fn write_open_bus_word(_bus: &mut PhysicalMemory, _addr: u32, _val: u16) -> BusResult<()> {
+#[inline]
+fn write_open_bus_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> BusResult<()> {
+    write_open_bus_word_internal(bus, addr, val);
     BusResult::Ready(())
 }
 

@@ -44,6 +44,16 @@ fn test_chip_ram_wraparound_address_masking() {
 }
 
 #[test]
+fn test_ocs_dma_cannot_address_above_lower_512k_even_with_larger_buffer() {
+    let mut ram = vec![0u8; 1024 * 1024];
+    chip_ram::write_u16(&mut ram, 0x80020, 0xCAFE);
+
+    assert_eq!(&ram[0x20..0x22], &0xCAFEu16.to_be_bytes());
+    assert_eq!(&ram[0x80020..0x80022], &[0, 0]);
+    assert_eq!(chip_ram::read_u16(&ram, 0x80020), 0xCAFE);
+}
+
+#[test]
 fn test_chip_ram_empty_slice_graceful_fallback() {
     let mut empty: Vec<u8> = Vec::new();
 

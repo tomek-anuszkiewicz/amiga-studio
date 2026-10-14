@@ -5,12 +5,13 @@
 //! Verifies display window (DIWSTRT/DIWSTOP) clipping, BPLCON0 bitplane mode configuration,
 //! bitplane serialization and palette lookup, and scanline pixel rasterization in the machine loop.
 
+use config::custom_reg;
 mod common;
 use common::MachineHarness;
 use denise::frame_builder;
 
 #[test]
-fn test_denise_display_window_configuration_and_clipping() {
+fn test_display_window_register_configuration_and_geometry() {
     let mut harness = MachineHarness::new();
 
     // Standard PAL window: VSTART = 44 ($2C), VSTOP = 300 ($12C -> $2C with low-byte wrap)
@@ -21,17 +22,17 @@ fn test_denise_display_window_configuration_and_clipping() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x08E, diwstrt);
+        .write_custom_word(custom_reg::denise::DIWSTRT, diwstrt);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x090, diwstop);
+        .write_custom_word(custom_reg::denise::DIWSTOP, diwstop);
     harness.step_cck(2);
 
     assert_eq!(harness.machine.denise.diwstrt, diwstrt);
     assert_eq!(harness.machine.denise.diwstop, diwstop);
 
-    // Verify window coordinate checks on committed registers
+    // Verify logical window coordinates from the committed register words.
     assert!(frame_builder::is_in_display_window(
         130,
         45,
@@ -61,6 +62,79 @@ fn test_denise_display_window_configuration_and_clipping() {
 }
 
 #[test]
+fn test_display_window_vertical_bounds_gate_bitplane_dma() {
+    let mut harness = MachineHarness::new();
+    let diwstrt = 0x6481; // VSTART = 100, HSTART = 129
+    let diwstop = 0xC8C1; // VSTOP = 200, HSTOP = 449
+
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(custom_reg::denise::DIWSTRT, diwstrt);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(custom_reg::denise::DIWSTOP, diwstop);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(custom_reg::denise::BPLCON0, 0x1000);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(custom_reg::agnus::DMACON, 0x8300);
+    harness.step_cck(5);
+
+    assert_eq!(harness.machine.denise.diwstrt, diwstrt);
+    assert_eq!(harness.machine.denise.diwstop, diwstop);
+
+    let dma = &harness.machine.agnus.dma;
+    let fetch_slot = 0x3F; // First low-resolution BPL1 slot after DDFSTRT = $38.
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 99), None);
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 100), Some(0));
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 199), Some(0));
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 200), None);
+
+    harness.machine.physical_memory.chip_ram[0x1000] = 0xBE;
+    harness.machine.physical_memory.chip_ram[0x1001] = 0xEF;
+    harness.machine.agnus.bplpt[0] = 0x1000;
+    harness.machine.agnus.hpos = fetch_slot - 1;
+    harness.machine.agnus.vpos = 99;
+    harness.machine.step_cck();
+    assert_eq!(harness.machine.agnus.bplpt[0], 0x1000);
+    assert_eq!(harness.machine.denise.bpldat[0], 0);
+
+    harness.machine.agnus.hpos = fetch_slot - 1;
+    harness.machine.agnus.vpos = 100;
+    harness.machine.step_cck();
+    assert_eq!(harness.machine.agnus.bplpt[0], 0x1002);
+    assert_eq!(harness.machine.denise.bpldat[0], 0xBEEF);
+
+    // Denise sees the horizontal window earlier than Agnus updates the DMA boundary.
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(custom_reg::denise::DIWSTRT, 0x2C81);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(custom_reg::denise::DIWSTOP, 0x2CC1);
+    harness.step_cck(1);
+    assert_eq!(harness.machine.denise.diwstrt, 0x2C81);
+    assert_eq!(harness.machine.agnus.diwstrt, diwstrt);
+    let dma = &harness.machine.agnus.dma;
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 99), None);
+
+    harness.step_cck(3);
+    assert_eq!(harness.machine.agnus.diwstrt, 0x2C81);
+    assert_eq!(harness.machine.agnus.diwstop, 0x2CC1);
+    let dma = &harness.machine.agnus.dma;
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 99), Some(0));
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 299), Some(0));
+    assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 300), None);
+}
+
+#[test]
 fn test_denise_bitplane_mode_and_serialization() {
     let mut harness = MachineHarness::new();
 
@@ -68,17 +142,17 @@ fn test_denise_bitplane_mode_and_serialization() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x100, 0x1200);
+        .write_custom_word(custom_reg::denise::BPLCON0, 0x1200);
 
     // Setup COLOR00 = Black ($000), COLOR01 = Green ($0F0)
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x180, 0x0000);
+        .write_custom_word(custom_reg::denise::COLOR00, 0x0000);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x182, 0x00F0);
+        .write_custom_word(custom_reg::denise::COLOR01, 0x00F0);
     harness.step_cck(2);
 
     assert_eq!(harness.machine.denise.bitplane_count(), 1);
@@ -90,7 +164,7 @@ fn test_denise_bitplane_mode_and_serialization() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x110, 0x8000);
+        .write_custom_word(custom_reg::denise::BPL1DAT, 0x8000);
     harness.step_cck(2);
 
     // Load bitplane data into Denise shifters
@@ -116,7 +190,7 @@ fn test_denise_frame_builder_raster_scanline_generation() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x180, 0x000F);
+        .write_custom_word(custom_reg::denise::COLOR00, 0x000F);
     harness.step_cck(2);
 
     // Step across to line 30 (active visible scanline outside VBlank lines 0..25)
@@ -149,12 +223,12 @@ fn test_machine_loop_agnus_bpl_dma_routed_to_denise() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x096, 0x8300);
+        .write_custom_word(custom_reg::agnus::DMACON, 0x8300);
     // 1 bitplane in BPLCON0 ($1200)
     harness
         .machine
         .memory_bus()
-        .write_custom_word(0x100, 0x1200);
+        .write_custom_word(custom_reg::denise::BPLCON0, 0x1200);
     harness.step_cck(4);
 
     harness.machine.agnus.ddfstrt = 0x38;

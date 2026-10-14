@@ -39,14 +39,15 @@ pub static STEPS_PEA_D16_AN: [MicroStep; 8] = [
 ];
 
 /// PEA (d8, An, Xn): 20 CPU clocks / 10 CCKs (2 reads, 2 writes)
-pub static STEPS_PEA_IDX_AN: [MicroStep; 9] = [
+pub static STEPS_PEA_IDX_AN: [MicroStep; 10] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_pea_idx_an),
-        base_clocks: 4,
+        base_clocks: 2,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
+    common::ALU_IDLE,
     common::PREFETCH_IRC_READ,
     common::PREFETCH_IRC_FINISH,
     common::PUSH_STACK_HIGH_IDLE,
@@ -63,12 +64,12 @@ pub static STEPS_PEA_ABSW: [MicroStep; 8] = [
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
-    common::PREFETCH_IRC_READ,
-    common::PREFETCH_IRC_FINISH,
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
+    common::PREFETCH_NEXT_READ,
+    common::BUS_READ_IDLE,
 ];
 
 /// PEA (xxx).L: 20 CPU clocks / 10 CCKs (3 reads, 2 writes)
@@ -85,12 +86,12 @@ pub static STEPS_PEA_ABSL: [MicroStep; 10] = [
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
-    common::PREFETCH_IRC_READ,
-    common::PREFETCH_IRC_FINISH,
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
+    common::PREFETCH_NEXT_READ,
+    common::BUS_READ_IDLE,
 ];
 
 /// PEA (d16, PC): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
@@ -110,14 +111,15 @@ pub static STEPS_PEA_D16_PC: [MicroStep; 8] = [
 ];
 
 /// PEA (d8, PC, Xn): 20 CPU clocks / 10 CCKs (2 reads, 2 writes)
-pub static STEPS_PEA_IDX_PC: [MicroStep; 9] = [
+pub static STEPS_PEA_IDX_PC: [MicroStep; 10] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_pea_idx_pc),
-        base_clocks: 4,
+        base_clocks: 2,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
+    common::ALU_IDLE,
     common::PREFETCH_IRC_READ,
     common::PREFETCH_IRC_FINISH,
     common::PUSH_STACK_HIGH_IDLE,

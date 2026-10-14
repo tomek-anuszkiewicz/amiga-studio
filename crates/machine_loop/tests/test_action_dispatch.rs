@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use config::custom_reg;
 use config::{A500Config, VideoStandard};
 use machine_loop::BusResult;
 use machine_loop::{A500Machine, AddressBus};
@@ -23,7 +24,9 @@ fn test_dmacon_routing_to_all_subsystems() {
     // SET (bit 15) | DMAEN (bit 9) | BPU (bit 8) | COPEN (bit 7) | BLTEN (bit 6) |
     // SPREN (bit 5) | DSKEN (bit 4) | AUD3..0EN (bits 3..0)
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF096, 0x83FF),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::DMACON), 0x83FF),
         BusResult::Ready(())
     );
 
@@ -44,7 +47,9 @@ fn test_dmacon_routing_to_all_subsystems() {
 
     // Write DMACON = 0x8400 (SET BLTPRI)
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF096, 0x8400),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::DMACON), 0x8400),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -53,7 +58,9 @@ fn test_dmacon_routing_to_all_subsystems() {
 
     // Write DMACON = 0x0200 (CLR DMAEN master enable)
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF096, 0x0200),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::DMACON), 0x0200),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -76,11 +83,15 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
 
     // Program COP1LC via bus: COP1LCH ($080) = 0x0004, COP1LCL ($082) = 0x1000
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF080, 0x0004),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::COP1LCH), 0x0004),
         BusResult::Ready(())
     );
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF082, 0x1000),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::COP1LCL), 0x1000),
         BusResult::Ready(())
     );
 
@@ -92,7 +103,9 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
 
     // Strobe COPJMP1 ($088)
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF088, 0x0000),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::COPJMP1), 0x0000),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -103,11 +116,15 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
 
     // Program COP2LC via bus: COP2LCH ($084) = 0x0005, COP2LCL ($086) = 0x2000
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF084, 0x0005),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::COP2LCH), 0x0005),
         BusResult::Ready(())
     );
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF086, 0x2000),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::COP2LCL), 0x2000),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -117,7 +134,9 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
 
     // Strobe COPJMP2 ($08A)
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF08A, 0x0000),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::COPJMP2), 0x0000),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -133,15 +152,21 @@ fn test_blitter_size_triggers_busy_and_syncs_pointers() {
 
     // Program Blitter pointers in Agnus
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF050, 0x0001),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::BLTAPTH), 0x0001),
         BusResult::Ready(())
     ); // BLTAPTH
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF052, 0x2344),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::BLTAPTL), 0x2344),
         BusResult::Ready(())
     ); // BLTAPTL
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF040, 0x09F0),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::BLTCON0), 0x09F0),
         BusResult::Ready(())
     ); // BLTCON0
     machine.step_cck();
@@ -155,7 +180,9 @@ fn test_blitter_size_triggers_busy_and_syncs_pointers() {
 
     // Write BLTSIZE ($058) = 0x0404 (4 lines of 4 words)
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF058, 0x0404),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::BLTSIZE), 0x0404),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -225,7 +252,9 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
 
     // Enable Floppy DMA via DMACON ($DFF096) = 0x8210 (SET bit 15, DMAEN bit 9, DSKEN bit 4)
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF096, 0x8210),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::paula::DMACON), 0x8210),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -235,7 +264,9 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     // Test DSKLEN 2-write arming sequence
     // First write: DSKLEN ($DFF024) = 0x9000 (SET bit 15, len = 0x1000)
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF024, 0x9000),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::paula::DSKLEN), 0x9000),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -247,7 +278,9 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
 
     // Second write: DSKLEN = 0x9000
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF024, 0x9000),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::paula::DSKLEN), 0x9000),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -263,12 +296,14 @@ fn test_blitter_finish_asserts_blitint_and_escalates_ipl() {
 
     // Enable master INTEN (bit 14) and Level 3 BLIT interrupt (bit 6): 0xC040
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF09A, 0xC040),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::paula::INTENA), 0xC040),
         BusResult::Ready(())
     );
     machine.step_cck(); // Mature INTENA write
 
-    assert_eq!(machine.cpu.state.ipl, 0);
+    assert_eq!(machine.cpu.state.ipl(), 0);
     assert!(!machine.agnus.blitter.is_busy);
 
     // Trigger a blit
@@ -282,7 +317,7 @@ fn test_blitter_finish_asserts_blitint_and_escalates_ipl() {
     // Step 1 CCK: machine loop polls Agnus blitter IRQ, sets Paula INTREQ bit 6, arbitrates IPL to 3
     machine.step_cck();
     assert_eq!(machine.paula.interrupts.intreq & 0x0040, 0x0040);
-    assert_eq!(machine.cpu.state.ipl, 3);
+    assert_eq!(machine.cpu.state.ipl(), 3);
 }
 
 #[test]
@@ -291,18 +326,24 @@ fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
 
     // Enable master INTEN (bit 14) and Audio Channel 0 interrupt (bit 7): 0xC080
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF09A, 0xC080),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::paula::INTENA), 0xC080),
         BusResult::Ready(())
     );
     machine.step_cck(); // Mature INTENA write
 
     // Set Audio Channel 0 loop address via AUD0LCH/LCL: $00025000
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF0A0, 0x0002),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::AUD0LCH), 0x0002),
         BusResult::Ready(())
     );
     assert_eq!(
-        machine.memory_bus().write_word(0xDFF0A2, 0x5000),
+        machine
+            .memory_bus()
+            .write_word(0xDFF000 + u32::from(custom_reg::agnus::AUD0LCL), 0x5000),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -321,7 +362,7 @@ fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
     machine.step_cck();
     assert_eq!(machine.agnus.audpt[0], 0x0002_5000);
     assert_eq!(machine.paula.interrupts.intreq & 0x0080, 0x0080);
-    assert_eq!(machine.cpu.state.ipl, 4);
+    assert_eq!(machine.cpu.state.ipl(), 4);
 }
 
 #[test]
@@ -357,7 +398,10 @@ fn test_floppy_ciab_prb_polling_and_dskbytr_paula_latching() {
     );
 
     // CPU reads DSKBYTR from Paula via memory bus
-    let val = match machine.memory_bus().read_word(0xDFF01A) {
+    let val = match machine
+        .memory_bus()
+        .read_word(0xDFF000 + u32::from(custom_reg::paula::DSKBYTR))
+    {
         BusResult::Ready(v) => v,
         _ => panic!("Expected Ready"),
     };

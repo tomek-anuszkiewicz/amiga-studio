@@ -72,12 +72,23 @@ fn test_rtc_odd_byte_addressing() {
     );
 
     // Odd byte addresses return active 4-bit nibbles ($00..$0F)
-    assert!(machine.memory_bus().read_byte(0xDC0001).ok().unwrap() <= 0x0F);
-    assert!(machine.memory_bus().read_byte(0xDC0005).ok().unwrap() <= 0x0F);
-    assert!(machine.memory_bus().read_byte(0xDC0009).ok().unwrap() <= 0x0F);
+    assert!(matches!(
+        machine.memory_bus().read_byte(0xDC0001),
+        BusResult::Ready(0..=0x0F)
+    ));
+    assert!(matches!(
+        machine.memory_bus().read_byte(0xDC0005),
+        BusResult::Ready(0..=0x0F)
+    ));
+    assert!(matches!(
+        machine.memory_bus().read_byte(0xDC0009),
+        BusResult::Ready(0..=0x0F)
+    ));
 
     // Even byte writes do not alter odd byte register state
-    let before = machine.memory_bus().read_byte(0xDC0001).ok().unwrap();
+    let BusResult::Ready(before) = machine.memory_bus().read_byte(0xDC0001) else {
+        panic!("Expected a completed bus read");
+    };
     let _ = machine.memory_bus().write_byte(0xDC0000, 0x0A);
     assert_eq!(
         machine.memory_bus().read_byte(0xDC0001),
@@ -170,7 +181,9 @@ fn test_rtc_12_hour_mode() {
     machine.rtc.set_time(732205628);
 
     // Switch to 12-hour mode by clearing Bit 2 of Control Register F ($DC003D)
-    let ctrl_f = machine.memory_bus().read_byte(0xDC003D).ok().unwrap();
+    let BusResult::Ready(ctrl_f) = machine.memory_bus().read_byte(0xDC003D) else {
+        panic!("Expected a completed bus read");
+    };
     let _ = machine.memory_bus().write_byte(0xDC003D, ctrl_f & !0x04);
 
     // In 12-hour mode:

@@ -43,7 +43,7 @@ if (-not (Ensure-AmigaQdrantContainer)) {
 }
 
 if ($CheckOnly) {
-    & $RagQdrantCommand.Path --status --index-json $RagIndexJson
+    & $RagQdrantCommand.Path --status
     exit $LASTEXITCODE
 }
 
@@ -64,5 +64,5 @@ foreach ($IndexArguments in $IndexCommands) {
     }
 }
 
-& $RagQdrantCommand.Path --status --index-json $RagIndexJson
+& $RagQdrantCommand.Path --status
 exit $LASTEXITCODE

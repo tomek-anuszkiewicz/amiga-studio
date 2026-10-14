@@ -17,7 +17,6 @@ def build_search_command(
     query: str,
     sources: Optional[Union[List[str], str]],
     limit: int,
-    index_json: str,
 ) -> List[str]:
     """Build one CLI search using its comma-separated source-tag filter."""
     if isinstance(sources, str):
@@ -27,7 +26,7 @@ def build_search_command(
     else:
         source_tags = []
 
-    command = ["search", query, "--index-json", index_json]
+    command = ["search", query]
     unique_source_tags = list(dict.fromkeys(source_tags))
     if unique_source_tags:
         command.extend(["--source", ",".join(unique_source_tags)])

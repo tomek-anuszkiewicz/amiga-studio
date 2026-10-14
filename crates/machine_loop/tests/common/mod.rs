@@ -5,6 +5,8 @@
 
 use machine_loop::A500Machine;
 
+pub mod continuation;
+
 /// Fluent test harness wrapping an initialized `A500Machine` in low-memory Chip RAM mode
 #[allow(dead_code)]
 pub struct MachineHarness {
@@ -115,7 +117,7 @@ impl MachineHarness {
     /// Steps the machine until CPU reaches `target_pc` or `max_cck` elapsed
     pub fn step_until_pc(&mut self, target_pc: u32, max_cck: u64) -> bool {
         for _ in 0..max_cck {
-            if self.machine.cpu.state.instruction_pc == target_pc {
+            if self.machine.cpu.state.instruction_pc() == target_pc {
                 return true;
             }
             self.machine.step_cck();

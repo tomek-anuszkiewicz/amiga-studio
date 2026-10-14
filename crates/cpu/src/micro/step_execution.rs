@@ -10,11 +10,11 @@ impl Cpu {
 
     /// CCK1: Reads source byte from memory into `self.state.micro.source`
     pub fn step_bus_read_src_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr & 0x00FF_FFFF;
+        let addr = self.state.micro().ea_addr & 0x00FF_FFFF;
         match bus.read_byte(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.source = data as u32;
+                self.state.micro_mut().source = data as u32;
                 BusResult::Ready(())
             }
         }
@@ -22,7 +22,7 @@ impl Cpu {
 
     /// CCK1: Reads source word from memory into `self.state.micro.source`
     pub fn step_bus_read_src_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr;
+        let addr = self.state.micro().ea_addr;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -31,7 +31,7 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.source = data as u32;
+                self.state.micro_mut().source = data as u32;
                 BusResult::Ready(())
             }
         }
@@ -39,11 +39,11 @@ impl Cpu {
 
     /// CCK1: Reads destination byte from memory into `self.state.micro.destination`
     pub fn step_bus_read_dst_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr & 0x00FF_FFFF;
+        let addr = self.state.micro().ea_addr & 0x00FF_FFFF;
         match bus.read_byte(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.destination = data as u32;
+                self.state.micro_mut().destination = data as u32;
                 BusResult::Ready(())
             }
         }
@@ -51,7 +51,7 @@ impl Cpu {
 
     /// CCK1: Reads destination word from memory into `self.state.micro.destination`
     pub fn step_bus_read_dst_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr;
+        let addr = self.state.micro().ea_addr;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -60,7 +60,7 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.destination = data as u32;
+                self.state.micro_mut().destination = data as u32;
                 BusResult::Ready(())
             }
         }
@@ -68,11 +68,11 @@ impl Cpu {
 
     /// CCK1: Reads source byte from memory using `self.state.micro.addr1` into `self.state.micro.source`
     pub fn step_bus_read_addr1_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.addr1 & 0x00FF_FFFF;
+        let addr = self.state.micro().addr1 & 0x00FF_FFFF;
         match bus.read_byte(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.source = data as u32;
+                self.state.micro_mut().source = data as u32;
                 BusResult::Ready(())
             }
         }
@@ -80,7 +80,7 @@ impl Cpu {
 
     /// CCK1: Reads source word from memory using `self.state.micro.addr1` into `self.state.micro.source`
     pub fn step_bus_read_addr1_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.addr1;
+        let addr = self.state.micro().addr1;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -89,7 +89,7 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.source = data as u32;
+                self.state.micro_mut().source = data as u32;
                 BusResult::Ready(())
             }
         }
@@ -97,11 +97,11 @@ impl Cpu {
 
     /// CCK1: Reads destination byte from memory using `self.state.micro.addr2` into `self.state.micro.destination`
     pub fn step_bus_read_addr2_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.addr2 & 0x00FF_FFFF;
+        let addr = self.state.micro().addr2 & 0x00FF_FFFF;
         match bus.read_byte(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.destination = data as u32;
+                self.state.micro_mut().destination = data as u32;
                 BusResult::Ready(())
             }
         }
@@ -109,7 +109,7 @@ impl Cpu {
 
     /// CCK1: Reads destination word from memory using `self.state.micro.addr2` into `self.state.micro.destination`
     pub fn step_bus_read_addr2_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.addr2;
+        let addr = self.state.micro().addr2;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -118,7 +118,7 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.destination = data as u32;
+                self.state.micro_mut().destination = data as u32;
                 BusResult::Ready(())
             }
         }
@@ -126,7 +126,7 @@ impl Cpu {
 
     /// CCK1: Reads high word of 32-bit source operand using `self.state.micro.addr1` into bits 16..31 of `source`
     pub fn step_bus_read_addr1_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.addr1;
+        let addr = self.state.micro().addr1;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -135,7 +135,7 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.source = (data as u32) << 16;
+                self.state.micro_mut().source = (data as u32) << 16;
                 BusResult::Ready(())
             }
         }
@@ -143,7 +143,7 @@ impl Cpu {
 
     /// CCK1: Reads low word of 32-bit source operand using `self.state.micro.addr1.wrapping_add(2)` into bits 0..15 of `source`
     pub fn step_bus_read_addr1_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.addr1.wrapping_add(2);
+        let addr = self.state.micro().addr1.wrapping_add(2);
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -152,8 +152,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.source =
-                    (self.state.micro.source & 0xFFFF_0000) | (data as u32 & 0xFFFF);
+                self.state.micro_mut().source =
+                    (self.state.micro().source & 0xFFFF_0000) | (data as u32 & 0xFFFF);
                 BusResult::Ready(())
             }
         }
@@ -161,7 +161,7 @@ impl Cpu {
 
     /// CCK1: Reads high word of 32-bit destination operand using `self.state.micro.addr2` into bits 16..31 of `destination`
     pub fn step_bus_read_addr2_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.addr2;
+        let addr = self.state.micro().addr2;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -170,7 +170,7 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.destination = (data as u32) << 16;
+                self.state.micro_mut().destination = (data as u32) << 16;
                 BusResult::Ready(())
             }
         }
@@ -178,7 +178,7 @@ impl Cpu {
 
     /// CCK1: Reads low word of 32-bit destination operand using `self.state.micro.addr2.wrapping_add(2)` into bits 0..15 of `destination`
     pub fn step_bus_read_addr2_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.addr2.wrapping_add(2);
+        let addr = self.state.micro().addr2.wrapping_add(2);
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -187,8 +187,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.destination =
-                    (self.state.micro.destination & 0xFFFF_0000) | (data as u32 & 0xFFFF);
+                self.state.micro_mut().destination =
+                    (self.state.micro().destination & 0xFFFF_0000) | (data as u32 & 0xFFFF);
                 BusResult::Ready(())
             }
         }
@@ -196,8 +196,8 @@ impl Cpu {
 
     /// CCK2: Writes byte from `self.state.micro.destination` to memory using `self.state.micro.addr2`
     pub fn step_bus_write_addr2_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.addr2;
-        let val = (self.state.micro.destination & 0xFF) as u8;
+        let addr = self.state.micro().addr2;
+        let val = (self.state.micro().destination & 0xFF) as u8;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_byte(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
@@ -207,12 +207,12 @@ impl Cpu {
 
     /// CCK2: Writes word from `self.state.micro.destination` to memory using `self.state.micro.addr2`
     pub fn step_bus_write_addr2_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.addr2;
+        let addr = self.state.micro().addr2;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, false, false);
             return BusResult::Ready(());
         }
-        let val = (self.state.micro.destination & 0xFFFF) as u16;
+        let val = (self.state.micro().destination & 0xFFFF) as u16;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
@@ -222,12 +222,12 @@ impl Cpu {
 
     /// CCK2: Writes low word of 32-bit destination to memory at predecrement address `addr2 + 2`
     pub fn step_bus_write_addr2_pd_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.addr2.wrapping_add(2);
+        let addr = self.state.micro().addr2.wrapping_add(2);
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, false, false);
             return BusResult::Ready(());
         }
-        let val = (self.state.micro.destination & 0xFFFF) as u16;
+        let val = (self.state.micro().destination & 0xFFFF) as u16;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
@@ -237,12 +237,12 @@ impl Cpu {
 
     /// CCK2: Writes high word of 32-bit destination to memory at predecrement address `addr2`
     pub fn step_bus_write_addr2_pd_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.addr2;
+        let addr = self.state.micro().addr2;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, false, false);
             return BusResult::Ready(());
         }
-        let val = ((self.state.micro.destination >> 16) & 0xFFFF) as u16;
+        let val = ((self.state.micro().destination >> 16) & 0xFFFF) as u16;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
@@ -252,7 +252,7 @@ impl Cpu {
 
     /// CCK1: Reads high word of 32-bit source operand into bits 16..31 of `source`
     pub fn step_bus_read_src_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr;
+        let addr = self.state.micro().ea_addr;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -261,7 +261,7 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.source = (data as u32) << 16;
+                self.state.micro_mut().source = (data as u32) << 16;
                 BusResult::Ready(())
             }
         }
@@ -269,7 +269,7 @@ impl Cpu {
 
     /// CCK1: Reads low word of 32-bit source operand into bits 0..15 of `source`
     pub fn step_bus_read_src_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr.wrapping_add(2);
+        let addr = self.state.micro().ea_addr.wrapping_add(2);
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -278,8 +278,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.source =
-                    (self.state.micro.source & 0xFFFF_0000) | (data as u32 & 0xFFFF);
+                self.state.micro_mut().source =
+                    (self.state.micro().source & 0xFFFF_0000) | (data as u32 & 0xFFFF);
                 BusResult::Ready(())
             }
         }
@@ -287,7 +287,7 @@ impl Cpu {
 
     /// CCK1: Reads high word of 32-bit destination operand into bits 16..31 of `destination`
     pub fn step_bus_read_dst_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr;
+        let addr = self.state.micro().ea_addr;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -296,7 +296,7 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.destination = (data as u32) << 16;
+                self.state.micro_mut().destination = (data as u32) << 16;
                 BusResult::Ready(())
             }
         }
@@ -304,7 +304,7 @@ impl Cpu {
 
     /// CCK1: Reads low word of 32-bit destination operand into bits 0..15 of `destination`
     pub fn step_bus_read_dst_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr.wrapping_add(2);
+        let addr = self.state.micro().ea_addr.wrapping_add(2);
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -313,8 +313,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.destination =
-                    (self.state.micro.destination & 0xFFFF_0000) | (data as u32 & 0xFFFF);
+                self.state.micro_mut().destination =
+                    (self.state.micro().destination & 0xFFFF_0000) | (data as u32 & 0xFFFF);
                 BusResult::Ready(())
             }
         }
@@ -322,7 +322,7 @@ impl Cpu {
 
     /// CCK1: Reads high word of 32-bit split source operand (predecrement) into bits 16..31 of `source`
     pub fn step_bus_read_src_split_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr;
+        let addr = self.state.micro().ea_addr;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -331,8 +331,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.source =
-                    (self.state.micro.source & 0x0000_FFFF) | ((data as u32) << 16);
+                self.state.micro_mut().source =
+                    (self.state.micro().source & 0x0000_FFFF) | ((data as u32) << 16);
                 BusResult::Ready(())
             }
         }
@@ -340,7 +340,7 @@ impl Cpu {
 
     /// CCK1: Reads high word of 32-bit split destination operand (predecrement) into bits 16..31 of `destination`
     pub fn step_bus_read_dst_split_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr;
+        let addr = self.state.micro().ea_addr;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
@@ -349,8 +349,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.destination =
-                    (self.state.micro.destination & 0x0000_FFFF) | ((data as u32) << 16);
+                self.state.micro_mut().destination =
+                    (self.state.micro().destination & 0x0000_FFFF) | ((data as u32) << 16);
                 BusResult::Ready(())
             }
         }
@@ -358,8 +358,8 @@ impl Cpu {
 
     /// CCK2: Writes byte from `self.state.micro.destination` to memory
     pub fn step_bus_write_dst_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr;
-        let val = (self.state.micro.destination & 0xFF) as u8;
+        let addr = self.state.micro().ea_addr;
+        let val = (self.state.micro().destination & 0xFF) as u8;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_byte(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
@@ -367,14 +367,23 @@ impl Cpu {
         }
     }
 
+    /// CCK1: Checks destination alignment before the word/long write bus cycle.
+    pub fn step_bus_write_dst_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro().ea_addr;
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, false, false);
+        }
+        BusResult::Ready(())
+    }
+
     /// CCK2: Writes word from `self.state.micro.destination` to memory
     pub fn step_bus_write_dst_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr;
+        let addr = self.state.micro().ea_addr;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, false, false);
             return BusResult::Ready(());
         }
-        let val = (self.state.micro.destination & 0xFFFF) as u16;
+        let val = (self.state.micro().destination & 0xFFFF) as u16;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
@@ -384,12 +393,12 @@ impl Cpu {
 
     /// CCK2: Writes high word of 32-bit destination to memory
     pub fn step_bus_write_dst_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr;
+        let addr = self.state.micro().ea_addr;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, false, false);
             return BusResult::Ready(());
         }
-        let val = ((self.state.micro.destination >> 16) & 0xFFFF) as u16;
+        let val = ((self.state.micro().destination >> 16) & 0xFFFF) as u16;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
@@ -397,14 +406,33 @@ impl Cpu {
         }
     }
 
-    /// CCK2: Writes low word of 32-bit destination to memory + 2
-    pub fn step_bus_write_dst_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr.wrapping_add(2);
+    /// CCK2: Completes a predecrement word store and retires the staged prefetch.
+    pub fn step_bus_write_dst_pd_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro().ea_addr;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, false, false);
             return BusResult::Ready(());
         }
-        let val = (self.state.micro.destination & 0xFFFF) as u16;
+        let val = self.state.micro().destination as u16;
+        match bus.write_word(addr & 0x00FF_FFFF, val) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(()) => {
+                self.state.set_ir(self.state.prefetch());
+                self.state.set_prefetch(self.state.micro().irc);
+                self.state.micro_mut().prefetch_retired = true;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK2: Writes low word of 32-bit destination to memory + 2
+    pub fn step_bus_write_dst_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro().ea_addr.wrapping_add(2);
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, false, false);
+            return BusResult::Ready(());
+        }
+        let val = (self.state.micro().destination & 0xFFFF) as u16;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
@@ -414,17 +442,17 @@ impl Cpu {
 
     /// CCK2: Writes low word of 32-bit destination to memory at predecrement address (An - 2)
     pub fn step_bus_write_dst_pd_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr;
+        let addr = self.state.micro().ea_addr;
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, false, false);
             return BusResult::Ready(());
         }
-        let val = (self.state.micro.destination & 0xFFFF) as u16;
+        let val = (self.state.micro().destination & 0xFFFF) as u16;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                let reg_dst = self.state.micro.reg_dst as usize;
+                let reg_dst = self.state.micro().reg_dst as usize;
                 self.state.set_a_long(reg_dst, addr);
                 BusResult::Ready(())
             }
@@ -433,23 +461,22 @@ impl Cpu {
 
     /// CCK2: Writes high word of 32-bit destination to memory at predecrement address (An - 4)
     pub fn step_bus_write_dst_pd_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro.ea_addr.wrapping_sub(2);
+        let addr = self.state.micro().ea_addr.wrapping_sub(2);
         if (addr & 1) != 0 {
             self.trigger_address_error(addr, false, false);
             return BusResult::Ready(());
         }
-        let val = ((self.state.micro.destination >> 16) & 0xFFFF) as u16;
+        let val = ((self.state.micro().destination >> 16) & 0xFFFF) as u16;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                let reg_dst = self.state.micro.reg_dst as usize;
+                let reg_dst = self.state.micro().reg_dst as usize;
                 self.state.set_a_long(reg_dst, addr);
-                self.state.micro.ea_addr = addr;
-                self.state.pc = self.state.pc.wrapping_add(2);
-                self.state.ir = self.state.prefetch;
-                self.state.prefetch = self.state.micro.irc;
-                self.state.micro.prefetch_retired = true;
+                self.state.micro_mut().ea_addr = addr;
+                self.state.set_ir(self.state.prefetch());
+                self.state.set_prefetch(self.state.micro().irc);
+                self.state.micro_mut().prefetch_retired = true;
                 BusResult::Ready(())
             }
         }
@@ -457,11 +484,11 @@ impl Cpu {
 
     /// CCK1: Extension word fetch from PC directly into `self.state.prefetch`
     pub fn step_fetch_extension_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.pc & 0x00FF_FFFF;
+        let addr = self.state.pc() & 0x00FF_FFFF;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.prefetch = data;
+                self.state.set_prefetch(data);
                 BusResult::Ready(())
             }
         }
@@ -469,17 +496,17 @@ impl Cpu {
 
     /// CCK2: Extension word finish - advances PC += 2
     pub fn step_fetch_extension_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        self.state.pc = self.state.pc.wrapping_add(2);
+        self.state.set_pc(self.state.pc().wrapping_add(2));
         BusResult::Ready(())
     }
 
     /// CCK1: Prefetch next opcode from PC into `self.state.micro.irc`
     pub fn step_prefetch_next_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.pc & 0x00FF_FFFF;
+        let addr = self.state.pc() & 0x00FF_FFFF;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.irc = data;
+                self.state.micro_mut().irc = data;
                 BusResult::Ready(())
             }
         }
@@ -487,10 +514,16 @@ impl Cpu {
 
     /// CCK2: Prefetch to IRC finish - advances prefetch pipeline into IR
     pub fn step_prefetch_irc_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        self.state.ir = self.state.prefetch;
-        self.state.prefetch = self.state.micro.irc;
-        self.state.pc = self.state.pc.wrapping_add(2);
-        self.state.micro.prefetch_retired = true;
+        self.state.set_ir(self.state.prefetch());
+        self.state.set_prefetch(self.state.micro().irc);
+        self.state.set_pc(self.state.pc().wrapping_add(2));
+        self.state.micro_mut().prefetch_retired = true;
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Advances the completed prefetch address while retaining IR until the store completes.
+    pub fn step_prefetch_irc_advance_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
+        self.state.set_pc(self.state.pc().wrapping_add(2));
         BusResult::Ready(())
     }
 }

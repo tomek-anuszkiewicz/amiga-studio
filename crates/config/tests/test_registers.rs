@@ -1,25 +1,136 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use config::custom_reg::*;
+use config::custom_reg::{self, agnus, denise, paula};
 use config::mask::*;
 
 #[test]
 fn test_register_offsets_uniqueness_and_alignment() {
     // Collect all major register offsets to verify word alignment (even addresses)
     let regs = [
-        DMACONR, VPOSR, VHPOSR, DSKDATR, JOY0DAT, JOY1DAT, CLXDAT, ADKCONR, POT0DAT, POT1DAT,
-        POTGOR, SERDATR, DSKBYTR, INTENAR, INTREQR, DSKPTH, DSKPTL, REFPTR, DSKLEN, DSKDAT, VPOSW,
-        VHPOSW, COPCON, SERDAT, SERPER, POTGO, JOYTEST, STREQU, STRVBL, STRHOR, STRBUS, BLTCON0,
-        BLTCON1, BLTAFWM, BLTALWM, BLTCPTH, BLTCPTL, BLTBPTH, BLTBPTL, BLTAPTH, BLTAPTL, BLTDPTH,
-        BLTDPTL, BLTSIZE, BLTCMOD, BLTBMOD, BLTAMOD, BLTDMOD, BLTCDAT, BLTBDAT, BLTADAT, DSKSYNC,
-        COP1LCH, COP1LCL, COP2LCH, COP2LCL, COPJMP1, COPJMP2, COPINS, DIWSTRT, DIWSTOP, DDFSTRT,
-        DDFSTOP, DMACON, CLXCON, INTENA, INTREQ, ADKCON, AUD0PTH, AUD0PTL, AUD0LEN, AUD0PER,
-        AUD0VOL, AUD0DAT, AUD1PTH, AUD1PTL, AUD1LEN, AUD1PER, AUD1VOL, AUD1DAT, AUD2PTH, AUD2PTL,
-        AUD2LEN, AUD2PER, AUD2VOL, AUD2DAT, AUD3PTH, AUD3PTL, AUD3LEN, AUD3PER, AUD3VOL, AUD3DAT,
-        BPL1PTH, BPL1PTL, BPL2PTH, BPL2PTL, BPL3PTH, BPL3PTL, BPL4PTH, BPL4PTL, BPL5PTH, BPL5PTL,
-        BPL6PTH, BPL6PTL, BPLCON0, BPLCON1, BPLCON2, BPL1MOD, BPL2MOD, BPL1DAT, BPL2DAT, BPL3DAT,
-        BPL4DAT, BPL5DAT, BPL6DAT, SPR0PTH, SPR0PTL, SPR0POS, SPR0CTL, SPR0DATA, SPR0DATB, COLOR00,
-        COLOR01, COLOR31,
+        agnus::DMACONR,
+        agnus::VPOSR,
+        agnus::VHPOSR,
+        paula::DSKDATR,
+        denise::JOY0DAT,
+        denise::JOY1DAT,
+        denise::CLXDAT,
+        paula::ADKCONR,
+        paula::POT0DAT,
+        paula::POT1DAT,
+        paula::POTGOR,
+        paula::SERDATR,
+        paula::DSKBYTR,
+        paula::INTENAR,
+        paula::INTREQR,
+        agnus::DSKPTH,
+        agnus::DSKPTL,
+        agnus::REFPTR,
+        paula::DSKLEN,
+        paula::DSKDAT,
+        agnus::VPOSW,
+        agnus::VHPOSW,
+        agnus::COPCON,
+        paula::SERDAT,
+        paula::SERPER,
+        paula::POTGO,
+        denise::JOYTEST,
+        denise::STREQU,
+        denise::STRVBL,
+        denise::STRHOR,
+        denise::STRLONG,
+        agnus::BLTCON0,
+        agnus::BLTCON1,
+        agnus::BLTAFWM,
+        agnus::BLTALWM,
+        agnus::BLTCPTH,
+        agnus::BLTCPTL,
+        agnus::BLTBPTH,
+        agnus::BLTBPTL,
+        agnus::BLTAPTH,
+        agnus::BLTAPTL,
+        agnus::BLTDPTH,
+        agnus::BLTDPTL,
+        agnus::BLTSIZE,
+        agnus::BLTCMOD,
+        agnus::BLTBMOD,
+        agnus::BLTAMOD,
+        agnus::BLTDMOD,
+        agnus::BLTCDAT,
+        agnus::BLTBDAT,
+        agnus::BLTADAT,
+        paula::DSKSYNC,
+        agnus::COP1LCH,
+        agnus::COP1LCL,
+        agnus::COP2LCH,
+        agnus::COP2LCL,
+        agnus::COPJMP1,
+        agnus::COPJMP2,
+        agnus::COPINS,
+        agnus::DIWSTRT,
+        agnus::DIWSTOP,
+        agnus::DDFSTRT,
+        agnus::DDFSTOP,
+        agnus::DMACON,
+        denise::CLXCON,
+        paula::INTENA,
+        paula::INTREQ,
+        paula::ADKCON,
+        agnus::AUD0LCH,
+        agnus::AUD0LCL,
+        paula::AUD0LEN,
+        paula::AUD0PER,
+        paula::AUD0VOL,
+        paula::AUD0DAT,
+        agnus::AUD1LCH,
+        agnus::AUD1LCL,
+        paula::AUD1LEN,
+        paula::AUD1PER,
+        paula::AUD1VOL,
+        paula::AUD1DAT,
+        agnus::AUD2LCH,
+        agnus::AUD2LCL,
+        paula::AUD2LEN,
+        paula::AUD2PER,
+        paula::AUD2VOL,
+        paula::AUD2DAT,
+        agnus::AUD3LCH,
+        agnus::AUD3LCL,
+        paula::AUD3LEN,
+        paula::AUD3PER,
+        paula::AUD3VOL,
+        paula::AUD3DAT,
+        agnus::BPL1PTH,
+        agnus::BPL1PTL,
+        agnus::BPL2PTH,
+        agnus::BPL2PTL,
+        agnus::BPL3PTH,
+        agnus::BPL3PTL,
+        agnus::BPL4PTH,
+        agnus::BPL4PTL,
+        agnus::BPL5PTH,
+        agnus::BPL5PTL,
+        agnus::BPL6PTH,
+        agnus::BPL6PTL,
+        denise::BPLCON0,
+        denise::BPLCON1,
+        denise::BPLCON2,
+        agnus::BPL1MOD,
+        agnus::BPL2MOD,
+        denise::BPL1DAT,
+        denise::BPL2DAT,
+        denise::BPL3DAT,
+        denise::BPL4DAT,
+        denise::BPL5DAT,
+        denise::BPL6DAT,
+        agnus::SPR0PTH,
+        agnus::SPR0PTL,
+        denise::SPR0POS,
+        denise::SPR0CTL,
+        denise::SPR0DATA,
+        denise::SPR0DATB,
+        denise::COLOR00,
+        denise::COLOR01,
+        denise::COLOR31,
     ];
 
     for &reg in &regs {
@@ -60,8 +171,6 @@ fn test_copcon_cdang_mask() {
 
 #[test]
 fn test_custom_reg_chip_namespaces_and_multi_chip_decoding() {
-    use config::custom_reg;
-
     // Agnus specific registers
     assert_eq!(custom_reg::agnus::BLTCON0, 0x040);
     assert_eq!(custom_reg::agnus::COP1LCH, 0x080);
@@ -83,13 +192,10 @@ fn test_custom_reg_chip_namespaces_and_multi_chip_decoding() {
     // Multi-chip decoded registers: physically wired to and decoded by multiple chips
     assert_eq!(custom_reg::agnus::DMACON, 0x096);
     assert_eq!(custom_reg::paula::DMACON, 0x096);
-    assert_eq!(custom_reg::DMACON, 0x096);
 
     assert_eq!(custom_reg::agnus::DMACONR, 0x002);
     assert_eq!(custom_reg::paula::DMACONR, 0x002);
-    assert_eq!(custom_reg::DMACONR, 0x002);
 
     assert_eq!(custom_reg::denise::BPLCON0, 0x100);
     assert_eq!(custom_reg::agnus::BPLCON0, 0x100);
-    assert_eq!(custom_reg::BPLCON0, 0x100);
 }

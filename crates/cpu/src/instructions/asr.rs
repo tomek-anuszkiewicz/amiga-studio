@@ -92,7 +92,7 @@ pub fn alu_asr_b_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asr_b(state, count, val);
     state.set_d_byte(reg_dst as usize, res);
     let duration = 2 + (2 * count);
-    state.micro.clocks_remaining = duration as u16;
+    state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_asr_w_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
@@ -101,7 +101,7 @@ pub fn alu_asr_w_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asr_w(state, count, val);
     state.set_d_word(reg_dst as usize, res);
     let duration = 2 + (2 * count);
-    state.micro.clocks_remaining = duration as u16;
+    state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_asr_l_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
@@ -110,7 +110,7 @@ pub fn alu_asr_l_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asr_l(state, count, val);
     state.set_d_long(reg_dst as usize, res);
     let duration = 4 + (2 * count);
-    state.micro.clocks_remaining = duration as u16;
+    state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_asr_b_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
@@ -119,7 +119,7 @@ pub fn alu_asr_b_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asr_b(state, count, val);
     state.set_d_byte(reg_dst as usize, res);
     let duration = 2 + (2 * count);
-    state.micro.clocks_remaining = duration as u16;
+    state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_asr_w_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
@@ -128,7 +128,7 @@ pub fn alu_asr_w_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asr_w(state, count, val);
     state.set_d_word(reg_dst as usize, res);
     let duration = 2 + (2 * count);
-    state.micro.clocks_remaining = duration as u16;
+    state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_asr_l_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
@@ -137,13 +137,13 @@ pub fn alu_asr_l_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asr_l(state, count, val);
     state.set_d_long(reg_dst as usize, res);
     let duration = 4 + (2 * count);
-    state.micro.clocks_remaining = duration as u16;
+    state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_asr_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = (state.micro.destination & 0xFFFF) as u16;
+    let d = (state.micro().destination & 0xFFFF) as u16;
     let res = asr_w(state, 1, d);
-    state.micro.destination = (state.micro.destination & !0xFFFF) | (res as u32);
+    state.micro_mut().destination = (state.micro().destination & !0xFFFF) | (res as u32);
 }
 
 // ============================================================================
@@ -151,35 +151,35 @@ pub fn alu_asr_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_ASR_B_IMM: [MicroStep; 3] = [
-    MicroStep::alu(alu_asr_b_imm_dn),
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_asr_b_imm_dn),
 ];
 pub static STEPS_ASR_W_IMM: [MicroStep; 3] = [
-    MicroStep::alu(alu_asr_w_imm_dn),
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_asr_w_imm_dn),
 ];
 pub static STEPS_ASR_L_IMM: [MicroStep; 3] = [
-    MicroStep::alu(alu_asr_l_imm_dn),
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_asr_l_imm_dn),
 ];
 
 pub static STEPS_ASR_B_REG: [MicroStep; 3] = [
-    MicroStep::alu(alu_asr_b_reg_dn),
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_asr_b_reg_dn),
 ];
 pub static STEPS_ASR_W_REG: [MicroStep; 3] = [
-    MicroStep::alu(alu_asr_w_reg_dn),
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_asr_w_reg_dn),
 ];
 pub static STEPS_ASR_L_REG: [MicroStep; 3] = [
-    MicroStep::alu(alu_asr_l_reg_dn),
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
+    MicroStep::alu(alu_asr_l_reg_dn),
 ];
 
 // ============================================================================
@@ -218,12 +218,13 @@ pub static STEPS_ASR_W_PI: [MicroStep; 6] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_WORD,
 ];
-pub static STEPS_ASR_W_PD: [MicroStep; 6] = [
+pub static STEPS_ASR_W_PD: [MicroStep; 7] = [
     MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_dst_word),
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_w),
         base_clocks: 2,
     },
+    common::READ_DST_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),

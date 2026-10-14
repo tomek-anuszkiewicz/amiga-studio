@@ -94,12 +94,12 @@ impl DebuggerSession {
         self.capture_memory_snapshot(self.prev_hex_base);
         self.prev_cpu_state = Some(self.machine.cpu.state.clone());
 
-        let pc = self.machine.cpu.state.instruction_pc;
+        let pc = self.machine.cpu.state.instruction_pc();
         if self.temporal.is_recording() {
             self.temporal.record(
                 self.machine.cck,
                 pc,
-                self.machine.cpu.state.ir,
+                self.machine.cpu.state.ir(),
                 self.machine.cpu.state.clone(),
             );
         }
@@ -109,7 +109,7 @@ impl DebuggerSession {
         self.debugger.trace.record(
             self.machine.cck,
             pc,
-            self.machine.cpu.state.ir,
+            self.machine.cpu.state.ir(),
             disasm.format_line(),
             self.machine.cpu.state.clone(),
         );
@@ -153,7 +153,7 @@ impl DebuggerSession {
 
         let mut steps = 0;
         while steps < max_instructions {
-            let next_pc = self.machine.cpu.state.instruction_pc;
+            let next_pc = self.machine.cpu.state.instruction_pc();
             if self
                 .debugger
                 .breakpoints
@@ -162,7 +162,7 @@ impl DebuggerSession {
                 self.is_running = false;
                 break;
             }
-            if self.machine.cpu.state.halted || self.machine.cpu.state.stopped {
+            if self.machine.cpu.state.is_halted() || self.machine.cpu.state.is_stopped() {
                 self.is_running = false;
                 break;
             }
@@ -170,7 +170,7 @@ impl DebuggerSession {
             self.step_instruction();
             steps += 1;
 
-            if self.machine.cpu.state.halted || self.machine.cpu.state.stopped {
+            if self.machine.cpu.state.is_halted() || self.machine.cpu.state.is_stopped() {
                 self.is_running = false;
                 break;
             }

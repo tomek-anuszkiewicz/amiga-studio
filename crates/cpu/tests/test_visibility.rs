@@ -7,7 +7,7 @@ use cpu::{Cpu, CpuState, OPCODE_DESCRIPTOR_TABLE};
 #[test]
 fn test_m68000_public_api_surface_and_encapsulation() {
     let cpu = Cpu::new();
-    assert_eq!(cpu.state.pc, 0);
+    assert_eq!(cpu.state.pc(), 0);
 
     // Verify opcode descriptor table accessibility while internal instruction submodules remain encapsulated
     let nop_desc = &OPCODE_DESCRIPTOR_TABLE[0x4E71];
@@ -23,9 +23,9 @@ fn test_m68000_public_api_surface_and_encapsulation() {
 fn test_m68000_core_restore_state_and_rehydration() {
     let mut cpu = Cpu::new();
     let mut state = CpuState::default();
-    state.ir = 0x4E71; // NOP
+    state.set_ir(0x4E71); // NOP
     cpu.restore_state(state);
-    assert!(!cpu.state.micro.current_steps.is_empty());
+    assert!(!cpu.state.micro().current_steps.is_empty());
 }
 
 #[test]
@@ -64,4 +64,28 @@ fn test_register_by_register_initialization() {
         state.set_a_long(i, val);
         assert_eq!(state.a_long(i), val);
     }
+}
+
+#[test]
+fn test_audit_micro_step_coverage() {
+    let mut micro_covered = 0;
+
+    for op in 0..=65535usize {
+        let desc = &cpu::micro::OPCODE_DESCRIPTOR_TABLE[op];
+        if !desc.steps.is_empty() {
+            micro_covered += 1;
+        }
+    }
+
+    println!("AUDIT RESULTS:");
+    println!(
+        "  Micro-step covered: {} / 65536 ({:.2}%)",
+        micro_covered,
+        (micro_covered as f64 / 65536.0) * 100.0
+    );
+    assert!(
+        micro_covered >= 15000,
+        "Expected >=15000 opcodes covered, got {}",
+        micro_covered
+    );
 }

@@ -1,150 +1,99 @@
 ---
 title: "Cross-Chip Signals and Action Dispatch Catalog"
-aliases: ["Cross-Chip Signals Catalog", "Action Dispatch Catalog", "Inter-Chip Signal Matrix", "Propagation Delay Catalog"]
+aliases: ["Cross-Chip Signals Catalog", "Action Dispatch Catalog", "Inter-Chip Signal Matrix"]
 tags: ["amiga", "design", "chips", "signals", "propagation", "action-dispatch"]
 category: "Design"
 subsystem: "general"
-status: "active"
+status: "draft"
 created: 2026-09-14
-updated: 2026-09-19
-related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
+updated: 2026-10-14
+related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[DMA.md](DMA.md)", "[Interrupts.md](Interrupts.md)", "[Game Ports.md](Game%20Ports.md)", "[Keyboard.md](Keyboard.md)"]
 ---
 
 # Cross-Chip Signals and Action Dispatch Catalog
 
-- **Parent Architectural Hub:** [General Architecture.md](General%20Architecture.md)
-- **Subsystem Specifications:** [MemoryBus.md](MemoryBus.md) | [Agnus.md](Agnus.md) | [Denise.md](Denise.md) | [Paula.md](Paula.md) | [CIA.md](CIA.md) | [Floppy.md](Floppy.md)
-- **Companion Register Matrix:** [Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)
-- **Hardware Quirks Index:** [Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)
-- **Operational Rule:** [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md)
+The Amiga 500 connects its chips through shared buses and dedicated electrical lines. This catalog records the connections that carry behavior across chip or peripheral boundaries. Its board-level evidence is the Commodore A500 Rev. 6A/7 schematic, available as a vector redraw, checked against the custom-chip pin list and hardware manuals. A drawn net establishes connectivity; the manuals explain what a receiver does with it. Neither establishes a general propagation delay or complete event order for an emulator.
 
----
+This is a hardware model for a future [machine coordinator](Machine%20Loop.md), not an account of current code. [DMA](DMA.md) owns slot allocation and arbitration rules; this catalog identifies requests, buses, strobes, and result paths. The [custom-register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) identifies addresses selected on `RGA`. Names prefixed by `_` in the schematic or suffixed by `*` in the manuals are active low unless otherwise specified. `DMAL` is explicitly active high. Evidence keys are linked at the end.
 
-## 1. Architectural Scope: The Closed Silicon Signal Space
+## Shared buses, requests, and beam timing
 
-In the Amiga 500 hardware architecture, cross-chip communication does not use a dynamic software event-bus. The system consists of fixed silicon chips connected by discrete copper traces on the motherboard PCB.
+| Signal or bus | Source → receiver | Hardware role | Evidence |
+| :--- | :--- | :--- | :--- |
+| `D[15:0]`, `DRD[15:0]` | CPU and motherboard latches ↔ Chip RAM and custom chips | Shared word path. DMA reads deliver RAM data to a selected chip; disk write DMA reverses direction. The CPU side is buffered from the chip-memory side. | S2, S4, S5; P, F |
+| `DRA/MA`, `RAS0/1*`, `CASU/L*`, `WE/RRW` | Agnus → DRAM | Address, row/column, byte-lane, and read/write control for CPU memory cycles, DMA, and refresh. Refresh does not deliver a peripheral word. | S2, F |
+| `BLIT*`, `BLISS*` and CPU bus strobes | Agnus ↔ Gary; CPU → Agnus/Gary | On the Rev. 6A/7 drawing, Agnus and Gary exchange Blitter control lines while CPU address, read/write, and strobes feed the shared memory-control network. The older Fat Agnus description calls a related pin `DBR*`; equivalence is not established here. | S2, F |
+| `RGA[8:1]` | Agnus → Denise and Paula | Selects custom registers and DMA destinations. A receiving chip samples or drives the shared data bus; the address code is not a data payload. | S2, S4, S5; P, F |
+| Shared custom-register selection | CPU or Copper write → Agnus `RGA` encoding → listed chip recipients | One write may be visible to more than one chip: Appendix B lists `DMACON` for Agnus, Denise, and Paula, and `BPLCON0` for Agnus and Denise. This is register-bus fan-out, not a separate private signal between chips. | S2, S4, S5; P, B |
+| `DMAL` | Paula → Agnus | Active-high request for audio and/or disk DMA. Agnus schedules and addresses the granted transfer. The pin list confirms Paula output and Agnus input. | S2, S4; P, F |
+| `CCK`, `CCKQ`, `7MHz`, `CDAC` | Oscillator/Agnus clock network → CPU, Gary, Denise, Paula | Related clock phases drive chip work and bus timing. CIA `E` is a distinct CPU-side clock input, not another name for CCK. | S2, S4, S5, S6; P, F |
+| `HSYNC*`, `VSYNC*`, `CSYNC*` | Agnus timing network → video path and other timing inputs | Horizontal, vertical, and composite sync. Agnus can instead accept external horizontal/vertical sync in its documented resync mode. Denise receives composite sync for video blanking. | S2, S5, S6; P, F |
+| `STREQU`, `STRVBL`, `STRHOR`, `STRLONG` on `RGA` | Agnus refresh-time address code → Denise; `STRHOR` also → Paula | Sync is also encoded as register-address strobes during refresh opportunities, distinct from physical `HSYNC*`/`VSYNC*` lines. | A, F |
+| `VSYNC*` or `EXTICK`; `HSYNC*` | Video timing/expansion tick → CIA-A TOD; horizontal sync → CIA-B TOD | The CIA-A TOD source is jumper-selected on this board; CIA-B counts horizontal sync events. These inputs are separate from the timer E-Clock. | S6, AF |
 
-> [!IMPORTANT]
-> **The Closed-Set Invariant:**
-> Over 90% of custom register writes stay entirely within the silicon boundaries of the chip that owns them (e.g. palette colors stay in Denise, audio volume stays in Paula).
-> Only a strictly finite set of ~8 to 10 hardware signals ever cross physical chip boundaries to influence another subsystem.
+### Paula–Agnus DMA request timing
 
-### 1.1 Prohibition of Direct Inter-Chip Shortcuts ("No Signal Smuggling")
+Agnus marks the beginning of a scan line with a horizontal sync strobe encoded on `RGA` during refresh. The Hardware Reference Manual lists `STRHOR` (`$03C`) for Paula as well as Denise. Thus Paula can synchronize its request sequence from the register-address bus and the shared clocks; it does not need a separate `HSYNC*` input. A [reconstructed Paula circuit](https://github.com/nonarkitten/amiga_replacement_project/blob/master/paula/Paula.v) resets its `DMAL` shift counter when it decodes a horizontal strobe and loads pending disk and audio requests for that line. This is a useful implementation model, not direct proof of Paula's internal sampling edge. The reconstruction also treats `STREQU` and `STRVBL` as horizontal strobes, whereas Appendix B explicitly lists Paula only for `STRHOR`.
 
-Emulation code must strictly adhere to the physical bus and signal model:
-1. **Zero Direct Inter-Chip Coupling:** Subsystems (`Agnus`, `Denise`, `Paula`, `CIA`, `CPU`) must **never** hold direct references or invoke mutating methods directly on one another.
-2. **Agnus Bus Mastership:** Agnus is the **sole DMA address generator** for Chip RAM. It owns all DMA pointers (`BPLxPT`, `SPRxPT`, `AUDxPT`, `DSKPT`, `COPxLC`, `BLTxPT`).
-3. **Passive Data Latching (Zero Direct Memory Reads in Denise & Paula):**
-   - Specialized chips never call `memory.read()` or hold slices into Chip RAM.
-   - Agnus drives the Chip RAM address and the internal Register Address (`RGA`) bus.
-   - The memory bus outputs the 16-bit word onto the shared data bus.
-   - The receiving chip (`Denise` for `BPLxDAT`/`SPRxDAT`, `Paula` for `AUDxDAT`/`DSKDAT`) passively latches the word from the data bus upon matching its `RGA` strobe.
-4. **Discrete Electronic Lines:** Cross-chip triggers (`DMAL`, `_BLITINT`, `AUDxDSR`, `_VSYNC`, `_HSYNC`, IPL) model physical copper traces routed via the top-level machine loop and memory bus.
-5. **Motherboard Simulator & Post-CCK `poll_*` Signal Dispatch:**
-   - The top-level machine loop (`MachineLoop`) acts as the physical motherboard PCB simulator.
-   - After each Color Clock, `MachineLoop` queries subsystem output pins using explicit `poll_*` methods (e.g. `agnus.poll_blitter_irq()`, `agnus.poll_copper_write()`, `agnus.poll_bpl_dma()`, `paula.poll_audio_restart()`, `floppy.poll_dskblk_irq()`, `cia_a.irq_pending()`).
-   - `MachineLoop` then routes the sampled events directly to target subsystem input handlers (e.g. `paula.set_interrupt_request()`, `denise.write_bpldat()`, `agnus.reload_audio_ptr()`). No chip ever reaches outside its struct.
+The physical A500 [logic-analyzer capture](https://www.techtravels.org/2026/08/from-flux-to-filenames-335ms-inside-paula/) shows that Paula sends a fixed 16-position frame over the single active-high `DMAL` wire at the start of each line, one bit per CCK (`$00`–`$0F`). Agnus knows the kind of request from its position in this frame; `DMAL` carries no address or channel number. Pending work in Paula's disk word queue or audio state machines supplies the bits. Agnus then decides whether and when to grant the corresponding transfer; the request itself moves no word.
 
-This catalog establishes the definitive inventory of cross-chip boundary signals, their calibrated propagation latencies, conflict resolution behavior during in-flight writes, and their target action methods.
+| `DMAL` position | Meaning | Corresponding transfer opportunity |
+| :--- | :--- | :--- |
+| `$00`–`$01` | Zero in the measured frame and reconstructed shift register. | None. |
+| `$02/$03`, `$04/$05`, `$06/$07` | Three disk pairs: direction bit followed by a request bit, one pair per queued word. For disk reads the direction bits are zero. | Requests at `$03`, `$05`, `$07` led to disk grants at `$07`, `$09`, `$0B` in the capture: four CCK later. |
+| `$08/$09`, `$0A/$0B`, `$0C/$0D`, `$0E/$0F` | One pair for each audio channel, 0 through 3. The reconstruction places a restart-related qualifier first and the channel's data request second. | The second-bit positions align four CCK before the audio transfer positions `$0D`, `$0F`, `$11`, `$13`; this audio timing is inferred from the reconstruction and [DMA slot schedule](DMA.md), not measured by the cited disk capture. |
 
----
+For disk reads, a queue with one, two, or three waiting words asserts the last request bit, the last two, or all three. The capture verifies the disk request positions and four-CCK request-to-grant interval. The exact audio pair semantics and the treatment of alternate horizontal strobes still need original-hardware confirmation before a pin-level emulator model is fixed. The `AUDxDR` and `AUDxDSR` names in the Hardware Reference Manual describe audio state-machine requests; they are encoded into `DMAL` rather than separate board wires.
 
-## 2. Electronic Propagation Latency & In-Flight Mutation Semantics
+## Interrupts and reset
 
-In physical NMOS silicon, signals do not propagate instantaneously across bus buffers and internal logic gates. When software writes to a register, the value enters an internal gate propagation pipeline and takes effect after a calibrated number of Color Clock phases ($K$ CCKs).
+| Signal | Source → receiver | Hardware role | Evidence |
+| :--- | :--- | :--- | :--- |
+| `INT3*` | Agnus → Paula | Active-low Blitter-complete request enters Paula's interrupt controller. | S2, S4; P, F, H7 |
+| `INT2*` | CIA-A and expansion connector → Paula | Active-low CIA-A/external low-level request, represented by Paula's `PORTS` level-2 source. | S4, S6, S7; P, AF, H7 |
+| `INT6*` | CIA-B and expansion connector → Paula | Active-low CIA-B/external high-level request, represented by Paula's `EXTER` level-6 source. | S4, S6, S7; P, AF, H7 |
+| `IPL[2:0]*` | Paula → 68000 | Paula masks and prioritizes pending requests, then drives the CPU interrupt level. Audio, disk, serial, vertical blank, and Copper are documented sources; the schematic does not imply a separate board wire for each. | S2, S4; P, H7 |
+| `KBRESET*`, `RESET*` | Keyboard and power-on circuit → Gary/reset network → CPU, custom chips, CIAs | Keyboard or power-on reset reaches the shared system reset path, rather than a custom-register write. | S2, S4, S6, S7; P, H |
 
-### The Two Mutation Propagation Modes
+## Peripheral connections
 
-Our emulator models this physical behavior via `MutationMode` in [`crates/config/src/mutation.rs`](../../../crates/config/src/mutation.rs):
+| Signal family | Source → receiver | Hardware role | Evidence |
+| :--- | :--- | :--- | :--- |
+| `MTR*`, `SEL[3:0]*`, `SIDE*`, `DIR`, `STEP*` | CIA-B port B → drive control, partly through Gary | Motor, drive select, head side, direction, and stepping. Gary participates in the internal motor/selection path on this revision. | S4, S6, S7; AF, DI |
+| `RDY*`, `TRK0*`, `WPROT*`, `CHNG*` | Drive → CIA-A port A | Drive ready, track zero, write protection, and disk change are separate from the serial disk bitstream. | S6, S7; AF, DI |
+| `INDEX*` | Drive → CIA-B `FLAG*` | Index pulse reaches the CIA-B edge-sensitive input. | S6, S7; AF, DI |
+| `DKRD*`, `DKWD*`, `DKWE*` | Drive → Paula read-data input; Paula → Gary/drive write-data and write-enable paths | Paula serializes and deserializes disk data. Gary gates write-side signals on the Rev. 6A/7 drawing. | S4, S7; P, DI |
+| Direction/quadrature contacts | Mouse or joystick connector → multiplexer → Denise `M0H/M0V`, `M1H/M1V` | Denise counts mouse quadrature and exposes movement or joystick state through `JOY0DAT`/`JOY1DAT`. | S5, H8 |
+| `FIRE0*`, `FIRE1*` | Controller pin 6 → CIA-A `PA6/PA7` | First mouse/joystick button is sampled by CIA-A, separate from Denise movement counters. | S5, S6; AF, H8 |
+| `POT0X/Y`, `POT1X/Y` | Controller pins 5/9 ↔ Paula | Proportional inputs and additional mouse buttons use Paula's potentiometer circuitry. | S4, S5; P, H8 |
+| `LPEN*` | Selected controller/light-pen trigger → Agnus | Optional light-pen trigger latches beam position; a board jumper selects the source. | S2, S6; P, H8 |
+| `KBDATA`, `KBCLOCK` | Keyboard controller ↔ CIA-A `SP/CNT` | Synchronous keyboard data/clock and handshake reach the CIA serial circuit. Keyboard reset uses the separate path above. | S6, AF, H |
+| Parallel data and handshake | CIA-A port B/`PC*` ↔ parallel connector; CIA-B port A ↔ control/status | Eight data pins and strobe/acknowledge are distinct from select, busy, and paper-out signals. | S6, AF |
+| `TXD`, `RXD`; RS-232 handshake | Paula UART ↔ line drivers/receiver ↔ serial connector; CIA-B port A ↔ control lines | Paula owns serial data; CIA-B drives or senses modem-control pins. | S4, S6; P, AF |
+| `LEFT`, `RIGHT`; `LED*` | Paula → analog audio filters/output; CIA-A `PA1` → filter/LED control | Paula's output is analog after the chip. CIA-A's LED line also selects the board audio-filter path. | S4, S6; P, AF |
+| RGB, burst, blanking, sync | Denise plus Agnus sync → video hybrid/connector | Denise supplies color data while Agnus supplies beam timing; board video circuitry combines them for output. | S2, S5; P |
 
-```mermaid
-flowchart LR
-    subgraph OVERWRITE ["MutationMode::OverwritePending (Control & Strobes)"]
-        W1["Write 1 ($096 = $8200) at T=0\nDelay: 2 CCKs"] -->|T=1: In Flight (rem=1)| OVR["Write 2 ($096 = $0200) at T=1\nOVERWRITES Write 1!"]
-        OVR -->|Restart countdown| W2["Delay: 2 CCKs (rem=2)\nCommits at T=3"]
-    end
-    
-    subgraph PIPELINE ["MutationMode::Pipeline (Streaming Data)"]
-        P1["Write 1 ($180 = Red) at T=0\nDelay: 1 CCK"] --> FIFO["Both Coexist in FIFO"]
-        P2["Write 2 ($180 = Blue) at T=0.5\nDelay: 1 CCK"] --> FIFO
-        FIFO --> C1["Red commits at T=1"]
-        FIFO --> C2["Blue commits at T=1.5"]
-    end
-```
+## Interpretation for a machine coordinator
 
-#### 1. `MutationMode::OverwritePending` (Control, Strobe & Configuration Registers)
-- **Applicable Registers:** `DMACON`, `BPLCON0`, `ADKCON`, `INTENA`, `INTREQ`, `DSKLEN`, `DSKSYNC`, `COPJMP1/2`, `BLTSIZE`, `SERPER`, `POTGO`.
-- **Physical Reality:** In control logic, register bits are held by gate capacitances and latches. If the CPU rapidly writes a new value while a previous voltage transition is still propagating through input buffers, the input electrical level adopts the newest value, resetting the latch stabilization time.
-- **Emulator Behavior:** If an in-flight mutation for the exact same register already exists in the buffer:
-  - The staged value is **replaced** with the new incoming value.
-  - The remaining countdown is **reset** back to the full calibrated delay (`remaining_cck = delay_cck`).
-  - The earlier write is discarded without committing.
+The coordinator needs distinct paths for **requests** (`DMAL`, interrupt inputs), **granted transfers** (RAM address, data direction, `RGA` destination), **sampled inputs** (CIA ports, Denise movement, Paula `POT`, disk read data), and **continuous timing** (clocks, sync, TOD). A pending DMA request is not itself a completed word transfer. The [audio state-machine description](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md#state-machine-signal-summary) names per-channel requests such as `AUDxDR` and `AUDxDSR`, while the board drawing shows one Paula-to-Agnus `DMAL` line; those names must not become invented per-channel motherboard wires. An interrupt generated within Paula need not become a synthetic motherboard wire merely because software observes it in `INTREQ`. Shared interrupt lines can have more than one source.
 
-#### 2. `MutationMode::Pipeline` (Streaming Data & Waveforms)
-- **Applicable Registers:** `COLOR00..31`, `AUD0DAT..AUD3DAT`, `BLTADAT..BLTCDAT`, `SERDAT`.
-- **Physical Reality:** Video rasters and audio DACs process high-speed streams where each written word represents a discrete temporal sample moving down an internal shift register or FIFO.
-- **Emulator Behavior:** Subsequent writes to the same register **coexist** in the buffer. Each write preserves its independent timer and commits in strict temporal FIFO order.
+These tables establish connectivity and documented effects, not a complete list of electrical connections. Exact CCK propagation, sampling edges, Gary gate delays, analog thresholds, and differences among board revisions remain unverified. The Rev. 6A/7 schematic's `BLIT*`/`BLISS*` labeling and the older Fat Agnus manual's `DBR*` description need a separate revision-aware reconciliation before assigning one emulated signal to both. The manuals document `VERTB` and refresh-time sync strobes, but the evidence above does not establish a dedicated Agnus-to-Paula vertical-blank wire. Preserve that distinction when specifying its event path. See [Interrupts](Interrupts.md), [CIA](CIA.md), [Floppy](Floppy.md), and [Game Ports](Game%20Ports.md) for behavior inside those components.
 
-#### 3. Defensive Overflow Fallback
-Every chip embeds an inline fixed-capacity mutation array (Agnus: 64, Denise: 64, Paula: 32, CIA: 16) with zero runtime heap allocations. If extreme pathological guest code exhausts the buffer capacity, the emulator falls back to an **immediate commit**, preventing data loss, pipeline desynchronization, or host panics.
+## Reference Documentation & Upstream Ground Truth
 
----
+The `S` keys refer to sheets of the [Commodore A500 Rev. 6A/7 schematic, vector redraw](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf). They identify board nets, pins, and intermediate logic for this revision.
 
-## 3. The Authoritative Cross-Chip Signal Matrix
-
-The following table documents every cross-chip signal in the Amiga 500:
-
-| Source Subsystem | Trigger Register / Event | Physical Wire / Bus Signal | Calibrated Delay | Mutation Mode | Target Subsystem | Architectural Action Method | Hardware Consequence |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Agnus** | `DMACON` ($096) write | Internal DMA Control Bus | 2 CCKs | `OverwritePending` | **Agnus** (Copper, Blitter) & **Paula** (Audio, Disk) | `dma.write_dmacon(val)`<br/>`audio.set_dma_enables(...)`<br/>`floppy.set_dma_enabled(...)` | Masters DMA gating across Copper, Blitter, Sprites, Bitplanes, Disk, and Audio. |
-| **Agnus** | `COPJMP1` ($088) strobe | Copper Restart Strobe 1 | 1 CCK | `OverwritePending` | **Copper** | `agnus.strobe_copjmp1()`<br/>`copper.restart_list1()` | Forces Copper program counter to reload from `COP1LC` on the next CCK phase. |
-| **Agnus** | `COPJMP2` ($08A) strobe | Copper Restart Strobe 2 | 1 CCK | `OverwritePending` | **Copper** | `agnus.strobe_copjmp2()`<br/>`copper.restart_list2()` | Forces Copper program counter to reload from `COP2LC` on the next CCK phase. |
-| **Agnus** | `BLTSIZE` ($058) write | Blitter Start Trigger | 1 CCK | `OverwritePending` | **Blitter** | `blitter.sync_pointers(...)`<br/>`blitter.trigger_blit(val)` | Latches dimensions, copies staging pointers from Agnus, and sets `is_busy = true`. |
-| **Agnus** | `DIWSTRT` ($08E) / `DIWSTOP` ($090) | Display Window Clipping Bus | 4 CCKs | `OverwritePending` | **Denise** | `denise.set_diw(strt, stop)` | Configures raster beam horizontal and vertical screen blanking boundaries. |
-| **Agnus** | Blitter operation completes | `_BLITINT` (Interrupt line) | Live | Event Strobe | **Paula** | `paula.set_interrupt_request(0x0040)` | Asserts Level 3 interrupt request (bit 6 of `INTREQ`). |
-| **Denise** | `BPLCON0` ($100) write | Bitplane Mode Bus | 4 CCKs (Agnus) / 1 CCK (Denise) | `OverwritePending` | **Agnus** | `agnus.set_bplcon0(val)` | Agnus allocates 0 to 6 DMA time slots per scanline based on BPL planecount. |
-| **Paula** | `DSKLEN` ($024) write 2 | Disk DMA Arm / Start | 2 CCKs | `OverwritePending` | **Paula** | `paula.write_dsklen(val)` | 2nd consecutive write with bit 15 set activates MFM DMA streaming. |
-| **Paula** | `DSKSYNC` ($07E) write | MFM Word Sync Match | 2 CCKs | `OverwritePending` | **Paula** | `paula.write_register(0x07E, val)` | Updates the 16-bit bitstream match pattern (default `$4489`). |
-| **Paula** | Audio channel sample buffer finishes | `AUDxDSR` (DMA Strobe/Restart) | Live | Event Strobe | **Agnus** | `agnus.reload_audio_ptr(channel)` | Agnus reloads active pointer `audpt[ch] = audlc[ch]` for looping. |
-| **Paula** | Audio buffer finishes or floppy sync matches | `_INT4` / `_INT5` / `_INT1` | Live | Latch | **CPU (68000)** | `machine.paula.pending_interrupt_level()` -> `cpu.state.ipl` | Updates CPU interrupt priority level (IPL 1..6) based on unmasked `INTREQ`. |
-| **CIA-A** | Port A ($BFE001) bit 0 write | `_OVL` (Low-Memory Overlay) | 5 CCKs (1 E-Clock) | `OverwritePending` | **PhysicalMemory** | `mem.map_chip_ram_to_low_memory()` / `mem.map_kickstart_to_low_memory()` | Unmaps Kickstart ROM from `$000000` after reset vector boot execution. |
-| **CIA-B** | Port B ($BFD100) write | Ribbon Cable Control Pins | 5 CCKs (1 E-Clock) | `OverwritePending` | **FloppyDrive (DF0..DF3)** | `floppy.handle_ciab_port_b_write(val)` | Falling edge of `_SELx` latches `_MTR`; falling edge of `_STEP` moves head. |
-| **FloppyDrive** | Head position & mechanical sensors | Ribbon Cable Sense Pins | Live | Pin Sampling | **CIA-A** | `cia_a.set_input_pins_a(pins, 0x3C)` | Samples `_RDY`, `_TK0`, `_WPROT`, and `_CHNG` into Port A bits 2..5. |
-
----
-
-## 4. Scanline Fixed DMA Slot Allocation Schedule
-
-Outside of CPU-driven register writes, Agnus drives autonomous hardware DMA transfers during dedicated horizontal Color Clock slots on every scanline:
-
-```
-CCK Slot:   0   1   2   3   4   5   6   7   8   ...  12  ...  27  ... 227.5
-Channel:  [ DRAM Refresh ] [DSK] [AUD0] [AUD1] [AUD2] [AUD3] ... [ Sprites 0..7 ] ... [ Bitplanes / Free ]
-Target:    Physical DRAM    Floppy     Paula Audio Engine           Denise Video            Denise / Blitter
-```
-
-1. **Slots 0..3 (DRAM Refresh):** Agnus refreshes dynamic RAM banks.
-2. **Slot 4 (Floppy Disk DMA):** If `DSKEN` and `DMAEN` are active in `DMACON`, Agnus fetches/stores 1 word from `dskpt` and advances pointer.
-3. **Slots 5..8 (Audio Channels 0..3):** If `AUDxEN` is active and Paula has requested data:
-   - Agnus reads Chip RAM at `audpt[ch]` and increments `audpt[ch] += 2`.
-   - Paula latches the word into `auddat[ch]`, decrements `audlen[ch]`.
-   - If length counter finishes ($1$), Paula asserts `AUDxDSR` to reload Agnus `audpt[ch] = audlc[ch]` and sets `INTREQ` audio interrupt.
-4. **Slots 12..27 (Hardware Sprites 0..7):** Agnus reads sprite position and image data words directly into Denise sprite line buffers.
-
----
-
-## 5. Reference Documentation & Upstream Ground Truth
-
-- **Commodore Amiga Hardware Reference Manual**:
-  - [Hardware Reference Manual](../Reference/Hardware%20Reference%20Manual): Primary reference for custom chip register addresses, bit allocations, and DMA channel priorities.
-  - [Chapter 1 - Introduction to the Amiga Architecture](../Reference/Hardware%20Reference%20Manual/01%20-%20Chapter%201%20-%20Introduction.md): Custom chip physical bus layout, shared Chip RAM arbitration, and system bus timing.
-- **Undocumented Chipset Features**:
-  - [Undocumented features of OCS, ECS and AGA chipsets.md](../Reference/Undocumented%20features%20of%20OCS,%20ECS%20and%20AGA%20chipsets.md): Definitive compendium of undocumented silicon behavior across Agnus, Denise, and Paula.
-- **Silicon Reference Emulators**:
-  - [`vAmiga Reference Source`](../../../ref_src/vAmiga-4.5): Clean-room reference modeling for Agnus DMA slot allocations and cross-chip bus latencies.
-  - [`vAmigaTS Test Suite`](../../../ref_src/vAmigaTS): Comprehensive hardware verification suite covering DMA cycle contention and bus interactions.
-- **Living Crate Source Files**:
-  - [`crates/config/src/mutation.rs`](../../../crates/config/src/mutation.rs): Definition of `MutationMode`, `DelayedMutation`, and electronic propagation countdown pipelines.
-  - [`crates/memory_bus/src/memory_bus.rs`](../../../crates/memory_bus/src/memory_bus.rs): Motherboard address router (`MemoryBus`) routing custom register accesses and CIA port selects.
-  - [`crates/machine_loop/src/machine_loop.rs`](../../../crates/machine_loop/src/machine_loop.rs): Machine loop coordinating CCK progression, action dispatch, and interrupt priority resolution.
-
+- **S2** — [processor, Gary, and Agnus (PDF page 3)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=3): bus, DMA, clock, sync, and CPU interrupt connections.
+- **S4** — [Paula, Gary floppy logic, and audio (PDF page 5)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=5): DMA request, interrupts, disk data, potentiometers, and audio output.
+- **S5** — [Denise, game ports, and video (PDF page 6)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=6): movement input multiplexer, buses, sync, and video output.
+- **S6** — [CIA-A/B, keyboard, parallel, and serial (PDF page 7)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=7): port pins, interrupts, TOD input, and peripherals.
+- **S7** — [floppy and reset connectors (PDF page 8)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=8): drive wiring, expansion lines, and reset network.
+- **P** — [Hardware Reference Manual, Appendix C](../Reference/Hardware%20Reference%20Manual/11%20-%20Appendix%20C%20-%20Custom%20Chip%20Pin%20Allocation%20List.md): Chip pin names, directions, and active-low convention.
+- **F** — [A500/A2000 Technical Reference, Fat Agnus](../Reference/A500%20A2000%20Technical%20Reference%20Manual/11%20-%20Section%206%20-%20Fat%20Agnus%20Chip.md): DMA request direction, memory control, RGA, and sync behavior.
+- **A** — [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md): Refresh-time sync strobes and listed receiving chips.
+- **B** — [Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Register-bus addresses with multiple listed chip recipients.
+- **H7** — [Hardware Reference Manual, Chapter 7](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): Interrupt sources, levels, and masking.
+- **H8** — [Hardware Reference Manual, Chapter 8](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md): Game-controller and disk/serial interface behavior.
+- **AF** — [Hardware Reference Manual, Appendix F](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md): CIA ports, TOD, serial pins, and interrupts.
+- **DI** — [Hardware Reference Manual, Appendix I](../Reference/Hardware%20Reference%20Manual/17%20-%20Appendix%20I%20-%20External%20Disk%20Connector%20Interface%20Specification.md): Drive line names and directions.
+- **H** — [Hardware Reference Manual, Appendix H](../Reference/Hardware%20Reference%20Manual/16%20-%20Appendix%20H%20-%20Keyboard.md): Keyboard serial and reset lines.

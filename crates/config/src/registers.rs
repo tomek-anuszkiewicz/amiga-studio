@@ -1,13 +1,13 @@
-//! Amiga 500 Custom Chip Registers & Bitfield Masks
+//! Amiga 500 register addresses and custom chip bitfield masks
 //!
-//! Authoritative register offset definitions and bitmask constants according to the
-//! Commodore-Amiga Hardware Reference Manual (HRM), Appendix A.
+//! Custom chip offsets follow the Commodore-Amiga Hardware Reference Manual (HRM),
+//! Appendix A. CIA byte addresses follow Appendices D and F.
 
 /// Custom chip register offsets in the $DFF000 - $DFFFFE range.
 ///
 /// Register offsets are word-aligned ($000 to $1FE).
 /// Registers are organized by physical custom chip (Agnus, Denise, Paula),
-/// with root-level re-exports for flat addressing compatibility.
+/// with shared offsets declared in each chip namespace that decodes them.
 pub mod custom_reg {
     /// Agnus (MOS 8370 / 8371 / 8372) Address Generator & DMA Coprocessor Registers
     pub mod agnus {
@@ -31,14 +31,6 @@ pub mod custom_reg {
         pub const VHPOSW: u16 = 0x02C;
         /// Copper control register (CDANG bit enables blitter register writes)
         pub const COPCON: u16 = 0x02E;
-        /// Strobe register for light pen horizontal latch
-        pub const STREQU: u16 = 0x038;
-        /// Strobe register for light pen vertical latch
-        pub const STRVBL: u16 = 0x03A;
-        /// Strobe register for horizontal sync
-        pub const STRHOR: u16 = 0x03C;
-        /// Strobe register for vertical sync
-        pub const STRBUS: u16 = 0x03E;
         /// Blitter control register 0 (channels, minterms, A-shift)
         pub const BLTCON0: u16 = 0x040;
         /// Blitter control register 1 (B-shift, line mode, fill, desc)
@@ -93,6 +85,10 @@ pub mod custom_reg {
         pub const COPJMP2: u16 = 0x08A;
         /// Copper instruction fetch strobe
         pub const COPINS: u16 = 0x08C;
+        /// Display window start (vertical DMA boundary; horizontal bits also latched by Denise)
+        pub const DIWSTRT: u16 = 0x08E;
+        /// Display window stop (vertical DMA boundary; horizontal bits also latched by Denise)
+        pub const DIWSTOP: u16 = 0x090;
         /// Display data fetch start (horizontal bitplane DMA window start)
         pub const DDFSTRT: u16 = 0x092;
         /// Display data fetch stop (horizontal bitplane DMA window stop)
@@ -101,36 +97,20 @@ pub mod custom_reg {
         pub const DMACON: u16 = 0x096;
         /// Audio channel 0 pointer high (Location High)
         pub const AUD0LCH: u16 = 0x0A0;
-        /// Audio channel 0 pointer high alias
-        pub const AUD0PTH: u16 = 0x0A0;
         /// Audio channel 0 pointer low (Location Low)
         pub const AUD0LCL: u16 = 0x0A2;
-        /// Audio channel 0 pointer low alias
-        pub const AUD0PTL: u16 = 0x0A2;
         /// Audio channel 1 pointer high (Location High)
         pub const AUD1LCH: u16 = 0x0B0;
-        /// Audio channel 1 pointer high alias
-        pub const AUD1PTH: u16 = 0x0B0;
         /// Audio channel 1 pointer low (Location Low)
         pub const AUD1LCL: u16 = 0x0B2;
-        /// Audio channel 1 pointer low alias
-        pub const AUD1PTL: u16 = 0x0B2;
         /// Audio channel 2 pointer high (Location High)
         pub const AUD2LCH: u16 = 0x0C0;
-        /// Audio channel 2 pointer high alias
-        pub const AUD2PTH: u16 = 0x0C0;
         /// Audio channel 2 pointer low (Location Low)
         pub const AUD2LCL: u16 = 0x0C2;
-        /// Audio channel 2 pointer low alias
-        pub const AUD2PTL: u16 = 0x0C2;
         /// Audio channel 3 pointer high (Location High)
         pub const AUD3LCH: u16 = 0x0D0;
-        /// Audio channel 3 pointer high alias
-        pub const AUD3PTH: u16 = 0x0D0;
         /// Audio channel 3 pointer low (Location Low)
         pub const AUD3LCL: u16 = 0x0D2;
-        /// Audio channel 3 pointer low alias
-        pub const AUD3PTL: u16 = 0x0D2;
         /// Bitplane 1 pointer high
         pub const BPL1PTH: u16 = 0x0E0;
         /// Bitplane 1 pointer low
@@ -193,6 +173,23 @@ pub mod custom_reg {
         pub const SPR7PTH: u16 = 0x13C;
         /// Sprite 7 pointer low
         pub const SPR7PTL: u16 = 0x13E;
+        /// Sprite position registers also sampled by Agnus
+        pub const SPR0POS: u16 = 0x140;
+        pub const SPR0CTL: u16 = 0x142;
+        pub const SPR1POS: u16 = 0x148;
+        pub const SPR1CTL: u16 = 0x14A;
+        pub const SPR2POS: u16 = 0x150;
+        pub const SPR2CTL: u16 = 0x152;
+        pub const SPR3POS: u16 = 0x158;
+        pub const SPR3CTL: u16 = 0x15A;
+        pub const SPR4POS: u16 = 0x160;
+        pub const SPR4CTL: u16 = 0x162;
+        pub const SPR5POS: u16 = 0x168;
+        pub const SPR5CTL: u16 = 0x16A;
+        pub const SPR6POS: u16 = 0x170;
+        pub const SPR6CTL: u16 = 0x172;
+        pub const SPR7POS: u16 = 0x178;
+        pub const SPR7CTL: u16 = 0x17A;
     }
 
     /// Denise (MOS 8362 / 8373) Video Display & Serializer Registers
@@ -205,6 +202,14 @@ pub mod custom_reg {
         pub const CLXDAT: u16 = 0x00E;
         /// Joy/mouse test register
         pub const JOYTEST: u16 = 0x036;
+        /// Horizontal sync with vertical blank and equalization strobe
+        pub const STREQU: u16 = 0x038;
+        /// Horizontal sync with vertical blank strobe
+        pub const STRVBL: u16 = 0x03A;
+        /// Horizontal sync strobe
+        pub const STRHOR: u16 = 0x03C;
+        /// Long horizontal line identification strobe
+        pub const STRLONG: u16 = 0x03E;
         /// Display window start (upper-left coordinates)
         pub const DIWSTRT: u16 = 0x08E;
         /// Display window stop (lower-right coordinates)
@@ -217,8 +222,6 @@ pub mod custom_reg {
         pub const BPLCON1: u16 = 0x102;
         /// Bitplane control 2 (playfield/sprite priority)
         pub const BPLCON2: u16 = 0x104;
-        /// Bitplane control 3 (ECS enhanced color & border features)
-        pub const BPLCON3: u16 = 0x106;
         /// Bitplane 1 data buffer
         pub const BPL1DAT: u16 = 0x110;
         /// Bitplane 2 data buffer
@@ -393,6 +396,8 @@ pub mod custom_reg {
         pub const SERPER: u16 = 0x032;
         /// Potentiometer port data write and start
         pub const POTGO: u16 = 0x034;
+        /// Horizontal sync strobe shared with Denise
+        pub const STRHOR: u16 = 0x03C;
         /// Disk sync pattern register
         pub const DSKSYNC: u16 = 0x07E;
         /// DMA control write (set/clear bits for DMA channels)
@@ -436,16 +441,80 @@ pub mod custom_reg {
         /// Audio channel 3 data word
         pub const AUD3DAT: u16 = 0x0DA;
     }
+}
 
-    // Flat re-exports for seamless compatibility and general access
-    pub use agnus::*;
-    pub use denise::*;
-    pub use paula::*;
+/// Memory-mapped byte addresses of the two MOS 8520 interface adapters.
+///
+/// Each chip has the same register selectors but occupies a different byte lane.
+/// Selector $B is unconnected on both chips.
+pub mod cia_reg {
+    /// CIA-A registers on the odd-byte lane ($BFE001–$BFEF01).
+    pub mod cia_a {
+        /// Port A data: game-port fire, floppy status, LED, and overlay.
+        pub const PRA: u32 = 0xBFE001;
+        /// Port B data: parallel port.
+        pub const PRB: u32 = 0xBFE101;
+        /// Port A data direction.
+        pub const DDRA: u32 = 0xBFE201;
+        /// Port B data direction.
+        pub const DDRB: u32 = 0xBFE301;
+        /// Timer A low byte: counter on read, latch on write.
+        pub const TALO: u32 = 0xBFE401;
+        /// Timer A high byte: counter on read, latch on write.
+        pub const TAHI: u32 = 0xBFE501;
+        /// Timer B low byte: counter on read, latch on write.
+        pub const TBLO: u32 = 0xBFE601;
+        /// Timer B high byte: counter on read, latch on write.
+        pub const TBHI: u32 = 0xBFE701;
+        /// Time-of-day low byte on read; time or alarm low byte on write.
+        pub const TODLO: u32 = 0xBFE801;
+        /// Time-of-day middle byte on read; time or alarm middle byte on write.
+        pub const TODMID: u32 = 0xBFE901;
+        /// Time-of-day high byte on read; time or alarm high byte on write.
+        pub const TODHI: u32 = 0xBFEA01;
+        /// Serial data: received byte on read, transmit byte on write.
+        pub const SDR: u32 = 0xBFEC01;
+        /// Interrupt status on read (clears pending bits), mask on write.
+        pub const ICR: u32 = 0xBFED01;
+        /// Timer A and serial control.
+        pub const CRA: u32 = 0xBFEE01;
+        /// Timer B and time-of-day control.
+        pub const CRB: u32 = 0xBFEF01;
+    }
 
-    // Explicit disambiguation for registers decoded by multiple physical chips
-    pub const DMACON: u16 = agnus::DMACON;
-    pub const DMACONR: u16 = agnus::DMACONR;
-    pub const BPLCON0: u16 = denise::BPLCON0;
+    /// CIA-B registers on the even-byte lane ($BFD000–$BFDF00).
+    pub mod cia_b {
+        /// Port A data: serial handshake and parallel control/status.
+        pub const PRA: u32 = 0xBFD000;
+        /// Port B data: floppy drive control.
+        pub const PRB: u32 = 0xBFD100;
+        /// Port A data direction.
+        pub const DDRA: u32 = 0xBFD200;
+        /// Port B data direction.
+        pub const DDRB: u32 = 0xBFD300;
+        /// Timer A low byte: counter on read, latch on write.
+        pub const TALO: u32 = 0xBFD400;
+        /// Timer A high byte: counter on read, latch on write.
+        pub const TAHI: u32 = 0xBFD500;
+        /// Timer B low byte: counter on read, latch on write.
+        pub const TBLO: u32 = 0xBFD600;
+        /// Timer B high byte: counter on read, latch on write.
+        pub const TBHI: u32 = 0xBFD700;
+        /// Time-of-day low byte on read; time or alarm low byte on write.
+        pub const TODLO: u32 = 0xBFD800;
+        /// Time-of-day middle byte on read; time or alarm middle byte on write.
+        pub const TODMID: u32 = 0xBFD900;
+        /// Time-of-day high byte on read; time or alarm high byte on write.
+        pub const TODHI: u32 = 0xBFDA00;
+        /// Serial data: received byte on read, transmit byte on write.
+        pub const SDR: u32 = 0xBFDC00;
+        /// Interrupt status on read (clears pending bits), mask on write.
+        pub const ICR: u32 = 0xBFDD00;
+        /// Timer A and serial control.
+        pub const CRA: u32 = 0xBFDE00;
+        /// Timer B and time-of-day control.
+        pub const CRB: u32 = 0xBFDF00;
+    }
 }
 
 /// Bitfield masks for custom chip control and status registers

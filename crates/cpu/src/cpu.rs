@@ -66,11 +66,12 @@ impl Cpu {
 
     fn reset_internal(&mut self, bus: &mut dyn AddressBus) {
         self.state.set_sr(crate::state::SR_RESET_DEFAULT);
-        self.state.stopped = false;
-        self.state.halted = false;
-        self.state.reset_line_asserted = false;
-        self.state.micro.reset();
-        self.state.cycle_counter = 0;
+        self.state.set_stopped(false);
+        self.state.set_halted(false);
+        self.state.set_reset_line_asserted(false);
+        self.state.set_trace_pending(false);
+        self.state.micro_mut().reset();
+        self.state.set_cycle_counter(0);
 
         // Fetch initial SSP from Vector 0 ($000000)
         let ssp_addr = crate::state::vector::addr(crate::state::vector::RESET_SSP);
@@ -83,8 +84,8 @@ impl Cpu {
         let pc_addr = crate::state::vector::addr(crate::state::vector::RESET_PC);
         let pc_hi = bus.read_word_debug(pc_addr);
         let pc_lo = bus.read_word_debug(pc_addr + 2);
-        self.state.pc = ((pc_hi as u32) << 16) | (pc_lo as u32);
-        self.state.instruction_pc = self.state.pc;
+        self.state.set_pc(((pc_hi as u32) << 16) | (pc_lo as u32));
+        self.state.set_instruction_pc(self.state.pc());
 
         // Hardware M68000 Reset Vector Invariants:
         // On real 68000 silicon, Vector 0 ($000000) is loaded into SSP and Vector 1 ($000004)
@@ -92,16 +93,17 @@ impl Cpu {
         // If the initial PC address has bit 0 set (odd address), instruction prefetch cannot
         // proceed across the 16-bit data bus. An address error during reset exception processing
         // triggers an immediate Double Bus Fault, halting the CPU.
-        if (self.state.pc & 1) != 0 {
-            self.state.halted = true;
+        if (self.state.pc() & 1) != 0 {
+            self.state.set_halted(true);
             return;
         }
 
         // Prime prefetch pipeline
-        self.state.ir = bus.read_word_debug(self.state.pc);
-        self.state.pc = self.state.pc.wrapping_add(2);
-        self.state.prefetch = bus.read_word_debug(self.state.pc);
-        self.state.pc = self.state.pc.wrapping_add(2);
+        self.state.set_ir(bus.read_word_debug(self.state.pc()));
+        self.state.set_pc(self.state.pc().wrapping_add(2));
+        self.state
+            .set_prefetch(bus.read_word_debug(self.state.pc()));
+        self.state.set_pc(self.state.pc().wrapping_add(2));
 
         // Initiate the initial instruction descriptor immediately so CPU micro-state is fully ready
         self.initiate_current_instruction();
@@ -110,19 +112,20 @@ impl Cpu {
     /// Advances the global cycle counter
     #[inline(always)]
     pub fn advance_clocks(&mut self, clocks: u32) {
-        self.state.cycle_counter = self.state.cycle_counter.wrapping_add(clocks as u64);
+        self.state
+            .set_cycle_counter(self.state.cycle_counter().wrapping_add(clocks as u64));
     }
 
     /// Returns total elapsed CPU clock cycles since reset
     #[inline(always)]
     pub fn cycle_counter(&self) -> u64 {
-        self.state.cycle_counter
+        self.state.cycle_counter()
     }
 
     /// Resets the global cycle counter to zero
     #[inline(always)]
     pub fn reset_cycle_counter(&mut self) {
-        self.state.cycle_counter = 0;
+        self.state.set_cycle_counter(0);
     }
 
     /// Ensures active instruction micro-steps are initialized before execution begins.
@@ -130,13 +133,13 @@ impl Cpu {
     #[inline(always)]
     fn ensure_instruction_ready(&mut self) -> bool {
         let needs_initialization =
-            self.state.micro.micro_step == 0 && self.state.micro.current_steps.is_empty();
+            self.state.micro().micro_step == 0 && self.state.micro().current_steps.is_empty();
         if needs_initialization {
             self.initiate_current_instruction();
         }
 
-        if self.state.micro.current_steps.is_empty() {
-            self.state.halted = true;
+        if self.state.micro().current_steps.is_empty() {
+            self.state.set_halted(true);
             return false;
         }
 
@@ -147,11 +150,11 @@ impl Cpu {
     /// Performs instruction boundary validation and initiates the active instruction if uninitialized.
     #[inline]
     pub fn step_cck(&mut self, bus: &mut dyn AddressBus) -> bool {
-        if self.state.halted {
+        if self.state.is_halted() {
             return false;
         }
 
-        if self.state.stopped {
+        if self.state.is_stopped() {
             if !self.check_and_trigger_interrupt() {
                 return false;
             }
@@ -172,76 +175,81 @@ impl Cpu {
         self.advance_clocks(2);
 
         // Execute via cycle-exact Micro-Step State Machine:
-        while (self.state.micro.micro_step as usize) < self.state.micro.current_steps.len() {
-            let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
+        while (self.state.micro().micro_step as usize) < self.state.micro().current_steps.len() {
+            let step = self.state.micro().current_steps[self.state.micro().micro_step as usize];
 
             // 2a. Step initialization (executed once upon entering this micro_step):
-            if self.state.micro.clocks_remaining == 0 {
-                self.state.micro.clocks_remaining = step.base_clocks as u16;
-                let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
+            if self.state.micro().clocks_remaining == 0 {
+                self.state.micro_mut().clocks_remaining = step.base_clocks as u16;
+                let prev_steps_ptr = self.state.micro().current_steps.as_ptr();
 
                 if let Some(alu) = step.alu_fn {
-                    let reg_src = self.state.micro.reg_src;
-                    let reg_dst = self.state.micro.reg_dst;
+                    let reg_src = self.state.micro().reg_src;
+                    let reg_dst = self.state.micro().reg_dst;
                     alu(&mut self.state, reg_src, reg_dst);
                 }
 
                 // If ALU redirected execution to a new step sequence (e.g. Bcc branch taken),
                 // restart immediately at step 0 of the new sequence
-                let sequence_redirected = self.state.micro.current_steps.as_ptr() != prev_steps_ptr;
+                let sequence_redirected =
+                    self.state.micro().current_steps.as_ptr() != prev_steps_ptr;
                 if sequence_redirected {
-                    self.state.micro.clocks_remaining = 0;
+                    self.state.micro_mut().clocks_remaining = 0;
                     continue;
                 }
 
                 // Instantaneous zero-clock step (pure ALU / EA calculation):
                 // Advance micro_step and continue within the same CCK.
                 let is_instantaneous_step =
-                    step.is_instantaneous() && self.state.micro.clocks_remaining == 0;
+                    step.is_instantaneous() && self.state.micro().clocks_remaining == 0;
                 if is_instantaneous_step {
-                    self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+                    self.state.micro_mut().micro_step =
+                        self.state.micro().micro_step.wrapping_add(1);
                     continue;
                 }
             }
 
             // 2b. Unified clock-consuming bus cycle execution (consumes 1 CCK = 2 CPU clocks):
-            let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
-            let prev_micro_step = self.state.micro.micro_step;
+            let prev_steps_ptr = self.state.micro().current_steps.as_ptr();
+            let prev_micro_step = self.state.micro().micro_step;
 
             let bus_res = match step.bus_fn {
                 Some(bus_fn) => bus_fn(self, bus),
                 None => BusResult::Ready(()),
             };
-            if self.state.micro.current_steps.is_empty() {
+            if self.state.micro().current_steps.is_empty() {
+                if self.state.is_trace_pending() {
+                    self.trigger_trace();
+                }
                 return true;
             }
 
-            // If step redirected execution to a new step sequence (e.g. Address Error),
-            // conclude this CCK and begin the new sequence on next CCK.
-            let sequence_redirected = self.state.micro.current_steps.as_ptr() != prev_steps_ptr;
+            // A faulting transfer performs no bus access. Its CCK starts exception processing.
+            let sequence_redirected = self.state.micro().current_steps.as_ptr() != prev_steps_ptr;
             if sequence_redirected {
-                self.state.micro.clocks_remaining = 0;
-                return false;
+                self.state.micro_mut().clocks_remaining = 0;
+                continue;
             }
 
             match bus_res {
                 BusResult::WaitState => return false,
                 BusResult::Ready(()) => {
-                    self.state.micro.clocks_remaining =
-                        self.state.micro.clocks_remaining.saturating_sub(2);
+                    self.state.micro_mut().clocks_remaining =
+                        self.state.micro().clocks_remaining.saturating_sub(2);
 
                     let step_has_work = step.has_work();
-                    let step_clocks_exhausted = self.state.micro.clocks_remaining == 0;
-                    let sequence_did_not_branch = self.state.micro.micro_step == prev_micro_step;
+                    let step_clocks_exhausted = self.state.micro().clocks_remaining == 0;
+                    let sequence_did_not_branch = self.state.micro().micro_step == prev_micro_step;
 
                     // Advance to next micro-step once this step's clocks are exhausted
                     // and execution did not divert internally:
                     if step_has_work && step_clocks_exhausted && sequence_did_not_branch {
-                        self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+                        self.state.micro_mut().micro_step =
+                            self.state.micro().micro_step.wrapping_add(1);
                     }
 
-                    let instruction_steps_completed = (self.state.micro.micro_step as usize)
-                        >= self.state.micro.current_steps.len();
+                    let instruction_steps_completed = (self.state.micro().micro_step as usize)
+                        >= self.state.micro().current_steps.len();
 
                     if instruction_steps_completed {
                         self.retire_current_instruction();
@@ -260,18 +268,23 @@ impl Cpu {
     /// Retires the active instruction sequentially or via branch target refill
     #[inline(always)]
     pub(crate) fn retire_current_instruction(&mut self) {
-        if self.state.micro.target_refill {
-            let target = self.state.micro.ea_addr;
-            let new_ir = self.state.micro.irc;
-            self.state.ir = new_ir;
-            self.state.pc = target.wrapping_add(4);
-        } else if !self.state.micro.prefetch_retired {
-            self.state.ir = self.state.prefetch;
-            self.state.prefetch = self.state.micro.irc;
-            self.state.pc = self.state.pc.wrapping_add(2);
+        if self.state.micro().target_refill {
+            let target = self.state.micro().ea_addr;
+            let new_ir = self.state.micro().irc;
+            self.state.set_ir(new_ir);
+            self.state.set_pc(target.wrapping_add(4));
+        } else if !self.state.micro().prefetch_retired {
+            self.state.set_ir(self.state.prefetch());
+            self.state.set_prefetch(self.state.micro().irc);
+            self.state.set_pc(self.state.pc().wrapping_add(2));
         }
-        self.state.instruction_pc = self.state.pc.wrapping_sub(4);
-        self.state.micro.reset();
+        self.state
+            .set_instruction_pc(self.state.pc().wrapping_sub(4));
+        self.state.micro_mut().reset();
+        if self.state.is_trace_pending() {
+            self.trigger_trace();
+            return;
+        }
         if self.check_and_trigger_interrupt() {
             return;
         }
@@ -281,13 +294,14 @@ impl Cpu {
     /// Loads the active instruction's micro-step descriptor from the static table
     #[inline(always)]
     pub(crate) fn initiate_current_instruction(&mut self) {
-        let desc = &crate::micro::dispatch_table::OPCODE_DESCRIPTOR_TABLE[self.state.ir as usize];
+        let desc = &crate::micro::dispatch_table::OPCODE_DESCRIPTOR_TABLE[self.state.ir() as usize];
         if !desc.steps.is_empty() {
-            self.state.micro.initiate_instruction(desc);
+            self.state.set_trace_pending(self.state.is_trace());
+            self.state.micro_mut().initiate_instruction(desc);
         }
     }
 
-    /// Checks if an interrupt is pending according to M68000 priority rules,
+    /// Checks if a supported A500 interrupt (level 1-6) exceeds the SR mask,
     /// and if so, initiates the autovector exception processing sequence.
     #[inline(always)]
     pub fn check_and_trigger_interrupt(&mut self) -> bool {
@@ -301,12 +315,22 @@ impl Cpu {
 
     /// Triggers an Autovector Interrupt exception sequence (44 CPU clocks / 22 CCKs)
     #[inline(never)]
-    pub fn trigger_interrupt(&mut self, level: u8) {
-        self.state.ipl = level;
-        self.state.micro.reset();
-        self.state.micro.current_steps = &crate::micro::common::STEPS_INTERRUPT;
-        self.state.micro.micro_step = 0;
-        self.state.micro.clocks_remaining = 0;
+    fn trigger_interrupt(&mut self, level: u8) {
+        self.state.set_trace_pending(false);
+        self.state.micro_mut().reset();
+        self.state.micro_mut().reg_src = level;
+        self.state.micro_mut().current_steps = &crate::micro::common::STEPS_INTERRUPT;
+        self.state.micro_mut().micro_step = 0;
+        self.state.micro_mut().clocks_remaining = 0;
+    }
+
+    /// Queues trace before interrupt arbitration, including STOP completion.
+    #[inline(never)]
+    fn trigger_trace(&mut self) {
+        self.state.set_trace_pending(false);
+        self.state.set_stopped(false);
+        self.state.micro_mut().reset();
+        self.state.micro_mut().current_steps = &crate::micro::common::STEPS_TRACE;
     }
 
     /// Restores the CPU architectural and micro-state from a snapshot,
@@ -314,9 +338,9 @@ impl Cpu {
     #[inline]
     pub fn restore_state(&mut self, state: CpuState) {
         self.state = state;
-        let desc = &crate::micro::dispatch_table::OPCODE_DESCRIPTOR_TABLE[self.state.ir as usize];
+        let desc = &crate::micro::dispatch_table::OPCODE_DESCRIPTOR_TABLE[self.state.ir() as usize];
         if !desc.steps.is_empty() {
-            self.state.micro.current_steps = desc.steps;
+            self.state.micro_mut().current_steps = desc.steps;
         }
     }
 
@@ -328,28 +352,34 @@ impl Cpu {
         is_read: bool,
         is_program_space: bool,
     ) {
+        self.state.set_trace_pending(false);
         let fc = if is_program_space {
             types::prog_fc(&self.state)
         } else {
             types::data_fc(&self.state)
         };
         let rw_bit = if is_read { 0x10 } else { 0x00 };
-        let info_word = (self.state.ir & 0xFFE0) | rw_bit | ((fc as u16) & 0x07);
+        let info_word = (self.state.ir() & 0xFFE0) | rw_bit | ((fc as u16) & 0x07);
 
-        self.state.micro.fault_addr = fault_addr;
-        self.state.micro.info_word = info_word;
-        self.state.micro.current_steps = &crate::micro::common::STEPS_ADDRESS_ERROR;
-        self.state.micro.micro_step = 0;
-        self.state.micro.clocks_remaining = 0;
+        self.state.micro_mut().source = if is_program_space {
+            self.state.instruction_pc()
+        } else {
+            self.state.pc().wrapping_sub(4)
+        };
+        self.state.micro_mut().fault_addr = fault_addr;
+        self.state.micro_mut().info_word = info_word;
+        self.state.micro_mut().current_steps = &crate::micro::common::STEPS_ADDRESS_ERROR;
+        self.state.micro_mut().micro_step = 0;
+        self.state.micro_mut().clocks_remaining = 0;
     }
 
     /// Executes exactly one full M68000 instruction via direct table dispatch
     pub fn step_instruction(&mut self, bus: &mut dyn AddressBus) -> u32 {
-        if self.state.halted {
+        if self.state.is_halted() {
             return 0;
         }
 
-        if self.state.stopped {
+        if self.state.is_stopped() {
             if !self.check_and_trigger_interrupt() {
                 return 0;
             }
@@ -359,12 +389,12 @@ impl Cpu {
             return 0;
         }
 
-        let start_cycles = self.state.cycle_counter;
+        let start_cycles = self.state.cycle_counter();
         loop {
             let completed = self.step_cck_internal(bus);
-            let execution_finished = completed || self.state.halted || self.state.stopped;
+            let execution_finished = completed || self.state.is_halted() || self.state.is_stopped();
             if execution_finished {
-                return self.state.cycle_counter.wrapping_sub(start_cycles) as u32;
+                return self.state.cycle_counter().wrapping_sub(start_cycles) as u32;
             }
         }
     }
@@ -376,13 +406,15 @@ impl Cpu {
     /// execution in unit tests or synthetic debugger harnesses.
     #[inline]
     pub fn set_pc_and_prime_prefetch(&mut self, target_pc: u32, bus: &mut dyn AddressBus) {
-        self.state.instruction_pc = target_pc;
-        self.state.pc = target_pc;
-        self.state.ir = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
-        self.state.pc = self.state.pc.wrapping_add(2);
-        self.state.prefetch = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
-        self.state.pc = self.state.pc.wrapping_add(2);
-        self.state.micro.reset();
+        self.state.set_instruction_pc(target_pc);
+        self.state.set_pc(target_pc);
+        self.state
+            .set_ir(bus.read_word_debug(self.state.pc() & 0x00FF_FFFF));
+        self.state.set_pc(self.state.pc().wrapping_add(2));
+        self.state
+            .set_prefetch(bus.read_word_debug(self.state.pc() & 0x00FF_FFFF));
+        self.state.set_pc(self.state.pc().wrapping_add(2));
+        self.state.micro_mut().reset();
         self.initiate_current_instruction();
     }
 }

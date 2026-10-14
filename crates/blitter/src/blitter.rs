@@ -11,6 +11,7 @@ pub use line::*;
 pub use minterm::*;
 pub use phase::*;
 
+use config::chip_ram::OCS_DMA_ADDRESS_MASK;
 use serde::{Deserialize, Serialize};
 
 /// Agnus 4-channel DMA Blitter state and registers
@@ -26,13 +27,13 @@ pub struct Blitter {
     pub bltafwm: u16,
     /// Blitter Last Word Mask for Channel A
     pub bltalwm: u16,
-    /// Channel A source pointer (18-bit Chip RAM address)
+    /// Channel A source pointer (18-bit word address, stored as an even byte address)
     pub bltapt: u32,
-    /// Channel B source pointer (18-bit Chip RAM address)
+    /// Channel B source pointer (18-bit word address, stored as an even byte address)
     pub bltbpt: u32,
-    /// Channel C source/destination pointer (18-bit Chip RAM address)
+    /// Channel C source/destination pointer (18-bit word address, stored as an even byte address)
     pub bltcpt: u32,
-    /// Channel D destination pointer (18-bit Chip RAM address)
+    /// Channel D destination pointer (18-bit word address, stored as an even byte address)
     pub bltdpt: u32,
     /// Blit size register: Height in rows (bits 6-15) and Width in words (bits 0-5)
     pub bltsize: u16,
@@ -313,7 +314,7 @@ impl Blitter {
 
         if use_d {
             config::chip_ram::write_u16(chip_ram, self.bltdpt, self.dhold);
-            self.bltdpt = self.bltdpt.wrapping_add(step as u32);
+            self.bltdpt = self.bltdpt.wrapping_add(step as u32) & OCS_DMA_ADDRESS_MASK;
         }
     }
 
@@ -355,19 +356,19 @@ impl Blitter {
             BlitterPhase::FetchA => {
                 if use_a {
                     self.anew = config::chip_ram::read_u16(chip_ram, self.bltapt);
-                    self.bltapt = self.bltapt.wrapping_add(step as u32);
+                    self.bltapt = self.bltapt.wrapping_add(step as u32) & OCS_DMA_ADDRESS_MASK;
                 }
             }
             BlitterPhase::FetchB => {
                 if use_b {
                     self.bnew = config::chip_ram::read_u16(chip_ram, self.bltbpt);
-                    self.bltbpt = self.bltbpt.wrapping_add(step as u32);
+                    self.bltbpt = self.bltbpt.wrapping_add(step as u32) & OCS_DMA_ADDRESS_MASK;
                 }
             }
             BlitterPhase::FetchC => {
                 if use_c {
                     self.chold = config::chip_ram::read_u16(chip_ram, self.bltcpt);
-                    self.bltcpt = self.bltcpt.wrapping_add(step as u32);
+                    self.bltcpt = self.bltcpt.wrapping_add(step as u32) & OCS_DMA_ADDRESS_MASK;
                 }
             }
             BlitterPhase::WriteD => {
@@ -392,16 +393,16 @@ impl Blitter {
             self.cur_col += 1;
             if self.cur_col >= self.total_cols {
                 if use_a {
-                    self.bltapt = self.bltapt.wrapping_add(amod as u32);
+                    self.bltapt = self.bltapt.wrapping_add(amod as u32) & OCS_DMA_ADDRESS_MASK;
                 }
                 if use_b {
-                    self.bltbpt = self.bltbpt.wrapping_add(bmod as u32);
+                    self.bltbpt = self.bltbpt.wrapping_add(bmod as u32) & OCS_DMA_ADDRESS_MASK;
                 }
                 if use_c {
-                    self.bltcpt = self.bltcpt.wrapping_add(cmod as u32);
+                    self.bltcpt = self.bltcpt.wrapping_add(cmod as u32) & OCS_DMA_ADDRESS_MASK;
                 }
                 if use_d {
-                    self.bltdpt = self.bltdpt.wrapping_add(dmod as u32);
+                    self.bltdpt = self.bltdpt.wrapping_add(dmod as u32) & OCS_DMA_ADDRESS_MASK;
                 }
 
                 self.cur_col = 0;
@@ -425,7 +426,8 @@ impl Blitter {
 
         if use_b {
             self.bnew = config::chip_ram::read_u16(chip_ram, self.bltbpt);
-            self.bltbpt = self.bltbpt.wrapping_add(self.bltbmod as i32 as u32);
+            self.bltbpt =
+                self.bltbpt.wrapping_add(self.bltbmod as i32 as u32) & OCS_DMA_ADDRESS_MASK;
         }
 
         if use_c {
