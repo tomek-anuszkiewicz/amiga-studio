@@ -3689,3 +3689,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Graphify update passed outside the sandbox after a DLL access failure inside it
   - commit verification passed outside the sandbox, while its sandbox run timed out in the RAG MCP launch contract
   - full SingleStep and hardware captures were not run
+---
+
+### [2026-10-14 02:42 CEST] — Update roadmap priorities and add register routing audit
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `Obsidian/Amiga/Design/Verification/Testing Strategy and Quality Assurance.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed the test-suite orientation task and renumbered profiling
+  - Added a register, read-path, and physical-signal audit as roadmap 3.1
+  - Renumbered later chipset tasks and corrected the testing-strategy reference
+- **Architectural Rationale & Trade-Offs**:
+  - Prioritize end-to-end register and signal verification while keeping roadmap references coherent. No emulator behavior changed.
+- **Verification & Test Results**:
+  - PASS: roadmap check and diff check
+  - PASS: vault links and frontmatter (36 documents, 716 links)
+  - PASS: commit verification outside the sandbox
+  - Initial sandbox run failed because Codex app-server could not find its home directory
+  - PASS: focused Codex launch test outside the sandbox
+  - Milestone profile not run because no roadmap point was completed
