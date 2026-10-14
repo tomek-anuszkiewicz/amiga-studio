@@ -3649,3 +3649,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Scoped design review required no edits
   - Commit verification passed outside the sandbox; the sandbox run timed out in the RAG MCP launch contract
   - `graphify update .` failed because DLL import was denied
+---
+
+### [2026-10-14 02:17 CEST] — Mask OCS audio addresses and retire direct RAM fetch
+- **Affected Subsystems**:
+  - `crates/audio`
+  - `crates/paula`
+  - `Obsidian/Amiga/Design/General Architecture.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Mask Paula audio register halves and stored audio locations
+  - Mask audio pointer reloads
+  - Remove the unused direct Chip RAM fetch path from audio
+  - Add address-mask regression tests and declare the config dependency
+- **Architectural Rationale & Trade-Offs**:
+  - Agnus owns Chip RAM DMA addresses and audio location state must remain within the word-aligned OCS range.
+- **Verification & Test Results**:
+  - Focused regressions failed before the repair and passed afterward
+  - Memory bus and machine-loop audio integration tests passed
+  - Vault audit passed for 36 specifications and 716 links
+  - Commit verification passed outside the sandbox, including all 13 RAG MCP contracts
+  - The sandboxed RAG launch timed out
+  - Graphify update passed outside the sandbox
+  - Full SingleStep and hardware captures were not run

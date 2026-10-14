@@ -9,6 +9,7 @@ pub use interrupts::InterruptController;
 pub mod serial;
 pub use serial::SerialPort;
 
+use config::chip_ram::{OCS_DMA_ADDRESS_MASK, OCS_DMA_HIGH_MASK, OCS_DMA_LOW_MASK};
 use config::custom_reg::{agnus as agnus_reg, paula as reg};
 use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
@@ -324,13 +325,13 @@ impl Paula {
 
             // Audio channel 0 pointer
             agnus_reg::AUD0LCH => {
-                let high = (val as u32) << 16;
-                let low = self.audio.channels[0].lc & 0x0000FFFF;
+                let high = u32::from(val & OCS_DMA_HIGH_MASK) << 16;
+                let low = self.audio.channels[0].lc & u32::from(OCS_DMA_LOW_MASK);
                 self.audio.set_loc(0, high | low);
             }
             agnus_reg::AUD0LCL => {
-                let high = self.audio.channels[0].lc & 0xFFFF0000;
-                let low = val as u32;
+                let high = self.audio.channels[0].lc & (OCS_DMA_ADDRESS_MASK & 0xFFFF_0000);
+                let low = u32::from(val & OCS_DMA_LOW_MASK);
                 self.audio.set_loc(0, high | low);
             }
             reg::AUD0LEN => self.audio.set_len(0, val),
@@ -340,13 +341,13 @@ impl Paula {
 
             // Audio channel 1 pointer
             agnus_reg::AUD1LCH => {
-                let high = (val as u32) << 16;
-                let low = self.audio.channels[1].lc & 0x0000FFFF;
+                let high = u32::from(val & OCS_DMA_HIGH_MASK) << 16;
+                let low = self.audio.channels[1].lc & u32::from(OCS_DMA_LOW_MASK);
                 self.audio.set_loc(1, high | low);
             }
             agnus_reg::AUD1LCL => {
-                let high = self.audio.channels[1].lc & 0xFFFF0000;
-                let low = val as u32;
+                let high = self.audio.channels[1].lc & (OCS_DMA_ADDRESS_MASK & 0xFFFF_0000);
+                let low = u32::from(val & OCS_DMA_LOW_MASK);
                 self.audio.set_loc(1, high | low);
             }
             reg::AUD1LEN => self.audio.set_len(1, val),
@@ -356,13 +357,13 @@ impl Paula {
 
             // Audio channel 2 pointer
             agnus_reg::AUD2LCH => {
-                let high = (val as u32) << 16;
-                let low = self.audio.channels[2].lc & 0x0000FFFF;
+                let high = u32::from(val & OCS_DMA_HIGH_MASK) << 16;
+                let low = self.audio.channels[2].lc & u32::from(OCS_DMA_LOW_MASK);
                 self.audio.set_loc(2, high | low);
             }
             agnus_reg::AUD2LCL => {
-                let high = self.audio.channels[2].lc & 0xFFFF0000;
-                let low = val as u32;
+                let high = self.audio.channels[2].lc & (OCS_DMA_ADDRESS_MASK & 0xFFFF_0000);
+                let low = u32::from(val & OCS_DMA_LOW_MASK);
                 self.audio.set_loc(2, high | low);
             }
             reg::AUD2LEN => self.audio.set_len(2, val),
@@ -372,13 +373,13 @@ impl Paula {
 
             // Audio channel 3 pointer
             agnus_reg::AUD3LCH => {
-                let high = (val as u32) << 16;
-                let low = self.audio.channels[3].lc & 0x0000FFFF;
+                let high = u32::from(val & OCS_DMA_HIGH_MASK) << 16;
+                let low = self.audio.channels[3].lc & u32::from(OCS_DMA_LOW_MASK);
                 self.audio.set_loc(3, high | low);
             }
             agnus_reg::AUD3LCL => {
-                let high = self.audio.channels[3].lc & 0xFFFF0000;
-                let low = val as u32;
+                let high = self.audio.channels[3].lc & (OCS_DMA_ADDRESS_MASK & 0xFFFF_0000);
+                let low = u32::from(val & OCS_DMA_LOW_MASK);
                 self.audio.set_loc(3, high | low);
             }
             reg::AUD3LEN => self.audio.set_len(3, val),

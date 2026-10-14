@@ -3,6 +3,7 @@
 //! 8-bit signed PCM sample streaming, period clock division, 6-bit linear volume scaling,
 //! cross-channel volume and period modulation via ADKCON, and stereo channel mixing with ring buffer.
 
+use config::chip_ram::OCS_DMA_ADDRESS_MASK;
 use serde::{Deserialize, Serialize};
 
 /// Maximum capacity of the audio stereo output ring buffer
@@ -182,7 +183,8 @@ impl Audio {
             if enabled {
                 if !self.channels[channel].active {
                     // Arm DMA channel: reload pointer and length
-                    self.channels[channel].current_pt = self.channels[channel].lc;
+                    self.channels[channel].current_pt =
+                        self.channels[channel].lc & OCS_DMA_ADDRESS_MASK;
                     self.channels[channel].words_remaining = self.channels[channel].len;
                     self.channels[channel].dma_request = true;
                     self.channels[channel].active = true;
@@ -274,7 +276,7 @@ impl Audio {
                         self.channels[ch].irq_pending = true;
                         self.channels[ch].restart_strobe = true;
                         self.channels[ch].words_remaining = self.channels[ch].len;
-                        self.channels[ch].current_pt = self.channels[ch].lc;
+                        self.channels[ch].current_pt = self.channels[ch].lc & OCS_DMA_ADDRESS_MASK;
                     }
                 } else {
                     // Manual (non-DMA) mode: trigger interrupt when buffer is consumed
@@ -294,23 +296,6 @@ impl Audio {
             .saturating_add(self.channels[3].output_scaled());
 
         self.push_sample(StereoSample { left, right });
-    }
-
-    /// Advances audio state and executes cycle-by-cycle DMA fetches from Chip RAM
-    pub fn step_cck_ram(&mut self, chip_ram: &[u8]) {
-        for ch in 0..4 {
-            if self.channels[ch].dma_enabled && self.channels[ch].dma_request {
-                let pt = self.channels[ch].current_pt as usize;
-                if pt + 1 < chip_ram.len() {
-                    let word = u16::from_be_bytes([chip_ram[pt], chip_ram[pt + 1]]);
-                    self.load_word(ch, word);
-                    self.channels[ch].current_pt = self.channels[ch].current_pt.wrapping_add(2);
-                    self.channels[ch].dma_request = false;
-                }
-            }
-        }
-
-        self.step_cck();
     }
 
     /// Pushes a stereo sample into the ring buffer
@@ -349,6 +334,7 @@ impl Audio {
     #[inline]
     pub fn set_loc(&mut self, channel: usize, loc: u32) {
         if channel < 4 {
+            let loc = loc & OCS_DMA_ADDRESS_MASK;
             self.channels[channel].lc = loc;
             self.channels[channel].current_pt = loc;
         }
