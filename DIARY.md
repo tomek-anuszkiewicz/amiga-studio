@@ -5100,3 +5100,17 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: python tools/verification/verify.py commit
   - No Design specifications selected by tracked_paths
   - Full SingleStep and hardware captures not run
+---
+
+### [2026-10-23 17:42 CET] — Version reviewed Test Book recipe
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books`
+- **What Was Changed (The Concrete Reality)**:
+  - Copied the accepted Test Book book.json to the variant root as a reviewed Git snapshot
+  - Documented that the root copy survives replacement of local review bundles
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve accepted chapter and element decisions in Git history while keeping rendered output and runtime bundles local
+- **Verification & Test Results**:
+  - Snapshot bytes match accepted/book.json for 1 chapter and 993 elements
+  - git diff --check passed
+  - commit verification passed all checks except the English scan, which failed on seven words in unrelated in-progress SVG files
