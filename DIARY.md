@@ -5157,3 +5157,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: ordinary crate tests, standard harness, English, formatting, Clippy, architecture, hardware and code-quality checks, verification Python contracts, and vault audit on the working tree
   - FAIL: Book Review contracts, seven existing local-asset or UI timeout errors
   - Full SingleStep and hardware captures not run
+---
+
+### [2026-10-23 17:24 CEST] — Replace legacy M68000 benchmark catalog with decoder-derived candidate workflow
+- **Affected Subsystems**:
+  - `crates/test_runner/benches`
+  - `crates/test_runner/tests`
+  - `tools/verification`
+  - `baselines/benchmarks`
+  - `Obsidian/Amiga/Design/Performance`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed the 108-case benchmark runner and catalog
+  - added candidate inventory, probe, measurement, retry, analysis, and instruction composition export
+  - updated verifier CLI and focused result handling
+  - committed the reviewed schema-v2 baseline with 4571 measured cases and 27 targeted retries
+  - synchronized benchmark and architecture specifications
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the benchmark runner and baseline schema atomic because the new analyzer requires schema v2. Preserve raw-run provenance and policy metadata so incompatible fixtures and NOP-control protocols do not produce misleading regression labels.
+- **Verification & Test Results**:
+  - PASS: 4571-case instruction composition export, ordinary crate tests, standard harness, English, formatting, Clippy, architecture, hardware and code-quality checks, bootstrap/conversion/PDF/RAG/verification Python contracts, and vault audit
+  - FAIL: Book Review contracts with five existing Playwright UI timeouts and two missing local math-asset errors
+  - Current counted-JMP fixture rejects replay of the historical raw baseline run, and the earlier NOP-every-100 baseline protocol is incompatible with current once-at-start NOP regression labels
+  - full new benchmark measurement, full SingleStep, and hardware captures not run

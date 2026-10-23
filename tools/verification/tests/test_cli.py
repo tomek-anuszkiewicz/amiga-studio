@@ -3,6 +3,7 @@ import contextlib
 import io
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -12,6 +13,7 @@ from commands import select_phases
 from repository import REPO_ROOT
 import verify
 import commands as selection
+import execution
 
 
 def selected(sentence, changes=()):
@@ -20,12 +22,46 @@ def selected(sentence, changes=()):
 
 
 class SelectionTests(unittest.TestCase):
+    def test_startup_help_shows_nested_command_tree_without_selecting_work(self):
+        for argv in ([], ["--help"]):
+            with self.subTest(argv=argv), contextlib.redirect_stdout(io.StringIO()) as output:
+                if argv:
+                    with self.assertRaises(SystemExit) as exit_result:
+                        parse_args(argv)
+                    self.assertEqual(exit_result.exception.code, 0)
+                else:
+                    _, args = parse_args(argv)
+                    self.assertIsNone(args)
+            help_text = output.getvalue()
+            for command in ("milestone [singlestep]", "crate NAME [suite NAME] [case FILTER]",
+                            "python [directory PATH [file PATTERN] [case FILTER]]",
+                            "singlestep [case FILTER] [full|sample N]",
+                            "architecture [case FILTER]", "profile bench pilot",
+                            "analyze RUN_DIRECTORY [retry RETRY_DIRECTORY]"):
+                self.assertIn(command, help_text)
+
     def test_focused_rust_preserves_suite_and_case_without_completion(self):
         commands = selected("test rust crate test_runner suite test_singlestep case test_sub")
         self.assertEqual(len(commands), 1)
         self.assertEqual(commands[0][1], [sys.executable, "tools/verification/run_singlestep.py",
                                          "--profile", "test", "--case", "test_sub"])
         self.assertEqual(commands[0][2], {})
+
+    def test_exact_selection_targets_one_named_rust_test_or_singlestep_group(self):
+        rust = selected("test rust crate cpu suite test_add case test_add_b --exact")
+        self.assertEqual(rust[0][1][-2:], ["test_add_b", "--exact"])
+        silicon = selected("test runner singlestep case test_add_b sample 5 --exact")
+        self.assertEqual(silicon[0][1][-3:], ["--case", "test_add_b", "--exact"])
+        self.assertEqual(silicon[0][2], {"SINGLESTEP_FULL": "0", "SINGLESTEP_LIMIT": "5"})
+
+    def test_exact_without_supported_case_is_rejected(self):
+        for sentence in ("test rust unit --exact", "test rust crate cpu --exact",
+                         "test rust crate cpu case test_add_b --exact",
+                         "test python directory tools/verification/tests case test_cli --exact",
+                         "test runner standard --exact", "test runner singlestep --exact",
+                         "commit --exact"):
+            with self.subTest(sentence=sentence), self.assertRaises(ValueError):
+                selected(sentence)
 
     def test_runner_build_compiles_test_and_benchmark_targets_without_execution(self):
         commands = selected("runner build")
@@ -128,12 +164,17 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(commands[0][1][-2:], ["docs/testing.md", "AGENTS.md"])
 
     def test_settings_can_follow_subcommands_without_eating_runner_arguments(self):
-        _, args = parse_args(["runner", "bench", "--log-level", "full", "--plan", "quick"])
+        _, args = parse_args(["runner", "bench", "--log-level", "full", "--plan", "measure"])
         self.assertTrue(args.plan)
         self.assertEqual(args.log_level, "full")
         command = select_phases(args, set())[0][1][0][1]
         self.assertEqual(command[:2], ["cargo", "bench"])
-        self.assertEqual(command[-2:], ["--", "--quick"])
+        self.assertEqual(command[-2:], ["--", "--measure-candidates"])
+
+    def test_results_directory_is_a_common_option(self):
+        _, args = parse_args(["test", "runner", "singlestep", "case", "test_add_b",
+                              "--results-dir", ".agent/tmp/experiments/add"])
+        self.assertEqual(args.results_dir, ".agent/tmp/experiments/add")
 
     def test_report_output_is_visible_by_default_and_can_be_overridden(self):
         self.assertEqual(parse_args(["runner", "analyze", "fixture.csv"])[1].log_level, "full")
@@ -141,11 +182,19 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(parse_args(["commit"])[1].log_level, "warn")
 
     def test_benchmark_and_profiler_select_the_cargo_benchmark(self):
-        self.assertEqual(selected("runner profile bench quick")[0][1][1:],
-                         ["tools/verification/profile_benchmark.py", "--quick"])
-        self.assertEqual(selected("runner bench quick")[0][1],
+        self.assertEqual(selected("runner profile bench pilot")[0][1][1:],
+                         ["tools/verification/profile_benchmark.py", "--measure-candidates-pilot"])
+        self.assertEqual(selected("runner bench measure")[0][1],
                          ["cargo", "bench", "-p", "test_runner", "--bench", "bench_instructions",
-                          "--", "--quick"])
+                          "--", "--measure-candidates"])
+        retry_commands = selected("runner bench retry")
+        self.assertEqual(retry_commands[0][1][1:],
+                         ["tools/verification/analyze_candidate_benchmarks.py",
+                          "--prepare-retry-latest"])
+        self.assertEqual(retry_commands[1][1][-1], "--retry-candidates")
+        self.assertEqual(selected("runner analyze full_run retry retry_run")[0][1][1:],
+                         ["tools/verification/analyze_candidate_benchmarks.py", "full_run",
+                          "--retry-dir", "retry_run"])
 
     def test_gui_keeps_its_separate_native_options(self):
         self.assertEqual(selected("runner gui -- --frames 10")[0][1][-2:], ["--frames", "10"])
@@ -156,30 +205,63 @@ class SelectionTests(unittest.TestCase):
                          "test runner dma sample 50", "milestone dma",
                          "test runner singlestep sample 0", "test runner singlestep sample 50 full",
                          "milestone singlestep singlestep", "check english case name",
-                         "runner bench -- --quick", "runner bench quick thorough",
+                         "runner bench -- --quick", "runner bench measure retry",
                          "runner bench passes 0", "runner bench pin maybe",
-                         "runner bench quick filter ADD", "runner bench quick unroll 500",
-                         "runner bench quick passes 9", "runner bench quick output reports",
-                         "runner bench quick pin off", "runner profile bench quick pin off",
+                         "runner bench measure filter ADD", "runner bench measure unroll 500",
+                         "runner bench measure passes 9", "runner bench measure output reports",
+                         "runner bench measure pin off", "runner profile bench pilot pin off",
                          "runner bench unroll", "runner profile bench unknown"):
             with self.subTest(sentence=sentence), self.assertRaises(ValueError):
                 selected(sentence)
 
 class ExecutionTests(unittest.TestCase):
-    def test_benchmark_analysis_follows_successful_measurement_only(self):
+    def test_exact_rust_run_rejects_zero_matching_tests(self):
+        for count, expected in ((0, 1), (1, 0)):
+            process = unittest.mock.MagicMock()
+            process.__enter__.return_value = process
+            process.stdout = [f"running {count} test{'s' if count != 1 else ''}\n"]
+            process.wait.return_value = 0
+            with self.subTest(count=count), tempfile.TemporaryDirectory() as temporary, \
+                 patch.object(execution.subprocess, "Popen", return_value=process), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                code, _ = execution.run_cmd(["cargo", "test", "--", "case", "--exact"],
+                                             log_dir=temporary)
+            self.assertEqual(code, expected)
+
+    def test_plan_shows_isolated_logs_and_singlestep_reports_without_writing(self):
+        with patch.object(verify, "execute_command") as execute, \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(["test", "runner", "singlestep", "case", "test_add_b",
+                                          "--exact", "--results-dir", ".agent/tmp/experiments/add",
+                                          "--plan"]), 0)
+        execute.assert_not_called()
+        self.assertIn("experiments\\add\\verify", output.getvalue())
+        self.assertIn("SINGLESTEP_RESULTS_DIR", output.getvalue())
+        self.assertIn(repr(str(REPO_ROOT / ".agent/tmp/experiments/add/singlestep")),
+                      output.getvalue())
+
+    def test_results_directory_reaches_execution_and_singlestep_environment(self):
+        with patch.object(verify, "execute_command", return_value=(True, "ok", 0)) as execute, \
+             patch.object(verify, "snapshot", return_value="same"), \
+             contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(verify.main(["test", "runner", "singlestep", "case", "test_add_b",
+                                          "--results-dir", ".agent/tmp/experiments/add"]), 0)
+        self.assertEqual(execute.call_args.kwargs["log_dir"],
+                         REPO_ROOT / ".agent/tmp/experiments/add/verify")
+        self.assertEqual(execute.call_args.args[1]["SINGLESTEP_RESULTS_DIR"],
+                         str(REPO_ROOT / ".agent/tmp/experiments/add/singlestep"))
+    def test_candidate_generation_follows_successful_inventory_only(self):
         for success in (True, False):
             with self.subTest(success=success), \
                  patch.object(verify, "execute_command", return_value=(success, "result", 0)) as execute, \
                  patch.object(verify, "snapshot", return_value="same"), \
                  contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(verify.main(["runner", "bench", "quick"]), 0 if success else 1)
+                self.assertEqual(verify.main(["runner", "bench", "inventory"]), 0 if success else 1)
             self.assertEqual(execute.call_count, 2 if success else 1)
             self.assertEqual(execute.call_args_list[0].args[0][:2], ["cargo", "bench"])
             if success:
                 self.assertEqual(execute.call_args_list[1].args[0][1:], [
-                    "tools/verification/analyze_benchmarks.py",
-                    ".agent/tmp/benchmarks/quick/m68k_benchmark.csv", "--output",
-                    ".agent/tmp/benchmarks/quick/analysis_report.md"])
+                    "tools/verification/benchmark_candidates.py"])
 
     def test_unrelated_changes_execute_no_python_contracts(self):
         with patch.object(verify, "collect_changes", return_value={"crates/cpu/src/state.rs"}), \

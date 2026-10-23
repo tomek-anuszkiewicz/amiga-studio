@@ -2,6 +2,42 @@
 import argparse
 
 
+COMMAND_TREE = """Command tree (run from the repository root):
+  python tools/verification/verify.py
+  ├─ commit
+  ├─ milestone [singlestep]
+  ├─ test
+  │  ├─ rust
+  │  │  ├─ [unit|integration|all|workspace]
+  │  │  └─ crate NAME [suite NAME] [case FILTER]
+  │  ├─ python [directory PATH [file PATTERN] [case FILTER]]
+  │  └─ runner
+  │     ├─ [standard|silicon]
+  │     └─ singlestep [case FILTER] [full|sample N]
+  ├─ check
+  │  ├─ all
+  │  ├─ architecture [case FILTER]
+  │  ├─ english [files PATH...]
+  │  ├─ code
+  │  ├─ hardware
+  │  ├─ formatting
+  │  ├─ clippy
+  │  └─ build [crate NAME]
+  └─ runner
+     ├─ build
+     ├─ bench [inventory|probe|pilot|measure|retry]
+     ├─ gui -- OPTIONS
+     ├─ profile bench pilot
+     └─ analyze RUN_DIRECTORY [retry RETRY_DIRECTORY]
+
+The test rust, test runner and runner bench branches also accept no selector.
+Execution options: --plan, --log-level full|warn|error and --results-dir PATH
+may appear anywhere among sentence selectors. --exact requires crate NAME,
+suite NAME and case NAME for Rust, or case NAME for SingleStep groups.
+Only runner gui uses -- to pass native program options.
+"""
+
+
 EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py commit
   python tools/verification/verify.py milestone --plan
@@ -10,11 +46,12 @@ EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py test python directory tools/bootstrap/tests
   python tools/verification/verify.py test python
   python tools/verification/verify.py test runner singlestep case test_add_b sample 500
+  python tools/verification/verify.py test runner singlestep case test_add_b --exact sample 5 --results-dir .agent/tmp/experiments/add
   python tools/verification/verify.py check architecture case test_file_size_limits
-  python tools/verification/verify.py runner bench quick
+  python tools/verification/verify.py runner bench inventory
+  python tools/verification/verify.py runner bench probe
+  python tools/verification/verify.py runner bench measure
 
-Execution options --plan and --log-level full|warn|error may appear anywhere
-among sentence selectors. Only runner gui uses -- to pass native program options.
 Focused commands do not run completion gates or coverage. Commit always runs
 ordinary crate coverage, quality gates, standard harness and Python contracts.
 Without directory selectors, test python runs only contracts affected by changed
@@ -40,10 +77,15 @@ def keyword_values(words, allowed):
 
 def parser():
     root = argparse.ArgumentParser(description="Repository verification and diagnostics.",
-                                   epilog=EXAMPLES, formatter_class=argparse.RawDescriptionHelpFormatter)
+                                   epilog=COMMAND_TREE + "\n" + EXAMPLES,
+                                   formatter_class=argparse.RawDescriptionHelpFormatter)
     root.add_argument("--plan", action="store_true", help="Preview commands without executing them")
     root.add_argument("--log-level", choices=("full", "warn", "error"), default="warn",
                       help="Child output detail; every run saves full logs")
+    root.add_argument("--results-dir", metavar="PATH",
+                      help="Store verifier logs and SingleStep reports under PATH")
+    root.add_argument("--exact", action="store_true",
+                      help="Match one Rust suite test or SingleStep group exactly")
     commands = root.add_subparsers(dest="command", required=True)
     for name in ("commit", "milestone"):
         leaf = commands.add_parser(name, help=f"Run the {name} completion profile")
@@ -78,10 +120,14 @@ def parse_args(argv):
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--plan", action="store_true")
     common.add_argument("--log-level", choices=("full", "warn", "error"))
+    common.add_argument("--results-dir")
+    common.add_argument("--exact", action="store_true")
     separator = argv.index("--") if "--" in argv else len(argv)
     settings, words = common.parse_known_args(argv[:separator])
     args = root.parse_args(words + argv[separator:])
     report = args.command == "runner" and args.action in ("analyze", "profile")
     args.plan = settings.plan
     args.log_level = settings.log_level or ("full" if report else "warn")
+    args.results_dir = settings.results_dir
+    args.exact = settings.exact
     return root, args

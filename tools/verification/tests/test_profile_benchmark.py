@@ -22,7 +22,7 @@ class ProfileBenchmarkTests(unittest.TestCase):
     def test_failed_build_does_not_launch_a_stale_executable(self):
         with patch.object(profile_benchmark.subprocess, "Popen", return_value=self.build(1)), \
              patch.object(profile_benchmark.subprocess, "call") as record:
-            self.assertEqual(profile_benchmark.main(["--quick"]), 1)
+            self.assertEqual(profile_benchmark.main(["--measure-candidates-pilot"]), 1)
             record.assert_not_called()
 
     def test_successful_build_profiles_its_exact_artifact(self):
@@ -30,11 +30,11 @@ class ProfileBenchmarkTests(unittest.TestCase):
                     "executable": "target/release/deps/bench_instructions-current.exe"}
         with patch.object(profile_benchmark.subprocess, "Popen", return_value=self.build(0, artifact)) as build, \
              patch.object(profile_benchmark.subprocess, "call", return_value=0) as record:
-            self.assertEqual(profile_benchmark.main(["--quick"]), 0)
+            self.assertEqual(profile_benchmark.main(["--measure-candidates-pilot"]), 0)
             self.assertEqual(build.call_args.args[0][:2], ["cargo", "bench"])
             self.assertIn("--no-run", build.call_args.args[0])
             self.assertEqual(record.call_args.args[0], ["samply", "record", artifact["executable"],
-                                                       "--quick"])
+                                                       "--measure-candidates-pilot"])
 
     def test_missing_benchmark_artifact_does_not_launch_profiler(self):
         artifact = {"reason": "compiler-artifact", "target": {"name": "test_runner", "kind": ["bin"]},

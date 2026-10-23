@@ -1,6 +1,6 @@
 # Repository Verification Reference
 
-This reference contains test commands, verification routing and diagnostic details. For an introduction to what each kind of test establishes, read the [testing overview](../../docs/testing.md). Run commands from the repository root. Current options are available with `python tools/verification/verify.py --help`; `--plan` previews selected commands.
+This reference contains test commands, verification routing and diagnostic details. For an introduction to what each kind of test establishes, read the [testing overview](../../docs/testing.md). Run commands from the repository root. Invoke `python tools/verification/verify.py` without arguments or with `--help` to see the full command tree; `--plan` previews selected commands.
 
 ## Command syntax
 
@@ -8,6 +8,9 @@ Use `python tools/verification/verify.py` followed by one sentence below. There
 is no installed short `verify` alias. Values containing spaces must be quoted.
 Selection keywords are unique; unknown or incomplete sentences fail before
 execution. `case` is a substring filter, including Python qualified test names.
+Use `--exact` with a focused Rust or SingleStep `case` to match the complete
+test or group name. For ordinary Rust tests, pass the full libtest name when it
+includes a module path.
 
 | Sentence | Scope |
 | --- | --- |
@@ -25,13 +28,22 @@ execution. `case` is a substring filter, including Python qualified test names.
 | `check code|hardware|formatting|clippy` | One quality gate |
 | `check build [crate NAME]` | Cargo compilation check; workspace by default |
 | `runner build` | Compile release test and benchmark targets without running them |
-| `runner bench [quick\|standard\|thorough]` | CPU benchmark |
+| `runner bench [inventory\|probe\|pilot\|measure\|retry]` | Decoder-derived CPU benchmark workflow |
 | `runner gui -- OPTIONS` | GUI inspector capture |
-| `runner profile bench [quick\|standard\|thorough]` | Build the CPU benchmark and run it under samply; no profile prints benchmark help |
-| `runner analyze CSV [report MARKDOWN]` | Analyze an existing benchmark CSV |
+| `runner profile bench pilot` | Build the CPU benchmark and sample a short representative run with samply |
+| `runner analyze RUN_DIRECTORY [retry RETRY_DIRECTORY]` | Analyze a validated candidate run and compare it with the tracked baseline |
 
 `--plan` previews the exact child commands and environment. `--log-level
 full|warn|error` controls output; both options may appear among sentence selectors.
+`--results-dir PATH` places verifier logs in `PATH/verify/` and, for SingleStep,
+reports and history in `PATH/singlestep/`. Relative paths start at the repository
+root. Use a new directory per experiment to keep its SingleStep history separate.
+Other tools, including coverage and benchmarks, retain their own output paths.
+`--exact` is accepted only with `test rust crate NAME suite NAME case NAME` or
+`test runner singlestep case NAME`; it does not change the selected build profile
+or vector comparisons. The focused Rust form fails when the named suite executes
+zero or multiple tests. SingleStep `case` names one instruction group; `sample`
+controls how many vectors from that group execute.
 CPU benchmarks use the Cargo benchmark target described below.
 The aggregate SingleStep test saves suite results and calls report aggregation
 once after all selected groups finish, including failing executions.
@@ -48,9 +60,10 @@ Examples:
 ```powershell
 python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_sub
 python tools/verification/verify.py test runner singlestep case test_move_w sample 500
+python tools/verification/verify.py test runner singlestep case test_add_b --exact sample 5 --results-dir .agent/tmp/experiments/add
 python tools/verification/verify.py test python directory tools/bootstrap/tests file test_bootstrap_contract.py case test_all
 python tools/verification/verify.py check architecture case test_file_size_limits
-python tools/verification/verify.py runner bench quick --plan
+python tools/verification/verify.py runner bench inventory --plan
 ```
 
 The generic Rust path preserves the selected Cargo test's normal environment.
@@ -95,7 +108,8 @@ Direct Cargo execution of `test_singlestep` also finalizes reports automatically
 The standard libtest runner sees one aggregate test. The existing verify `case`
 selector matches group names inside Rust through `SINGLESTEP_CASE`; sample limits
 still control vector counts only. For direct Cargo execution, select a group with
-the same environment variable:
+the same environment variable. Set `SINGLESTEP_EXACT=1` when the group name must
+match exactly:
 
 ```powershell
 $env:SINGLESTEP_CASE = "test_add_b"
@@ -127,7 +141,9 @@ cargo bench -p test_runner --bench bench_instructions -- --help
 cargo bench -p test_runner --bench bench_instructions -- --inventory
 python tools/verification/benchmark_candidates.py
 cargo bench -p test_runner --bench bench_instructions -- --probe-candidates
+cargo bench -p test_runner --bench bench_instructions -- --export-composition
 cargo bench -p test_runner --bench bench_instructions -- --measure-candidates
+python tools/verification/analyze_candidate_benchmarks.py --prepare-retry-latest
 cargo bench -p test_runner --bench bench_instructions -- --retry-candidates
 python tools/verification/analyze_candidate_benchmarks.py .agent/tmp/benchmarks/inventory/full_<run-id> --retry-dir .agent/tmp/benchmarks/inventory/retry_<run-id>
 ```
@@ -135,36 +151,49 @@ python tools/verification/analyze_candidate_benchmarks.py .agent/tmp/benchmarks/
 Running without options prints instructions without measuring. The decoder-derived
 inventory and validated candidate sequence above is the current benchmark workflow.
 It saves raw JSONL, fixture hashes, host settings, controls, and derived JSON/CSV
-reports under `.agent/tmp/benchmarks/inventory/`. A full run may exit with an
-unstable-case count; `--retry-candidates` remeasures unstable cases and cases
-covered by an unstable NOP control. The report
-accepts a retry only with matching candidate and validation hashes and keeps
-its host control separate. A complete validated analysis writes
+reports under `.agent/tmp/benchmarks/inventory/`. Each measurement session starts
+with one NOP control using three series near 1.2 seconds each. An unstable control
+stops that session before candidate timing. The runner does not measure host CPU
+load or wait for an idle threshold. A full run may still exit with unstable
+candidate cases. The retry plan selects those cases plus matching-fixture cases
+whose raw time differs from the retained baseline by more than 3% in either
+direction. With the older baseline's NOP policy, this difference only selects
+cases for confirmation; it is not a regression verdict. A retry session uses
+one new initial NOP control and retains up to three measurements per selected
+case. It stops when two measurements agree within 3%, including the full-run
+measurement when valid. An unresolved case remains invalid for final reporting.
+The report accepts a retry only with matching candidate and validation hashes
+and keeps its host control separate. A complete validated analysis with no
+pending retry cases writes
 `latest_candidate_run.json` as the current report pointer. Most blocks execute 700 targets; halting `STOP`
 requires one target per block. The measured cost includes guest helpers and the
 host stepping loop.
 
-The retained 108-case runner is available with `--quick`, `--standard`, or
-`--thorough` as a historical workflow. Its reports are saved under
-`.agent/tmp/benchmarks/<profile>/`; they are not comparable with decoder-derived
-cases without matching executed fixtures and source provenance. `verify.py runner
-bench` still accepts only a legacy profile and translates it to the native
-option. After successful legacy measurement, it runs
-[analyze_benchmarks.py](analyze_benchmarks.py) on that profile's `m68k_benchmark.csv`
-and saves `analysis_report.md` in the same directory. A failed benchmark skips
-analysis; running without a profile prints help only. Direct `cargo bench` runs
-measurement only. `runner analyze CSV [report MARKDOWN]` remains available for
-existing datasets. `runner profile bench` accepts the same profile and
-builds the same target without running it, reads its executable path from Cargo's
-artifact messages, and passes that executable to `samply record`. A failed build
-or missing artifact cannot launch a previous executable.
+`verify.py runner bench inventory` writes the decoder inventory and generates the
+candidate manifest. `probe` validates every candidate before `measure`; `retry`
+prepares the plan and remeasures selected cases, and `pilot` runs a short
+representative sample. Direct Cargo retry requires the plan command above first.
+`runner analyze RUN_DIRECTORY [retry RETRY_DIRECTORY]` validates a completed run,
+writes the report and anomaly tables, and compares matching fixtures with the
+tracked version-2 baseline. The comparison requires identical fixture hashes,
+target counts and CPU clocks with the same host OS, architecture, power plan,
+priority, affinity, and NOP control policy. The tracked baseline uses the former
+control-every-100 policy; a new run remains incompatible for NOP-adjusted
+regression labels until a comparable baseline is explicitly approved. Raw and
+NOP-adjusted changes are diagnostic signals, not correctness gates. A report
+without a required retry is preliminary and does not update the current report
+pointer. Running
+`runner bench` without an action prints help. `runner profile bench pilot` builds
+the same target without running it, takes the executable path from Cargo's
+artifact messages, and passes it to `samply record`. A failed build or missing
+artifact cannot launch a previous executable.
 
 ## Completion verification
 
 Verification orchestration and coverage result processing live in `tools/verification/`;
 worktree management lives in `tools/worktree.ps1`. The shared diary appender lives in `tools/log_diary.py`. Concrete project audits and checks live in `tools/verification/checks/`. Run these scripts from the repository root. Task selection uses subcommands; the former selection switches are rejected.
 
-The `test_runner` suites retain emulator execution checks and reference-result invariants. Standalone checks of its analyzers, statistics, PRNG, persistence, host setup, synthetic bus, program injection, report schemas, parsers and frame matcher are excluded; mixed suites retain their real execution cases. Empirical anomaly checks use stored results and do not establish fresh performance measurements.
+The `test_runner` suites retain emulator execution checks and reference-result invariants. Candidate benchmark fixtures have targeted execution tests; Python tests check analyzer and command contracts. Empirical anomaly reports use stored results and do not establish fresh performance measurements.
 
 Commit verification starts with ordinary workspace crate tests under LLVM coverage instrumentation, excluding `test_runner`. This is automatic, with no coverage switch. Only this execution contributes to the coverage report; the remaining quality gates and harness suites use normal Cargo artifacts. `cargo-llvm-cov` uses its separate `target/llvm-cov-target` cache, while normal Cargo commands retain their usual target directory. Raw measurement counters and the previous summary are cleared before each measurement, without deleting the build caches. Yellow `[INFO]` messages identify the instrumented and uninstrumented phases and summarize line, function and region coverage. Full summary data is saved to `.agent/tmp/coverage/summary.json`; there is no percentage threshold. Coverage does not measure performance or prove assertion quality. Stable coverage does not include doctest execution; branch coverage is not enabled.
 
@@ -175,7 +204,7 @@ rustup component add llvm-tools-preview
 cargo install cargo-llvm-cov --locked
 ```
 
-Run `python tools/verification/verify.py` without arguments (or with `--help`) to display the verification sets, milestone CPU-suite scope, plan behavior and command examples. This prints instructions and exits successfully without running verification.
+Run `python tools/verification/verify.py` without arguments (or with `--help`) to display the full command tree, verification sets, milestone CPU-suite scope, plan behavior and command examples. This prints instructions and exits successfully without running verification.
 
 Verification runs on the current working tree and does not require staging or pending changes. For milestone closure run both separate sets, once each:
 

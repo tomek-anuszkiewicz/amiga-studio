@@ -15,6 +15,7 @@
     "tests/benchmarks/quick",
     "tests/benchmarks/standard",
     "tests/benchmarks/thorough",
+    "baselines/benchmarks",
     "scratch",
     "graphify-out",
     "ref_src",
@@ -72,6 +73,11 @@
     ],
     "crates/gui/tests/test_interactions.rs": [
       "zzzzzzzz"
+    ],
+    "crates/test_runner/tests/test_benchmark_workloads.rs": [
+      "eeb",
+      "efa",
+      "efb"
     ],
     "tools/bootstrap/pdf-to-markdown/stages/10_proofread_stream/prompt.md": [
       "audovol",

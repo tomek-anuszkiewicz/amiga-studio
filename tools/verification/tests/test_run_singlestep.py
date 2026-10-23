@@ -15,7 +15,7 @@ import run_singlestep
 
 class LauncherTests(unittest.TestCase):
     def options(self):
-        return argparse.Namespace(full=True, sample=None, case=None, profile="verification")
+        return argparse.Namespace(full=True, sample=None, case=None, exact=False, profile="verification")
 
     def run_fixture(self, directory, test_code, report_code, status, completed=2):
         events = []
@@ -29,6 +29,7 @@ class LauncherTests(unittest.TestCase):
                               pipeline_seconds=0.3, report_exit_code=report_code)
                 (directory / "timing.json").write_text(json.dumps(timing))
             self.assertEqual(kwargs["env"]["SINGLESTEP_CASE"], "")
+            self.assertEqual(kwargs["env"]["SINGLESTEP_EXACT"], "0")
             self.assertEqual(command, ["silicon", "--quiet", "--nocapture"])
             return test_code
         with patch.object(run_singlestep.subprocess, "call", side_effect=call), \

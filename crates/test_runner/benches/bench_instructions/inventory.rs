@@ -7,44 +7,23 @@ use std::path::Path;
 
 use cpu::{micro::STEPS_DECODE_EXCEPTION, OPCODE_DESCRIPTOR_TABLE};
 
-use super::catalog::all_benchmark_specs;
-
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct InventoryCounts {
     pub legal_encodings: usize,
     pub decode_exceptions: usize,
-    pub declared_encodings: usize,
-    pub undeclared_legal_encodings: usize,
-    pub catalog_cases: usize,
-    pub catalog_decode_exceptions: usize,
     pub structural_groups: usize,
 }
 
-pub fn decoder_inventory() -> (InventoryCounts, BTreeMap<u16, Vec<&'static str>>) {
-    let mut declared: BTreeMap<u16, Vec<&'static str>> = BTreeMap::new();
+pub fn decoder_inventory() -> InventoryCounts {
     let mut counts = InventoryCounts::default();
-    for spec in all_benchmark_specs() {
-        counts.catalog_cases += 1;
-        if let Some(&opcode) = spec.opcode_words.first() {
-            declared.entry(opcode).or_default().push(spec.id);
-        }
-    }
-    for (opcode, descriptor) in OPCODE_DESCRIPTOR_TABLE.iter().enumerate() {
+    for descriptor in OPCODE_DESCRIPTOR_TABLE.iter() {
         if std::ptr::eq(descriptor.steps, &STEPS_DECODE_EXCEPTION[..]) {
             counts.decode_exceptions += 1;
-            if declared.contains_key(&(opcode as u16)) {
-                counts.catalog_decode_exceptions += 1;
-            }
         } else {
             counts.legal_encodings += 1;
-            if declared.contains_key(&(opcode as u16)) {
-                counts.declared_encodings += 1;
-            } else {
-                counts.undeclared_legal_encodings += 1;
-            }
         }
     }
-    (counts, declared)
+    counts
 }
 
 pub fn write_decoder_inventory(out_dir: &Path) -> Result<InventoryCounts, String> {
@@ -52,9 +31,8 @@ pub fn write_decoder_inventory(out_dir: &Path) -> Result<InventoryCounts, String
     let path = out_dir.join("decoder_inventory.csv");
     let file = File::create(&path).map_err(|error| error.to_string())?;
     let mut writer = BufWriter::new(file);
-    writeln!(writer, "opcode,decoder_status,catalog_ids,coverage_status")
-        .map_err(|error| error.to_string())?;
-    let (mut counts, declared) = decoder_inventory();
+    writeln!(writer, "opcode,decoder_status,coverage_status").map_err(|error| error.to_string())?;
+    let mut counts = decoder_inventory();
     let mut groups: BTreeMap<usize, Vec<u16>> = BTreeMap::new();
     for (opcode, descriptor) in OPCODE_DESCRIPTOR_TABLE.iter().enumerate() {
         let is_exception = std::ptr::eq(descriptor.steps, &STEPS_DECODE_EXCEPTION[..]);
@@ -64,19 +42,13 @@ pub fn write_decoder_inventory(out_dir: &Path) -> Result<InventoryCounts, String
                 .or_default()
                 .push(opcode as u16);
         }
-        let ids = declared.get(&(opcode as u16));
-        let (decoder_status, coverage_status) = match (is_exception, ids.is_some()) {
-            (true, true) => ("decode_exception", "catalog_conflict"),
-            (true, false) => ("decode_exception", "excluded"),
-            (false, true) => ("legal", "declared_unvalidated"),
-            (false, false) => ("legal", "needs_form_classification"),
+        let (decoder_status, coverage_status) = if is_exception {
+            ("decode_exception", "excluded")
+        } else {
+            ("legal", "needs_form_classification")
         };
-        writeln!(
-            writer,
-            "{opcode:04X},{decoder_status},{},{coverage_status}",
-            ids.map_or_else(String::new, |ids| ids.join("|"))
-        )
-        .map_err(|error| error.to_string())?;
+        writeln!(writer, "{opcode:04X},{decoder_status},{coverage_status}")
+            .map_err(|error| error.to_string())?;
     }
     writer.flush().map_err(|error| error.to_string())?;
     let mut groups: Vec<_> = groups.into_values().collect();

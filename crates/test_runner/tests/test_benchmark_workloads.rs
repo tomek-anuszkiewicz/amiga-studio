@@ -1,36 +1,29 @@
 #![allow(dead_code)]
 
-#[path = "../benches/bench_instructions/builder.rs"]
-mod builder;
+#[path = "../benches/bench_instructions/candidate_measure.rs"]
+mod candidate_measure;
 #[path = "../benches/bench_instructions/candidate_probe.rs"]
 mod candidate_probe;
-#[path = "../benches/bench_instructions/catalog.rs"]
-mod catalog;
-#[path = "../benches/bench_instructions/catalog_data_a.rs"]
-mod catalog_data_a;
-#[path = "../benches/bench_instructions/catalog_data_b.rs"]
-mod catalog_data_b;
 #[path = "../benches/bench_instructions/inventory.rs"]
 mod inventory;
-#[path = "../benches/bench_instructions/prng.rs"]
-mod prng;
+#[path = "../benches/bench_instructions/platform.rs"]
+mod platform;
 
-use builder::BenchmarkProgramBuilder;
 use cpu::Cpu;
 use physical_memory::PhysicalMemory;
 
 #[test]
+fn retry_confirmation_requires_agreement_between_measurements() {
+    assert!(candidate_measure::retry_agrees(12.0, 12.2, 3.0));
+    assert!(!candidate_measure::retry_agrees(10.0, 12.0, 3.0));
+    assert!(!candidate_measure::retry_agrees(12.0, f64::NAN, 3.0));
+}
+
+#[test]
 fn decoder_inventory_separates_legal_encodings_from_decode_exceptions() {
-    let (counts, declared) = inventory::decoder_inventory();
+    let counts = inventory::decoder_inventory();
     assert_eq!(counts.legal_encodings + counts.decode_exceptions, 65_536);
-    assert_eq!(counts.catalog_cases, catalog::all_benchmark_specs().count());
-    assert_eq!(
-        counts.declared_encodings + counts.undeclared_legal_encodings,
-        counts.legal_encodings
-    );
-    assert!(declared
-        .get(&0x4E71)
-        .is_some_and(|ids| ids.contains(&"BASE-00")));
+    assert!(counts.legal_encodings > 0);
     assert!(!std::ptr::eq(
         cpu::OPCODE_DESCRIPTOR_TABLE[0x4E71].steps,
         &cpu::micro::STEPS_DECODE_EXCEPTION[..]
@@ -39,28 +32,6 @@ fn decoder_inventory_separates_legal_encodings_from_decode_exceptions() {
         cpu::OPCODE_DESCRIPTOR_TABLE[0xFFFF].steps,
         &cpu::micro::STEPS_DECODE_EXCEPTION[..]
     ));
-}
-
-#[test]
-fn signed_divide_valid_repeats_without_overflow() {
-    let spec = *catalog::find_spec_by_id("ARITH-19").expect("DIVS benchmark exists");
-    let program = BenchmarkProgramBuilder::new(spec).with_unroll(700).build();
-    let mut cpu = Cpu::new();
-    let mut bus = PhysicalMemory::new();
-    program.inject_into(&mut cpu, &mut bus);
-
-    for operation in 0..700 {
-        assert_eq!(cpu.state.instruction_pc(), program.entry_pc + 2 * operation);
-        assert!(cpu.step_instruction(&mut bus) > 0);
-        assert_eq!(
-            cpu.state.sr() & 0x0002,
-            0,
-            "operation {operation} overflowed"
-        );
-    }
-    assert_ne!(cpu.state.d_long(0) & 0xffff, 0);
-    assert!(cpu.step_instruction(&mut bus) > 0);
-    assert_eq!(cpu.state.instruction_pc(), program.exit_pc);
 }
 
 #[test]
@@ -130,5 +101,62 @@ fn generated_exception_branch_stack_and_stop_workloads_replay_exactly() {
                 first = Some(evidence);
             }
         }
+    }
+}
+
+#[test]
+fn jump_workloads_execute_700_jumps_without_guest_helpers() {
+    let variants = [
+        ("4ED3", "()"),
+        ("4EEB", "()"),
+        ("4EF3", "(0,)"),
+        ("4EF3", "(1,)"),
+        ("4EF3", "(2,)"),
+        ("4EF3", "(3,)"),
+        ("4EF8", "()"),
+        ("4EF9", "()"),
+        ("4EFA", "()"),
+        ("4EFB", "(0,)"),
+        ("4EFB", "(1,)"),
+        ("4EFB", "(2,)"),
+        ("4EFB", "(3,)"),
+    ];
+    for (hex, index_choices) in variants {
+        let opcode = u16::from_str_radix(hex, 16).expect("literal opcode");
+        let candidate: candidate_probe::Candidate = serde_json::from_value(serde_json::json!({
+            "case_id": format!("jump:{hex}:{index_choices}"),
+            "representative_opcode": hex,
+            "path": "normal",
+            "index_choices": index_choices,
+            "cpu_mode": "supervisor",
+        }))
+        .expect("literal candidate");
+        let words = candidate_probe::instruction_words(opcode, &candidate);
+        let mut cpu = Cpu::new();
+        let mut bus = PhysicalMemory::new();
+        bus.map_chip_ram_to_low_memory();
+        let mut fingerprint = String::new();
+        let mut prepared = None;
+        let outcome = candidate_probe::validate_candidate(
+            &mut bus,
+            &mut cpu,
+            &candidate,
+            opcode,
+            &words,
+            &mut fingerprint,
+            Some(&mut prepared),
+        );
+        assert_eq!(outcome.0, "counted_700_jumps", "{hex} {index_choices}");
+        assert_eq!(outcome.1, 700, "{hex} {index_choices}");
+        let (mut replay_cpu, mut replay_bus) = prepared.expect("validated fixture");
+        for step in 0..700 {
+            let pc = replay_cpu.state.instruction_pc() as usize;
+            let executed =
+                u16::from_be_bytes([replay_bus.chip_ram[pc], replay_bus.chip_ram[pc + 1]]);
+            assert_eq!(executed, opcode, "{hex} {index_choices} step {step}");
+            assert!(replay_cpu.step_instruction(&mut replay_bus) > 0);
+        }
+        assert_eq!(replay_cpu, cpu, "{hex} {index_choices}");
+        assert_eq!(replay_bus.chip_ram, bus.chip_ram, "{hex} {index_choices}");
     }
 }

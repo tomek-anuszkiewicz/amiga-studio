@@ -21,10 +21,21 @@ def main(argv=None):
         automatic_python = args.command == "test" and args.kind == "python" and not args.words
         changes = collect_changes(REPO_ROOT) if automatic_python else set()
         phases = select_phases(args, changes)
+        if args.results_dir is not None and not args.results_dir.strip():
+            raise ValueError("--results-dir requires a nonempty path")
     except (RuntimeError, OSError, ValueError) as error:
         parser.error(str(error))
+    results_dir = (REPO_ROOT / args.results_dir).resolve() if args.results_dir else None
+    if results_dir is not None:
+        phases = [(phase, [(name, command,
+                            {**overrides, "SINGLESTEP_RESULTS_DIR": str(results_dir / "singlestep")}
+                            if "tools/verification/run_singlestep.py" in command else overrides)
+                           for name, command, overrides in commands])
+                  for phase, commands in phases]
     if args.plan:
         print("[PLAN] Preview only; no checks or tests will run.")
+        if results_dir is not None:
+            print(f"[PLAN] Verifier logs: {results_dir / 'verify'}")
         if not any(commands for _, commands in phases):
             print("[INFO] No Python tool contracts selected: their inputs are unchanged."
                   if automatic_python else "[INFO] No checks or tests selected.")
@@ -51,7 +62,8 @@ def main(argv=None):
             print_info("Building/reusing Cargo artifacts WITHOUT coverage instrumentation.")
         for name, command, overrides in commands:
             print(f"[RUN] {name}", flush=True)
-            ok, detail, elapsed = execute_command(command, overrides, log_level=args.log_level)
+            ok, detail, elapsed = execute_command(command, overrides, log_level=args.log_level,
+                                                  log_dir=results_dir / "verify" if results_dir else None)
             results.append(ok)
             print(f"{result_label(ok)} {name} ({elapsed:.2f}s): {detail}", flush=True)
             if args.command == "runner" and args.action in ("bench", "profile") and not ok:

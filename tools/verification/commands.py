@@ -5,10 +5,12 @@ from pathlib import Path
 from repository import REPO_ROOT
 
 
-def singlestep_command(profile="verification", case=None):
+def singlestep_command(profile="verification", case=None, exact=False):
     command = [sys.executable, "tools/verification/run_singlestep.py", "--profile", profile]
     if case:
         command += ["--case", case]
+    if exact:
+        command.append("--exact")
     return command
 
 
@@ -160,7 +162,7 @@ def standard_harness(root):
     return [("All standard harness tests", command + ["--", "--quiet"], {})]
 
 
-def rust_commands(words):
+def rust_commands(words, exact=False):
     from cli import keyword_values
     if not words or words in (["unit"], ["integration"], ["all"]):
         tier = words[0] if words else "all"
@@ -173,17 +175,19 @@ def rust_commands(words):
     if "crate" not in values:
         raise ValueError("Rust tests require crate NAME")
     if values["crate"] == "test_runner" and values.get("suite") == "test_singlestep":
-        return [("Focused SingleStepTests", singlestep_command("test", values.get("case")), {})]
+        return [("Focused SingleStepTests", singlestep_command("test", values.get("case"), exact), {})]
     command = ["cargo", "test", "-p", values["crate"]]
     if "suite" in values:
         command += ["--test", values["suite"]]
     command += ["--", "--quiet"]
     if "case" in values:
         command.append(values["case"])
+    if exact:
+        command.append("--exact")
     return [("Focused Rust tests", command, {})]
 
 
-def harness_commands(words):
+def harness_commands(words, exact=False):
     from cli import keyword_values
     scope = words[0] if words else "standard"
     if scope == "standard" and len(words) <= 1:
@@ -205,7 +209,7 @@ def harness_commands(words):
         if count <= 0:
             raise ValueError("Sample count must be positive")
         env = {"SINGLESTEP_FULL": "0", "SINGLESTEP_LIMIT": str(count)}
-    return [("SingleStepTests", singlestep_command(case=values.get("case")), env)]
+    return [("SingleStepTests", singlestep_command(case=values.get("case"), exact=exact), env)]
 
 
 def check_commands(name, words):
@@ -232,13 +236,13 @@ def check_commands(name, words):
     return selected
 
 
-def benchmark_options(words):
-    """Translate a measurement profile to the Cargo benchmark's native option."""
-    if not words:
-        return []
-    if len(words) != 1 or words[0] not in ("quick", "standard", "thorough"):
-        raise ValueError("Select one benchmark profile: quick, standard or thorough")
-    return ["--" + words[0]]
+BENCHMARK_ACTIONS = {
+    "inventory": "--inventory",
+    "probe": "--probe-candidates",
+    "pilot": "--measure-candidates-pilot",
+    "measure": "--measure-candidates",
+    "retry": "--retry-candidates",
+}
 
 
 def runner_commands(action, words):
@@ -246,34 +250,44 @@ def runner_commands(action, words):
     if action == "gui" and "--" in args:
         args.remove("--")
     if action != "gui" and any(word.startswith("-") for word in args):
-        raise ValueError("Runner commands use sentence selectors; use runner bench quick")
+        raise ValueError("Runner commands use sentence selectors; use runner bench measure")
     if action == "build":
         if args:
             raise ValueError("Runner build accepts no additional arguments")
         return [("Build test harness targets", ["cargo", "test", "--release", "--no-run", "-p", "test_runner", "--tests", "--benches"], {})]
     if action == "analyze":
-        if len(args) not in (1, 3) or len(args) == 3 and args[1] != "report":
-            raise ValueError("Use runner analyze CSV [report MARKDOWN]")
-        command = [sys.executable, "tools/verification/analyze_benchmarks.py", args[0]]
+        if len(args) not in (1, 3) or len(args) == 3 and args[1] != "retry":
+            raise ValueError("Use runner analyze RUN_DIRECTORY [retry RETRY_DIRECTORY]")
+        command = [sys.executable, "tools/verification/analyze_candidate_benchmarks.py", args[0]]
         if len(args) == 3:
-            command += ["--output", args[2]]
+            command += ["--retry-dir", args[2]]
         return [("Benchmark analysis", command, {})]
     if action == "gui":
         return [("GUI inspector", ["cargo", "run", "-p", "gui", "--bin", "gui-inspector", "--", *args], {})]
     if action == "profile":
         if not args or args[0] != "bench":
             raise ValueError("Use runner profile bench [sentence selectors]")
+        if args[1:] != ["pilot"]:
+            raise ValueError("Use runner profile bench pilot")
         return [("External sampling profile", [sys.executable, "tools/verification/profile_benchmark.py",
-                                                *benchmark_options(args[1:])], {})]
+                                                "--measure-candidates-pilot"], {})]
     if action == "bench":
-        commands = [("CPU benchmark", ["cargo", "bench", "-p", "test_runner", "--bench",
-                                       "bench_instructions", "--", *benchmark_options(args)], {})]
-        if args:
-            directory = f".agent/tmp/benchmarks/{args[0]}"
-            commands.append(("Benchmark analysis", [sys.executable,
-                             "tools/verification/analyze_benchmarks.py",
-                             f"{directory}/m68k_benchmark.csv", "--output",
-                             f"{directory}/analysis_report.md"], {}))
+        if not args:
+            option = "--help"
+        elif len(args) == 1 and args[0] in BENCHMARK_ACTIONS:
+            option = BENCHMARK_ACTIONS[args[0]]
+        else:
+            raise ValueError("Select one benchmark action: inventory, probe, pilot, measure or retry")
+        commands = []
+        if args == ["retry"]:
+            commands.append(("Select benchmark retries", [sys.executable,
+                             "tools/verification/analyze_candidate_benchmarks.py",
+                             "--prepare-retry-latest"], {}))
+        commands.append(("CPU benchmark", ["cargo", "bench", "-p", "test_runner", "--bench",
+                                           "bench_instructions", "--", option], {}))
+        if args == ["inventory"]:
+            commands.append(("Candidate generation", [sys.executable,
+                             "tools/verification/benchmark_candidates.py"], {}))
         return commands
     raise ValueError(f"Unsupported runner action: {action}")
 
@@ -281,6 +295,8 @@ def runner_commands(action, words):
 def select_phases(args, changes):
     from cli import keyword_values
     if args.command in ("commit", "milestone"):
+        if args.exact:
+            raise ValueError("--exact requires a focused Rust or SingleStep case")
         if len(set(args.sets)) != len(args.sets) or set(args.sets) - {"singlestep"}:
             raise ValueError("Completion profiles accept singlestep at most once")
         coverage = select_coverage_commands(args.command)
@@ -292,14 +308,24 @@ def select_phases(args, changes):
         phases.append(("Verification", commands))
         return phases
     if args.command == "check":
+        if args.exact:
+            raise ValueError("--exact requires a focused Rust or SingleStep case")
         selected = check_commands(args.name, args.words)
     elif args.command == "runner":
+        if args.exact:
+            raise ValueError("--exact requires a focused Rust or SingleStep case")
         selected = runner_commands(args.action, args.words)
     elif args.kind == "rust":
-        selected = rust_commands(args.words)
+        if args.exact and not all(word in args.words for word in ("crate", "suite", "case")):
+            raise ValueError("--exact requires test rust crate NAME suite NAME case NAME")
+        selected = rust_commands(args.words, exact=args.exact)
     elif args.kind == "runner":
-        selected = harness_commands(args.words)
+        if args.exact and (not args.words or args.words[0] != "singlestep" or "case" not in args.words):
+            raise ValueError("--exact requires test runner singlestep case NAME")
+        selected = harness_commands(args.words, exact=args.exact)
     else:
+        if args.exact:
+            raise ValueError("--exact requires a focused Rust or SingleStep case")
         values = keyword_values(args.words, ("directory", "file", "case"))
         if values and "directory" not in values:
             raise ValueError("Focused Python selection requires directory PATH")

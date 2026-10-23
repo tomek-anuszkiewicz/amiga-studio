@@ -2,11 +2,11 @@
 
 //! Measured CPU stepping for fixtures that passed validation before timing.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::Path;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use cpu::Cpu;
 use physical_memory::PhysicalMemory;
@@ -19,8 +19,9 @@ use super::candidate_probe::{
 use super::platform::HostEnvironment;
 
 const TARGET_SERIES_NS: u128 = 400_000_000;
+const CONTROL_TARGET_SERIES_NS: u128 = TARGET_SERIES_NS * 3;
 const MIN_CALIBRATION_NS: u128 = 5_000_000;
-const MAX_INSTRUCTIONS_PER_BLOCK: usize = 5000;
+pub const MAX_INSTRUCTIONS_PER_BLOCK: usize = 5000;
 
 #[derive(Debug, Deserialize)]
 struct ExpectedProbe {
@@ -43,9 +44,10 @@ struct PreparedCase {
     targets_per_block: usize,
     clocks_per_block: u64,
     stopped: bool,
+    counted_jumps: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 struct Series {
     attempt: u8,
     ordinal: u8,
@@ -55,16 +57,17 @@ struct Series {
     ns_per_target: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 struct CalibrationStep {
     blocks: u64,
     elapsed_ns: u128,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 struct MeasurementRow {
     case_id: String,
     role: &'static str,
+    target_series_ns: u128,
     fixture_sha256: String,
     target_count_per_block: usize,
     clocks_per_block: u64,
@@ -79,6 +82,38 @@ struct MeasurementRow {
     max_ns_per_target: Option<f64>,
     dispersion_pct: Option<f64>,
     status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    retry_repeat: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    confirmed_with: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RetryPlanCase {
+    case_id: String,
+    reason: String,
+    full_ns_per_target: Option<f64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RetryPlan {
+    version: u32,
+    source_run: String,
+    full_measurements_sha256: String,
+    candidate_manifest_sha256: String,
+    validation_sha256: String,
+    agreement_tolerance_pct: f64,
+    max_repeat_attempts: usize,
+    selected: Vec<RetryPlanCase>,
+}
+
+struct RetrySource {
+    indices: Vec<usize>,
+    source_name: String,
+    full_medians: HashMap<String, f64>,
+    plan_sha256: String,
+    agreement_tolerance_pct: f64,
+    max_repeat_attempts: usize,
 }
 
 fn prepare_case(candidate: &Candidate, expected: &ExpectedProbe) -> Result<PreparedCase, String> {
@@ -106,7 +141,7 @@ fn prepare_case(candidate: &Candidate, expected: &ExpectedProbe) -> Result<Prepa
         || expected.replay_status != "identical"
         || !matches!(
             expected.block_status.as_str(),
-            "sequential_700_reached_exit" | "single_target_stop"
+            "sequential_700_reached_exit" | "single_target_stop" | "counted_700_jumps"
         )
         || audit.0 != expected.block_status
         || audit.1 != expected.block_targets
@@ -128,6 +163,7 @@ fn prepare_case(candidate: &Candidate, expected: &ExpectedProbe) -> Result<Prepa
         targets_per_block: audit.1,
         clocks_per_block: audit.2,
         stopped: audit.0 == "single_target_stop",
+        counted_jumps: audit.0 == "counted_700_jumps",
     })
 }
 
@@ -140,12 +176,17 @@ fn run_block(
     if !prepared.stopped {
         bus.chip_ram[..0x10000].copy_from_slice(&prepared.initial_bus.chip_ram[..0x10000]);
     }
+    let step_limit = if prepared.counted_jumps {
+        prepared.targets_per_block
+    } else {
+        MAX_INSTRUCTIONS_PER_BLOCK
+    };
     let started = Instant::now();
     let mut steps = 0;
     while !cpu.state.is_stopped()
         && !cpu.state.is_halted()
         && cpu.state.instruction_pc() != 0x4FFE
-        && steps < MAX_INSTRUCTIONS_PER_BLOCK
+        && steps < step_limit
     {
         if cpu.step_instruction(bus) == 0 {
             break;
@@ -209,6 +250,7 @@ fn measure_case(
     candidate: &Candidate,
     prepared: &PreparedCase,
     role: &'static str,
+    target_series_ns: u128,
 ) -> Result<MeasurementRow, String> {
     let mut cpu = prepared.initial_cpu.clone();
     let mut bus = prepared.initial_bus.clone();
@@ -248,19 +290,19 @@ fn measure_case(
         pilot_elapsed_ns = pilot_elapsed_ns.min(sample_ns);
     }
     let estimated_blocks =
-        TARGET_SERIES_NS.saturating_mul(u128::from(pilot_blocks)) / pilot_elapsed_ns;
+        target_series_ns.saturating_mul(u128::from(pilot_blocks)) / pilot_elapsed_ns;
     let mut target_duration_capped = estimated_blocks > 5_000_000;
     let mut blocks = estimated_blocks.clamp(1, 5_000_000) as u64;
     let mut series = Vec::with_capacity(6);
     let first = run_series(prepared, blocks, 0, 0, &mut cpu, &mut bus)?;
     if !target_duration_capped
-        && !(TARGET_SERIES_NS * 4 / 5..=TARGET_SERIES_NS * 6 / 5).contains(&first.elapsed_ns)
+        && !(target_series_ns * 4 / 5..=target_series_ns * 6 / 5).contains(&first.elapsed_ns)
     {
         calibration.push(CalibrationStep {
             blocks,
             elapsed_ns: first.elapsed_ns,
         });
-        let revised = TARGET_SERIES_NS.saturating_mul(u128::from(blocks)) / first.elapsed_ns;
+        let revised = target_series_ns.saturating_mul(u128::from(blocks)) / first.elapsed_ns;
         target_duration_capped = revised > 5_000_000;
         blocks = revised.clamp(1, 5_000_000) as u64;
         series.push(run_series(prepared, blocks, 0, 0, &mut cpu, &mut bus)?);
@@ -288,12 +330,13 @@ fn measure_case(
     };
     let duration_valid = target_duration_capped
         || selected.iter().all(|sample| {
-            (TARGET_SERIES_NS * 3 / 4..=TARGET_SERIES_NS * 5 / 4).contains(&sample.elapsed_ns)
+            (target_series_ns * 3 / 4..=target_series_ns * 5 / 4).contains(&sample.elapsed_ns)
         });
     let stable = dispersion <= 5.0 && duration_valid;
     Ok(MeasurementRow {
         case_id: candidate.case_id.clone(),
         role,
+        target_series_ns,
         fixture_sha256: prepared.fixture_sha256.clone(),
         target_count_per_block: prepared.targets_per_block,
         clocks_per_block: prepared.clocks_per_block,
@@ -315,14 +358,57 @@ fn measure_case(
             "unstable"
         }
         .to_string(),
+        retry_repeat: None,
+        confirmed_with: None,
     })
 }
 
 fn sha256_file(path: &Path) -> Result<String, String> {
     let contents = fs::read(path).map_err(|error| error.to_string())?;
+    Ok(sha256_bytes(&contents))
+}
+
+fn sha256_bytes(contents: &[u8]) -> String {
     let mut hash = Sha256::new();
     hash.update(contents);
-    Ok(format!("{:x}", hash.finalize()))
+    format!("{:x}", hash.finalize())
+}
+
+fn write_source_snapshot(output_dir: &Path) -> Result<(), String> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let diff = std::process::Command::new("git")
+        .args(["diff", "HEAD", "--binary"])
+        .current_dir(&root)
+        .output()
+        .map_err(|error| error.to_string())?;
+    if !diff.status.success() {
+        return Err("could not capture benchmark source diff".to_string());
+    }
+    let mut files = serde_json::Map::new();
+    for relative in [
+        "crates/test_runner/benches/bench_instructions/cli.rs",
+        "crates/test_runner/benches/bench_instructions/inventory.rs",
+        "crates/test_runner/benches/bench_instructions/candidate_probe.rs",
+        "crates/test_runner/benches/bench_instructions/candidate_measure.rs",
+        "crates/test_runner/benches/bench_instructions/platform.rs",
+        "tools/verification/benchmark_candidates.py",
+        "tools/verification/analyze_candidate_benchmarks.py",
+    ] {
+        files.insert(
+            relative.to_string(),
+            serde_json::Value::String(sha256_file(&root.join(relative))?),
+        );
+    }
+    let snapshot = serde_json::json!({
+        "version": 1,
+        "git_diff_sha256": sha256_bytes(&diff.stdout),
+        "file_sha256": files,
+    });
+    fs::write(
+        output_dir.join("source_snapshot.json"),
+        serde_json::to_vec_pretty(&snapshot).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| error.to_string())
 }
 
 fn command_output(program: &str, args: &[&str]) -> String {
@@ -343,20 +429,6 @@ mod windows {
         fn GetPriorityClass(process: *mut c_void) -> u32;
         fn GetCurrentThread() -> *mut c_void;
         fn SetThreadAffinityMask(thread: *mut c_void, mask: usize) -> usize;
-        fn GetSystemTimes(idle: *mut FileTime, kernel: *mut FileTime, user: *mut FileTime) -> i32;
-    }
-
-    #[repr(C)]
-    #[derive(Default)]
-    struct FileTime {
-        low: u32,
-        high: u32,
-    }
-
-    impl FileTime {
-        fn value(&self) -> u64 {
-            (u64::from(self.high) << 32) | u64::from(self.low)
-        }
     }
 
     pub struct AffinityGuard {
@@ -402,54 +474,85 @@ mod windows {
             }
         }
     }
-
-    fn times() -> Result<(u64, u64), String> {
-        let (mut idle, mut kernel, mut user) = (
-            FileTime::default(),
-            FileTime::default(),
-            FileTime::default(),
-        );
-        if unsafe { GetSystemTimes(&mut idle, &mut kernel, &mut user) } == 0 {
-            return Err("GetSystemTimes failed".to_string());
-        }
-        Ok((idle.value(), kernel.value().wrapping_add(user.value())))
-    }
-
-    pub fn busy_percent() -> Result<f64, String> {
-        let before = times()?;
-        std::thread::sleep(std::time::Duration::from_millis(300));
-        let after = times()?;
-        let total = after.1.wrapping_sub(before.1);
-        if total == 0 {
-            return Err("system time did not advance".to_string());
-        }
-        Ok(100.0 * total.saturating_sub(after.0.wrapping_sub(before.0)) as f64 / total as f64)
-    }
 }
 
-#[cfg(windows)]
-fn idle_check(threshold: f64) -> Result<f64, String> {
-    let started = Instant::now();
-    loop {
-        let busy = windows::busy_percent()?;
-        if busy <= threshold {
-            return Ok(busy);
-        }
-        if started.elapsed() >= Duration::from_secs(60) {
-            return Err(format!("host remained busy ({busy:.2}% > {threshold:.2}%)"));
+fn write_row<T: Serialize>(writer: &mut BufWriter<File>, row: &T) -> Result<(), String> {
+    serde_json::to_writer(&mut *writer, row).map_err(|error| error.to_string())?;
+    writer.write_all(b"\n").map_err(|error| error.to_string())?;
+    writer.flush().map_err(|error| error.to_string())
+}
+
+pub fn retry_agrees(first: f64, second: f64, tolerance_pct: f64) -> bool {
+    first.is_finite()
+        && second.is_finite()
+        && first > 0.0
+        && second > 0.0
+        && (first - second).abs() * 200.0 / (first + second) <= tolerance_pct
+}
+
+fn measure_retry_case(
+    writer: &mut BufWriter<File>,
+    candidate: &Candidate,
+    prepared: &PreparedCase,
+    full_median: Option<f64>,
+    tolerance_pct: f64,
+    max_attempts: usize,
+) -> Result<bool, String> {
+    let mut measured = Vec::with_capacity(max_attempts + 1);
+    if let Some(ns) = full_median {
+        measured.push((0, ns));
+    }
+    let mut last_row = None;
+    for repeat in 1..=max_attempts {
+        match measure_case(candidate, prepared, "retry_attempt", TARGET_SERIES_NS) {
+            Ok(mut row) => {
+                row.retry_repeat = Some(repeat);
+                write_row(writer, &row)?;
+                if let Some(ns) = row.selected_median_ns_per_target {
+                    if let Some(&(prior, _)) = measured
+                        .iter()
+                        .find(|(_, previous)| retry_agrees(*previous, ns, tolerance_pct))
+                    {
+                        row.role = "candidate";
+                        row.confirmed_with = Some(prior);
+                        write_row(writer, &row)?;
+                        return Ok(true);
+                    }
+                    measured.push((repeat, ns));
+                }
+                last_row = Some(row);
+            }
+            Err(error) => {
+                write_row(
+                    writer,
+                    &serde_json::json!({
+                        "case_id": candidate.case_id, "role": "retry_attempt",
+                        "retry_repeat": repeat, "status": "failed", "reason": error
+                    }),
+                )?;
+            }
         }
     }
+    if let Some(mut row) = last_row {
+        row.role = "candidate";
+        row.status = "unresolved".to_string();
+        row.selected_median_ns_per_target = None;
+        row.min_ns_per_target = None;
+        row.max_ns_per_target = None;
+        write_row(writer, &row)?;
+    } else {
+        write_row(
+            writer,
+            &serde_json::json!({
+                "case_id": candidate.case_id, "role": "candidate",
+                "status": "failed", "reason": "all retry attempts failed"
+            }),
+        )?;
+    }
+    Ok(false)
 }
 
-#[cfg(not(windows))]
-fn idle_check(_threshold: f64) -> Result<f64, String> {
-    Ok(0.0)
-}
-
-fn retry_source(
-    directory: &Path,
-    candidates: &[Candidate],
-) -> Result<(Vec<usize>, String), String> {
+fn retry_source(directory: &Path, candidates: &[Candidate]) -> Result<RetrySource, String> {
     let mut full_runs = fs::read_dir(directory)
         .map_err(|error| error.to_string())?
         .filter_map(Result::ok)
@@ -458,52 +561,113 @@ fn retry_source(
         .collect::<Vec<_>>();
     full_runs.sort();
     let source = full_runs.last().ok_or("no full measurement run exists")?;
+    let source_environment: serde_json::Value = serde_json::from_slice(
+        &fs::read(source.join("environment.json")).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| error.to_string())?;
+    if source_environment["control_policy"] != "once_at_start" {
+        return Err(
+            "latest full run used an older NOP control policy; measure a new full run before retry"
+                .to_string(),
+        );
+    }
+    let source_name = source
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+    let plan_path = source.join("retry_plan.json");
+    let plan: RetryPlan = serde_json::from_slice(
+        &fs::read(&plan_path).map_err(|error| format!("prepare retry plan first: {error}"))?,
+    )
+    .map_err(|error| error.to_string())?;
+    if plan.version != 1
+        || plan.source_run != source_name
+        || plan.full_measurements_sha256 != sha256_file(&source.join("measurements.jsonl"))?
+        || plan.candidate_manifest_sha256 != sha256_file(&directory.join("case_candidates.json"))?
+        || plan.validation_sha256 != sha256_file(&directory.join("candidate_probe.json"))?
+        || !plan.agreement_tolerance_pct.is_finite()
+        || !(0.0..=5.0).contains(&plan.agreement_tolerance_pct)
+        || !(1..=3).contains(&plan.max_repeat_attempts)
+    {
+        return Err(
+            "retry plan does not match the complete source run or valid limits".to_string(),
+        );
+    }
     let data =
         fs::read_to_string(source.join("measurements.jsonl")).map_err(|error| error.to_string())?;
-    let mut seen = HashSet::new();
-    let mut retry_ids = HashSet::new();
-    let mut control_unstable = false;
+    let mut full_rows = HashMap::new();
+    let mut control_count = 0usize;
     for line in data.lines() {
         let row: serde_json::Value =
             serde_json::from_str(line).map_err(|error| error.to_string())?;
         if row["role"] == "control" {
-            control_unstable = row["status"] != "measured";
+            control_count += 1;
+            if row["status"] != "measured" {
+                return Err("full-run NOP control was unstable".to_string());
+            }
         }
         if row["role"] == "candidate" {
             let id = row["case_id"]
                 .as_str()
-                .ok_or("candidate row lacks case ID")?;
-            if !seen.insert(id.to_string()) {
+                .ok_or("candidate row lacks case ID")?
+                .to_string();
+            if full_rows.insert(id.clone(), row).is_some() {
                 return Err(format!("duplicate case ID in full run: {id}"));
-            }
-            if row["status"] != "measured" || control_unstable {
-                retry_ids.insert(id.to_string());
             }
         }
     }
-    if seen.len() != candidates.len() || retry_ids.is_empty() {
-        return Err(format!(
-            "full run is incomplete or has no retry cases: {} rows, {} retries",
-            seen.len(),
-            retry_ids.len()
-        ));
+    if control_count != 1 || full_rows.len() != candidates.len() {
+        return Err("full run is incomplete".to_string());
     }
-    let selected = candidates
+    let indices_by_id = candidates
         .iter()
         .enumerate()
-        .filter_map(|(index, candidate)| retry_ids.contains(&candidate.case_id).then_some(index))
-        .collect::<Vec<_>>();
-    if selected.len() != retry_ids.len() {
-        return Err("retry IDs do not match the current candidate manifest".to_string());
+        .map(|(index, candidate)| (candidate.case_id.as_str(), index))
+        .collect::<HashMap<_, _>>();
+    let mut selected = Vec::with_capacity(plan.selected.len());
+    let mut selected_ids = HashSet::new();
+    let mut full_medians = HashMap::new();
+    for entry in plan.selected {
+        let Some(&index) = indices_by_id.get(entry.case_id.as_str()) else {
+            return Err(format!(
+                "retry case is absent from current manifest: {}",
+                entry.case_id
+            ));
+        };
+        let row = full_rows
+            .get(&entry.case_id)
+            .ok_or_else(|| format!("retry case is absent from full run: {}", entry.case_id))?;
+        if !selected_ids.insert(entry.case_id.clone())
+            || !matches!(entry.reason.as_str(), "invalid" | "raw_time_difference")
+            || row["selected_median_ns_per_target"].as_f64() != entry.full_ns_per_target
+            || (entry.reason == "invalid") != (row["status"] != "measured")
+        {
+            return Err(format!(
+                "retry plan entry does not match full run: {}",
+                entry.case_id
+            ));
+        }
+        if let Some(ns) = entry.full_ns_per_target {
+            full_medians.insert(entry.case_id, ns);
+        }
+        selected.push(index);
     }
-    Ok((
-        selected,
-        source
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string(),
-    ))
+    if full_rows
+        .iter()
+        .any(|(id, row)| row["status"] != "measured" && !selected_ids.contains(id))
+    {
+        return Err("retry plan omits invalid full-run cases".to_string());
+    }
+    selected.sort_unstable();
+    Ok(RetrySource {
+        indices: selected,
+        source_name,
+        full_medians,
+        plan_sha256: sha256_file(&plan_path)?,
+        agreement_tolerance_pct: plan.agreement_tolerance_pct,
+        max_repeat_attempts: plan.max_repeat_attempts,
+    })
 }
 
 pub fn measure_candidates(directory: &Path, pilot: bool, retry: bool) -> Result<(), String> {
@@ -518,33 +682,38 @@ pub fn measure_candidates(directory: &Path, pilot: bool, retry: bool) -> Result<
     if candidates.is_empty() || candidates.len() != validated.len() {
         return Err("candidate manifest and validation report have different coverage".to_string());
     }
-    let (selected, retry_source_name): (Vec<usize>, Option<String>) = if retry {
-        let (selected, source_name) = retry_source(directory, &candidates)?;
-        (selected, Some(source_name))
+    let retry_details = if retry {
+        Some(retry_source(directory, &candidates)?)
+    } else {
+        None
+    };
+    let selected: Vec<usize> = if let Some(details) = &retry_details {
+        details.indices.clone()
     } else if pilot {
         // Exercise short/long, memory, control, exception and STOP fixtures.
         let desired = [
             "4E71", "0033", "88C3", "6602", "4E43", "4E72", "4E73", "4893",
         ];
-        (
-            desired
-                .iter()
-                .filter_map(|opcode| {
-                    candidates
-                        .iter()
-                        .position(|candidate| candidate.representative_opcode == *opcode)
-                })
-                .collect(),
-            None,
-        )
+        desired
+            .iter()
+            .filter_map(|opcode| {
+                candidates
+                    .iter()
+                    .position(|candidate| candidate.representative_opcode == *opcode)
+            })
+            .collect()
     } else {
-        ((0..candidates.len()).collect(), None)
+        (0..candidates.len()).collect()
     };
     if (pilot && selected.len() != 8) || (!pilot && !retry && selected.len() != candidates.len()) {
         return Err(format!(
             "pilot selection incomplete: {} cases",
             selected.len()
         ));
+    }
+    if retry && selected.is_empty() {
+        println!("No cases selected for retry; no measurement session was created");
+        return Ok(());
     }
     let host = HostEnvironment::detect();
     #[cfg(windows)]
@@ -554,16 +723,6 @@ pub fn measure_candidates(directory: &Path, pilot: bool, retry: bool) -> Result<
     let (core_id, priority_class) = (Some(affinity.core), affinity.priority_class);
     #[cfg(not(windows))]
     let (core_id, priority_class) = (host.p_core_id, 0u32);
-    #[cfg(windows)]
-    let baseline_busy = windows::busy_percent()?;
-    #[cfg(not(windows))]
-    let baseline_busy = 0.0;
-    if baseline_busy > 12.0 {
-        return Err(format!(
-            "host idle baseline is too busy: {baseline_busy:.2}%"
-        ));
-    }
-    let threshold = baseline_busy + 3.0;
     let run_id = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|error| error.to_string())?
@@ -579,6 +738,7 @@ pub fn measure_candidates(directory: &Path, pilot: bool, retry: bool) -> Result<
         }
     ));
     fs::create_dir_all(&output_dir).map_err(|error| error.to_string())?;
+    write_source_snapshot(&output_dir)?;
     let executable = std::env::current_exe().map_err(|error| error.to_string())?;
     let environment = serde_json::json!({
         "version": 1,
@@ -586,7 +746,8 @@ pub fn measure_candidates(directory: &Path, pilot: bool, retry: bool) -> Result<
         "candidate_count": candidates.len(),
         "measured_candidate_count": selected.len(),
         "pilot": pilot,
-        "retry_source": retry_source_name,
+        "retry_source": retry_details.as_ref().map(|details| &details.source_name),
+        "retry_plan_sha256": retry_details.as_ref().map(|details| &details.plan_sha256),
         "host_os": host.platform_name,
         "host_arch": std::env::consts::ARCH,
         "logical_processors": std::thread::available_parallelism().map(|count| count.get()).unwrap_or(0),
@@ -601,9 +762,10 @@ pub fn measure_candidates(directory: &Path, pilot: bool, retry: bool) -> Result<
         "candidate_manifest_sha256": sha256_file(&directory.join("case_candidates.json"))?,
         "validation_sha256": sha256_file(&directory.join("candidate_probe.json"))?,
         "target_series_ns": TARGET_SERIES_NS,
+        "control_policy": "once_at_start",
+        "control_target_series_ns": CONTROL_TARGET_SERIES_NS,
         "series_per_attempt": 3,
         "dispersion_retry_threshold_pct": 5.0,
-        "initial_host_busy_pct": baseline_busy,
     });
     fs::write(
         output_dir.join("environment.json"),
@@ -619,41 +781,59 @@ pub fn measure_candidates(directory: &Path, pilot: bool, retry: bool) -> Result<
         .ok_or("NOP control candidate missing")?;
     let nop = prepare_case(&candidates[nop_index], &validated[nop_index])?;
     let mut failures = 0usize;
-    let mut unstable_controls = 0usize;
+    let control = measure_case(
+        &candidates[nop_index],
+        &nop,
+        "control",
+        CONTROL_TARGET_SERIES_NS,
+    )?;
+    write_row(&mut writer, &control)?;
+    println!(
+        "Initial NOP control: {:.2} ns/target, dispersion {:.2}%, status {}",
+        control.selected_median_ns_per_target.unwrap_or(0.0),
+        control.dispersion_pct.unwrap_or(0.0),
+        control.status
+    );
+    if control.status != "measured" {
+        return Err("initial NOP control was unstable; candidate timing was skipped".to_string());
+    }
     for (ordinal, &index) in selected.iter().enumerate() {
-        if ordinal % 100 == 0 {
-            let busy = idle_check(threshold)?;
-            let control = measure_case(&candidates[nop_index], &nop, "control")?;
-            serde_json::to_writer(&mut writer, &control).map_err(|error| error.to_string())?;
-            writer.write_all(b"\n").map_err(|error| error.to_string())?;
-            writer.flush().map_err(|error| error.to_string())?;
-            if control.status != "measured" {
-                unstable_controls += 1;
-            }
-            println!("Control before case {ordinal}: {:.2} ns/target, dispersion {:.2}%, host idle {:.2}%, status {}", control.selected_median_ns_per_target.unwrap_or(0.0), control.dispersion_pct.unwrap_or(0.0), busy, control.status);
-        }
         let candidate = &candidates[index];
-        let result = prepare_case(candidate, &validated[index])
-            .and_then(|prepared| measure_case(candidate, &prepared, "candidate"));
-        match result {
-            Ok(row) => {
-                if row.status != "measured" {
+        match prepare_case(candidate, &validated[index]) {
+            Ok(prepared) if retry => {
+                let details = retry_details.as_ref().ok_or("retry details missing")?;
+                if !measure_retry_case(
+                    &mut writer,
+                    candidate,
+                    &prepared,
+                    details.full_medians.get(&candidate.case_id).copied(),
+                    details.agreement_tolerance_pct,
+                    details.max_repeat_attempts,
+                )? {
                     failures += 1;
                 }
-                serde_json::to_writer(&mut writer, &row).map_err(|error| error.to_string())?;
-                writer.write_all(b"\n").map_err(|error| error.to_string())?;
+            }
+            Ok(prepared) => {
+                match measure_case(candidate, &prepared, "candidate", TARGET_SERIES_NS) {
+                    Ok(row) => {
+                        if row.status != "measured" {
+                            failures += 1;
+                        }
+                        write_row(&mut writer, &row)?;
+                    }
+                    Err(error) => {
+                        failures += 1;
+                        let diagnostic = serde_json::json!({"case_id": candidate.case_id, "role": "candidate", "status": "failed", "reason": error});
+                        write_row(&mut writer, &diagnostic)?;
+                    }
+                }
             }
             Err(error) => {
                 failures += 1;
                 let diagnostic = serde_json::json!({"case_id": candidate.case_id, "role": "candidate", "status": "failed", "reason": error});
-                serde_json::to_writer(&mut writer, &diagnostic)
-                    .map_err(|write_error| write_error.to_string())?;
-                writer
-                    .write_all(b"\n")
-                    .map_err(|write_error| write_error.to_string())?;
+                write_row(&mut writer, &diagnostic)?;
             }
         }
-        writer.flush().map_err(|error| error.to_string())?;
         if ordinal % 25 == 24 || ordinal + 1 == selected.len() {
             println!(
                 "Measured {}/{} cases; {} unstable or failed",
@@ -667,11 +847,60 @@ pub fn measure_candidates(directory: &Path, pilot: bool, retry: bool) -> Result<
         "Raw measurement rows: {}",
         output_dir.join("measurements.jsonl").display()
     );
-    if failures > 0 || unstable_controls > 0 {
+    if failures > 0 {
         Err(format!(
-            "{failures} cases and {unstable_controls} NOP controls were unstable or failed; diagnostics were retained"
+            "{failures} cases were unstable or failed; diagnostics were retained"
         ))
     } else {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn timed_jump_block_stops_after_700_jumps() {
+        let candidate: super::Candidate = serde_json::from_value(serde_json::json!({
+            "case_id": "jump:4ED3",
+            "representative_opcode": "4ED3",
+            "path": "normal",
+            "index_choices": "()",
+            "cpu_mode": "supervisor",
+        }))
+        .expect("literal candidate");
+        let opcode = 0x4ED3;
+        let words = super::instruction_words(opcode, &candidate);
+        let mut cpu = super::Cpu::new();
+        let mut bus = super::PhysicalMemory::new();
+        bus.map_chip_ram_to_low_memory();
+        let mut fingerprint = String::new();
+        let audit = super::validate_candidate(
+            &mut bus,
+            &mut cpu,
+            &candidate,
+            opcode,
+            &words,
+            &mut fingerprint,
+            None,
+        );
+        let expected = super::ExpectedProbe {
+            case_id: candidate.case_id.clone(),
+            fixture_sha256: fingerprint,
+            final_state_sha256: super::final_state_sha256(&cpu, &bus),
+            block_status: audit.0,
+            replay_status: "identical".to_string(),
+            block_targets: audit.1,
+            block_clocks: audit.2,
+        };
+        let prepared = super::prepare_case(&candidate, &expected).expect("validated case");
+        let mut timed_cpu = super::Cpu::new();
+        let mut timed_bus = super::PhysicalMemory::new();
+        timed_bus.map_chip_ram_to_low_memory();
+        super::run_block(&prepared, &mut timed_cpu, &mut timed_bus).expect("timed block");
+        assert_eq!(timed_cpu, prepared.final_cpu);
+        assert_eq!(
+            super::final_state_sha256(&timed_cpu, &timed_bus),
+            expected.final_state_sha256
+        );
     }
 }

@@ -54,9 +54,10 @@ def diagnostic_level(line):
     return None
 
 
-def run_cmd(cmd, cwd=REPO_ROOT, env=None, log_level="warn"):
+def run_cmd(cmd, cwd=REPO_ROOT, env=None, log_level="warn", log_dir=None):
     print(f"[CMD] {subprocess.list2cmdline(cmd)}", flush=True)
-    log_dir = REPO_ROOT / ".agent/tmp/verify"
+    isolated_log = log_dir is not None
+    log_dir = Path(log_dir) if log_dir is not None else REPO_ROOT / ".agent/tmp/verify"
     log_dir.mkdir(parents=True, exist_ok=True)
     start = time.time()
     with tempfile.NamedTemporaryFile(
@@ -69,11 +70,16 @@ def run_cmd(cmd, cwd=REPO_ROOT, env=None, log_level="warn"):
         tail = deque(maxlen=12)
         context_left = 0
         error_seen = False
+        exact_test_count = None
         with subprocess.Popen(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, text=True, encoding="utf-8",
                               errors="replace") as process:
             for line in process.stdout:
                 log.write(line)
+                if cmd[:2] == ["cargo", "test"] and "--exact" in cmd:
+                    count = re.fullmatch(r"running (\d+) tests?", line.strip())
+                    if count:
+                        exact_test_count = int(count.group(1))
                 tail.append(line)
                 level = diagnostic_level(line)
                 show = level == "error" or (level == "warn" and log_level == "warn")
@@ -94,16 +100,25 @@ def run_cmd(cmd, cwd=REPO_ROOT, env=None, log_level="warn"):
                 else:
                     context_left = 0
             code = process.wait()
+    if cmd[:2] == ["cargo", "test"] and "--exact" in cmd and code == 0 and exact_test_count != 1:
+        print(f"[FAIL] --exact selected {exact_test_count or 0} tests; expected one.", flush=True)
+        error_seen = True
+        code = 1
     elapsed = time.time() - start
     if code:
         if log_level != "full" and not error_seen:
             print("[DETAIL] Unclassified command failure; last log lines:", flush=True)
             for line in tail:
                 print(line.rstrip()[:300], flush=True)
-        print(f"[LOG] {log_path.relative_to(REPO_ROOT).as_posix()}", flush=True)
+    if code or isolated_log:
+        try:
+            display_path = log_path.relative_to(REPO_ROOT).as_posix()
+        except ValueError:
+            display_path = str(log_path)
+        print(f"[LOG] {display_path}", flush=True)
     return code, elapsed
 
-def execute_command(command, overrides, log_level="warn"):
+def execute_command(command, overrides, log_level="warn", log_dir=None):
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUNBUFFERED"] = "1"
@@ -112,7 +127,7 @@ def execute_command(command, overrides, log_level="warn"):
     if overrides:
         print(f"[ENV] {' '.join(f'{key}={value}' for key, value in overrides.items())}", flush=True)
     try:
-        code, elapsed = run_cmd(command, env=env, log_level=log_level)
+        code, elapsed = run_cmd(command, env=env, log_level=log_level, log_dir=log_dir)
     except OSError as error:
         return False, f"Cannot launch command: {error}", 0
     detail = f"command exited with code {code}"

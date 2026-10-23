@@ -67,7 +67,8 @@ def completion(directory, run_id, exit_code):
 def execute_tests(executable, options, directory):
     run_id = uuid.uuid4().hex
     env = dict(os.environ, SINGLESTEP_RESULTS_DIR=str(directory), SINGLESTEP_RUN_ID=run_id,
-               SINGLESTEP_PROFILE=options.profile, SINGLESTEP_CASE=options.case or "")
+               SINGLESTEP_PROFILE=options.profile, SINGLESTEP_CASE=options.case or "",
+               SINGLESTEP_EXACT="1" if options.exact else "0")
     if options.full:
         env.update(SINGLESTEP_FULL="1", SINGLESTEP_LIMIT="all")
     elif options.sample is not None:
@@ -108,12 +109,15 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", choices=("test", "verification", "release"), default="verification")
     parser.add_argument("--case")
+    parser.add_argument("--exact", action="store_true", help="Match the group name exactly; requires --case")
     scope = parser.add_mutually_exclusive_group()
     scope.add_argument("--full", action="store_true")
     scope.add_argument("--sample", type=int)
     options = parser.parse_args(argv)
     if options.sample is not None and options.sample <= 0:
         parser.error("Sample count must be positive")
+    if options.exact and not options.case:
+        parser.error("--exact requires --case")
     directory = Path(os.environ.get("SINGLESTEP_RESULTS_DIR", REPO_ROOT / ".agent/tmp/singlestep")).resolve()
     directory.mkdir(parents=True, exist_ok=True)
     lock_path = directory / "run.lock"

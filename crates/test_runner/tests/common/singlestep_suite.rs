@@ -16,9 +16,16 @@ fn write_run(directory: &Path, run: &RunMetadata) -> Result<(), Box<dyn Error>> 
 
 pub fn run_suite(cases: &[TestCase]) -> Result<(), Box<dyn Error>> {
     let filter = std::env::var("SINGLESTEP_CASE").unwrap_or_default();
+    let exact = std::env::var("SINGLESTEP_EXACT").is_ok_and(|value| value == "1");
     let selected: Vec<_> = cases
         .iter()
-        .filter(|(name, _)| name.contains(&filter))
+        .filter(|(name, _)| {
+            if exact {
+                *name == filter
+            } else {
+                name.contains(&filter)
+            }
+        })
         .collect();
     if selected.is_empty() {
         return Err(format!("No SingleStep groups match '{filter}'").into());

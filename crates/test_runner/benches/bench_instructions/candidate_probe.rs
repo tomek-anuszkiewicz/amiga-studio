@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 
 const ENTRY: usize = 0x1000;
 const HANDLER: usize = 0x3000;
-const EXIT: usize = 0x4FFE;
+pub const EXIT: usize = 0x4FFE;
 const RETURN_PAD: usize = 0x7000;
 const OPERAND: u16 = 0x6000;
 
@@ -1099,6 +1099,128 @@ fn validate_control_unrolled(
     )
 }
 
+fn validate_jump_only(
+    bus: &mut PhysicalMemory,
+    cpu: &mut Cpu,
+    candidate: &Candidate,
+    opcode: u16,
+    words: &[u16],
+    fixture_fingerprint: &mut String,
+    prepared: Option<&mut Option<(Cpu, PhysicalMemory)>>,
+) -> (String, usize, u64, u32, u32) {
+    let mode = (opcode >> 3) & 7;
+    let reg = opcode & 7;
+    let fixed_target = matches!(mode, 2 | 6);
+    let stride = words.len() * 2;
+    if ENTRY + stride * 700 >= HANDLER {
+        return ("jump_code_exceeds_reserved_area".to_string(), 0, 0, 0, 0);
+    }
+    seed_memory(bus, &candidate.path);
+    prepare_cpu(cpu, candidate, opcode);
+    if matches!(mode, 2 | 5 | 6) {
+        cpu.state.set_a_long(reg as usize, ENTRY as u32);
+    }
+    for operation in 0..700 {
+        let address = if fixed_target {
+            ENTRY
+        } else {
+            ENTRY + operation * stride
+        };
+        let next = if fixed_target || operation == 699 {
+            address
+        } else {
+            address + stride
+        };
+        let mut target_words = words.to_vec();
+        match (mode, reg) {
+            (5, _) => target_words[1] = (next - ENTRY) as u16,
+            (7, 0) => target_words[1] = next as u16,
+            (7, 1) => {
+                target_words[1] = 0;
+                target_words[2] = next as u16;
+            }
+            (7, 2) => target_words[1] = (next as i32 - (address + 2) as i32) as u16,
+            (7, 3) => {
+                let displacement = (next as i32 - (address + 2) as i32) as i8;
+                target_words[1] = (target_words[1] & 0xFF00) | displacement as u8 as u16;
+            }
+            _ => {}
+        }
+        for (index, word) in target_words.iter().enumerate() {
+            put_word(bus, address + index * 2, *word);
+        }
+    }
+    let initial_memory = bus.chip_ram.clone();
+    cpu.set_pc_and_prime_prefetch(ENTRY as u32, bus);
+    *fixture_fingerprint = fixture_sha256(candidate, cpu, bus);
+    if let Some(slot) = prepared {
+        *slot = Some((cpu.clone(), bus.clone()));
+    }
+    let mut clocks = 0u64;
+    let mut min_clocks = u32::MAX;
+    let mut max_clocks = 0;
+    for operation in 0..700 {
+        let address = if fixed_target {
+            ENTRY
+        } else {
+            ENTRY + operation * stride
+        };
+        if cpu.state.instruction_pc() != address as u32 {
+            return (
+                format!("jump_wrong_target_at_{operation}"),
+                operation,
+                clocks,
+                min_clocks,
+                max_clocks,
+            );
+        }
+        let actual_opcode = u16::from_be_bytes([bus.chip_ram[address], bus.chip_ram[address + 1]]);
+        if actual_opcode != opcode {
+            return (
+                format!("jump_target_modified_at_{operation}"),
+                operation,
+                clocks,
+                min_clocks,
+                max_clocks,
+            );
+        }
+        let target_clocks = cpu.step_instruction(bus);
+        let expected_next = if fixed_target || operation == 699 {
+            address
+        } else {
+            address + stride
+        };
+        if target_clocks == 0 || cpu.state.instruction_pc() != expected_next as u32 {
+            return (
+                format!("jump_did_not_branch_at_{operation}"),
+                operation + 1,
+                clocks,
+                min_clocks,
+                max_clocks,
+            );
+        }
+        clocks += u64::from(target_clocks);
+        min_clocks = min_clocks.min(target_clocks);
+        max_clocks = max_clocks.max(target_clocks);
+    }
+    if bus.chip_ram != initial_memory {
+        return (
+            "jump_modified_memory".to_string(),
+            700,
+            clocks,
+            min_clocks,
+            max_clocks,
+        );
+    }
+    (
+        "counted_700_jumps".to_string(),
+        700,
+        clocks,
+        min_clocks,
+        max_clocks,
+    )
+}
+
 fn validate_return_unrolled(
     bus: &mut PhysicalMemory,
     cpu: &mut Cpu,
@@ -1320,6 +1442,8 @@ pub fn validate_candidate(
         validate_stop(bus, cpu, candidate, words, fingerprint, prepared)
     } else if is_return(opcode) {
         validate_return_unrolled(bus, cpu, candidate, opcode, fingerprint, prepared)
+    } else if (0x4ED0..=0x4EFF).contains(&opcode) {
+        validate_jump_only(bus, cpu, candidate, opcode, words, fingerprint, prepared)
     } else if is_control_transfer(opcode) {
         validate_control_unrolled(bus, cpu, candidate, opcode, words, fingerprint, prepared)
     } else {
@@ -1461,7 +1585,7 @@ pub fn probe_candidates(directory: &Path) -> Result<(), String> {
         let mut replay_status = "not_run";
         if matches!(
             block_status.as_str(),
-            "sequential_700_reached_exit" | "single_target_stop"
+            "sequential_700_reached_exit" | "single_target_stop" | "counted_700_jumps"
         ) {
             let mut repeat_fingerprint = String::new();
             let repeat = validate_candidate(

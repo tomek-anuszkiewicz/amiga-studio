@@ -1,16 +1,13 @@
 #![allow(unsafe_code, clippy::cast_ptr_alignment)]
 
-//! Platform Abstraction Layer: HostEnvironment & P-Core Pinning
+//! Host topology detection for candidate benchmark affinity selection.
 //!
-//! Provides dynamic hardware topology discovery, Performance Core (P-core) detection,
-//! thread affinity pinning, and process priority elevation per Obsidian/Amiga/Design/Performance/CPU Instruction Benchmarking.md.
-//! Compiles with zero overhead and graceful no-op fallbacks on WebAssembly (wasm32-unknown-unknown).
+//! The measurement runner applies and verifies its own host affinity policy.
 
 #[derive(Debug, Clone)]
 pub struct HostEnvironment {
     pub platform_name: &'static str,
     pub p_core_id: Option<usize>,
-    pub affinity_supported: bool,
 }
 
 impl Default for HostEnvironment {
@@ -27,7 +24,6 @@ impl HostEnvironment {
             Self {
                 platform_name: "WebAssembly",
                 p_core_id: None,
-                affinity_supported: false,
             }
         }
 
@@ -37,7 +33,6 @@ impl HostEnvironment {
             Self {
                 platform_name: "Windows",
                 p_core_id,
-                affinity_supported: true,
             }
         }
 
@@ -47,7 +42,6 @@ impl HostEnvironment {
             Self {
                 platform_name: "Linux",
                 p_core_id,
-                affinity_supported: true,
             }
         }
 
@@ -57,7 +51,6 @@ impl HostEnvironment {
             Self {
                 platform_name: "macOS",
                 p_core_id,
-                affinity_supported: true,
             }
         }
 
@@ -71,34 +64,7 @@ impl HostEnvironment {
             Self {
                 platform_name: "Generic Unix",
                 p_core_id: Some(0),
-                affinity_supported: false,
             }
-        }
-    }
-
-    /// Pins worker thread to the primary Performance Core and elevates priority
-    pub fn pin_to_p_core(&self) -> Result<(), String> {
-        #[cfg(target_arch = "wasm32")]
-        {
-            // Browser sandboxing intentionally disallows thread affinity
-            Ok(())
-        }
-
-        #[cfg(all(windows, not(target_arch = "wasm32")))]
-        {
-            let core_idx = self.p_core_id.unwrap_or(0);
-            pin_windows_thread(core_idx)
-        }
-
-        #[cfg(all(target_os = "linux", not(target_arch = "wasm32")))]
-        {
-            let core_idx = self.p_core_id.unwrap_or(0);
-            pin_linux_thread(core_idx)
-        }
-
-        #[cfg(all(not(windows), not(target_os = "linux"), not(target_arch = "wasm32")))]
-        {
-            Ok(())
         }
     }
 }
@@ -109,7 +75,6 @@ impl HostEnvironment {
 
 #[cfg(all(windows, not(target_arch = "wasm32")))]
 mod win_ffi {
-    pub const HIGH_PRIORITY_CLASS: u32 = 0x00000080;
     pub const RELATION_PROCESSOR_CORE: u32 = 0;
 
     #[repr(C)]
@@ -139,13 +104,6 @@ mod win_ffi {
     }
 
     extern "system" {
-        pub fn GetCurrentProcess() -> *mut std::ffi::c_void;
-        pub fn GetCurrentThread() -> *mut std::ffi::c_void;
-        pub fn SetPriorityClass(h_process: *mut std::ffi::c_void, dw_priority_class: u32) -> i32;
-        pub fn SetThreadAffinityMask(
-            h_thread: *mut std::ffi::c_void,
-            dw_thread_affinity_mask: usize,
-        ) -> usize;
         pub fn GetLogicalProcessorInformationEx(
             relationship_type: u32,
             buffer: *mut u8,
@@ -213,30 +171,6 @@ fn detect_windows_p_core() -> (bool, Option<usize>) {
     (has_hybrid, Some(chosen_core))
 }
 
-#[cfg(all(windows, not(target_arch = "wasm32")))]
-fn pin_windows_thread(core_idx: usize) -> Result<(), String> {
-    use win_ffi::{
-        GetCurrentProcess, GetCurrentThread, SetPriorityClass, SetThreadAffinityMask,
-        HIGH_PRIORITY_CLASS,
-    };
-
-    let mask = 1usize << (core_idx & (usize::BITS as usize - 1));
-    unsafe {
-        let h_proc = GetCurrentProcess();
-        let _ = SetPriorityClass(h_proc, HIGH_PRIORITY_CLASS);
-
-        let h_thread = GetCurrentThread();
-        let prev = SetThreadAffinityMask(h_thread, mask);
-        if prev == 0 {
-            return Err(format!(
-                "SetThreadAffinityMask failed for core mask 0x{:X}",
-                mask
-            ));
-        }
-    }
-    Ok(())
-}
-
 // ---------------------------------------------------------------------------
 // Linux Native Hardware Topology & Affinity Pinning
 // ---------------------------------------------------------------------------
@@ -270,20 +204,6 @@ fn detect_linux_p_core() -> (bool, Option<usize>) {
 
     let has_hybrid = freqs.iter().any(|&(_, f)| f < max_freq);
     (has_hybrid, Some(best_core))
-}
-
-#[cfg(all(target_os = "linux", not(target_arch = "wasm32")))]
-fn pin_linux_thread(core_idx: usize) -> Result<(), String> {
-    extern "C" {
-        fn sched_setaffinity(pid: i32, cpusetsize: usize, cpuset: *const usize) -> i32;
-    }
-
-    let mask = 1usize << (core_idx & (usize::BITS as usize - 1));
-    let ret = unsafe { sched_setaffinity(0, std::mem::size_of::<usize>(), &mask) };
-    if ret != 0 {
-        return Err(format!("sched_setaffinity failed for core {}", core_idx));
-    }
-    Ok(())
 }
 
 // ---------------------------------------------------------------------------

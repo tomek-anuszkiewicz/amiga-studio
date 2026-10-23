@@ -25,9 +25,9 @@ change. Record the source snapshot, host, measurement profile and relevant
 execution settings. Check the workload actually reaches the target function;
 CPU-only benchmarks cannot establish a chipset optimization's value.
 
-The current launcher supports `quick`, `standard` and `thorough` CPU profiles.
-Use `--plan` to inspect commands without starting measurements. Running without
-a profile prints benchmark help and does not measure execution.
+The current launcher uses the decoder-derived candidate workflow. Use `--plan`
+to inspect commands without starting measurements. Running `runner bench` without
+an action prints benchmark help and does not measure execution.
 
 ## Measure and Profile
 
@@ -40,11 +40,14 @@ cargo install samply
 Run fresh uninstrumented measurements separately from sampling:
 
 ```powershell
-python tools/verification/verify.py runner bench quick
-python tools/verification/verify.py runner profile bench quick
+python tools/verification/verify.py runner bench inventory
+python tools/verification/verify.py runner bench probe
+python tools/verification/verify.py runner bench measure
+python tools/verification/verify.py runner profile bench pilot
 ```
 
-The measurement command runs `cargo bench` and analyzes its generated CSV.
+The measurement command runs `cargo bench`; analyze its completed run directory
+after a successful full run and any targeted retry.
 The profiling command builds the optimized benchmark without running it, selects
 the exact executable from Cargo artifact messages, and launches it under
 `samply`. Build failure or a missing artifact stops the launcher. Its implementation
@@ -52,10 +55,10 @@ is [profile_benchmark.py](../../../tools/verification/profile_benchmark.py).
 The profiler provides an interactive Firefox Profiler view; its samples are
 observations of host execution, not emulated clock timing assertions.
 
-Reports belong under `.agent/tmp/`. For an existing CSV:
+Reports belong under `.agent/tmp/`. For an existing validated candidate run:
 
 ```powershell
-python tools/verification/verify.py runner analyze .agent/tmp/benchmarks/quick/m68k_benchmark.csv report .agent/tmp/benchmarks/quick/analysis_report.md
+python tools/verification/verify.py runner analyze .agent/tmp/benchmarks/inventory/full_<run-id> retry .agent/tmp/benchmarks/inventory/retry_<run-id>
 ```
 
 ## Interpret the Profile

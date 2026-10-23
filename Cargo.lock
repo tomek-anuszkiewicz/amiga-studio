@@ -3474,6 +3474,7 @@ name = "test_runner"
 version = "0.1.0"
 dependencies = [
  "cpu",
+ "disassembler",
  "flate2",
  "physical_memory",
  "serde",
