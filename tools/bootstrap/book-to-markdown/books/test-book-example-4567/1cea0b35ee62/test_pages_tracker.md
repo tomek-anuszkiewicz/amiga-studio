@@ -12,7 +12,7 @@ have not been verified by this tracker.
 
 ### Local Reconstruction and Source Identification
 
-This tracker records page selection, technical facts, and historical test objectives. It does not contain the source pages or grant permission to use or redistribute the manuals. Reconstruct the test PDF locally from source copies you are authorized to process; keep the PDFs and converted book content outside Git.
+This tracker records page selection, technical facts, and historical test objectives. It does not contain the source pages or grant permission to use or redistribute the manuals. Reconstruct the test PDF locally from source copies you are authorized to process; keep the PDFs and converted book content outside Git. Three of the four manual paths below are present locally. The A500/A2000 source variant `adc8d1eecb72` remains in the separate private archive; restore that exact SHA-256 before reconstructing the Test Book. The active A500/A2000 OCR variant has a different hash and must not replace it. The existing composite Test Book PDF and review data remain local.
 
 The numbered scenario descriptions and the matrix's Historical Pipeline Objective column
 were written for a retired pipeline. Their Stage 12–21 references, `image` type,

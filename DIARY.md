@@ -5114,3 +5114,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Snapshot bytes match accepted/book.json for 1 chapter and 993 elements
   - git diff --check passed
   - commit verification passed all checks except the English scan, which failed on seven words in unrelated in-progress SVG files
+---
+
+### [2026-10-23 21:01 CEST] — Narrow book authoring to one source and park reference PDFs
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `tools/bootstrap/book-to-markdown/README.md`
+  - `tools/bootstrap/book-to-markdown/books`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Selected the 308-page A500/A2000 OCR PDF as the sole active recipe source
+  - kept one hashed PDF for each of the other three manuals as local references and Test Book inputs
+  - removed ten alternate variant source records from the active catalog
+  - updated the Test Book reconstruction note and renumbered the single-source roadmap
+- **Architectural Rationale & Trade-Offs**:
+  - Keep book authoring tied to one exact source hash while retaining the other manuals for reference and preserving alternate PDFs in a separate private archive
+- **Verification & Test Results**:
+  - Four local manual PDFs matched their full source.json SHA-256 values and archive copies
+  - roadmap checker and staged diff check passed
+  - commit verification passed all selected checks
+  - no manual conversion or milestone gate was run
+  - no Design specification matched the changed paths

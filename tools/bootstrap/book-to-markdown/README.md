@@ -32,20 +32,27 @@ source acquisition and reconstruction directly from a PDF remain pending.
 The [bootstrap instructions](../AGENTS.md#preparing-the-book-source-collection)
 describe source acquisition during book authoring.
 
-The current source catalog uses these book directory names:
+The local source collection contains one active manual and three parked references:
 
-| PDF to obtain | Directory under `books/` |
-| --- | --- |
-| Amiga Hardware Reference Manual, second edition (1989) | `amiga-hardware-reference-manual-2nd-edition` |
-| Amiga A500/A2000 Technical Reference Manual | `amiga-a500-a2000-technical-reference-manual` |
-| M68000 Programmer's Reference Manual | `m68000-programmers-reference-manual` |
-| M68000 User's Manual, Revision 8 | `m68000-users-manual-rev8` |
+| Manual | Variant under `books/` | Use |
+| --- | --- | --- |
+| Amiga A500/A2000 Technical Reference Manual | `amiga-a500-a2000-technical-reference-manual/01972997a09b` | Active book authoring source |
+| Amiga Hardware Reference Manual, second edition | `amiga-hardware-reference-manual-2nd-edition/69bbdd2f8cfc` | Parked reference PDF |
+| M68000 Programmer's Reference Manual | `m68000-programmers-reference-manual/06e4864b78da` | Parked reference PDF |
+| M68000 User's Manual, Revision 8 | `m68000-users-manual-rev8/e41cbe7e14dc` | Parked reference PDF |
 
 Book IDs use lowercase names separated by hyphens. The hash suffix identifies
 the exact PDF variant, and `source.json` stores its full hash. Source PDFs remain
 local and are ignored by Git; the catalog metadata is tracked.
 
-The same convention applies to every book, including the composite Test Book:
+The selected A500/A2000 PDF has the only active book recipe target. The other three
+local PDFs are retained as references and Test Book reconstruction sources; they
+do not have reviewed recipes. Alternate variants and their full hashes and observed
+download URLs are in a separate private archive, outside this source collection.
+They are not supported conversion inputs.
+The existing composite Test Book PDF and its review data remain as a fixture.
+
+The same directory convention applies to the four manuals and composite Test Book:
 
 ```text
 books/<book-id>/<first-12-characters-of-sha256>/
