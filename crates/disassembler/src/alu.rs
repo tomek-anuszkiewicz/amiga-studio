@@ -1,6 +1,8 @@
 //! ALU, Compare, Bitwise, Immediate, Multiply/Divide and Shift/Rotate disassembler module
 
-use crate::ea::{format_ea, format_immediate};
+use crate::ea::{
+    format_ea, format_immediate, is_data_alterable_ea, is_data_ea, is_memory_alterable_ea,
+};
 
 /// Attempts to disassemble arithmetic, logic, compare, bit, multiply/divide, and shift/rotate instructions.
 ///
@@ -14,6 +16,16 @@ pub(crate) fn try_disassemble_alu(
         // Bit operations with immediate bit number ($0800..$08FF)
         if (op & 0xFF00) == 0x0800 {
             let bit_type = (op >> 6) & 0x03;
+            let mode = ((op >> 3) & 7) as u8;
+            let reg = (op & 7) as u8;
+            let valid_ea = if bit_type == 0 {
+                is_data_ea(mode, reg) && !(mode == 7 && reg == 4)
+            } else {
+                is_data_alterable_ea(mode, reg)
+            };
+            if !valid_ea {
+                return None;
+            }
             let mnem = match bit_type {
                 0 => "BTST",
                 1 => "BCHG",
@@ -26,10 +38,31 @@ pub(crate) fn try_disassemble_alu(
             return Some((mnem, format!("#{}, {}", bit_val, ea_str)));
         }
 
-        // Bit operations with dynamic bit in Dn ($0100..$01FF)
+        // MOVEP occupies the address-register-direct slot of dynamic bit operations.
         if (op & 0xF100) == 0x0100 {
             let dn = ((op >> 9) & 7) as u8;
             let bit_type = (op >> 6) & 0x03;
+            let mode = ((op >> 3) & 7) as u8;
+            if mode == 1 {
+                let ea_str = format_ea(5, (op & 7) as u8, &mut next_word);
+                let (mnem, ops) = match bit_type {
+                    0 => ("MOVEP.W", format!("{}, D{}", ea_str, dn)),
+                    1 => ("MOVEP.L", format!("{}, D{}", ea_str, dn)),
+                    2 => ("MOVEP.W", format!("D{}, {}", dn, ea_str)),
+                    _ => ("MOVEP.L", format!("D{}, {}", dn, ea_str)),
+                };
+                return Some((mnem, ops));
+            }
+            let reg = (op & 7) as u8;
+            let valid_ea = if bit_type == 0 {
+                is_data_ea(mode, reg)
+            } else {
+                is_data_alterable_ea(mode, reg)
+            };
+            if !valid_ea {
+                return None;
+            }
+            // Bit operations with dynamic bit in Dn ($0100..$01FF).
             let mnem = match bit_type {
                 0 => "BTST",
                 1 => "BCHG",
@@ -89,6 +122,13 @@ pub(crate) fn try_disassemble_alu(
                 _ => "",
             };
             if !base_mnem.is_empty() {
+                let mode = ((op >> 3) & 7) as u8;
+                let reg = (op & 7) as u8;
+                let valid_ea = is_data_alterable_ea(mode, reg)
+                    || (base_mnem == "CMPI" && mode == 7 && matches!(reg, 2 | 3));
+                if !valid_ea {
+                    return None;
+                }
                 let full_mnem = match (base_mnem, sz_str) {
                     ("ORI", ".B") => "ORI.B",
                     ("ORI", ".W") => "ORI.W",
@@ -121,9 +161,14 @@ pub(crate) fn try_disassemble_alu(
     if (op & 0xF000) == 0xB000 {
         let reg_d = ((op >> 9) & 7) as u8;
         let opmode = ((op >> 6) & 7) as u8;
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
 
         // CMPA.W / CMPA.L
         if opmode == 3 || opmode == 7 {
+            if !is_data_ea(mode, reg) && mode != 1 {
+                return None;
+            }
             let mnem = if opmode == 3 { "CMPA.W" } else { "CMPA.L" };
             let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
             return Some((mnem, format!("{}, A{}", ea_str, reg_d)));
@@ -144,6 +189,9 @@ pub(crate) fn try_disassemble_alu(
 
         // EOR Dn, <ea>
         if opmode == 4 || opmode == 5 || opmode == 6 {
+            if !is_data_alterable_ea(mode, reg) {
+                return None;
+            }
             let mnem = match opmode {
                 4 => "EOR.B",
                 5 => "EOR.W",
@@ -156,6 +204,9 @@ pub(crate) fn try_disassemble_alu(
 
         // CMP <ea>, Dn
         if opmode <= 2 {
+            if !(is_data_ea(mode, reg) || (mode == 1 && opmode != 0)) {
+                return None;
+            }
             let mnem = match opmode {
                 0 => "CMP.B",
                 1 => "CMP.W",
@@ -187,18 +238,30 @@ pub(crate) fn try_disassemble_alu(
 
         // MULU / MULS / DIVU / DIVS
         if (op & 0xF1C0) == 0xC0C0 {
+            if !is_data_ea(((op >> 3) & 7) as u8, (op & 7) as u8) {
+                return None;
+            }
             let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
             return Some(("MULU.W", format!("{}, D{}", ea_str, reg)));
         }
         if (op & 0xF1C0) == 0xC1C0 {
+            if !is_data_ea(((op >> 3) & 7) as u8, (op & 7) as u8) {
+                return None;
+            }
             let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
             return Some(("MULS.W", format!("{}, D{}", ea_str, reg)));
         }
         if (op & 0xF1C0) == 0x80C0 {
+            if !is_data_ea(((op >> 3) & 7) as u8, (op & 7) as u8) {
+                return None;
+            }
             let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
             return Some(("DIVU.W", format!("{}, D{}", ea_str, reg)));
         }
         if (op & 0xF1C0) == 0x81C0 {
+            if !is_data_ea(((op >> 3) & 7) as u8, (op & 7) as u8) {
+                return None;
+            }
             let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
             return Some(("DIVS.W", format!("{}, D{}", ea_str, reg)));
         }
@@ -235,6 +298,11 @@ pub(crate) fn try_disassemble_alu(
         let is_add_or_sub = matches!(op_group, 0xD | 0x9);
         let is_address_arithmetic = is_add_or_sub && matches!(opmode, 3 | 7);
         if is_address_arithmetic {
+            let mode = ((op >> 3) & 7) as u8;
+            let reg = (op & 7) as u8;
+            if !is_data_ea(mode, reg) && mode != 1 {
+                return None;
+            }
             let mnem = match (op_group, opmode) {
                 (0xD, 3) => "ADDA.W",
                 (0xD, 7) => "ADDA.L",
@@ -288,8 +356,19 @@ pub(crate) fn try_disassemble_alu(
             4 => (".B", false),
             5 => (".W", false),
             6 => (".L", false),
-            _ => (".W", true),
+            _ => return None,
         };
+
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        let valid_ea = if ea_is_source {
+            is_data_ea(mode, reg) || (is_add_or_sub && opmode != 0 && mode == 1)
+        } else {
+            is_memory_alterable_ea(mode, reg)
+        };
+        if !valid_ea {
+            return None;
+        }
 
         let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
         let ops = if ea_is_source {
@@ -321,6 +400,9 @@ pub(crate) fn try_disassemble_alu(
     if (op & 0xF000) == 0xE000 {
         // Memory shifts: op & 0xF8C0 == 0xE0C0
         if (op & 0xF8C0) == 0xE0C0 {
+            if !is_memory_alterable_ea(((op >> 3) & 7) as u8, (op & 7) as u8) {
+                return None;
+            }
             let dir_left = (op & 0x0100) != 0;
             let shift_type = (op >> 9) & 3;
             let mnem = match (shift_type, dir_left) {

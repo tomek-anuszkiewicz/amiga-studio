@@ -3,6 +3,42 @@
 use disassembler::disassemble;
 
 #[test]
+fn test_movep_uses_displacement_word_and_correct_direction() {
+    let cases = [
+        (0x0108, "MOVEP.W", "($0010, A0), D0"),
+        (0x0148, "MOVEP.L", "($0010, A0), D0"),
+        (0x0188, "MOVEP.W", "D0, ($0010, A0)"),
+        (0x01C8, "MOVEP.L", "D0, ($0010, A0)"),
+        (0x0FCE, "MOVEP.L", "D7, ($0010, A6)"),
+    ];
+    for (op, mnemonic, operands) in cases {
+        let words = [op, 0x0010];
+        let (d, bytes) = disassemble(0x1000, |pc| words[((pc - 0x1000) / 2) as usize]);
+        assert_eq!(d.mnemonic, mnemonic, "opcode {op:04X}");
+        assert_eq!(d.operands, operands);
+        assert_eq!(bytes, 4);
+    }
+}
+
+#[test]
+fn test_invalid_alu_effective_addresses_fall_back_to_raw_word() {
+    for op in [0x80C8, 0xC0C8, 0xD008, 0xB008, 0xE0C0, 0x013D] {
+        let (d, bytes) = disassemble(0x1000, |_| op);
+        assert_eq!(d.mnemonic, "DATA.W", "opcode {op:04X}");
+        assert_eq!(bytes, 2);
+    }
+}
+
+#[test]
+fn test_cmpi_pc_relative_can_decode() {
+    let words = [0x0C3A, 0x0001, 0x0010];
+    let (d, bytes) = disassemble(0x1000, |pc| words[((pc - 0x1000) / 2) as usize]);
+    assert_eq!(d.mnemonic, "CMPI.B");
+    assert_eq!(d.operands, "#$01, ($0010, PC)");
+    assert_eq!(bytes, 6);
+}
+
+#[test]
 fn test_disassemble_arithmetic_and_logic() {
     let mem: [u16; 16] = [
         0xD240, // ADD.W D0, D1

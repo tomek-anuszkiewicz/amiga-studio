@@ -3,6 +3,22 @@
 //! Provides zero-panic formatting for addressing modes, immediate values,
 //! condition codes, and MOVEM register masks.
 
+pub(crate) fn is_data_alterable_ea(mode: u8, reg: u8) -> bool {
+    matches!(mode, 0 | 2..=6) || (mode == 7 && reg <= 1)
+}
+
+pub(crate) fn is_data_ea(mode: u8, reg: u8) -> bool {
+    matches!(mode, 0 | 2..=6) || (mode == 7 && reg <= 4)
+}
+
+pub(crate) fn is_memory_alterable_ea(mode: u8, reg: u8) -> bool {
+    matches!(mode, 2..=6) || (mode == 7 && reg <= 1)
+}
+
+pub(crate) fn is_control_ea(mode: u8, reg: u8) -> bool {
+    matches!(mode, 2 | 5 | 6) || (mode == 7 && reg <= 3)
+}
+
 /// Formats an effective address (EA) based on mode (0..7) and register (0..7)
 pub fn format_ea(mode: u8, reg: u8, mut read_ext: impl FnMut() -> u16) -> String {
     match mode {

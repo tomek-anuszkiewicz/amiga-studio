@@ -1,6 +1,8 @@
 //! Data movement, stack operations, unaries, and single-operand disassembler module
 
-use crate::ea::{format_ea, format_movem_reg_list};
+use crate::ea::{
+    format_ea, format_movem_reg_list, is_control_ea, is_data_alterable_ea, is_data_ea,
+};
 
 /// Attempts to disassemble data movement, register transfer, and unary arithmetic instructions.
 ///
@@ -13,6 +15,11 @@ pub(crate) fn try_disassemble_data(
     if (op & 0xF000) == 0x5000 {
         let size_bits = (op >> 6) & 0x03;
         if size_bits < 3 {
+            let mode = ((op >> 3) & 7) as u8;
+            let reg = (op & 7) as u8;
+            if !(is_data_alterable_ea(mode, reg) || (mode == 1 && size_bits != 0)) {
+                return None;
+            }
             let is_subq = (op & 0x0100) != 0;
             let raw = ((op >> 9) & 7) as u8;
             let data = if raw == 0 { 8 } else { raw };
@@ -37,7 +44,7 @@ pub(crate) fn try_disassemble_data(
                     _ => "ADDQ",
                 }
             };
-            let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
+            let ea_str = format_ea(mode, reg, &mut next_word);
             return Some((mnem, format!("#{}, {}", data, ea_str)));
         }
     }
@@ -57,6 +64,12 @@ pub(crate) fn try_disassemble_data(
             let dst_mode = ((op >> 6) & 7) as u8;
             let src_mode = ((op >> 3) & 7) as u8;
             let src_reg = (op & 7) as u8;
+            if !(is_data_ea(src_mode, src_reg) || (size_bits != 1 && src_mode == 1))
+                || (size_bits == 1 && dst_mode == 1)
+                || (dst_mode != 1 && !is_data_alterable_ea(dst_mode, dst_reg))
+            {
+                return None;
+            }
             let mnem = if dst_mode == 1 {
                 if size_bits == 3 {
                     "MOVEA.W"
@@ -83,13 +96,21 @@ pub(crate) fn try_disassemble_data(
     let movem_ea_mode = ((op >> 3) & 7) as u8;
     if (op & 0xFB80) == 0x4880 && movem_ea_mode >= 2 {
         let is_load = (op & 0x0400) != 0;
+        let ea_reg = (op & 7) as u8;
+        let valid_ea = if is_load {
+            matches!(movem_ea_mode, 2 | 3 | 5 | 6) || (movem_ea_mode == 7 && ea_reg <= 3)
+        } else {
+            matches!(movem_ea_mode, 2 | 4 | 5 | 6) || (movem_ea_mode == 7 && ea_reg <= 1)
+        };
+        if !valid_ea {
+            return None;
+        }
         let sz = if (op & 0x0040) != 0 {
             "MOVEM.L"
         } else {
             "MOVEM.W"
         };
         let mask = next_word();
-        let ea_reg = (op & 7) as u8;
         let ea_str = format_ea(movem_ea_mode, ea_reg, &mut next_word);
         let reg_list = format_movem_reg_list(mask, movem_ea_mode == 4);
         let ops = if is_load {
@@ -102,23 +123,46 @@ pub(crate) fn try_disassemble_data(
 
     // 5. LEA & CHK ($41C0, $4180)
     if (op & 0xF1C0) == 0x41C0 {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if !is_control_ea(mode, reg) {
+            return None;
+        }
         let an = ((op >> 9) & 7) as u8;
-        let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
+        let ea_str = format_ea(mode, reg, &mut next_word);
         return Some(("LEA", format!("{}, A{}", ea_str, an)));
     }
     if (op & 0xF1C0) == 0x4180 {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if !is_data_ea(mode, reg) {
+            return None;
+        }
         let dn = ((op >> 9) & 7) as u8;
-        let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
+        let ea_str = format_ea(mode, reg, &mut next_word);
         return Some(("CHK.W", format!("{}, D{}", ea_str, dn)));
     }
 
     // 6. PEA, SWAP, EXT ($4840, $4880, $48C0)
+    if (op & 0xFFC0) == 0x4800 {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if !is_data_alterable_ea(mode, reg) {
+            return None;
+        }
+        return Some(("NBCD", format_ea(mode, reg, &mut next_word)));
+    }
     if (op & 0xFFF8) == 0x4840 {
         let dn = (op & 7) as u8;
         return Some(("SWAP", format!("D{}", dn)));
     }
     if (op & 0xFFC0) == 0x4840 {
-        let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if !is_control_ea(mode, reg) {
+            return None;
+        }
+        let ea_str = format_ea(mode, reg, &mut next_word);
         return Some(("PEA", ea_str));
     }
     if (op & 0xFFF8) == 0x4880 {
@@ -133,23 +177,38 @@ pub(crate) fn try_disassemble_data(
     // 7. MOVE to/from USP ($4E60, $4E68)
     if (op & 0xFFF8) == 0x4E60 {
         let an = (op & 0x07) as u8;
-        return Some(("MOVE", format!("USP, A{}", an)));
+        return Some(("MOVE", format!("A{}, USP", an)));
     }
     if (op & 0xFFF8) == 0x4E68 {
         let an = (op & 0x07) as u8;
-        return Some(("MOVE", format!("A{}, USP", an)));
+        return Some(("MOVE", format!("USP, A{}", an)));
     }
 
     // 8. SR & CCR transfers ($40C0, $44C0, $46C0)
     if (op & 0xFFC0) == 0x40C0 {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if !is_data_alterable_ea(mode, reg) {
+            return None;
+        }
         let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
         return Some(("MOVE.W", format!("SR, {}", ea_str)));
     }
     if (op & 0xFFC0) == 0x44C0 {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if !is_data_ea(mode, reg) {
+            return None;
+        }
         let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
         return Some(("MOVE.W", format!("{}, CCR", ea_str)));
     }
     if (op & 0xFFC0) == 0x46C0 {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if !is_data_ea(mode, reg) {
+            return None;
+        }
         let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
         return Some(("MOVE.W", format!("{}, SR", ea_str)));
     }
@@ -157,6 +216,11 @@ pub(crate) fn try_disassemble_data(
     // 9. CLR, NEG, NEGX, NOT, TST ($4000..$4AFF)
     let group_4 = (op >> 8) & 0xFF;
     if matches!(group_4, 0x40 | 0x42 | 0x44 | 0x46 | 0x4A) {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if !is_data_alterable_ea(mode, reg) {
+            return None;
+        }
         let size_bits = (op >> 6) & 0x03;
         if size_bits < 3 {
             let mnem = match (group_4, size_bits) {

@@ -91,12 +91,12 @@ fn test_disassemble_stack_and_registers() {
 
     let (d, b) = disassemble(0x1006, read);
     assert_eq!(d.mnemonic, "MOVE");
-    assert_eq!(d.operands, "A0, USP");
+    assert_eq!(d.operands, "USP, A0");
     assert_eq!(b, 2);
 
     let (d, b) = disassemble(0x1008, read);
     assert_eq!(d.mnemonic, "MOVE");
-    assert_eq!(d.operands, "USP, A1");
+    assert_eq!(d.operands, "A1, USP");
     assert_eq!(b, 2);
 
     let (d, b) = disassemble(0x100A, read);
@@ -136,8 +136,8 @@ fn test_disassemble_sr_and_ccr() {
         0x40C0, // MOVE.W SR, D0
         0x46C0, // MOVE.W D0, SR
         0x44C0, // MOVE.W D0, CCR
-        0x4E60, // MOVE USP, A0
-        0x4E68, // MOVE A0, USP
+        0x4E60, // MOVE A0, USP
+        0x4E68, // MOVE USP, A0
     ];
     let read = |pc: u32| mem[((pc - 0x1000) / 2) as usize];
 
@@ -158,11 +158,43 @@ fn test_disassemble_sr_and_ccr() {
 
     let (d, b) = disassemble(0x1006, read);
     assert_eq!(d.mnemonic, "MOVE");
-    assert_eq!(d.operands, "USP, A0");
+    assert_eq!(d.operands, "A0, USP");
     assert_eq!(b, 2);
 
     let (d, b) = disassemble(0x1008, read);
     assert_eq!(d.mnemonic, "MOVE");
-    assert_eq!(d.operands, "A0, USP");
+    assert_eq!(d.operands, "USP, A0");
     assert_eq!(b, 2);
+}
+
+#[test]
+fn test_nbcd_effective_addresses_and_instruction_lengths() {
+    let cases: &[(&[u16], &str, u32)] = &[
+        (&[0x4800], "D0", 2),
+        (&[0x4810], "(A0)", 2),
+        (&[0x4818], "(A0)+", 2),
+        (&[0x4820], "-(A0)", 2),
+        (&[0x4828, 0x0027], "($0027, A0)", 4),
+        (&[0x4830, 0x0010], "($10, A0, D0.W)", 4),
+        (&[0x4838, 0x1234], "($1234).W", 4),
+        (&[0x4839, 0x1234, 0x5678], "($12345678).L", 6),
+    ];
+    for &(words, operands, expected_bytes) in cases {
+        let (d, bytes) = disassemble(0x1000, |pc| words[((pc - 0x1000) / 2) as usize]);
+        assert_eq!(d.mnemonic, "NBCD", "opcode {:04X}", words[0]);
+        assert_eq!(d.operands, operands);
+        assert_eq!(bytes, expected_bytes);
+    }
+}
+
+#[test]
+fn test_invalid_data_and_control_encodings_fall_back_to_raw_word() {
+    for op in [
+        0x0608, 0x1040, 0x103D, 0x207D, 0x4188, 0x41C0, 0x4808, 0x483A, 0x4848, 0x4898, 0x4E80,
+        0x5008, 0x50FA,
+    ] {
+        let (d, bytes) = disassemble(0x1000, |_| op);
+        assert_eq!(d.mnemonic, "DATA.W", "opcode {op:04X}");
+        assert_eq!(bytes, 2);
+    }
 }

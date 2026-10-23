@@ -6,10 +6,11 @@ category: "Design"
 subsystem: "debugger"
 status: "active"
 created: 2026-09-05
-updated: 2026-10-12
+updated: 2026-10-23
 related: ["[General Architecture.md](../General%20Architecture.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[GUI.md](GUI.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)"]
 tracked_paths:
   - "crates/debugger"
+  - "crates/disassembler"
 ---
 # Amiga 500 Debugger
 
@@ -21,7 +22,7 @@ Execution can run continuously, pause, advance by one M68000 instruction, or adv
 
 ## Inspecting code and memory
 
-The register view shows the current CPU state. The memory viewer lets the developer navigate to an address, inspect bytes in hex and ASCII, search memory, and edit bytes. Disassembly decodes words from the selected address into M68000 instructions, highlights the current instruction, and supports navigation through surrounding code. An instruction can also be replaced in place with assembled text when the replacement has the same byte length. Inspection reads do not cause guest bus side effects.
+The register view shows the current CPU state. The memory viewer lets the developer navigate to an address, inspect bytes in hex and ASCII, search memory, and edit bytes. Disassembly decodes words from the selected address into M68000 instructions, highlights the current instruction, and supports navigation through surrounding code. It recognizes MOVEP and NBCD and checks effective-address legality for the covered ALU, data, and control-flow forms. Rejected encodings are displayed as `DATA.W` and consume one word so inspection remains aligned with the input stream. An instruction can also be replaced in place with assembled text when the replacement has the same byte length. Inspection reads do not cause guest bus side effects.
 
 ## Stopping at a location
 

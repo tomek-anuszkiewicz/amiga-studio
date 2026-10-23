@@ -1,6 +1,9 @@
 //! Branch, jump, call, return, trap, and control flow disassembler module
 
-use crate::ea::{bcc_condition_name, dbcc_condition_name, format_ea, scc_condition_name};
+use crate::ea::{
+    bcc_condition_name, dbcc_condition_name, format_ea, is_control_ea, is_data_alterable_ea,
+    scc_condition_name,
+};
 
 /// Attempts to disassemble branch, jump, trap, return, and loop instructions.
 ///
@@ -45,9 +48,14 @@ pub(crate) fn try_disassemble_branch(
 
     // 4. JMP / JSR ($4EC0 / $4E80)
     if (op & 0xFFC0) == 0x4EC0 || (op & 0xFFC0) == 0x4E80 {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if !is_control_ea(mode, reg) {
+            return None;
+        }
         let is_jsr = (op & 0xFFC0) == 0x4E80;
         let mnem = if is_jsr { "JSR" } else { "JMP" };
-        let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
+        let ea_str = format_ea(mode, reg, &mut next_word);
         return Some((mnem, ea_str));
     }
 
@@ -77,8 +85,13 @@ pub(crate) fn try_disassemble_branch(
 
     // 7. Scc <ea> ($50C0..$5FC0, where size bits 7..6 == 3)
     if (op & 0xF0C0) == 0x50C0 {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if !is_data_alterable_ea(mode, reg) {
+            return None;
+        }
         let cond = ((op >> 8) & 0x0F) as u8;
-        let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
+        let ea_str = format_ea(mode, reg, &mut next_word);
         let mnem = scc_condition_name(cond);
         return Some((mnem, ea_str));
     }

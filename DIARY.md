@@ -5141,3 +5141,19 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Commit profile failed in pre-existing Book Review asset/UI contracts (7 errors) and RAG MCP initialization (1 timeout)
   - Workspace semantic audit reported five existing MemoryBus findings outside the changed benchmark scope
   - No protected baseline was modified
+---
+
+### [2026-10-23 17:17 CEST] — Validate disassembler effective-address forms
+- **Affected Subsystems**:
+  - `crates/disassembler`
+  - `Obsidian/Amiga/Design/Application`
+- **What Was Changed (The Concrete Reality)**:
+  - Recognize MOVEP and NBCD with their operand words
+  - reject unsupported addressing forms without consuming extension words
+  - document disassembler ownership and raw-word fallback
+- **Architectural Rationale & Trade-Offs**:
+  - Accurate instruction labels and stream alignment support debugger inspection and benchmark composition reporting
+- **Verification & Test Results**:
+  - PASS: ordinary crate tests, standard harness, English, formatting, Clippy, architecture, hardware and code-quality checks, verification Python contracts, and vault audit on the working tree
+  - FAIL: Book Review contracts, seven existing local-asset or UI timeout errors
+  - Full SingleStep and hardware captures not run
