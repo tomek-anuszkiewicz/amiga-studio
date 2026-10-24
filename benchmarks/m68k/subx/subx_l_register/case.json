@@ -1,0 +1,16 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "9B82",
+  "initial_registers": {
+    "d0": 13735,
+    "d1": 2781026683,
+    "d2": 13735,
+    "d3": 2781026683,
+    "d4": 13735,
+    "d5": 2781026683,
+    "d6": 13735
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4,
+  "target_opcode_mask": "F1F8"
+}

@@ -1,0 +1,20 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4CAB",
+  "initial_registers": {
+    "d2": 324478057,
+    "a3": 5242874
+  },
+  "memory_regions": [
+    {
+      "address": 5242880,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          4660
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

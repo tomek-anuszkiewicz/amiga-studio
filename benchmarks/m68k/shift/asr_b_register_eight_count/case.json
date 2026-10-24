@@ -1,0 +1,11 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "E624",
+  "initial_registers": {
+    "d3": 8,
+    "d4": 13771,
+    "d7": 13771
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

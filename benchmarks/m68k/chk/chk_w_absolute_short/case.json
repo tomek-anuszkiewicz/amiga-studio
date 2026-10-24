@@ -1,0 +1,19 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "45B8",
+  "initial_registers": {
+    "d2": 0
+  },
+  "memory_regions": [
+    {
+      "address": 4096,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          32767
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

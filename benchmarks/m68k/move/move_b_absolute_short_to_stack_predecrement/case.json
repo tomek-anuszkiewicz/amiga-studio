@@ -1,0 +1,20 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "1F38",
+  "initial_registers": {
+    "d3": 4951,
+    "ssp": 2297152
+  },
+  "memory_regions": [
+    {
+      "address": 4096,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          23100
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

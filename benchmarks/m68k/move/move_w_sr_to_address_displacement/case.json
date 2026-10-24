@@ -1,0 +1,22 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "40EA",
+  "initial_registers": {
+    "a2": 5243130,
+    "d7": 10005,
+    "d0": 324508639
+  },
+  "memory_regions": [
+    {
+      "address": 5243136,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          42330
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4,
+  "initial_sr": 10005
+}

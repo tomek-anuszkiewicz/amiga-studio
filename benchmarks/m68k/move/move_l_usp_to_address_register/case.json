@@ -1,0 +1,14 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4E6B",
+  "initial_sr": 9984,
+  "initial_registers": {
+    "a3": 5242880,
+    "d7": 5242880,
+    "ssp": 5242880,
+    "usp": 4194304,
+    "d0": 324508639
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

@@ -1,0 +1,12 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4CBB",
+  "initial_registers": {
+    "d7": 2097152,
+    "ssp": 2097152,
+    "d6": 8,
+    "d0": 324508639
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

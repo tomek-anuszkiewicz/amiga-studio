@@ -1,0 +1,17 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "0238",
+  "initial_registers": {},
+  "memory_regions": [
+    {
+      "address": 4096,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          13399
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

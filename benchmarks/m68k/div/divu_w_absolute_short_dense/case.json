@@ -1,0 +1,20 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "8AF8",
+  "initial_registers": {
+    "d5": 80000000,
+    "d6": 80000000
+  },
+  "memory_regions": [
+    {
+      "address": 4096,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          32765
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

@@ -1,0 +1,11 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "9ED3",
+  "initial_registers": {
+    "a3": 2097152,
+    "d7": 10821632,
+    "ssp": 10821632
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

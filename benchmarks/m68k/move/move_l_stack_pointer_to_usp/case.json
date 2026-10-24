@@ -1,0 +1,12 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4E67",
+  "initial_sr": 9984,
+  "initial_registers": {
+    "a4": 4194304,
+    "ssp": 5242880,
+    "usp": 4194304
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

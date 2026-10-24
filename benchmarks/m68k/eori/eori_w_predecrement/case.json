@@ -1,0 +1,18 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "0A63",
+  "initial_registers": {
+    "a3": 2297152
+  },
+  "memory_regions": [
+    {
+      "label": "operand_data",
+      "address": 2097152,
+      "fill": {
+        "kind": "random_words",
+        "count": 100000
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

@@ -1,0 +1,11 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "153B",
+  "initial_registers": {
+    "d3": 4951,
+    "d6": 8,
+    "a2": 2197152
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

@@ -1,0 +1,7 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "E7A4",
+  "initial_registers": { "d3": 3, "d4": 356720907, "d7": 356720907 },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

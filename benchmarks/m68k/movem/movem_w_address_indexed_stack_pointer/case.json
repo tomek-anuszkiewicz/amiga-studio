@@ -1,0 +1,23 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4CB3",
+  "initial_registers": {
+    "d7": 2097152,
+    "ssp": 2097152,
+    "a3": 5242874,
+    "d6": 0,
+    "d0": 324508639
+  },
+  "memory_regions": [
+    {
+      "address": 5242880,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          4660
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

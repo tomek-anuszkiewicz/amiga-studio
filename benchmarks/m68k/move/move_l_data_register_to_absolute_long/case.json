@@ -1,0 +1,21 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "23C2",
+  "initial_registers": {
+    "d2": 305419897,
+    "d3": 4951
+  },
+  "memory_regions": [
+    {
+      "address": 5243136,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          42330,
+          13691
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

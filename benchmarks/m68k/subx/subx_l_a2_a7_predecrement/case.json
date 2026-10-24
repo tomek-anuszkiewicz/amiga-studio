@@ -1,0 +1,19 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "9F8A",
+  "initial_registers": {
+    "a2": 2497152,
+    "ssp": 2897152
+  },
+  "memory_regions": [
+    {
+      "label": "operand_data",
+      "address": 2097152,
+      "fill": {
+        "kind": "random_words",
+        "count": 400000
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

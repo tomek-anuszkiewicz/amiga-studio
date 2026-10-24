@@ -1,0 +1,22 @@
+{
+  "origin": 2097152,
+  "stack_reserve_bytes": 1024,
+  "target_primary_opcode": "46C2",
+  "initial_sr": 9984,
+  "initial_registers": {
+    "d2": 1792,
+    "d7": 324508639,
+    "ssp": 6291452,
+    "usp": 5242880
+  },
+  "memory_regions": [
+    {
+      "vector": "privilege_violation",
+      "fill": {
+        "kind": "label_address",
+        "label": "restore_supervisor"
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

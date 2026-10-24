@@ -1,0 +1,19 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "C398",
+  "instructions_per_loop": 4,
+  "initial_registers": {
+    "a0": 2097152,
+    "d1": 4951
+  },
+  "memory_regions": [
+    {
+      "label": "operand_data",
+      "address": 2097152,
+      "fill": {
+        "kind": "random_words",
+        "count": 200000
+      }
+    }
+  ]
+}

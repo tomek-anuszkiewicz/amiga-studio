@@ -1,0 +1,31 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "21E9",
+  "initial_registers": {
+    "d3": 4951,
+    "a1": 5242874
+  },
+  "memory_regions": [
+    {
+      "address": 5242880,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          23100,
+          9321
+        ]
+      }
+    },
+    {
+      "address": 8192,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          42330,
+          13691
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

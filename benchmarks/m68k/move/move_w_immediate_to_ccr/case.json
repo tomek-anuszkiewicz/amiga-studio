@@ -1,0 +1,11 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "44FC",
+  "initial_registers": {
+    "d7": 9984,
+    "d0": 324508639
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4,
+  "initial_sr": 9984
+}

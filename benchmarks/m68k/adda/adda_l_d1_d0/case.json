@@ -1,0 +1,14 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "DDC1",
+  "initial_registers": {
+    "d0": 40503,
+    "d2": 40503,
+    "d4": 40503,
+    "a6": 10821632,
+    "d7": 10821632
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4,
+  "target_opcode_mask": "F1F8"
+}

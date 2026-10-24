@@ -1,0 +1,12 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "40C5",
+  "initial_registers": {
+    "d5": 2779096485,
+    "d7": 10005,
+    "d0": 324508639
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4,
+  "initial_sr": 10005
+}

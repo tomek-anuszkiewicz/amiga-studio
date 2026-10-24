@@ -1,0 +1,7 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "08F9",
+  "initial_registers": {},
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

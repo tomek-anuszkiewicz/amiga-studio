@@ -1,0 +1,10 @@
+{
+  "origin": 2097152,
+  "initial_sr": 10015,
+  "target_primary_opcode": "023C",
+  "initial_registers": {
+    "d0": 324508639
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

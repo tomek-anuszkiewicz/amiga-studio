@@ -1,0 +1,20 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "80A6",
+  "initial_registers": {
+    "d0": 2779058740,
+    "a6": 2497152,
+    "d7": 2779096485
+  },
+  "memory_regions": [
+    {
+      "label": "operand_data",
+      "address": 2097152,
+      "fill": {
+        "kind": "random_words",
+        "count": 200000
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

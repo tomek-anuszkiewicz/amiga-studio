@@ -1,0 +1,21 @@
+{
+  "origin": 2097152,
+  "stack_reserve_bytes": 1024,
+  "target_primary_opcode": "3CC4",
+  "initial_registers": {
+    "d4": 27610,
+    "a6": 5242881,
+    "d7": 324478057,
+    "ssp": 6291452
+  },
+  "memory_regions": [
+    {
+      "vector": "address_error",
+      "fill": {
+        "kind": "label_address",
+        "label": "address_error_handler"
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

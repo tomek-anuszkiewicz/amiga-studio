@@ -1,0 +1,11 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "BABB",
+  "initial_registers": {
+    "d3": 40503,
+    "d5": 2781026683,
+    "d6": 8
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

@@ -1,0 +1,20 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "CBF8",
+  "initial_registers": {
+    "d5": 49461,
+    "d6": 49461
+  },
+  "memory_regions": [
+    {
+      "address": 4096,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          27485
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

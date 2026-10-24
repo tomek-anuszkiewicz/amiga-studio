@@ -1,0 +1,16 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "B182",
+  "initial_registers": {
+    "d0": 42435,
+    "d1": 27610,
+    "d2": 42435,
+    "d3": 27610,
+    "d4": 42435,
+    "d5": 27610,
+    "d6": 42435
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4,
+  "target_opcode_mask": "F1F8"
+}

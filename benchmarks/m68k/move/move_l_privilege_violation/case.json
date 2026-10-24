@@ -1,0 +1,22 @@
+{
+  "origin": 2097152,
+  "stack_reserve_bytes": 1024,
+  "target_primary_opcode": "4E63",
+  "initial_sr": 0,
+  "initial_registers": {
+    "a3": 5242880,
+    "d7": 324508639,
+    "ssp": 6291452,
+    "usp": 5242880
+  },
+  "memory_regions": [
+    {
+      "vector": "privilege_violation",
+      "fill": {
+        "kind": "label_address",
+        "label": "privilege_handler"
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

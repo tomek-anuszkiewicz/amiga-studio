@@ -1,0 +1,11 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "2A27",
+  "initial_registers": {
+    "d3": 4951,
+    "d5": 2779096485,
+    "ssp": 2497152
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

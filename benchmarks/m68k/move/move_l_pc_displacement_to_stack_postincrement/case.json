@@ -1,0 +1,10 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "2EFA",
+  "initial_registers": {
+    "d3": 4951,
+    "ssp": 2097152
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

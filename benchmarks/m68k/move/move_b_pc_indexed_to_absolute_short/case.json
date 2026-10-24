@@ -1,0 +1,20 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "11FB",
+  "initial_registers": {
+    "d3": 4951,
+    "d6": 8
+  },
+  "memory_regions": [
+    {
+      "address": 8192,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          42330
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

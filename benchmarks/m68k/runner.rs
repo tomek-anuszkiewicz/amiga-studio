@@ -66,13 +66,19 @@ struct MemoryRegionConfig {
 #[derive(Clone, Copy, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 enum ExceptionVector {
+    AddressError,
     ZeroDivide,
+    Chk,
+    PrivilegeViolation,
 }
 
 impl ExceptionVector {
     fn address(self) -> u32 {
         match self {
+            Self::AddressError => cpu::vector::addr(cpu::vector::ADDRESS_ERROR),
             Self::ZeroDivide => cpu::vector::addr(cpu::vector::ZERO_DIVIDE),
+            Self::Chk => cpu::vector::addr(cpu::vector::CHK),
+            Self::PrivilegeViolation => cpu::vector::addr(cpu::vector::PRIVILEGE_VIOLATION),
         }
     }
 }

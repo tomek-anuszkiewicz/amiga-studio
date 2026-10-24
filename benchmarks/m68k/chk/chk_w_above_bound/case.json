@@ -1,0 +1,20 @@
+{
+  "origin": 2097152,
+  "stack_reserve_bytes": 1024,
+  "target_primary_opcode": "4983",
+  "initial_registers": {
+    "d3": 311,
+    "d4": 509,
+    "ssp": 6291452
+  },
+  "memory_regions": [
+    {
+      "vector": "chk",
+      "fill": {
+        "kind": "label_address",
+        "label": "chk_handler"
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

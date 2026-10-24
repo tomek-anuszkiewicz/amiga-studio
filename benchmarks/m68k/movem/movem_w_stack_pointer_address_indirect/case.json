@@ -1,0 +1,20 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4893",
+  "initial_registers": {
+    "a3": 5242880,
+    "ssp": 5243136
+  },
+  "memory_regions": [
+    {
+      "address": 5242880,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          4660
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

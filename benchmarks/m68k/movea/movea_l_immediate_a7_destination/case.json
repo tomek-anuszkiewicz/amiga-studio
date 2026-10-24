@@ -1,0 +1,10 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "2E7C",
+  "initial_registers": {
+    "d7": 10821632,
+    "ssp": 10821632
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

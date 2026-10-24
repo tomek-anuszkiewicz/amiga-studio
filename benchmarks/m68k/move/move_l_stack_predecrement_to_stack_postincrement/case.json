@@ -1,0 +1,27 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "2EE7",
+  "initial_registers": {
+    "d3": 4951,
+    "ssp": 5243652
+  },
+  "memory_regions": [
+    {
+      "address": 5243648,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          23100,
+          23100,
+          23100,
+          23100,
+          23100,
+          23100,
+          23100,
+          23100
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

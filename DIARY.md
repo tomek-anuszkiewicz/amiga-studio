@@ -5200,3 +5200,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: ordinary crate tests, English scan, formatting, Clippy, architecture, hardware and code quality checks, standard harness, bootstrap, conversion, PDF, RAG MCP and verification contracts, vault audit and diff check
   - FAIL: Book Review contracts (5 UI timeouts and 2 missing local math assets)
   - full SingleStep and hardware captures not run
+
+---
+
+### [2026-10-24 19:43 CEST] — ASM-BENCH-COVERAGE-01: Complete hand-written M68000 benchmark coverage for represented mnemonics
+- **Affected Subsystems**:
+  - `benchmarks/m68k`
+- **What Was Changed (The Concrete Reality)**:
+  - Add 1620 assembler workloads across existing mnemonic families, reaching 1823 scoped legal addressing forms
+  - Extend declarative exception-vector support for Address Error, CHK, and Privilege Violation
+- **Architectural Rationale & Trade-Offs**:
+  - Measure distinct addressing and execution paths as reproducible whole CPU programs without changing the decoder-derived timing baseline
+- **Verification & Test Results**:
+  - PASS: all 1620 new cases assembled and executed with current reports, 96 shift-path checks, 141 path resolutions, and zero pending scoped forms
+  - PASS: ordinary crate tests, standard harness, English, formatting, Clippy, architecture, hardware quality, code quality, bootstrap, conversion, PDF, RAG MCP, verification contracts, and diff check
+  - FAIL: Book Review contracts, five UI timeouts and two missing local math asset errors
+  - Full SingleStep and hardware captures not run
+  - Six CMPI PC-relative destination forms excluded because the 68000 manual permits them only on later CPUs

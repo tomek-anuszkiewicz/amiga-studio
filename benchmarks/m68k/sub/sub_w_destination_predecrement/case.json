@@ -1,0 +1,27 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "9565",
+  "initial_registers": {
+    "a0": 2147152,
+    "a1": 2197152,
+    "a2": 2247152,
+    "a3": 2297152,
+    "d0": 9323,
+    "d4": 9323,
+    "d5": 19241,
+    "d6": 31581,
+    "d7": 40503
+  },
+  "memory_regions": [
+    {
+      "label": "operand_data",
+      "address": 2097152,
+      "fill": {
+        "kind": "random_words",
+        "count": 100000
+      }
+    }
+  ],
+  "instructions_per_loop": 4,
+  "target_opcode_mask": "F1F8"
+}
