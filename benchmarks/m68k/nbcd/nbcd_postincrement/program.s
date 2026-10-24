@@ -1,0 +1,15 @@
+; Negate independently generated packed decimal memory bytes.
+operand_data:
+{{operand_data}}
+entry:
+    rept {{instruction_count}}
+    nbcd (a3)+
+    move.l d7,d0
+    nbcd (a3)+
+    move.l d7,d0
+    nbcd (a3)+
+    move.l d7,d0
+    nbcd (a3)+
+    move.l d7,d0
+    endr
+    dc.b "M68K_END_MARKER!"

@@ -1,0 +1,14 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "8C42",
+  "initial_registers": {
+    "d0": 23521,
+    "d1": 42299,
+    "d3": 23521,
+    "d5": 38103,
+    "d7": 27985
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4,
+  "target_opcode_mask": "F1F8"
+}

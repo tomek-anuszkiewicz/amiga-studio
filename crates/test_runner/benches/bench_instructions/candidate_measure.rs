@@ -16,6 +16,8 @@ use sha2::{Digest, Sha256};
 use super::candidate_probe::{
     final_state_sha256, instruction_words, validate_candidate, Candidate,
 };
+#[cfg(windows)]
+use super::platform::windows;
 use super::platform::HostEnvironment;
 
 const TARGET_SERIES_NS: u128 = 400_000_000;
@@ -417,63 +419,6 @@ fn command_output(program: &str, args: &[&str]) -> String {
         .output()
         .map(|result| String::from_utf8_lossy(&result.stdout).trim().to_string())
         .unwrap_or_else(|error| format!("unavailable: {error}"))
-}
-
-#[cfg(windows)]
-mod windows {
-    use std::ffi::c_void;
-
-    #[link(name = "kernel32")]
-    extern "system" {
-        fn GetCurrentProcess() -> *mut c_void;
-        fn GetPriorityClass(process: *mut c_void) -> u32;
-        fn GetCurrentThread() -> *mut c_void;
-        fn SetThreadAffinityMask(thread: *mut c_void, mask: usize) -> usize;
-    }
-
-    pub struct AffinityGuard {
-        previous: usize,
-        pub core: usize,
-        pub priority_class: u32,
-    }
-
-    impl AffinityGuard {
-        pub fn pin(core: usize) -> Result<Self, String> {
-            let mask = 1usize
-                .checked_shl(core as u32)
-                .ok_or("core exceeds affinity mask")?;
-            let priority_class = unsafe { GetPriorityClass(GetCurrentProcess()) };
-            if priority_class != 0x20 {
-                return Err(format!(
-                    "expected normal process priority, found {priority_class:#X}"
-                ));
-            }
-            let previous = unsafe { SetThreadAffinityMask(GetCurrentThread(), mask) };
-            if previous == 0 {
-                return Err(format!("failed to pin logical CPU {core}"));
-            }
-            let confirmed_previous = unsafe { SetThreadAffinityMask(GetCurrentThread(), mask) };
-            if confirmed_previous != mask {
-                unsafe {
-                    SetThreadAffinityMask(GetCurrentThread(), previous);
-                }
-                return Err(format!("logical CPU {core} affinity was not confirmed"));
-            }
-            Ok(Self {
-                previous,
-                core,
-                priority_class,
-            })
-        }
-    }
-
-    impl Drop for AffinityGuard {
-        fn drop(&mut self) {
-            unsafe {
-                SetThreadAffinityMask(GetCurrentThread(), self.previous);
-            }
-        }
-    }
 }
 
 fn write_row<T: Serialize>(writer: &mut BufWriter<File>, row: &T) -> Result<(), String> {

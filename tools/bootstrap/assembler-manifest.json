@@ -1,0 +1,23 @@
+{
+  "release": "v2.4.6",
+  "platforms": {
+    "x86_64-pc-windows-msvc": {
+      "archive_extension": ".zip",
+      "executable_name": "m68k-asm.exe",
+      "archive_sha256": "73d21972965c2d0a74f5ec21653a0690ba9181bdad02657b1e47544ed3eaaa0f",
+      "executable_sha256": "c8af2cc573b6f4901f410b6aae4aa49fa7b76400d5bd7c58aad707bc08699495"
+    },
+    "x86_64-unknown-linux-gnu": {
+      "archive_extension": ".tar.gz",
+      "executable_name": "m68k-asm",
+      "archive_sha256": "1862b311f4ed3c0cc20127ee7f3f436a1f478d120838bedd61ff2a113e81ef88",
+      "executable_sha256": "23f8a9806dbc37c44c70f0c456f8e098cb9f6af340f088edd889effc36cfea67"
+    },
+    "x86_64-apple-darwin": {
+      "archive_extension": ".tar.gz",
+      "executable_name": "m68k-asm",
+      "archive_sha256": "77459f382334df91871e1c99c97c4fa603f85886ca1e059d2355fd6ce5663dec",
+      "executable_sha256": "ecf1459365266475bfa32661b667872b7cd86d9e60949802ad237d603feb2db9"
+    }
+  }
+}

@@ -85,7 +85,7 @@ fn form(opcode: u16) -> String {
         0x4E73 => "RTE".to_string(),
         0x4E75 => "RTS".to_string(),
         0x4EF9 => "JMP abs.l".to_string(),
-        0x4FF9 => "LEA abs.l,A7".to_string(),
+        0x2E7C => "MOVEA.L #imm,A7".to_string(),
         0x3EBC => "MOVE.W #imm,(An)".to_string(),
         0x44FC => "MOVE #imm,CCR".to_string(),
         0x426F => "CLR.W d16(A7)".to_string(),
@@ -99,8 +99,8 @@ fn form(opcode: u16) -> String {
             let quick = (opcode >> 9) & 7;
             format!("ADDQ.L #{},d16(A7)", if quick == 0 { 8 } else { quick })
         }
-        _ if opcode & 0xF1FF == 0x41F9 => {
-            format!("LEA abs.l,A{}", (opcode >> 9) & 7)
+        _ if opcode & 0xF1FF == 0x207C => {
+            format!("MOVEA.L #imm,A{}", (opcode >> 9) & 7)
         }
         _ => format!("unclassified opcode {opcode:04X}"),
     }

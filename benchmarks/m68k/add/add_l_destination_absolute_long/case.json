@@ -1,0 +1,14 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "DBB9",
+  "initial_registers": {
+    "d0": 9323,
+    "d4": 9323,
+    "d5": 19241,
+    "d6": 31581,
+    "d7": 40503
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4,
+  "target_opcode_mask": "F1FF"
+}

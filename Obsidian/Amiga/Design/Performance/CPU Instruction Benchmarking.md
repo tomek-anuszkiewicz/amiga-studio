@@ -6,18 +6,19 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-10
-updated: 2026-10-23
+updated: 2026-10-24
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](../Verification/CPU%20SingleStepTests.md)", "[Performance Profiling and Optimization Strategy.md](Performance%20Profiling%20and%20Optimization%20Strategy.md)"]
 tracked_paths:
   - "crates/test_runner/Cargo.toml"
   - "crates/test_runner/benches"
+  - "benchmarks/m68k"
   - "tools/verification/benchmark_candidates.py"
   - "tools/verification/analyze_candidate_benchmarks.py"
 ---
 
 # M68000 Instruction Benchmarking
 
-The decoder-derived benchmark measures host cost for representative M68000 instruction forms through the cycle-stepped CPU and mapped `PhysicalMemory`. It is a performance experiment, not a proof that the CPU matches silicon. The tracked [JSON](../../../../baselines/benchmarks/m68k_benchmark_baseline.json) and [CSV](../../../../baselines/benchmarks/m68k_benchmark_baseline.csv) baselines contain the validated 4,571-case run. The former 108-case catalog and baseline are retained only in Git history; they use incompatible workloads.
+Two benchmark workflows measure host cost for M68000 instruction workloads through the cycle-stepped CPU and mapped `PhysicalMemory`. They are performance experiments, not proofs that the CPU matches silicon. The tracked [JSON](../../../../baselines/benchmarks/m68k_benchmark_baseline.json) and [CSV](../../../../baselines/benchmarks/m68k_benchmark_baseline.csv) baselines contain the validated 4,571-case decoder-derived run. The former 108-case catalog and baseline are retained only in Git history; they use incompatible workloads.
 
 The independent [SingleStep verification](../Verification/CPU%20SingleStepTests.md) supplies that correctness evidence: it compares CPU state, instruction duration, and timed bus callbacks with silicon-derived vectors on an isolated test bus. The [CPU model](../CPU%20Motorola%20M68000.md) and [micro-step specification](../CPU%20Micro-Step%20State%20Machine.md) define intended behavior; this benchmark reports how much host time the implementation spends executing it. Neither test runs the complete Amiga machine or establishes whole-system throughput.
 
@@ -36,6 +37,17 @@ The primary result is **host nanoseconds per validated target in the whole workl
 The recorded baseline predates the counted-JMP fixture change. Its JMP fingerprints differ from the current workloads, so those rows cannot produce direct timing comparisons. Reanalyzing the old raw run against the current probe manifest also fails fixture validation; the retained hashes identify the historical source and derived results instead.
 
 The measured scope is deliberately bounded. Decode exceptions are excluded; legal register/operand aliases are represented rather than individually executed. Odd-address faults, global trace behavior, asynchronous interrupt acceptance, and every possible register alias are not claimed as benchmarked paths. The generated `path_scope.json` records these dispositions. Those behaviors require dedicated correctness or machine-level evidence before being added as performance cases.
+
+## Hand-written assembly cases
+
+The [assembly case catalog](../../../../benchmarks/m68k/README.md) selects instruction forms, addressing modes, and execution paths for direct workload measurements. Each case contains `program.s` and `case.json`; shared settings live in `config.json`. The [shared runner](../../../../benchmarks/m68k/runner.rs) substitutes the target count, assembles the program with the pinned external assembler, loads the entire image into Fast RAM, and restores configured CPU and memory state between complete runs. The [assembler manifest](../../../../tools/bootstrap/assembler-manifest.json) pins release and executable hashes, which the runner checks before assembly.
+
+The runner observes target, helper, and total guest instruction counts and CPU clocks before timing, then requires the timed runs to retain those counts. The measured duration includes the complete program and its helpers. Nanoseconds per target therefore describes host cost for that whole workload. These case reports do not update or compare against the tracked decoder-derived baseline and do not assert final CPU correctness against silicon.
+
+```powershell
+.\tools\bootstrap\bootstrap.ps1 -Assembler
+cargo bench -p test_runner --bench bench_instructions -- --measure-asm add/add_w_d1_postincrement
+```
 
 ```powershell
 cargo bench -p test_runner --bench bench_instructions -- --inventory
@@ -64,6 +76,7 @@ retried cases remain separate from those cross-case deltas.
 ## References
 
 - [Benchmark harness](../../../../crates/test_runner/benches/bench_instructions): decoder inventory, fixture validation, and host timing.
+- [Assembly case catalog](../../../../benchmarks/m68k/README.md): case format, assembler provisioning, and whole-program measurement.
 - [Candidate generator](../../../../tools/verification/benchmark_candidates.py) and [analysis tool](../../../../tools/verification/analyze_candidate_benchmarks.py): coverage selection, report validation, and baseline comparison.
 - [Benchmark verification commands](../../../../tools/verification/README.md): current invocation and output workflow.
 - [CPU SingleStep verification](../Verification/CPU%20SingleStepTests.md): independent state, cycle, and bus-callback correctness evidence.

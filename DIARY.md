@@ -5179,3 +5179,24 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - FAIL: Book Review contracts with five existing Playwright UI timeouts and two missing local math-asset errors
   - Current counted-JMP fixture rejects replay of the historical raw baseline run, and the earlier NOP-every-100 baseline protocol is incompatible with current once-at-start NOP regression labels
   - full new benchmark measurement, full SingleStep, and hardware captures not run
+---
+
+### [2026-10-24 16:39 CEST] — Add hand-written M68000 instruction benchmarks
+- **Affected Subsystems**:
+  - `benchmarks/m68k`
+  - `crates/test_runner/benches`
+  - `tools/bootstrap`
+  - `tools/verification`
+  - `Obsidian/Amiga/Design/Performance`
+  - `Obsidian/Amiga/Design/Verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Add assembler-backed instruction cases and shared runner
+  - add pinned assembler bootstrap and CLI entry point
+  - document benchmark scope and invocation
+  - recognize quoted primary opcode values as hexadecimal numbers in the English scanner
+- **Architectural Rationale & Trade-Offs**:
+  - Measure selected execution paths with reproducible complete CPU programs while preserving the decoder-derived baseline
+- **Verification & Test Results**:
+  - PASS: ordinary crate tests, English scan, formatting, Clippy, architecture, hardware and code quality checks, standard harness, bootstrap, conversion, PDF, RAG MCP and verification contracts, vault audit and diff check
+  - FAIL: Book Review contracts (5 UI timeouts and 2 missing local math assets)
+  - full SingleStep and hardware captures not run

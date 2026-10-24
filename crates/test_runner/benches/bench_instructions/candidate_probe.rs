@@ -511,12 +511,12 @@ fn validate_unrolled(
         } else if reset_a7 {
             let mut helper = address + words.len() * 2;
             if restore_frame {
-                put_word(bus, helper, 0x41F9 | ((opcode & 7) << 9));
+                put_word(bus, helper, 0x207C | ((opcode & 7) << 9));
                 put_word(bus, helper + 2, 0);
                 put_word(bus, helper + 4, 0x6800 + (opcode & 7) * 0x100);
                 helper += 6;
             }
-            put_word(bus, helper, 0x4FF9);
+            put_word(bus, helper, 0x2E7C);
             put_word(bus, helper + 2, 0);
             put_word(
                 bus,

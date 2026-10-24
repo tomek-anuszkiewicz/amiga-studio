@@ -1,0 +1,13 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "3A43",
+  "initial_registers": {
+    "d4": 46503,
+    "d5": 46503,
+    "d6": 46503,
+    "d7": 46503
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4,
+  "target_opcode_mask": "F1F8"
+}

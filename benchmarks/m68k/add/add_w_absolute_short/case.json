@@ -1,0 +1,19 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "D478",
+  "initial_registers": {
+    "d2": 2779058740
+  },
+  "memory_regions": [
+    {
+      "address": 4096,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          4660
+        ]
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

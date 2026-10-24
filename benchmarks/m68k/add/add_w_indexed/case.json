@@ -1,0 +1,11 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "D071",
+  "initial_registers": {
+    "d0": 2779058740,
+    "a1": 2097152,
+    "d6": 6
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

@@ -45,6 +45,7 @@
     ".css",
     ".svg",
     ".asm",
+    ".s",
     ".csv"
   ],
   "text_filenames": [

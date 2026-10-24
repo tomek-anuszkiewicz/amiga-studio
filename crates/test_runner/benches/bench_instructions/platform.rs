@@ -215,3 +215,60 @@ fn detect_macos_p_core() -> (bool, Option<usize>) {
     // macOS Apple Silicon exposes hw.perflevel0 (P-Cores) and hw.perflevel1 (E-Cores)
     (true, Some(0))
 }
+
+#[cfg(windows)]
+pub mod windows {
+    use std::ffi::c_void;
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetCurrentProcess() -> *mut c_void;
+        fn GetPriorityClass(process: *mut c_void) -> u32;
+        fn GetCurrentThread() -> *mut c_void;
+        fn SetThreadAffinityMask(thread: *mut c_void, mask: usize) -> usize;
+    }
+
+    pub struct AffinityGuard {
+        previous: usize,
+        pub core: usize,
+        pub priority_class: u32,
+    }
+
+    impl AffinityGuard {
+        pub fn pin(core: usize) -> Result<Self, String> {
+            let mask = 1usize
+                .checked_shl(core as u32)
+                .ok_or("core exceeds affinity mask")?;
+            let priority_class = unsafe { GetPriorityClass(GetCurrentProcess()) };
+            if priority_class != 0x20 {
+                return Err(format!(
+                    "expected normal process priority, found {priority_class:#X}"
+                ));
+            }
+            let previous = unsafe { SetThreadAffinityMask(GetCurrentThread(), mask) };
+            if previous == 0 {
+                return Err(format!("failed to pin logical CPU {core}"));
+            }
+            let confirmed_previous = unsafe { SetThreadAffinityMask(GetCurrentThread(), mask) };
+            if confirmed_previous != mask {
+                unsafe {
+                    SetThreadAffinityMask(GetCurrentThread(), previous);
+                }
+                return Err(format!("logical CPU {core} affinity was not confirmed"));
+            }
+            Ok(Self {
+                previous,
+                core,
+                priority_class,
+            })
+        }
+    }
+
+    impl Drop for AffinityGuard {
+        fn drop(&mut self) {
+            unsafe {
+                SetThreadAffinityMask(GetCurrentThread(), self.previous);
+            }
+        }
+    }
+}

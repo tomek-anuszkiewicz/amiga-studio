@@ -1,0 +1,20 @@
+{
+  "origin": 2097152,
+  "stack_reserve_bytes": 1024,
+  "target_primary_opcode": "82C3",
+  "initial_registers": {
+    "d1": 1193046,
+    "d3": 0,
+    "ssp": 6291452
+  },
+  "memory_regions": [
+    {
+      "vector": "zero_divide",
+      "fill": {
+        "kind": "label_address",
+        "label": "divide_by_zero_handler"
+      }
+    }
+  ],
+  "instructions_per_loop": 4
+}

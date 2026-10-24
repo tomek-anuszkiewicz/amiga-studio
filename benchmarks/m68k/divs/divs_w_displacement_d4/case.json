@@ -1,0 +1,14 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "89EB",
+  "initial_registers": {
+    "a3": 2097152,
+    "d0": 6123457,
+    "d1": 7654321,
+    "d2": 9876543,
+    "d3": 4076339,
+    "d4": 4076339
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

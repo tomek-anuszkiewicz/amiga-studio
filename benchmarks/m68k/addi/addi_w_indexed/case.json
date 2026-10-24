@@ -1,0 +1,18 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "0671",
+  "target_opcode_mask": "FFF8",
+  "initial_registers": {
+    "a1": 2097152,
+    "a2": 2097152,
+    "a3": 2097152,
+    "a4": 2097152,
+    "d0": 0,
+    "d1": 2,
+    "d2": 4,
+    "d3": 6,
+    "d6": 4951
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

@@ -23,9 +23,12 @@ Obsidian/Amiga/.obsidian/plugins/remember-cursor-position/cursor-positions.json
 __pycache__/
 *.py[cod]
 
-# Local agent execution plans and disposable diagnostics.
+# Local agent execution plans, diagnostics, and previous tool installations.
 .agent/tasks/
 .agent/tmp/
+.agent/tools/
+# Bootstrap-provisioned M68000 assembler binaries and license.
+/tools/m68k-asm/
 # Legacy generated SingleStep reports; current runs use .agent/tmp/singlestep.
 /tests/singlestep/
 # Legacy generated benchmark reports; tracked baselines and traces remain visible.

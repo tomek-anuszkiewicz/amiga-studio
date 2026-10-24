@@ -1,0 +1,9 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4244",
+  "initial_registers": {
+    "d4": 13735
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

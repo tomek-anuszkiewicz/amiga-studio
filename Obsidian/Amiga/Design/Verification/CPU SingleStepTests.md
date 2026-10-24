@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-14
+updated: 2026-10-24
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -87,7 +87,7 @@ Saved reports without required fields such as `selection` fail to load; a parsed
 
 The [CPU instruction benchmark](../Performance/CPU%20Instruction%20Benchmarking.md) is a separate target in `crates/test_runner/benches/bench_instructions/`. It executes generated instruction workloads to measure host execution time; it does not turn SingleStep JSON timings into a host-speed benchmark. The SingleStep result answers whether the emulated instruction matches the hardware reference. The benchmark answers how much host time the emulator spends on its instruction workloads.
 
-The decoder-derived inventory, validation, measurement, and report commands are in the [benchmark specification](../Performance/CPU%20Instruction%20Benchmarking.md#decoder-derived-benchmark). Its analyzer compares matching executed fixtures with the tracked decoder-derived baseline; the former 108-case runner is no longer available.
+The decoder-derived inventory, validation, measurement, and report commands are in the [benchmark specification](../Performance/CPU%20Instruction%20Benchmarking.md#decoder-derived-benchmark). Its analyzer compares matching executed fixtures with the tracked decoder-derived baseline. The separate [hand-written assembly cases](../Performance/CPU%20Instruction%20Benchmarking.md#hand-written-assembly-cases) measure selected complete programs without modifying that baseline. The former 108-case runner is no longer available.
 
 ## 7. What the layers establish
 

@@ -25,6 +25,7 @@ WORKER_DICTIONARY = None
 WORD_PATTERN = re.compile(r"[^\W\d_][^\W_]*(?:['\u2019][^\W\d_]+)?", re.UNICODE)
 CASE_BOUNDARY = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 URL_PATTERN = re.compile(r"(?:https?://|mailto:)[^\s<>\"'`)]+")
+OPCODE_LITERAL_PATTERN = re.compile(r'("target_primary_opcode"\s*:\s*")[0-9a-fA-F]{4}(\")')
 NUMBER_PATTERN = re.compile(
     r"\b0[xob][0-9a-fA-F_]+(?:[ui](?:8|16|32|64|128|size))?\b"
     r"|\$[0-9a-fA-FxXyY]+\b"
@@ -69,6 +70,7 @@ def load_vocabulary(scope):
 def words_in_line(line, dictionary, vocabulary):
     """Separate identifier words while retaining approved register and API spellings."""
     line = URL_PATTERN.sub(" ", line)
+    line = OPCODE_LITERAL_PATTERN.sub(r"\1\2", line)
     line = NUMBER_PATTERN.sub(" ", line)
     line = re.sub(r"\\+u([0-9a-fA-F]{4})", lambda match: chr(int(match[1], 16)), line)
     line = line.replace("\u00ad", "")

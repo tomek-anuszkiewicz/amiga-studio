@@ -11,6 +11,7 @@
     - Tier 2: AST-Level Code Knowledge Graph (-Graphify -> tools/bootstrap/bootstrap_graphify.ps1)
     - Tier 3: External Reference Documentation & Scans (-Documentation -> tools/bootstrap/bootstrap_documentation.ps1)
     - Tier 4: AI Knowledge & Qdrant RAG Vector Index (-Rag -> tools/bootstrap/bootstrap_rag.ps1)
+    - Tier 5: M68000 Assembler (-Assembler -> tools/bootstrap/bootstrap_assembler.ps1)
 
     NOTE: Bootstrapping is NOT required to build, test, or run the emulator.
     A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'.
@@ -35,6 +36,9 @@
     and multi-page HTML crawls) into Obsidian/Amiga/Reference/<Document_Name>-tmp/. Delegates to
     tools/bootstrap_documentation.ps1.
 
+.PARAMETER Assembler
+    Provisions the pinned M68000 assembler used by hand-written CPU benchmarks.
+
 .PARAMETER Markdown
     When bootstrapping documentation (-Documentation), converts downloaded
     reference scans and crawls into Markdown and assets inside staging workspaces.
@@ -43,8 +47,8 @@
     With -Markdown, copies finished output into an empty sibling book directory without -tmp.
 
 .PARAMETER All
-    Executes all 4 bootstrap tiers in physical causal order:
-    (-Sources -> -Graphify -> -Documentation -> -Rag).
+    Executes all 5 bootstrap tiers in physical causal order:
+    (-Sources -> -Graphify -> -Documentation -> -Rag -> -Assembler).
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -Sources
@@ -68,7 +72,11 @@
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -All
-    Run all primary bootstrap tiers (sources -> Graphify AST -> RAG documentation).
+    Run all bootstrap tiers, including the M68000 assembler.
+
+.EXAMPLE
+    .\tools\bootstrap\bootstrap.ps1 -Assembler
+    Provision only the pinned M68000 assembler for hand-written CPU benchmarks.
 #>
 
 [CmdletBinding()]
@@ -77,6 +85,7 @@ param(
     [switch]$Graphify,
     [switch]$Rag,
     [switch]$Documentation,
+    [switch]$Assembler,
     [switch]$Markdown,
     [switch]$Publish,
     [switch]$All
@@ -97,7 +106,8 @@ function Show-Usage {
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Graphify        : Provision code knowledge graph (Graphify AST extraction)"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Documentation   : Provision external reference materials (PDFs, HTML crawls)"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Rag             : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian)"
-    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -All             : Provision all 4 tiers in causal order (sources -> graph -> docs -> RAG)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Assembler       : Provision the M68000 assembler"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -All             : Provision all 5 tiers in causal order (sources -> graph -> docs -> RAG -> assembler)"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
     Write-Host "  -Sources                 : Verify & provision external sources (reference emulators, test suites & vectors)"
@@ -106,14 +116,15 @@ function Show-Usage {
     Write-Host "  -Markdown                : Convert downloaded materials into publication-grade Markdown"
     Write-Host "  -Publish                 : With -Markdown, copy output into an empty sibling book directory"
     Write-Host "  -Rag                     : Index Obsidian docs into Qdrant"
-    Write-Host "  -All                     : Run all 4 tiers in causal order (-Sources, -Graphify, -Documentation, -Rag)"
+    Write-Host "  -Assembler               : Download and verify the pinned M68000 assembler"
+    Write-Host "  -All                     : Run all 5 tiers in causal order (-Sources, -Graphify, -Documentation, -Rag, -Assembler)"
     Write-Host ""
 }
 
 if ($Publish -and -not $Markdown) { throw "-Publish requires -Markdown" }
 if ($Markdown) { $Documentation = $true }
 
-if (-not $Rag -and -not $Sources -and -not $Graphify -and -not $Documentation -and -not $All) {
+if (-not $Rag -and -not $Sources -and -not $Graphify -and -not $Documentation -and -not $Assembler -and -not $All) {
     Show-Usage
     exit 0
 }
@@ -123,6 +134,7 @@ if ($Sources -or $All) { $TotalSteps++ }
 if ($Graphify -or $All) { $TotalSteps++ }
 if ($Documentation -or $All) { $TotalSteps++ }
 if ($Rag -or $All) { $TotalSteps++ }
+if ($Assembler -or $All) { $TotalSteps++ }
 $CurrentStep = 1
 
 # -----------------------------------------------------------------------------
@@ -198,6 +210,22 @@ if ($Rag -or $All) {
     } else {
         & $RagScript
     }
+}
+
+# -----------------------------------------------------------------------------
+# Tier 5: M68000 Assembler Bootstrap (-Assembler / -All)
+# -----------------------------------------------------------------------------
+if ($Assembler -or $All) {
+    Write-Host ""
+    Write-Host "[$CurrentStep/$TotalSteps] Delegating to M68000 Assembler Bootstrapper..." -ForegroundColor Green
+    Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
+    $CurrentStep++
+
+    $AssemblerScript = Join-Path $PSScriptRoot 'bootstrap_assembler.ps1'
+    if (-not (Test-Path -LiteralPath $AssemblerScript)) {
+        throw "bootstrap_assembler.ps1 not found at: $AssemblerScript"
+    }
+    & $AssemblerScript
 }
 
 Write-Host ""

@@ -3,6 +3,7 @@ amd
 amigados
 amigatestkit
 arial
+attackwave
 azerty
 baai
 bge

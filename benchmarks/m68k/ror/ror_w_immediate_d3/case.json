@@ -1,0 +1,9 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "E65B",
+  "initial_registers": {
+    "d3": 42299
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

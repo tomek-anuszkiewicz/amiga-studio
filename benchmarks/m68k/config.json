@@ -1,0 +1,6 @@
+{
+  "instruction_count": 100000,
+  "instruction_limit": 100000000,
+  "series": 7,
+  "target_series_ms": 400
+}

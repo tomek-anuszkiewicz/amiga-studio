@@ -17,6 +17,15 @@ First identify the question and whether existing evidence resolves it. Use scrip
 
 During ordinary code work, use relevant specifications as implementation requirements, but defer code-to-design and design-to-code synchronization reviews to the authorized pre-commit workflow. Handle a concrete specification conflict when encountered; direct documentation tasks and explicitly requested reviews remain in scope.
 
+## Development Defaults
+
+This is a private, pre-release project without external users. Prefer the simplest correct implementation. Minimize code, abstractions, dependencies, and defensive behavior for hypothetical requirements; do not build speculative features or extensibility.
+
+- Backward compatibility is not the default for internal APIs, schemas, configuration, or generated formats. Replace obsolete code and update affected callers, fixtures, and tests together. Do not add migrations, legacy parsers, deprecated interfaces, adapters, or parallel implementations without a concrete requirement.
+- Preserve external specifications and explicitly required compatibility. Ask before deleting user data that cannot be recreated or dropping support for existing user data.
+- Add tests for meaningful behavior or identified risks, not merely because code changed. Prefer a few high-value tests over redundant edge cases or elaborate infrastructure. Simplify or remove tests whose original purpose disappears.
+- Favor complete refactoring over compatibility layers. When both approaches are correct, choose simplicity over extensibility.
+
 ## Task-Specific Rules and Navigation
 
 Read applicable domain rules before editing that domain. Use [Graphify](.agents/skills/graphify/SKILL.md) for source navigation and [amiga-rag.md](.agents/rules/amiga-rag.md) for domain/reference retrieval.
@@ -28,6 +37,7 @@ Read applicable domain rules before editing that domain. Use [Graphify](.agents/
 | Crate boundaries or public re-exports | [Workspace boundaries](.agents/rules/workspace-structure-and-reexports.md) |
 | Internal API refactoring | [Clean refactoring](.agents/rules/clean-break-refactoring.md) |
 | CPU instructions | [Opcode conventions and required implementation procedure](.agents/rules/opcode-naming.md) |
+| Hand-written M68000 instruction benchmarks | [Add M68000 benchmark case](.agents/skills/add-m68k-benchmark/SKILL.md) |
 | Chip, DMA, or bus behavior | [Hardware topology](.agents/rules/hardware-bus-topology.md), [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md) |
 | Tests or suspected defect investigation/repair | [Testing policy](.agents/rules/unit-testing-policy.md), [defect resolution](.agents/rules/structural-root-cause.md#defect-resolution) |
 | GUI | [egui practices and visual verification](.agents/rules/egui-best-practices.md) |
@@ -56,6 +66,8 @@ applicable instructions. MCP configuration is `.codex/config.toml`.
 - ALU operations and cycle counters use explicit wrapping arithmetic. Execution, memory access, and interrupt hot paths allocate no heap memory. Project rules prohibit custom `macro_rules!` and const-generic instruction handlers.
 
 ## Verification and Completion
+
+Never stage files or otherwise change the Git index unless the user explicitly requests staging or a commit. Editing a file that is already staged does not authorize staging its new version; leave the edit unstaged and preserve the existing index entry. If a required roadmap commit would need staging, ask the user first.
 
 Commits are mandatory when closing a minor roadmap point or major milestone. Otherwise, commit when the user explicitly requests it. Commits are atomic and written in English. **Every commit includes a new DIARY.md Section 10 entry.** At minor roadmap points or milestones, compact settled entries and synchronize affected design specifications and the remaining roadmap.
 

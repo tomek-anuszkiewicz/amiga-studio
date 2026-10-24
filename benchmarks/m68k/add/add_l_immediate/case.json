@@ -1,0 +1,9 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "D0BC",
+  "initial_registers": {
+    "d0": 2779058740
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

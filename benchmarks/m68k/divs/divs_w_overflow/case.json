@@ -1,0 +1,17 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "81C0",
+  "target_opcode_mask": "F1F8",
+  "initial_registers": {
+    "d0": 311,
+    "d1": 2147483647,
+    "d2": 509,
+    "d3": 2147483648,
+    "d4": 2147483647,
+    "d5": 2147483648,
+    "d6": 2147483647,
+    "d7": 2147483648
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

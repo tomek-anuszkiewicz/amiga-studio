@@ -1,5 +1,7 @@
-//! Cargo entry point for decoder-derived M68000 instruction benchmarks.
+//! Cargo entry point for M68000 instruction benchmarks.
 
+#[path = "../../../../benchmarks/m68k/runner.rs"]
+mod asm_runner;
 mod candidate_measure;
 mod candidate_probe;
 mod composition;
@@ -20,6 +22,7 @@ Options:
   --measure-candidates-pilot        Measure a small representative subset
   --retry-candidates                Remeasure cases listed by the retry plan
   --export-composition              Record executed instruction counts per candidate
+  --measure-asm CASE                 Measure one assembly case by family/case ID
   --help, -h                        Print these instructions
 
 Prepare retries with the verification analyzer before --retry-candidates.
@@ -35,6 +38,7 @@ pub enum Command {
     MeasureCandidatesPilot,
     RetryCandidates,
     ExportComposition,
+    MeasureAsm(String),
 }
 
 pub fn parse(args: &[String]) -> Result<Command, String> {
@@ -46,6 +50,9 @@ pub fn parse(args: &[String]) -> Result<Command, String> {
     };
     if args.is_empty() {
         return Ok(Command::Help);
+    }
+    if args.len() == 2 && args[0] == "--measure-asm" {
+        return Ok(Command::MeasureAsm(args[1].clone()));
     }
     let [option] = args else {
         return Err("Select one benchmark command".to_owned());
@@ -72,6 +79,12 @@ fn main() {
         }
     };
     match command {
+        Command::MeasureAsm(case_id) => {
+            if let Err(error) = asm_runner::measure(&case_id) {
+                eprintln!("ASM benchmark failed: {error}");
+                std::process::exit(1);
+            }
+        }
         Command::Help => println!("{USAGE}"),
         Command::Inventory => {
             let out_dir = benchmarks_dir().join("inventory");

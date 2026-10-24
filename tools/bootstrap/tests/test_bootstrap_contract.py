@@ -81,11 +81,15 @@ class BootstrapRagContractTests(unittest.TestCase):
                 ],
             )
 
-    def test_all_includes_the_rag_bootstrap_tier(self):
+    def test_all_includes_the_rag_and_assembler_bootstrap_tiers(self):
         bootstrap_source = BOOTSTRAP_SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn("if ($Rag -or $All)", bootstrap_source)
-        self.assertIn("(-Sources -> -Graphify -> -Documentation -> -Rag)", bootstrap_source)
+        self.assertIn("if ($Assembler -or $All)", bootstrap_source)
+        self.assertIn(
+            "(-Sources -> -Graphify -> -Documentation -> -Rag -> -Assembler)",
+            bootstrap_source,
+        )
 
     def test_compatibility_bootstrap_delegates_to_path_cli(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

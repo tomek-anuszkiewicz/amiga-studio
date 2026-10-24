@@ -148,6 +148,25 @@ cargo bench -p test_runner --bench bench_instructions -- --retry-candidates
 python tools/verification/analyze_candidate_benchmarks.py .agent/tmp/benchmarks/inventory/full_<run-id> --retry-dir .agent/tmp/benchmarks/inventory/retry_<run-id>
 ```
 
+The hand-written cases are documented in
+[`benchmarks/m68k/README.md`](../../benchmarks/m68k/README.md). Provision the pinned
+assembler and select a case with:
+
+```powershell
+.\tools\bootstrap\bootstrap.ps1 -Assembler
+cargo bench -p test_runner --bench bench_instructions -- --measure-asm add/add_w_d1_postincrement
+cargo bench -p test_runner --bench bench_instructions -- --measure-asm add/add_w_d1_d0
+```
+
+The shared runner substitutes `instruction_count` from
+`benchmarks/m68k/config.json` and any declared seeded memory regions into
+`program.s`, assembles the complete image, and executes it to a validated end
+address. With the current shared settings, seven series repeat complete runs
+until each has at least 400 ms of timed CPU execution. Each case writes its
+image and report under `.agent/tmp/benchmarks/handwritten/<family>/<case-id>/`.
+These cases do not update the decoder-derived baseline or claim comparable
+case fingerprints.
+
 Running without options prints instructions without measuring. The decoder-derived
 inventory and validated candidate sequence above is the current benchmark workflow.
 It saves raw JSONL, fixture hashes, host settings, controls, and derived JSON/CSV

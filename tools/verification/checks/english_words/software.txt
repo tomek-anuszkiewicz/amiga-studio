@@ -217,6 +217,7 @@ checksum
 checksumming
 checksums
 chk
+chmod
 chng
 chrono
 chunking
@@ -686,6 +687,7 @@ mpf
 msedge
 msg
 msm
+msvc
 mtr
 mul
 multi
