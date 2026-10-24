@@ -2,14 +2,14 @@
 
 ## Step 1: Manual Conversion and Initial Knowledge Base
 
-Review one selected PDF in the single-book editor, then reconstruct its Markdown and searchable assets from a recipe pinned to that PDF's full SHA-256. One PDF from each of the other three manuals is parked locally as a reference; alternate variants remain in a separate private archive. These PDFs do not become supported conversion inputs without a separate authoring task. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
+Review the existing composite Test Book in the single-book editor first. Its [page tracker](tools/bootstrap/book-to-markdown/books/test-book-example-4567/1cea0b35ee62/test_pages_tracker.md) records the source pages and assembly order used to rebuild the local PDF. After reviewing and recording its `book.json`, implement Markdown reconstruction and test RAG ingestion. Apply the proven workflow to a full manual later. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [Book editor](tools/bootstrap/book-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
-- **1.1: Evaluate SVG Extraction for PDF Graphics**
-  - Try extracting selected graphics directly from source PDF regions as SVG instead of rendering PNG crops. Check whether vector paths, text, and embedded images remain faithful to the source; a raster image wrapped in SVG does not count as vector extraction.
-  - **Gate:** Compare representative SVG outputs with the source PDF and current PNG crops for completeness, appearance, and usable bounds. Record which graphics can be preserved as SVG and which still require PNG because the source is raster or the extraction is incomplete.
+- **1.1: Review and Finish the Test Book**
+  - Exercise the existing editor against the local Test Book, inspect its PDF bindings, chapter order, headings, text, tables, images, code and generated Markdown, and refine the editor where the review exposes a concrete need. Preserve the reviewed source hash and page tracker.
+  - **Gate:** The user reviews the Test Book's content and presentation and records remaining source ambiguities and editor limitations; final acceptance follows the description and proofreading work below.
 
 - **1.2: Author Table, Image, and ASCII-Art Descriptions**
-  - Generate descriptions during recipe authoring from one prepared group and its source context. Store accepted descriptions as explicit recipe content so reconstruction does not call a model again. Preserve HTML table spans, graphics and text-fenced ASCII art.
+  - Use the agent during authoring to describe reviewed HTML tables, images and ASCII art from their source context. Store accepted descriptions as explicit recipe content so later reconstruction does not call a model again. Preserve HTML table spans, graphics and text-fenced ASCII art.
   - Render descriptions directly below the associated element in closed, collapsed `<details><summary>...</summary>...</details>` blocks. Describe source-visible labels, values and spatial/logical/timing relationships; table descriptions retain a GFM fallback with cell order and span semantics.
   - Generate each image's `<asset filename>.txt` sidecar from the same stored description for RAG ingestion, rather than maintaining an independent transcription.
   - Index representative generated content and test search queries separately for descriptions inside collapsed `<details>` blocks and for image `.txt` sidecars. Compare which terms and relationships are retrieved, result ranking, source attribution and duplicate results when both formats contain the same description.
@@ -20,28 +20,36 @@ Review one selected PDF in the single-book editor, then reconstruct its Markdown
   - Refine the existing [chapter proofreading prompt](tools/bootstrap/book-to-markdown/prompts/proofreading.md) for a model-assisted final pass that aligns formatting across the completed chapters. Keep source ambiguities visible for review rather than allowing the model to invent corrections.
   - **Gate:** Establish the final pass on a completed chapter by comparing it with the source PDF and rendered Markdown, then review the resulting changes across all completed chapters. Confirm source-supported word corrections, code formatting and highlighting, and preservation of tables, figures, links and technical values.
 
-- **1.4: Define and Verify a Portable Book Recipe (BOOK-RECIPE-PORTABLE)**
-  - Define the published current-format `book.json` boundary for the selected PDF: reviewed order, type/role, visibility, chapter organization, heading depth, table/cell structure and spans, source selections, graphic regions and explicit authored corrections/descriptions. Publish the recipe and source identification; PDFs and generated bundles remain local unless their distribution is separately authorized.
+- **1.4: Record the Reviewed Test Book Recipe (BOOK-RECIPE-PORTABLE)**
+  - Once the Test Book review is complete, inspect its `book.json` for reviewed order, type/role, visibility, chapter organization, heading depth, table/cell structure and spans, source selections, graphic regions and explicit authored corrections/descriptions. Publish the reviewed recipe outside the ignored Working bundle, then commit it with source identification after the required verification and diary entry; keep PDFs and generated bundles local unless their distribution is separately authorized.
   - Keep source-derived text as ordered references to physical PDF pages, extracted block IDs and Unicode character ranges with exclusive ends. Keep Markdown/HTML syntax and explicit replacements as authored recipe data. Verify source attribution where repeated equal text makes character matching ambiguous; rectangles select candidates rather than defining exact text selections.
   - Define extraction order, coordinate frame, DPI and rotation rules, including disconnected/multi-page content. Reconstruct graphics from PDF regions instead of requiring local `assets/` files. Record source SHA-256 in `source.json` and the authoring OCR/extraction profile separately from element data.
-  - **Gate:** The reviewed recipe reproduces selected text, headings, table cells/spans, code spacing, math, corrections and graphics from its matching PDF without Stage 03/05/07 inference artifacts or copied generated assets. Reject a different PDF hash; establish the supported cross-platform reconstruction boundary because version pins alone do not prove byte-identical PDFs or matching text extraction.
+  - **Gate:** The reviewed Test Book recipe and matching source identity are recorded without generated bundles or private paths. Resolve any source selections or extraction rules needed for standalone reconstruction in Step 1.5; a committed editor bundle alone does not prove that reconstruction works.
 
-- **1.5: Implement Recipe-Based Markdown Bootstrap (BOOK-RECIPE-BOOTSTRAP)**
-  - Add a standalone bootstrap command that obtains the selected source PDF, checks all 64 SHA-256 characters against its `source.json`, prepares native/OCR text with the recipe's authoring profile and extracts positioned text using the defined conventions. A directory suffix or an arbitrary existing OCR PDF is insufficient source/profile identity.
+- **1.5: Implement Test Book Markdown Reconstruction (BOOK-RECIPE-BOOTSTRAP)**
+  - Add a standalone command that obtains the composite Test Book PDF, checks all 64 SHA-256 characters against its `source.json`, prepares native/OCR text with the recipe's authoring profile and extracts positioned text using the defined conventions. A directory suffix or an arbitrary existing OCR PDF is insufficient source/profile identity.
   - Execute the reviewed `book.json` recipe to rebuild chapter Markdown, the generated TOC, source graphics, descriptions and sidecars. Resolve authored chapter titles/filenames and preserve explicit formatting and corrections. Do not repeat model inference, classification or description generation.
   - Target the current format only. Reconstruction/import may overwrite generated content; do not add backward compatibility, migrations or artifact-rescue code. Local editor acceptance does not itself publish a portable recipe or establish end-to-end reproducibility.
-  - **Gate:** From a clean output directory and the reviewed recipe/source record, obtain the exact selected PDF and rebuild a user-selected book fragment without existing preparation directories, editor bundles or model calls. Demonstrate source/hash/profile mismatch handling and repeatable text/structure/assets under the supported extraction environment before expanding the run.
+  - **Gate:** From a clean output directory and the reviewed recipe/source record, obtain the exact Test Book PDF and rebuild a user-selected fragment without existing preparation directories, editor bundles or model calls. Demonstrate source/hash/profile mismatch handling and repeatable text/structure/assets under the supported extraction environment before expanding the run.
 
-- **1.6: Reconstruct the Reviewed Manual and Verify RAG Ingestion**
-  - After approving recipe authoring and standalone reconstruction, rebuild the selected manual's Markdown/assets through the recipe bootstrap. Check generated chapter links, source selections, tables, graphics and description sidecars before indexing.
+- **1.6: Reconstruct the Test Book and Verify RAG Ingestion**
+  - Rebuild the reviewed Test Book's Markdown/assets from its recipe. Check generated chapter links, source selections, tables, graphics and description sidecars before indexing. Agent-authored descriptions remain part of the recipe; reconstruction does not generate new descriptions.
   - Use canonical `rag_qdrant` ingestion into `projects_docs` with source `amiga`. Verify fresh and incremental indexing, hashing, chunk fidelity, embeddings and description retrieval. Project search covers `amiga` and `devnotes`; the owning DevNotes project remains responsible for indexing `devnotes`.
   - **Gate:** Reconstructed reviewed artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](.agents/references/developer-setup.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag). Unchanged input does not trigger unnecessary reindexing; changed content is reflected in retrieved source fragments and image descriptions.
 
-- **1.7: Bootstrap Optional FPGA Chipset References**
+- **1.7: Review a Full Manual with the Proven Editor**
+  - Prepare and review the selected 308-page A500/A2000 Technical Reference Manual after the Test Book workflow is verified. Establish its chapters, source selections and descriptions as a separate `book.json`; the other manuals remain reference PDFs without reviewed recipes.
+  - **Gate:** The user reviews the manual's content and accepts its chapter organization, PDF bindings and authored descriptions before its recipe is treated as complete.
+
+- **1.8: Add Full-Manual Regeneration to Bootstrap**
+  - Extend the recipe-based command and bootstrap dispatcher to obtain the exact A500/A2000 PDF and rebuild its reviewed Markdown/assets. Keep its source hash, profile and recipe independent of the Test Book.
+  - **Gate:** A clean run reconstructs the reviewed manual from its matching PDF and recipe, rejects source/profile mismatches, and produces verified chapter links, assets and descriptions without model calls.
+
+- **1.9: Bootstrap Optional FPGA Chipset References**
   - Add optional source selections for [MiniMig](https://github.com/cristianoag/minimig) and the [Amiga Replacement Project](https://github.com/nonarkitten/amiga_replacement_project) under `ref_src/`. Pin each downloaded source to a recorded upstream revision and keep the default test-source bootstrap independent of these research references.
   - **Gate:** Focused bootstrap checks verify selection, pinned source identity, repeat runs, and completeness for both references; the source inventory documents their local paths and revisions.
 
-- **1.8: Include Measured Web Evidence in Hardware Research**
+- **1.10: Include Measured Web Evidence in Hardware Research**
   - Check whether the [hardware researcher](.codex/agents/hardware_researcher.toml) can use web search when local manuals leave a hardware question open. If available, add focused `site:techtravels.org <hardware question>` searches and inspection of relevant results to the owning role or [domain rule](.agents/rules/amiga-rag.md). Otherwise route the search through an agent with web access or evaluate a scoped search tool. The existing [Amiga RAG MCP adapter](tools/amiga-rag-mcp-server/README.md) searches local indexed documents; extend it only if the selected route requires a new capability.
   - **Gate:** A representative Paula/`DMAL` question finds a relevant Techtravels.org page, cites the page and its supporting passage, and distinguishes measured signals from reconstructed circuitry without treating web results as indexed manual evidence.
 

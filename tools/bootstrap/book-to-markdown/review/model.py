@@ -47,6 +47,7 @@ def write_json(path, value):
         for chapter in value["chapters"]:
             chapter.pop("resolved_title", None)
             chapter.pop("resolved_markdown_file", None)
+            chapter.pop("toc_title", None)
         value = {"toc": value["toc"], **{k: v for k, v in value.items() if k != "toc"}}
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
@@ -299,6 +300,11 @@ def load_input(working, book=None, *, cache=None):
                 if not name.startswith("assets/"):
                     raise ValueError("Assets must be under assets/")
                 assets[name] = read_bytes(confined(working, name))
+    for chapter in book["chapters"]:
+        chapter["toc_title"] = None
+    for chapter, element in toc_entries(book):
+        if chapter["toc_title"] is None:
+            chapter["toc_title"] = toc_label(element) or None
     fingerprint = digest(json_bytes({"model": book, "assets": {k: digest(v) for k, v in sorted(assets.items())}}))
     return book, assets, fingerprint
 
@@ -328,10 +334,19 @@ def toc_entries(book):
             and e["heading_level"] <= book["toc"]["depth"]]
 
 
+def toc_label(element):
+    """Use heading words without carrying inline styling into contents links."""
+    tokens = PARSER.parseInline(heading_text(element))[0].children or []
+    return " ".join("".join(
+        " " if token.type in {"softbreak", "hardbreak"} else token.content
+        for token in tokens if token.type in {"text", "code_inline", "image", "math_inline",
+                                       "softbreak", "hardbreak"}).split())
+
+
 def toc_markdown(book):
     lines = ["# Table of Contents", ""]
     for chapter, e in toc_entries(book):
-        title = " ".join(heading_text(e).split()).replace("[", r"\[").replace("]", r"\]")
+        title = toc_label(e).replace("[", r"\[").replace("]", r"\]")
         lines.append("  " * (e["heading_level"] - 1) + f"- [{title}]({chapter_value(chapter, 'markdown_file')}#element-{e['id']})")
     return "\n".join(lines) + "\n"
 

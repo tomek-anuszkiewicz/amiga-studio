@@ -8,6 +8,8 @@ let lastLogical = null, publishing = false;
 
 
 const showHidden = document.getElementById("show-hidden");
+const showTypes = document.getElementById("show-types");
+const typeLabelContext=document.createElement("canvas").getContext("2d");
 const actionsButton = document.getElementById("element-actions");
 const elementMenu = document.getElementById("element-menu");
 const visibilityButton = document.getElementById("menu-visibility");
@@ -22,10 +24,12 @@ const markdownDialog = document.getElementById("markdown-dialog");
 const markdownText = document.getElementById("markdown-text");
 const markdownSecond = document.getElementById("markdown-second");
 const codexDialog = document.getElementById("codex-dialog");
-let codexCommand=null, codexRunning=false;
+let codexCommand=null, codexRunning=false, codexScope="element";
+let codexAutoCloseJob=null, codexAutoClosePending=false;
 let textCommand=null, splitting=false, merging=false, activeText=markdownText;
 const discardElementButton = document.getElementById("menu-discard");
 let selectedPane="working", selectedPage=null, menuCommand=null, pageCommand=null, menuReturnFocus=null, menuScrollPosition={};
+const chapterTitle=chapter=>chapter.toc_title || chapter.resolved_title || chapter.title;
 function closeMenu(restoreFocus=false) {
   const wasOpen=!elementMenu.hidden;
   elementMenu.hidden=true; actionsButton.setAttribute("aria-expanded","false");
@@ -54,6 +58,7 @@ function openMenu(x,y) {
   const editable=element && !state.pending && !loading;
   document.getElementById("menu-codex").hidden=!element;
   document.getElementById("menu-codex").disabled=!editable || codexRunning;
+  document.getElementById("menu-codex-working").disabled=!state.authored_revision;
   const newChapterButton=document.getElementById("menu-new-chapter");
   newChapterButton.hidden=!element;
   newChapterButton.disabled=!editable || elementIndex(state.working).get(element?.id)?.chapter.elements[0]?.id === element?.id;
@@ -71,13 +76,15 @@ function openMenu(x,y) {
   document.getElementById("menu-copy").disabled=!selected || selected === "generated-toc";
   headingButton.hidden=!element || !state.heading_types.includes(element.type);
   headingButton.disabled=!editable;
+  headingButton.textContent=element?.heading_level ? `Heading H${element.heading_level} ▸` : "Heading ▸";
   typeButton.hidden=!element;
-  typeButton.disabled=!editable || state.protected_types.includes(element.type) || !!element.asset ||
-    typeof element.md_text !== "string" || !element.md_text.trim();
+  const imageTarget=element?.type === "table" && !element.asset && element.pdf_regions.length > 0;
+  typeButton.disabled=!editable || (!imageTarget && (state.protected_types.includes(element.type) || !!element.asset ||
+    typeof element.md_text !== "string" || !element.md_text.trim()));
   typeMenu.replaceChildren();
-  for(const kind of state.editable_types) {
+  for(const kind of imageTarget ? ["graphic"] : state.editable_types) {
     const button=document.createElement("button");button.type="button";button.dataset.type=kind;
-    button.textContent=kind;button.setAttribute("role","menuitemradio");
+    button.textContent=kind === "graphic" ? "Image" : kind;button.setAttribute("role","menuitemradio");
     button.setAttribute("aria-checked",String(kind === element?.type));
     button.disabled=typeButton.disabled || kind === element?.type;
     button.onclick=async()=>{
@@ -110,9 +117,17 @@ function openMenu(x,y) {
     button.disabled=!editable;
   }
   const next=nextElement(element?.id);
+  const duplicateButton=document.getElementById("menu-duplicate");
+  duplicateButton.hidden=!element;
+  duplicateButton.disabled=!editable;
   const mergeButton=document.getElementById("menu-merge");
   mergeButton.hidden=!element || typeof element.md_text !== "string" || !!element.asset;
   mergeButton.disabled=!editable || !next || typeof next.md_text !== "string" || !!next.asset;
+  const mergeGraphicsButton=document.getElementById("menu-merge-graphics");
+  mergeGraphicsButton.hidden=!element || element.type !== "graphic";
+  mergeGraphicsButton.disabled=!editable || !next || next.type !== "graphic" ||
+    !!next.md_text || !element.pdf_regions.length || !next.pdf_regions.length ||
+    [...element.pdf_regions,...next.pdf_regions].some(region=>region.page !== element.pdf_regions[0].page);
   const mergeTablesButton=document.getElementById("menu-merge-tables");
   mergeTablesButton.hidden=!element || element.type !== "table";
   mergeTablesButton.disabled=!editable;
@@ -235,10 +250,26 @@ function adjacentElement(id,offset) {
 }
 function nextElement(id) {return adjacentElement(id,1);}
 
+document.getElementById("menu-duplicate").onclick=async()=>{
+  const command={id:menuCommand.id,expected_revision:menuCommand.expected_revision};
+  closeMenu(true);
+  try{await post("/api/duplicate",command);await refresh();}
+  catch(error){await refresh();showError(error.message);}
+};
+
 document.getElementById("menu-merge-tables").onclick=async()=>{
   const command={id:menuCommand.id,expected_revision:menuCommand.expected_revision};
   closeMenu(true);
   try{await post("/api/merge-tables",command);await refresh();}
+  catch(error){await refresh();showError(error.message);}
+};
+
+document.getElementById("menu-merge-graphics").onclick=async()=>{
+  const next=nextElement(menuCommand.id);
+  if(!next)return;
+  const command={id:menuCommand.id,next_id:next.id,expected_revision:menuCommand.expected_revision};
+  closeMenu(true);
+  try{await post("/api/merge-graphics",command);await refresh();}
   catch(error){await refresh();showError(error.message);}
 };
 
@@ -260,13 +291,21 @@ document.getElementById("menu-copy").onclick=async()=>{
 };
 showHidden.onchange=()=>{
   const logical=anchor(leader);closeMenu();hovered=null;highlight();
+  positionTypeLabels();
   if(logical)position(leader,logical);sync(leader);
 };
+showTypes.onchange=()=>{
+  document.body.classList.toggle("show-types",showTypes.checked);
+  if(showTypes.checked) positionTypeLabels();
+};
+showTypes.onchange();
 
 const pdfSplitter = document.getElementById("pdf-splitter");
 const pdfWidthKey = "book-review.pdf-width";
+const pdfPageKey = "book-review.pdf-page";
 const minimumPdfWidth = 240;
 let pdfWidth = 600, pdfDrag = null;
+let pdfPageRestored = false;
 try {
   const saved = Number(localStorage.getItem(pdfWidthKey));
   if (Number.isFinite(saved) && saved >= minimumPdfWidth) pdfWidth = saved;
@@ -329,13 +368,32 @@ function imageHolder(image, width, height, className) {
   img.width = width; img.height = height; img.alt = "";
   holder.append(img); return holder;
 }
+function typeLabel(element) {
+  const type=element.type === "heading" ? `heading ${element.heading_level}` : element.type.replaceAll("_"," ");
+  return element.role ? `${type} · ${element.role}` : type;
+}
 function overlay(holder, id, bbox, width, height, pane, source = null) {
   if (height <= 0) return;
   const node = document.createElement("div"); node.className = "overlay";
   node.dataset.id = id;
+  if(source) node.dataset.typeLabel=typeLabel(source.element);
   boxStyle(node,bbox,width,height); holder.append(node);
   nodes[pane].push({id, node, source});
   bindElement(node,id,pane);
+}
+function positionTypeLabels() {
+  if(!showTypes.checked)return;
+  typeLabelContext.font='600 11px "Segoe UI"';
+  for(const {node} of nodes.pdf) {
+    const page=node.closest(".page").getBoundingClientRect(), box=node.getBoundingClientRect();
+    const right=page.right-box.right-3, left=box.left-page.left-3;
+    const needed=typeLabelContext.measureText(node.dataset.typeLabel).width+10;
+    const below=Math.max(left,right)<24;
+    const useLeft=!below && right<needed && left>right;
+    node.classList.toggle("type-label-left",useLeft);
+    node.classList.toggle("type-label-below",below);
+    node.style.setProperty("--type-label-space",`${Math.max(0,below ? page.width : useLeft ? left : right)}px`);
+  }
 }
 function elementPage(node, id, pane, y) {
   if(pane === "pdf") return Number(node.closest(".page").dataset.page);
@@ -398,7 +456,7 @@ async function buildMarkdown(version, snapshot) {
     const content = document.createElement("div"); content.className = "chapter-content";
     if (chapter) {
       const toggle = document.createElement("button"); toggle.className = "chapter-toggle";
-      toggle.textContent = `${collapsed.has(layout.id) ? "▸" : "▾"} ${chapter.resolved_title ?? chapter.title}`;
+      toggle.textContent = `${collapsed.has(layout.id) ? "▸" : "▾"} ${chapterTitle(chapter)}`;
       toggle.addEventListener("click", () => {
         if (collapsed.has(layout.id)) collapsed.delete(layout.id); else collapsed.add(layout.id);
         applyCollapse(layout.id); sync(leader);
@@ -494,6 +552,7 @@ function buildPdf() {
     fragment.append(holder);
   }
   panes.pdf.replaceChildren(fragment);
+  positionTypeLabels();
 }
 function applyCollapse(id) {
   for (const version of ["accepted","working"]) {
@@ -501,7 +560,7 @@ function applyCollapse(id) {
       if (section.dataset.chapter !== id || id === "toc") continue;
       section.querySelector(".chapter-content").hidden = collapsed.has(id);
       const chapter = state[version]?.chapters.find(c => c.id === id);
-      section.querySelector("button").textContent = `${collapsed.has(id) ? "▸" : "▾"} ${chapter.resolved_title ?? chapter.title}`;
+      section.querySelector("button").textContent = `${collapsed.has(id) ? "▸" : "▾"} ${chapterTitle(chapter)}`;
     }
   }
 }
@@ -592,12 +651,29 @@ function scheduleLocations() {
     };
     pages.sort((a,b)=>distance(a)-distance(b));
     document.getElementById("pdf-location").textContent=pages.length ? `Page ${pages[0].dataset.page}` : "";
+    if(pdfPageRestored && pages.length) {
+      try { localStorage.setItem(pdfPageKey,pages[0].dataset.page); }
+      catch (_) { /* Keep navigation usable when browser storage is unavailable. */ }
+    }
     const depth=Number(document.getElementById("toc-depth").value);
     for(const version of ["accepted","working"]) {
       const logical=anchor(version);
       document.getElementById(`${version}-location`).textContent=logical ? headingPath(version,logical.id,depth) : "";
     }
   });
+}
+function restorePdfPage() {
+  if(pdfPageRestored)return;
+  pdfPageRestored=true;
+  let saved;
+  try { saved=Number(localStorage.getItem(pdfPageKey)); }
+  catch (_) { return; }
+  if(!Number.isInteger(saved) || saved<1)return;
+  const page=[...panes.pdf.querySelectorAll(".page")].find(node=>Number(node.dataset.page)===saved && !node.hidden);
+  if(!page)return;
+  const viewport=panes.pdf.getBoundingClientRect();
+  panes.pdf.scrollTop+=page.getBoundingClientRect().top-viewport.top;
+  leader="pdf";lastLogical=anchor("pdf");sync("pdf");
 }
 function position(pane, logical, fallback = true) {
   if (!logical) return;
@@ -718,7 +794,8 @@ async function refresh() {
       const versions=["accepted","working"].filter(version=>!state || next[version]?.revision!==state[version]?.revision);
       const changed=versions.length>0;
       const pdfView=value=>[value.pdf_pages,...["working","accepted"].map(version=>
-        [...elementIndex(value[version]).values()].map(({element:e})=>[e.id,e.visible!==false,e.pdf_regions]))];
+        [...elementIndex(value[version]).values()].map(({element:e})=>
+          [e.id,e.visible!==false,e.pdf_regions,e.type,e.heading_level,e.role]))];
       const pdfChanged=!state || JSON.stringify(pdfView(state))!==JSON.stringify(pdfView(next));
       let prepared = [];
       if(changed) {
@@ -752,6 +829,7 @@ async function refresh() {
             }
           }
           highlight();
+          if(!pdfPageRestored)restorePdfPage();
           if(logical) {
             const restored=position(leader,logical) || logical;
             lastLogical=restored;
@@ -762,12 +840,14 @@ async function refresh() {
         const chapter=document.getElementById("chapter"), old=chapter.value;chapter.replaceChildren(new Option("Choose…",""));
         const known=new Set();
         for(const snapshot of [state.working,state.accepted]) for(const c of snapshot?.chapters || []) {
-          if(!known.has(c.id)){known.add(c.id);chapter.append(new Option(c.resolved_title ?? c.title,c.id));}
+          if(!known.has(c.id)){known.add(c.id);chapter.append(new Option(chapterTitle(c),c.id));}
         }
         chapter.value=old;
       } else state=next;
       document.getElementById("accept").disabled=!state.can_accept;
       document.getElementById("discard").disabled=!state.can_discard;
+      document.getElementById("codex-working").disabled=!state.authored_revision;
+      updateCodexStatus();
       document.getElementById("toc-depth").value=state.working?.toc.depth ?? 2;
       const status=document.getElementById("status");status.classList.toggle("error",Boolean(state.error));
       status.textContent=state.error || (state.pending ? "Rendering pending…" : `${state.changes.length} ${state.changes.length===1 ? "change" : "changes"}`);
@@ -797,12 +877,13 @@ document.getElementById("chapter").addEventListener("change",event=>{
 function updateChangeNavigation() {
   const changes=state?.changes || [];
   changeIndex=changes.findIndex(change=>change.id===selected);
-  document.getElementById("previous").disabled=changeIndex<=0;
-  document.getElementById("next").disabled=!changes.length || changeIndex>=changes.length-1;
+  document.getElementById("previous").disabled=!changes.length;
+  document.getElementById("next").disabled=!changes.length;
 }
 function nextChange(delta) {
-  const index=changeIndex+delta;
-  if(!state?.changes.length || index<0 || index>=state.changes.length)return;
+  if(!state?.changes.length)return;
+  const index=changeIndex<0 ? (delta<0 ? state.changes.length-1 : 0) :
+    (changeIndex+delta+state.changes.length)%state.changes.length;
   navigate(state.changes[index].id);
 }
 document.getElementById("previous").onclick=()=>nextChange(-1);
@@ -839,29 +920,101 @@ document.getElementById("menu-new-chapter").onclick=async()=>{
   try{await post("/api/new-chapter",command);await refresh();}
   catch(error){await refresh();showError(error.message);}
 };
-document.getElementById("menu-codex").onclick=()=>{
-  codexCommand={id:menuCommand.id,expected_revision:menuCommand.expected_revision};
-  closeMenu(true);
-  document.getElementById("codex-id").textContent=codexCommand.id;
-  document.getElementById("codex-instruction").value="";
+function openCodex(scope,id=null) {
+  codexScope=scope;
+  codexCommand={expected_revision:state.authored_revision,...(id ? {id} : {})};
+  const preset=document.getElementById("codex-preset");
+  document.getElementById("codex-preset-section").hidden=scope !== "working";
+  document.getElementById("codex-format-section").hidden=scope !== "element";
+  document.getElementById("codex-format-mode").value="preserve";
+  updateCodexFormatGuidance();
+  preset.value="";preset.disabled=false;
+  document.getElementById("codex-title").textContent=scope === "working" ? "Codex Working" : "Codex on element";
+  document.getElementById("codex-id").textContent=scope === "working" ?
+    (id ? `Starting at ${id}; the whole Working book is available.` : "The whole Working book is available.") : id;
+  document.getElementById("codex-help").textContent=scope === "working" ?
+    "Codex can request more book context and edit Working. Accepted and PDF sources remain read-only." :
+    "Changes are applied to Working after checking that words, numbers and substantive symbols are preserved. Dashes, commas, periods and spaces may change.";
+  document.getElementById("codex-instruction").value=scope === "working" && state.codex_agent?.state === "running" ?
+    state.codex_agent.instruction : "";
   document.getElementById("codex-error").hidden=true;
   document.getElementById("codex-status").hidden=true;
-  codexDialog.showModal();document.getElementById("codex-instruction").focus();
+  document.getElementById("stop-codex-agent").hidden=true;
+  document.getElementById("run-codex").disabled=false;
+  document.getElementById("codex-instruction").disabled=false;
+  codexDialog.showModal();updateCodexStatus();document.getElementById("codex-instruction").focus();
+}
+document.getElementById("menu-codex").onclick=()=>{
+  const id=menuCommand.id;closeMenu(true);openCodex("element",id);
 };
-codexDialog.addEventListener("cancel",event=>{if(codexRunning)event.preventDefault();});
+document.getElementById("menu-codex-working").onclick=()=>{
+  const id=selected && elementIndex(state.working).has(selected) ? selected : null;
+  closeMenu(true);openCodex("working",id);
+};
+document.getElementById("codex-working").onclick=()=>openCodex("working",
+  selected && elementIndex(state.working).has(selected) ? selected : null);
+function updateCodexStatus() {
+  if(!codexDialog.open || codexScope !== "working")return;
+  const job=state?.codex_agent;
+  const running=job?.state === "running";
+  const button=document.getElementById("run-codex"), stop=document.getElementById("stop-codex-agent");
+  button.disabled=running || codexRunning;
+  document.getElementById("codex-preset").disabled=running || codexRunning;
+  document.getElementById("codex-instruction").disabled=running || codexRunning;
+  stop.hidden=!running;stop.disabled=job?.action === "stopping";
+  const status=document.getElementById("codex-status"), error=document.getElementById("codex-error");
+  if(running){error.hidden=true;status.textContent=`Step ${job.step}: ${job.action}; ${job.edits} edits saved to Working.`;status.hidden=false;}
+  else if(job?.state === "completed"){
+    if(job.id === codexAutoCloseJob){codexDialog.close();return;}
+    error.hidden=true;
+    status.textContent=`Finished: ${job.summary} (${job.edits} edits).`;status.hidden=false;
+  } else if(job?.state === "failed"){
+    if(job.id === codexAutoCloseJob)codexAutoCloseJob=null;
+    error.textContent=job.error;error.hidden=false;status.hidden=true;
+  }
+}
+document.getElementById("stop-codex-agent").onclick=async()=>{
+  try{await post("/api/codex-agent/stop",{id:state.codex_agent.id});await refresh();}
+  catch(error){const field=document.getElementById("codex-error");field.textContent=error.message;field.hidden=false;}
+};
+codexDialog.addEventListener("cancel",event=>{if(codexRunning && codexScope === "element")event.preventDefault();});
+codexDialog.addEventListener("close",()=>{codexAutoCloseJob=null;codexAutoClosePending=false;});
+document.getElementById("codex-preset").onchange=event=>{
+  if(event.target.value){
+    const field=document.getElementById("codex-instruction");
+    field.value=event.target.value;field.focus();
+  }
+};
+document.getElementById("codex-instruction").oninput=event=>{
+  const preset=document.getElementById("codex-preset");
+  if(event.target.value !== preset.value)preset.value="";
+};
+function updateCodexFormatGuidance() {
+  const mode=document.getElementById("codex-format-mode").value;
+  document.getElementById("codex-format-guidance").value=state?.codex_format_guidance?.[mode] || "";
+}
+document.getElementById("codex-format-mode").onchange=updateCodexFormatGuidance;
 document.getElementById("run-codex").onclick=async()=>{
   if(codexRunning)return;
   const field=document.getElementById("codex-instruction"), error=document.getElementById("codex-error");
   if(!field.value.trim()){error.textContent="Enter a Codex instruction.";error.hidden=false;field.focus();return;}
   const button=document.getElementById("run-codex"), cancel=document.getElementById("cancel-codex"), progress=document.getElementById("codex-status");
-  codexRunning=true;button.disabled=true;cancel.disabled=true;field.disabled=true;error.hidden=true;
-  progress.textContent="Running Codex and checking content…";progress.hidden=false;
+  codexAutoCloseJob=null;codexAutoClosePending=codexScope === "working";
+  codexRunning=true;button.disabled=true;cancel.disabled=codexScope === "element";field.disabled=true;
+  document.getElementById("codex-preset").disabled=true;error.hidden=true;
+  progress.textContent=codexScope === "working" ? "Starting Codex Working task…" : "Running Codex and checking content…";progress.hidden=false;
   try {
-    await post("/api/codex",{...codexCommand,instruction:field.value});
-    codexDialog.close();await refresh();
+    const result=await post(codexScope === "working" ? "/api/codex-agent" : "/api/codex",
+      {...codexCommand,instruction:field.value,...(codexScope === "element" ?
+        {format_mode:document.getElementById("codex-format-mode").value} : {})});
+    if(codexAutoClosePending)codexAutoCloseJob=result.id;
+    codexAutoClosePending=false;
+    if(codexScope === "element")codexDialog.close();
+    await refresh();
   } catch(failure) {
+    codexAutoClosePending=false;codexAutoCloseJob=null;
     progress.hidden=true;error.textContent=failure.message;error.hidden=false;
-  } finally {codexRunning=false;button.disabled=false;cancel.disabled=false;field.disabled=false;}
+  } finally {codexRunning=false;cancel.disabled=false;if(codexScope === "element") {button.disabled=false;field.disabled=false;} else updateCodexStatus();}
 };
 const events=new EventSource("/api/events");events.onmessage=refresh;events.onopen=refresh;
 events.onerror=()=>showError("Connection interrupted; reconnecting…");
@@ -875,6 +1028,7 @@ const resizeObserver=new ResizeObserver(entries=>{
   if(!state || !changed || resizing || publishing)return;
   resizing=true;
   requestAnimationFrame(()=>{
+    positionTypeLabels();
     const logical=lastLogical || anchor(leader);
     if(logical)position(leader,logical);
     sync(leader);resizing=false;

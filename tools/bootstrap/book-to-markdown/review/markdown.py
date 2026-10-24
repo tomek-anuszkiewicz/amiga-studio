@@ -1,6 +1,7 @@
 """Preserve source paragraph lines as portable Markdown hard breaks."""
 
 from html import escape, unescape
+from html.parser import HTMLParser
 import re
 
 from markdown_it import MarkdownIt
@@ -84,6 +85,99 @@ def table_structure(text):
     if end <= start + 2:
         raise ValueError('Table has no data rows to merge')
     return headers, alignments, sum(map(len, lines[:start + 2]))
+
+
+class _HTMLTableColumns(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.depth = 0
+        self.widths = []
+        self.cell_counts = []
+        self.width = None
+        self.cell_count = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'table':
+            self.depth += 1
+        elif self.depth == 1 and tag == 'tr':
+            self.width = 0
+            self.cell_count = 0
+        elif self.depth == 1 and tag in {'td', 'th'} and self.width is not None:
+            span = int(dict(attrs).get('colspan', '1'))
+            if span < 1:
+                raise ValueError('Table column spans must be positive')
+            self.width += span
+            self.cell_count += 1
+
+    def handle_endtag(self, tag):
+        if tag == 'table':
+            self.depth -= 1
+        elif self.depth == 1 and tag == 'tr' and self.width is not None:
+            self.widths.append(self.width)
+            self.cell_counts.append(self.cell_count)
+            self.width = None
+            self.cell_count = None
+
+
+def html_table_structure(text):
+    """Locate rows inside one HTML table and count first-row cell groups."""
+    opening = re.match(r'\s*<table\b[^>]*>\s*(?:<tbody\b[^>]*>\s*)?', text, re.I)
+    if not opening:
+        raise ValueError('Expected a single HTML table')
+    has_body = bool(re.search(r'<tbody\b', opening[0], re.I))
+    closing = re.search(r'(?:</tbody>\s*)?</table>\s*$', text, re.I)
+    if not closing or (has_body and not re.match(r'</tbody>', closing[0], re.I)):
+        raise ValueError('Expected a single HTML table')
+    rows = text[opening.end():closing.start()]
+    parser = _HTMLTableColumns()
+    parser.feed(text)
+    parser.close()
+    if parser.depth or not parser.widths or not any(parser.widths):
+        raise ValueError('Expected a single HTML table with rows')
+    return parser.cell_counts[0], opening.end(), closing.start()
+
+
+TABLE_TAG = re.compile(r'</?(?:table|thead|tbody|tfoot|tr|th|td)\b[^>]*>', re.I)
+
+
+def format_html_table(text):
+    """Indent table structure while leaving cell contents untouched."""
+    parts = []
+    depth = cell_depth = nested_depth = position = 0
+    for match in TABLE_TAG.finditer(text):
+        gap = text[position:match.start()]
+        tag = match[0]
+        name = re.match(r'</?([A-Za-z]+)', tag)[1].lower()
+        closing = tag.startswith('</')
+        if nested_depth or (cell_depth and name == 'table' and not closing):
+            parts.append(gap + tag)
+            if name == 'table':
+                nested_depth += -1 if closing else 1
+            position = match.end()
+            continue
+        if cell_depth or gap.strip():
+            parts.append(gap)
+        if closing:
+            depth -= 1
+            if name in {'td', 'th'}:
+                parts.append(tag)
+                cell_depth -= 1
+            else:
+                if parts and not parts[-1].endswith('\n'):
+                    parts.append('\n')
+                parts.append('  ' * depth + tag)
+        else:
+            if parts and not parts[-1].endswith('\n'):
+                parts.append('\n')
+            parts.append('  ' * depth + tag)
+            depth += 1
+            if name in {'td', 'th'}:
+                cell_depth += 1
+        position = match.end()
+    tail = text[position:]
+    if cell_depth or tail.strip():
+        parts.append(tail)
+    return ''.join(parts)
 
 
 def preserve_line_breaks(text):

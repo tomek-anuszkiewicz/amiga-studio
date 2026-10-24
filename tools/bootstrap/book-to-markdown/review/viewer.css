@@ -14,9 +14,16 @@ h2 { display: flex; align-items: baseline; gap: 12px; font-size: 15px; margin: 0
 .pane-location { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: normal; }
 .pane { overflow: auto; min-height: 0; flex: 1; overflow-anchor: none; scroll-behavior: auto; padding: 0; }
 .page { position: relative; width: 100%; background: white; margin-bottom: 10px; }
+body.show-types #pdf .page { margin-bottom: 28px; }
 #pdf > .page:not(:last-child)::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -6px; height: 1px; background: #c4d3df; pointer-events: none; }
 .page > img { display: block; width: 100%; height: 100%; }
 .overlay { position: absolute; border: 1px solid transparent; cursor: pointer; }
+body.show-types #pdf .overlay::before { content: attr(data-type-label); position: absolute; top: 0; left: calc(100% + 3px);
+  z-index: 1; width: max-content; max-width: var(--type-label-space); padding: 2px 5px;
+  background: #165b91; color: white; overflow-wrap: anywhere;
+  font: 600 11px/1.3 "Segoe UI", sans-serif; pointer-events: none; }
+body.show-types #pdf .overlay.type-label-left::before { left: auto; right: calc(100% + 3px); }
+body.show-types #pdf .overlay.type-label-below::before { top: calc(100% + 3px); left: 0; right: auto; }
 .overlay:hover, .overlay.hover { border-color: #1e78c5; background: #2884c51c; }
 .overlay.selected { border: 2px solid #d67a00; background: #ffac1c1a; }
 .overlay.changed { border-left: 3px solid #df9224; }
@@ -33,13 +40,19 @@ dialog::backdrop { background: #132a3c66; } dialog h3 { margin-top: 0; } dialog 
 #element-menu button:hover, #element-menu button:focus-visible { background: #e3ebf2; }
 #heading-menu, #type-menu, #role-menu { margin-left: 12px; border-left: 2px solid #c4d3df; }
 #heading-menu[hidden], #type-menu[hidden], #role-menu[hidden] { display: none; }
+#heading-menu button[aria-checked="true"] { background: #d4e6f5; color: #123e64; font-weight: 700; }
 #markdown-dialog { width: min(900px,94vw); max-width: 900px; max-height: 92vh; overflow: auto; }
 #markdown-dialog textarea { display: block; width: 100%; height: 30vh; min-height: 130px; resize: vertical; padding: 10px; font: 14px/1.5 Consolas,monospace; white-space: pre; }
 #markdown-dialog .markdown-tools { display: flex; gap: 10px; justify-content: flex-start; flex-wrap: wrap; margin: 12px 0; }
 #second-section { margin-top: 12px; }
 #markdown-error { color: #a32620; white-space: pre-wrap; }
 #codex-dialog { width: min(700px,94vw); max-width: 700px; }
+#codex-preset-section { margin-bottom: 12px; }
+#codex-preset { display: block; width: 100%; margin-top: 8px; padding: 8px; font: inherit; }
 #codex-instruction { display: block; width: 100%; min-height: 150px; resize: vertical; margin-top: 8px; padding: 10px; font: inherit; }
+#codex-format-section { margin-top: 12px; }
+#codex-format-mode { display: block; width: 100%; margin: 8px 0 12px; padding: 8px; font: inherit; }
+#codex-format-guidance { display: block; width: 100%; min-height: 100px; margin-top: 8px; padding: 10px; resize: vertical; font: 13px/1.4 Consolas,monospace; }
 #codex-error { color: #a32620; white-space: pre-wrap; }
 .overlay.hidden-element { background-color: #8870b32b; }
 .overlay.hidden-element::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: radial-gradient(#73509699 1px,transparent 1.5px); background-size: 7px 7px; }

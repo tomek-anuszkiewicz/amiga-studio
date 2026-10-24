@@ -3,7 +3,9 @@
 
 import argparse
 from copy import deepcopy
+import html
 from pathlib import Path
+import re
 import sys
 import tempfile
 from time import perf_counter
@@ -14,10 +16,37 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from conversion import CodexClient
 from conversion.parallel import convert_parallel
 from common.pdf_config import load_config
-from common.pdf_artifacts import write_json
+from common.pdf_artifacts import read_json, write_json
 from common.pdf_page_conversion import read_conversion
 from common.pdf_tables import STAGE, converted
 from common.pdf_selection import selected_pages
+
+
+ANGLE_NOTATION = re.compile(r"<[^<>\r\n]+>")
+
+
+def blocks_in_crop(page, crop):
+    """Select extracted PDF blocks that overlap this table's pixel crop."""
+    if not page['blocks']:
+        return []
+    a, b, c, d, e, f = page['raster']['display_to_pixels']
+    selected = []
+    for block in page['blocks']:
+        x0, y0, x1, y1 = block['bbox']
+        corners = [(a*x + c*y + e, b*x + d*y + f) for x, y in ((x0, y0), (x1, y1))]
+        left, right = sorted(point[0] for point in corners)
+        top, bottom = sorted(point[1] for point in corners)
+        if max(left, crop[0]) < min(right, crop[2]) and max(top, crop[1]) < min(bottom, crop[3]):
+            selected.append(block)
+    return selected
+
+
+def escape_source_angle_notation(markup, blocks):
+    """Keep angle-bracket text extracted from the PDF out of the HTML parser."""
+    source = '\n'.join(block['text'] for block in blocks)
+    for literal in sorted(set(ANGLE_NOTATION.findall(source)), key=len, reverse=True):
+        markup = markup.replace(literal, html.escape(literal, quote=False))
+    return markup
 
 
 def transform_tables(workspace, config, pages=None):
@@ -37,7 +66,9 @@ def transform_tables(workspace, config, pages=None):
             if tables:
                 print(f"[tables] {entry['page_id']}: {len(tables)} tables", flush=True)
                 pending_pages[entry['page_id']] = {
-                    "page": page, "original": deepcopy(page), "remaining": len(tables)}
+                    "page": page, "original": deepcopy(page), "remaining": len(tables),
+                    "source_page": read_json(workspace / '02_preprocess' /
+                                             f"{entry['page_id']}.json")}
                 with Image.open(workspace / entry["png_file"]) as image:
                     for index, table in enumerate(tables, 1):
                         label = f"{table['segment_id']} ({index}/{len(tables)})"
@@ -68,7 +99,8 @@ def transform_tables(workspace, config, pages=None):
                 table.pop(key, None)
             table["table_format"] = result["format"]
             if converted(table):
-                table["md_text"] = result["md_text"]
+                table["md_text"] = escape_source_angle_notation(
+                    result["md_text"], blocks_in_crop(pending_pages[page_id]["source_page"], table['bbox']))
             counts[result["format"]] += 1
             pending = pending_pages[page_id]
             pending["remaining"] -= 1

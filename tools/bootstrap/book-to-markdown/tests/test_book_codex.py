@@ -23,6 +23,53 @@ HTML = '<table><tr><th>Pin</th><th>Name</th></tr><tr><td>1</td><td>DATA</td></tr
 
 
 class CodexContentTests(unittest.TestCase):
+    def test_nested_html_table_allows_layout_edit_but_preserves_cells(self):
+        before = ('<table><tr><th colspan="2">Data format'
+                  '<table><tr><td>Word</td><td>16</td></tr>'
+                  '<tr><td colspan="2">Bits</td></tr></table></th></tr>'
+                  '<tr><td>Exponent</td><td>15</td></tr></table>')
+        after = before.replace('<table><tr><td>Word',
+                               '<table style="margin-inline: auto"><tr><td>Word')
+        self.assertTrue(validate_content(before, after, 'html', 'html')['valid'])
+        spaced = after.replace('format<table', 'format\n<table')
+        self.assertTrue(validate_content(before, spaced, 'html', 'html')['valid'])
+        with self.assertRaisesRegex(ValueError, 'table cells'):
+            validate_content(before, after.replace('colspan="2">Bits',
+                                                   'colspan="1">Bits'), 'html', 'html')
+        with self.assertRaisesRegex(ValueError, 'table cells'):
+            validate_content(before, after.replace('<tr><td colspan="2">Bits</td></tr>',
+                                                   'Bits'), 'html', 'html')
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            validate_content(before, after.replace('>16</td>', '>18</td>'), 'html', 'html')
+
+    def test_headerless_html_preserves_delimited_math_from_markdown(self):
+        before = ('|  |  |\n| --- | --- |\n'
+                  '| STATE 0 | Drives $R/\\overline{W}$ high. |\n'
+                  '| STATE 2 | Asserts $\\overline{AS}$ low. |')
+        after = ('<table><tr><td>STATE 0</td><td>Drives R/'
+                 '<span style="text-decoration: overline">W</span> high.</td></tr>'
+                 '<tr><td>STATE 2</td><td>Asserts '
+                 '<span style="text-decoration: overline">AS</span> low.</td></tr></table>')
+        self.assertTrue(validate_content(before, after, 'markdown', 'html')['valid'])
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            validate_content(before, after.replace('>AS</span>', '>DS</span>'),
+                             'markdown', 'html')
+
+    def test_headerless_html_preserves_math_subscripts_from_markdown_legend(self):
+        before = ('|  |  |  |\n| --- | --- | --- |\n'
+                  '| EA | = | Effective Address |\n'
+                  '| $d_8$ | = | 8-Bit Offset |\n'
+                  '| $d_{16}$ | = | 16-Bit Offset |')
+        after = ('<table><tr><td>EA</td><td>=</td><td>Effective Address</td></tr>'
+                 '<tr><td>d<sub>8</sub></td><td>=</td><td>8-Bit Offset</td></tr>'
+                 '<tr><td>d<sub>16</sub></td><td>=</td><td>16-Bit Offset</td></tr></table>')
+        self.assertTrue(validate_content(before, after, 'markdown', 'html')['valid'])
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            validate_content(before, after.replace('d<sub>8</sub>', 'd8'), 'markdown', 'html')
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            validate_content(before.replace('$d_8$', 'd_8').replace('$d_{16}$', 'd_{16}'),
+                             after, 'markdown', 'html')
+
     def test_markdown_html_and_csv_preserve_cells(self):
         self.assertTrue(validate_content(MARKDOWN, HTML)['valid'])
         self.assertTrue(validate_content(HTML, 'Pin,Name\n1,DATA\n', 'html', 'csv')['valid'])
@@ -43,6 +90,26 @@ class CodexContentTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'table cells'):
                 validate_content(before, after, 'html', 'html')
 
+    def test_removes_decorative_dash_column_and_edits_punctuation(self):
+        before = ('<table><tr><td>RR</td><td>—</td><td>Rerun flag, value 0.</td></tr>'
+                  '<tr><td>IF</td><td>—</td><td>Instruction-fetch.</td></tr></table>')
+        after = ('<table><tr><td>RR</td><td>Rerun flag value 0</td></tr>'
+                 '<tr><td>IF</td><td>Instruction fetch</td></tr></table>')
+        self.assertTrue(validate_content(before, after, 'html', 'html')['valid'])
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            validate_content(before, after.replace('value 0', 'value 1'), 'html', 'html')
+        with self.assertRaises(ValueError):
+            validate_content(before, after.replace('<td>IF</td>', '<td>IF</td><td>new</td>'),
+                             'html', 'html')
+
+    def test_keeps_non_decorative_table_columns_and_spans(self):
+        before = ('<table><tr><td>A</td><td>—</td><td>First</td></tr>'
+                  '<tr><td>B</td><td>value</td><td>Second</td></tr></table>')
+        after = ('<table><tr><td>A</td><td>First</td></tr>'
+                 '<tr><td>B</td><td>value</td><td>Second</td></tr></table>')
+        with self.assertRaisesRegex(ValueError, 'table cells'):
+            validate_content(before, after, 'html', 'html')
+
 
 class CodexCommandTests(unittest.TestCase):
     def setUp(self):
@@ -61,7 +128,7 @@ class CodexCommandTests(unittest.TestCase):
         pages.mkdir(parents=True)
         Image.new('RGB', (200, 100), 'white').save(pages / 'page_0001.png')
         self.state = ReviewState(self.root)
-        self.command = {'id': 'selected', 'instruction': 'Convert to HTML',
+        self.command = {'id': 'selected', 'instruction': 'Convert to HTML', 'format_mode': 'allow_change',
                         'expected_revision': load_input(self.root / 'working')[2]}
         self.response = {'id': 'selected', 'type': 'table', 'format': 'html', 'text': HTML}
         # Keep diagnostic output inside the test's disposable directory.
@@ -98,6 +165,38 @@ class CodexCommandTests(unittest.TestCase):
         self.assertEqual(other['resolved_md_text'], 'Keep this.')
         self.assertEqual((self.root / 'accepted/book.json').read_bytes(), accepted)
         self.assertTrue(result['validation']['valid'])
+
+    def test_preserve_format_rejects_html_table_even_when_declared_markdown(self):
+        before = (self.root / 'working/book.json').read_bytes()
+        command = {key: value for key, value in self.command.items() if key != 'format_mode'}
+        with self.assertRaisesRegex(ValueError, 'format'):
+            run_command(self.state, command, client_factory=self.client(self.response))
+        disguised = {**self.response, 'format': 'markdown'}
+        with self.assertRaisesRegex(ValueError, 'HTML table'):
+            run_command(self.state, command, client_factory=self.client(disguised))
+        reverse_disguise = {**self.response, 'text': MARKDOWN}
+        with self.assertRaisesRegex(ValueError, 'without HTML table markup'):
+            run_command(self.state, self.command, client_factory=self.client(reverse_disguise))
+        self.assertEqual((self.root / 'working/book.json').read_bytes(), before)
+
+    def test_html_conversion_rejects_unrendered_math(self):
+        before = '|  |  |\n| --- | --- |\n| STATE 0 | Drives $R/\\overline{W}$ high. |'
+        html = '<table><tr><td>STATE 0</td><td>Drives $R/\\overline{W}$ high.</td></tr></table>'
+        converted = ('<table><tr><td>STATE 0</td><td>Drives '
+                     'R/<span style="text-decoration: overline">W</span> high.</td></tr></table>')
+        with self.assertRaisesRegex(ValueError, 'math'):
+            validate_content(before, html, 'markdown', 'html')
+        self.assertTrue(validate_content(before, converted, 'markdown', 'html')['valid'])
+
+    def test_existing_html_table_can_repair_unrendered_math(self):
+        before = '<table><tr><td>R/$\\overline{\\mathrm{W}}$</td></tr></table>'
+        after = ('<table><tr><td>R/'
+                 '<span style="text-decoration: overline">W</span></td></tr></table>')
+        self.assertTrue(validate_content(before, after, 'html', 'html')['valid'])
+        with self.assertRaisesRegex(ValueError, 'math'):
+            validate_content(before, before, 'html', 'html')
+        hex_values = '<table><tr><td>$FF or $00</td></tr></table>'
+        self.assertTrue(validate_content(hex_values, hex_values, 'html', 'html')['valid'])
 
     def test_bad_content_id_or_stale_result_never_saves(self):
         before = (self.root / 'working/book.json').read_bytes()
@@ -171,9 +270,22 @@ class CodexCommandTests(unittest.TestCase):
                     page.locator('#working [data-element="selected"]').click(button='right')
                     page.locator('#menu-codex').click()
                     page.locator('#codex-instruction').fill('Convert this table to HTML')
+                    self.assertEqual(page.locator('#codex-format-mode').input_value(), 'preserve')
+                    self.assertEqual(page.locator('#codex-format-guidance').input_value(),
+                                     self.state.status()['codex_format_guidance']['preserve'])
+                    page.locator('#codex-format-mode').select_option('allow_change')
+                    self.assertEqual(page.locator('#codex-format-guidance').input_value(),
+                                     self.state.status()['codex_format_guidance']['allow_change'])
                     page.locator('#run-codex').click()
                     page.wait_for_function('!document.getElementById("codex-dialog").open && state?.can_accept && !loading')
                     self.assertEqual(load_input(self.root / 'working')[0]['chapters'][0]['elements'][0]['table_format'], 'html')
+                    self.assertEqual(page.evaluate('state.changes.map(change => change.id)'), ['selected'])
+                    self.assertTrue(page.locator('#previous').is_enabled())
+                    self.assertTrue(page.locator('#next').is_enabled())
+                    page.locator('#next').click()
+                    self.assertEqual(page.evaluate('selected'), 'selected')
+                    page.locator('#previous').click()
+                    self.assertEqual(page.evaluate('selected'), 'selected')
                     self.response['text'] = HTML.replace('DATA', 'DATO')
                     before = (self.root / 'working/book.json').read_bytes()
                     page.locator('#working [data-element="selected"]').click(button='right')

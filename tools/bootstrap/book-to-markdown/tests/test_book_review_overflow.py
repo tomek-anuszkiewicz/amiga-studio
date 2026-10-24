@@ -11,6 +11,48 @@ REVIEW = Path(__file__).resolve().parents[4] / "tools/bootstrap/book-to-markdown
 
 
 class BookOverflowTest(unittest.TestCase):
+    def test_pdf_page_is_restored_after_reload(self):
+        snapshot = {"revision": "test", "toc": {"enabled": False, "depth": 2},
+                    "chapters": [{"id": "chapter", "title": "Pages", "elements": [
+                        {"id": f"page-{number}", "type": "prose", "role": None,
+                         "pdf_regions": [{"page": number, "bbox": [10, 10, 190, 60]}]}
+                        for number in range(1, 5)]}],
+                    "render": {"chapters": [{"id": "chapter", "document": "renders/test/chapter.html"}]}}
+        status = {"working": snapshot, "accepted": snapshot, "can_accept": True,
+                  "authored_revision": "test", "pending": False, "error": None, "changes": [],
+                  "heading_types": [], "pdf_pages": [
+                      {"page": number, "image": f"pdf/pages/page_{number:04d}.svg", "width": 200, "height": 800}
+                      for number in range(1, 5)]}
+
+        def respond(route):
+            path = urlsplit(route.request.url).path
+            if path == "/api/status":
+                route.fulfill(content_type="application/json", body=json.dumps(status))
+            elif path.endswith("chapter.html"):
+                route.fulfill(content_type="text/html", body="".join(
+                    f'<div data-element="page-{number}">Page {number}</div>' for number in range(1, 5)))
+            elif path.endswith(".svg"):
+                route.fulfill(content_type="image/svg+xml", body=(
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="800"></svg>'))
+            elif path == "/katex/katex.min.css":
+                route.fulfill(content_type="text/css", body="")
+            else:
+                route.fulfill(path=str(REVIEW / ("viewer.html" if path == "/" else Path(path).name)))
+
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel="msedge")
+            page = browser.new_page(viewport={"width": 1200, "height": 800})
+            page.add_init_script("window.EventSource=class {constructor(){}}")
+            page.route("**/*", respond)
+            page.goto("http://book-review.test/")
+            page.wait_for_function("state && !loading && nodes.pdf.length === 4")
+            page.evaluate("panes.pdf.scrollTop = [...panes.pdf.querySelectorAll('.page')][2].offsetTop")
+            page.wait_for_function("localStorage.getItem('book-review.pdf-page') === '3'")
+            page.reload()
+            page.wait_for_function("state && !loading && document.getElementById('pdf-location').textContent === 'Page 3'")
+            self.assertEqual(page.evaluate("localStorage.getItem('book-review.pdf-page')"), "3")
+            browser.close()
+
     def test_wide_tables_scroll_in_panel_while_text_and_images_follow_width(self):
         prose = "Ordinary paragraph text wraps to the panel width. " * 60
         cells = "".join(f"<td>REGISTER_{i:02d}_LONG_VALUE</td>" for i in range(12))

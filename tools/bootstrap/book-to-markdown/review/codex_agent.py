@@ -1,0 +1,277 @@
+"""Bounded Codex tool loop over the authored Working book."""
+
+from copy import deepcopy
+import json
+from pathlib import Path
+import sys
+import time
+import uuid
+
+import yaml
+
+from .model import elements, read_json, write_json
+from .text_recipe import REFERENCE, resolve_template
+
+
+PROGRAM = Path(__file__).resolve().parents[1]
+REPOSITORY = PROGRAM.parents[2]
+sys.path.insert(0, str(PROGRAM.parent))
+from conversion.client import CodexClient
+
+
+EDITOR_COMMANDS = {
+    'heading': 'heading', 'type': 'change_type', 'role': 'change_role',
+    'markdown': 'markdown', 'new_chapter': 'start_chapter', 'split': 'split',
+    'merge': 'merge', 'merge_tables': 'merge_tables', 'move': 'move',
+    'visibility': 'visibility', 'hide_page': 'hide_page', 'toc': 'toc',
+}
+MAX_STEPS = 500
+MAX_ERRORS = 8
+
+
+def validate_action(value):
+    if not isinstance(value, dict) or value.get('action') not in {
+            'list', 'read', 'image', 'editor', 'patch', 'element_transform', 'finish'}:
+        raise ValueError('Codex must return a supported tool action')
+    if 'memory' in value and (not isinstance(value['memory'], str) or len(value['memory']) > 4000):
+        raise ValueError('Codex memory must be at most 4000 characters')
+    return value
+
+
+def pointer(root, path, *, parent=False):
+    if not isinstance(path, str) or not path.startswith(('/chapters/', '/toc/')):
+        raise ValueError('Patch paths must be inside authored Working chapters or TOC')
+    parts = [part.replace('~1', '/').replace('~0', '~') for part in path[1:].split('/')]
+    current = root
+    for part in parts[:-1] if parent else parts:
+        if isinstance(current, list):
+            if not part.isdecimal() or int(part) >= len(current):
+                raise ValueError('Patch array index is out of range')
+            current = current[int(part)]
+        elif isinstance(current, dict):
+            current = current[part]
+        else:
+            raise ValueError('Patch path does not identify a container')
+    return (current, parts[-1]) if parent else current
+
+
+def patch_book(book, operations):
+    if not isinstance(operations, list) or not 1 <= len(operations) <= 20:
+        raise ValueError('Patch requires 1 to 20 operations')
+    for operation in operations:
+        if not isinstance(operation, dict) or operation.get('op') not in {'add', 'replace', 'remove', 'move'}:
+            raise ValueError('Unsupported patch operation')
+        kind, path = operation['op'], operation.get('path')
+        if kind == 'move':
+            source, key = pointer(book, operation.get('from'), parent=True)
+            if isinstance(source, list):
+                if not key.isdecimal() or int(key) >= len(source):
+                    raise ValueError('Patch array index is out of range')
+                value = source.pop(int(key))
+            else:
+                value = source.pop(key)
+            kind = 'add'
+        else:
+            value = deepcopy(operation.get('value'))
+        target, key = pointer(book, path, parent=True)
+        if isinstance(target, list):
+            if kind == 'add':
+                if key != '-' and (not key.isdecimal() or int(key) > len(target)):
+                    raise ValueError('Patch array insertion is out of range')
+                target.insert(len(target) if key == '-' else int(key), value)
+            else:
+                if not key.isdecimal() or int(key) >= len(target):
+                    raise ValueError('Patch array index is out of range')
+                if kind == 'remove':
+                    target.pop(int(key))
+                else:
+                    target[int(key)] = value
+        elif isinstance(target, dict):
+            if kind == 'remove':
+                del target[key]
+            elif kind == 'replace':
+                if key not in target:
+                    raise ValueError('Patch replacement target does not exist')
+                target[key] = value
+            else:
+                target[key] = value
+        else:
+            raise ValueError('Patch target is not a container')
+
+
+def inventory(book, action):
+    ordered = [(chapter, element) for chapter in book['chapters'] for element in chapter['elements']]
+    cursor, limit = action.get('cursor', 0), action.get('limit', 20)
+    if type(cursor) is not int or type(limit) is not int or cursor < 0 or not 1 <= limit <= 50:
+        raise ValueError('List requires a nonnegative cursor and limit from 1 to 50')
+    rows = []
+    for chapter, element in ordered[cursor:cursor + limit]:
+        content = element.get('resolved_md_text', element.get('md_text', ''))
+        rows.append({'id': element['id'], 'chapter': chapter['id'], 'type': element['type'],
+                     'role': element['role'], 'visible': element.get('visible', True),
+                     'pages': [region['page'] for region in element['pdf_regions']],
+                     'length': len(content), 'beginning': content[:100], 'ending': content[-100:]})
+    return {'total': len(ordered), 'cursor': cursor, 'next_cursor': min(cursor + limit, len(ordered)),
+            'elements': rows}
+
+
+def read_elements(book, action):
+    ids = action.get('ids')
+    if not isinstance(ids, list) or not 1 <= len(ids) <= 8 or any(not isinstance(i, str) for i in ids):
+        raise ValueError('Read requires 1 to 8 element IDs')
+    offset, length = action.get('offset', 0), action.get('length', 12000)
+    if type(offset) is not int or type(length) is not int or offset < 0 or not 1 <= length <= 12000:
+        raise ValueError('Read requires a nonnegative offset and length up to 12000')
+    by_id = {element['id']: (chapter, element) for chapter in book['chapters'] for element in chapter['elements']}
+    result = []
+    for identifier in ids:
+        chapter, element = by_id[identifier]
+        item = deepcopy(element)
+        for name in ('md_text', 'resolved_md_text'):
+            if name in item:
+                text = item[name]
+                item[name] = text[offset:offset + length]
+                item[name + '_length'] = len(text)
+        result.append({'chapter': {'id': chapter['id'], 'title': chapter.get('resolved_title', chapter['title']),
+                                   'markdown_file': chapter.get('resolved_markdown_file', chapter['markdown_file'])},
+                       'element': item})
+    return {'offset': offset, 'elements': result}
+
+
+def editor_arguments(root, name, args):
+    """Convert source recipes in agent text arguments to editor-visible Markdown."""
+    fields = ('first', 'second') if name == 'split' else ('text',) if name in {'markdown', 'merge'} else ()
+    converted = dict(args)
+    for field in fields:
+        value = converted.get(field)
+        if not isinstance(value, str) or not REFERENCE.search(value):
+            continue
+        pages = {}
+        for page in {int(match[1]) for match in REFERENCE.finditer(value)}:
+            path = root / 'pdf-to-markdown' / '02_preprocess' / f'page_{page:04d}.json'
+            if not path.is_file():
+                raise ValueError(f'Text reference points to missing PDF page {page}')
+            pages[page] = read_json(path)['blocks']
+        converted[field] = resolve_template(value, pages)
+    return converted
+
+
+def run_agent(state, command, *, client_factory=None, progress=None, cancelled=None):
+    """Let Codex request context and Working edits until it finishes or fails."""
+    instruction = command.get('instruction')
+    if not isinstance(instruction, str) or not instruction.strip() or len(instruction) > 12000:
+        raise ValueError('Enter a Codex instruction of at most 12000 characters')
+    with state.lock:
+        book, _, revision = state.input_cache.load(state.root / 'working')
+        if revision != command.get('expected_revision'):
+            raise ValueError('Stale Codex command; reload the latest authored revision')
+        selected = command.get('id')
+        if selected is not None and selected not in {e['id'] for e in elements(book)}:
+            raise ValueError('Selected element no longer exists')
+        opening = {'toc': deepcopy(book['toc']),
+                   'chapters': [{'id': c['id'], 'title': c.get('resolved_title', c['title']),
+                                  'markdown_file': c.get('resolved_markdown_file', c['markdown_file']),
+                                  'element_count': len(c['elements'])} for c in book['chapters']],
+                   'element_count': sum(len(c['elements']) for c in book['chapters']),
+                   'selected_id': selected}
+    job = REPOSITORY / '.agent/tmp/book-codex-agent' / uuid.uuid4().hex
+    job.mkdir(parents=True)
+    write_json(job / 'request.json', {'revision': revision, 'instruction': instruction,
+                                      'opening': opening})
+    guide = (PROGRAM / 'prompts/codex-agent.md').read_text(encoding='utf-8')
+    config = yaml.safe_load((PROGRAM / 'config.yaml').read_text(encoding='utf-8'))
+    client_factory = client_factory or CodexClient
+    memory, result, next_image, edits, errors = '', {'opening': opening}, None, 0, 0
+    started = time.monotonic()
+    with client_factory(config, stage='book_codex_agent', operation='book.codex_agent') as client:
+        for step in range(1, MAX_STEPS + 1):
+            if cancelled is not None and cancelled.is_set():
+                raise RuntimeError('Codex task was stopped')
+            with state.lock:
+                book, _, actual = state.input_cache.load(state.root / 'working')
+            if actual != revision:
+                raise ValueError('Working changed outside the Codex task; stopped before another action')
+            if progress:
+                progress(step=step, action='thinking', edits=edits)
+            prompt = guide + '\n\nTASK STATE JSON:\n' + json.dumps({
+                'instruction': instruction.strip(), 'selected_id': selected, 'step': step,
+                'memory': memory, 'last_result': result, 'working_revision': revision,
+            }, ensure_ascii=False)
+            action = client.generate_json(prompt, image_path=next_image, validator=validate_action)
+            next_image = None
+            if cancelled is not None and cancelled.is_set():
+                raise RuntimeError('Codex task was stopped before applying its next action')
+            with state.lock:
+                if state.input_cache.load(state.root / 'working')[2] != revision:
+                    raise ValueError('Working changed while Codex was thinking; action was not applied')
+            if 'memory' in action:
+                memory = action['memory']
+            write_json(job / f'action_{step:04d}.json', action)
+            kind = action['action']
+            if progress:
+                progress(step=step, action=kind, edits=edits)
+            if kind == 'finish':
+                summary = action.get('summary')
+                if not isinstance(summary, str) or not summary.strip():
+                    raise ValueError('Codex must summarize its completed task')
+                return {'summary': summary, 'steps': step, 'edits': edits, 'revision': revision,
+                        'duration_seconds': round(time.monotonic() - started, 2),
+                        'diagnostics': str(job.relative_to(REPOSITORY))}
+            try:
+                if kind == 'list':
+                    result = inventory(book, action)
+                elif kind == 'read':
+                    result = read_elements(book, action)
+                    if len(json.dumps(result, ensure_ascii=False)) > 50000:
+                        raise ValueError('Read result is too large; request fewer IDs or a shorter slice')
+                elif kind == 'image':
+                    if 'page' in action:
+                        page = action['page']
+                        if type(page) is not int or page not in {p['page'] for p in state.pdf_pages}:
+                            raise ValueError('Requested PDF page does not exist')
+                        next_image = state.root / 'pdf/pages' / f'page_{page:04d}.png'
+                        result = {'page': page, 'image_attached_to_next_turn': True}
+                    else:
+                        asset = action.get('asset')
+                        if not isinstance(asset, str) or not asset.startswith('assets/') or Path(asset).suffix != '.png':
+                            raise ValueError('Image requires a PDF page or Working PNG asset')
+                        next_image = (state.root / 'working' / asset).resolve()
+                        if not next_image.is_relative_to((state.root / 'working' / 'assets').resolve()) or not next_image.is_file():
+                            raise ValueError('Working image asset does not exist')
+                        result = {'asset': asset, 'image_attached_to_next_turn': True}
+                elif kind == 'patch':
+                    state.mutate(revision, lambda current: patch_book(current, action.get('operations')))
+                    with state.lock:
+                        revision = state.input_cache.load(state.root / 'working')[2]
+                    edits += 1
+                    result = {'applied': True, 'revision': revision}
+                elif kind == 'editor':
+                    name = action.get('command')
+                    args = action.get('args')
+                    if name not in EDITOR_COMMANDS or not isinstance(args, dict) or 'expected_revision' in args:
+                        raise ValueError('Unsupported editor command')
+                    converted = editor_arguments(state.root, name, args)
+                    getattr(state, EDITOR_COMMANDS[name])({**converted, 'expected_revision': revision})
+                    with state.lock:
+                        revision = state.input_cache.load(state.root / 'working')[2]
+                    edits += 1
+                    result = {'applied': True, 'revision': revision}
+                elif kind == 'element_transform':
+                    from .codex_edit import run_command
+                    identifier, request = action.get('id'), action.get('instruction')
+                    if not isinstance(identifier, str) or not isinstance(request, str):
+                        raise ValueError('Element transformation requires an ID and instruction')
+                    result = run_command(state, {'id': identifier, 'instruction': request,
+                                                 'expected_revision': revision,
+                                                 'format_mode': 'allow_change'})
+                    with state.lock:
+                        revision = state.input_cache.load(state.root / 'working')[2]
+                    edits += 1
+                errors = 0
+            except (KeyError, IndexError, TypeError, ValueError) as error:
+                errors += 1
+                result = {'tool_error': str(error), 'revision': revision}
+                if errors >= MAX_ERRORS:
+                    raise ValueError('Codex repeated invalid tool requests') from error
+            write_json(job / f'result_{step:04d}.json', result)
+    raise RuntimeError(f'Codex exceeded {MAX_STEPS} actions without finishing')

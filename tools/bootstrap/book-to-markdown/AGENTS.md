@@ -29,6 +29,11 @@ These instructions supplement the [bootstrap instructions](../AGENTS.md).
   the exact request snapshot before replacing one Working element; preserve its
   ID, source regions, role and visibility. Do not impose the optional strict
   source audit on model responses, imports or manual editor changes.
+- The general Codex Working task may request book context and make changes across
+  elements. Its user instruction governs intentional text edits; validate the
+  current Working revision and recipe after each tool action. It cannot write
+  Accepted or source PDF data. The one-element content guard remains specific to
+  the element transformation tool.
 - Table-to-graphic displays original PDF crops and retains its text. A graphic
   without stored text uses positioned Stage 02 OCR; absent OCR must be reported,
   not invented from the image. Changed or stale model responses must not save.

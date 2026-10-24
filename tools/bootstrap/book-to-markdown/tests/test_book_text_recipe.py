@@ -8,7 +8,8 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown'))
 from review.text_recipe import compile_template, compile_region_template, compile_markdown_template, edit_template, slice_template, preserve_bold, resolve_template
-from review.model import InputCache, element_markdown, export_markdown, import_book, load_input, set_heading_level, write_json
+from review.markdown import callout_plugin
+from review.model import InputCache, element_markdown, export_markdown, import_book, load_input, set_heading_level, toc_markdown, write_json
 from review.service import replace_accepted
 from review.service import ReviewState
 from review.render import Renderer
@@ -18,6 +19,48 @@ from common.pdf_geometry import text_blocks
 
 
 class TextRecipeTest(unittest.TestCase):
+    def test_chapter_display_title_tracks_first_visible_contents_entry(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            book = {'toc': {'depth': 2}, 'chapters': [{'id': 'c', 'title': 'Original cover',
+                'markdown_file': 'chapter.md', 'elements': [
+                    {'id': 'cover', 'type': 'heading', 'heading_level': 1,
+                     'md_text': '# Original cover', 'visible': False, 'role': None, 'pdf_regions': []},
+                    {'id': 'section', 'type': 'heading', 'heading_level': 1,
+                     'md_text': '# **SECTION 1 OVERVIEW**', 'role': None, 'pdf_regions': []},
+                    {'id': 'detail', 'type': 'heading', 'heading_level': 2,
+                     'md_text': '## 1.1 Details', 'role': None, 'pdf_regions': []}]}]}
+            write_json(root / 'working/book.json', book)
+            loaded, _, _ = load_input(root / 'working')
+            self.assertEqual(loaded['chapters'][0]['toc_title'], 'SECTION 1 OVERVIEW')
+            self.assertEqual(loaded['chapters'][0]['resolved_title'], 'Original cover')
+            book['chapters'][0]['elements'][1]['visible'] = False
+            write_json(root / 'working/book.json', book)
+            loaded, _, _ = load_input(root / 'working')
+            self.assertEqual(loaded['chapters'][0]['toc_title'], '1.1 Details')
+            book['toc']['depth'] = 1
+            write_json(root / 'working/book.json', book)
+            loaded, _, _ = load_input(root / 'working')
+            self.assertIsNone(loaded['chapters'][0]['toc_title'])
+            self.assertNotIn('toc_title', (root / 'working/book.json').read_text(encoding='utf-8'))
+
+    def test_generated_contents_use_plain_heading_labels(self):
+        book = {'toc': {'depth': 2}, 'chapters': [{'id': 'c', 'title': 'Example',
+            'markdown_file': 'example.md', 'elements': [{'id': 'h', 'type': 'heading',
+            'heading_level': 2, 'md_text': '## **INITIALIZE COMM PORT** (AH = 00H)',
+            'pdf_regions': [], 'role': None}]}]}
+        self.assertIn('[INITIALIZE COMM PORT (AH = 00H)]', toc_markdown(book))
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            renderer = Renderer()
+            try:
+                snapshot = renderer.render(root, book, {}, 'plain-contents-label')
+                contents = root / snapshot['render']['chapters'][0]['document']
+                self.assertIn('>INITIALIZE COMM PORT (AH = 00H)</a>',
+                              contents.read_text(encoding='utf-8'))
+            finally:
+                renderer.close()
+
     def test_input_cache_reuses_model_and_detects_external_dependency_changes(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -299,6 +342,29 @@ class TextRecipeTest(unittest.TestCase):
                 self.assertEqual(document.read_text(encoding='utf-8').count('<br'), 2)
             finally:
                 renderer.close()
+
+    def test_note_role_stays_plain_while_callout_is_highlighted(self):
+        source = ('Notes:\n1. First qualification.\n'
+                  '2. Check $\\overline{\\mathrm{AS}}$.')
+        labeled = {'id': 'labeled', 'type': 'prose', 'role': 'note', 'md_text': source}
+        callout_source = '> [!NOTE] NOTE\n>\n> A source advisory.'
+        callout = {'id': 'callout', 'type': 'callout', 'role': None, 'md_text': callout_source}
+        self.assertEqual(element_markdown(labeled), source)
+        self.assertEqual(element_markdown(callout), callout_source)
+        parser = MarkdownIt('commonmark', {'html': True}).use(callout_plugin)
+        self.assertNotIn('<blockquote', parser.render(element_markdown(labeled)))
+        self.assertIn('class="markdown-callout"', parser.render(element_markdown(callout)))
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            book = {'toc': {'depth': 2}, 'chapters': [
+                {'id': 'c', 'title': 'Notes', 'markdown_file': 'notes.md',
+                 'elements': [labeled, callout]}]}
+            export_markdown(book, root)
+            exported = (root / 'notes.md').read_text(encoding='utf-8')
+            self.assertIn(source, exported)
+            self.assertIn(callout_source, exported)
+        self.assertEqual(labeled['md_text'], source)
+        self.assertEqual(callout['md_text'], callout_source)
 
     def test_source_and_literal_braces_are_never_executed(self):
         blocks = [{"block_id": 4, "text": r"PDF {{text page=9 block=0 chars=0:4}} {x} \\ end"}]

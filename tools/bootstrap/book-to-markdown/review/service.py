@@ -13,10 +13,10 @@ import uuid
 
 from PIL import Image
 
-from .model import (EDITABLE_TYPES, ELEMENT_ROLES, HEADING_TYPES, PROTECTED_TYPES, InputCache, authored_element, changes, confined, edit_markdown, elements, export_markdown, json_bytes,
+from .model import (EDITABLE_TYPES, ELEMENT_ROLES, HEADING_TYPES, PROTECTED_TYPES, InputCache, authored_element, changes, confined, digest, edit_markdown, elements, export_markdown, json_bytes,
                     load_input, new_chapter, set_element_role, set_element_type, set_heading_level, update_markdown_heading, write_json)
 from .text_recipe import slice_template
-from .markdown import table_structure
+from .markdown import format_html_table, html_table_structure, table_structure
 from .render import HERE, KATEX, Renderer
 
 
@@ -117,6 +117,8 @@ class ReviewState:
         self.accepted = read_snapshot(root / "accepted")
         self.error, self.pending, self.sequence = None, True, 0
         self.failed_fingerprint = None
+        self.codex_agent = None
+        self.codex_stop = None
         self.pdf_pages = []
         for path in sorted((root / "pdf" / "pages").glob("page_*.png")):
             with Image.open(path) as image:
@@ -128,6 +130,7 @@ class ReviewState:
         self.condition.notify_all()
 
     def status(self):
+        from .codex_edit import FORMAT_GUIDANCE
         with self.lock:
             try:
                 authored = self.input_cache.load(self.root / "working")[2]
@@ -140,16 +143,18 @@ class ReviewState:
             discardable_elements = [e["id"] for e in elements(self.working)
                                     if e["id"] in accepted_elements
                                     and authored_element(e) != accepted_elements[e["id"]]] if self.working else []
+            agent_running = bool(self.codex_agent and self.codex_agent['state'] == 'running')
             return {"sequence": self.sequence, "working": self.working, "accepted": self.accepted,
                     "authored_revision": authored, "pending": self.pending or not current,
                     "error": input_error or self.error,
-                    "can_accept": current and not self.pending and not self.error,
+                    "can_accept": current and not self.pending and not self.error and not agent_running,
                     "can_discard": bool(current and not self.pending and not self.error
                                         and self.accepted and authored != self.accepted["input_fingerprint"]),
                     "discardable_elements": discardable_elements,
                     "changes": diff, "pdf_pages": self.pdf_pages, "heading_types": sorted(HEADING_TYPES),
                     "editable_types": EDITABLE_TYPES, "protected_types": PROTECTED_TYPES,
-                    "roles": ELEMENT_ROLES}
+                    "roles": ELEMENT_ROLES, "codex_agent": deepcopy(self.codex_agent),
+                    "codex_format_guidance": FORMAT_GUIDANCE}
 
     def render_loop(self):
         renderer = None
@@ -231,6 +236,39 @@ class ReviewState:
         self.mutate(command["expected_revision"], update)
 
     def change_type(self, command):
+        if command['type'] == 'graphic':
+            from .codex_edit import pdf_crop
+            with self.lock:
+                book, _, revision = self.input_cache.load(self.root / 'working')
+                if revision != command['expected_revision']:
+                    raise ValueError('Stale edit command; reload the latest authored revision')
+                element = next((e for e in elements(book) if e['id'] == command['id']), None)
+                if element is None:
+                    raise ValueError('Element no longer exists')
+                if element['type'] != 'table' or element.get('asset'):
+                    raise ValueError('Only a table without an image asset can change to an image')
+                crop = pdf_crop(self.root, element['pdf_regions'])
+                if crop is None:
+                    raise ValueError('An image requires an original PDF region')
+                asset_name = f"assets/image-{element['id']}-{digest(crop)[:12]}.png"
+                asset = self.root / 'working' / asset_name
+                created = not asset.exists()
+                if not created and asset.read_bytes() != crop:
+                    raise ValueError('Existing image asset does not match its source PDF crop')
+                try:
+                    if created:
+                        asset.parent.mkdir(parents=True, exist_ok=True)
+                        asset.write_bytes(crop)
+                    def update(current):
+                        target = next(e for e in elements(current) if e['id'] == command['id'])
+                        target['type'] = 'graphic'
+                        target['asset'] = asset_name
+                    self.mutate(revision, update)
+                except BaseException:
+                    if created:
+                        asset.unlink(missing_ok=True)
+                    raise
+            return
         def update(book):
             element = next((e for e in elements(book) if e['id'] == command['id']), None)
             if element is None:
@@ -268,6 +306,53 @@ class ReviewState:
     def codex(self, command):
         from .codex_edit import run_command
         return run_command(self, command)
+
+    def start_codex_agent(self, command):
+        from .codex_agent import run_agent
+        instruction = command.get('instruction')
+        if not isinstance(instruction, str) or not instruction.strip() or len(instruction) > 12000:
+            raise ValueError('Enter a Codex instruction of at most 12000 characters')
+        with self.lock:
+            if self.codex_agent and self.codex_agent['state'] == 'running':
+                raise ValueError('A Codex Working task is already running')
+            if self.input_cache.load(self.root / 'working')[2] != command.get('expected_revision'):
+                raise ValueError('Stale Codex command; reload the latest authored revision')
+            task_id = uuid.uuid4().hex
+            self.codex_stop = threading.Event()
+            self.codex_agent = {'id': task_id, 'state': 'running', 'instruction': instruction.strip(),
+                                'step': 0, 'action': 'starting', 'edits': 0}
+            self.announce()
+
+        def progress(**fields):
+            with self.lock:
+                if self.codex_agent['id'] == task_id:
+                    self.codex_agent.update(fields)
+                    self.announce()
+
+        def work():
+            try:
+                result = run_agent(self, command, progress=progress, cancelled=self.codex_stop)
+                with self.lock:
+                    self.codex_agent.update(state='completed', **result)
+                    self.announce()
+            except Exception as error:
+                log(f'[codex working {task_id}] failed: {error}')
+                with self.lock:
+                    self.codex_agent.update(state='failed', error=str(error))
+                    self.announce()
+
+        threading.Thread(target=work, name='book-codex-agent', daemon=True).start()
+        return {'id': task_id}
+
+    def stop_codex_agent(self, command):
+        with self.lock:
+            if not self.codex_agent or self.codex_agent['id'] != command.get('id'):
+                raise ValueError('Codex Working task no longer exists')
+            if self.codex_agent['state'] != 'running':
+                raise ValueError('Codex Working task has already finished')
+            self.codex_stop.set()
+            self.codex_agent['action'] = 'stopping'
+            self.announce()
 
     def start_chapter(self, command):
         def update(book):
@@ -311,6 +396,18 @@ class ReviewState:
             raise ValueError('Element no longer exists')
         self.mutate(command['expected_revision'], update)
 
+    def duplicate(self, command):
+        def update(book):
+            for chapter in book['chapters']:
+                for index, element in enumerate(chapter['elements']):
+                    if element['id'] == command['id']:
+                        copy = deepcopy(element)
+                        copy['id'] = 'copy-' + uuid.uuid4().hex
+                        chapter['elements'].insert(index + 1, copy)
+                        return
+            raise ValueError('Element no longer exists')
+        self.mutate(command['expected_revision'], update)
+
     def move(self, command):
         if command['direction'] not in ('up', 'down'):
             raise ValueError('Move direction must be up or down')
@@ -343,25 +440,39 @@ class ReviewState:
                 raise ValueError('Both elements must be tables; move intervening elements first')
             if first['role'] != second['role']:
                 raise ValueError('Elements have different roles; change their roles before merging')
-            if any(e.get('table_format') != 'markdown' for e in (first, second)):
-                raise ValueError('Only Markdown tables are supported; HTML is not supported')
+            table_format = first.get('table_format')
+            if table_format != second.get('table_format') or table_format not in {'markdown', 'html'}:
+                raise ValueError('Tables must use the same Markdown or HTML format')
             first_text = first.get('resolved_md_text', first['md_text'])
             second_text = second.get('resolved_md_text', second['md_text'])
-            headers, alignment, _ = table_structure(first_text)
-            next_headers, next_alignment, body_start = table_structure(second_text)
-            if len(headers) != len(next_headers):
-                raise ValueError('Tables have different numbers of columns')
-            if headers != next_headers:
-                raise ValueError('Table column names or their order differ')
-            if alignment != next_alignment:
-                raise ValueError('Table column alignment differs')
-            # Append only the second body
-            # so retained PDF references never realign to repeated text elsewhere.
+            if table_format == 'markdown':
+                headers, alignment, _ = table_structure(first_text)
+                next_headers, next_alignment, body_start = table_structure(second_text)
+                if len(headers) != len(next_headers):
+                    raise ValueError('Tables have different numbers of columns')
+                if headers != next_headers:
+                    raise ValueError('Table column names or their order differ')
+                if alignment != next_alignment:
+                    raise ValueError('Table column alignment differs')
+                first_end = len(first_text.rstrip())
+                second_end = len(second_text)
+            else:
+                columns, _, first_end = html_table_structure(first_text)
+                next_columns, body_start, second_end = html_table_structure(second_text)
+                if columns != next_columns:
+                    raise ValueError('Tables have different numbers of columns')
+            # Slice each original recipe so PDF references stay attached to their rows.
             edit_markdown(self.root, first, first_text)
             edit_markdown(self.root, second, second_text)
-            first['md_text'] = slice_template(first['md_text'], 0, len(first_text.rstrip())) + '\n' + slice_template(
-                second['md_text'], body_start, len(second_text))
-            first['resolved_md_text'] = first_text.rstrip() + '\n' + second_text[body_start:]
+            first['md_text'] = (slice_template(first['md_text'], 0, first_end) + '\n'
+                                + slice_template(second['md_text'], body_start, second_end)
+                                + (slice_template(first['md_text'], first_end, len(first_text))
+                                   if table_format == 'html' else ''))
+            first['resolved_md_text'] = (first_text[:first_end] + '\n' + second_text[body_start:second_end]
+                                         + (first_text[first_end:] if table_format == 'html' else ''))
+            if table_format == 'html':
+                first['md_text'] = format_html_table(first['md_text'])
+                first['resolved_md_text'] = format_html_table(first['resolved_md_text'])
             for region in second['pdf_regions']:
                 if region not in first['pdf_regions']:
                     first['pdf_regions'].append(deepcopy(region))
@@ -395,6 +506,54 @@ class ReviewState:
             first.update(merged)
             chapter['elements'].remove(second)
         self.mutate(command['expected_revision'], update)
+
+    def merge_graphics(self, command):
+        from .codex_edit import pdf_crop
+        with self.lock:
+            book, _, revision = self.input_cache.load(self.root / 'working')
+            if revision != command['expected_revision']:
+                raise ValueError('Stale edit command; reload the latest authored revision')
+            ordered = [(chapter, element) for chapter in book['chapters'] for element in chapter['elements']]
+            index = next((i for i, (_, element) in enumerate(ordered)
+                          if element['id'] == command['id']), None)
+            if index is None or index + 1 >= len(ordered):
+                raise ValueError('Graphic has no next element to merge')
+            _, first = ordered[index]
+            chapter, second = ordered[index + 1]
+            if second['id'] != command['next_id']:
+                raise ValueError('Next element changed; reopen the menu')
+            if first['type'] != 'graphic' or second['type'] != 'graphic':
+                raise ValueError('Both elements must be graphics')
+            if second.get('md_text'):
+                raise ValueError('The next graphic has stored text that cannot be merged')
+            regions = first['pdf_regions'] + second['pdf_regions']
+            pages = {region['page'] for region in regions}
+            if len(pages) != 1:
+                raise ValueError('Graphics must occupy the same PDF page')
+            crop = pdf_crop(self.root, regions)
+            asset_name = f"assets/image-{first['id']}-{digest(crop)[:12]}.png"
+            asset = self.root / 'working' / asset_name
+            created = not asset.exists()
+            if not created and asset.read_bytes() != crop:
+                raise ValueError('Existing image asset does not match its source PDF crop')
+            try:
+                if created:
+                    asset.parent.mkdir(parents=True, exist_ok=True)
+                    asset.write_bytes(crop)
+
+                def update(current):
+                    entries = [(owner, element) for owner in current['chapters']
+                               for element in owner['elements']]
+                    owner, target = entries[index + 1]
+                    entries[index][1]['pdf_regions'] = deepcopy(regions)
+                    entries[index][1]['asset'] = asset_name
+                    owner['elements'].remove(target)
+
+                self.mutate(revision, update)
+            except BaseException:
+                if created:
+                    asset.unlink(missing_ok=True)
+                raise
 
     def discard_element(self, command):
         with self.lock:
@@ -542,12 +701,20 @@ class Handler(BaseHTTPRequestHandler):
                 self.state.markdown(command)
             elif self.path == "/api/codex":
                 result.update(self.state.codex(command))
+            elif self.path == "/api/codex-agent":
+                result.update(self.state.start_codex_agent(command))
+            elif self.path == "/api/codex-agent/stop":
+                self.state.stop_codex_agent(command)
             elif self.path == "/api/new-chapter":
                 self.state.start_chapter(command)
             elif self.path == "/api/split":
                 self.state.split(command)
+            elif self.path == "/api/duplicate":
+                self.state.duplicate(command)
             elif self.path == "/api/merge":
                 self.state.merge(command)
+            elif self.path == "/api/merge-graphics":
+                self.state.merge_graphics(command)
             elif self.path == "/api/move":
                 self.state.move(command)
             elif self.path == "/api/merge-tables":
@@ -586,6 +753,8 @@ def serve(root, port, width, channel):
         pass
     finally:
         state.stopping.set()
+        if state.codex_stop:
+            state.codex_stop.set()
         with state.condition:
             state.condition.notify_all()
         server.server_close()

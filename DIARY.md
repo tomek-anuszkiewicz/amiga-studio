@@ -5135,3 +5135,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - commit verification passed all selected checks
   - no manual conversion or milestone gate was run
   - no Design specification matched the changed paths
+---
+
+### [2026-10-24 19:47 CET] — Checkpoint: Book review editor work in progress
+- **Affected Subsystems**:
+  - `Book-to-Markdown review editor`
+  - `PDF table conversion`
+  - `roadmap`
+- **What Was Changed (The Concrete Reality)**:
+  - Added a general Codex Working task with paginated context and validated editor actions
+  - Extended table and graphic merge controls, HTML structure validation, source recipe resolution, and reviewer UI
+  - Escaped literal angle brackets from PDF table text
+  - Updated Test Book workflow guidance and roadmap
+  - Matched HTML table merge groups across colspan subdivisions
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the current editor work as one checkpoint while Test Book review and acceptance remain unfinished
+  - retain source provenance and explicit span structure.
+- **Verification & Test Results**:
+  - Focused HTML table merge tests passed, including a copy of the page 71 to 73 recipe
+  - review server responded after restart. verify.py commit failed: English audit found 27 unknown word occurrences, PDF conversion contracts had one KeyError for missing blocks, and book review contracts had four navigation and scroll failures. Ordinary crate tests, coverage report, formatting, Clippy, architecture, hardware and code quality checks, standard harness tests, bootstrap and shared conversion contracts, RAG MCP contracts, and verification CLI contracts passed. Milestone verification was not run because the roadmap point remains open.
