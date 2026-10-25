@@ -1,0 +1,10 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "50CD",
+  "initial_registers": {
+    "d5": 0,
+    "d6": 0
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

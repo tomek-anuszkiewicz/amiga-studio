@@ -5235,3 +5235,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: ordinary crate and standard harness tests, English, formatting, Clippy, architecture, hardware and code quality, bootstrap, conversion, PDF, RAG, verification contracts, vault links and frontmatter, staged diff check
   - FAIL: Book Review contracts with five UI timeouts and two missing local math-asset errors
   - Full SingleStep and hardware captures not run
+---
+
+### [2026-10-25 10:33 CET] — Add conditional M68000 benchmark workloads
+- **Affected Subsystems**:
+  - `benchmarks/m68k`
+  - `.agents/skills/add-m68k-benchmark`
+- **What Was Changed (The Concrete Reality)**:
+  - Add 28 Bcc, 46 DBcc, and 130 Scc hand-written cases for distinct execution paths and addressing modes
+  - Allow the runner to load sentinel bytes after the end marker
+  - Document conditional helper and flag setup
+- **Architectural Rationale & Trade-Offs**:
+  - Branch
+  - counter
+  - and conditional-store paths perform different work and require explicit flag and counter setup in complete workload programs
+- **Verification & Test Results**:
+  - PASS: 90 changed cases remeasured, all 204 case reports match current source and configuration with 100000 targets and seven series
+  - PASS: ordinary crate and standard harness tests, English, formatting, Clippy, architecture, hardware and code quality, bootstrap, conversion, PDF, RAG and verification contracts
+  - FAIL: Book Review contracts with five UI timeouts and two missing local math-asset errors
+  - Full SingleStep and hardware captures not run

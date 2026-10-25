@@ -509,9 +509,6 @@ fn prepare(
     if marker_matches.next().is_some() {
         return Err("assembled image contains multiple end markers".to_owned());
     }
-    if marker_offset + END_MARKER.len() != image.len() {
-        return Err("end marker must be the last bytes of the assembled image".to_owned());
-    }
     let program_end = case.origin + marker_offset as u32;
     if entry < case.origin
         || entry >= image_end

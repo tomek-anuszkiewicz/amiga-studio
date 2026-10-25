@@ -59,7 +59,8 @@ target count or assume that code and data have equal lengths. Execution starts
 at the assembler's `entry` symbol and stops when the instruction PC reaches
 the `M68K_END_MARKER!` byte sequence. Each source places this marker after the
 instruction block. The runner finds its unique occurrence in the assembled
-binary, requires it at the image end, and uses its address as `program_end`.
+binary and uses its address as `program_end`. Bytes after the marker remain in
+the loaded image but are not reached during normal completion.
 The benchmark fixture maps Chip RAM into `$000000`-`$07FFFF` instead of the
 boot ROM overlay. It loads `fixed_words` and `label_address` regions at their
 CPU-visible RAM addresses outside the assembly image and checks that the CPU can
@@ -69,8 +70,11 @@ The marker bytes are never executed. The cases use `endr` to close `rept`;
 with this assembler, `endm` also repeats a following directive. The shared
 `instruction_count` controls target instructions per run;
 target, helper, and total executed guest instructions are observed separately.
-Each target in the repeated block is followed by a `MOVE.L` between data
-registers; its operands are chosen per case to prepare the next target or
+Each Bcc target is followed by `MOVE.W #imm,CCR` to select its taken or
+untaken path. DBcc cases reload the counter with `MOVE.L` and then set CCR
+with `MOVE.W #imm,CCR`. Scc uses the usual `MOVE.L` helper; its flags select
+the `$FF` or `$00` byte written to the destination, without a branch. Other
+targets use a `MOVE.L` between data registers to prepare the next target or
 perform an inert copy.
 
 The `random_words` memory fill starts from the runner's fixed seed

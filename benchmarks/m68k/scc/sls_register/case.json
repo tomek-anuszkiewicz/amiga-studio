@@ -1,0 +1,10 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "53C3",
+  "initial_registers": {
+    "d3": 2779058740,
+    "d6": 4951
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4
+}

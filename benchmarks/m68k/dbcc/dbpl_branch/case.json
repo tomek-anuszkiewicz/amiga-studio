@@ -1,0 +1,11 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "5ACD",
+  "initial_registers": {
+    "d5": 2147488599,
+    "d6": 2147488599
+  },
+  "memory_regions": [],
+  "instructions_per_loop": 4,
+  "initial_sr": 9992
+}
