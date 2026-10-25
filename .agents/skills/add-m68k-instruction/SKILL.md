@@ -438,7 +438,7 @@ Apply [file-size-and-cohesion.md](../../rules/file-size-and-cohesion.md):
 Every implemented or reintroduced instruction must pass the mandatory dual-tier gate:
 
 ### Tier 1 — SingleStepTest Vector Verification
-Add hardware test case in `crates/test_runner/tests/test_singlestep.rs`:
+Add a generated reference-vector case in `crates/test_runner/tests/test_singlestep.rs`:
 ```rust
 #[test]
 fn test_sub_w() {
@@ -449,6 +449,11 @@ Run targeted tests:
 ```powershell
 python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_sub
 ```
+
+If the supplied vectors omit an implemented execution path, follow the
+[testing policy](../../rules/unit-testing-policy.md): add a hand-written CPU
+regression for its effects and cycle-exact bus activity. Passing the available
+vectors does not cover that missing path.
 
 ### Ordinary CPU Wait-State Coverage
 

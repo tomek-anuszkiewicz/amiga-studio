@@ -325,9 +325,9 @@ Manual commands in the following sections and diagnostic selectors in `verify.py
 
 ---
 
-## 1. M68000 SingleStepTests (Physical Hardware Silicon Verification)
+## 1. M68000 SingleStepTests (Generated Reference Verification)
 
-The CPU core is validated against **Tom Harte's `SingleStepTests-680x0`** suite ([`ref_src/SingleStepTests-680x0/68000/v1/`](../../ref_src/SingleStepTests-680x0/68000/v1)), consisting of 124 per-instruction test files and ~1,000,000 randomized test vectors captured directly from physical 68000 silicon pins.
+The CPU core is compared against **Tom Harte's `SingleStepTests-680x0`** suite ([`ref_src/SingleStepTests-680x0/68000/v1/`](../../ref_src/SingleStepTests-680x0/68000/v1)), consisting of 124 per-instruction test files and ~1,000,000 randomized vectors generated using a software implementation. The [upstream methodology](https://github.com/SingleStepTests/680x0#methodology) describes the checks applied to that implementation; these vectors are not direct physical 68000 measurements.
 
 ### Execution Modes
 
@@ -389,7 +389,7 @@ python tools/verification/verify.py test rust crate cpu
 ```
 
 These tests run in ordinary crate selection and commit coverage. They do not
-load silicon vectors or enumerate memory placements/DMA schedules. Production
+load SingleStep vectors or enumerate memory placements/DMA schedules. Production
 MemoryBus and Agnus arbitration retain separate integration tests. The former
 Cartesian suite, exclusive helpers and DMA/harness selectors are removed.
 See [CPU wait coverage](../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#8-ordinary-cpu-wait-state-tests)

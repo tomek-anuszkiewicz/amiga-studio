@@ -86,7 +86,7 @@ Readers start at the top and want the core takeaway immediately. Content must pr
 
 ### Layer 5: Tactical Execution & Developer Workflows
 - **Objective:** Provide concrete, reproducible steps, tooling, and day-to-day practices.
-- **Elements:** The verification harness (e.g. silicon test vectors, architecture tests), automated gates, commit sequences, and operational recipes.
+- **Elements:** The verification harness (e.g. CPU reference vectors, architecture tests), automated gates, commit sequences, and operational recipes.
 
 ### Layer 6: Synthesis & Knowledge Graph Relationships
 - **Objective:** Synthesize the overarching thesis into actionable takeaways and connect the note to the broader knowledge graph.

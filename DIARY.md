@@ -5254,3 +5254,32 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: ordinary crate and standard harness tests, English, formatting, Clippy, architecture, hardware and code quality, bootstrap, conversion, PDF, RAG and verification contracts
   - FAIL: Book Review contracts with five UI timeouts and two missing local math-asset errors
   - Full SingleStep and hardware captures not run
+---
+
+### [2026-10-25 13:02 CET] — Correct DBcc expiry timing and SingleStep evidence coverage
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/test_runner`
+  - `Obsidian/Amiga/Design/Verification`
+  - `docs`
+  - `agent rules`
+  - `verification tools`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Model DBcc counter expiry with fourteen clocks and three timed reads, including speculative branch-target prefetch
+  - add CCK-level DBcc and zero-quotient DIVU/DIVS regressions with wait-state checks
+  - correct SingleStep provenance across specifications, instructions and tooling
+  - remove the planned CPU timing audit from the roadmap and renumber opcode legality to 2.2
+- **Architectural Rationale & Trade-Offs**:
+  - Cover execution paths omitted by generated SingleStep vectors and distinguish model agreement from direct physical 68000 evidence
+  - remove the broader audit at the user's direction without claiming it completed
+- **Verification & Test Results**:
+  - PASS: focused DIVU/DIVS tests (2/2)
+  - Rust formatting
+  - Python tool contracts
+  - PowerShell parsing
+  - Obsidian links/frontmatter and roadmap integrity
+  - PASS: focused English scan and Clippy for the two new CPU tests after correcting first-run failures
+  - PASS: second commit profile's ordinary crate tests, English scan, formatting, Clippy, architecture, hardware and code quality, standard harness, bootstrap, conversion, PDF, RAG MCP and verification contracts
+  - FAIL: Book Review contracts in both commit profile runs: five UI timeouts and two missing local math assets
+  - Full SingleStep and physical hardware captures not run

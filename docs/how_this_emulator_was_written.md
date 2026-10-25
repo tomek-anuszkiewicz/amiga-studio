@@ -55,8 +55,8 @@ LLMs excel at generating code that looks plausible, compiles cleanly, and passes
 
 ```mermaid
 flowchart TD
-    subgraph External["1. External Ground Truth"]
-        A["Tom Harte SingleStepTests\n(1M+ Physical Silicon Vectors)"]
+    subgraph External["1. External Reference Evidence"]
+        A["Tom Harte SingleStepTests\n(1M+ Generated CPU Vectors)"]
         B["vAmigaTS\n(Real Machine Code Timing Tests)"]
     end
     subgraph HostPerf["2. Host Performance Guardrails"]
@@ -71,8 +71,8 @@ flowchart TD
     External --> HostPerf --> AutoHarness
 ```
 
-### A. Ground Truth Test Vectors (Tom Harte & vAmigaTS)
-- **1 Million+ Silicon Captures:** We imported 124 test suites captured directly from physical Motorola 68000 silicon. Every test asserts exact bus cycles, register states, and ALU status flags. If an instruction diverged by even a single clock phase, the agent had to fix its micro-step state machine until it matched real silicon 100%.
+### A. CPU Reference Vectors and Hardware Tests (Tom Harte & vAmigaTS)
+- **1 Million+ Generated CPU Vectors:** We imported 124 SingleStep suites generated from a software 68000 implementation. The harness compares final CPU state, instruction clocks, and timed bus transactions against the reference records. A disagreement exposes a case to investigate; agreement does not establish that the behavior matches a physical 68000.
 - **Hardware Timing Baseline:** Real machine code test suites verified co-processor synchronization, video beam timing, memory bus priority, and hardware timers.
 
 ### B. Micro-Benchmarking Every Instruction

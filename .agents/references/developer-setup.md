@@ -45,7 +45,7 @@ trunk serve crates/gui/index.html --open
 
 The emulator uses external test suites, hardware measurements, and reference implementations. These sources serve different purposes; a hardware capture can establish observed signals, while emulator and FPGA code provide models to compare against them:
 
-- **[Tom Harte SingleStepTests](https://github.com/SingleStepTests/680x0):** Physical M68000 instruction test vectors.
+- **[Tom Harte SingleStepTests](https://github.com/SingleStepTests/680x0):** Software-generated M68000 instruction reference vectors.
 - **[vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS):** Amiga chipset regression tests and reference captures.
 - **[vAmiga](https://github.com/dirkwhoffmann/vAmiga):** C++ reference emulator for chipset behavior and timing.
 - **[Amiga Test Kit](https://github.com/keirf/amiga-stuff):** Bootable hardware diagnostics.
@@ -119,7 +119,7 @@ Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`
 
 6. **DIVU & DIVS Cycle-Accurate Timing Analysis (Jorge Cwik / Pasti):**
    - **Location:** `Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md`
-   - **Scope:** Cycle-exact algorithmic analysis of 68000 non-restoring integer division. Formulates precise cycle calculations verified against physical silicon test vectors.
+   - **Scope:** Cycle-exact algorithmic analysis of 68000 non-restoring integer division. Formulates precise cycle calculations compared with software-generated SingleStep reference vectors.
 
 7. **Undocumented Features of OCS, ECS and AGA Chipsets (Kuba Winnicki / Achtung! Amiga, 2002)**
    - **Location:** `Obsidian/Amiga/Reference/Undocumented features of OCS, ECS and AGA chipsets.md`
@@ -135,7 +135,7 @@ Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`
 
 Bootstrapping is **strictly optional**. A freshly cloned repository compiles and runs the standalone desktop GUI or WebAssembly canvas out of the box using only the stable Rust toolchain.
 
-However, specialized development and verification workflows—such as running exhaustive 124-suite M68000 silicon tests, validating against golden vAmigaTS visual viewports, querying the offline Qdrant RAG vector database, or exploring cross-codebase call graphs—require external reference assets, technical literature, or tooling services.
+However, specialized development and verification workflows—such as running exhaustive 124-suite M68000 SingleStep tests, validating against golden vAmigaTS visual viewports, querying the offline Qdrant RAG vector database, or exploring cross-codebase call graphs—require external reference assets, technical literature, or tooling services.
 
 The centralized bootstrapper (`tools/bootstrap/bootstrap.ps1`) orchestrates all provisioning workflows.
 
@@ -151,7 +151,7 @@ To provision the repository-managed reference assets and tooling indexes in a si
 | Mode | Switch | When Needed | What It Provisions |
 | :--- | :--- | :--- | :--- |
 | **Full Setup** | `-All` | Provision repository-managed development assets | Executes all 4 phases sequentially in causal order: **Sources** $\to$ **Graphify** $\to$ **Documentation** $\to$ **RAG**. It uses the independent Qdrant container, not the external repository's Compose setup. |
-| **Verification Testbeds** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Downloads and decompresses external test suites, M68000 silicon vectors (`SingleStepTests-680x0`), vAmiga/vAmigaTS reference testbeds, and the Amiga Test Kit ADF |
+| **Verification Testbeds** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Downloads and decompresses external test suites, software-generated M68000 vectors (`SingleStepTests-680x0`), vAmiga/vAmigaTS reference testbeds, and the Amiga Test Kit ADF |
 | **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Downloads original archival PDF scans and OEM technical reference manuals (HRM, TRM, PRM, UM, and technical articles) |
 | **Documentation & RAG** | `-Rag` | Legacy repository-managed Qdrant bootstrap | Starts its own Qdrant container and indexes the Amiga documentation scopes through the external `rag_qdrant` CLI; it does not install or configure the separate RAG service. |
 | **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | Performs AST analysis across active Rust crates (`crates/`) and reference C++ code (`ref_src/vAmiga`), generating the unified symbol dependency and call-hierarchy graph in `graphify-out/` |

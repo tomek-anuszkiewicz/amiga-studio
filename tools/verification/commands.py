@@ -14,7 +14,7 @@ def singlestep_command(profile="verification", case=None, exact=False):
     return command
 
 
-# Full silicon verification runs automatically only at milestones.
+# Full SingleStep verification runs automatically only at milestones.
 # SingleStep uses TestMemoryBus, not production MemoryBus/PhysicalMemory.
 def select_tests(root, mode, verify_singlestep=False):
     completion = mode == "commit"

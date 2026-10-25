@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-24
+updated: 2026-10-25
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -16,7 +16,7 @@ tracked_paths:
 
 # M68000 SingleStep Verification
 
-SingleStep tests execute one M68000 instruction from a supplied initial state and compare the result with a record captured from a physical 68000. They check the processor state, total instruction clocks, and the order and timing of memory reads and writes. The reference vectors live in [Tom Harte's 68000 dataset](../../../../ref_src/SingleStepTests-680x0/68000/v1); the repository has 124 instruction JSON files containing more than a million cases. This is CPU verification through an isolated test bus, not a run of the complete Amiga machine.
+SingleStep tests execute one M68000 instruction from a supplied initial state and compare the result with a generated reference record. They check the processor state, total instruction clocks, and the order and timing of memory reads and writes. The reference vectors live in [Tom Harte's 68000 dataset](../../../../ref_src/SingleStepTests-680x0/68000/v1); the repository has 124 instruction JSON files containing more than a million cases. The [upstream methodology](https://github.com/SingleStepTests/680x0#methodology) says the cases were generated using a software implementation checked against documentation, other test sets, and an emulated machine. [The author confirmed software emulation as the source](https://github.com/SingleStepTests/ProcessorTests/issues/27). They are not direct measurements from a physical 68000. This suite runs the CPU through an isolated test bus, not the complete Amiga machine.
 
 ## 1. What a SingleStep case contains
 
@@ -44,6 +44,8 @@ The transaction comparison checks each successful read or write for direction, a
 
 Reviewed corrections for exact reference records are listed in the [SingleStep override catalog](../../../../crates/test_runner/tests/overrides/singlestep/README.md). The upstream JSON files remain intact, and reports identify executed overrides separately.
 
+Random generation leaves some execution paths uncovered. In particular, the supplied `DIVU` and `DIVS` cases never produce a zero quotient; [ordinary CPU regressions](../../../../crates/cpu/tests/test_div_zero_quotient.rs) check that result and its timed prefetch separately.
+
 ## 2. Timing and observation boundary
 
 The [CPU micro-step model](../CPU%20Micro-Step%20State%20Machine.md) advances by Color Clock (CCK): one CCK is two CPU clocks. The test records when the CPU calls the bus, with read callbacks in CCK1 and write callbacks in CCK2. It checks those observed moments against the reference timeline at two-CPU-clock resolution, while comparing the total instruction duration in CPU clocks. Thus it can catch a memory operation in the wrong CCK even when the instruction ends on time.
@@ -62,13 +64,13 @@ python tools/verification/verify.py test runner singlestep case test_add_b sampl
 python tools/verification/verify.py test runner singlestep full
 ```
 
-The full SingleStep run belongs to milestone verification and is available on explicit request or for diagnosis. Ordinary commit verification runs the standard test targets but excludes the full silicon dataset. Both sampled and full SingleStep runs use the same state, clock, and bus comparisons.
+The full SingleStep run belongs to milestone verification and is available on explicit request or for diagnosis. Ordinary commit verification runs the standard test targets but excludes the full reference dataset. Both sampled and full SingleStep runs use the same state, clock, and bus comparisons.
 
 ## 4. Checks around the comparator
 
-The ordinary [JSON mutation tests](../../../../crates/test_runner/tests/test_singlestep_mutations.rs) alter selected silicon cases and send them through the normal loader and CPU comparator. They check that changed state, transfer, or timing expectations produce the relevant failure, and that malformed records are rejected. Control changes such as a renamed case or changed `final.ram` establish which fields are intentionally outside the CPU comparison. This is a bounded check of the test machinery, not a claim that every possible JSON mutation or instruction path has been exercised.
+The ordinary [JSON mutation tests](../../../../crates/test_runner/tests/test_singlestep_mutations.rs) alter selected reference cases and send them through the normal loader and CPU comparator. They check that changed state, transfer, or timing expectations produce the relevant failure, and that malformed records are rejected. Control changes such as a renamed case or changed `final.ram` establish which fields are intentionally outside the CPU comparison. This is a bounded check of the test machinery, not a claim that every possible JSON mutation or instruction path has been exercised.
 
-Ordinary [CPU wait-state tests](../../../../crates/cpu/tests/test_cck_bus.rs) complement the silicon vectors. They use a PhysicalMemory-backed fixture to refuse selected transfers, then check that the CPU retries without prematurely advancing its active step. Reads wait in CCK1 and writes in CCK2; each refusal adds two CPU clocks. These tests cover selected instructions and transfer patterns, while separate MemoryBus integration tests exercise the production memory path.
+Ordinary [CPU wait-state tests](../../../../crates/cpu/tests/test_cck_bus.rs) complement the reference vectors. They use a PhysicalMemory-backed fixture to refuse selected transfers, then check that the CPU retries without prematurely advancing its active step. Reads wait in CCK1 and writes in CCK2; each refusal adds two CPU clocks. These tests cover selected instructions and transfer patterns, while separate MemoryBus integration tests exercise the production memory path.
 
 ## 5. Failure diagnostics and saved reports
 
@@ -85,17 +87,17 @@ Saved reports without required fields such as `selection` fail to load; a parsed
 
 ## 6. Performance measurements
 
-The [CPU instruction benchmark](../Performance/CPU%20Instruction%20Benchmarking.md) is a separate target in `crates/test_runner/benches/bench_instructions/`. It executes generated instruction workloads to measure host execution time; it does not turn SingleStep JSON timings into a host-speed benchmark. The SingleStep result answers whether the emulated instruction matches the hardware reference. The benchmark answers how much host time the emulator spends on its instruction workloads.
+The [CPU instruction benchmark](../Performance/CPU%20Instruction%20Benchmarking.md) is a separate target in `crates/test_runner/benches/bench_instructions/`. It executes generated instruction workloads to measure host execution time; it does not turn SingleStep JSON timings into a host-speed benchmark. The SingleStep result answers whether the emulated instruction matches the generated reference. The benchmark answers how much host time the emulator spends on its instruction workloads.
 
 The decoder-derived inventory, validation, measurement, and report commands are in the [benchmark specification](../Performance/CPU%20Instruction%20Benchmarking.md#decoder-derived-benchmark). Its analyzer compares matching executed fixtures with the tracked decoder-derived baseline. The separate [hand-written assembly cases](../Performance/CPU%20Instruction%20Benchmarking.md#hand-written-assembly-cases) measure selected complete programs without modifying that baseline. The former 108-case runner is no longer available.
 
 ## 7. What the layers establish
 
-SingleStep provides broad, hardware-derived CPU cases with exact final-state and timed bus-callback comparisons. Mutation tests check selected failure-detection paths of that comparison. Ordinary CPU tests probe waiting and memory interactions with controlled fixtures, and MemoryBus integration tests cover the production memory path. These layers support different claims; passing one layer does not imply that the others ran.
+SingleStep provides broad, software-generated CPU cases with exact final-state and timed bus-callback comparisons. Mutation tests check selected failure-detection paths of that comparison. Ordinary CPU tests probe waiting and memory interactions with controlled fixtures, and MemoryBus integration tests cover the production memory path. These layers support different claims; passing one layer does not imply that the others ran.
 
 ## 8. Ordinary CPU Wait-State Tests
 
-CPU wait tests belong to the ordinary crate verification path. They author expected transfer sequences and scripted refusals, then assert retry timing, unchanged state during a refusal, and the eventual committed transfer. They do not replay the million silicon vectors or enumerate every memory placement and DMA schedule. Production bus arbitration requires its own integration evidence.
+CPU wait tests belong to the ordinary crate verification path. They author expected transfer sequences and scripted refusals, then assert retry timing, unchanged state during a refusal, and the eventual committed transfer. They do not replay the million SingleStep vectors or enumerate every memory placement and DMA schedule. Production bus arbitration requires its own integration evidence.
 
 ```powershell
 python tools/verification/verify.py test rust crate cpu
@@ -103,7 +105,8 @@ python tools/verification/verify.py test rust crate cpu
 
 ## Reference Documentation and Test Entrypoints
 
-- [Tom Harte 68000 vectors](../../../../ref_src/SingleStepTests-680x0/68000/v1): Physical-processor cases and the source JSON format.
+- [Tom Harte 68000 vectors](../../../../ref_src/SingleStepTests-680x0/68000/v1): Software-generated cases and the source JSON format.
+- [Upstream 680x0 methodology](https://github.com/SingleStepTests/680x0#methodology): Describes how the reference cases were generated and checked.
 - [CPU design](../CPU%20Motorola%20M68000.md): Register, exception, and instruction semantics compared by the tests.
 - [CPU micro-step model](../CPU%20Micro-Step%20State%20Machine.md): CCK phases and bus timing represented by the callbacks.
 - [SingleStep integration target](../../../../crates/test_runner/tests/test_singlestep.rs): Living test entry point and instruction-group selection.

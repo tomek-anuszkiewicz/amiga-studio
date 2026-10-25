@@ -15,7 +15,7 @@ Use this skill to select relevant existing tests and report their evidence. The 
 | :---: | :--- | :--- | :---: |
 | **Tier 1** | Unit tests (isolated crates) | `python tools/verification/verify.py test rust unit` | $< 2$s |
 | **Tier 2** | Machine loop integration | `python tools/verification/verify.py test rust integration` | $3$–$15$s |
-| **Tier 3** | SingleStep CPU silicon vectors | `python tools/verification/verify.py test runner singlestep` | Depends on build cache, host and report history |
+| **Tier 3** | SingleStep CPU reference vectors | `python tools/verification/verify.py test runner singlestep` | Depends on build cache, host and report history |
 | **Tier 4** | vAmigaTS whole-machine captures | Unavailable; requires a future capture execution entry point | Not measured |
 | **Arch** | Architecture rules & gates | `python tools/verification/verify.py check architecture` | $< 2$s |
 

@@ -1,12 +1,12 @@
 ---
 name: m68k-singlestep-test
-description: Run and diagnose M68000 instructions against Tom Harte silicon vectors, always comparing state, instruction clocks and timed bus callbacks; sampling limits input count only.
+description: Run and diagnose M68000 instructions against software-generated Tom Harte reference vectors, always comparing state, instruction clocks and timed bus callbacks; sampling limits input count only.
 ---
 
 # M68000 SingleStepTests Verification & Debugging Runbook
 
-This skill guides the validation and debugging of the M68000 CPU implementation against the physical silicon single-step test suite:
-- **Tom Harte SingleStepTests-680x0:** `ref_src/SingleStepTests-680x0/68000/v1/*.json` (124 JSON files, ~1,000,000 tests captured from real 68000 silicon pins).
+This skill guides validation and debugging of the M68000 CPU implementation against the software-generated SingleStep reference suite:
+- **Tom Harte SingleStepTests-680x0:** `ref_src/SingleStepTests-680x0/68000/v1/*.json` (124 JSON files, ~1,000,000 generated cases). The [upstream methodology](https://github.com/SingleStepTests/680x0#methodology) describes the implementation used to generate them; [the author confirmed software emulation](https://github.com/SingleStepTests/ProcessorTests/issues/27). These records are not physical CPU captures.
 
 ---
 
@@ -86,7 +86,7 @@ When a test fails, follow this systematic diagnostic checklist:
   - `IR` (Instruction Register): holds the opcode being executed.
   - `IRC` (Prefetch Queue): holds the next prefetched 16-bit word.
 - The fixture primes the prefetch state. The shared comparator checks the formal next opcode PC and both final queue words independently. Stopped or halted execution uses its current cursor; it does not accept an alternative PC four bytes ahead. Inspect the PC and each prefetch diagnostic when diagnosing a pipeline failure.
-- Silicon `initial.pc` is the formal opcode address. SingleStep sets the primed internal PC to `initial.pc.wrapping_add(4)` and the instruction address to `initial.pc`.
+- Vector `initial.pc` is the formal opcode address. SingleStep sets the primed internal PC to `initial.pc.wrapping_add(4)` and the instruction address to `initial.pc`.
 - If `pc` is 2 or 4 bytes ahead or behind:
   - Verify that immediate operands or extension words (`.w` / `.l`) were fetched from the prefetch queue and refilled from memory.
   - Verify whether the final instruction prefetch step occurred before instruction retirement.

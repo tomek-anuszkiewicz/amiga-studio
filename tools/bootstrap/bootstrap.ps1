@@ -17,7 +17,7 @@
     A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'.
 
 .PARAMETER Sources
-    Verifies and provisions physical silicon SingleStepTests 68000 test vectors,
+    Verifies and provisions software-generated SingleStepTests 68000 test vectors,
     AmigaTestKit ADF, and reference emulators in ref_src/. Delegates to
     tools/bootstrap_sources.ps1.
 
@@ -52,7 +52,7 @@
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -Sources
-    Provision external hardware test vectors and sources (SingleStepTests, vAmiga).
+    Provision generated SingleStep vectors and reference sources (SingleStepTests, vAmiga).
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -Graphify

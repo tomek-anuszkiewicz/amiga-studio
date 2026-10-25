@@ -47,7 +47,7 @@ pub fn seeds() -> Vec<Seed> {
             let source = root()
                 .join("ref_src/SingleStepTests-680x0/68000/v1")
                 .join(suite);
-            let bytes = std::fs::read(&source).expect("original silicon file is required");
+            let bytes = std::fs::read(&source).expect("original reference file is required");
             let raw: Vec<Value> = serde_json::from_slice(&bytes).unwrap();
             let loaded = load_test_vectors(&source).unwrap();
             assert_eq!(

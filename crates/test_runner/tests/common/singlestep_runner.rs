@@ -70,7 +70,7 @@ pub fn run_single_test_detail_with_bus(
     cpu.state.set_sr(test.initial.sr);
     cpu.state.set_usp(test.initial.usp);
     cpu.state.set_ssp(test.initial.ssp);
-    // Silicon vectors supply the formal opcode address; the primed PC is ahead by four.
+    // Reference vectors supply the formal opcode address; the primed PC is ahead by four.
     cpu.state.set_pc(test.initial.pc.wrapping_add(4));
     // Exception frames use the opcode address, four bytes behind the primed PC.
     cpu.state.set_instruction_pc(cpu.state.pc().wrapping_sub(4));
@@ -260,7 +260,7 @@ fn resolve_test_path(path: &str) -> std::path::PathBuf {
     p.to_path_buf()
 }
 
-/// Loads silicon vectors and compares state, clocks and timed bus transactions.
+/// Loads reference vectors and compares state, clocks and timed bus transactions.
 pub fn run_test_file(
     path: &str,
     limit: Option<usize>,

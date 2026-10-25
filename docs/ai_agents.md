@@ -25,7 +25,7 @@ design, an implementation or an independent review.
 For example:
 
 > Investigate why this instruction takes two extra Color Clocks in the attached
-> trace. Explain the failing phase before changing code, preserve the silicon
+> trace. Explain the failing phase before changing code, preserve the reference
 > reference, and run the relevant verification after the fix.
 
 For a first session, an investigation is also useful:
@@ -105,7 +105,7 @@ out specialized work. Browse [`.agents/skills/`](../.agents/skills/) when you ne
 a procedure, or name one in your request, such as `$test-runner`.
 
 For example, CPU instruction work has a dedicated implementation procedure and
-silicon verification suite; GUI layout work uses captured frames for visual
+SingleStep verification suite; GUI layout work uses captured frames for visual
 inspection. These procedures give the agent a repeatable way to test its work.
 The relevant `SKILL.md` is the source of truth for its scope and steps.
 
@@ -115,7 +115,7 @@ You can also request focused work from the configured roles in
 | Role | Useful when you need |
 | --- | --- |
 | `code_reviewer` | An independent review of code, architecture and rule compliance. |
-| `cpu_verifier` | Diagnosis of cycle differences against physical 68000 silicon vectors. |
+| `cpu_verifier` | Diagnosis of cycle differences against generated 68000 reference vectors. |
 | `doc_curator` | Maintenance of design specifications and their links to implementation. |
 
 Delegation happens when requested by you or required by an applicable procedure.

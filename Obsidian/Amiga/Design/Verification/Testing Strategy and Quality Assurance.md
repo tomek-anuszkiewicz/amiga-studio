@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-10-14
+updated: 2026-10-25
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/src"
@@ -29,7 +29,7 @@ standard harness suites, all Python tool contracts and the full English audit.
 Standard harness selection excludes the aggregate `test_singlestep` target.
 Transaction checker regressions, SingleStep override contracts and the bounded
 [JSON mutation pilot](../../../../crates/test_runner/tests/test_singlestep_mutations.rs)
-are standard suites. The pilot checks the verifier using selected silicon cases;
+are standard suites. The pilot checks the verifier using selected SingleStep cases;
 it does not run the full external suite. If no
 standard suites remain, it schedules no Cargo test command. Python contracts
 are discovered separately for bootstrap, shared conversion, PDF conversion,
@@ -38,7 +38,7 @@ book review, the RAG MCP adapter and verification tooling.
 The separate `milestone` profile always runs full SingleStepTests
 and the full English audit, including on a clean tree. It does not repeat
 commit checks. Stage closure requires both commands once for the same snapshot.
-Standalone `test runner singlestep` selects full silicon verification for explicit diagnosis or user requests. This synthetic suite uses
+Standalone `test runner singlestep` selects full reference-vector verification for explicit diagnosis or user requests. This synthetic suite uses
 TestMemoryBus rather than the production machine.
 
 The [selection implementation](../../../../tools/verification/commands.py)
@@ -78,8 +78,8 @@ graph TD
         I4["Motherboard Bus Routing<br/><code>crates/memory_bus/tests/</code><br/>(Address dispatch & register wiring)"]:::t2
     end
 
-    subgraph Tier3["Tier 3: CPU Silicon (L3)"]
-        V1["Silicon SingleStepTests<br/><code>crates/test_runner/tests/test_singlestep.rs</code>"]:::t3
+    subgraph Tier3["Tier 3: CPU Reference Vectors (L3)"]
+        V1["Generated SingleStepTests<br/><code>crates/test_runner/tests/test_singlestep.rs</code>"]:::t3
     end
 
     V3["Tier 4: vAmigaTS Whole-Machine Captures<br/><code>Execution entry point unavailable</code>"]:::t3
@@ -95,7 +95,7 @@ graph TD
 
 Ordinary CPU tests cover phase-specific waiting, stable retries, counted delay,
 and transfer side effects through PhysicalMemory and a small recording wrapper.
-They do not enumerate silicon vectors or DMA schedules; production arbitration
+They do not enumerate SingleStep vectors or DMA schedules; production arbitration
 is tested separately. See [CPU wait coverage](CPU%20SingleStepTests.md#8-ordinary-cpu-wait-state-tests).
 
 ### Tier 1: Isolated Unit Tests (L1 — Fast, Unit Scope)
@@ -164,7 +164,7 @@ If any answer is **YES**, identify integration protection for that coordination.
   4. **Motherboard Bus Routing ([`crates/memory_bus/tests/`](../../../../crates/memory_bus/tests))**:
      - `test_router.rs` & `test_register_wiring.rs`: Routing 24-bit physical addresses across chips and storage.
 
-### Tier 3: Silicon Ground Truth & Verification Harness (L3 — Physical Vectors)
+### Tier 3: Generated CPU Reference Vectors and Verification Harness (L3)
 - **Scope**: CPU state, instruction clocks and timed callbacks against external 68000 vectors. Ordinary crate tests own focused waiting invariants.
 - **Execution Commands**: `python tools/verification/verify.py test runner singlestep` for explicit diagnosis; automatic full-suite selection occurs at milestones.
 - **Key Verification Suites**:
@@ -219,7 +219,7 @@ Select existing checks for the actual change. The following categories describe 
 | :---: | :--- | :--- | :--- |
 | **L1** | **Crate Behavior** | `python tools/verification/verify.py test rust crate <crate>` | Selected behavior and failure-mode assertions pass |
 | **L2** | **Production Integration** | `python tools/verification/verify.py test rust crate machine_loop` | Existing or extended fixtures protect the affected coordination |
-| **L3** | **CPU Vectors and Synthetic Contention** | `python tools/verification/verify.py test runner silicon` | Selected vectors pass state, clocks and timed bus comparisons; limits reported |
+| **L3** | **CPU Vectors and Synthetic Contention** | `python tools/verification/verify.py test runner singlestep` | Selected vectors pass state, clocks and timed bus comparisons; limits reported |
 | **L4** | **Whole-Machine Captures** | Unavailable; needs a future execution and comparison entry point | Hardware workload and expected capture comparison |
 | **Separate gate** | **Architecture and Quality** | Relevant `check` command; full profile before an authorized commit | Static constraints pass; source review remains necessary |
 
@@ -259,6 +259,6 @@ Select existing checks for the actual change. The following categories describe 
 
 - [General Architecture.md](../General%20Architecture.md): Amiga 500 system block diagram and crate dependencies.
 - [Machine Loop.md](../Machine%20Loop.md): Machine loop cycle stepping, reset sequencing, and interrupt arbitration.
-- [CPU SingleStepTests.md](CPU%20SingleStepTests.md): Verification against physical silicon instruction test vectors.
+- [CPU SingleStepTests.md](CPU%20SingleStepTests.md): Verification against software-generated instruction reference vectors.
 - [CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md): Host performance measurement framework and retained comparison baselines.
 - [Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md): Centralized master catalog of hardware idiosyncrasies and anti-tamper invariants.

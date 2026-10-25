@@ -83,4 +83,4 @@ Milestone completion requires `python tools/verification/verify.py milestone`, [
 
 - [General Architecture](Obsidian/Amiga/Design/General%20Architecture.md) routes to subsystem specifications under `Obsidian/Amiga/Design/`.
 - Hardware manuals and PRMs live under `Obsidian/Amiga/Reference/`.
-- Reference emulators and suites live under `ref_src/`; 68000 silicon vectors are under `ref_src/SingleStepTests-680x0/68000/v1`.
+- Reference emulators and suites live under `ref_src/`; software-generated 68000 SingleStep vectors are under `ref_src/SingleStepTests-680x0/68000/v1`.

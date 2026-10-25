@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-09-12
-updated: 2026-10-13
+updated: 2026-10-25
 related: ["[General Architecture.md](General%20Architecture.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[MemoryBus.md](MemoryBus.md)", "[Physical Memory.md](Physical%20Memory.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)"]
 ---
 
@@ -62,6 +62,6 @@ The [custom-register ownership matrix](Custom%20Chip%20Register%20Ownership%20an
 
 - [Motorola 68000 instruction prefetch](../Reference/Instruction%20Prefetch%20on%20the%20Motorola%2068000%20Processor.md): Bus ordering and prefetch context.
 - [Motorola 68000 Programmer's Reference Manual](../Reference/68000%20Programmer's%20Reference%20Manual): Documented instruction and exception semantics.
-- [SingleStepTests-680x0](../../../ref_src/SingleStepTests-680x0/68000/v1): Silicon-derived state and bus-cycle vectors; individual cases still require interpretation.
+- [SingleStepTests-680x0](../../../ref_src/SingleStepTests-680x0/68000/v1): Software-generated state and bus-cycle vectors; individual cases still require interpretation.
 - [Amiga Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md): Documents the hazards of opposite-direction and unused custom-register accesses.
 - [Amiga Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Defines early DMA reads and identifies `BLTDDAT` and `DSKDATR` as dummy addresses.

@@ -1,7 +1,7 @@
 //! SingleStepTests bus transaction deserialization and cycle-exact validation
 //!
 //! Compares recorded M68000 CPU bus transactions against silicon reference logs
-//! from Tom Harte SingleStepTests-680x0 physical hardware captures.
+//! from software-generated Tom Harte SingleStepTests-680x0 records.
 
 use serde::{Deserialize, Serialize};
 

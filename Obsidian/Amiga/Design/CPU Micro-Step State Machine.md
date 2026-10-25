@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-08
-updated: 2026-10-12
+updated: 2026-10-25
 related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU SingleStepTests.md](Verification/CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/cpu/src/micro"
@@ -149,6 +149,6 @@ guaranteed.
 
 - [Motorola User's Manual Section 5](../Reference/68000%20User's%20Manual/05%20-%20Section%205%20-%2016-Bit%20Bus%20Operations%20%28Read,%20Write,%20RMW%29.md): Physical bus-cycle context, distinct from emulator callbacks.
 - [Motorola User's Manual Section 8](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Aggregate clocks and transfer counts.
-- [CPU SingleStep verification](Verification/CPU%20SingleStepTests.md): Silicon-vector timing and callback comparisons with stated evidence limits.
+- [CPU SingleStep verification](Verification/CPU%20SingleStepTests.md): Generated-vector timing and callback comparisons with stated evidence limits.
 - [Descriptors](../../../crates/cpu/src/micro/types.rs), [micro-state](../../../crates/cpu/src/micro/engine.rs), and [stepping](../../../crates/cpu/src/cpu.rs): Living implementation of this model.
 - [Bus phase tests](../../../crates/cpu/tests/test_cck_bus.rs): Synthetic evidence for CCK transfers and waits.

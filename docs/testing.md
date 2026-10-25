@@ -16,7 +16,7 @@ wrong clock phase. Verification therefore uses several complementary approaches:
 | --- | --- |
 | Crate tests | Does an individual component behave as expected? |
 | Integration tests | Do the CPU, bus, machine loop and peripherals coordinate correctly? |
-| 68000 silicon vectors | Does an instruction match captured state, instruction clocks and the timed bus callback sequence? |
+| 68000 SingleStep vectors | Does an instruction match generated final state, instruction clocks and the timed bus callback sequence? |
 | CPU wait-state crate tests | Does the CPU retain and retry a refused transfer correctly? |
 | Whole-machine captures | Does a selected hardware program produce the expected visible result? |
 | Performance measurements | How much host time does an emulated workload consume? |
@@ -27,10 +27,10 @@ constraints. They do not establish hardware timing by themselves.
 ## CPU Accuracy and Bus Waiting
 
 The CPU harness uses Tom Harte's SingleStepTests, a large collection of instruction
-cases captured from physical 68000 hardware. Every executed vector compares
+cases generated using a software implementation. Every executed vector compares
 registers, instruction clocks and timed bus callbacks with its JSON reference.
 Sampling limits the number of inputs and never weakens those
-comparisons. SingleStep uses the silicon-vector format;
+comparisons. SingleStep uses the published JSON format;
 test names are descriptions and do not select how registers or bus data are
 interpreted. Internal delays advance the expected transaction timeline, so correct
 total clocks do not conceal an early or late read or write. Existing state masks
@@ -51,7 +51,7 @@ relationships need integration tests. Memory-placement and DMA-schedule
 permutation tests have been removed.
 
 For source and procedure details, start with [test_runner](../crates/test_runner/)
-and the [silicon verification skill](../.agents/skills/m68k-singlestep-test/SKILL.md).
+and the [SingleStep verification skill](../.agents/skills/m68k-singlestep-test/SKILL.md).
 
 ## Whole-Machine Behavior and Performance
 
@@ -80,7 +80,7 @@ python tools/verification/verify.py commit
 It runs standard tests and quality checks on the current working tree, including
 unchanged files where the check's scope requires them. Staging is not required,
 and the command does not create a commit. Ordinary task completion uses relevant
-focused checks. Full silicon verification runs automatically at
+focused checks. Full SingleStep verification runs automatically at
 milestone closure or explicitly for diagnosis; changes alone do not select it
 in the commit profile. CPU waiting tests run with ordinary crate tests. Use
 `python tools/verification/verify.py --help` for the available profiles and

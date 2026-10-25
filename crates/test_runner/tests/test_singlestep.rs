@@ -673,7 +673,7 @@ fn test_eori_to_sr() {
     run_test("EORItoSR", DEFAULT_SAMPLE_LIMIT);
 }
 
-// Both MOVEP reference files were previously absent from the silicon suite.
+// Both MOVEP reference files were previously absent from the SingleStep suite.
 fn test_movep_w() {
     run_test("MOVEP.w", DEFAULT_SAMPLE_LIMIT);
 }

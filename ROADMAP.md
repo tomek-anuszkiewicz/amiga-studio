@@ -56,6 +56,12 @@ Author reviewed book recipes once, then bootstrap Markdown and searchable assets
   - Try `cargo flamegraph` on headless execution; use the [external profiling workflow](.agents/skills/profile-external/SKILL.md) and `samply` when host constraints require it. Evaluate `cargo-profiler`/Callgrind/Cachegrind or `perf` as complementary tools and compare available hot-symbol results.
   - **Gate:** Record a working manual invocation, post-processing, baseline throughput, and available flamegraph output in `Obsidian/Amiga/Design/Performance/CPU Instruction Benchmarking.md`; document host/WASM limitations and a suitable alternative platform for unavailable tools.
 
+- **2.2: Verify MC68000 Opcode Legality and Correct the Dispatch Table (CPU-OPCODE-01)**
+  - Establish an independent, source-cited inventory of legal MC68000 primary opcode encodings and instruction-specific addressing restrictions from Motorola's [M68000 Family Programmer's Reference Manual](https://cache.nxp.com/docs/en/reference-manual/M68000PM.pdf) and [MC68000 User's Manual](https://www.nxp.com/docs/en/reference-manual/MC68000UM.pdf). Record the exact edition and supporting pages or tables; use assembler and silicon evidence to resolve disputed cases. The current dispatch table and CSV are comparison targets, not legality sources.
+  - Compare all 65,536 encodings with `build_opcode_descriptor_table()`, the legal-opcode CSV, and disassembler behavior. Reconcile every difference, including the six `CMPI.B/W/L` PC-relative encodings currently accepted by the CPU but rejected by the pinned assembler for MC68000. Distinguish legal instructions from unassigned encodings and A-line/F-line exceptions.
+  - Correct the dispatch builder and affected instruction decoders, disassembler behavior, tests, and opcode CSV from the verified inventory. Update benchmark coverage accounting so unsupported encodings do not appear as missing performance cases.
+  - **Gate:** A reproducible, source-attributed comparison classifies every primary opcode; the corrected dispatch table, disassembler, and CSV agree on MC68000 legality. Focused regressions cover each corrected family, including legal neighboring forms and the illegal-instruction path for the six PC-relative `CMPI` encodings.
+
 ## Step 3: HRM-Aligned Custom Chipset Reconstruction
 
 - **3.1: Verify Custom Register Paths and Physical Signal Routing**

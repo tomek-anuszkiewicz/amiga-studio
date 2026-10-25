@@ -14,7 +14,7 @@
 - Keep the regression protection after the fix; never delete or disable it merely to hide a failure. Rust test placement follows [unit-testing-policy.md](unit-testing-policy.md).
 - Do not nudge coordinates or timing to fit a test, hardcode one-artifact OCR substitutions, or special-case an opcode, address, or filename to mask a defect. Represent the actual condition in the state machine or data model.
 - Apply [spec-compliance.md](spec-compliance.md); never adjust goldens or timing offsets to manufacture a pass.
-- Use the focused reproduction procedure in [test-runner](../skills/test-runner/SKILL.md). For CPU silicon divergences, use [m68k-singlestep-test](../skills/m68k-singlestep-test/SKILL.md).
+- Use the focused reproduction procedure in [test-runner](../skills/test-runner/SKILL.md). For CPU vector divergences, use [m68k-singlestep-test](../skills/m68k-singlestep-test/SKILL.md).
 - Before completion, review the diff and identify the requirement or technical necessity behind each added behavior. Remove unrequested additions introduced by the current task; preserve pre-existing work. Verify cause and absence of duplicated definitions; requested refactors follow [clean-break-refactoring.md](clean-break-refactoring.md). Report delivered work, actual verification, and material unresolved findings.
 
 Ordinary defect completion requires relevant focused checks. Full commit and milestone profiles run only at their respective triggers in [AGENTS.md](../../AGENTS.md); report actual results and remaining gaps.

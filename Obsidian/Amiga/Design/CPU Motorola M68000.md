@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-13
+updated: 2026-10-25
 related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](Verification/CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Physical Memory.md](Physical%20Memory.md)", "[DMA.md](DMA.md)", "[Interrupts.md](Interrupts.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/cpu"
@@ -273,7 +273,7 @@ other ordering and fault cases that need special attention.
 ## Evidence and scope
 
 [SingleStepTests](Verification/CPU%20SingleStepTests.md) compare completed CPU
-state, instruction clocks and timed bus callbacks against silicon vectors.
+state, instruction clocks and timed bus callbacks against generated reference vectors.
 They constrain observable instruction behavior but run with a synthetic test
 bus; they do not exercise the production MemoryBus, CIA overlay, Agnus DMA
 arbitration or electrical pin levels. Machine and bus integration have their
@@ -290,4 +290,4 @@ unique internal CPU implementation.
 - [Amiga Hardware Reference Manual Chapter 7](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): ROM overlay, early startup and A500 interrupt levels.
 - [CPU implementation](../../../crates/cpu/src/cpu.rs) and [state](../../../crates/cpu/src/state.rs): Reset, stepping, interrupt input and modeled registers.
 - [Machine loop](../../../crates/machine_loop/src/machine_loop.rs) and [physical memory](../../../crates/physical_memory/src/physical_memory.rs): Reset routing, CCK coordination, contention and ROM overlay.
-- [Silicon verification contract](Verification/CPU%20SingleStepTests.md): Exact vector comparison and its observation limits.
+- [SingleStep verification contract](Verification/CPU%20SingleStepTests.md): Exact vector comparison and its observation limits.

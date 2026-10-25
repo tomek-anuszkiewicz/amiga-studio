@@ -46,8 +46,8 @@ can originate in a different component.
 Project specifications under
 [Obsidian/Amiga/Design](../Obsidian/Amiga/Design/General%20Architecture.md) describe
 subsystem responsibilities and timing contracts. Imported hardware manuals live
-under `Obsidian/Amiga/Reference/`, while reference emulator sources and silicon
-vectors live under `ref_src/`. Large external collections are provisioned
+under `Obsidian/Amiga/Reference/`, while reference emulator sources and generated
+instruction vectors live under `ref_src/`. Large external collections are provisioned
 separately and may be absent in a fresh checkout.
 
 These materials serve different purposes. A project specification states the

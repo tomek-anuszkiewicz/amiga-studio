@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Downloads, provisions, decompresses, and validates external reference sources:
-    1. Tom Harte SingleStepTests 68000 physical silicon test vectors (ref_src/SingleStepTests-680x0).
+    1. Tom Harte SingleStepTests 68000 software-generated test vectors (ref_src/SingleStepTests-680x0).
     2. Keir Fraser Amiga Test Kit diagnostic floppy disk ADF (tools/AmigaTestKit/AmigaTestKit.adf).
     3. Dirk W. Hoffmann vAmiga C++ reference emulator sources (ref_src/vAmiga).
     4. Dirk W. Hoffmann vAmigaTS chipset regression test suites (ref_src/vAmigaTS).
@@ -19,7 +19,7 @@
     Displays catalog of reference test sources, pinned versions, URLs, and local status.
 
 .PARAMETER SingleStep
-    Provisions only Tom Harte SingleStepTests 68000 silicon vectors.
+    Provisions only Tom Harte SingleStepTests 68000 reference vectors.
 
 .PARAMETER AmigaTestKit
     Provisions only Amiga Test Kit diagnostic floppy disk (ADF).
@@ -83,7 +83,7 @@ if (-not (Test-Path (Join-Path $RepoRoot "Cargo.toml"))) {
 $SourcesCatalog = @(
     @{
         Id          = "singlestep"
-        Name        = "Tom Harte SingleStepTests (68000 Silicon Vectors)"
+        Name        = "Tom Harte SingleStepTests (68000 Reference Vectors)"
         TargetDir   = Join-Path $RepoRoot "ref_src\SingleStepTests-680x0"
         Version     = "Format v1 (68000/v1/)"
         Url         = "https://github.com/SingleStepTests/680x0/archive/refs/heads/main.zip"

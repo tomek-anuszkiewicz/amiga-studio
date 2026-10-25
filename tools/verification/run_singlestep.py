@@ -1,4 +1,4 @@
-"""Build and launch the aggregate silicon test; Rust finalizes its own reports."""
+"""Build and launch the aggregate SingleStep test; Rust finalizes its own reports."""
 import argparse
 import json
 import os
