@@ -3,8 +3,7 @@
   "target_primary_opcode": "4C9F",
   "initial_registers": {
     "d7": 2097152,
-    "ssp": 2097152,
-    "d0": 324508639
+    "ssp": 2097152
   },
   "memory_regions": [],
   "instructions_per_loop": 4

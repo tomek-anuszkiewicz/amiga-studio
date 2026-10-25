@@ -1,0 +1,19 @@
+{
+  "origin": 2097152,
+  "platform_bus": true,
+  "target_primary_opcode": "4AD4",
+  "instructions_per_loop": 4,
+  "initial_registers": {
+    "d6": 324508639,
+    "a4": 3145728
+  },
+  "memory_regions": [
+    {
+      "address": 3145728,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [13671]
+      }
+    }
+  ]
+}

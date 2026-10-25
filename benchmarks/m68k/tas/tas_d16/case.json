@@ -1,0 +1,20 @@
+{
+  "origin": 2097152,
+  "instructions_per_loop": 4,
+  "memory_regions": [
+    {
+      "address": 3145742,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          13671
+        ]
+      }
+    }
+  ],
+  "target_primary_opcode": "4AE9",
+  "initial_registers": {
+    "d6": 324508639,
+    "a1": 3145728
+  }
+}

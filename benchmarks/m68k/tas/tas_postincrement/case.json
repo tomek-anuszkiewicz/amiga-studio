@@ -1,0 +1,19 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4ADE",
+  "instructions_per_loop": 4,
+  "initial_registers": {
+    "d6": 324508639,
+    "a6": 2097152
+  },
+  "memory_regions": [
+    {
+      "label": "operand_data",
+      "address": 2097152,
+      "fill": {
+        "kind": "random_words",
+        "count": 50000
+      }
+    }
+  ]
+}

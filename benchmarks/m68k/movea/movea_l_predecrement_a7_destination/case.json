@@ -2,6 +2,7 @@
   "origin": 2097152,
   "target_primary_opcode": "2E66",
   "initial_registers": {
+    "a6": 2497152,
     "d7": 10821632,
     "ssp": 10821632
   },

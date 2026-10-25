@@ -6,16 +6,12 @@ restore_supervisor:
 entry:
     rept {{instruction_count}}
     eori.w #$2000,sr
-    move.l d7,d0
     move.w #$2700,sr
     eori.w #$2000,sr
-    move.l d7,d0
     move.w #$2700,sr
     eori.w #$2000,sr
-    move.l d7,d0
     move.w #$2700,sr
     eori.w #$2000,sr
-    move.l d7,d0
     move.w #$2700,sr
     endr
     dc.b "M68K_END_MARKER!"

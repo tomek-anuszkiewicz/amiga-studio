@@ -1,0 +1,21 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4AF5",
+  "instructions_per_loop": 4,
+  "initial_registers": {
+    "d2": 22,
+    "d6": 324508639,
+    "a5": 3145728
+  },
+  "memory_regions": [
+    {
+      "address": 3145764,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          13671
+        ]
+      }
+    }
+  ]
+}

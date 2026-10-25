@@ -44,7 +44,7 @@ The transaction comparison checks each successful read or write for direction, a
 
 Reviewed corrections for exact reference records are listed in the [SingleStep override catalog](../../../../crates/test_runner/tests/overrides/singlestep/README.md). The upstream JSON files remain intact, and reports identify executed overrides separately.
 
-Random generation leaves some execution paths uncovered. In particular, the supplied `DIVU` and `DIVS` cases never produce a zero quotient; [ordinary CPU regressions](../../../../crates/cpu/tests/test_div_zero_quotient.rs) check that result and its timed prefetch separately.
+Random generation leaves some execution paths uncovered. The supplied [`DBcc.json`](../../../../ref_src/SingleStepTests-680x0/68000/v1/DBcc.json) includes 12-clock condition-true cases, but no case starts with a zero low counter word, so it cannot exercise the 14-clock counter-expired path. [Motorola User's Manual, Table 8-9](../../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md) specifies its duration and three reads; a [focused CPU test](../../../../crates/cpu/tests/test_dbcc.rs) checks the speculative branch-target read, fallthrough prefetch, and wait-state timing. The supplied `DIVU` and `DIVS` cases never produce a zero quotient; [ordinary CPU regressions](../../../../crates/cpu/tests/test_div_zero_quotient.rs) check that result and its timed prefetch separately.
 
 ## 2. Timing and observation boundary
 

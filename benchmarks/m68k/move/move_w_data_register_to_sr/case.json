@@ -3,8 +3,7 @@
   "target_primary_opcode": "46C2",
   "initial_registers": {
     "d2": 9984,
-    "d7": 9984,
-    "d0": 324508639
+    "d7": 9984
   },
   "memory_regions": [],
   "instructions_per_loop": 4,

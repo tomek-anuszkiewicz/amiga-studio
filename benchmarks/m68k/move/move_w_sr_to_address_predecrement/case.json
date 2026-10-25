@@ -3,10 +3,9 @@
   "target_primary_opcode": "40E2",
   "initial_registers": {
     "a2": 2297152,
-    "d7": 10005,
     "d0": 324508639
   },
   "memory_regions": [],
   "instructions_per_loop": 4,
-  "initial_sr": 10005
+  "initial_sr": 10000
 }

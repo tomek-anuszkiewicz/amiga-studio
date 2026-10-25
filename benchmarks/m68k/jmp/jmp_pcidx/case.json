@@ -1,0 +1,10 @@
+{
+  "origin": 2097152,
+  "instructions_per_loop": 4,
+  "memory_regions": [],
+  "target_primary_opcode": "4EFB",
+  "initial_registers": {
+    "d2": 0,
+    "d6": 324508639
+  }
+}

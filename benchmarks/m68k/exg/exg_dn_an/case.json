@@ -1,0 +1,11 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "C78C",
+  "instructions_per_loop": 4,
+  "initial_registers": {
+    "d3": 324508639,
+    "a4": 3146752,
+    "d6": 610839776
+  },
+  "memory_regions": []
+}

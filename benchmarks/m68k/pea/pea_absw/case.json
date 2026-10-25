@@ -1,0 +1,11 @@
+{
+  "origin": 2097152,
+  "instructions_per_loop": 4,
+  "memory_regions": [],
+  "target_primary_opcode": "4878",
+  "initial_registers": {
+    "d6": 324508639,
+    "ssp": 6291452
+  },
+  "stack_reserve_bytes": 409600
+}

@@ -5324,3 +5324,18 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: cargo fmt, Clippy, architecture, ordinary crate and harness tests, vault links and frontmatter
   - FAIL: commit verification Book Review contracts with five UI timeouts and two missing local math assets
   - full SingleStep and hardware capture checks not run
+---
+
+### [2026-10-25 21:00 CET] — Commit remaining hand-written M68000 benchmark catalog
+- **Affected Subsystems**:
+  - `benchmarks/m68k`
+  - `.agents/skills/add-m68k-benchmark`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Commit the remaining staged benchmark cases and revisions across instruction families
+  - retain the staged benchmark authoring guidance and CPU reference notes
+- **Architectural Rationale & Trade-Offs**:
+  - Publish the already prepared catalog work requested by the user
+- **Verification & Test Results**:
+  - Not run: tests and verification were explicitly waived by the user for this commit
+  - the staged catalog was not remeasured in this turn

@@ -1,0 +1,19 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4E73",
+  "instructions_per_loop": 4,
+  "initial_registers": {
+    "d6": 324508639,
+    "ssp": 5691456
+  },
+  "memory_regions": [
+    {
+      "address": 5691456,
+      "fill": {
+        "kind": "return_frames",
+        "status_word": 9984
+      }
+    }
+  ],
+  "stack_reserve_bytes": 600000
+}

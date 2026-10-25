@@ -1,0 +1,11 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "C54F",
+  "instructions_per_loop": 4,
+  "initial_registers": {
+    "a2": 3146240,
+    "d6": 610839776,
+    "ssp": 3146752
+  },
+  "memory_regions": []
+}

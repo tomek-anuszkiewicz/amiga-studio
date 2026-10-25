@@ -30,6 +30,7 @@ Instruction semantics are checked against the [SingleStep contract](Verification
 | Case | Ordering or fault effect | Detail |
 | :--- | :--- | :--- |
 | Memory read-modify-write | Prefetch can read the next instruction word before the operand write. Reversing the order changes self-modifying code. | [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md) |
+| `DBcc` counter expiry | With a false condition and `Dn.w = 0`, the CPU decrements the counter to `$FFFF`, reads the branch target speculatively, then refills from the fallthrough address. The path takes 14 CPU clocks and three reads. | The supplied SingleStep `DBcc.json` covers the 12-clock condition-true path but omits counter expiry. See [Motorola User's Manual, Table 8-9](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md), the [SingleStep coverage limit](Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification), and the [focused CPU test](../../../crates/cpu/tests/test_dbcc.rs). |
 | Dual-memory address error | A faulting source read in `CMPM` or predecrement `ADDX` enters Vector 3 before the destination address register advances. | [CMPM](../../../crates/cpu/src/instructions/cmpm.rs) and [ADDX](../../../crates/cpu/src/instructions/addx.rs) sequences |
 | `(An)+` address error | A faulting word/long read retains the postincrement; a faulting write does not increment the register. | [CPU instruction sequences](../../../crates/cpu/src/instructions) |
 | `MOVE` to `-(An)` | Prefetch precedes the store. Long stores write the low word first; a rejected transfer preserves only address updates already reached. | [Long MOVE sequence](../../../crates/cpu/src/instructions/move_l.rs) |
@@ -62,6 +63,7 @@ The [custom-register ownership matrix](Custom%20Chip%20Register%20Ownership%20an
 
 - [Motorola 68000 instruction prefetch](../Reference/Instruction%20Prefetch%20on%20the%20Motorola%2068000%20Processor.md): Bus ordering and prefetch context.
 - [Motorola 68000 Programmer's Reference Manual](../Reference/68000%20Programmer's%20Reference%20Manual): Documented instruction and exception semantics.
+- [Motorola 68000 User's Manual, Table 8-9](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Distinguishes the 10-, 12-, and 14-clock `DBcc` paths and their read counts.
 - [SingleStepTests-680x0](../../../ref_src/SingleStepTests-680x0/68000/v1): Software-generated state and bus-cycle vectors; individual cases still require interpretation.
 - [Amiga Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md): Documents the hazards of opposite-direction and unused custom-register accesses.
 - [Amiga Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Defines early DMA reads and identifies `BLTDDAT` and `DSKDATR` as dummy addresses.

@@ -1,0 +1,21 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4E70",
+  "instructions_per_loop": 4,
+  "initial_sr": 0,
+  "stack_reserve_bytes": 1024,
+  "initial_registers": {
+    "d6": 324508639,
+    "ssp": 6291452,
+    "usp": 5242880
+  },
+  "memory_regions": [
+    {
+      "vector": "privilege_violation",
+      "fill": {
+        "kind": "label_address",
+        "label": "privilege_handler"
+      }
+    }
+  ]
+}

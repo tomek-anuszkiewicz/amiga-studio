@@ -5,8 +5,7 @@
   "initial_registers": {
     "d7": 5242880,
     "ssp": 5242880,
-    "usp": 4194304,
-    "d0": 324508639
+    "usp": 4194304
   },
   "memory_regions": [],
   "instructions_per_loop": 4

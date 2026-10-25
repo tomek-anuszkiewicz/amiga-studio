@@ -1,0 +1,19 @@
+{
+  "origin": 2097152,
+  "instructions_per_loop": 4,
+  "memory_regions": [
+    {
+      "label": "operand_data",
+      "address": 2097152,
+      "fill": {
+        "kind": "random_words",
+        "count": 50000
+      }
+    }
+  ],
+  "target_primary_opcode": "4AE5",
+  "initial_registers": {
+    "d6": 324508639,
+    "a5": 2197152
+  }
+}

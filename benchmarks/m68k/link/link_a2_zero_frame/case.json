@@ -1,0 +1,12 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4E52",
+  "instructions_per_loop": 4,
+  "initial_registers": {
+    "d6": 324508639,
+    "ssp": 6291452,
+    "a2": 3146752
+  },
+  "memory_regions": [],
+  "stack_reserve_bytes": 409600
+}

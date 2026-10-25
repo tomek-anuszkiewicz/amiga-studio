@@ -4,8 +4,7 @@
   "initial_registers": {
     "d6": 0,
     "a1": 5242874,
-    "d7": 9984,
-    "d0": 324508639
+    "d7": 9984
   },
   "memory_regions": [
     {

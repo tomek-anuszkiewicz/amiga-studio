@@ -4,7 +4,6 @@
   "target_primary_opcode": "0A7C",
   "initial_sr": 9984,
   "initial_registers": {
-    "d7": 324508639,
     "ssp": 6291452,
     "usp": 5242880
   },

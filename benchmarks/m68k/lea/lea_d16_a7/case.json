@@ -1,0 +1,11 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4FEB",
+  "instructions_per_loop": 4,
+  "initial_registers": {
+    "a3": 3146240,
+    "d6": 324508639,
+    "ssp": 3146752
+  },
+  "memory_regions": []
+}

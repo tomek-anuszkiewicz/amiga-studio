@@ -3,8 +3,7 @@
   "target_primary_opcode": "46D1",
   "initial_registers": {
     "a1": 5242880,
-    "d7": 9984,
-    "d0": 324508639
+    "d7": 9984
   },
   "memory_regions": [
     {

@@ -1,0 +1,23 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4E5C",
+  "instructions_per_loop": 4,
+  "initial_registers": {
+    "d6": 324508639,
+    "ssp": 6287364,
+    "a4": 6287360
+  },
+  "memory_regions": [
+    {
+      "address": 6287360,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          95,
+          61440
+        ]
+      }
+    }
+  ],
+  "stack_reserve_bytes": 4096
+}

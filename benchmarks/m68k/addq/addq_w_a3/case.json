@@ -3,8 +3,7 @@
   "target_primary_opcode": "5A4B",
   "initial_registers": {
     "a3": 2097152,
-    "d7": 2097152,
-    "d0": 324508639
+    "d7": 2097152
   },
   "memory_regions": [],
   "instructions_per_loop": 4
