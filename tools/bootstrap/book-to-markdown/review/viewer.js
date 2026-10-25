@@ -20,6 +20,8 @@ const typeButton = document.getElementById("menu-type");
 const typeMenu = document.getElementById("type-menu");
 const roleButton = document.getElementById("menu-role");
 const roleMenu = document.getElementById("role-menu");
+const rotateButton = document.getElementById("menu-rotate");
+const rotateMenu = document.getElementById("rotate-menu");
 const markdownDialog = document.getElementById("markdown-dialog");
 const markdownText = document.getElementById("markdown-text");
 const markdownSecond = document.getElementById("markdown-second");
@@ -36,6 +38,7 @@ function closeMenu(restoreFocus=false) {
   headingMenu.hidden=true; headingButton.setAttribute("aria-expanded","false");
   typeMenu.hidden=true; typeButton.setAttribute("aria-expanded","false");
   roleMenu.hidden=true; roleButton.setAttribute("aria-expanded","false");
+  rotateMenu.hidden=true; rotateButton.setAttribute("aria-expanded","false");
   if(restoreFocus && wasOpen && menuReturnFocus?.isConnected) menuReturnFocus.focus({preventScroll:true});
 }
 function openMenu(x,y) {
@@ -128,6 +131,8 @@ function openMenu(x,y) {
   mergeGraphicsButton.disabled=!editable || !next || next.type !== "graphic" ||
     !!next.md_text || !element.pdf_regions.length || !next.pdf_regions.length ||
     [...element.pdf_regions,...next.pdf_regions].some(region=>region.page !== element.pdf_regions[0].page);
+  rotateButton.hidden=!element || element.type !== "graphic" || !element.asset;
+  rotateButton.disabled=!editable;
   const mergeTablesButton=document.getElementById("menu-merge-tables");
   mergeTablesButton.hidden=!element || element.type !== "table";
   mergeTablesButton.disabled=!editable;
@@ -161,12 +166,13 @@ elementMenu.addEventListener("keydown",event=>{
     const next=event.key === "Home" ? 0 : event.key === "End" ? buttons.length-1 :
       (index+(event.key === "ArrowDown" ? 1 : -1)+buttons.length)%buttons.length;
     buttons[next]?.focus();
-  } else if(event.key === "ArrowRight" && [headingButton,typeButton,roleButton].includes(document.activeElement)) {
-    const button=document.activeElement, menu=button === headingButton ? headingMenu : button === typeButton ? typeMenu : roleMenu;
+  } else if(event.key === "ArrowRight" && [headingButton,typeButton,roleButton,rotateButton].includes(document.activeElement)) {
+    const button=document.activeElement;
+    const menu=button === headingButton ? headingMenu : button === typeButton ? typeMenu : button === roleButton ? roleMenu : rotateMenu;
     event.preventDefault();if(menu.hidden)button.click();menu.querySelector("button:not(:disabled)")?.focus();
-  } else if(event.key === "ArrowLeft" && [headingMenu,typeMenu,roleMenu].some(menu=>menu.contains(document.activeElement))) {
-    const menu=headingMenu.contains(document.activeElement) ? headingMenu : typeMenu.contains(document.activeElement) ? typeMenu : roleMenu;
-    const button=menu === headingMenu ? headingButton : menu === typeMenu ? typeButton : roleButton;
+  } else if(event.key === "ArrowLeft" && [headingMenu,typeMenu,roleMenu,rotateMenu].some(menu=>menu.contains(document.activeElement))) {
+    const menu=headingMenu.contains(document.activeElement) ? headingMenu : typeMenu.contains(document.activeElement) ? typeMenu : roleMenu.contains(document.activeElement) ? roleMenu : rotateMenu;
+    const button=menu === headingMenu ? headingButton : menu === typeMenu ? typeButton : menu === roleMenu ? roleButton : rotateButton;
     event.preventDefault();menu.hidden=true;button.setAttribute("aria-expanded","false");button.focus();
   } else if(event.key === "Tab") closeMenu();
 });
@@ -200,6 +206,7 @@ discardElementButton.onclick=async()=>{
   catch(error){await refresh();showError(error.message);}
 };
 headingButton.onclick=()=>{
+  rotateMenu.hidden=true;rotateButton.setAttribute("aria-expanded","false");
   roleMenu.hidden=true;roleButton.setAttribute("aria-expanded","false");
   typeMenu.hidden=true;typeButton.setAttribute("aria-expanded","false");
   headingMenu.hidden=!headingMenu.hidden;headingButton.setAttribute("aria-expanded",String(!headingMenu.hidden));
@@ -207,6 +214,7 @@ headingButton.onclick=()=>{
   elementMenu.style.top=`${Math.max(8,Math.min(rect.top,innerHeight-rect.height-8))}px`;
 };
 typeButton.onclick=()=>{
+  rotateMenu.hidden=true;rotateButton.setAttribute("aria-expanded","false");
   roleMenu.hidden=true;roleButton.setAttribute("aria-expanded","false");
   headingMenu.hidden=true;headingButton.setAttribute("aria-expanded","false");
   typeMenu.hidden=!typeMenu.hidden;typeButton.setAttribute("aria-expanded",String(!typeMenu.hidden));
@@ -214,11 +222,26 @@ typeButton.onclick=()=>{
   elementMenu.style.top=`${Math.max(8,Math.min(rect.top,innerHeight-rect.height-8))}px`;
 };
 roleButton.onclick=()=>{
+  rotateMenu.hidden=true;rotateButton.setAttribute("aria-expanded","false");
   headingMenu.hidden=true;headingButton.setAttribute("aria-expanded","false");
   typeMenu.hidden=true;typeButton.setAttribute("aria-expanded","false");
   roleMenu.hidden=!roleMenu.hidden;roleButton.setAttribute("aria-expanded",String(!roleMenu.hidden));
   const rect=elementMenu.getBoundingClientRect();
   elementMenu.style.top=`${Math.max(8,Math.min(rect.top,innerHeight-rect.height-8))}px`;
+};
+rotateButton.onclick=()=>{
+  headingMenu.hidden=true;headingButton.setAttribute("aria-expanded","false");
+  typeMenu.hidden=true;typeButton.setAttribute("aria-expanded","false");
+  roleMenu.hidden=true;roleButton.setAttribute("aria-expanded","false");
+  rotateMenu.hidden=!rotateMenu.hidden;rotateButton.setAttribute("aria-expanded",String(!rotateMenu.hidden));
+  const rect=elementMenu.getBoundingClientRect();
+  elementMenu.style.top=`${Math.max(8,Math.min(rect.top,innerHeight-rect.height-8))}px`;
+};
+for(const button of rotateMenu.children)button.onclick=async()=>{
+  const command={id:menuCommand.id,expected_revision:menuCommand.expected_revision,direction:button.dataset.direction};
+  closeMenu(true);
+  try{await post("/api/rotate-graphic",command);await refresh();}
+  catch(error){await refresh();showError(error.message);}
 };
 for(let level=1;level<=6;level++) {
   const button=document.createElement("button");button.type="button";button.dataset.level=level;
@@ -709,8 +732,7 @@ function position(pane, logical, fallback = true) {
   if(Math.abs(panes[pane].scrollTop-target)>.5) {suppressed.set(pane,target);panes[pane].scrollTop=target;}
   return {id:entry.id,progress,order:logical.order};
 }
-function sync(pane) {
-  const logical=anchor(pane);
+function sync(pane, logical=anchor(pane)) {
   if(pane===leader)lastLogical=logical;
   for(const follower of Object.keys(panes)) if(follower!==pane) position(follower,logical);
   scheduleLocations();
@@ -738,7 +760,8 @@ function showError(message) {
 }
 function editMarkdown(element,split,next=null) {
   splitting=split;merging=!!next;activeText=markdownText;
-  markdownText.value=(element.resolved_md_text ?? element.md_text)+(next ? `\n${next.resolved_md_text ?? next.md_text}` : "");markdownSecond.value="";
+  const editorText=item=>state.editor_html?.[item.id] ?? item.resolved_md_text ?? item.md_text;
+  markdownText.value=editorText(element)+(next ? `\n${editorText(next)}` : "");markdownSecond.value="";
   document.getElementById("markdown-title").textContent=merging ? "Merge with next" : split ? "Split section" : "Edit Markdown";
   document.getElementById("markdown-id").textContent=merging ? `${element.id} + ${next.id}` : element.id;
   document.getElementById("markdown-help").textContent=merging ?
@@ -797,15 +820,15 @@ async function refresh() {
         [...elementIndex(value[version]).values()].map(({element:e})=>
           [e.id,e.visible!==false,e.pdf_regions,e.type,e.heading_level,e.role]))];
       const pdfChanged=!state || JSON.stringify(pdfView(state))!==JSON.stringify(pdfView(next));
-      let prepared = [];
+      let prepared = [], logical = null;
       if(changed) {
+        logical=state ? anchor(leader) : null;
         document.getElementById("accept").disabled=true;
         document.getElementById("discard").disabled=true;
         document.getElementById("status").textContent="Loading HTML presentation…";
         try {
           // Prepare changed views before publishing a complete revision.
           for(const version of versions)prepared.push({version,...await buildMarkdown(version,next[version])});
-          const logical=state ? anchor(leader) : null;
           publishing=true;
           state=next;
           for(const item of prepared) {
@@ -830,12 +853,6 @@ async function refresh() {
           }
           highlight();
           if(!pdfPageRestored)restorePdfPage();
-          if(logical) {
-            const restored=position(leader,logical) || logical;
-            lastLogical=restored;
-            for(const follower of Object.keys(panes)) if(follower!==leader)position(follower,restored);
-          }
-          else lastLogical=anchor(leader);
         } finally {publishing=false;for(const item of prepared) item.stage.remove();}
         const chapter=document.getElementById("chapter"), old=chapter.value;chapter.replaceChildren(new Option("Choose…",""));
         const known=new Set();
@@ -852,6 +869,18 @@ async function refresh() {
       const status=document.getElementById("status");status.classList.toggle("error",Boolean(state.error));
       status.textContent=state.error || (state.pending ? "Rendering pending…" : `${state.changes.length} ${state.changes.length===1 ? "change" : "changes"}`);
       closeMenu();highlight();
+      if(changed) {
+        publishing=true;
+        try {
+          await new Promise(resolve=>requestAnimationFrame(resolve));
+          if(logical) {
+            const restored=position(leader,logical) || logical;
+            lastLogical=restored;
+            for(const follower of Object.keys(panes)) if(follower!==leader)position(follower,restored);
+          }
+          else lastLogical=anchor(leader);
+        } finally {publishing=false;}
+      }
     }
   } catch(error) {showError(error.message);} finally {loading=false;scheduleLocations();}
 }
@@ -877,13 +906,13 @@ document.getElementById("chapter").addEventListener("change",event=>{
 function updateChangeNavigation() {
   const changes=state?.changes || [];
   changeIndex=changes.findIndex(change=>change.id===selected);
-  document.getElementById("previous").disabled=!changes.length;
-  document.getElementById("next").disabled=!changes.length;
+  document.getElementById("previous").disabled=!changes.length || changeIndex<=0;
+  document.getElementById("next").disabled=!changes.length || changeIndex===changes.length-1;
 }
 function nextChange(delta) {
   if(!state?.changes.length)return;
   const index=changeIndex<0 ? (delta<0 ? state.changes.length-1 : 0) :
-    (changeIndex+delta+state.changes.length)%state.changes.length;
+    Math.max(0,Math.min(state.changes.length-1,changeIndex+delta));
   navigate(state.changes[index].id);
 }
 document.getElementById("previous").onclick=()=>nextChange(-1);
@@ -927,6 +956,10 @@ function openCodex(scope,id=null) {
   document.getElementById("codex-preset-section").hidden=scope !== "working";
   document.getElementById("codex-format-section").hidden=scope !== "element";
   document.getElementById("codex-format-mode").value="preserve";
+  document.getElementById("codex-allow-reorder").checked=false;
+  document.getElementById("codex-allow-additions").checked=false;
+  document.getElementById("codex-allowed-additions").value="";
+  document.getElementById("codex-additions-section").hidden=true;
   updateCodexFormatGuidance();
   preset.value="";preset.disabled=false;
   document.getElementById("codex-title").textContent=scope === "working" ? "Codex Working" : "Codex on element";
@@ -934,7 +967,7 @@ function openCodex(scope,id=null) {
     (id ? `Starting at ${id}; the whole Working book is available.` : "The whole Working book is available.") : id;
   document.getElementById("codex-help").textContent=scope === "working" ?
     "Codex can request more book context and edit Working. Accepted and PDF sources remain read-only." :
-    "Changes are applied to Working after checking that words, numbers and substantive symbols are preserved. Dashes, commas, periods and spaces may change.";
+    "Changes are applied to Working after checking that original content is preserved and only listed additions are added. Dashes, commas, periods and spaces may change.";
   document.getElementById("codex-instruction").value=scope === "working" && state.codex_agent?.state === "running" ?
     state.codex_agent.instruction : "";
   document.getElementById("codex-error").hidden=true;
@@ -991,13 +1024,32 @@ document.getElementById("codex-instruction").oninput=event=>{
 };
 function updateCodexFormatGuidance() {
   const mode=document.getElementById("codex-format-mode").value;
-  document.getElementById("codex-format-guidance").value=state?.codex_format_guidance?.[mode] || "";
+  const reorder=document.getElementById("codex-allow-reorder").checked;
+  const additions=document.getElementById("codex-allow-additions").checked;
+  const items=document.getElementById("codex-allowed-additions").value.split(";").map(item=>item.trim()).filter(Boolean);
+  document.getElementById("codex-format-guidance").value=
+    `${state?.codex_format_guidance?.[mode] || ""}\n\n${state?.codex_order_guidance?.[String(reorder)] || ""}\n\n${additions ?
+      `You may add only the following explicitly permitted content: ${items.join("; ")}. You may repeat listed content where the user instruction requires it. Preserve all original content. Do not add any other words, numbers or substantive symbols.` :
+      "Do not add new words, numbers or substantive symbols."}`.trim();
 }
 document.getElementById("codex-format-mode").onchange=updateCodexFormatGuidance;
+document.getElementById("codex-allow-reorder").onchange=updateCodexFormatGuidance;
+document.getElementById("codex-allow-additions").onchange=event=>{
+  document.getElementById("codex-additions-section").hidden=!event.target.checked;
+  updateCodexFormatGuidance();
+};
+document.getElementById("codex-allowed-additions").oninput=updateCodexFormatGuidance;
 document.getElementById("run-codex").onclick=async()=>{
   if(codexRunning)return;
   const field=document.getElementById("codex-instruction"), error=document.getElementById("codex-error");
   if(!field.value.trim()){error.textContent="Enter a Codex instruction.";error.hidden=false;field.focus();return;}
+  const allowAdditions=document.getElementById("codex-allow-additions").checked;
+  const additionsField=document.getElementById("codex-allowed-additions");
+  const allowedAdditions=additionsField.value.split(";").map(item=>item.trim());
+  if(codexScope === "element" && allowAdditions && allowedAdditions.some(item=>!item)){
+    error.textContent="List each permitted addition, separated by semicolons.";
+    error.hidden=false;additionsField.focus();return;
+  }
   const button=document.getElementById("run-codex"), cancel=document.getElementById("cancel-codex"), progress=document.getElementById("codex-status");
   codexAutoCloseJob=null;codexAutoClosePending=codexScope === "working";
   codexRunning=true;button.disabled=true;cancel.disabled=codexScope === "element";field.disabled=true;
@@ -1006,7 +1058,10 @@ document.getElementById("run-codex").onclick=async()=>{
   try {
     const result=await post(codexScope === "working" ? "/api/codex-agent" : "/api/codex",
       {...codexCommand,instruction:field.value,...(codexScope === "element" ?
-        {format_mode:document.getElementById("codex-format-mode").value} : {})});
+        {format_mode:document.getElementById("codex-format-mode").value,
+         allow_reorder:document.getElementById("codex-allow-reorder").checked,
+         allow_additions:allowAdditions,
+         allowed_additions:allowAdditions ? allowedAdditions : []} : {})});
     if(codexAutoClosePending)codexAutoCloseJob=result.id;
     codexAutoClosePending=false;
     if(codexScope === "element")codexDialog.close();
@@ -1030,8 +1085,8 @@ const resizeObserver=new ResizeObserver(entries=>{
   requestAnimationFrame(()=>{
     positionTypeLabels();
     const logical=lastLogical || anchor(leader);
-    if(logical)position(leader,logical);
-    sync(leader);resizing=false;
+    const restored=logical && position(leader,logical) || logical;
+    sync(leader,restored);resizing=false;
   });
 });
 for(const pane of Object.values(panes))resizeObserver.observe(pane);

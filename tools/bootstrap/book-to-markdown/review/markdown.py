@@ -95,10 +95,16 @@ class _HTMLTableColumns(HTMLParser):
         self.cell_counts = []
         self.width = None
         self.cell_count = None
+        self.first_row_has_header = False
+        self.first_row_end = None
+        self.header_section_end = None
+        self.has_body = False
 
     def handle_starttag(self, tag, attrs):
         if tag == 'table':
             self.depth += 1
+        elif self.depth == 1 and tag == 'tbody':
+            self.has_body = True
         elif self.depth == 1 and tag == 'tr':
             self.width = 0
             self.cell_count = 0
@@ -108,11 +114,17 @@ class _HTMLTableColumns(HTMLParser):
                 raise ValueError('Table column spans must be positive')
             self.width += span
             self.cell_count += 1
+            if tag == 'th' and not self.widths:
+                self.first_row_has_header = True
 
     def handle_endtag(self, tag):
         if tag == 'table':
             self.depth -= 1
+        elif self.depth == 1 and tag == 'thead':
+            self.header_section_end = self.getpos()
         elif self.depth == 1 and tag == 'tr' and self.width is not None:
+            if not self.widths:
+                self.first_row_end = self.getpos()
             self.widths.append(self.width)
             self.cell_counts.append(self.cell_count)
             self.width = None
@@ -120,21 +132,40 @@ class _HTMLTableColumns(HTMLParser):
 
 
 def html_table_structure(text):
-    """Locate rows inside one HTML table and count first-row cell groups."""
-    opening = re.match(r'\s*<table\b[^>]*>\s*(?:<tbody\b[^>]*>\s*)?', text, re.I)
+    """Locate data rows inside one HTML table and count first-row cell groups."""
+    opening = re.match(r'\s*<table\b[^>]*>\s*', text, re.I)
     if not opening:
         raise ValueError('Expected a single HTML table')
-    has_body = bool(re.search(r'<tbody\b', opening[0], re.I))
     closing = re.search(r'(?:</tbody>\s*)?</table>\s*$', text, re.I)
-    if not closing or (has_body and not re.match(r'</tbody>', closing[0], re.I)):
+    if not closing:
         raise ValueError('Expected a single HTML table')
     rows = text[opening.end():closing.start()]
     parser = _HTMLTableColumns()
     parser.feed(text)
     parser.close()
+    if parser.has_body and not re.match(r'</tbody>', closing[0], re.I):
+        raise ValueError('Expected a single HTML table')
     if parser.depth or not parser.widths or not any(parser.widths):
         raise ValueError('Expected a single HTML table with rows')
-    return parser.cell_counts[0], opening.end(), closing.start()
+    body_start = opening.end()
+    lines = text.splitlines(keepends=True)
+
+    def after_tag(position, tag):
+        line, column = position
+        offset = sum(map(len, lines[:line - 1])) + column
+        match = re.match(rf'</{tag}>\s*', text[offset:], re.I)
+        if not match:
+            raise ValueError(f'Expected an HTML {tag} closing tag')
+        return offset + match.end()
+
+    if parser.header_section_end is not None:
+        body_start = after_tag(parser.header_section_end, 'thead')
+    body = re.match(r'<tbody\b[^>]*>\s*', text[body_start:], re.I)
+    if body:
+        body_start += body.end()
+    if parser.header_section_end is None and parser.first_row_has_header:
+        body_start = after_tag(parser.first_row_end, 'tr')
+    return parser.cell_counts[0], body_start, closing.start()
 
 
 TABLE_TAG = re.compile(r'</?(?:table|thead|tbody|tfoot|tr|th|td)\b[^>]*>', re.I)

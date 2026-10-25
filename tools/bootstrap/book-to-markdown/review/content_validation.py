@@ -1,6 +1,7 @@
 """Compare authored content across Markdown, HTML and CSV representations."""
 
 import csv
+from collections import Counter
 from difflib import SequenceMatcher
 from html.parser import HTMLParser
 import io
@@ -14,20 +15,6 @@ EDITABLE_PUNCTUATION = frozenset(',.\u002d\u2010\u2011\u2012\u2013\u2014')
 
 def significant_tokens(tokens):
     return [token for token in tokens if token not in EDITABLE_PUNCTUATION]
-
-
-def significant_table(table):
-    rows = [[{**cell, 'text': significant_tokens(cell['text'])} for cell in row]
-            for row in table]
-    if not rows or len({len(row) for row in rows}) != 1 or len(rows[0]) < 2:
-        return rows
-    decorative_columns = {index for index in range(len(rows[0]))
-                          if all(not row[index]['text'] and row[index]['rowspan'] == 1
-                                 and row[index]['colspan'] == 1 for row in rows)}
-    if len(decorative_columns) == len(rows[0]):
-        return rows
-    return [[cell for index, cell in enumerate(row) if index not in decorative_columns]
-            for row in rows]
 
 
 def text_tokens(text):
@@ -89,9 +76,10 @@ class ContentHTML(HTMLParser):
             if cell['rowspan'] < 1 or cell['colspan'] < 1:
                 raise ValueError('Table spans must be positive')
             self.table_stack[-1]['cell'] = cell
-        elif tag == 'br':
+        elif tag in {'br', 'p', 'div', 'li', 'pre', 'blockquote'}:
             self.append(' ')
-        elif tag not in {'thead', 'tbody', 'tfoot', 'caption', 'p', 'div', 'span',
+        elif tag not in {'thead', 'tbody', 'tfoot', 'caption', 'colgroup', 'col',
+                         'p', 'div', 'span',
                          'strong', 'b', 'em', 'i', 'u', 's', 'sub', 'sup', 'code',
                          'pre', 'ul', 'ol', 'li', 'blockquote', 'a', 'hr'}:
             # PDF placeholders such as <ea> are visible source content.
@@ -125,7 +113,8 @@ class ContentHTML(HTMLParser):
                 self.tables.append(table['rows'])
         elif tag in {'p', 'div', 'li', 'pre', 'blockquote'}:
             self.append(' ')
-        elif tag not in {'thead', 'tbody', 'tfoot', 'caption', 'strong', 'b', 'em',
+        elif tag not in {'thead', 'tbody', 'tfoot', 'caption', 'colgroup', 'col',
+                         'strong', 'b', 'em',
                          'i', 'u', 's', 'sub', 'sup', 'code', 'ul', 'ol', 'a',
                          'span', 'td', 'th', 'tr', 'table'}:
             self.append(f'</{tag}>')
@@ -231,19 +220,32 @@ def markdown_math_literals(text):
     return tuple(dict.fromkeys(collect(PARSER.parse(text))))
 
 
-def validate_content(before, after, before_format='markdown', after_format='markdown'):
+def validate_content(before, after, before_format='markdown', after_format='markdown', *,
+                     allow_reorder=False, allowed_additions=()):
+    permitted = {token for item in allowed_additions
+                 for token in significant_tokens(text_tokens(item))}
+
+    def matches(source_tokens, target_tokens):
+        source_counts, target_counts = Counter(source_tokens), Counter(target_tokens)
+        if source_counts - target_counts or set(target_counts - source_counts) - permitted:
+            return False
+        if allow_reorder:
+            return True
+        source_iter = iter(target_tokens)
+        return all(any(candidate == token for candidate in source_iter) for token in source_tokens)
+
     source = content_snapshot(before, before_format)
     target = content_snapshot(after, after_format, reject_raw_math=after_format == 'html')
     source['text'] = significant_tokens(source['text'])
     target['text'] = significant_tokens(target['text'])
-    if source['text'] != target['text'] and before_format == 'markdown' and after_format == 'html':
+    if not matches(source['text'], target['text']) and before_format == 'markdown' and after_format == 'html':
         math_literals = markdown_math_literals(before)
         if math_literals:
             # Markdown removes math delimiters, while the HTML parser sees
             # them as text. Normalize only expressions present in the source.
             math_target = content_snapshot(after, after_format, math_literals=math_literals)
             math_target['text'] = significant_tokens(math_target['text'])
-            if source['text'] == math_target['text']:
+            if matches(source['text'], math_target['text']):
                 target = math_target
             else:
                 # Math subscripts may also move from LaTeX to HTML.
@@ -252,37 +254,32 @@ def validate_content(before, after, before_format='markdown', after_format='mark
                                                math_literals=math_literals)
                 math_source['text'] = significant_tokens(math_source['text'])
                 math_target['text'] = significant_tokens(math_target['text'])
-                if math_source['text'] == math_target['text']:
+                if matches(math_source['text'], math_target['text']):
                     source, target = math_source, math_target
-        if source['text'] != target['text']:
+        if not matches(source['text'], target['text']):
             math_source = content_snapshot(before, before_format, math_formatting=True)
             math_target = content_snapshot(after, after_format, math_overlines=True,
                                            math_subscripts=True, reject_raw_math=True)
             math_source['text'] = significant_tokens(math_source['text'])
             math_target['text'] = significant_tokens(math_target['text'])
-            if math_source['text'] == math_target['text']:
+            if matches(math_source['text'], math_target['text']):
                 source, target = math_source, math_target
-    if source['text'] != target['text'] and before_format == after_format == 'html':
+    if not matches(source['text'], target['text']) and before_format == after_format == 'html':
         math_source = content_snapshot(before, before_format, math_source=True)
         math_target = content_snapshot(after, after_format, math_overlines=True,
                                        math_subscripts=True, reject_raw_math=True)
         math_source['text'] = significant_tokens(math_source['text'])
         math_target['text'] = significant_tokens(math_target['text'])
-        if math_source['text'] == math_target['text']:
+        if matches(math_source['text'], math_target['text']):
             source, target = math_source, math_target
-    if source['text'] != target['text']:
+    if not matches(source['text'], target['text']):
+        if allow_reorder:
+            missing = list((Counter(source['text']) - Counter(target['text'])).elements())
+            added = list((Counter(target['text']) - Counter(source['text'])).elements())
+            raise ValueError('Codex changed content: missing ' + repr(' '.join(missing)[:180])
+                             + ', added ' + repr(' '.join(added)[:180]))
         for operation, a, b, c, d in SequenceMatcher(None, source['text'], target['text'], autojunk=False).get_opcodes():
             if operation != 'equal':
                 raise ValueError('Codex changed content: expected ' + repr(' '.join(source['text'][a:b])[:180])
                                  + ', received ' + repr(' '.join(target['text'][c:d])[:180]))
-    source_tables = source['tables']
-    if source_tables != target['tables'] and before_format == 'markdown' and after_format == 'html':
-        # A blank Markdown header is required syntax, not a source legend row.
-        source_tables = [table[1:] if table and all(not cell['text'] for cell in table[0]) else table
-                         for table in source_tables]
-    if [significant_table(table) for table in source_tables] != [significant_table(table) for table in target['tables']]:
-        # OCR text has no authored cell layout. Its text must still match exactly;
-        # newly inferred layout can be reviewed by the user.
-        if source['tables'] or not target['tables']:
-            raise ValueError('Codex changed table cells, their order or row/column spans')
     return {'valid': True, 'text_tokens': len(source['text']), 'tables': len(target['tables'])}

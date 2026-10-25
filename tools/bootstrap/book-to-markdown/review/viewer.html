@@ -32,6 +32,12 @@
 <button id="menu-duplicate" role="menuitem">Duplicate element</button>
 <button id="menu-merge" role="menuitem">Merge with next...</button>
   <button id="menu-merge-graphics" role="menuitem">Merge graphics with next</button>
+<button id="menu-rotate" role="menuitem" aria-haspopup="menu" aria-expanded="false">Rotate image &#9656;</button>
+<div id="rotate-menu" role="menu" aria-label="Image rotation" hidden>
+<button data-direction="clockwise" role="menuitem">90° clockwise</button>
+<button data-direction="counterclockwise" role="menuitem">90° counterclockwise</button>
+<button data-direction="half_turn" role="menuitem">180°</button>
+</div>
 <button id="menu-merge-tables" role="menuitem">Merge tables</button>
 <button id="menu-move-up" role="menuitem">Move up</button>
 <button id="menu-move-down" role="menuitem">Move down</button>
@@ -65,9 +71,13 @@
 <div id="codex-format-section"><label for="codex-format-mode">Format rule</label>
 <select id="codex-format-mode"><option value="preserve">Keep current format</option>
 <option value="allow_change">Allow format change</option></select>
+<label class="codex-order-option"><input id="codex-allow-reorder" type="checkbox"> Allow text reordering</label>
+<label class="codex-order-option"><input id="codex-allow-additions" type="checkbox"> Allow listed additions</label>
+<label id="codex-additions-section" for="codex-allowed-additions" hidden>Permitted additions (separate items with semicolons)
+<input id="codex-allowed-additions" type="text" placeholder="x; y" autocomplete="off" spellcheck="false"></label>
 <label for="codex-format-guidance">Additional instruction sent to Codex</label>
 <textarea id="codex-format-guidance" readonly spellcheck="false"></textarea></div>
-<p id="codex-help">Changes are applied to Working after checking that words, numbers and substantive symbols are preserved. Dashes, commas, periods and spaces may change.</p>
+<p id="codex-help">Changes are applied to Working after checking that original content is preserved and only listed additions are added. Dashes, commas, periods and spaces may change.</p>
 <p id="codex-status" role="status" hidden></p>
 <p id="codex-error" role="alert" hidden></p>
 <div class="dialog-actions"><button type="button" id="stop-codex-agent" hidden>Stop task</button><button id="cancel-codex" value="cancel">Close</button><button type="button" id="run-codex">Run Codex</button></div>

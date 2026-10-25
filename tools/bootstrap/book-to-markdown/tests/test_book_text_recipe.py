@@ -8,6 +8,8 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown'))
 from review.text_recipe import compile_template, compile_region_template, compile_markdown_template, edit_template, slice_template, preserve_bold, resolve_template
+
+
 from review.markdown import callout_plugin
 from review.model import InputCache, element_markdown, export_markdown, import_book, load_input, set_heading_level, toc_markdown, write_json
 from review.service import replace_accepted
@@ -15,6 +17,16 @@ from review.service import ReviewState
 from review.render import Renderer
 from markdown_it import MarkdownIt
 import pymupdf
+
+
+class ReorderedReferenceTests(unittest.TestCase):
+    def test_reordered_text_keeps_source_references(self):
+        pages = {1: [{'block_id': 0, 'text': 'One'}, {'block_id': 1, 'text': 'Two'}]}
+        template = '{{text page=1 block=0 chars=0:3}} {{text page=1 block=1 chars=0:3}}'
+        result = edit_template(template, pages, 'Two One', allow_reorder=True)
+        self.assertEqual(resolve_template(result, pages), 'Two One')
+        self.assertIn('{{text page=1 block=1 chars=0:3}}', result)
+        self.assertIn('{{text page=1 block=0 chars=0:3}}', result)
 from common.pdf_geometry import text_blocks
 
 

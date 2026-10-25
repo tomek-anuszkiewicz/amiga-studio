@@ -1,10 +1,12 @@
 """Coalescing render queue, local HTTP/SSE and complete-bundle acceptance."""
 
 from copy import deepcopy
+from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import mimetypes
 from pathlib import Path
+import re
 import shutil
 import sys
 import threading
@@ -24,6 +26,13 @@ def log(message):
     """Console encoding must not turn a recoverable render error into a dead queue."""
     encoding = sys.stdout.encoding or "utf-8"
     print(message.encode(encoding, errors="backslashreplace").decode(encoding), flush=True)
+
+
+def is_html_table(element):
+    text = element.get('md_text', '')
+    return (element.get('type') == 'table' and isinstance(text, str)
+            and re.search(r'<table\b', text, re.I) is not None
+            and re.search(r'</table\s*>', text, re.I) is not None)
 
 
 def read_snapshot(directory):
@@ -64,22 +73,27 @@ def replace_bundle(root, snapshot, source_name, target_name, expected_working):
         source_assets = source / "renders" / revision / "assets"
         if source_assets.exists():
             shutil.copytree(source_assets, prepared / "assets")
-        if target_name == "working":
-            # Existing clients may still be loading an older immutable Working view.
-            for old in (target / "renders").iterdir():
-                if old.is_dir() and not (prepared / "renders" / old.name).exists():
-                    shutil.copytree(old, prepared / "renders" / old.name)
         if load_input(source)[2] != snapshot["input_fingerprint"]:
             raise ValueError("Source changed during bundle preparation; reload and retry")
         if load_input(root / "working")[2] != expected_working:
             raise ValueError("Working changed during bundle preparation; reload and retry")
         if backup.exists():
             raise RuntimeError("Previous bundle recovery is required before replacement")
-        if target.exists():
-            target.rename(backup)
+        moved_renders = []
         try:
+            if target.exists():
+                target.rename(backup)
+            if target_name == "working" and backup.exists():
+                # Keep old immutable URLs without duplicating every prior render.
+                for old in (backup / "renders").iterdir():
+                    destination = prepared / "renders" / old.name
+                    if old.is_dir() and not destination.exists():
+                        old.rename(destination)
+                        moved_renders.append((destination, old))
             prepared.rename(target)
         except BaseException:
+            for destination, old in reversed(moved_renders):
+                destination.rename(old)
             if backup.exists():
                 backup.rename(target)
             raise
@@ -130,7 +144,7 @@ class ReviewState:
         self.condition.notify_all()
 
     def status(self):
-        from .codex_edit import FORMAT_GUIDANCE
+        from .codex_edit import FORMAT_GUIDANCE, ORDER_GUIDANCE
         with self.lock:
             try:
                 authored = self.input_cache.load(self.root / "working")[2]
@@ -144,7 +158,16 @@ class ReviewState:
                                     if e["id"] in accepted_elements
                                     and authored_element(e) != accepted_elements[e["id"]]] if self.working else []
             agent_running = bool(self.codex_agent and self.codex_agent['state'] == 'running')
+            editor_html = {}
+            if self.working:
+                for element in elements(self.working):
+                    if is_html_table(element):
+                        text = element.get('resolved_md_text', element['md_text'])
+                        formatted = format_html_table(text)
+                        if formatted != text:
+                            editor_html[element['id']] = formatted
             return {"sequence": self.sequence, "working": self.working, "accepted": self.accepted,
+                    "editor_html": editor_html,
                     "authored_revision": authored, "pending": self.pending or not current,
                     "error": input_error or self.error,
                     "can_accept": current and not self.pending and not self.error and not agent_running,
@@ -154,7 +177,8 @@ class ReviewState:
                     "changes": diff, "pdf_pages": self.pdf_pages, "heading_types": sorted(HEADING_TYPES),
                     "editable_types": EDITABLE_TYPES, "protected_types": PROTECTED_TYPES,
                     "roles": ELEMENT_ROLES, "codex_agent": deepcopy(self.codex_agent),
-                    "codex_format_guidance": FORMAT_GUIDANCE}
+                    "codex_format_guidance": FORMAT_GUIDANCE,
+                    "codex_order_guidance": ORDER_GUIDANCE}
 
     def render_loop(self):
         renderer = None
@@ -220,6 +244,15 @@ class ReviewState:
             if fingerprint != expected_revision:
                 raise ValueError("Stale edit command; reload the latest authored revision")
             update(book)
+            original_elements = {element['id']: element for element in elements(original)}
+            for element in elements(book):
+                previous = original_elements.get(element['id'])
+                if (is_html_table(element) and (previous is None or
+                        element['md_text'] != previous.get('md_text') or
+                        element.get('text_format', element.get('table_format')) !=
+                        previous.get('text_format', previous.get('table_format')))):
+                    formatted = format_html_table(element.get('resolved_md_text', element['md_text']))
+                    edit_markdown(self.root, element, formatted)
             self.input_cache.load(self.root / "working", book)
             if self.input_cache.load(self.root / "working")[2] != fingerprint:
                 raise ValueError("Working changed before save; retry the command")
@@ -300,7 +333,10 @@ class ReviewState:
             element = next((e for e in elements(book) if e['id'] == command['id']), None)
             if element is None:
                 raise ValueError('Element no longer exists')
-            edit_markdown(self.root, element, command['text'])
+            text = format_html_table(command['text']) if (is_html_table(element) and
+                   isinstance(command['text'], str) and re.search(r'<table\b', command['text'], re.I)
+                   and re.search(r'</table\s*>', command['text'], re.I)) else command['text']
+            edit_markdown(self.root, element, text)
         self.mutate(command['expected_revision'], update)
 
     def codex(self, command):
@@ -424,8 +460,15 @@ class ReviewState:
             chapter, element = ordered[index]
             destination, neighbor = ordered[target]
             chapter['elements'].remove(element)
-            position = destination['elements'].index(neighbor)
-            destination['elements'].insert(position + (offset == 1), element)
+            if chapter is destination:
+                position = destination['elements'].index(neighbor)
+                destination['elements'].insert(position + (offset == 1), element)
+            elif offset < 0:
+                destination['elements'].append(element)
+            else:
+                destination['elements'].insert(0, element)
+            if not chapter['elements']:
+                book['chapters'].remove(chapter)
         self.mutate(command['expected_revision'], update)
 
     def merge_tables(self, command):
@@ -549,6 +592,43 @@ class ReviewState:
                     entries[index][1]['asset'] = asset_name
                     owner['elements'].remove(target)
 
+                self.mutate(revision, update)
+            except BaseException:
+                if created:
+                    asset.unlink(missing_ok=True)
+                raise
+
+    def rotate_graphic(self, command):
+        rotations = {'clockwise': Image.Transpose.ROTATE_270,
+                     'counterclockwise': Image.Transpose.ROTATE_90,
+                     'half_turn': Image.Transpose.ROTATE_180}
+        if command.get('direction') not in rotations:
+            raise ValueError('Unsupported image rotation')
+        with self.lock:
+            book, _, revision = self.input_cache.load(self.root / 'working')
+            if revision != command['expected_revision']:
+                raise ValueError('Stale edit command; reload the latest authored revision')
+            element = next((e for e in elements(book) if e['id'] == command['id']), None)
+            if element is None or element['type'] != 'graphic' or not element.get('asset'):
+                raise ValueError('Element is not an image')
+            source = confined(self.root / 'working', element['asset'])
+            with Image.open(source) as image:
+                rotated = image.transpose(rotations[command['direction']])
+                output = BytesIO()
+                rotated.save(output, format='PNG')
+            data = output.getvalue()
+            asset_name = f"assets/rotated-{element['id']}-{digest(data)[:12]}.png"
+            asset = self.root / 'working' / asset_name
+            created = not asset.exists()
+            if not created and asset.read_bytes() != data:
+                raise ValueError('Existing rotated image does not match its content')
+            try:
+                if created:
+                    asset.parent.mkdir(parents=True, exist_ok=True)
+                    asset.write_bytes(data)
+                def update(current):
+                    target = next(e for e in elements(current) if e['id'] == command['id'])
+                    target['asset'] = asset_name
                 self.mutate(revision, update)
             except BaseException:
                 if created:
@@ -715,6 +795,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.state.merge(command)
             elif self.path == "/api/merge-graphics":
                 self.state.merge_graphics(command)
+            elif self.path == "/api/rotate-graphic":
+                self.state.rotate_graphic(command)
             elif self.path == "/api/move":
                 self.state.move(command)
             elif self.path == "/api/merge-tables":

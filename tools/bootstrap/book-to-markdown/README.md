@@ -27,6 +27,42 @@ store PDF text references in `book.json`; loading,
 rendering and acceptance resolve them against Stage 02 positioned text. Automatic
 source acquisition and reconstruction directly from a PDF remain pending.
 
+## Book authoring sequence
+
+1. Prepare the selected PDF pages through Stage 07 with
+   [PDF-to-Markdown](../pdf-to-markdown/README.md). Check the preparation status
+   before importing the book.
+2. Import once to create the local Working book, then review it in the editor.
+   Arrange chapters and elements, correct source bindings and text, and inspect
+   the generated Markdown against the PDF. Import replaces both Working and
+   Accepted, so do not rerun it to continue an existing review.
+3. Audit source references with the [read-only validator](#source-validation).
+4. Find ordinary book text left in `working/book.json`, including text mixed
+   with references. Search the extracted text on the element's PDF page and
+   nearby pages; try a distinctive phrase without trailing punctuation when
+   an exact search misses it. Verify the match against the PDF and select its
+   actual Stage 02 page, block and character range before replacing the text
+   with a `{{text ...}}` reference. For example, the literal `LINE DRAW:` in
+   Test Book element `page_0093_seg_001` matches page 92, block 0, not the
+   element's page 93 binding. Retain an explicit authored correction when the
+   source characters cannot produce the intended text. Check repeated matches
+   for correct attribution; formatting syntax and intentional corrections may
+   remain literal.
+5. Add and review descriptions of tables, images and ASCII art as specified in
+   [Roadmap 1.2](../../../ROADMAP.md#step-1-manual-conversion-and-initial-knowledge-base).
+   The current [table](prompts/describe-tables.md) and
+   [image](prompts/describe-images.md) prompts support manual agent authoring;
+   automatic generation and insertion are pending.
+6. Proofread completed chapters against the PDF using the
+   [proofreading prompt](prompts/proofreading.md). Preserve source wording,
+   structural choices and accepted descriptions; record justified corrections
+   in the authored recipe, then repeat the source-reference audit.
+7. Review the final Working render and Markdown exports, accept the intended
+   changes, and record the reviewed recipe and matching source identity as
+   described in Roadmap 1.4. The local Accepted bundle is not a published recipe.
+8. Reconstruct and test retrieval through Roadmap 1.5 and 1.6 after those
+   commands exist. These steps do not repeat model authoring.
+
 ## Source catalog and variant layout
 
 The [bootstrap instructions](../AGENTS.md#preparing-the-book-source-collection)
@@ -274,6 +310,14 @@ the validated change. Failures appear in the dialog and leave Working unchanged.
 **Keep current format** is the default for this command. Choose **Allow format
 change** when the edit requires another representation, such as a headerless
 table in HTML. The dialog shows the additional instruction sent with the task.
+Select **Allow text reordering** when the edit must correct the order of existing
+content, such as a reversed table column. This option is off for each new
+command. It permits rearrangement while still checking every word, number and
+substantive symbol with its original number of occurrences.
+Select **Allow listed additions** to enter new content separated by semicolons.
+For example, `x` permits adding `x` markers wherever the requested edit needs them;
+`x; y` permits both markers. Original content still has to be preserved. This option and its list
+reset for each new command.
 The server enforces the selected mode and checks table markup as well as its
 declared format. HTML output must convert Markdown math notation in cells to
 equivalent HTML; unrendered math commands are rejected. The Codex Working task
@@ -291,24 +335,25 @@ model, not with the PDF text layer. Existing literals are part of this trusted
 baseline and are not grounds for rejection.
 
 Compare content after interpreting the explicitly selected input and output
-formats, rather than comparing raw Markdown, HTML or CSV bytes. Preserve all
-words, numbers, other symbols, case, repetitions and their order. Dashes,
+formats, rather than comparing raw Markdown, HTML or CSV bytes. Preserve all original
+words, numbers, other symbols, case and repetitions. Permit only the explicitly
+listed additions. Preserve original order unless
+**Allow text reordering** is selected. Dashes,
 commas, periods and spacing may change. Formatting and representation changes
-must not join or split words. Table conversions must preserve substantive cell
-content and row/column association, including spans; a column made entirely of
-editable punctuation may be removed. A bag of words or flattened character count is
-insufficient. Reject additions, omissions or changes before replacing Working,
+must not join or split words. Table conversions may change rows, cells and spans
+while preserving all content. Without reordering permission, keep its reading
+order. With permission, compare token counts rather than a flattened character
+count. Reject unlisted additions, omissions or changes before
+replacing Working,
 report the differences, and require the input revision to remain current.
 Manual editor changes are outside this automated-content guard.
 
 Supported text representations are Markdown, HTML, CSV and plain text. CSV tables
-are displayed/exported as CSV code blocks. HTML/Markdown table cell content,
-order and row/column spans must remain identical after ignoring editable punctuation
-and columns made entirely of it. CSV cannot represent merged
-cells, so conversions that discard existing spans are rejected. The guard retains
-math expression syntax rather than claiming equivalence between different formulas.
-Nested HTML tables are compared within their parent cells, including their rows,
-cells and spans; layout-only edits to them remain possible.
+are displayed/exported as CSV code blocks. Table rows, cells and spans may change,
+including when converting merged HTML cells to CSV. The guard retains math
+expression syntax rather than claiming equivalence between different formulas.
+Nested HTML table layout may also change while its text follows the selected
+order rule.
 
 Table-to-graphic uses a crop of the original PDF region, retaining the authored
 text in `md_text`. Multiple regions are stacked in their existing order. On a
@@ -419,6 +464,9 @@ text, or the whole section when nothing is selected. The same controls are
 available during raw Markdown editing. **Save** writes Working; **Cancel** leaves
 it unchanged. Edited heading hashes update the heading type and level; removing
 the heading prefix converts that element to prose.
+Existing HTML tables are indented when opened for editing. Saving an edited HTML
+table, including a Codex result, stores that indentation in `book.json` as escaped
+newlines while leaving cell content and source references intact.
 
 **Split** opens the Markdown source. Place the cursor at the boundary or select
 the opening text, then choose **Split at cursor / after selection**. The dialog
@@ -455,6 +503,8 @@ table's data rows are appended. HTML tables require the same number of cells in
 their first row; a cell with `colspan` counts as one group, so later rows may
 subdivide it. The
 first table's wrapper is retained and the second table's rows are appended. The
+second HTML table's header is omitted, whether marked with `<thead>` or a first
+row of `<th>` cells. A table without a header keeps all its rows. The
 new HTML is indented by table section, row and cell; cell content is unchanged.
 The first element keeps its ID, chapter and visibility; PDF regions from both
 elements are retained. Malformed tables, surrounding text and incompatible
@@ -469,10 +519,16 @@ stored text; the second must have no stored text. Both regions and the combined
 image belong to the first Working element, and the second element is removed.
 Accepted remains available for review.
 
+**Rotate image** in a graphic element's menu offers 90° clockwise, 90°
+counterclockwise and 180°. Each action rotates the current Working image and
+updates its Markdown asset. The original source image and Accepted remain
+available for comparison. Repeated actions rotate the current Working image.
+
 **Move up** and **Move down** immediately move the selected Working element one
-position in authored book order, including hidden elements. At a chapter boundary,
-the element moves into the neighboring chapter, before or after its neighboring
-element. Text, visibility, IDs and PDF source regions remain unchanged. The
+position within its chapter, including hidden elements. At a chapter boundary,
+the first element moves to the end of the preceding chapter, or the last element
+moves to the beginning of the following chapter. An emptied chapter is removed.
+Text, visibility, IDs and PDF source regions remain unchanged. The
 corresponding action is disabled at the beginning or end of the book. Use
 **Discard Changes** to restore the Accepted order.
 

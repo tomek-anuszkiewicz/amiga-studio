@@ -12,7 +12,7 @@ import uuid
 from PIL import Image
 import yaml
 
-from .content_validation import validate_content
+from .content_validation import significant_tokens, text_tokens, validate_content
 from .markdown import PARSER
 from .model import HEADING_TYPES, digest, elements, write_json
 from .text_recipe import (REFERENCE, compile_region_template, edit_template,
@@ -30,11 +30,18 @@ FORMAT_GUIDANCE = {
                      'every table cell to equivalent HTML: use <strong>, <em>, <sub>, <sup>, <br> and '
                      '<span style="text-decoration: overline">...</span> as appropriate. '
                      'Do not leave Markdown math delimiters, LaTeX commands or Markdown emphasis '
-                     'markers as literal cell text. Preserve each word and substantive symbol. '
-                     'A column containing only dashes, commas, periods or spaces may be removed. '
-                     'Preserve the remaining rows, cells and spans. '
+                     'markers as literal cell text. Preserve each original word and substantive symbol. '
+                     'You may restructure table rows and cells, including splitting, merging and changing spans. '
                      'If a notation cannot be converted without changing meaning, return an error.')
 }
+ORDER_GUIDANCE = {
+    False: 'Keep all words, numbers and substantive symbols in their original reading order.',
+    True: ('You may reorder the existing words, numbers and substantive symbols when the '
+           'user instruction requires it. Preserve each original item, its case and its number of occurrences.'),
+}
+ADDITION_GUIDANCE = ('You may add only the following explicitly permitted content: {items}. '
+                     'You may repeat listed content where the user instruction requires it. Preserve all original content. '
+                     'Do not add any other words, numbers or substantive symbols.')
 
 
 class HTMLTableDetector(HTMLParser):
@@ -101,7 +108,8 @@ def pdf_crop(root, regions):
     return data.getvalue()
 
 
-def replacement(root, original, response, format_mode='preserve'):
+def replacement(root, original, response, format_mode='preserve', allow_reorder=False,
+                allowed_additions=()):
     if not isinstance(response, dict):
         raise ValueError('Codex must return one JSON object')
     if set(response) == {'error'}:
@@ -126,7 +134,9 @@ def replacement(root, original, response, format_mode='preserve'):
             raise ValueError('Codex returned an HTML table declared as Markdown')
         if response['format'] == 'html' and not html_table:
             raise ValueError('Codex declared an HTML table without HTML table markup')
-    validation = validate_content(original['resolved_md_text'], response['text'], before_format, response['format'])
+    validation = validate_content(original['resolved_md_text'], response['text'], before_format,
+                                  response['format'], allow_reorder=allow_reorder,
+                                  allowed_additions=allowed_additions)
     if response['type'] in HEADING_TYPES:
         level = response.get('heading_level')
         if type(level) is not int or not 1 <= level <= 6:
@@ -138,7 +148,8 @@ def replacement(root, original, response, format_mode='preserve'):
               for page in pages}
     candidate = deepcopy(original)
     candidate.update(type=response['type'], text_format=response['format'],
-                     md_text=edit_template(original['md_text'], blocks, response['text']),
+                     md_text=edit_template(original['md_text'], blocks, response['text'],
+                                           allow_reorder=allow_reorder),
                      resolved_md_text=response['text'])
     candidate.pop('asset', None)
     candidate.pop('heading_level', None)
@@ -160,6 +171,22 @@ def run_command(state, command, *, client_factory=None):
     format_mode = command.get('format_mode', 'preserve')
     if format_mode not in FORMAT_GUIDANCE:
         raise ValueError('Choose a supported Codex format mode')
+    allow_reorder = command.get('allow_reorder', False)
+    if type(allow_reorder) is not bool:
+        raise ValueError('Codex text reordering permission must be a boolean')
+    allow_additions = command.get('allow_additions', False)
+    if type(allow_additions) is not bool:
+        raise ValueError('Codex content addition permission must be a boolean')
+    allowed_additions = command.get('allowed_additions', [])
+    if not isinstance(allowed_additions, list) or any(
+            not isinstance(item, str) or not item.strip() or ';' in item or len(item) > 200
+            for item in allowed_additions) or len(allowed_additions) > 50:
+        raise ValueError('List permitted additions separated by semicolons')
+    allowed_additions = [item.strip() for item in allowed_additions]
+    if allow_additions != bool(allowed_additions):
+        raise ValueError('Enable additions and list the permitted content')
+    if any(not significant_tokens(text_tokens(item)) for item in allowed_additions):
+        raise ValueError('Each permitted addition must contain a word, number or substantive symbol')
     with state.lock:
         book, _, revision = state.input_cache.load(state.root / 'working')
         if revision != command['expected_revision']:
@@ -175,11 +202,17 @@ def run_command(state, command, *, client_factory=None):
         crop = pdf_crop(state.root, original['pdf_regions'])
     job = REPOSITORY / '.agent/tmp/book-codex' / uuid.uuid4().hex
     job.mkdir(parents=True)
-    request = {'instruction': instruction.strip(), 'format_mode': format_mode, 'element': original,
+    request = {'instruction': instruction.strip(), 'format_mode': format_mode,
+               'allow_reorder': allow_reorder, 'allowed_additions': allowed_additions,
+               'element': original,
                'chapter': chapter_context, 'allowed_types': ELEMENT_TYPES}
     write_json(job / 'request.json', {'revision': revision, **request})
     prompt = ((PROGRAM / 'prompts/codex-edit.md').read_text(encoding='utf-8') +
               '\n\nFORMAT RULE:\n' + FORMAT_GUIDANCE[format_mode] +
+              '\n\nTEXT ORDER RULE:\n' + ORDER_GUIDANCE[allow_reorder] +
+              '\n\nADDITION RULE:\n' +
+              (ADDITION_GUIDANCE.format(items='; '.join(allowed_additions)) if allow_additions else
+               'Do not add new words, numbers or substantive symbols.') +
               '\n\nREQUEST JSON:\n' + json.dumps(request, ensure_ascii=False))
     images = None
     if crop is not None:
@@ -190,14 +223,16 @@ def run_command(state, command, *, client_factory=None):
     try:
         def validate(response):
             write_json(job / 'response.json', response)
-            checked, _ = replacement(state.root, original, response, format_mode)
+            checked, _ = replacement(state.root, original, response, format_mode, allow_reorder,
+                                     allowed_additions)
             if checked['type'] == 'graphic' and crop is None:
                 raise ValueError('A graphic requires an original PDF region')
 
         config = yaml.safe_load((PROGRAM / 'config.yaml').read_text(encoding='utf-8'))
         with client_factory(config, stage='book_codex_edit', operation='book.codex_edit') as client:
             response = client.generate_json(prompt, image_path=images, validator=validate)
-        candidate, report = replacement(state.root, original, response, format_mode)
+        candidate, report = replacement(state.root, original, response, format_mode, allow_reorder,
+                                        allowed_additions)
         write_json(job / 'validation.json', report)
         asset = None
         if candidate['type'] == 'graphic':

@@ -5137,7 +5137,9 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - no Design specification matched the changed paths
 ---
 
-### [2026-10-24 19:47 CET] — Checkpoint: Book review editor work in progress
+### [2026-10-24 19:47 CET] — Milestone Digest: Test Book editor review
+- **Timestamp & Context**:
+  - 2026-10-23 through 2026-10-25, Roadmap 1.1 editor review and user-directed closure
 - **Affected Subsystems**:
   - `Book-to-Markdown review editor`
   - `PDF table conversion`
@@ -5149,8 +5151,33 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Updated Test Book workflow guidance and roadmap
   - Matched HTML table merge groups across colspan subdivisions
 - **Architectural Rationale & Trade-Offs**:
-  - Preserve the current editor work as one checkpoint while Test Book review and acceptance remain unfinished
-  - retain source provenance and explicit span structure.
+  - Keep authoring changes in Working until accepted, preserve source references and explicit table spans, and leave generated bundles local
+  - The user completed the Test Book presentation review; descriptions, proofreading, portable recipe publication, and reconstruction remain separate roadmap work
 - **Verification & Test Results**:
   - Focused HTML table merge tests passed, including a copy of the page 71 to 73 recipe
-  - review server responded after restart. verify.py commit failed: English audit found 27 unknown word occurrences, PDF conversion contracts had one KeyError for missing blocks, and book review contracts had four navigation and scroll failures. Ordinary crate tests, coverage report, formatting, Clippy, architecture, hardware and code quality checks, standard harness tests, bootstrap and shared conversion contracts, RAG MCP contracts, and verification CLI contracts passed. Milestone verification was not run because the roadmap point remains open.
+  - At the 2026-10-24 checkpoint, review server responded after restart. verify.py commit failed: English audit found 27 unknown word occurrences, PDF conversion contracts had one KeyError for missing blocks, and book review contracts had four navigation and scroll failures. Ordinary crate tests, coverage report, formatting, Clippy, architecture, hardware and code quality checks, standard harness tests, bootstrap and shared conversion contracts, RAG MCP contracts, and verification CLI contracts passed. Milestone verification was not run at that checkpoint.
+  - The later closure commit records current verification separately; the checkpoint failures above are historical.
+---
+
+### [2026-10-25 10:05 CET] — Close Test Book editor review (Roadmap 1.1)
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `ROADMAP.md`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Record the user's Test Book content and presentation review and remove Roadmap 1.1
+  - Complete editor changes for Codex content permissions, table and graphic handling, movement, rotation and rendering
+  - Add the ordered book authoring checklist while retaining local Working and Accepted bundles
+- **Architectural Rationale & Trade-Offs**:
+  - The authoring editor is ready for the user's next description pass. Keep source derived text in PDF references
+  - preserve Working and Accepted review state
+  - and defer descriptions
+  - proofreading and portable recipe publication to their separate roadmap points.
+- **Verification & Test Results**:
+  - Book review contracts: 102 passed
+  - commit profile: failed on 36 unknown word occurrences and one PDF conversion contract KeyError for blocks, while other selected checks passed
+  - milestone profile: full SingleStepTests passed but English scan failed
+  - semantic sync script: five unrelated memory bus and specification discrepancies
+  - roadmap and diary structure checks passed
+  - Test Book source hash matched source.json and current Working and Accepted book.json hashes matched
+  - no source book import or generated recipe publication was run

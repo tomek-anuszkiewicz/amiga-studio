@@ -189,7 +189,19 @@ def slice_template(template, start, end):
     return ''.join(parts)
 
 
-def edit_template(template, pages, target):
+def literal_html_tags(template, pages):
+    """Keep source references in visible text rather than HTML markup."""
+    resolved = resolve_template(template, pages)
+    parts, position = [], 0
+    for tag in re.finditer(r'</?[A-Za-z][^>]*>', resolved):
+        parts.append(slice_template(template, position, tag.start()))
+        parts.append(escape_literal(tag[0]))
+        position = tag.end()
+    parts.append(slice_template(template, position, len(resolved)))
+    return ''.join(parts)
+
+
+def edit_template(template, pages, target, *, allow_reorder=False):
     """Preserve the provenance of unchanged characters, including partial ranges."""
     source = resolve_template(template, pages)
     # Formatting-only insertion/removal must not realign repeated words to a
@@ -219,9 +231,18 @@ def edit_template(template, pages, target):
             position = b + size
         parts.append(escape_literal(target[position:]))
         return ''.join(parts)
+    def reordered_span(text):
+        match = SequenceMatcher(None, source, text, autojunk=False).find_longest_match()
+        if not match.size or not any(char.isalnum() for char in text[match.b:match.b + match.size]):
+            return escape_literal(text)
+        return (reordered_span(text[:match.b])
+                + slice_template(template, match.a, match.a + match.size)
+                + reordered_span(text[match.b + match.size:]))
+
     parts = []
     for operation, a, b, c, d in SequenceMatcher(None, source, target, autojunk=False).get_opcodes():
-        parts.append(slice_template(template, a, b) if operation == 'equal' else escape_literal(target[c:d]))
+        parts.append(slice_template(template, a, b) if operation == 'equal' else
+                     reordered_span(target[c:d]) if allow_reorder else escape_literal(target[c:d]))
     return ''.join(parts)
 
 

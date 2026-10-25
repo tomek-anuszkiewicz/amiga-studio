@@ -2,6 +2,7 @@
 
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+import re
 import sys
 import tempfile
 import threading
@@ -14,6 +15,7 @@ from playwright.sync_api import sync_playwright
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from review.codex_edit import run_command
 from review.content_validation import validate_content
+from review.markdown import PARSER, format_html_table
 from review.model import element_markdown, load_input, write_json
 from review.service import Handler, ReviewState
 
@@ -23,6 +25,14 @@ HTML = '<table><tr><th>Pin</th><th>Name</th></tr><tr><td>1</td><td>DATA</td></tr
 
 
 class CodexContentTests(unittest.TestCase):
+    def test_html_paragraph_boundary_does_not_join_adjacent_words(self):
+        before = ('<table><tr><td><b>Reserved currently</b><p>0 = enabled</p></td></tr></table>')
+        after = ('<table><tr><td>Reserved currently</td></tr>'
+                 '<tr><td>0 = enabled</td></tr></table>')
+        self.assertTrue(validate_content(before, after, 'html', 'html')['valid'])
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            validate_content(before, after.replace('enabled', 'disabled'), 'html', 'html')
+
     def test_nested_html_table_allows_layout_edit_but_preserves_cells(self):
         before = ('<table><tr><th colspan="2">Data format'
                   '<table><tr><td>Word</td><td>16</td></tr>'
@@ -33,12 +43,10 @@ class CodexContentTests(unittest.TestCase):
         self.assertTrue(validate_content(before, after, 'html', 'html')['valid'])
         spaced = after.replace('format<table', 'format\n<table')
         self.assertTrue(validate_content(before, spaced, 'html', 'html')['valid'])
-        with self.assertRaisesRegex(ValueError, 'table cells'):
-            validate_content(before, after.replace('colspan="2">Bits',
-                                                   'colspan="1">Bits'), 'html', 'html')
-        with self.assertRaisesRegex(ValueError, 'table cells'):
-            validate_content(before, after.replace('<tr><td colspan="2">Bits</td></tr>',
-                                                   'Bits'), 'html', 'html')
+        self.assertTrue(validate_content(before, after.replace('colspan="2">Bits',
+                                                              'colspan="1">Bits'), 'html', 'html')['valid'])
+        self.assertTrue(validate_content(before, after.replace('<tr><td colspan="2">Bits</td></tr>',
+                                                              'Bits'), 'html', 'html')['valid'])
         with self.assertRaisesRegex(ValueError, 'changed content'):
             validate_content(before, after.replace('>16</td>', '>18</td>'), 'html', 'html')
 
@@ -83,12 +91,47 @@ class CodexContentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'changed content'):
             validate_content('Alpha Beta', 'AlphaBeta')
 
-    def test_same_text_cannot_move_between_cells_or_change_spans(self):
+    def test_same_text_can_move_between_cells_and_change_spans(self):
         before = '<table><tr><td>A B</td><td>C</td></tr></table>'
         for after in ('<table><tr><td>A</td><td>B C</td></tr></table>',
                       '<table><tr><td colspan="2">A B</td><td>C</td></tr></table>'):
-            with self.assertRaisesRegex(ValueError, 'table cells'):
-                validate_content(before, after, 'html', 'html')
+            self.assertTrue(validate_content(before, after, 'html', 'html')['valid'])
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            validate_content(before, '<table><tr><td>A</td><td>C</td></tr></table>', 'html', 'html')
+
+    def test_reordering_requires_explicit_permission_and_preserves_repetitions(self):
+        before = '<table><tr><td>00</td><td>02</td><td>00</td></tr></table>'
+        after = '<table><tr><td>00</td><td>00</td><td>02</td></tr></table>'
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            validate_content(before, after, 'html', 'html')
+        self.assertTrue(validate_content(before, after, 'html', 'html', allow_reorder=True)['valid'])
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            validate_content(before, after.replace('<td>00</td>', '<td>02</td>', 1),
+                             'html', 'html', allow_reorder=True)
+
+    def test_listed_additions_are_limited_to_named_tokens(self):
+        before = '00 02'
+        self.assertTrue(validate_content(before, 'x 00 02', 'text', 'text',
+                                         allowed_additions=['x'])['valid'])
+        for after in ('x 00 02 y', 'x 02 00', 'x 00'):
+            with self.subTest(after=after), self.assertRaisesRegex(ValueError, 'changed content'):
+                validate_content(before, after, 'text', 'text', allowed_additions=['x'])
+        self.assertTrue(validate_content(before, 'x 02 00', 'text', 'text',
+                                         allow_reorder=True, allowed_additions=['x'])['valid'])
+        self.assertTrue(validate_content(before, 'x x 00 02', 'text', 'text',
+                                         allowed_additions=['x'])['valid'])
+        self.assertTrue(validate_content('x 00', 'x x 00', 'text', 'text',
+                                         allowed_additions=['x'])['valid'])
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            validate_content(before, 'X 00 02', 'text', 'text', allowed_additions=['x'])
+
+    def test_html_column_layout_markup_is_not_content(self):
+        before = '<table><tr><td>A</td><td>B</td></tr></table>'
+        after = ('<table><colgroup><col><col span="2" style="width: 25%"></colgroup>'
+                 '<tr><td>A</td><td>B</td></tr></table>')
+        self.assertTrue(validate_content(before, after, 'html', 'html')['valid'])
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            validate_content(before, after.replace('>B</td>', '>C</td>'), 'html', 'html')
 
     def test_removes_decorative_dash_column_and_edits_punctuation(self):
         before = ('<table><tr><td>RR</td><td>—</td><td>Rerun flag, value 0.</td></tr>'
@@ -102,13 +145,12 @@ class CodexContentTests(unittest.TestCase):
             validate_content(before, after.replace('<td>IF</td>', '<td>IF</td><td>new</td>'),
                              'html', 'html')
 
-    def test_keeps_non_decorative_table_columns_and_spans(self):
+    def test_non_decorative_table_columns_can_change_without_losing_text(self):
         before = ('<table><tr><td>A</td><td>—</td><td>First</td></tr>'
                   '<tr><td>B</td><td>value</td><td>Second</td></tr></table>')
         after = ('<table><tr><td>A</td><td>First</td></tr>'
                  '<tr><td>B</td><td>value</td><td>Second</td></tr></table>')
-        with self.assertRaisesRegex(ValueError, 'table cells'):
-            validate_content(before, after, 'html', 'html')
+        self.assertTrue(validate_content(before, after, 'html', 'html')['valid'])
 
 
 class CodexCommandTests(unittest.TestCase):
@@ -160,11 +202,69 @@ class CodexCommandTests(unittest.TestCase):
         result = run_command(self.state, self.command, client_factory=self.client(self.response))
         book, _, _ = load_input(self.root / 'working')
         selected, other = book['chapters'][0]['elements']
-        self.assertEqual(selected['resolved_md_text'], HTML)
+        self.assertEqual(selected['resolved_md_text'], format_html_table(HTML))
         self.assertEqual(selected['id'], 'selected')
         self.assertEqual(other['resolved_md_text'], 'Keep this.')
         self.assertEqual((self.root / 'accepted/book.json').read_bytes(), accepted)
         self.assertTrue(result['validation']['valid'])
+
+    def test_html_table_formatting_keeps_source_references_out_of_markup_parsing(self):
+        reference = '{{text page=1 block=1 chars=0:1}}'
+        word_reference = '{{text page=1 block=2 chars=0:4}}'
+        template = ('<table>\n  <tr>\n    <td>' + word_reference + '</t' + reference + '>\n'
+                    '    <td>Next</td>\n  </tr>\n  <tr>\n'
+                    '    <td>After</td>\n    <td>End</td>\n  </tr>\n</table>')
+        page = self.root / 'pdf-to-markdown/02_preprocess/page_0001.json'
+        write_json(page, {'blocks': [{'block_id': 1, 'text': 'd'},
+                                    {'block_id': 2, 'text': 'Word'}]})
+
+        def update(book):
+            selected = book['chapters'][0]['elements'][0]
+            selected.update(table_format='html', md_text=template,
+                            resolved_md_text=template.replace(reference, 'd').replace(word_reference, 'Word'))
+
+        self.state.mutate(load_input(self.root / 'working')[2], update)
+        selected = load_input(self.root / 'working')[0]['chapters'][0]['elements'][0]
+        self.assertEqual([token.type for token in PARSER.parse(selected['resolved_md_text'])],
+                         ['html_block'])
+        self.assertIn(word_reference, selected['md_text'])
+        self.assertFalse(any(reference in tag for tag in
+                             re.findall(r'</?[A-Za-z][^>]*>', selected['md_text'])))
+
+    def test_reordering_only_applies_when_requested(self):
+        reordered = {**self.response, 'text': HTML.replace('Pin</th><th>Name', 'Name</th><th>Pin')}
+        before = (self.root / 'working/book.json').read_bytes()
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            run_command(self.state, self.command, client_factory=self.client(reordered))
+        self.assertEqual((self.root / 'working/book.json').read_bytes(), before)
+        command = {**self.command, 'allow_reorder': True}
+        result = run_command(self.state, command, client_factory=self.client(reordered))
+        self.assertTrue(result['validation']['valid'])
+        self.assertEqual(load_input(self.root / 'working')[0]['chapters'][0]['elements'][0]['resolved_md_text'],
+                         format_html_table(reordered['text']))
+
+    def test_listed_addition_is_saved_but_unlisted_content_is_rejected(self):
+        response = {**self.response, 'text': HTML.replace('</table>', '<tr><td>x</td></tr></table>')}
+        before = (self.root / 'working/book.json').read_bytes()
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            run_command(self.state, self.command, client_factory=self.client(response))
+        self.assertEqual((self.root / 'working/book.json').read_bytes(), before)
+        command = {**self.command, 'allow_additions': True, 'allowed_additions': ['x']}
+        with self.assertRaisesRegex(ValueError, 'changed content'):
+            run_command(self.state, command, client_factory=self.client(
+                {**response, 'text': response['text'].replace('x</td>', 'x y</td>')}))
+        run_command(self.state, command, client_factory=self.client(response))
+        selected = load_input(self.root / 'working')[0]['chapters'][0]['elements'][0]
+        self.assertEqual(selected['resolved_md_text'], format_html_table(response['text']))
+        self.assertIn('x', selected['md_text'])
+
+    def test_addition_permission_requires_a_nonempty_list(self):
+        with self.assertRaisesRegex(ValueError, 'Enable additions'):
+            run_command(self.state, {**self.command, 'allow_additions': True},
+                        client_factory=self.client(self.response))
+        with self.assertRaisesRegex(ValueError, 'Enable additions'):
+            run_command(self.state, {**self.command, 'allowed_additions': ['x']},
+                        client_factory=self.client(self.response))
 
     def test_preserve_format_rejects_html_table_even_when_declared_markdown(self):
         before = (self.root / 'working/book.json').read_bytes()
@@ -248,7 +348,7 @@ class CodexCommandTests(unittest.TestCase):
         run_command(self.state, self.command, client_factory=self.client(self.response))
         result = load_input(self.root / 'working')[0]['chapters'][0]['elements'][0]
         self.assertEqual(result['type'], 'table')
-        self.assertEqual(result['resolved_md_text'], HTML)
+        self.assertEqual(result['resolved_md_text'], format_html_table(HTML))
 
     def test_ui_command_uses_real_endpoint_and_reports_rejection(self):
         # Rendering and server exercise the real command; only inference is offline.
@@ -271,25 +371,49 @@ class CodexCommandTests(unittest.TestCase):
                     page.locator('#menu-codex').click()
                     page.locator('#codex-instruction').fill('Convert this table to HTML')
                     self.assertEqual(page.locator('#codex-format-mode').input_value(), 'preserve')
+                    self.assertFalse(page.locator('#codex-allow-reorder').is_checked())
+                    self.assertFalse(page.locator('#codex-allow-additions').is_checked())
+                    self.assertTrue(page.locator('#codex-additions-section').is_hidden())
                     self.assertEqual(page.locator('#codex-format-guidance').input_value(),
-                                     self.state.status()['codex_format_guidance']['preserve'])
+                                     self.state.status()['codex_format_guidance']['preserve'] + '\n\n'
+                                     + self.state.status()['codex_order_guidance'][False] + '\n\n'
+                                     + 'Do not add new words, numbers or substantive symbols.')
                     page.locator('#codex-format-mode').select_option('allow_change')
+                    page.locator('#codex-allow-reorder').check()
+                    page.locator('#codex-allow-additions').check()
+                    page.locator('#codex-allowed-additions').fill('x')
                     self.assertEqual(page.locator('#codex-format-guidance').input_value(),
-                                     self.state.status()['codex_format_guidance']['allow_change'])
+                                     self.state.status()['codex_format_guidance']['allow_change'] + '\n\n'
+                                     + self.state.status()['codex_order_guidance'][True] + '\n\n'
+                                     + 'You may add only the following explicitly permitted content: x. You may repeat listed content where the user instruction requires it. Preserve all original content. Do not add any other words, numbers or substantive symbols.')
+                    self.response['text'] = (HTML.replace('Pin</th><th>Name', 'Name</th><th>Pin')
+                                             .replace('</table>', '<tr><td>x</td></tr></table>'))
                     page.locator('#run-codex').click()
                     page.wait_for_function('!document.getElementById("codex-dialog").open && state?.can_accept && !loading')
                     self.assertEqual(load_input(self.root / 'working')[0]['chapters'][0]['elements'][0]['table_format'], 'html')
+                    self.assertEqual(load_input(self.root / 'working')[0]['chapters'][0]['elements'][0]['resolved_md_text'],
+                                     format_html_table(self.response['text']))
+                    page.locator('#working [data-element="selected"]').click(button='right')
+                    page.locator('#menu-split').click()
+                    self.assertEqual(page.locator('#markdown-text').input_value(),
+                                     format_html_table(self.response['text']))
+                    page.locator('#cancel-markdown').click()
                     self.assertEqual(page.evaluate('state.changes.map(change => change.id)'), ['selected'])
-                    self.assertTrue(page.locator('#previous').is_enabled())
+                    self.assertFalse(page.locator('#previous').is_enabled())
+                    self.assertFalse(page.locator('#next').is_enabled())
+                    page.evaluate('clearSelection()')
+                    self.assertFalse(page.locator('#previous').is_enabled())
                     self.assertTrue(page.locator('#next').is_enabled())
                     page.locator('#next').click()
                     self.assertEqual(page.evaluate('selected'), 'selected')
-                    page.locator('#previous').click()
-                    self.assertEqual(page.evaluate('selected'), 'selected')
+                    self.assertFalse(page.locator('#previous').is_enabled())
+                    self.assertFalse(page.locator('#next').is_enabled())
                     self.response['text'] = HTML.replace('DATA', 'DATO')
                     before = (self.root / 'working/book.json').read_bytes()
                     page.locator('#working [data-element="selected"]').click(button='right')
                     page.locator('#menu-codex').click()
+                    self.assertFalse(page.locator('#codex-allow-reorder').is_checked())
+                    self.assertFalse(page.locator('#codex-allow-additions').is_checked())
                     page.locator('#codex-instruction').fill('Convert again')
                     page.locator('#run-codex').click()
                     page.locator('#codex-error').wait_for(state='visible')

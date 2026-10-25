@@ -13,7 +13,7 @@ from common.pdf_artifacts import read_json
 from common.pdf_page_conversion import read_conversion
 from common.pdf_elements import ELEMENT_ROLES, ELEMENT_TYPES
 from .markdown import PARSER, preserve_line_breaks
-from .text_recipe import (REFERENCE, escape_literal, edit_template,
+from .text_recipe import (REFERENCE, escape_literal, edit_template, literal_html_tags,
                           compile_markdown_template, region_blocks, resolve_template)
 
 HEADING_TYPES = {"heading", "toc_heading", "index_heading",
@@ -182,6 +182,8 @@ def edit_markdown(root, element, text):
     blocks = {page: read_json(root / 'pdf-to-markdown' / '02_preprocess' / f'page_{page:04d}.json')['blocks']
               for page in pages}
     element['md_text'] = edit_template(template, blocks, text)
+    if element.get('table_format') == 'html':
+        element['md_text'] = literal_html_tags(element['md_text'], blocks)
     element['resolved_md_text'] = text
     update_markdown_heading(element, text)
 

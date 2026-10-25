@@ -2,11 +2,7 @@
 
 ## Step 1: Manual Conversion and Initial Knowledge Base
 
-Review the existing composite Test Book in the single-book editor first. Its [page tracker](tools/bootstrap/book-to-markdown/books/test-book-example-4567/1cea0b35ee62/test_pages_tracker.md) records the source pages and assembly order used to rebuild the local PDF. After reviewing and recording its `book.json`, implement Markdown reconstruction and test RAG ingestion. Apply the proven workflow to a full manual later. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [Book editor](tools/bootstrap/book-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
-
-- **1.1: Review and Finish the Test Book**
-  - Exercise the existing editor against the local Test Book, inspect its PDF bindings, chapter order, headings, text, tables, images, code and generated Markdown, and refine the editor where the review exposes a concrete need. Preserve the reviewed source hash and page tracker.
-  - **Gate:** The user reviews the Test Book's content and presentation and records remaining source ambiguities and editor limitations; final acceptance follows the description and proofreading work below.
+Continue work on the composite Test Book in the single-book editor. Its [page tracker](tools/bootstrap/book-to-markdown/books/test-book-example-4567/1cea0b35ee62/test_pages_tracker.md) records the source pages and assembly order used to rebuild the local PDF. After descriptions and proofreading, record its reviewed `book.json`, implement Markdown reconstruction and test RAG ingestion. Apply the proven workflow to a full manual later. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [Book editor](tools/bootstrap/book-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
 - **1.2: Author Table, Image, and ASCII-Art Descriptions**
   - Use the agent during authoring to describe reviewed HTML tables, images and ASCII art from their source context. Store accepted descriptions as explicit recipe content so later reconstruction does not call a model again. Preserve HTML table spans, graphics and text-fenced ASCII art.
