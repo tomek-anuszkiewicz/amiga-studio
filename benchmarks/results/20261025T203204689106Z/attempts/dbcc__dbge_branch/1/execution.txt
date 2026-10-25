@@ -1,2 +1,0 @@
-dbcc/dbge_branch: 100000 targets/run, 67.528 ns/target minimum, 1.54% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-scc/sne_postincrement: 100000 targets/run, 36.269 ns/target minimum, 3.23% range
-ASM benchmark report written

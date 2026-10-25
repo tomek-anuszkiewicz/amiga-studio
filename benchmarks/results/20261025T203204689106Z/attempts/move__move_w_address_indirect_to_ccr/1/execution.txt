@@ -1,2 +1,0 @@
-move/move_w_address_indirect_to_ccr: 100000 targets/run, 57.694 ns/target minimum, 0.27% range
-ASM benchmark report written

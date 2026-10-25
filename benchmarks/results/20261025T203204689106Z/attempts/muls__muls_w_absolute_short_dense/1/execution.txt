@@ -1,2 +1,0 @@
-muls/muls_w_absolute_short_dense: 100000 targets/run, 96.504 ns/target minimum, 5.42% range
-ASM benchmark report written

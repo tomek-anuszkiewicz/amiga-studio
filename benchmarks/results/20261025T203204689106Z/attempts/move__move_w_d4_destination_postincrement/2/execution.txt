@@ -1,2 +1,0 @@
-move/move_w_d4_destination_postincrement: 100000 targets/run, 27.774 ns/target minimum, 0.10% range
-ASM benchmark report written

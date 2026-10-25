@@ -1,2 +1,0 @@
-movem/movem_w_empty_mask_store: 100000 targets/run, 33.046 ns/target minimum, 1.24% range
-ASM benchmark report written

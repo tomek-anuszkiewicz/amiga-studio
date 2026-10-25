@@ -10,10 +10,16 @@
 
 Before each authorized commit, execute [sync-design-docs](../skills/sync-design-docs/SKILL.md) on the intended snapshot, include necessary documentation corrections, and leave already accurate documents untouched. This requirement applies even when no documentation edits result.
 
+Append the required DIARY.md entry with work completed and verification results already observed. Finish source and documentation edits, check the intended paths and generated artifacts, and resolve index or line-ending issues before running the full commit profile. Record the profile's outcome in the commit message and final report; do not edit the diary solely to repeat that outcome. If a later correction changes the intended source, rerun the profile on the corrected source.
+
 Then run the canonical verification entry point on the final intended source and explicitly stage the intended files. Verification does not require staging first:
 
 ```powershell
 python tools/verification/verify.py commit
 ```
+
+Commit only if this command exits successfully and every selected check passes on the final intended source. Any failed check, including an unrelated test or a local environment failure, stops the commit workflow.
+
+Diagnose and resolve the failure, then rerun the full commit profile on the final intended source before committing. Report blocked verification and leave the changes uncommitted. A focused passing test or a written explanation of the failure does not waive this gate. For milestone completion, the required milestone profile must also pass before its completion commit.
 
 `verify.py` owns test selection and includes the architecture gate. Do not replace it with individually chosen completion suites. Milestone requirements are in [roadmap-maintenance.md](roadmap-maintenance.md). Run [audit-code-quality](../skills/audit-code-quality/SKILL.md) only on explicit request or before a major branch merge.

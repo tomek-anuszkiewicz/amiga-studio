@@ -1,2 +1,0 @@
-dbcc/dbhi_counter_expired: 100000 targets/run, 76.391 ns/target minimum, 2.07% range
-ASM benchmark report written

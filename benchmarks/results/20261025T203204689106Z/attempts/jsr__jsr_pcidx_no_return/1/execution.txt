@@ -1,2 +1,0 @@
-jsr/jsr_pcidx_no_return: 100000 targets/run, 50.749 ns/target minimum, 1.89% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-andi/andi_b_displacement: 100000 targets/run, 54.687 ns/target minimum, 0.39% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-and/and_l_immediate: 100000 targets/run, 46.334 ns/target minimum, 2.39% range
-ASM benchmark report written

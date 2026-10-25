@@ -1,2 +1,0 @@
-dbcc/dbge_condition_true: 100000 targets/run, 66.030 ns/target minimum, 9.47% range
-ASM benchmark report written

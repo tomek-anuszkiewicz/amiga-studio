@@ -1,2 +1,0 @@
-movea/movea_l_indirect: 100000 targets/run, 37.552 ns/target minimum, 0.59% range
-ASM benchmark report written

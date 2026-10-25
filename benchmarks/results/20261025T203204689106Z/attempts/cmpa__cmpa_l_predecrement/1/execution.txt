@@ -1,2 +1,0 @@
-cmpa/cmpa_l_predecrement: 100000 targets/run, 43.203 ns/target minimum, 2.24% range
-ASM benchmark report written

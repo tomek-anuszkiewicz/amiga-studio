@@ -1,2 +1,0 @@
-scc/shi_register: 100000 targets/run, 25.759 ns/target minimum, 3.13% range
-ASM benchmark report written

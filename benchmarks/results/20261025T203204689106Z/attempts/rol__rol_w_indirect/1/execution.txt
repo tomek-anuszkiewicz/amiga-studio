@@ -1,2 +1,0 @@
-rol/rol_w_indirect: 100000 targets/run, 36.890 ns/target minimum, 3.42% range
-ASM benchmark report written

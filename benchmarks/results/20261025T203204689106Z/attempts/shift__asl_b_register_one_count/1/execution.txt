@@ -1,2 +1,0 @@
-shift/asl_b_register_one_count: 100000 targets/run, 26.776 ns/target minimum, 2.73% range
-ASM benchmark report written

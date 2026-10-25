@@ -1,2 +1,0 @@
-or/or_w_d2_postincrement: 100000 targets/run, 36.098 ns/target minimum, 3.16% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-dbcc/dbeq_condition_true: 100000 targets/run, 67.226 ns/target minimum, 1.07% range
-ASM benchmark report written

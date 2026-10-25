@@ -1,2 +1,0 @@
-pea/pea_pcdisp: 100000 targets/run, 42.995 ns/target minimum, 1.06% range
-ASM benchmark report written

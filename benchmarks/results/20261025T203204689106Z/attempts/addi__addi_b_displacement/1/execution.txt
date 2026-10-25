@@ -1,2 +1,0 @@
-addi/addi_b_displacement: 100000 targets/run, 54.623 ns/target minimum, 0.97% range
-ASM benchmark report written

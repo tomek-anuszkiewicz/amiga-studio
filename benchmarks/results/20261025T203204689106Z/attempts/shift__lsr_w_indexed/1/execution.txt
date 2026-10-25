@@ -1,2 +1,0 @@
-shift/lsr_w_indexed: 100000 targets/run, 48.197 ns/target minimum, 0.79% range
-ASM benchmark report written

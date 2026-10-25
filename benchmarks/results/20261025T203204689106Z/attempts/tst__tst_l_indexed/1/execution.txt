@@ -1,2 +1,0 @@
-tst/tst_l_indexed: 100000 targets/run, 49.071 ns/target minimum, 3.26% range
-ASM benchmark report written

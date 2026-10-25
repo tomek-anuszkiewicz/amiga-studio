@@ -1,2 +1,0 @@
-shift/lsr_w_absolute_long: 100000 targets/run, 57.006 ns/target minimum, 1.23% range
-ASM benchmark report written

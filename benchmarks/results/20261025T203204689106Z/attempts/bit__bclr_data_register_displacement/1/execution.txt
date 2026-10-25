@@ -1,2 +1,0 @@
-bit/bclr_data_register_displacement: 100000 targets/run, 43.120 ns/target minimum, 1.34% range
-ASM benchmark report written

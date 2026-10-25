@@ -1,2 +1,0 @@
-eori/eori_b_absolute_short: 100000 targets/run, 54.445 ns/target minimum, 1.92% range
-ASM benchmark report written

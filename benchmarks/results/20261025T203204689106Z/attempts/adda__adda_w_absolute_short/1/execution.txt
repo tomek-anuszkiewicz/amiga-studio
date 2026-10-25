@@ -1,2 +1,0 @@
-adda/adda_w_absolute_short: 100000 targets/run, 42.222 ns/target minimum, 1.32% range
-ASM benchmark report written

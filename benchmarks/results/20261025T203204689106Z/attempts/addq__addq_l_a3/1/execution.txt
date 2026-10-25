@@ -1,2 +1,0 @@
-addq/addq_l_a3: 100000 targets/run, 23.940 ns/target minimum, 0.92% range
-ASM benchmark report written

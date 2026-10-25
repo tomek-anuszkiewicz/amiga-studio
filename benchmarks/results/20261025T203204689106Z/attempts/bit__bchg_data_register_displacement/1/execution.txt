@@ -1,2 +1,0 @@
-bit/bchg_data_register_displacement: 100000 targets/run, 43.273 ns/target minimum, 1.67% range
-ASM benchmark report written

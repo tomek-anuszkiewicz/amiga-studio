@@ -1,2 +1,0 @@
-not/not_l_indirect: 100000 targets/run, 48.571 ns/target minimum, 3.15% range
-ASM benchmark report written

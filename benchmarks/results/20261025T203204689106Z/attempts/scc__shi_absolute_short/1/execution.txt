@@ -1,2 +1,0 @@
-scc/shi_absolute_short: 100000 targets/run, 43.605 ns/target minimum, 1.27% range
-ASM benchmark report written

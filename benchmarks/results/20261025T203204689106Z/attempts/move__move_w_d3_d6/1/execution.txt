@@ -1,2 +1,0 @@
-move/move_w_d3_d6: 100000 targets/run, 21.446 ns/target minimum, 1.84% range
-ASM benchmark report written

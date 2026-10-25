@@ -1,2 +1,0 @@
-add/add_w_displacement: 100000 targets/run, 39.646 ns/target minimum, 1.61% range
-ASM benchmark report written

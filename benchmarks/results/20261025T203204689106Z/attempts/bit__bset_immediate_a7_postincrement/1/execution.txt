@@ -1,2 +1,0 @@
-bit/bset_immediate_a7_postincrement: 100000 targets/run, 44.129 ns/target minimum, 0.69% range
-ASM benchmark report written

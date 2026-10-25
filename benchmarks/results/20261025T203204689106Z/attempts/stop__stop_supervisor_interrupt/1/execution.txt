@@ -1,2 +1,0 @@
-stop/stop_supervisor_interrupt: 100000 targets/run, 136.827 ns/target minimum, 1.42% range
-ASM benchmark report written

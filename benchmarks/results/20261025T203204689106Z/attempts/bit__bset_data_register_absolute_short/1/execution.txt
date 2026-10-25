@@ -1,2 +1,0 @@
-bit/bset_data_register_absolute_short: 100000 targets/run, 42.962 ns/target minimum, 1.09% range
-ASM benchmark report written

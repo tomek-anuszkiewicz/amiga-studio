@@ -1,2 +1,0 @@
-ror/ror_w_indirect: 100000 targets/run, 36.798 ns/target minimum, 3.33% range
-ASM benchmark report written

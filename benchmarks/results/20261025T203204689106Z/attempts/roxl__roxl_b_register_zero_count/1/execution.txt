@@ -1,2 +1,0 @@
-roxl/roxl_b_register_zero_count: 100000 targets/run, 23.888 ns/target minimum, 2.71% range
-ASM benchmark report written

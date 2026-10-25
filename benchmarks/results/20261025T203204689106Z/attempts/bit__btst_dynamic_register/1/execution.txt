@@ -1,2 +1,0 @@
-bit/btst_dynamic_register: 100000 targets/run, 23.007 ns/target minimum, 2.74% range
-ASM benchmark report written

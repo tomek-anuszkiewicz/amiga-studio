@@ -37,7 +37,7 @@ Read applicable domain rules before editing that domain. Use [Graphify](.agents/
 | Crate boundaries or public re-exports | [Workspace boundaries](.agents/rules/workspace-structure-and-reexports.md) |
 | Internal API refactoring | [Clean refactoring](.agents/rules/clean-break-refactoring.md) |
 | CPU instructions | [Opcode conventions and required implementation procedure](.agents/rules/opcode-naming.md) |
-| Hand-written M68000 instruction benchmarks | [Add M68000 benchmark case](.agents/skills/add-m68k-benchmark/SKILL.md) |
+| M68000 CPU performance tests | [Add M68000 benchmark case](.agents/skills/add-m68k-benchmark/SKILL.md) |
 | Chip, DMA, or bus behavior | [Hardware topology](.agents/rules/hardware-bus-topology.md), [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md) |
 | Tests or suspected defect investigation/repair | [Testing policy](.agents/rules/unit-testing-policy.md), [defect resolution](.agents/rules/structural-root-cause.md#defect-resolution) |
 | GUI | [egui practices and visual verification](.agents/rules/egui-best-practices.md) |
@@ -76,6 +76,7 @@ Per-commit verification:
 python tools/verification/verify.py commit
 ```
 The canonical commit profile selects standard suites and architecture checks. Run relevant focused tests during development; full SingleStepTests and additional milestone checks are selected by the verification workflow at their required trigger. Do not claim unrun checks passed.
+Do not commit if the commit profile fails for any reason. Resolve the failure and rerun the full profile on the final intended source; milestone completion also requires a passing milestone profile.
 
 Milestone completion requires `python tools/verification/verify.py milestone`, [semantic parity review](.agents/skills/audit-semantic-parity/SKILL.md) of modified subsystems, design synchronization and checkpoint updates, diary compaction, and pruning completed roadmap steps. **Prohibition of Blind Golden Hash Modifications:** Never silently change golden hashes or cycle references; follow the conflict and approval procedure in specification-compliance rules.
 

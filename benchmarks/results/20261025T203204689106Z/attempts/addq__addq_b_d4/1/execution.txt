@@ -1,2 +1,0 @@
-addq/addq_b_d4: 100000 targets/run, 22.551 ns/target minimum, 0.33% range
-ASM benchmark report written

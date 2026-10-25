@@ -36,7 +36,9 @@ installation and recording approved reference baselines remain separate.
 
 Commit policy is in [git-commits.md](../rules/git-commits.md); diary policy
 is in [diary-maintenance.md](../rules/diary-maintenance.md). Inspect the
-diff, run the per-commit gates on the intended snapshot, and append observed results.
+diff, append the diary entry with verification already observed, and run the
+per-commit gates on the final intended source. Put the commit profile's outcome
+in the commit message and final report; rerun the profile if the source changes.
 Stage only the agreed paths when a commit is authorized:
 
 ```powershell

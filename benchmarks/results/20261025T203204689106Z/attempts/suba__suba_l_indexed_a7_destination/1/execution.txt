@@ -1,2 +1,0 @@
-suba/suba_l_indexed_a7_destination: 100000 targets/run, 53.226 ns/target minimum, 1.65% range
-ASM benchmark report written

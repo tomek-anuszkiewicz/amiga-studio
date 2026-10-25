@@ -1,2 +1,0 @@
-scc/sge_absolute_long: 100000 targets/run, 53.154 ns/target minimum, 3.02% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-addi/addi_l_a7_postincrement: 100000 targets/run, 66.585 ns/target minimum, 1.40% range
-ASM benchmark report written

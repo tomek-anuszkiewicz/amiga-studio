@@ -1,2 +1,0 @@
-div/divu_w_pc_indexed: 100000 targets/run, 154.423 ns/target minimum, 0.48% range
-ASM benchmark report written

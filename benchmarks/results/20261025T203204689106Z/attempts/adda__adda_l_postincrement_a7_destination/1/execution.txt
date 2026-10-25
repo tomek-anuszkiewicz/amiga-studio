@@ -1,2 +1,0 @@
-adda/adda_l_postincrement_a7_destination: 100000 targets/run, 41.029 ns/target minimum, 0.72% range
-ASM benchmark report written

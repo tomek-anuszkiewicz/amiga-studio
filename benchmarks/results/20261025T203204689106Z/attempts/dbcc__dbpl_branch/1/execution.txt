@@ -1,2 +1,0 @@
-dbcc/dbpl_branch: 100000 targets/run, 67.513 ns/target minimum, 0.68% range
-ASM benchmark report written

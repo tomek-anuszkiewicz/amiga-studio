@@ -1,2 +1,0 @@
-bit/bchg_data_register_a7_predecrement: 100000 targets/run, 37.631 ns/target minimum, 5.77% range
-ASM benchmark report written

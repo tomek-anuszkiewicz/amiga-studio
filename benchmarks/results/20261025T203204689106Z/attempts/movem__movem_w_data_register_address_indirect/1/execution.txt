@@ -1,2 +1,0 @@
-movem/movem_w_data_register_address_indirect: 100000 targets/run, 45.045 ns/target minimum, 1.72% range
-ASM benchmark report written

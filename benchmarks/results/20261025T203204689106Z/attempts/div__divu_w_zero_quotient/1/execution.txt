@@ -1,2 +1,0 @@
-div/divu_w_zero_quotient: 100000 targets/run, 144.603 ns/target minimum, 5.87% range
-ASM benchmark report written

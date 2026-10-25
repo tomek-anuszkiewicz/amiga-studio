@@ -1,2 +1,0 @@
-movem/movem_w_pc_displacement_register_list: 100000 targets/run, 100.348 ns/target minimum, 1.93% range
-ASM benchmark report written

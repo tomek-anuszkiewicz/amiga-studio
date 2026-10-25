@@ -1,2 +1,0 @@
-jsr/jsr_d16_return: 100000 targets/run, 71.835 ns/target minimum, 1.14% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-scc/svc_absolute_short: 100000 targets/run, 43.775 ns/target minimum, 1.91% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-bit/bchg_data_register_register: 100000 targets/run, 23.915 ns/target minimum, 0.53% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-movem/movem_l_absolute_short_register_list: 100000 targets/run, 139.294 ns/target minimum, 2.63% range
-ASM benchmark report written

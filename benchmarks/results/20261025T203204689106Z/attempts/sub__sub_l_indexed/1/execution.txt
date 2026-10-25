@@ -1,2 +1,0 @@
-sub/sub_l_indexed: 100000 targets/run, 51.874 ns/target minimum, 0.77% range
-ASM benchmark report written

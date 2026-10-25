@@ -1,2 +1,0 @@
-scc/sle_indexed: 100000 targets/run, 46.743 ns/target minimum, 1.49% range
-ASM benchmark report written

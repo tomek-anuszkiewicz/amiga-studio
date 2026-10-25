@@ -1,2 +1,0 @@
-jmp/jmp_ai: 100000 targets/run, 48.506 ns/target minimum, 0.45% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-mul/mulu_w_predecrement: 100000 targets/run, 88.819 ns/target minimum, 2.76% range
-ASM benchmark report written

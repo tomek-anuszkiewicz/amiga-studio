@@ -1,2 +1,0 @@
-cmp/cmp_w_postincrement_d5: 100000 targets/run, 30.306 ns/target minimum, 1.94% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-rts/rts_return: 100000 targets/run, 83.733 ns/target minimum, 4.45% range
-ASM benchmark report written

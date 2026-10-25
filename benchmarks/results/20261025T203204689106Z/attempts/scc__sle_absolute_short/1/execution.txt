@@ -1,2 +1,0 @@
-scc/sle_absolute_short: 100000 targets/run, 43.453 ns/target minimum, 1.92% range
-ASM benchmark report written

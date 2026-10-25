@@ -1,2 +1,0 @@
-scc/slt_a7_postincrement: 100000 targets/run, 35.780 ns/target minimum, 1.64% range
-ASM benchmark report written

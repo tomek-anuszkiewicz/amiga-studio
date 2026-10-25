@@ -1,2 +1,0 @@
-movem/movem_w_address_indirect_stack_pointer: 100000 targets/run, 64.134 ns/target minimum, 2.51% range
-ASM benchmark report written

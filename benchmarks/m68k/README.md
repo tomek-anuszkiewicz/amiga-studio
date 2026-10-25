@@ -1,4 +1,4 @@
-# Hand-Written M68000 Benchmark Cases
+# M68000 CPU Performance Tests
 
 For new instruction cases, follow the [agent procedure](../../.agents/skills/add-m68k-benchmark/SKILL.md).
 
@@ -127,11 +127,11 @@ participate in Chip RAM contention; operand accesses to Chip RAM use the mapped
 bus. This CPU-only runner does not advance Agnus or the machine's CCK loop.
 
 Each case writes `program.assembled.s`, `program.bin`, and `program.sym`
-under `.agent/tmp/benchmarks/handwritten/<family>/<case-id>/`. Each invocation
+under `.agent/tmp/benchmarks/cpu_performance_tests/<family>/<case-id>/`. Each invocation
 records reports under `benchmarks/results/<run-id>/`. The default command runs
 the complete catalog. A selector accepts an exact `family/case-id`, mnemonic,
 or four-digit primary opcode and measures all matches. The declared opcode
 identifies a case; it does not describe every word in the assembled program.
 The approved baseline in `benchmarks/m68k_benchmark_baseline.json` and `.csv`
 records the first complete default-parameter run of these workloads. Its
-source reports remain under `benchmarks/results/`.
+source reports remain locally under the ignored `benchmarks/results/`.

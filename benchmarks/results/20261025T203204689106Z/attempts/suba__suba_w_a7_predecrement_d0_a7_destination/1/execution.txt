@@ -1,2 +1,0 @@
-suba/suba_w_a7_predecrement_d0_a7_destination: 100000 targets/run, 37.136 ns/target minimum, 1.34% range
-ASM benchmark report written

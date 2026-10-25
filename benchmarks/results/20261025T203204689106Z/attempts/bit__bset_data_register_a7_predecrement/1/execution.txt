@@ -1,2 +1,0 @@
-bit/bset_data_register_a7_predecrement: 100000 targets/run, 37.750 ns/target minimum, 2.92% range
-ASM benchmark report written

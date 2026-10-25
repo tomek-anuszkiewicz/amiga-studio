@@ -1,2 +1,0 @@
-negx/negx_b_predecrement: 100000 targets/run, 37.780 ns/target minimum, 2.66% range
-ASM benchmark report written

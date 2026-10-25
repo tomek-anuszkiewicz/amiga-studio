@@ -1,2 +1,0 @@
-chk/chk_w_a7_predecrement_d0: 100000 targets/run, 38.580 ns/target minimum, 1.53% range
-ASM benchmark report written

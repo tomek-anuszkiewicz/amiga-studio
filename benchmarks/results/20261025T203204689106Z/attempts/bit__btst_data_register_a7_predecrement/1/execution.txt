@@ -1,2 +1,0 @@
-bit/btst_data_register_a7_predecrement: 100000 targets/run, 31.690 ns/target minimum, 0.34% range
-ASM benchmark report written

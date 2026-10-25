@@ -1,2 +1,0 @@
-shift/lsl_w_immediate_d5: 100000 targets/run, 30.251 ns/target minimum, 1.89% range
-ASM benchmark report written

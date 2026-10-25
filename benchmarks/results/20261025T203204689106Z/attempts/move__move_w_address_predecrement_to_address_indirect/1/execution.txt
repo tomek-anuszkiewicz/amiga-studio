@@ -1,2 +1,0 @@
-move/move_w_address_predecrement_to_address_indirect: 100000 targets/run, 38.303 ns/target minimum, 3.40% range
-ASM benchmark report written

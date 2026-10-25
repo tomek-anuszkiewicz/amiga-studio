@@ -1,2 +1,0 @@
-bit/bset_immediate_displacement: 100000 targets/run, 54.883 ns/target minimum, 1.84% range
-ASM benchmark report written

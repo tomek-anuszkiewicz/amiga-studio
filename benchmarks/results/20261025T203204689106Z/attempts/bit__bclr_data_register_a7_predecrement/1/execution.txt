@@ -1,2 +1,0 @@
-bit/bclr_data_register_a7_predecrement: 100000 targets/run, 37.703 ns/target minimum, 1.99% range
-ASM benchmark report written

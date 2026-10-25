@@ -1,2 +1,0 @@
-bit/bclr_data_register_indirect: 100000 targets/run, 35.650 ns/target minimum, 2.22% range
-ASM benchmark report written

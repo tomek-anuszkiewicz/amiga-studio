@@ -1,2 +1,0 @@
-scc/sgt_absolute_short: 100000 targets/run, 43.500 ns/target minimum, 11.68% range
-ASM benchmark report written

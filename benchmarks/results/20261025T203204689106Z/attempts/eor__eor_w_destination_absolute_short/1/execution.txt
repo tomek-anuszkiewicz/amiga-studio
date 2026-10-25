@@ -1,2 +1,0 @@
-eor/eor_w_destination_absolute_short: 100000 targets/run, 43.169 ns/target minimum, 4.56% range
-ASM benchmark report written

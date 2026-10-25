@@ -1,2 +1,0 @@
-suba/suba_w_postincrement_a4_a7_destination: 100000 targets/run, 35.775 ns/target minimum, 0.95% range
-ASM benchmark report written

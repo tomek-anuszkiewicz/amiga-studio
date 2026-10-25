@@ -1,2 +1,0 @@
-movem/movem_w_absolute_long_data_register: 100000 targets/run, 79.927 ns/target minimum, 5.79% range
-ASM benchmark report written

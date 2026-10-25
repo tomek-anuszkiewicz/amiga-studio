@@ -1,2 +1,0 @@
-move/move_b_data_register_to_address_postincrement: 100000 targets/run, 25.746 ns/target minimum, 1.98% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-ext/ext_w_d3: 100000 targets/run, 21.808 ns/target minimum, 1.18% range
-ASM benchmark report written

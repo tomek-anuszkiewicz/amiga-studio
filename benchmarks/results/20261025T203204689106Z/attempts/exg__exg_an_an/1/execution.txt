@@ -1,2 +1,0 @@
-exg/exg_an_an: 100000 targets/run, 23.046 ns/target minimum, 0.53% range
-ASM benchmark report written

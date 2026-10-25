@@ -1,2 +1,0 @@
-rte/rte_supervisor: 100000 targets/run, 58.951 ns/target minimum, 2.60% range
-ASM benchmark report written

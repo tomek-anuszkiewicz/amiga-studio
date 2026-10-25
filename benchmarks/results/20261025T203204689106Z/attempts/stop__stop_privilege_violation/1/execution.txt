@@ -1,2 +1,0 @@
-stop/stop_privilege_violation: 100000 targets/run, 164.186 ns/target minimum, 1.66% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-scc/svc_indirect: 100000 targets/run, 36.159 ns/target minimum, 0.60% range
-ASM benchmark report written

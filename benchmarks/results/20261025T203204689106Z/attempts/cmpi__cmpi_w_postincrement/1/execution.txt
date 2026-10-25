@@ -1,2 +1,0 @@
-cmpi/cmpi_w_postincrement: 100000 targets/run, 37.486 ns/target minimum, 5.39% range
-ASM benchmark report written

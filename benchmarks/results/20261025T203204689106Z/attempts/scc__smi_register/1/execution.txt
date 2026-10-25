@@ -1,2 +1,0 @@
-scc/smi_register: 100000 targets/run, 24.721 ns/target minimum, 2.01% range
-ASM benchmark report written

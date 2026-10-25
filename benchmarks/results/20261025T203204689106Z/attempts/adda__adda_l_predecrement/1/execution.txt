@@ -1,2 +1,0 @@
-adda/adda_l_predecrement: 100000 targets/run, 42.199 ns/target minimum, 0.50% range
-ASM benchmark report written

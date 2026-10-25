@@ -1,2 +1,0 @@
-move/move_l_pc_indexed_to_address_predecrement: 100000 targets/run, 64.066 ns/target minimum, 0.34% range
-ASM benchmark report written

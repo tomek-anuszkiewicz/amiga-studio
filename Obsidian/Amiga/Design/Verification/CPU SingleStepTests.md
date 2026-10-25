@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-25
+updated: 2026-10-26
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -87,7 +87,7 @@ Saved reports without required fields such as `selection` fail to load; a parsed
 
 ## 6. Performance measurements
 
-The [CPU instruction benchmark](../Performance/CPU%20Instruction%20Benchmarking.md) is a separate target in `crates/test_runner/benches/bench_instructions/`. It executes handwritten assembly programs to measure host execution time; it does not turn SingleStep JSON timings into a host-speed benchmark. The SingleStep result answers whether the emulated instruction matches the generated reference. The benchmark answers how much host time the emulator spends on complete instruction workloads, including helpers and stepping overhead.
+The [CPU performance tests](../Performance/CPU%20Instruction%20Benchmarking.md) are a separate target in `crates/test_runner/benches/bench_instructions/`. They execute complete assembly programs to measure host execution time; they do not turn SingleStep JSON timings into a host-speed benchmark. The SingleStep result answers whether the emulated instruction matches the generated reference. A performance test answers how much host time the emulator spends on a complete instruction workload, including helpers and stepping overhead.
 
 The [benchmark specification](../Performance/CPU%20Instruction%20Benchmarking.md) describes the active measurement, load observation, reports, and compatible-run comparison. The decoder inventory remains available for coverage auditing without measuring generated instruction workloads.
 

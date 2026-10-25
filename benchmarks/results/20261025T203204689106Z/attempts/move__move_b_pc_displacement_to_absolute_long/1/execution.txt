@@ -1,2 +1,0 @@
-move/move_b_pc_displacement_to_absolute_long: 100000 targets/run, 59.929 ns/target minimum, 1.75% range
-ASM benchmark report written

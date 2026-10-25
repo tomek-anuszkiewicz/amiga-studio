@@ -1,2 +1,0 @@
-rol/rol_w_indexed: 100000 targets/run, 46.248 ns/target minimum, 3.07% range
-ASM benchmark report written

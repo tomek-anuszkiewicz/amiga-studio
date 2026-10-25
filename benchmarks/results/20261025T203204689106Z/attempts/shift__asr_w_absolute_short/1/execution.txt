@@ -1,2 +1,0 @@
-shift/asr_w_absolute_short: 100000 targets/run, 44.341 ns/target minimum, 1.44% range
-ASM benchmark report written

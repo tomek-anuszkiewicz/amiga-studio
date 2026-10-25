@@ -1,2 +1,0 @@
-lea/lea_pcidx_a4: 100000 targets/run, 34.568 ns/target minimum, 4.67% range
-ASM benchmark report written

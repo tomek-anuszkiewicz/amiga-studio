@@ -1,2 +1,0 @@
-andi/andi_b_to_ccr: 100000 targets/run, 73.746 ns/target minimum, 0.79% range
-ASM benchmark report written

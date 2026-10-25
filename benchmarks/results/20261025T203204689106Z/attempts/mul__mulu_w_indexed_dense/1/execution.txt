@@ -1,2 +1,0 @@
-mul/mulu_w_indexed_dense: 100000 targets/run, 101.449 ns/target minimum, 2.65% range
-ASM benchmark report written

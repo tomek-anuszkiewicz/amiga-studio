@@ -1,2 +1,0 @@
-cmp/cmp_b_indexed: 100000 targets/run, 39.564 ns/target minimum, 1.31% range
-ASM benchmark report written

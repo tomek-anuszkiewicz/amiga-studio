@@ -1,2 +1,0 @@
-cmp/cmp_l_absolute_short: 100000 targets/run, 46.976 ns/target minimum, 1.98% range
-ASM benchmark report written

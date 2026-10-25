@@ -1,2 +1,0 @@
-nbcd/nbcd_displacement: 100000 targets/run, 46.804 ns/target minimum, 1.74% range
-ASM benchmark report written

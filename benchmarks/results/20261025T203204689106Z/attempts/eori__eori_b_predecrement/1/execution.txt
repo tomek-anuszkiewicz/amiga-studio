@@ -1,2 +1,0 @@
-eori/eori_b_predecrement: 100000 targets/run, 46.752 ns/target minimum, 1.54% range
-ASM benchmark report written

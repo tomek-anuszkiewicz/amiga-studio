@@ -1,2 +1,0 @@
-adda/adda_w_displacement_a7_destination: 100000 targets/run, 42.242 ns/target minimum, 2.23% range
-ASM benchmark report written

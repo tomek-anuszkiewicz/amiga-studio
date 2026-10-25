@@ -1,2 +1,0 @@
-divs/divs_w_indexed_dense: 100000 targets/run, 166.192 ns/target minimum, 8.04% range
-ASM benchmark report written

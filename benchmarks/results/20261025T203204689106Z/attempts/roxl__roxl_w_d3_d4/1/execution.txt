@@ -1,2 +1,0 @@
-roxl/roxl_w_d3_d4: 100000 targets/run, 30.443 ns/target minimum, 3.63% range
-ASM benchmark report written

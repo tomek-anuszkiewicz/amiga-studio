@@ -1,2 +1,0 @@
-eor/eor_b_d2_a7_postincrement: 100000 targets/run, 33.823 ns/target minimum, 3.32% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-sub/sub_w_destination_displacement: 100000 targets/run, 45.368 ns/target minimum, 2.79% range
-ASM benchmark report written

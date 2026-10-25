@@ -1,2 +1,0 @@
-and/and_l_d1_d0: 100000 targets/run, 25.581 ns/target minimum, 2.06% range
-ASM benchmark report written

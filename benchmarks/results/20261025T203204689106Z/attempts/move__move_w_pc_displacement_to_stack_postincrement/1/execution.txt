@@ -1,2 +1,0 @@
-move/move_w_pc_displacement_to_stack_postincrement: 100000 targets/run, 44.151 ns/target minimum, 3.53% range
-ASM benchmark report written

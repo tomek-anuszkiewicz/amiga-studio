@@ -1,2 +1,0 @@
-scc/svc_predecrement: 100000 targets/run, 38.469 ns/target minimum, 2.83% range
-ASM benchmark report written

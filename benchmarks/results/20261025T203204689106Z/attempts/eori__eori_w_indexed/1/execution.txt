@@ -1,2 +1,0 @@
-eori/eori_w_indexed: 100000 targets/run, 59.271 ns/target minimum, 1.25% range
-ASM benchmark report written

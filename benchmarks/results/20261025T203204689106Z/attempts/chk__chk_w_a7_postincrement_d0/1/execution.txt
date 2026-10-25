@@ -1,2 +1,0 @@
-chk/chk_w_a7_postincrement_d0: 100000 targets/run, 36.854 ns/target minimum, 0.96% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-tst/tst_l_postincrement: 100000 targets/run, 38.483 ns/target minimum, 2.39% range
-ASM benchmark report written

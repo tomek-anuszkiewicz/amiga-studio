@@ -1,2 +1,0 @@
-cmpi/cmpi_b_d4: 100000 targets/run, 28.621 ns/target minimum, 0.62% range
-ASM benchmark report written

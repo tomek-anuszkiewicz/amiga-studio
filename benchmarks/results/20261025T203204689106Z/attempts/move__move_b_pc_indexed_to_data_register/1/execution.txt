@@ -1,2 +1,0 @@
-move/move_b_pc_indexed_to_data_register: 100000 targets/run, 38.081 ns/target minimum, 1.62% range
-ASM benchmark report written

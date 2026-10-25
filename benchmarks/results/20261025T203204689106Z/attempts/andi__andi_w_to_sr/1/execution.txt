@@ -1,2 +1,0 @@
-andi/andi_w_to_sr: 100000 targets/run, 72.355 ns/target minimum, 2.35% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-bit/bchg_immediate_displacement: 100000 targets/run, 54.771 ns/target minimum, 1.66% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-rol/rol_w_a7_predecrement: 100000 targets/run, 38.964 ns/target minimum, 2.52% range
-ASM benchmark report written

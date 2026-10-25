@@ -1,2 +1,0 @@
-subi/subi_w_displacement: 100000 targets/run, 57.808 ns/target minimum, 0.90% range
-ASM benchmark report written

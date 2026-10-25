@@ -1,2 +1,0 @@
-addi/addi_w_d3: 100000 targets/run, 29.514 ns/target minimum, 2.12% range
-ASM benchmark report written

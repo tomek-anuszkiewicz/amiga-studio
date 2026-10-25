@@ -1,2 +1,0 @@
-suba/suba_l_pc_displacement_a7_destination: 100000 targets/run, 50.734 ns/target minimum, 0.89% range
-ASM benchmark report written

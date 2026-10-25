@@ -1,2 +1,0 @@
-shift/asr_l_register_one_count: 100000 targets/run, 28.326 ns/target minimum, 1.21% range
-ASM benchmark report written

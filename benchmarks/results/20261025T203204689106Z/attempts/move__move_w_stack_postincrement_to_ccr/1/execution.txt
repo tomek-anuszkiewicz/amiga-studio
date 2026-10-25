@@ -1,2 +1,0 @@
-move/move_w_stack_postincrement_to_ccr: 100000 targets/run, 57.170 ns/target minimum, 0.92% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-clr/clr_w_d4: 100000 targets/run, 21.771 ns/target minimum, 3.55% range
-ASM benchmark report written

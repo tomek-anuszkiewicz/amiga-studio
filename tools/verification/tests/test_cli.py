@@ -149,8 +149,8 @@ class SelectionTests(unittest.TestCase):
         commands = selected("commit")
         self.assertTrue(any("llvm-cov" in item[1] for item in commands))
         self.assertTrue(any(any(part.endswith("checks/check_architecture.py") for part in item[1]) for item in commands))
-        self.assertEqual(sum("discover" in item[1] for item in commands), 6)
-        self.assertTrue(any("tools/bootstrap/book-to-markdown/tests" in item[1] for item in commands))
+        self.assertEqual(sum("discover" in item[1] for item in commands), 5)
+        self.assertTrue(any("tools/bootstrap/book-to-markdown/run_tests.py" in item[1] for item in commands))
 
     def test_focused_architecture_filter_does_not_select_other_checks(self):
         commands = selected("check architecture case test_file_size_limits")
@@ -168,7 +168,7 @@ class SelectionTests(unittest.TestCase):
         self.assertTrue(args.plan)
         self.assertEqual(args.log_level, "full")
         command = select_phases(args, set())[0][1][0][1]
-        self.assertEqual(command[1:3], ["tools/verification/handwritten_benchmarks.py", "measure"])
+        self.assertEqual(command[1:3], ["tools/verification/cpu_performance_tests.py", "measure"])
         self.assertEqual(command[-2:], ["case", "add/add_w_d1_d0"])
 
     def test_results_directory_is_a_common_option(self):
@@ -181,13 +181,13 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(parse_args(["runner", "analyze", "fixture.csv", "--log-level", "error"])[1].log_level, "error")
         self.assertEqual(parse_args(["commit"])[1].log_level, "warn")
 
-    def test_benchmark_and_profiler_select_the_handwritten_workflow(self):
+    def test_benchmark_and_profiler_select_cpu_performance_tests(self):
         self.assertEqual(selected("runner profile bench case add/add_w_d1_d0")[0][1][1:4],
                          ["tools/verification/profile_benchmark.py", "--measure-case", "add/add_w_d1_d0"])
         self.assertEqual(selected("runner bench case add/add_w_d1_d0")[0][1][1:],
-                         ["tools/verification/handwritten_benchmarks.py", "measure", "case", "add/add_w_d1_d0"])
+                         ["tools/verification/cpu_performance_tests.py", "measure", "case", "add/add_w_d1_d0"])
         self.assertEqual(selected("runner analyze full_run")[0][1][1:],
-                         ["tools/verification/handwritten_benchmarks.py", "analyze", "full_run"])
+                         ["tools/verification/cpu_performance_tests.py", "analyze", "full_run"])
 
     def test_gui_keeps_its_separate_native_options(self):
         self.assertEqual(selected("runner gui -- --frames 10")[0][1][-2:], ["--frames", "10"])

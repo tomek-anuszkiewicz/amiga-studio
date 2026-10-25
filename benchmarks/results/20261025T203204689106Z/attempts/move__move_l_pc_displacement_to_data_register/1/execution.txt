@@ -1,2 +1,0 @@
-move/move_l_pc_displacement_to_data_register: 100000 targets/run, 45.872 ns/target minimum, 0.31% range
-ASM benchmark report written

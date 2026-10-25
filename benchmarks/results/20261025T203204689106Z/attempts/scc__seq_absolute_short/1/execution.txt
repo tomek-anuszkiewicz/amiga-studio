@@ -1,2 +1,0 @@
-scc/seq_absolute_short: 100000 targets/run, 44.112 ns/target minimum, 1.78% range
-ASM benchmark report written

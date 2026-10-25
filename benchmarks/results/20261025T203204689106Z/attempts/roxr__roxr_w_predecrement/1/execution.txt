@@ -1,2 +1,0 @@
-roxr/roxr_w_predecrement: 100000 targets/run, 39.697 ns/target minimum, 3.36% range
-ASM benchmark report written

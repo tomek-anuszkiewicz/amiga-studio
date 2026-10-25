@@ -1,2 +1,0 @@
-negx/negx_b_a7_postincrement: 100000 targets/run, 33.896 ns/target minimum, 1.62% range
-ASM benchmark report written

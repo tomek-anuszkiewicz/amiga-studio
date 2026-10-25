@@ -1,2 +1,0 @@
-move/move_l_address_register_to_address_indexed: 100000 targets/run, 43.513 ns/target minimum, 3.09% range
-ASM benchmark report written

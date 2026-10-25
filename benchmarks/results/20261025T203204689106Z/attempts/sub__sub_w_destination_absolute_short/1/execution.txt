@@ -1,2 +1,0 @@
-sub/sub_w_destination_absolute_short: 100000 targets/run, 44.004 ns/target minimum, 8.27% range
-ASM benchmark report written

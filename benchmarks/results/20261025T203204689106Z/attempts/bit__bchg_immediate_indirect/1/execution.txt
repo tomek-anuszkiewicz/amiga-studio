@@ -1,2 +1,0 @@
-bit/bchg_immediate_indirect: 100000 targets/run, 43.274 ns/target minimum, 0.22% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-clr/clr_w_displacement: 100000 targets/run, 44.106 ns/target minimum, 2.25% range
-ASM benchmark report written

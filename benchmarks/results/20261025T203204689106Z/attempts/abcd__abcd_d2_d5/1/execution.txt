@@ -1,2 +1,0 @@
-abcd/abcd_d2_d5: 100000 targets/run, 23.186 ns/target minimum, 3.44% range
-ASM benchmark report written

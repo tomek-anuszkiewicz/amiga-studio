@@ -1,2 +1,0 @@
-movem/movem_w_multiple_a7_registers: 100000 targets/run, 65.035 ns/target minimum, 2.85% range
-ASM benchmark report written

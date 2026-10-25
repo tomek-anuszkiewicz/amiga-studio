@@ -1,2 +1,0 @@
-bit/btst_immediate_indirect: 100000 targets/run, 36.242 ns/target minimum, 3.30% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-suba/suba_l_d1_d0: 100000 targets/run, 26.960 ns/target minimum, 4.57% range
-ASM benchmark report written

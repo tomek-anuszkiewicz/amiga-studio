@@ -1,2 +1,0 @@
-add/add_b_destination_indexed: 100000 targets/run, 45.907 ns/target minimum, 4.50% range
-ASM benchmark report written

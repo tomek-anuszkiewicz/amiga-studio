@@ -1,2 +1,0 @@
-shift/lsl_w_predecrement: 100000 targets/run, 39.915 ns/target minimum, 1.89% range
-ASM benchmark report written

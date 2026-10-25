@@ -1,2 +1,0 @@
-bit/bclr_immediate_absolute_long: 100000 targets/run, 60.298 ns/target minimum, 2.92% range
-ASM benchmark report written

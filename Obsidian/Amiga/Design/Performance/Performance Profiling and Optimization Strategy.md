@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "test_runner"
 status: "active"
 created: 2026-09-14
-updated: 2026-10-25
+updated: 2026-10-26
 related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[General Architecture.md](../General%20Architecture.md)", "[Machine Loop.md](../Machine%20Loop.md)"]
 tracked_paths:
   - "benchmarks/m68k_benchmark_baseline.csv"
@@ -30,9 +30,9 @@ CPU instruction measurements use the Cargo benchmark target in
 Program generation, timing, statistics and report persistence follow
 [CPU Instruction Benchmarking](CPU%20Instruction%20Benchmarking.md).
 The approved CSV and JSON baseline in `benchmarks/` records the first complete
-default-parameter handwritten catalog run. Comparable completed, committed
+default-parameter CPU performance test catalog run. Comparable completed, locally available
 full runs provide previous-run timing comparisons. The former decoder-derived
-baseline remains in Git history and is incompatible with handwritten workloads.
+baseline remains in Git history and is incompatible with CPU performance test workloads.
 Later reference changes require the same evidence and explicit approval.
 
 The previous vAmigaTS execution harness, dependent chipset benchmark and chipset

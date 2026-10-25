@@ -1,2 +1,0 @@
-subq/subq_b_absolute_short: 100000 targets/run, 43.401 ns/target minimum, 0.98% range
-ASM benchmark report written

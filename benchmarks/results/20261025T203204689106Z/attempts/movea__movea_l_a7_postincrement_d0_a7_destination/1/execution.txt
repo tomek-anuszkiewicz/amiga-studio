@@ -1,2 +1,0 @@
-movea/movea_l_a7_postincrement_d0_a7_destination: 100000 targets/run, 37.469 ns/target minimum, 0.59% range
-ASM benchmark report written

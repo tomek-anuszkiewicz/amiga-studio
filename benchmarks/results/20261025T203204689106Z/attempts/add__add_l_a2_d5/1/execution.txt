@@ -1,2 +1,0 @@
-add/add_l_a2_d5: 100000 targets/run, 25.409 ns/target minimum, 4.17% range
-ASM benchmark report written

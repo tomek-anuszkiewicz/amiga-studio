@@ -1,2 +1,0 @@
-scc/sls_predecrement: 100000 targets/run, 39.119 ns/target minimum, 0.99% range
-ASM benchmark report written

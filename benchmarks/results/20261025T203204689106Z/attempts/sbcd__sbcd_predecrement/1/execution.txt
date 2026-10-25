@@ -1,2 +1,0 @@
-sbcd/sbcd_predecrement: 100000 targets/run, 45.314 ns/target minimum, 1.55% range
-ASM benchmark report written

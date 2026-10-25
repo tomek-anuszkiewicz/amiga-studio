@@ -1,2 +1,0 @@
-nbcd/nbcd_postincrement: 100000 targets/run, 34.846 ns/target minimum, 2.98% range
-ASM benchmark report written

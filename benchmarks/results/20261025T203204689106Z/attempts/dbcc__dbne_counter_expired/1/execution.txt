@@ -1,2 +1,0 @@
-dbcc/dbne_counter_expired: 100000 targets/run, 75.620 ns/target minimum, 1.32% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-mul/mulu_w_postincrement: 100000 targets/run, 86.153 ns/target minimum, 3.60% range
-ASM benchmark report written

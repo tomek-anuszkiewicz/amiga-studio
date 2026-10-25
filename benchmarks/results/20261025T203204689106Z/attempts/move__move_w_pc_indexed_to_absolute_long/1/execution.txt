@@ -1,2 +1,0 @@
-move/move_w_pc_indexed_to_absolute_long: 100000 targets/run, 63.341 ns/target minimum, 0.52% range
-ASM benchmark report written

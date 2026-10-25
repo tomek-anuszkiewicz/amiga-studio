@@ -1,2 +1,0 @@
-move/move_w_absolute_long_to_data_register: 100000 targets/run, 48.465 ns/target minimum, 1.51% range
-ASM benchmark report written

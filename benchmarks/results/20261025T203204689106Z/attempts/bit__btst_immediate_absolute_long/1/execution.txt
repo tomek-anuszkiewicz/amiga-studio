@@ -1,2 +1,0 @@
-bit/btst_immediate_absolute_long: 100000 targets/run, 54.498 ns/target minimum, 4.16% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-and/and_l_postincrement: 100000 targets/run, 39.862 ns/target minimum, 1.18% range
-ASM benchmark report written

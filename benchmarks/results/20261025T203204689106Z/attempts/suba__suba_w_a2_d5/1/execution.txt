@@ -1,2 +1,0 @@
-suba/suba_w_a2_d5: 100000 targets/run, 27.336 ns/target minimum, 1.37% range
-ASM benchmark report written

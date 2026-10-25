@@ -1,2 +1,0 @@
-tas/tas_a7_predecrement: 100000 targets/run, 38.175 ns/target minimum, 2.03% range
-ASM benchmark report written

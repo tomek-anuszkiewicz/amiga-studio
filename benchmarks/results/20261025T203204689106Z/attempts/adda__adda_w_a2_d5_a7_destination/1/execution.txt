@@ -1,2 +1,0 @@
-adda/adda_w_a2_d5_a7_destination: 100000 targets/run, 27.007 ns/target minimum, 0.68% range
-ASM benchmark report written

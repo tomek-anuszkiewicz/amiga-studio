@@ -1,2 +1,0 @@
-scc/sgt_indexed: 100000 targets/run, 46.031 ns/target minimum, 2.56% range
-ASM benchmark report written

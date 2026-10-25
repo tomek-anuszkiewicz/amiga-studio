@@ -1,2 +1,0 @@
-move/move_l_absolute_short_to_address_displacement: 100000 targets/run, 70.854 ns/target minimum, 1.33% range
-ASM benchmark report written

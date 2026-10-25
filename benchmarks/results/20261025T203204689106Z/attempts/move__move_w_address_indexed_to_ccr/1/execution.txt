@@ -1,2 +1,0 @@
-move/move_w_address_indexed_to_ccr: 100000 targets/run, 68.497 ns/target minimum, 1.24% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-scc/sge_predecrement: 100000 targets/run, 39.222 ns/target minimum, 0.77% range
-ASM benchmark report written

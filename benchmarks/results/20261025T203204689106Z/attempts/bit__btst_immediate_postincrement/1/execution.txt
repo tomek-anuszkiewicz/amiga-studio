@@ -1,2 +1,0 @@
-bit/btst_immediate_postincrement: 100000 targets/run, 35.947 ns/target minimum, 2.24% range
-ASM benchmark report written

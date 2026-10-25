@@ -1,2 +1,0 @@
-jmp/jmp_pcdisp: 100000 targets/run, 34.261 ns/target minimum, 0.52% range
-ASM benchmark report written

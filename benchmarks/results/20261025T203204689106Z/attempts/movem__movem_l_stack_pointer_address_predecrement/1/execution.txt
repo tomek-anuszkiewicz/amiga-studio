@@ -1,2 +1,0 @@
-movem/movem_l_stack_pointer_address_predecrement: 100000 targets/run, 63.160 ns/target minimum, 0.94% range
-ASM benchmark report written

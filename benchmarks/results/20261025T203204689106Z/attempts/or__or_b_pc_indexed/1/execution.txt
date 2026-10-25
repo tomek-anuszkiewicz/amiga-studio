@@ -1,2 +1,0 @@
-or/or_b_pc_indexed: 100000 targets/run, 38.391 ns/target minimum, 1.91% range
-ASM benchmark report written

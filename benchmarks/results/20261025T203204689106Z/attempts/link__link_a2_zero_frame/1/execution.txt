@@ -1,2 +1,0 @@
-link/link_a2_zero_frame: 100000 targets/run, 40.097 ns/target minimum, 1.19% range
-ASM benchmark report written

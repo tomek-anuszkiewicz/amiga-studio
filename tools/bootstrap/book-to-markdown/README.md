@@ -18,8 +18,11 @@ Book recipe and review tests live in `tests/` beside this program. Run them from
 the repository root:
 
 ```powershell
-python -m unittest discover -s tools/bootstrap/book-to-markdown/tests -q
+python tools/verification/verify.py test python directory tools/bootstrap/book-to-markdown/tests
 ```
+
+This command installs missing pinned Python packages and local KaTeX assets before
+running the tests. The other Python test directories do not need these review assets.
 
 The [documentation and RAG roadmap](../../../ROADMAP.md#step-1-manual-conversion-and-initial-knowledge-base)
 tracks portable recipes and standalone Markdown reconstruction from matching PDFs. New imports

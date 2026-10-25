@@ -1,2 +1,0 @@
-add/add_w_immediate: 100000 targets/run, 29.296 ns/target minimum, 1.00% range
-ASM benchmark report written

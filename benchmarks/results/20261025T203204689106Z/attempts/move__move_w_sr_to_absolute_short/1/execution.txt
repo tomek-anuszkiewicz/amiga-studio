@@ -1,2 +1,0 @@
-move/move_w_sr_to_absolute_short: 100000 targets/run, 41.761 ns/target minimum, 3.28% range
-ASM benchmark report written

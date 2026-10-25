@@ -1,2 +1,0 @@
-swap/swap_d3: 100000 targets/run, 21.849 ns/target minimum, 4.57% range
-ASM benchmark report written

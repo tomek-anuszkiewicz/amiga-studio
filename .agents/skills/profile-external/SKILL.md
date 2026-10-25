@@ -1,6 +1,6 @@
 ---
 name: profile-external
-description: Profile an available emulator workload with samply and compare compatible handwritten CPU benchmark runs; whole-machine profiling requires an executable workload.
+description: Profile an available emulator workload with samply and compare compatible CPU performance test runs; whole-machine profiling requires an executable workload.
 ---
 
 # External Sampling Profiler & Performance Runbook
@@ -25,7 +25,7 @@ change. Record the source snapshot, host, measurement profile and relevant
 execution settings. Check the workload actually reaches the target function;
 CPU-only benchmarks cannot establish a chipset optimization's value.
 
-The active CPU workload is the handwritten catalog under `benchmarks/m68k/`.
+The active CPU workload is the CPU performance test catalog under `benchmarks/m68k/`.
 Use `--plan` to inspect selected commands without starting measurements.
 
 ## Measure and Profile
@@ -80,8 +80,8 @@ behavioral tests under [unit-testing-policy.md](../../rules/unit-testing-policy.
 Report workload limits, measurement variation and checks not run. Preserve
 production hot paths without host timers or profiling probes.
 
-The approved CPU baseline in `benchmarks/` records the first full handwritten
-measurement run. The decoder-derived reference remains in Git history.
+The approved CPU baseline in `benchmarks/` records the first full CPU performance
+test run. The decoder-derived reference remains in Git history.
 Reference changes require evidence and explicit approval under
 [spec-compliance.md](../../rules/spec-compliance.md). Include an approved update
 only in its authorized atomic commit; analysis alone does not authorize baseline

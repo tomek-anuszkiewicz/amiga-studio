@@ -1,2 +1,0 @@
-ror/ror_w_register_zero_count: 100000 targets/run, 24.907 ns/target minimum, 0.91% range
-ASM benchmark report written

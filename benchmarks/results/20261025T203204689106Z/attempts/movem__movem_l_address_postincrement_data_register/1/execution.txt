@@ -1,2 +1,0 @@
-movem/movem_l_address_postincrement_data_register: 100000 targets/run, 77.284 ns/target minimum, 1.24% range
-ASM benchmark report written

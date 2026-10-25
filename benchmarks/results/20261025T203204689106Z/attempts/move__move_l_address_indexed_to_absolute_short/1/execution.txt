@@ -1,2 +1,0 @@
-move/move_l_address_indexed_to_absolute_short: 100000 targets/run, 67.473 ns/target minimum, 1.86% range
-ASM benchmark report written

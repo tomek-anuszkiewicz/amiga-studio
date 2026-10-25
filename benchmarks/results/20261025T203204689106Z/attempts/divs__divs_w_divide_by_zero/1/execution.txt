@@ -1,2 +1,0 @@
-divs/divs_w_divide_by_zero: 100000 targets/run, 179.392 ns/target minimum, 2.42% range
-ASM benchmark report written

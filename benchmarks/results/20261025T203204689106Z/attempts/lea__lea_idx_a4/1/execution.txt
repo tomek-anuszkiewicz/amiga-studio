@@ -1,2 +1,0 @@
-lea/lea_idx_a4: 100000 targets/run, 34.800 ns/target minimum, 2.24% range
-ASM benchmark report written

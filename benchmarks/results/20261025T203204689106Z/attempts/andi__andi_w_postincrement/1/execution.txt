@@ -1,2 +1,0 @@
-andi/andi_w_postincrement: 100000 targets/run, 44.788 ns/target minimum, 0.77% range
-ASM benchmark report written

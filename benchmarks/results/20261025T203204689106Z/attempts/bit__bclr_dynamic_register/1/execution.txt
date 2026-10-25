@@ -1,2 +1,0 @@
-bit/bclr_dynamic_register: 100000 targets/run, 25.590 ns/target minimum, 3.20% range
-ASM benchmark report written

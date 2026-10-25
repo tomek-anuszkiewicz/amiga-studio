@@ -1,2 +1,0 @@
-and/and_b_indirect: 100000 targets/run, 29.105 ns/target minimum, 3.24% range
-ASM benchmark report written

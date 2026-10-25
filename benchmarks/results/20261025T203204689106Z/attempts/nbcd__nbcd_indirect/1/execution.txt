@@ -1,2 +1,0 @@
-nbcd/nbcd_indirect: 100000 targets/run, 34.415 ns/target minimum, 0.95% range
-ASM benchmark report written

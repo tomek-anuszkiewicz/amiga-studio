@@ -1,2 +1,0 @@
-dbcc/dbeq_branch: 100000 targets/run, 70.370 ns/target minimum, 4.20% range
-ASM benchmark report written

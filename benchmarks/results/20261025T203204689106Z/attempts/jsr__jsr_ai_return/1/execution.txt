@@ -1,2 +1,0 @@
-jsr/jsr_ai_return: 100000 targets/run, 67.183 ns/target minimum, 1.79% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-move/move_l_data_register_to_address_indirect: 100000 targets/run, 35.601 ns/target minimum, 0.88% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-bit/bset_data_register_a7_postincrement: 100000 targets/run, 34.955 ns/target minimum, 0.59% range
-ASM benchmark report written

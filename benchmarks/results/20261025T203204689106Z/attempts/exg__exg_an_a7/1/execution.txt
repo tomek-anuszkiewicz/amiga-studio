@@ -1,2 +1,0 @@
-exg/exg_an_a7: 100000 targets/run, 22.909 ns/target minimum, 0.98% range
-ASM benchmark report written

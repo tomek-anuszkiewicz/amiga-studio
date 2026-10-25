@@ -1,2 +1,0 @@
-dbcc/dble_counter_expired: 100000 targets/run, 76.566 ns/target minimum, 1.40% range
-ASM benchmark report written

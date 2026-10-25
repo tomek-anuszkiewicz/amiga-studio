@@ -1,2 +1,0 @@
-muls/muls_w_pc_indexed: 100000 targets/run, 92.961 ns/target minimum, 1.20% range
-ASM benchmark report written

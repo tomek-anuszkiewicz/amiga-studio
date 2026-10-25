@@ -1,2 +1,0 @@
-ror/ror_w_d3_d4: 100000 targets/run, 30.403 ns/target minimum, 2.89% range
-ASM benchmark report written

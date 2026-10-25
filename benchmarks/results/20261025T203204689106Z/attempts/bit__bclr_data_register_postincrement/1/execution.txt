@@ -1,2 +1,0 @@
-bit/bclr_data_register_postincrement: 100000 targets/run, 34.901 ns/target minimum, 0.25% range
-ASM benchmark report written

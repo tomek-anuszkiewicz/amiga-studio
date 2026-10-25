@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Provision the pinned M68000 assembler used by hand-written CPU benchmarks.
+    Provision the pinned M68000 assembler used by CPU performance tests.
 
 .DESCRIPTION
     Downloads the Attackwave m68k-asm release pinned in assembler-manifest.json,

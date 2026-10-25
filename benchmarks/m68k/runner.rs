@@ -1,4 +1,4 @@
-//! Shared runner for hand-written M68000 assembly benchmarks.
+//! Shared runner for M68000 CPU performance tests.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
@@ -992,7 +992,9 @@ pub fn measure(
     let case: CaseConfig =
         serde_json::from_slice(&fs::read(case_path).map_err(|error| error.to_string())?)
             .map_err(|error| error.to_string())?;
-    let output = root.join(".agent/tmp/benchmarks/handwritten").join(case_id);
+    let output = root
+        .join(".agent/tmp/benchmarks/cpu_performance_tests")
+        .join(case_id);
     fs::create_dir_all(&output).map_err(|error| error.to_string())?;
     let (fixture, mut report) = prepare(&root, case_id, &benchmark, &case, &output)?;
     #[cfg(windows)]

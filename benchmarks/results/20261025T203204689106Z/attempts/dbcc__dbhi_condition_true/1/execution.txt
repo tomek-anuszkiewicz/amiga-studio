@@ -1,2 +1,0 @@
-dbcc/dbhi_condition_true: 100000 targets/run, 66.493 ns/target minimum, 3.30% range
-ASM benchmark report written

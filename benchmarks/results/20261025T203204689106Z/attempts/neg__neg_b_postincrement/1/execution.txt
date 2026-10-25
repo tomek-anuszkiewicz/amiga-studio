@@ -1,2 +1,0 @@
-neg/neg_b_postincrement: 100000 targets/run, 34.322 ns/target minimum, 6.05% range
-ASM benchmark report written

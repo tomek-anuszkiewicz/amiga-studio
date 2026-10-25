@@ -1,2 +1,0 @@
-cmp/cmp_b_d1_d0: 100000 targets/run, 21.806 ns/target minimum, 0.99% range
-ASM benchmark report written

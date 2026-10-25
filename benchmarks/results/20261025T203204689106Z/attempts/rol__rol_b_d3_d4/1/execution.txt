@@ -1,2 +1,0 @@
-rol/rol_b_d3_d4: 100000 targets/run, 29.583 ns/target minimum, 1.78% range
-ASM benchmark report written

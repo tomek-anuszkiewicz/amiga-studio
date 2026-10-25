@@ -1,2 +1,0 @@
-move/move_w_pc_displacement_to_address_postincrement: 100000 targets/run, 43.874 ns/target minimum, 3.31% range
-ASM benchmark report written

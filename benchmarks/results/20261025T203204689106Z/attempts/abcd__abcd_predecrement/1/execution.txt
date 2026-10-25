@@ -1,2 +1,0 @@
-abcd/abcd_predecrement: 100000 targets/run, 44.556 ns/target minimum, 3.02% range
-ASM benchmark report written

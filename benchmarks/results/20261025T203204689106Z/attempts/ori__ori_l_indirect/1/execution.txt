@@ -1,2 +1,0 @@
-ori/ori_l_indirect: 100000 targets/run, 65.858 ns/target minimum, 1.90% range
-ASM benchmark report written

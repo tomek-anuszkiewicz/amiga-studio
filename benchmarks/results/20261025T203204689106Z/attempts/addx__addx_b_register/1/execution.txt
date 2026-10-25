@@ -1,2 +1,0 @@
-addx/addx_b_register: 100000 targets/run, 22.432 ns/target minimum, 1.56% range
-ASM benchmark report written

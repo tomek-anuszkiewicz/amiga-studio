@@ -1,2 +1,0 @@
-pea/pea_pcidx: 100000 targets/run, 46.520 ns/target minimum, 0.52% range
-ASM benchmark report written

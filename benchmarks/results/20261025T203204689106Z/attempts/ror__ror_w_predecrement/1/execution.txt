@@ -1,2 +1,0 @@
-ror/ror_w_predecrement: 100000 targets/run, 39.028 ns/target minimum, 7.64% range
-ASM benchmark report written

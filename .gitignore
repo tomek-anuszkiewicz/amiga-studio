@@ -35,6 +35,8 @@ __pycache__/
 /tests/benchmarks/quick/
 /tests/benchmarks/standard/
 /tests/benchmarks/thorough/
+# Local CPU performance test runs; approved baselines remain tracked.
+/benchmarks/results/
 
 # ------------------------------------------------------------------------------
 # 5. Rust Cargo Build Outputs (Safe to delete / Regenerated on build)

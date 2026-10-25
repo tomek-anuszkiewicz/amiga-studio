@@ -1,2 +1,0 @@
-shift/asl_l_register_large_count: 100000 targets/run, 165.207 ns/target minimum, 1.30% range
-ASM benchmark report written

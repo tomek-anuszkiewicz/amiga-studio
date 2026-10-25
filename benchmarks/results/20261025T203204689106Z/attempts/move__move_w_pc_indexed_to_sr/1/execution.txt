@@ -1,2 +1,0 @@
-move/move_w_pc_indexed_to_sr: 100000 targets/run, 53.735 ns/target minimum, 0.98% range
-ASM benchmark report written

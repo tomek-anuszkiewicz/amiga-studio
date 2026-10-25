@@ -1,2 +1,0 @@
-mul/mulu_w_sparse_source: 100000 targets/run, 68.441 ns/target minimum, 2.56% range
-ASM benchmark report written

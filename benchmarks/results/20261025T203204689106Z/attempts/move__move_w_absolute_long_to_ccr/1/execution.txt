@@ -1,2 +1,0 @@
-move/move_w_absolute_long_to_ccr: 100000 targets/run, 75.976 ns/target minimum, 0.57% range
-ASM benchmark report written

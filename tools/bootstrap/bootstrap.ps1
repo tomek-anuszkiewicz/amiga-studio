@@ -37,7 +37,7 @@
     tools/bootstrap_documentation.ps1.
 
 .PARAMETER Assembler
-    Provisions the pinned M68000 assembler used by hand-written CPU benchmarks.
+    Provisions the pinned M68000 assembler used by CPU performance tests.
 
 .PARAMETER Markdown
     When bootstrapping documentation (-Documentation), converts downloaded
@@ -76,7 +76,7 @@
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -Assembler
-    Provision only the pinned M68000 assembler for hand-written CPU benchmarks.
+    Provision only the pinned M68000 assembler for CPU performance tests.
 #>
 
 [CmdletBinding()]

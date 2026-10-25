@@ -1,2 +1,0 @@
-divs/divs_w_predecrement: 100000 targets/run, 155.343 ns/target minimum, 1.46% range
-ASM benchmark report written

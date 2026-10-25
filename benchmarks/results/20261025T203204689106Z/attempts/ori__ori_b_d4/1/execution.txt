@@ -1,2 +1,0 @@
-ori/ori_b_d4: 100000 targets/run, 28.358 ns/target minimum, 3.35% range
-ASM benchmark report written

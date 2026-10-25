@@ -1,2 +1,0 @@
-exg/exg_dn_dn: 100000 targets/run, 22.880 ns/target minimum, 1.75% range
-ASM benchmark report written

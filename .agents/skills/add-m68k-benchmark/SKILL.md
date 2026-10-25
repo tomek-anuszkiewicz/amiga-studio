@@ -1,11 +1,11 @@
 ---
 name: add-m68k-benchmark
-description: Add or revise a hand-written, assembler-driven M68000 CPU instruction benchmark under benchmarks/m68k; use for new instruction cases, not CPU opcode implementation or whole-machine benchmarks.
+description: Add or revise an M68000 CPU performance test under benchmarks/m68k; use for new instruction cases, not CPU opcode implementation or whole-machine benchmarks.
 ---
 
 # Add an M68000 instruction benchmark
 
-Use existing [hand-written cases](../../../benchmarks/m68k/) as working examples, not fixed templates. The [benchmark README](../../../benchmarks/m68k/README.md) describes the catalog and command; the [shared runner](../../../benchmarks/m68k/runner.rs) owns assembly, fixture preparation, execution checks, and measurement. This catalog is the active CPU measurement workload; the retained decoder-derived baseline is incompatible with it. These cases measure only the host cost of running a complete CPU program in Fast RAM; they do not test opcode correctness or measure the whole Amiga. Choose separate cases for distinct execution work or performance cost, not solely to cover different results, condition flags, signs, or register aliases. Correctness belongs to the CPU test suites.
+Use existing [CPU performance test cases](../../../benchmarks/m68k/) as working examples, not fixed templates. The [benchmark README](../../../benchmarks/m68k/README.md) describes the catalog and command; the [shared runner](../../../benchmarks/m68k/runner.rs) owns assembly, fixture preparation, execution checks, and measurement. This catalog is the active CPU measurement workload; the retained decoder-derived baseline is incompatible with it. These cases measure only the host cost of running a complete CPU program in Fast RAM; they do not test opcode correctness or measure the whole Amiga. Choose separate cases for distinct execution work or performance cost, not solely to cover different results, condition flags, signs, or register aliases. Correctness belongs to the CPU test suites.
 
 ## Define the case
 

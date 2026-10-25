@@ -1,2 +1,0 @@
-adda/adda_w_pc_displacement: 100000 targets/run, 42.053 ns/target minimum, 2.12% range
-ASM benchmark report written

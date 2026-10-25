@@ -1,2 +1,0 @@
-movem/movem_l_address_displacement_register_list: 100000 targets/run, 138.778 ns/target minimum, 1.04% range
-ASM benchmark report written

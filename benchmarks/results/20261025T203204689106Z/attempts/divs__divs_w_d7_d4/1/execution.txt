@@ -1,2 +1,0 @@
-divs/divs_w_d7_d4: 100000 targets/run, 147.578 ns/target minimum, 0.75% range
-ASM benchmark report written

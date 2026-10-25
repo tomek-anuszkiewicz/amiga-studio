@@ -1,2 +1,0 @@
-tas/tas_d16: 100000 targets/run, 43.724 ns/target minimum, 2.22% range
-ASM benchmark report written

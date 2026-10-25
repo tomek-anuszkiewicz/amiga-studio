@@ -1,2 +1,0 @@
-neg/neg_b_absolute_long: 100000 targets/run, 52.535 ns/target minimum, 3.51% range
-ASM benchmark report written

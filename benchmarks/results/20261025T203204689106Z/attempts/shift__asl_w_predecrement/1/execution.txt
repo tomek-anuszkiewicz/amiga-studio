@@ -1,2 +1,0 @@
-shift/asl_w_predecrement: 100000 targets/run, 40.525 ns/target minimum, 2.24% range
-ASM benchmark report written

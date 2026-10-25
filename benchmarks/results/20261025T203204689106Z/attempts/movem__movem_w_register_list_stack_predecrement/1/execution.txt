@@ -1,2 +1,0 @@
-movem/movem_w_register_list_stack_predecrement: 100000 targets/run, 80.262 ns/target minimum, 1.77% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-subi/subi_b_a7_postincrement: 100000 targets/run, 43.224 ns/target minimum, 4.80% range
-ASM benchmark report written

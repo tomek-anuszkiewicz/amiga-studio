@@ -1,2 +1,0 @@
-neg/neg_b_d4: 100000 targets/run, 21.520 ns/target minimum, 0.29% range
-ASM benchmark report written

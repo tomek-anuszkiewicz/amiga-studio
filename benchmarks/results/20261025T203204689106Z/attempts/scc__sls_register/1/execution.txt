@@ -1,2 +1,0 @@
-scc/sls_register: 100000 targets/run, 24.859 ns/target minimum, 0.79% range
-ASM benchmark report written

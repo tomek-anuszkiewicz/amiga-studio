@@ -1,2 +1,0 @@
-chk/chk_w_absolute_short: 100000 targets/run, 45.023 ns/target minimum, 1.25% range
-ASM benchmark report written

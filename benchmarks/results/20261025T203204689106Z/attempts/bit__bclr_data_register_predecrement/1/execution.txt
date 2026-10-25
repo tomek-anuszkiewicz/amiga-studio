@@ -1,2 +1,0 @@
-bit/bclr_data_register_predecrement: 100000 targets/run, 38.725 ns/target minimum, 3.31% range
-ASM benchmark report written

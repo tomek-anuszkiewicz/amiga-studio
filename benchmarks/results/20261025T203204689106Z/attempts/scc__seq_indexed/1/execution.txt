@@ -1,2 +1,0 @@
-scc/seq_indexed: 100000 targets/run, 45.500 ns/target minimum, 2.37% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-ori/ori_b_indexed: 100000 targets/run, 54.555 ns/target minimum, 1.58% range
-ASM benchmark report written

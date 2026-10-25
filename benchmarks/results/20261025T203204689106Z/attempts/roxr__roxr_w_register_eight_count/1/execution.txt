@@ -1,2 +1,0 @@
-roxr/roxr_w_register_eight_count: 100000 targets/run, 38.601 ns/target minimum, 4.71% range
-ASM benchmark report written

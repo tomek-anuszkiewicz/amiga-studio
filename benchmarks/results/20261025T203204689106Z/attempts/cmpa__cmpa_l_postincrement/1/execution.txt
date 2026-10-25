@@ -1,2 +1,0 @@
-cmpa/cmpa_l_postincrement: 100000 targets/run, 40.487 ns/target minimum, 0.05% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-move/move_l_pc_displacement_to_stack_predecrement: 100000 targets/run, 63.571 ns/target minimum, 17.55% range
-ASM benchmark report written

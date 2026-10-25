@@ -1,2 +1,0 @@
-add/add_b_pc_indexed: 100000 targets/run, 40.004 ns/target minimum, 1.43% range
-ASM benchmark report written

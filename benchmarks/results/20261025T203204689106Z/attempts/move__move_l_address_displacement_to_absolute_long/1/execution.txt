@@ -1,2 +1,0 @@
-move/move_l_address_displacement_to_absolute_long: 100000 targets/run, 75.704 ns/target minimum, 2.07% range
-ASM benchmark report written

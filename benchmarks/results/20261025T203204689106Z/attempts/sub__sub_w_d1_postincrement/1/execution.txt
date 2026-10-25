@@ -1,2 +1,0 @@
-sub/sub_w_d1_postincrement: 100000 targets/run, 37.318 ns/target minimum, 2.59% range
-ASM benchmark report written

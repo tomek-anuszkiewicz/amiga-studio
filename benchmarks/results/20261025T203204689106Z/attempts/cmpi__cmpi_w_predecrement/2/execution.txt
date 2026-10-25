@@ -1,2 +1,0 @@
-cmpi/cmpi_w_predecrement: 100000 targets/run, 40.153 ns/target minimum, 1.99% range
-ASM benchmark report written

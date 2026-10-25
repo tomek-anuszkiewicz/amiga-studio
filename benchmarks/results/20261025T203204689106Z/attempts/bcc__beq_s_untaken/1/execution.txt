@@ -1,2 +1,0 @@
-bcc/beq_s_untaken: 100000 targets/run, 49.599 ns/target minimum, 3.68% range
-ASM benchmark report written

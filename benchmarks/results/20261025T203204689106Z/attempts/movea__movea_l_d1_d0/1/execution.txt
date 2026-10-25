@@ -1,2 +1,0 @@
-movea/movea_l_d1_d0: 100000 targets/run, 41.377 ns/target minimum, 3.70% range
-ASM benchmark report written

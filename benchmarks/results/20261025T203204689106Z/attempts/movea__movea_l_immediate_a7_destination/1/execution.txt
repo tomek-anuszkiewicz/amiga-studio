@@ -1,2 +1,0 @@
-movea/movea_l_immediate_a7_destination: 100000 targets/run, 41.911 ns/target minimum, 0.89% range
-ASM benchmark report written

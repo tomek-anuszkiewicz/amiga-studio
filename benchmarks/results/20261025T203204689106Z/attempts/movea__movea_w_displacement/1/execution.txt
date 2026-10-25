@@ -1,2 +1,0 @@
-movea/movea_w_displacement: 100000 targets/run, 38.302 ns/target minimum, 2.97% range
-ASM benchmark report written

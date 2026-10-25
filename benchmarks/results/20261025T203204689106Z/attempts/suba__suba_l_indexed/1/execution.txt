@@ -1,2 +1,0 @@
-suba/suba_l_indexed: 100000 targets/run, 52.878 ns/target minimum, 0.41% range
-ASM benchmark report written

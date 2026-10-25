@@ -1,2 +1,0 @@
-bit/bclr_high_bit_register: 100000 targets/run, 35.979 ns/target minimum, 1.82% range
-ASM benchmark report written

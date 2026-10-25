@@ -1,2 +1,0 @@
-suba/suba_l_pc_indexed_a7_destination: 100000 targets/run, 52.953 ns/target minimum, 0.34% range
-ASM benchmark report written

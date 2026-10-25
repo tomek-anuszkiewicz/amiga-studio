@@ -1,2 +1,0 @@
-move/move_w_address_displacement_to_absolute_short: 100000 targets/run, 51.997 ns/target minimum, 2.69% range
-ASM benchmark report written

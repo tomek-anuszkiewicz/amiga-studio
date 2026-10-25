@@ -1,2 +1,0 @@
-bit/bchg_dynamic_memory: 100000 targets/run, 35.518 ns/target minimum, 1.89% range
-ASM benchmark report written

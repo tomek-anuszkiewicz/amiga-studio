@@ -1,2 +1,0 @@
-scc/shi_indirect: 100000 targets/run, 36.569 ns/target minimum, 1.81% range
-ASM benchmark report written

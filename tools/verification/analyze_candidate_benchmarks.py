@@ -8,7 +8,7 @@ import statistics
 from collections import Counter, defaultdict
 from pathlib import Path
 
-BASELINE_PATH = Path(__file__).resolve().parents[2] / "baselines" / "benchmarks" / "m68k_benchmark_baseline.json"
+BASELINE_PATH = Path(__file__).resolve().parents[2] / "benchmarks" / "m68k_benchmark_baseline.json"
 BASELINE_CSV = BASELINE_PATH.with_suffix(".csv")
 HOST_IDENTITY_KEYS = ("host_os", "host_arch")
 HOST_SETTING_KEYS = ("active_power_plan", "priority_class", "core_id", "affinity_verified")

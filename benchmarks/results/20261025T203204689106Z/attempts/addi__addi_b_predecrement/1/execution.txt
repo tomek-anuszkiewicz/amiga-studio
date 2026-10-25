@@ -1,2 +1,0 @@
-addi/addi_b_predecrement: 100000 targets/run, 47.368 ns/target minimum, 3.39% range
-ASM benchmark report written

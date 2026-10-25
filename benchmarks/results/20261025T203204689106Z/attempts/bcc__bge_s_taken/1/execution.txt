@@ -1,2 +1,0 @@
-bcc/bge_s_taken: 100000 targets/run, 59.959 ns/target minimum, 0.34% range
-ASM benchmark report written

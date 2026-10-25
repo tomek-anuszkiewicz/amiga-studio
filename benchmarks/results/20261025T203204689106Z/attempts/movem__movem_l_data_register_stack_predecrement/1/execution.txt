@@ -1,2 +1,0 @@
-movem/movem_l_data_register_stack_predecrement: 100000 targets/run, 68.594 ns/target minimum, 1.17% range
-ASM benchmark report written

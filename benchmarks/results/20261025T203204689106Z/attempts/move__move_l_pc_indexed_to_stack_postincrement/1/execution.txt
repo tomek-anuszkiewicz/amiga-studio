@@ -1,2 +1,0 @@
-move/move_l_pc_indexed_to_stack_postincrement: 100000 targets/run, 60.893 ns/target minimum, 1.24% range
-ASM benchmark report written

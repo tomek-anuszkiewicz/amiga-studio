@@ -1,2 +1,0 @@
-cmpa/cmpa_l_displacement: 100000 targets/run, 47.969 ns/target minimum, 1.33% range
-ASM benchmark report written

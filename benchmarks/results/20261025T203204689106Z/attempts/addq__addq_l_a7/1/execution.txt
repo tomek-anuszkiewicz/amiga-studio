@@ -1,2 +1,0 @@
-addq/addq_l_a7: 100000 targets/run, 24.026 ns/target minimum, 2.43% range
-ASM benchmark report written

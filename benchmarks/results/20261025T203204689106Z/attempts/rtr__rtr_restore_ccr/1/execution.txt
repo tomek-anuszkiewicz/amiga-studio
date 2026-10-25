@@ -1,2 +1,0 @@
-rtr/rtr_restore_ccr: 100000 targets/run, 56.582 ns/target minimum, 2.21% range
-ASM benchmark report written

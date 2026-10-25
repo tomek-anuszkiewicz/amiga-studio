@@ -1,2 +1,0 @@
-cmpa/cmpa_w_absolute_short: 100000 targets/run, 39.504 ns/target minimum, 1.56% range
-ASM benchmark report written

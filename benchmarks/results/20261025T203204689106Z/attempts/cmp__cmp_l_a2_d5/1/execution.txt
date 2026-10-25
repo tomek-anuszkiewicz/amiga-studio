@@ -1,2 +1,0 @@
-cmp/cmp_l_a2_d5: 100000 targets/run, 22.850 ns/target minimum, 1.04% range
-ASM benchmark report written

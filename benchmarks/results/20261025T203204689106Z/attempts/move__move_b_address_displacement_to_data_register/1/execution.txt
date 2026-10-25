@@ -1,2 +1,0 @@
-move/move_b_address_displacement_to_data_register: 100000 targets/run, 36.016 ns/target minimum, 1.80% range
-ASM benchmark report written

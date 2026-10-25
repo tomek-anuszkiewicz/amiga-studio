@@ -1,2 +1,0 @@
-tas/tas_postincrement: 100000 targets/run, 35.292 ns/target minimum, 2.29% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-add/add_w_indirect: 100000 targets/run, 31.141 ns/target minimum, 1.59% range
-ASM benchmark report written

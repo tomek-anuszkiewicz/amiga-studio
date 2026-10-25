@@ -1,2 +1,0 @@
-bit/bchg_immediate_a7_predecrement: 100000 targets/run, 46.351 ns/target minimum, 4.96% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-andi/andi_l_d4: 100000 targets/run, 46.365 ns/target minimum, 1.55% range
-ASM benchmark report written

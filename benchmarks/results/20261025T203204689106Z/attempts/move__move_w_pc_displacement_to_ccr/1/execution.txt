@@ -1,2 +1,0 @@
-move/move_w_pc_displacement_to_ccr: 100000 targets/run, 52.740 ns/target minimum, 0.88% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-chk/chk_w_negative: 100000 targets/run, 122.738 ns/target minimum, 2.51% range
-ASM benchmark report written

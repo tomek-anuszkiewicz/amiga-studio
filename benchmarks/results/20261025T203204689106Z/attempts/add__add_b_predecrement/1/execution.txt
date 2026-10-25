@@ -1,2 +1,0 @@
-add/add_b_predecrement: 100000 targets/run, 31.376 ns/target minimum, 0.64% range
-ASM benchmark report written

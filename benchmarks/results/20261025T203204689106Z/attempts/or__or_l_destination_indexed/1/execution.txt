@@ -1,2 +1,0 @@
-or/or_l_destination_indexed: 100000 targets/run, 58.640 ns/target minimum, 2.10% range
-ASM benchmark report written

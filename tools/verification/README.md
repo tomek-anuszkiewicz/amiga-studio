@@ -28,9 +28,9 @@ includes a module path.
 | `check code|hardware|formatting|clippy` | One quality gate |
 | `check build [crate NAME]` | Cargo compilation check; workspace by default |
 | `runner build` | Compile release test and benchmark targets without running them |
-| `runner bench [case ID\|mnemonic NAME\|opcode XXXX] [duration-ms N] [series N]` | Handwritten CPU workload measurement |
+| `runner bench [case ID\|mnemonic NAME\|opcode XXXX] [duration-ms N] [series N]` | CPU performance test measurement |
 | `runner gui -- OPTIONS` | GUI inspector capture |
-| `runner profile bench case FAMILY/CASE` | Build and sample one handwritten CPU workload with samply |
+| `runner profile bench case FAMILY/CASE` | Build and sample one CPU performance test workload with samply |
 | `runner analyze RUN_DIRECTORY` | Regenerate a stored run analysis without measurement |
 
 `--plan` previews the exact child commands and environment. `--log-level
@@ -154,7 +154,7 @@ executes complete guest programs and resets CPU and memory outside each timer.
 The default is three series of at least 400 ms of timed execution per case.
 The minimum series nanoseconds per target is the selected whole-workload cost;
 all series remain in the case report. No separate guest inspection run is made.
-Assembly sources and binaries stay under `.agent/tmp/benchmarks/handwritten/`.
+Assembly sources and binaries stay under `.agent/tmp/benchmarks/cpu_performance_tests/`.
 
 The external monitor samples the pinned host core during each measured series
 (all logical cores when affinity is unavailable). It subtracts the benchmark
@@ -167,11 +167,11 @@ marks the result. Execution failure is recorded as a failed case without retry.
 Completed runs automatically write `aggregate.json`, `aggregate.csv`,
 `anomalies.json`, `comparison.json` and a readable `report.md`. Explicit analysis regenerates those
 reports from stored data. An incomplete run cannot be analyzed or selected as
-a comparison. Only an earlier committed, completed full run with matching host
+a comparison. Only an earlier locally available, completed full run with matching host
 and settings is eligible. Each case additionally requires matching source,
 configuration, image, target count and CPU clocks. Filtered runs compare their
 measured intersection but do not become full-run references. The approved
-`m68k_benchmark_baseline` records the first complete handwritten run. Future
+`m68k_benchmark_baseline` records the first complete CPU performance test run. Future
 reference changes require the reference-artifact approval procedure.
 
 ## Completion verification
@@ -179,7 +179,7 @@ reference changes require the reference-artifact approval procedure.
 Verification orchestration and coverage result processing live in `tools/verification/`;
 worktree management lives in `tools/worktree.ps1`. The shared diary appender lives in `tools/log_diary.py`. Concrete project audits and checks live in `tools/verification/checks/`. Run these scripts from the repository root. Task selection uses subcommands; the former selection switches are rejected.
 
-The `test_runner` suites retain emulator execution checks and reference-result invariants. The decoder inventory has a targeted test; Python tests check handwritten benchmark selection, analysis and command contracts. Empirical anomaly reports use stored results and do not establish fresh performance measurements.
+The `test_runner` suites retain emulator execution checks and reference-result invariants. The decoder inventory has a targeted test; Python tests check CPU performance test selection, analysis and command contracts. Empirical anomaly reports use stored results and do not establish fresh performance measurements.
 
 Commit verification starts with ordinary workspace crate tests under LLVM coverage instrumentation, excluding `test_runner`. This is automatic, with no coverage switch. Only this execution contributes to the coverage report; the remaining quality gates and harness suites use normal Cargo artifacts. `cargo-llvm-cov` uses its separate `target/llvm-cov-target` cache, while normal Cargo commands retain their usual target directory. Raw measurement counters and the previous summary are cleared before each measurement, without deleting the build caches. Yellow `[INFO]` messages identify the instrumented and uninstrumented phases and summarize line, function and region coverage. Full summary data is saved to `.agent/tmp/coverage/summary.json`; there is no percentage threshold. Coverage does not measure performance or prove assertion quality. Stable coverage does not include doctest execution; branch coverage is not enabled.
 
@@ -202,7 +202,8 @@ python tools/verification/verify.py milestone
 Routine commits use only the first command. The profiles are invoked separately. Commit first runs ordinary workspace crate tests with coverage, reports the measured coverage, then runs quality gates, standard `test_runner` suites and Python tool contracts without coverage instrumentation. It never selects full SingleStepTests, even for CPU changes. Every commit scans all repository-owned text files against the English dictionary and reviewed project vocabulary, regardless of staging or changes, using `tools/verification/checks/check_english.json`. Milestone runs that language audit plus full SingleStepTests, including on a clean tree so already committed milestone work is covered. It does not repeat the other commit checks. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification.
 
 Python tool contracts live beside their owning tools. Commit verification runs
-`unittest discover` separately for each directory below; the tools do not run
+`unittest discover` separately for each directory below; Book Review first checks
+its pinned Python packages and local KaTeX assets. The tools do not run
 these tests during normal operation. Without a commit, run only checks relevant
 to a coherent change, not after every edit. Repeat checks only after affected
 input changes, failures or unresolved concerns. `python tools/verification/verify.py test python` selects contracts
@@ -288,7 +289,7 @@ PhysicalMemory. Its selection is owned by [commands.py](commands.py):
 
 Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory. The separate milestone set runs the full language audit and full SingleStepTests; vAmigaTS Cargo suites and automatic chipset/capture runs have been removed.
 
-Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks and external sampling profiles run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the first full handwritten run. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
+Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks and external sampling profiles run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the first full CPU performance test run. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
 
 ---
 

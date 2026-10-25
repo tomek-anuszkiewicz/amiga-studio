@@ -1,2 +1,0 @@
-move/move_l_usp_to_stack_pointer: 100000 targets/run, 24.551 ns/target minimum, 1.96% range
-ASM benchmark report written

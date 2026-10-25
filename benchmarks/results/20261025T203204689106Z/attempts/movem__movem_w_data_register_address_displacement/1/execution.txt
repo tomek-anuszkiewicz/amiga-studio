@@ -1,2 +1,0 @@
-movem/movem_w_data_register_address_displacement: 100000 targets/run, 56.750 ns/target minimum, 1.90% range
-ASM benchmark report written

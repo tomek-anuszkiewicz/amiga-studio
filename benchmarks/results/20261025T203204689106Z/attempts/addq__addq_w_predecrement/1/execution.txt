@@ -1,2 +1,0 @@
-addq/addq_w_predecrement: 100000 targets/run, 38.918 ns/target minimum, 1.19% range
-ASM benchmark report written

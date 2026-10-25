@@ -1,2 +1,0 @@
-add/add_b_d1_d0: 100000 targets/run, 21.683 ns/target minimum, 2.05% range
-ASM benchmark report written

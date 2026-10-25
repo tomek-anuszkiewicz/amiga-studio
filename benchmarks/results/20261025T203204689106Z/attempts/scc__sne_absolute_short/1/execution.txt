@@ -1,2 +1,0 @@
-scc/sne_absolute_short: 100000 targets/run, 43.863 ns/target minimum, 0.95% range
-ASM benchmark report written

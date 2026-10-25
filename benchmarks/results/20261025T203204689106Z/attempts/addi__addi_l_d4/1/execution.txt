@@ -1,2 +1,0 @@
-addi/addi_l_d4: 100000 targets/run, 46.900 ns/target minimum, 1.04% range
-ASM benchmark report written

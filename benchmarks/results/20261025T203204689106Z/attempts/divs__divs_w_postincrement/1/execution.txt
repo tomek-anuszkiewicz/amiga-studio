@@ -1,2 +1,0 @@
-divs/divs_w_postincrement: 100000 targets/run, 153.157 ns/target minimum, 2.08% range
-ASM benchmark report written

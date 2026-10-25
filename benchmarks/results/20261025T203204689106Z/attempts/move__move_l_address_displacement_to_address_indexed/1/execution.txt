@@ -1,2 +1,0 @@
-move/move_l_address_displacement_to_address_indexed: 100000 targets/run, 72.225 ns/target minimum, 1.41% range
-ASM benchmark report written

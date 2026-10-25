@@ -1,2 +1,0 @@
-roxl/roxl_w_register_eight_count: 100000 targets/run, 38.127 ns/target minimum, 3.13% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-bit/btst_data_register_pc_displacement: 100000 targets/run, 37.138 ns/target minimum, 2.08% range
-ASM benchmark report written

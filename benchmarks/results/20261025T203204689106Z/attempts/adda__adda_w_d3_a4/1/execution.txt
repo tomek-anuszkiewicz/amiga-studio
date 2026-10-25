@@ -1,2 +1,0 @@
-adda/adda_w_d3_a4: 100000 targets/run, 25.858 ns/target minimum, 1.21% range
-ASM benchmark report written

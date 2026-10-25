@@ -1,6 +1,6 @@
 #![allow(unsafe_code, clippy::cast_ptr_alignment)]
 
-//! Host topology detection for handwritten benchmark affinity selection.
+//! Host topology detection for CPU performance tests.
 //!
 //! The measurement runner applies and verifies its own host affinity policy.
 

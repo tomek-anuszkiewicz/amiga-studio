@@ -5364,3 +5364,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - FAIL: commit verification Book Review contracts with five UI timeouts and two missing local math assets
   - PASS: other selected commit checks
   - NOT RUN: full SingleStep milestone suite
+---
+
+### [2026-10-26 00:30 CET] — Keep CPU performance runs local and prepare portable review tests
+- **Affected Subsystems**:
+  - `benchmarks/m68k`
+  - `crates/test_runner`
+  - `tools/verification`
+  - `tools/bootstrap/book-to-markdown`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove tracked raw CPU timing run reports and ignore future local runs while retaining the approved baseline
+  - rename the CPU performance command and update comparison behavior to use locally available compatible runs
+  - add pinned dependency setup for Book Review tests and update the verification command
+  - synchronize related specifications and commit verification policy
+- **Architectural Rationale & Trade-Offs**:
+  - Keep large host-specific measurement artifacts local while retaining the approved portable reference and make the standard review test gate runnable from a clean checkout.
+- **Verification & Test Results**:
+  - Staged diff checked
+  - commit profile pending. Full SingleStep and milestone profile not run.

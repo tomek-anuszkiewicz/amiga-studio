@@ -1,2 +1,0 @@
-subq/subq_b_postincrement: 100000 targets/run, 35.373 ns/target minimum, 1.31% range
-ASM benchmark report written

@@ -1,2 +1,0 @@
-andi/andi_l_absolute_short: 100000 targets/run, 74.742 ns/target minimum, 2.08% range
-ASM benchmark report written

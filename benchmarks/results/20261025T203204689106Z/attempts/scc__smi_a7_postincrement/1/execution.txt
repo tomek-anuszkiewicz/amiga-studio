@@ -1,2 +1,0 @@
-scc/smi_a7_postincrement: 100000 targets/run, 36.193 ns/target minimum, 17.21% range
-ASM benchmark report written

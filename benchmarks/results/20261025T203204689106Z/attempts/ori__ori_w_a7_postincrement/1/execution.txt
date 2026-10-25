@@ -1,2 +1,0 @@
-ori/ori_w_a7_postincrement: 100000 targets/run, 42.894 ns/target minimum, 2.33% range
-ASM benchmark report written

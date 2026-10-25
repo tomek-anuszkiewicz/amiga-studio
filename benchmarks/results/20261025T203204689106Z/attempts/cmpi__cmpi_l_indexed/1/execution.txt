@@ -1,2 +1,0 @@
-cmpi/cmpi_l_indexed: 100000 targets/run, 67.488 ns/target minimum, 0.67% range
-ASM benchmark report written

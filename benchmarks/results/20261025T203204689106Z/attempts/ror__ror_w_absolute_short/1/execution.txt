@@ -1,2 +1,0 @@
-ror/ror_w_absolute_short: 100000 targets/run, 43.505 ns/target minimum, 0.57% range
-ASM benchmark report written

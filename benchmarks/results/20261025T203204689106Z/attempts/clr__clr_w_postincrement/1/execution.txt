@@ -1,2 +1,0 @@
-clr/clr_w_postincrement: 100000 targets/run, 36.709 ns/target minimum, 2.92% range
-ASM benchmark report written

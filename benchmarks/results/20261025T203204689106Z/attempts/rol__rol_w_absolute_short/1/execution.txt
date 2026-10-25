@@ -1,2 +1,0 @@
-rol/rol_w_absolute_short: 100000 targets/run, 42.983 ns/target minimum, 1.79% range
-ASM benchmark report written

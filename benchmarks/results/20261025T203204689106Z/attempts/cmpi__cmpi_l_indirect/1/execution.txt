@@ -1,2 +1,0 @@
-cmpi/cmpi_l_indirect: 100000 targets/run, 53.554 ns/target minimum, 1.37% range
-ASM benchmark report written

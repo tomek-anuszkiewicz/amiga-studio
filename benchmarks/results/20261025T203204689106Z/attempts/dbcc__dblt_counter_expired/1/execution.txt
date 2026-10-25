@@ -1,2 +1,0 @@
-dbcc/dblt_counter_expired: 100000 targets/run, 74.357 ns/target minimum, 1.98% range
-ASM benchmark report written

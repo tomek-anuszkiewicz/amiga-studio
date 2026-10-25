@@ -1,2 +1,0 @@
-tst/tst_l_absolute_long: 100000 targets/run, 57.182 ns/target minimum, 1.73% range
-ASM benchmark report written

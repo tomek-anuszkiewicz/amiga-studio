@@ -1,2 +1,0 @@
-scc/spl_a7_predecrement: 100000 targets/run, 39.222 ns/target minimum, 1.87% range
-ASM benchmark report written

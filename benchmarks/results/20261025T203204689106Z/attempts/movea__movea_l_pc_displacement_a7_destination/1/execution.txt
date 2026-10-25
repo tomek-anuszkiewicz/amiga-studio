@@ -1,2 +1,0 @@
-movea/movea_l_pc_displacement_a7_destination: 100000 targets/run, 45.946 ns/target minimum, 1.66% range
-ASM benchmark report written

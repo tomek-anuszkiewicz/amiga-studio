@@ -1,2 +1,0 @@
-move/move_w_address_indirect_to_address_displacement: 100000 targets/run, 47.061 ns/target minimum, 2.10% range
-ASM benchmark report written

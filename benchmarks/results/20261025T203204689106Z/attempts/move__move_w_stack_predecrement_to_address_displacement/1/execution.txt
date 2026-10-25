@@ -1,2 +1,0 @@
-move/move_w_stack_predecrement_to_address_displacement: 100000 targets/run, 46.980 ns/target minimum, 3.28% range
-ASM benchmark report written

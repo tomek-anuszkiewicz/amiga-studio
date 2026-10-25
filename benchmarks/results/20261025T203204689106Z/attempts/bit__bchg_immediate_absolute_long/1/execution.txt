@@ -1,2 +1,0 @@
-bit/bchg_immediate_absolute_long: 100000 targets/run, 60.520 ns/target minimum, 3.38% range
-ASM benchmark report written

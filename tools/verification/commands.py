@@ -142,7 +142,10 @@ def python_commands(directory=None, pattern=None, case=None, changes=None):
             path = REPO_ROOT / path
         if not path.is_dir():
             raise ValueError(f"Python test directory does not exist: {target}")
-        command = [sys.executable, "-m", "unittest", "discover", "-s", str(target), "-q"]
+        if path.resolve() == REPO_ROOT / "tools/bootstrap/book-to-markdown/tests":
+            command = [sys.executable, "tools/bootstrap/book-to-markdown/run_tests.py"]
+        else:
+            command = [sys.executable, "-m", "unittest", "discover", "-s", str(target), "-q"]
         if pattern:
             command += ["-p", pattern]
         if case:
@@ -251,7 +254,7 @@ def runner_commands(action, words):
     if action == "analyze":
         if len(args) != 1:
             raise ValueError("Use runner analyze RUN_DIRECTORY")
-        command = [sys.executable, "tools/verification/handwritten_benchmarks.py", "analyze", args[0]]
+        command = [sys.executable, "tools/verification/cpu_performance_tests.py", "analyze", args[0]]
         return [("Benchmark analysis", command, {})]
     if action == "gui":
         return [("GUI inspector", ["cargo", "run", "-p", "gui", "--bin", "gui-inspector", "--", *args], {})]
@@ -276,7 +279,7 @@ def runner_commands(action, words):
         for key, value in values.items():
             if not value or any(char not in "0123456789" for char in value) or int(value) <= 0:
                 raise ValueError(f"{key} must be a positive integer")
-        return [("CPU benchmark", [sys.executable, "tools/verification/handwritten_benchmarks.py",
+        return [("CPU benchmark", [sys.executable, "tools/verification/cpu_performance_tests.py",
                                    "measure", *selector, *args], {})]
     raise ValueError(f"Unsupported runner action: {action}")
 

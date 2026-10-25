@@ -1,2 +1,0 @@
-and/and_l_displacement: 100000 targets/run, 48.309 ns/target minimum, 1.52% range
-ASM benchmark report written

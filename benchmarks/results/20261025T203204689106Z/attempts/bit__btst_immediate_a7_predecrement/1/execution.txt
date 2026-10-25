@@ -1,2 +1,0 @@
-bit/btst_immediate_a7_predecrement: 100000 targets/run, 40.244 ns/target minimum, 1.68% range
-ASM benchmark report written

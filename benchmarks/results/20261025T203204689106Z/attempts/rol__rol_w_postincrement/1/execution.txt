@@ -1,2 +1,0 @@
-rol/rol_w_postincrement: 100000 targets/run, 36.083 ns/target minimum, 12.29% range
-ASM benchmark report written

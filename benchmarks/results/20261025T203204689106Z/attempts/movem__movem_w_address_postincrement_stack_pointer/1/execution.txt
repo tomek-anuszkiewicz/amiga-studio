@@ -1,2 +1,0 @@
-movem/movem_w_address_postincrement_stack_pointer: 100000 targets/run, 63.238 ns/target minimum, 1.15% range
-ASM benchmark report written
