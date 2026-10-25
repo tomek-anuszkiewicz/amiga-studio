@@ -1,0 +1,2 @@
+adda/adda_w_pc_indexed: 100000 targets/run, 45.244 ns/target minimum, 2.06% range
+ASM benchmark report written

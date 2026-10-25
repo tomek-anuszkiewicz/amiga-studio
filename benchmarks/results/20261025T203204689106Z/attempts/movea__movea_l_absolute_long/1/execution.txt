@@ -1,0 +1,2 @@
+movea/movea_l_absolute_long: 100000 targets/run, 56.192 ns/target minimum, 2.48% range
+ASM benchmark report written

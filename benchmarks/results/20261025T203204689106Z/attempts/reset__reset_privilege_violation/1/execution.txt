@@ -1,0 +1,2 @@
+reset/reset_privilege_violation: 100000 targets/run, 172.493 ns/target minimum, 3.18% range
+ASM benchmark report written

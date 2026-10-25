@@ -1,0 +1,2 @@
+andi/andi_w_privilege_violation: 100000 targets/run, 180.929 ns/target minimum, 1.29% range
+ASM benchmark report written

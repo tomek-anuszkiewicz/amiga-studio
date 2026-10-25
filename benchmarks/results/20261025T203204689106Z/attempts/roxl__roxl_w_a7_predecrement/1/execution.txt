@@ -1,0 +1,2 @@
+roxl/roxl_w_a7_predecrement: 100000 targets/run, 39.088 ns/target minimum, 5.26% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+chk/chk_w_pc_indexed: 100000 targets/run, 47.501 ns/target minimum, 0.70% range
+ASM benchmark report written

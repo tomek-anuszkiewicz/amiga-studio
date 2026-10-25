@@ -1,0 +1,2 @@
+clr/clr_b_predecrement: 100000 targets/run, 38.087 ns/target minimum, 1.00% range
+ASM benchmark report written

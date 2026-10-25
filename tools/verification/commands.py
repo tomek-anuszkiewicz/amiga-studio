@@ -236,59 +236,48 @@ def check_commands(name, words):
     return selected
 
 
-BENCHMARK_ACTIONS = {
-    "inventory": "--inventory",
-    "probe": "--probe-candidates",
-    "pilot": "--measure-candidates-pilot",
-    "measure": "--measure-candidates",
-    "retry": "--retry-candidates",
-}
-
-
 def runner_commands(action, words):
+    from cli import keyword_values
+
     args = list(words)
     if action == "gui" and "--" in args:
         args.remove("--")
     if action != "gui" and any(word.startswith("-") for word in args):
-        raise ValueError("Runner commands use sentence selectors; use runner bench measure")
+        raise ValueError("Runner commands use sentence selectors")
     if action == "build":
         if args:
             raise ValueError("Runner build accepts no additional arguments")
         return [("Build test harness targets", ["cargo", "test", "--release", "--no-run", "-p", "test_runner", "--tests", "--benches"], {})]
     if action == "analyze":
-        if len(args) not in (1, 3) or len(args) == 3 and args[1] != "retry":
-            raise ValueError("Use runner analyze RUN_DIRECTORY [retry RETRY_DIRECTORY]")
-        command = [sys.executable, "tools/verification/analyze_candidate_benchmarks.py", args[0]]
-        if len(args) == 3:
-            command += ["--retry-dir", args[2]]
+        if len(args) != 1:
+            raise ValueError("Use runner analyze RUN_DIRECTORY")
+        command = [sys.executable, "tools/verification/handwritten_benchmarks.py", "analyze", args[0]]
         return [("Benchmark analysis", command, {})]
     if action == "gui":
         return [("GUI inspector", ["cargo", "run", "-p", "gui", "--bin", "gui-inspector", "--", *args], {})]
     if action == "profile":
         if not args or args[0] != "bench":
             raise ValueError("Use runner profile bench [sentence selectors]")
-        if args[1:] != ["pilot"]:
-            raise ValueError("Use runner profile bench pilot")
+        if len(args) != 3 or args[1] != "case":
+            raise ValueError("Use runner profile bench case FAMILY/CASE")
         return [("External sampling profile", [sys.executable, "tools/verification/profile_benchmark.py",
-                                                "--measure-candidates-pilot"], {})]
+                                                "--measure-case", args[2], "400", "3",
+                                                ".agent/tmp/benchmarks/profile-report.json"], {})]
     if action == "bench":
-        if not args:
-            option = "--help"
-        elif len(args) == 1 and args[0] in BENCHMARK_ACTIONS:
-            option = BENCHMARK_ACTIONS[args[0]]
-        else:
-            raise ValueError("Select one benchmark action: inventory, probe, pilot, measure or retry")
-        commands = []
-        if args == ["retry"]:
-            commands.append(("Select benchmark retries", [sys.executable,
-                             "tools/verification/analyze_candidate_benchmarks.py",
-                             "--prepare-retry-latest"], {}))
-        commands.append(("CPU benchmark", ["cargo", "bench", "-p", "test_runner", "--bench",
-                                           "bench_instructions", "--", option], {}))
         if args == ["inventory"]:
-            commands.append(("Candidate generation", [sys.executable,
-                             "tools/verification/benchmark_candidates.py"], {}))
-        return commands
+            return [("Decoder inventory", ["cargo", "bench", "-p", "test_runner", "--bench",
+                                            "bench_instructions", "--", "--inventory"], {})]
+        selector = []
+        if args and args[0] in ("case", "mnemonic", "opcode"):
+            if len(args) < 2:
+                raise ValueError("benchmark selector requires a value")
+            selector, args = args[:2], args[2:]
+        values = keyword_values(args, ("duration-ms", "series"))
+        for key, value in values.items():
+            if not value or any(char not in "0123456789" for char in value) or int(value) <= 0:
+                raise ValueError(f"{key} must be a positive integer")
+        return [("CPU benchmark", [sys.executable, "tools/verification/handwritten_benchmarks.py",
+                                   "measure", *selector, *args], {})]
     raise ValueError(f"Unsupported runner action: {action}")
 
 

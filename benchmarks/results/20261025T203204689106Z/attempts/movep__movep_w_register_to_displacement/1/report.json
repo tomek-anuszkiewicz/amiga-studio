@@ -1,0 +1,69 @@
+{
+  "case_id": "movep/movep_w_register_to_displacement",
+  "case_config": {
+    "origin": 2097152,
+    "target_primary_opcode": "078C",
+    "instructions_per_loop": 4,
+    "initial_registers": {
+      "a4": 2097152,
+      "d3": 13735
+    },
+    "memory_regions": []
+  },
+  "benchmark_config": {
+    "instruction_count": 100000,
+    "instruction_limit": 100000000,
+    "series": 3,
+    "target_series_ms": 400
+  },
+  "assembler_release": "v2.4.6",
+  "assembler_sha256": "c8af2cc573b6f4901f410b6aae4aa49fa7b76400d5bd7c58aad707bc08699495",
+  "host_os": "windows",
+  "host_arch": "x86_64",
+  "affinity_core": 14,
+  "priority_class": 32,
+  "source_sha256": "5a6e79f31872d8e38a5cc4c6ace67428eee89fb8bb5b29c64d54d8bf23e62ed3",
+  "assembly_source_sha256": "4ed5084bbeee6eb91c4eee546854fb91b0a681af4fd93b05de2403a24f52d40e",
+  "image_sha256": "12d5a2e25668fbc8b66d31a849e856c9ca49aa498669b628d6efe2d41940ca98",
+  "origin": 2097152,
+  "entry": 2097156,
+  "program_end": 2697156,
+  "results": [
+    {
+      "target_instructions_per_run": 100000,
+      "total_instructions_per_run": 200000,
+      "helper_instructions_per_run": 100000,
+      "image_bytes": 600020,
+      "clocks_per_run": 2000000,
+      "median_ns_per_target": 40.0424,
+      "min_ns_per_target": 39.472539215686275,
+      "range_pct": 3.402086565351574,
+      "samples": [
+        {
+          "runs": 98,
+          "target_instruction_count": 9800000,
+          "total_instruction_count": 19600000,
+          "elapsed_ns": 400181200,
+          "wall_elapsed_ns": 526181900,
+          "ns_per_target": 40.834816326530614
+        },
+        {
+          "runs": 100,
+          "target_instruction_count": 10000000,
+          "total_instruction_count": 20000000,
+          "elapsed_ns": 400424000,
+          "wall_elapsed_ns": 537636900,
+          "ns_per_target": 40.0424
+        },
+        {
+          "runs": 102,
+          "target_instruction_count": 10200000,
+          "total_instruction_count": 20400000,
+          "elapsed_ns": 402619900,
+          "wall_elapsed_ns": 548525400,
+          "ns_per_target": 39.472539215686275
+        }
+      ]
+    }
+  ]
+}

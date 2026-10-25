@@ -1,0 +1,2 @@
+shift/asr_w_displacement: 100000 targets/run, 44.948 ns/target minimum, 1.90% range
+ASM benchmark report written

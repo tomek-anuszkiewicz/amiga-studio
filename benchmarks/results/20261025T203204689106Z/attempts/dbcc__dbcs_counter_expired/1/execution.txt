@@ -1,0 +1,2 @@
+dbcc/dbcs_counter_expired: 100000 targets/run, 77.021 ns/target minimum, 0.77% range
+ASM benchmark report written

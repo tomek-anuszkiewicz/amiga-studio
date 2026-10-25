@@ -1,0 +1,2 @@
+cmp/cmp_b_postincrement: 100000 targets/run, 29.422 ns/target minimum, 1.86% range
+ASM benchmark report written

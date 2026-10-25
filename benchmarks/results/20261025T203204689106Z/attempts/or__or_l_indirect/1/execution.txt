@@ -1,0 +1,2 @@
+or/or_l_indirect: 100000 targets/run, 39.622 ns/target minimum, 2.90% range
+ASM benchmark report written

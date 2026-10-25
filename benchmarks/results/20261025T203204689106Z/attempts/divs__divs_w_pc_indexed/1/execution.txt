@@ -1,0 +1,2 @@
+divs/divs_w_pc_indexed: 100000 targets/run, 161.407 ns/target minimum, 1.76% range
+ASM benchmark report written

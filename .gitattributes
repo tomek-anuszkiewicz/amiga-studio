@@ -1,0 +1,4 @@
+# Preserve byte-identical benchmark references and reports across checkout.
+/benchmarks/m68k_benchmark_baseline.csv -text
+/benchmarks/m68k_benchmark_baseline.json -text
+/benchmarks/results/** -text

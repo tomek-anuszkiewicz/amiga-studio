@@ -1,0 +1,2 @@
+bcc/bcc_s_taken: 100000 targets/run, 60.344 ns/target minimum, 3.23% range
+ASM benchmark report written

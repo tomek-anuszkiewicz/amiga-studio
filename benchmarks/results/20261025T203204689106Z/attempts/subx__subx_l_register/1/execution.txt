@@ -1,0 +1,2 @@
+subx/subx_l_register: 100000 targets/run, 25.996 ns/target minimum, 3.23% range
+ASM benchmark report written

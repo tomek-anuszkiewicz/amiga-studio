@@ -1,0 +1,2 @@
+move/move_w_sr_to_stack_postincrement: 100000 targets/run, 36.460 ns/target minimum, 1.74% range
+ASM benchmark report written

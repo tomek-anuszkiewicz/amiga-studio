@@ -1,0 +1,2 @@
+shift/asl_b_d3_d4: 100000 targets/run, 30.420 ns/target minimum, 2.25% range
+ASM benchmark report written

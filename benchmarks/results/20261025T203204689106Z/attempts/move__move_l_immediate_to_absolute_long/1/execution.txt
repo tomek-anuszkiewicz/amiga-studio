@@ -1,0 +1,2 @@
+move/move_l_immediate_to_absolute_long: 100000 targets/run, 71.705 ns/target minimum, 3.05% range
+ASM benchmark report written

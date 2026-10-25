@@ -1,0 +1,2 @@
+clr/clr_b_indirect: 100000 targets/run, 36.237 ns/target minimum, 4.22% range
+ASM benchmark report written

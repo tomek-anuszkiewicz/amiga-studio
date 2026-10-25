@@ -1,0 +1,2 @@
+move/move_b_absolute_long_to_stack_postincrement: 100000 targets/run, 49.859 ns/target minimum, 3.60% range
+ASM benchmark report written

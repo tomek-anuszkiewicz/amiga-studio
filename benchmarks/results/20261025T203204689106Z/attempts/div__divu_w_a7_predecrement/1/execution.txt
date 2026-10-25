@@ -1,0 +1,2 @@
+div/divu_w_a7_predecrement: 100000 targets/run, 145.259 ns/target minimum, 0.76% range
+ASM benchmark report written

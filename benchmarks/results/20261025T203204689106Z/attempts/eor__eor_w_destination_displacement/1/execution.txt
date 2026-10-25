@@ -1,0 +1,2 @@
+eor/eor_w_destination_displacement: 100000 targets/run, 44.153 ns/target minimum, 0.59% range
+ASM benchmark report written

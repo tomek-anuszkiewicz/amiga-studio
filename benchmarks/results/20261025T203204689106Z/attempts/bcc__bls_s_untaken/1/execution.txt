@@ -1,0 +1,2 @@
+bcc/bls_s_untaken: 100000 targets/run, 48.440 ns/target minimum, 2.50% range
+ASM benchmark report written

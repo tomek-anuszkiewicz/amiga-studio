@@ -1,0 +1,2 @@
+scc/sne_indexed: 100000 targets/run, 46.653 ns/target minimum, 0.60% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+subq/subq_w_displacement: 100000 targets/run, 46.088 ns/target minimum, 0.79% range
+ASM benchmark report written

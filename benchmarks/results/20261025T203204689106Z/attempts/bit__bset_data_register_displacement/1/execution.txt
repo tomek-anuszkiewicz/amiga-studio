@@ -1,0 +1,2 @@
+bit/bset_data_register_displacement: 100000 targets/run, 42.615 ns/target minimum, 0.81% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+movem/movem_l_empty_mask_load: 100000 targets/run, 46.637 ns/target minimum, 0.91% range
+ASM benchmark report written

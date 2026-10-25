@@ -1,0 +1,2 @@
+move/move_w_address_indirect_to_sr: 100000 targets/run, 62.025 ns/target minimum, 0.86% range
+ASM benchmark report written

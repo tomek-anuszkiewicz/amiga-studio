@@ -1,0 +1,2 @@
+tst/tst_b_predecrement: 100000 targets/run, 30.746 ns/target minimum, 1.39% range
+ASM benchmark report written

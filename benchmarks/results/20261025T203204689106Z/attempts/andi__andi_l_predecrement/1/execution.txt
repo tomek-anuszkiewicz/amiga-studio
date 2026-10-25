@@ -1,0 +1,2 @@
+andi/andi_l_predecrement: 100000 targets/run, 70.085 ns/target minimum, 1.38% range
+ASM benchmark report written

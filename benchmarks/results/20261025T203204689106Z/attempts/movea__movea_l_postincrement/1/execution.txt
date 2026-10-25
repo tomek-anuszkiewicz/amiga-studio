@@ -1,0 +1,2 @@
+movea/movea_l_postincrement: 100000 targets/run, 37.636 ns/target minimum, 3.20% range
+ASM benchmark report written

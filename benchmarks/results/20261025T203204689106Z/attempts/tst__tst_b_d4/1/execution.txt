@@ -1,0 +1,2 @@
+tst/tst_b_d4: 100000 targets/run, 22.518 ns/target minimum, 1.58% range
+ASM benchmark report written

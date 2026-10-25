@@ -1,0 +1,2 @@
+trap/trap_3_user: 100000 targets/run, 114.910 ns/target minimum, 1.79% range
+ASM benchmark report written

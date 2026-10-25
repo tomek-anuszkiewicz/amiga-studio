@@ -1,0 +1,2 @@
+scc/spl_register: 100000 targets/run, 26.252 ns/target minimum, 2.73% range
+ASM benchmark report written

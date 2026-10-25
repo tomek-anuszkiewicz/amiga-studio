@@ -1,0 +1,2 @@
+shift/asl_w_indexed: 100000 targets/run, 48.223 ns/target minimum, 5.37% range
+ASM benchmark report written

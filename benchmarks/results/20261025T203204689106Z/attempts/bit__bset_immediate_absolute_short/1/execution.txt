@@ -1,0 +1,2 @@
+bit/bset_immediate_absolute_short: 100000 targets/run, 55.431 ns/target minimum, 1.43% range
+ASM benchmark report written

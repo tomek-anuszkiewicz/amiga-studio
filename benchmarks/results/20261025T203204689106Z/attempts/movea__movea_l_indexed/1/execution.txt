@@ -1,0 +1,2 @@
+movea/movea_l_indexed: 100000 targets/run, 48.341 ns/target minimum, 1.90% range
+ASM benchmark report written

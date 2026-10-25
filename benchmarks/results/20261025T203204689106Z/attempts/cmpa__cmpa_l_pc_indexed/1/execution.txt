@@ -1,0 +1,2 @@
+cmpa/cmpa_l_pc_indexed: 100000 targets/run, 50.541 ns/target minimum, 3.66% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+adda/adda_w_postincrement_a4: 100000 targets/run, 35.452 ns/target minimum, 1.24% range
+ASM benchmark report written

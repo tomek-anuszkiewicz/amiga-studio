@@ -1,0 +1,2 @@
+dbcc/dbhi_branch: 100000 targets/run, 68.636 ns/target minimum, 3.51% range
+ASM benchmark report written

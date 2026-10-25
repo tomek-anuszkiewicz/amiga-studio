@@ -1,0 +1,2 @@
+and/and_l_pc_indexed: 100000 targets/run, 50.955 ns/target minimum, 0.24% range
+ASM benchmark report written

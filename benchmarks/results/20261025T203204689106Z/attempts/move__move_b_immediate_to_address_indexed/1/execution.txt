@@ -1,0 +1,2 @@
+move/move_b_immediate_to_address_indexed: 100000 targets/run, 46.872 ns/target minimum, 1.80% range
+ASM benchmark report written

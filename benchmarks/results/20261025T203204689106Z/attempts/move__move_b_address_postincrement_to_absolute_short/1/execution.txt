@@ -1,0 +1,2 @@
+move/move_b_address_postincrement_to_absolute_short: 100000 targets/run, 42.866 ns/target minimum, 1.70% range
+ASM benchmark report written

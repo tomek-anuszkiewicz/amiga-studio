@@ -15,7 +15,7 @@
     "tests/benchmarks/quick",
     "tests/benchmarks/standard",
     "tests/benchmarks/thorough",
-    "baselines/benchmarks",
+    "benchmarks/results",
     "scratch",
     "graphify-out",
     "ref_src",
@@ -25,6 +25,8 @@
     "tools/blep_generator/output"
   ],
   "excluded_files": [
+    "benchmarks/m68k_benchmark_baseline.csv",
+    "benchmarks/m68k_benchmark_baseline.json",
     "tools/verification/checks/check_english.json",
     "tools/bootstrap/book-to-markdown/package-lock.json"
   ],

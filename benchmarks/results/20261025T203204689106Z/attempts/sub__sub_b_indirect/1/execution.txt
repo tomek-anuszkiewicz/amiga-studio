@@ -1,0 +1,2 @@
+sub/sub_b_indirect: 100000 targets/run, 29.867 ns/target minimum, 1.32% range
+ASM benchmark report written

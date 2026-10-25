@@ -1,0 +1,2 @@
+move/move_w_pc_displacement_to_sr: 100000 targets/run, 53.453 ns/target minimum, 1.59% range
+ASM benchmark report written

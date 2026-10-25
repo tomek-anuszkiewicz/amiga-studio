@@ -1,0 +1,2 @@
+adda/adda_l_predecrement_a7_destination: 100000 targets/run, 42.698 ns/target minimum, 1.89% range
+ASM benchmark report written

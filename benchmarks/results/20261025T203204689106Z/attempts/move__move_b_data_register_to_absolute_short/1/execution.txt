@@ -1,0 +1,2 @@
+move/move_b_data_register_to_absolute_short: 100000 targets/run, 32.983 ns/target minimum, 0.24% range
+ASM benchmark report written

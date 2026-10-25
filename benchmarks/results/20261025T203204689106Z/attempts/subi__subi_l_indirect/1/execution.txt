@@ -1,0 +1,2 @@
+subi/subi_l_indirect: 100000 targets/run, 68.381 ns/target minimum, 1.39% range
+ASM benchmark report written

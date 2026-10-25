@@ -1,0 +1,2 @@
+pea/pea_absw: 100000 targets/run, 41.261 ns/target minimum, 1.07% range
+ASM benchmark report written

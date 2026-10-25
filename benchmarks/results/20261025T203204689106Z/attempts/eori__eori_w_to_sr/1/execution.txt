@@ -1,0 +1,2 @@
+eori/eori_w_to_sr: 100000 targets/run, 71.869 ns/target minimum, 1.00% range
+ASM benchmark report written

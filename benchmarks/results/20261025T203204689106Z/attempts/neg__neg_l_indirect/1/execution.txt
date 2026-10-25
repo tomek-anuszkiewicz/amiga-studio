@@ -1,0 +1,2 @@
+neg/neg_l_indirect: 100000 targets/run, 47.858 ns/target minimum, 2.05% range
+ASM benchmark report written

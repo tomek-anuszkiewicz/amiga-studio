@@ -1,0 +1,2 @@
+subq/subq_l_indirect: 100000 targets/run, 49.619 ns/target minimum, 5.99% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+subi/subi_l_a7_predecrement: 100000 targets/run, 71.133 ns/target minimum, 4.76% range
+ASM benchmark report written

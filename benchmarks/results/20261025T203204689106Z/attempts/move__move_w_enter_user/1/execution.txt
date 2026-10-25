@@ -1,0 +1,2 @@
+move/move_w_enter_user: 100000 targets/run, 218.416 ns/target minimum, 2.72% range
+ASM benchmark report written

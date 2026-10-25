@@ -1,0 +1,2 @@
+shift/asr_w_indirect: 100000 targets/run, 37.182 ns/target minimum, 5.54% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+eori/eori_b_to_ccr: 100000 targets/run, 72.178 ns/target minimum, 1.09% range
+ASM benchmark report written

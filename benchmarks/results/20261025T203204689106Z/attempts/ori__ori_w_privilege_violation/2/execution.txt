@@ -1,0 +1,2 @@
+ori/ori_w_privilege_violation: 100000 targets/run, 175.023 ns/target minimum, 2.19% range
+ASM benchmark report written

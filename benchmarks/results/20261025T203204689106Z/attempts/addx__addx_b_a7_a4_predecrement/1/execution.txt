@@ -1,0 +1,2 @@
+addx/addx_b_a7_a4_predecrement: 100000 targets/run, 44.509 ns/target minimum, 1.65% range
+ASM benchmark report written

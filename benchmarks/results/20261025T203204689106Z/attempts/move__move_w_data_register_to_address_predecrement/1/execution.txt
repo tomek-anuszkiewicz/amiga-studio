@@ -1,0 +1,2 @@
+move/move_w_data_register_to_address_predecrement: 100000 targets/run, 30.995 ns/target minimum, 2.12% range
+ASM benchmark report written

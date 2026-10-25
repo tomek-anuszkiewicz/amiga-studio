@@ -1,0 +1,2 @@
+movep/movep_l_register_to_displacement: 100000 targets/run, 51.438 ns/target minimum, 2.01% range
+ASM benchmark report written

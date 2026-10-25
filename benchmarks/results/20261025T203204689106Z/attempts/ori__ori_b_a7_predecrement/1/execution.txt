@@ -1,0 +1,2 @@
+ori/ori_b_a7_predecrement: 100000 targets/run, 45.625 ns/target minimum, 5.33% range
+ASM benchmark report written

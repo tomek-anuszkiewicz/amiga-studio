@@ -1,0 +1,2 @@
+roxr/roxr_w_indirect: 100000 targets/run, 36.411 ns/target minimum, 1.94% range
+ASM benchmark report written

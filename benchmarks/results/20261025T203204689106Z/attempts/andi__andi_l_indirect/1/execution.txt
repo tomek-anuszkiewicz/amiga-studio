@@ -1,0 +1,2 @@
+andi/andi_l_indirect: 100000 targets/run, 66.940 ns/target minimum, 2.03% range
+ASM benchmark report written

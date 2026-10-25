@@ -87,9 +87,9 @@ Saved reports without required fields such as `selection` fail to load; a parsed
 
 ## 6. Performance measurements
 
-The [CPU instruction benchmark](../Performance/CPU%20Instruction%20Benchmarking.md) is a separate target in `crates/test_runner/benches/bench_instructions/`. It executes generated instruction workloads to measure host execution time; it does not turn SingleStep JSON timings into a host-speed benchmark. The SingleStep result answers whether the emulated instruction matches the generated reference. The benchmark answers how much host time the emulator spends on its instruction workloads.
+The [CPU instruction benchmark](../Performance/CPU%20Instruction%20Benchmarking.md) is a separate target in `crates/test_runner/benches/bench_instructions/`. It executes handwritten assembly programs to measure host execution time; it does not turn SingleStep JSON timings into a host-speed benchmark. The SingleStep result answers whether the emulated instruction matches the generated reference. The benchmark answers how much host time the emulator spends on complete instruction workloads, including helpers and stepping overhead.
 
-The decoder-derived inventory, validation, measurement, and report commands are in the [benchmark specification](../Performance/CPU%20Instruction%20Benchmarking.md#decoder-derived-benchmark). Its analyzer compares matching executed fixtures with the tracked decoder-derived baseline. The separate [hand-written assembly cases](../Performance/CPU%20Instruction%20Benchmarking.md#hand-written-assembly-cases) measure selected complete programs without modifying that baseline. The former 108-case runner is no longer available.
+The [benchmark specification](../Performance/CPU%20Instruction%20Benchmarking.md) describes the active measurement, load observation, reports, and compatible-run comparison. The decoder inventory remains available for coverage auditing without measuring generated instruction workloads.
 
 ## 7. What the layers establish
 

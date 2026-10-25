@@ -1,0 +1,2 @@
+subi/subi_w_absolute_short: 100000 targets/run, 53.607 ns/target minimum, 1.46% range
+ASM benchmark report written

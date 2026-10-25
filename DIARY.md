@@ -5339,3 +5339,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Not run: tests and verification were explicitly waived by the user for this commit
   - the staged catalog was not remeasured in this turn
+---
+
+### [2026-10-25 23:45 CET] — CPU-BENCH-REPLACE-01: Replace decoder-derived CPU measurements
+- **Affected Subsystems**:
+  - `benchmarks/m68k`
+  - `crates/test_runner`
+  - `tools/verification`
+  - `Obsidian/Amiga/Design/Performance`
+  - `Obsidian/Amiga/Design/Verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Make handwritten M68000 cases the active measurement catalog and remove candidate generation
+  - record per-series timing, external CPU load, bounded retries, aggregates and compatible-run comparisons
+  - approve and replace the decoder-derived reference with the 2257-case full-run baseline and retained raw reports
+  - preserve LF bytes across checkout so committed report hashes remain comparable
+  - update benchmark and profiling procedures
+- **Architectural Rationale & Trade-Offs**:
+  - Whole-program handwritten workloads provide representative CPU timing
+  - the former decoder-derived fixtures and NOP controls are incompatible. User approved the reviewed reference replacement and commit
+- **Verification & Test Results**:
+  - PASS: full default run 2257 cases, 6771 timed series, zero execution failures and zero persistent load disturbances
+  - PASS: baseline hashes and rows match the reviewed run, explicit analysis is deterministic
+  - PASS: 70 verification Python tests, Rust benchmark inventory test, check all, vault links and frontmatter
+  - FAIL: commit verification Book Review contracts with five UI timeouts and two missing local math assets
+  - PASS: other selected commit checks
+  - NOT RUN: full SingleStep milestone suite

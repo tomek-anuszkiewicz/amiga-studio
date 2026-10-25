@@ -1,0 +1,2 @@
+nbcd/nbcd_d4: 100000 targets/run, 22.892 ns/target minimum, 1.73% range
+ASM benchmark report written

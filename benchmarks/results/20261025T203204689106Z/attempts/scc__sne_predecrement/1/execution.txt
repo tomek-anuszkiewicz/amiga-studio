@@ -1,0 +1,2 @@
+scc/sne_predecrement: 100000 targets/run, 39.128 ns/target minimum, 1.38% range
+ASM benchmark report written

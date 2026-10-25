@@ -1,0 +1,2 @@
+andi/andi_w_enter_user: 100000 targets/run, 234.783 ns/target minimum, 0.46% range
+ASM benchmark report written

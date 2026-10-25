@@ -1,0 +1,2 @@
+chk/chk_w_predecrement: 100000 targets/run, 38.843 ns/target minimum, 4.66% range
+ASM benchmark report written

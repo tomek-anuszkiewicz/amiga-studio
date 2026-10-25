@@ -1,0 +1,2 @@
+jmp/jmp_pcidx: 100000 targets/run, 39.071 ns/target minimum, 0.64% range
+ASM benchmark report written

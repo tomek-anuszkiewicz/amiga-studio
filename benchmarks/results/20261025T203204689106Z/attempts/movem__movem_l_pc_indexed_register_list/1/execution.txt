@@ -1,0 +1,2 @@
+movem/movem_l_pc_indexed_register_list: 100000 targets/run, 140.379 ns/target minimum, 2.02% range
+ASM benchmark report written

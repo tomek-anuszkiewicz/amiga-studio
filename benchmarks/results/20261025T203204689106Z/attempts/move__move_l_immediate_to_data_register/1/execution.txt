@@ -1,0 +1,2 @@
+move/move_l_immediate_to_data_register: 100000 targets/run, 41.927 ns/target minimum, 0.93% range
+ASM benchmark report written

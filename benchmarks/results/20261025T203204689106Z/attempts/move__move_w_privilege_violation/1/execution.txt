@@ -1,0 +1,2 @@
+move/move_w_privilege_violation: 100000 targets/run, 175.132 ns/target minimum, 1.98% range
+ASM benchmark report written

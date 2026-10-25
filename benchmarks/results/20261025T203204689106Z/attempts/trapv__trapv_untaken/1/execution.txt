@@ -1,0 +1,2 @@
+trapv/trapv_untaken: 100000 targets/run, 24.865 ns/target minimum, 4.40% range
+ASM benchmark report written

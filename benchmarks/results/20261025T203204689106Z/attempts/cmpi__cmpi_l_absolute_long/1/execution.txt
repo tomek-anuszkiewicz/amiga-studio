@@ -1,0 +1,2 @@
+cmpi/cmpi_l_absolute_long: 100000 targets/run, 69.370 ns/target minimum, 2.73% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+trapv/trapv_taken: 100000 targets/run, 119.855 ns/target minimum, 0.15% range
+ASM benchmark report written

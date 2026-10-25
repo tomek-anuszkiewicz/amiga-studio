@@ -1,0 +1,2 @@
+eori/eori_l_d4: 100000 targets/run, 45.690 ns/target minimum, 0.80% range
+ASM benchmark report written

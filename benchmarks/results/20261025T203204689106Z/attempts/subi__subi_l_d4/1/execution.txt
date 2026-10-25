@@ -1,0 +1,2 @@
+subi/subi_l_d4: 100000 targets/run, 45.978 ns/target minimum, 1.43% range
+ASM benchmark report written

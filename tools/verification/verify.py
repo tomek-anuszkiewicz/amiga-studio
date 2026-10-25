@@ -49,11 +49,13 @@ def main(argv=None):
         print("[INFO] No Python tool contracts selected: their inputs are unchanged."
                   if automatic_python else "[INFO] No checks or tests selected.")
         return 0
-    try:
-        before = snapshot(REPO_ROOT)
-    except (RuntimeError, OSError) as error:
-        print(f"{result_label(False)} Cannot capture source snapshot: {error}")
-        return 1
+    produces_reports = args.command == "runner" and args.action in ("bench", "analyze")
+    if not produces_reports:
+        try:
+            before = snapshot(REPO_ROOT)
+        except (RuntimeError, OSError) as error:
+            print(f"{result_label(False)} Cannot capture source snapshot: {error}")
+            return 1
     results = []
     for phase, commands in phases:
         if phase == "Coverage":
@@ -69,7 +71,7 @@ def main(argv=None):
             if args.command == "runner" and args.action in ("bench", "profile") and not ok:
                 break
     try:
-        unchanged = before == snapshot(REPO_ROOT)
+        unchanged = produces_reports or before == snapshot(REPO_ROOT)
     except (RuntimeError, OSError):
         unchanged = False
     if not unchanged:

@@ -3,6 +3,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
 use std::fs;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
@@ -150,6 +151,7 @@ struct ProgramResult {
     image_bytes: usize,
     clocks_per_run: u64,
     median_ns_per_target: f64,
+    min_ns_per_target: f64,
     range_pct: f64,
     samples: Vec<Sample>,
 }
@@ -201,7 +203,7 @@ struct ExecutionCounts {
 }
 
 struct ProgramMeasurement {
-    counts: ExecutionCounts,
+    counts: Option<ExecutionCounts>,
     cpu: Cpu,
     bus: PhysicalMemory,
     peripherals: Option<Peripherals>,
@@ -408,7 +410,8 @@ fn prepare(
     case: &CaseConfig,
     output: &Path,
 ) -> Result<(Fixture, Report), String> {
-    if benchmark.instruction_count == 0 || benchmark.series < 3 || benchmark.target_series_ms == 0 {
+    if benchmark.instruction_count == 0 || benchmark.series == 0 || benchmark.target_series_ms == 0
+    {
         return Err("invalid M68000 benchmark configuration".to_owned());
     }
     if benchmark.instruction_limit < benchmark.instruction_count {
@@ -878,30 +881,25 @@ fn execute_on_bus(
     })
 }
 
-fn inspect_program(fixture: &Fixture) -> Result<ExecutionCounts, String> {
-    let mut cpu = fixture.initial_cpu.clone();
-    let mut bus = fixture.initial_bus.clone();
-    let mut peripherals = fixture.initial_peripherals.clone();
-    execute_program(fixture, &mut cpu, &mut bus, &mut peripherals)
-}
-
 fn run_program(
     fixture: &Fixture,
-    inspected: &ExecutionCounts,
+    expected: Option<ExecutionCounts>,
     cpu: &mut Cpu,
     bus: &mut PhysicalMemory,
     peripherals: &mut Option<Peripherals>,
-) -> Result<u128, String> {
+) -> Result<(u128, ExecutionCounts), String> {
     cpu.clone_from(&fixture.initial_cpu);
     bus.clone_from(&fixture.initial_bus);
     peripherals.clone_from(&fixture.initial_peripherals);
     let start = Instant::now();
     let counts = execute_program(fixture, cpu, bus, peripherals)?;
     let elapsed = start.elapsed().as_nanos();
-    if counts.clocks != inspected.clocks || counts.total != inspected.total {
-        return Err("timed run changed its instruction or clock count".to_owned());
+    if let Some(expected) = expected {
+        if counts.clocks != expected.clocks || counts.total != expected.total {
+            return Err("timed run changed its instruction or clock count".to_owned());
+        }
     }
-    Ok(elapsed)
+    Ok((elapsed, counts))
 }
 
 fn measure_series(
@@ -913,21 +911,26 @@ fn measure_series(
     let mut elapsed_ns = 0u128;
     let mut runs = 0u64;
     loop {
-        elapsed_ns += run_program(
+        let (elapsed, counts) = run_program(
             fixture,
-            &measurement.counts,
+            measurement.counts,
             &mut measurement.cpu,
             &mut measurement.bus,
             &mut measurement.peripherals,
         )?;
+        measurement.counts = Some(counts);
+        elapsed_ns += elapsed;
         runs += 1;
         if elapsed_ns >= target_ns {
             break;
         }
     }
     let wall_elapsed_ns = wall_start.elapsed().as_nanos();
-    let target_instruction_count = runs * measurement.counts.targets as u64;
-    let total_instruction_count = runs * measurement.counts.total as u64;
+    let counts = measurement
+        .counts
+        .ok_or("measured series executed no program")?;
+    let target_instruction_count = runs * counts.targets as u64;
+    let total_instruction_count = runs * counts.total as u64;
     measurement.samples.push(Sample {
         runs,
         target_instruction_count,
@@ -939,7 +942,11 @@ fn measure_series(
     Ok(())
 }
 
-fn finish_program(measurement: ProgramMeasurement, fixture: &Fixture) -> ProgramResult {
+fn finish_program(
+    measurement: ProgramMeasurement,
+    fixture: &Fixture,
+) -> Result<ProgramResult, String> {
+    let counts = measurement.counts.ok_or("measured program has no counts")?;
     let mut sorted: Vec<f64> = measurement
         .samples
         .iter()
@@ -948,28 +955,39 @@ fn finish_program(measurement: ProgramMeasurement, fixture: &Fixture) -> Program
     sorted.sort_by(f64::total_cmp);
     let median = sorted[sorted.len() / 2];
     let range_pct = (sorted[sorted.len() - 1] - sorted[0]) * 100.0 / median;
-    ProgramResult {
-        target_instructions_per_run: measurement.counts.targets,
-        total_instructions_per_run: measurement.counts.total,
-        helper_instructions_per_run: measurement.counts.total - measurement.counts.targets,
+    Ok(ProgramResult {
+        target_instructions_per_run: counts.targets,
+        total_instructions_per_run: counts.total,
+        helper_instructions_per_run: counts.total - counts.targets,
         image_bytes: fixture.image.len(),
-        clocks_per_run: measurement.counts.clocks,
+        clocks_per_run: counts.clocks,
         median_ns_per_target: median,
+        min_ns_per_target: sorted[0],
         range_pct,
         samples: measurement.samples,
-    }
+    })
 }
 
-pub fn measure(case_id: &str) -> Result<(), String> {
+pub fn measure(
+    case_id: &str,
+    duration_ms: u64,
+    series: usize,
+    report_path: &Path,
+) -> Result<(), String> {
     let root = repository_root()?;
     let case_dir = case_directory(&root, case_id)?;
     let host = HostEnvironment::detect();
     #[cfg(windows)]
     let affinity = AffinityGuard::pin(host.p_core_id.ok_or("no performance core selected")?)?;
     let config_path = root.join(CONFIG_PATH);
-    let benchmark: BenchmarkConfig =
+    let mut benchmark: BenchmarkConfig =
         serde_json::from_slice(&fs::read(config_path).map_err(|error| error.to_string())?)
             .map_err(|error| error.to_string())?;
+    if duration_ms == 0 || series == 0 {
+        return Err("duration and series must be positive".to_owned());
+    }
+    benchmark.target_series_ms = duration_ms;
+    benchmark.series = series;
     let case_path = case_dir.join("case.json");
     let case: CaseConfig =
         serde_json::from_slice(&fs::read(case_path).map_err(|error| error.to_string())?)
@@ -986,9 +1004,8 @@ pub fn measure(case_id: &str) -> Result<(), String> {
     {
         let _ = host;
     }
-    let counts = inspect_program(&fixture)?;
     let mut measurement = ProgramMeasurement {
-        counts,
+        counts: None,
         cpu: fixture.initial_cpu.clone(),
         bus: fixture.initial_bus.clone(),
         peripherals: fixture.initial_peripherals.clone(),
@@ -996,17 +1013,24 @@ pub fn measure(case_id: &str) -> Result<(), String> {
     };
     let target_ns = u128::from(benchmark.target_series_ms) * 1_000_000;
     for _ in 0..benchmark.series {
+        println!("SERIES_BEGIN");
+        std::io::stdout()
+            .flush()
+            .map_err(|error| error.to_string())?;
         measure_series(&fixture, &mut measurement, target_ns)?;
+        println!("SERIES_END");
+        std::io::stdout()
+            .flush()
+            .map_err(|error| error.to_string())?;
     }
-    let result = finish_program(measurement, &fixture);
+    let result = finish_program(measurement, &fixture)?;
     println!(
-        "{case_id}: {} targets/run, {:.3} ns/target median, {:.2}% range",
-        result.target_instructions_per_run, result.median_ns_per_target, result.range_pct
+        "{case_id}: {} targets/run, {:.3} ns/target minimum, {:.2}% range",
+        result.target_instructions_per_run, result.min_ns_per_target, result.range_pct
     );
     report.results.push(result);
-    let report_path = output.join("report.json");
     let json = serde_json::to_vec_pretty(&report).map_err(|error| error.to_string())?;
-    fs::write(&report_path, json).map_err(|error| error.to_string())?;
-    println!("ASM benchmark report: {}", report_path.display());
+    fs::write(report_path, json).map_err(|error| error.to_string())?;
+    println!("ASM benchmark report written");
     Ok(())
 }

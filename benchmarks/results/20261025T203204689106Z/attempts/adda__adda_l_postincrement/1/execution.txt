@@ -1,0 +1,2 @@
+adda/adda_l_postincrement: 100000 targets/run, 41.231 ns/target minimum, 1.48% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+clr/clr_l_a7_predecrement: 100000 targets/run, 50.591 ns/target minimum, 7.97% range
+ASM benchmark report written

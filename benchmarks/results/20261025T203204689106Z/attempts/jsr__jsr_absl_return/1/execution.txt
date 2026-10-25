@@ -1,0 +1,2 @@
+jsr/jsr_absl_return: 100000 targets/run, 78.087 ns/target minimum, 1.24% range
+ASM benchmark report written

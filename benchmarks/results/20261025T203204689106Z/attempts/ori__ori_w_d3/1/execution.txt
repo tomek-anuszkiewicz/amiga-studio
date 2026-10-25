@@ -1,0 +1,2 @@
+ori/ori_w_d3: 100000 targets/run, 28.195 ns/target minimum, 1.19% range
+ASM benchmark report written

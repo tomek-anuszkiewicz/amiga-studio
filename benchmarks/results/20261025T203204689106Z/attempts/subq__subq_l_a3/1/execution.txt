@@ -1,0 +1,2 @@
+subq/subq_l_a3: 100000 targets/run, 24.089 ns/target minimum, 4.97% range
+ASM benchmark report written

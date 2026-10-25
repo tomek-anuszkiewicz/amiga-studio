@@ -1,0 +1,2 @@
+suba/suba_l_immediate: 100000 targets/run, 47.763 ns/target minimum, 1.96% range
+ASM benchmark report written

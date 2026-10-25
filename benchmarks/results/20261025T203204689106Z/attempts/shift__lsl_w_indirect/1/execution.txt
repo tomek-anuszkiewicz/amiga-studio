@@ -1,0 +1,2 @@
+shift/lsl_w_indirect: 100000 targets/run, 37.431 ns/target minimum, 4.70% range
+ASM benchmark report written

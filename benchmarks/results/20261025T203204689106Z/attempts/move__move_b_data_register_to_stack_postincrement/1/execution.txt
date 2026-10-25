@@ -1,0 +1,2 @@
+move/move_b_data_register_to_stack_postincrement: 100000 targets/run, 25.768 ns/target minimum, 1.57% range
+ASM benchmark report written

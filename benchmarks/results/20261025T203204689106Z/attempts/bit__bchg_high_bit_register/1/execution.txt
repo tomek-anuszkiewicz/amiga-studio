@@ -1,0 +1,2 @@
+bit/bchg_high_bit_register: 100000 targets/run, 34.833 ns/target minimum, 5.76% range
+ASM benchmark report written

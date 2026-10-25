@@ -1,0 +1,2 @@
+negx/negx_b_absolute_long: 100000 targets/run, 50.821 ns/target minimum, 1.10% range
+ASM benchmark report written

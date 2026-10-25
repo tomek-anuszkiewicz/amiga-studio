@@ -1,0 +1,2 @@
+bra/bra_s_taken: 100000 targets/run, 32.024 ns/target minimum, 3.58% range
+ASM benchmark report written

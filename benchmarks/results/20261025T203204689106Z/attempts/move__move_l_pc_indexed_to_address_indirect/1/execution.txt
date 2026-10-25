@@ -1,0 +1,2 @@
+move/move_l_pc_indexed_to_address_indirect: 100000 targets/run, 61.638 ns/target minimum, 3.16% range
+ASM benchmark report written

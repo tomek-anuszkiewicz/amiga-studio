@@ -1,0 +1,2 @@
+eor/eor_l_destination_indexed: 100000 targets/run, 58.758 ns/target minimum, 2.03% range
+ASM benchmark report written

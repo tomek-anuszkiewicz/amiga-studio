@@ -1,0 +1,2 @@
+addq/addq_w_a7_predecrement: 100000 targets/run, 39.173 ns/target minimum, 1.14% range
+ASM benchmark report written

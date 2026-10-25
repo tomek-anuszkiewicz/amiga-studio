@@ -1,0 +1,2 @@
+roxl/roxl_w_indirect: 100000 targets/run, 35.887 ns/target minimum, 1.94% range
+ASM benchmark report written

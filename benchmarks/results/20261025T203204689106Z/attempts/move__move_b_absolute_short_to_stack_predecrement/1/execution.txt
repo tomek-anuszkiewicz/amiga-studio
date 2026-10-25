@@ -1,0 +1,2 @@
+move/move_b_absolute_short_to_stack_predecrement: 100000 targets/run, 41.809 ns/target minimum, 2.18% range
+ASM benchmark report written

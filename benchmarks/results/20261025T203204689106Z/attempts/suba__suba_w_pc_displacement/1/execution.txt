@@ -1,0 +1,2 @@
+suba/suba_w_pc_displacement: 100000 targets/run, 43.075 ns/target minimum, 1.35% range
+ASM benchmark report written

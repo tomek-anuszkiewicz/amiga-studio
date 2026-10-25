@@ -1,0 +1,2 @@
+addq/addq_b_indexed: 100000 targets/run, 44.649 ns/target minimum, 1.45% range
+ASM benchmark report written

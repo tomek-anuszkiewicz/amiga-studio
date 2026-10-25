@@ -1,0 +1,2 @@
+movea/movea_w_pc_indexed: 100000 targets/run, 41.518 ns/target minimum, 0.71% range
+ASM benchmark report written

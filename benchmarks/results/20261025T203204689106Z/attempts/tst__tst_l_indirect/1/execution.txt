@@ -1,0 +1,2 @@
+tst/tst_l_indirect: 100000 targets/run, 37.415 ns/target minimum, 2.27% range
+ASM benchmark report written

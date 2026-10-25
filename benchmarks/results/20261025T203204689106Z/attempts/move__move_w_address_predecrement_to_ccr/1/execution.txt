@@ -1,0 +1,2 @@
+move/move_w_address_predecrement_to_ccr: 100000 targets/run, 58.412 ns/target minimum, 1.76% range
+ASM benchmark report written

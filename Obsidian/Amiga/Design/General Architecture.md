@@ -221,7 +221,7 @@ graph TD
 | **machine_loop** | [crates/machine_loop](../../../crates/machine_loop) | Tier 0 top-level machine facade owning CPU, memory bus router, monotonic `u64` CCK counter, custom chips, coprocessors, and devices in a flat structure with parameter-based cycle stepping. | agnus, audio, blitter, cia, config, copper, denise, dma, floppy, frame_builder, game_ports, joystick, keyboard, m68000, memory_bus, mouse, paula, physical_memory, rtc, sprites, serde |
 | **disassembler** | [crates/disassembler](../../../crates/disassembler) | Cycle-exact M68000 instruction disassembler. | *None* |
 | **debugger** | [crates/debugger](../../../crates/debugger) | Headless inspection and debugging subsystem, temporal time-travel engine, breakpoints, and watchpoints. | m68000, physical_memory, disassembler |
-| **test_runner** | [crates/test_runner](../../../crates/test_runner) | Aggregate SingleStep verification with shared reporting helpers, automated validation against Tom Harte SingleStepTests, and cycle-exact benchmarking. | agnus, cia, cpu, denise, disassembler, flate2, memory_bus, paula, physical_memory, rtc, serde, serde_json, sha2 (development dependencies) |
+| **test_runner** | [crates/test_runner](../../../crates/test_runner) | Aggregate SingleStep verification with shared reporting helpers, automated validation against Tom Harte SingleStepTests, and handwritten whole-program CPU benchmarking. | agnus, cia, cpu, denise, disassembler, flate2, memory_bus, paula, physical_memory, rtc, serde, serde_json, sha2 (development dependencies) |
 | **gui** | [crates/gui](../../../crates/gui) | Immediate-mode Developer Studio & Standalone GUI (egui/eframe), live CPU/memory inspection, temporal time-travel scrubber. | m68000, physical_memory, debugger, config, rtc |
 
 ---
@@ -246,7 +246,7 @@ link does not establish that every described hardware path is implemented.
 - [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md): External CPU state, bus interface, prefetch, exceptions, interrupts, and startup.
 - [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md): Internal microsteps, CCK bus phases, waits, and execution state.
 - [CPU SingleStepTests.md](Verification/CPU%20SingleStepTests.md): Verification suite against Tom Harte software-generated reference vectors.
-- [CPU Instruction Benchmarking.md](Performance/CPU%20Instruction%20Benchmarking.md): decoder-derived CPU workloads, validated fixtures, measurement analysis, and comparison limits.
+- [CPU Instruction Benchmarking.md](Performance/CPU%20Instruction%20Benchmarking.md): handwritten CPU workloads, measurement analysis, and compatible-run comparison limits.
 - [Machine Loop.md](Machine%20Loop.md): Machine stepping, reset sequence, and interrupt arbitration.
 - [MemoryBus.md](MemoryBus.md): 2-phase CCK arbitration, address decoding, and DMA contention.
 - [Physical Memory.md](Physical%20Memory.md): Installed RAM and ROM banks, boot overlay, open-bus behavior, and CPU memory contention.

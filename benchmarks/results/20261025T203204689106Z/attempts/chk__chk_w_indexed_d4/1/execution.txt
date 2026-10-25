@@ -1,0 +1,2 @@
+chk/chk_w_indexed_d4: 100000 targets/run, 46.773 ns/target minimum, 1.28% range
+ASM benchmark report written

@@ -1,6 +1,6 @@
 ---
 name: profile-external
-description: Profile an available emulator workload with samply and compare fresh CPU benchmark measurements with retained baselines; whole-machine profiling requires an executable workload.
+description: Profile an available emulator workload with samply and compare compatible handwritten CPU benchmark runs; whole-machine profiling requires an executable workload.
 ---
 
 # External Sampling Profiler & Performance Runbook
@@ -25,41 +25,31 @@ change. Record the source snapshot, host, measurement profile and relevant
 execution settings. Check the workload actually reaches the target function;
 CPU-only benchmarks cannot establish a chipset optimization's value.
 
-The current launcher uses the decoder-derived candidate workflow. Use `--plan`
-to inspect commands without starting measurements. Running `runner bench` without
-an action prints benchmark help and does not measure execution.
+The active CPU workload is the handwritten catalog under `benchmarks/m68k/`.
+Use `--plan` to inspect selected commands without starting measurements.
 
 ## Measure and Profile
 
-Install `samply` once when needed:
+Install `samply` when needed:
 
 ```powershell
 cargo install samply
 ```
 
-Run fresh uninstrumented measurements separately from sampling:
+Run fresh optimized measurements separately from sampling:
 
 ```powershell
-python tools/verification/verify.py runner bench inventory
-python tools/verification/verify.py runner bench probe
-python tools/verification/verify.py runner bench measure
-python tools/verification/verify.py runner profile bench pilot
+python tools/verification/verify.py runner bench case add/add_w_d1_d0
+python tools/verification/verify.py runner profile bench case add/add_w_d1_d0
+python tools/verification/verify.py runner analyze benchmarks/results/<run-id>
 ```
 
-The measurement command runs `cargo bench`; analyze its completed run directory
-after a successful full run and any targeted retry.
-The profiling command builds the optimized benchmark without running it, selects
-the exact executable from Cargo artifact messages, and launches it under
-`samply`. Build failure or a missing artifact stops the launcher. Its implementation
-is [profile_benchmark.py](../../../tools/verification/profile_benchmark.py).
-The profiler provides an interactive Firefox Profiler view; its samples are
-observations of host execution, not emulated clock timing assertions.
-
-Reports belong under `.agent/tmp/`. For an existing validated candidate run:
-
-```powershell
-python tools/verification/verify.py runner analyze .agent/tmp/benchmarks/inventory/full_<run-id> retry .agent/tmp/benchmarks/inventory/retry_<run-id>
-```
+The measurement command creates a run directory under `benchmarks/results/` and
+runs analysis automatically. The profile launcher builds the optimized benchmark
+without execution, selects the executable reported by Cargo, and launches that
+case under `samply`. Build failure or a missing artifact stops the launcher.
+Its implementation is [profile_benchmark.py](../../../tools/verification/profile_benchmark.py).
+Profiles are observations of host execution, not emulated clock assertions.
 
 ## Interpret the Profile
 
@@ -90,7 +80,8 @@ behavioral tests under [unit-testing-policy.md](../../rules/unit-testing-policy.
 Report workload limits, measurement variation and checks not run. Preserve
 production hot paths without host timers or profiling probes.
 
-The retained CPU baselines are comparison inputs in `baselines/benchmarks/`.
+The approved CPU baseline in `benchmarks/` records the first full handwritten
+measurement run. The decoder-derived reference remains in Git history.
 Reference changes require evidence and explicit approval under
 [spec-compliance.md](../../rules/spec-compliance.md). Include an approved update
 only in its authorized atomic commit; analysis alone does not authorize baseline

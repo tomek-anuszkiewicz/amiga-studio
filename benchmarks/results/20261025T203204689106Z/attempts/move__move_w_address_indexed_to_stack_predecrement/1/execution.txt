@@ -1,0 +1,2 @@
+move/move_w_address_indexed_to_stack_predecrement: 100000 targets/run, 47.547 ns/target minimum, 2.87% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+abcd/abcd_a2_a7_predecrement: 100000 targets/run, 43.432 ns/target minimum, 1.87% range
+ASM benchmark report written

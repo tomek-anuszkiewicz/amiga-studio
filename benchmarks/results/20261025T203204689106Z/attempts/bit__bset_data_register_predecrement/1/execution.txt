@@ -1,0 +1,2 @@
+bit/bset_data_register_predecrement: 100000 targets/run, 38.233 ns/target minimum, 1.44% range
+ASM benchmark report written

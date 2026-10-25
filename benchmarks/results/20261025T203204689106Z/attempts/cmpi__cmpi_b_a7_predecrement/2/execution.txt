@@ -1,0 +1,2 @@
+cmpi/cmpi_b_a7_predecrement: 100000 targets/run, 39.542 ns/target minimum, 0.98% range
+ASM benchmark report written

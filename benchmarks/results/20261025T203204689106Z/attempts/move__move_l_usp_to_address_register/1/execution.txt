@@ -1,0 +1,2 @@
+move/move_l_usp_to_address_register: 100000 targets/run, 24.619 ns/target minimum, 1.00% range
+ASM benchmark report written

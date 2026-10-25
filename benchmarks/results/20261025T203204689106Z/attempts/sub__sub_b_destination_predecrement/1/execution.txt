@@ -1,0 +1,2 @@
+sub/sub_b_destination_predecrement: 100000 targets/run, 38.369 ns/target minimum, 0.96% range
+ASM benchmark report written

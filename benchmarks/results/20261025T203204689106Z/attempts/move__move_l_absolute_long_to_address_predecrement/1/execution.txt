@@ -1,0 +1,2 @@
+move/move_l_absolute_long_to_address_predecrement: 100000 targets/run, 70.495 ns/target minimum, 29.72% range
+ASM benchmark report written

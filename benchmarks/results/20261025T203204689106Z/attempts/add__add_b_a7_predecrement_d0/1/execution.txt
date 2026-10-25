@@ -1,0 +1,2 @@
+add/add_b_a7_predecrement_d0: 100000 targets/run, 30.989 ns/target minimum, 1.83% range
+ASM benchmark report written

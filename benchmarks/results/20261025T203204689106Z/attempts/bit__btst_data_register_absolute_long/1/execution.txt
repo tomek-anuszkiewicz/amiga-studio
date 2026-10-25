@@ -1,0 +1,2 @@
+bit/btst_data_register_absolute_long: 100000 targets/run, 47.571 ns/target minimum, 3.23% range
+ASM benchmark report written

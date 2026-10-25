@@ -1,0 +1,2 @@
+tst/tst_w_displacement: 100000 targets/run, 39.323 ns/target minimum, 1.53% range
+ASM benchmark report written

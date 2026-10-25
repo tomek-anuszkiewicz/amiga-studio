@@ -1,0 +1,2 @@
+suba/suba_w_predecrement: 100000 targets/run, 36.171 ns/target minimum, 0.48% range
+ASM benchmark report written

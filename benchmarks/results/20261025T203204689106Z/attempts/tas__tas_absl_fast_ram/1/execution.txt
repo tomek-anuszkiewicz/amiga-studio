@@ -1,0 +1,2 @@
+tas/tas_absl_fast_ram: 100000 targets/run, 57.415 ns/target minimum, 1.85% range
+ASM benchmark report written

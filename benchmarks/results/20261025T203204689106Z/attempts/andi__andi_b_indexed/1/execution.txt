@@ -1,0 +1,2 @@
+andi/andi_b_indexed: 100000 targets/run, 54.935 ns/target minimum, 2.75% range
+ASM benchmark report written

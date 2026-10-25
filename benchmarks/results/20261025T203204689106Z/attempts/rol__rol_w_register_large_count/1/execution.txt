@@ -1,0 +1,2 @@
+rol/rol_w_register_large_count: 100000 targets/run, 136.419 ns/target minimum, 1.41% range
+ASM benchmark report written

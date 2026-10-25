@@ -46,7 +46,7 @@ Run from the repository root:
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Assembler
-cargo bench -p test_runner --bench bench_instructions -- --measure-asm add/add_w_d1_postincrement
+python tools/verification/verify.py runner bench case add/add_w_d1_postincrement
 ```
 
 The bootstrap verifies the published release archive and executable hashes
@@ -102,13 +102,13 @@ For `random_bcd_words`, two successive upper-word samples are each reduced
 modulo 100 and encoded as packed decimal bytes in one word. A single region
 can supply disjoint source and destination byte arrays for BCD operations.
 
-Before timing, the runner executes the whole program once to count total
-instructions and CPU clocks. It reports the configured target count and derives
-the helper count by subtraction. Timed runs must retain the same instruction
-and clock counts; the runner does not calculate expected instruction effects
-or compare final registers, flags, or memory.
+The first timed program establishes observed total instructions and CPU clocks.
+Subsequent timed programs must match those counts; there is no separate guest
+inspection pass. The runner derives helper count by subtracting configured
+targets. It does not calculate expected instruction effects or compare final
+registers, flags, or memory.
 Before each timed run, it restores the initial CPU and complete memory bus
-outside the timer. With the current shared settings, each of seven series
+outside the timer. With the current shared settings, each of three series
 repeats complete runs until their combined
 timed CPU execution reaches at least 400 ms; the run count is measured, not
 preset. The report also records full wall duration so reset and harness cost
@@ -126,7 +126,12 @@ within that reserve; the reserve does not initialize SSP or USP. Fast RAM does n
 participate in Chip RAM contention; operand accesses to Chip RAM use the mapped
 bus. This CPU-only runner does not advance Agnus or the machine's CCK loop.
 
-Each case writes `program.assembled.s`, `program.bin`, `program.sym`, and
-`report.json` under `.agent/tmp/benchmarks/handwritten/<family>/<case-id>/`.
-These measurements are separate from the decoder-derived benchmark and its
-tracked baseline.
+Each case writes `program.assembled.s`, `program.bin`, and `program.sym`
+under `.agent/tmp/benchmarks/handwritten/<family>/<case-id>/`. Each invocation
+records reports under `benchmarks/results/<run-id>/`. The default command runs
+the complete catalog. A selector accepts an exact `family/case-id`, mnemonic,
+or four-digit primary opcode and measures all matches. The declared opcode
+identifies a case; it does not describe every word in the assembled program.
+The approved baseline in `benchmarks/m68k_benchmark_baseline.json` and `.csv`
+records the first complete default-parameter run of these workloads. Its
+source reports remain under `benchmarks/results/`.

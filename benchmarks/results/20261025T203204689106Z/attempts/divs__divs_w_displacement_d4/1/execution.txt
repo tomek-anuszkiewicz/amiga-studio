@@ -1,0 +1,2 @@
+divs/divs_w_displacement_d4: 100000 targets/run, 160.997 ns/target minimum, 1.42% range
+ASM benchmark report written

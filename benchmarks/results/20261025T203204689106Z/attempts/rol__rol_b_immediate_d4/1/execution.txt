@@ -1,0 +1,2 @@
+rol/rol_b_immediate_d4: 100000 targets/run, 29.484 ns/target minimum, 6.21% range
+ASM benchmark report written

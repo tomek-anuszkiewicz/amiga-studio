@@ -1,0 +1,2 @@
+movea/movea_w_predecrement_a7_destination: 100000 targets/run, 30.816 ns/target minimum, 1.32% range
+ASM benchmark report written

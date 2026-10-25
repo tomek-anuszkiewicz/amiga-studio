@@ -1,0 +1,2 @@
+and/and_l_destination_indirect: 100000 targets/run, 50.189 ns/target minimum, 3.87% range
+ASM benchmark report written

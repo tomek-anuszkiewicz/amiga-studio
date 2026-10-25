@@ -1,0 +1,2 @@
+nbcd/nbcd_predecrement: 100000 targets/run, 36.724 ns/target minimum, 1.08% range
+ASM benchmark report written

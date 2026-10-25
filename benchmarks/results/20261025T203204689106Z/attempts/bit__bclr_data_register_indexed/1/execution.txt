@@ -1,0 +1,2 @@
+bit/bclr_data_register_indexed: 100000 targets/run, 45.169 ns/target minimum, 1.93% range
+ASM benchmark report written

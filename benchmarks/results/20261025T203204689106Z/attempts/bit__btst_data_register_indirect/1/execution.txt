@@ -1,0 +1,2 @@
+bit/btst_data_register_indirect: 100000 targets/run, 28.950 ns/target minimum, 0.57% range
+ASM benchmark report written

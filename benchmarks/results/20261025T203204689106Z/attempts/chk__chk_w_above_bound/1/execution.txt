@@ -1,0 +1,2 @@
+chk/chk_w_above_bound: 100000 targets/run, 118.437 ns/target minimum, 5.17% range
+ASM benchmark report written

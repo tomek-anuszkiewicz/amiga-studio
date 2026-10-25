@@ -1,0 +1,2 @@
+cmpa/cmpa_w_a2_d5: 100000 targets/run, 23.000 ns/target minimum, 2.00% range
+ASM benchmark report written

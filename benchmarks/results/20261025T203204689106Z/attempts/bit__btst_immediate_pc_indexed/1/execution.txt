@@ -1,0 +1,2 @@
+bit/btst_immediate_pc_indexed: 100000 targets/run, 51.523 ns/target minimum, 2.27% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+adda/adda_w_indirect_a7_destination: 100000 targets/run, 34.275 ns/target minimum, 1.85% range
+ASM benchmark report written

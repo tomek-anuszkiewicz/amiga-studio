@@ -1,0 +1,2 @@
+movea/movea_l_absolute_short_a7_destination: 100000 targets/run, 46.025 ns/target minimum, 1.79% range
+ASM benchmark report written

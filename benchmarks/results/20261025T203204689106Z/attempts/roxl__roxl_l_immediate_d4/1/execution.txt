@@ -1,0 +1,2 @@
+roxl/roxl_l_immediate_d4: 100000 targets/run, 33.799 ns/target minimum, 11.45% range
+ASM benchmark report written

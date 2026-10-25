@@ -1,0 +1,2 @@
+suba/suba_w_absolute_short_a7_destination: 100000 targets/run, 43.078 ns/target minimum, 3.51% range
+ASM benchmark report written

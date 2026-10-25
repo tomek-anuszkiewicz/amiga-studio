@@ -1,0 +1,2 @@
+movem/movem_w_indirect_to_registers: 100000 targets/run, 78.386 ns/target minimum, 2.42% range
+ASM benchmark report written

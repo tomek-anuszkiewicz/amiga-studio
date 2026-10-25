@@ -1,0 +1,2 @@
+movem/movem_l_address_postincrement_stack_pointer: 100000 targets/run, 75.008 ns/target minimum, 0.67% range
+ASM benchmark report written

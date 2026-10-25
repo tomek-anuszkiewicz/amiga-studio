@@ -1,0 +1,2 @@
+shift/lsl_w_postincrement: 100000 targets/run, 37.117 ns/target minimum, 2.13% range
+ASM benchmark report written

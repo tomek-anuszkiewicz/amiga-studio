@@ -1,0 +1,2 @@
+addi/addi_w_a7_predecrement: 100000 targets/run, 47.747 ns/target minimum, 2.68% range
+ASM benchmark report written

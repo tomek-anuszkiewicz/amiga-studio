@@ -1,0 +1,2 @@
+bit/bchg_immediate_register: 100000 targets/run, 32.579 ns/target minimum, 3.05% range
+ASM benchmark report written

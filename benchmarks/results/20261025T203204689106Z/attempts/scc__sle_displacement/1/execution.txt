@@ -1,0 +1,2 @@
+scc/sle_displacement: 100000 targets/run, 43.260 ns/target minimum, 1.66% range
+ASM benchmark report written

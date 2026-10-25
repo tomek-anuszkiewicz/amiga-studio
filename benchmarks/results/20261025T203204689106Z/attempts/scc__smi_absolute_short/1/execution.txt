@@ -1,0 +1,2 @@
+scc/smi_absolute_short: 100000 targets/run, 43.397 ns/target minimum, 1.92% range
+ASM benchmark report written

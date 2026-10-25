@@ -1,0 +1,2 @@
+bcc/bvs_s_untaken: 100000 targets/run, 49.211 ns/target minimum, 4.21% range
+ASM benchmark report written

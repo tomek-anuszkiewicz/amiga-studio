@@ -1,0 +1,2 @@
+add/add_l_absolute_long: 100000 targets/run, 57.855 ns/target minimum, 4.33% range
+ASM benchmark report written

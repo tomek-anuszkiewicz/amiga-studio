@@ -1,0 +1,2 @@
+negx/negx_b_displacement: 100000 targets/run, 42.321 ns/target minimum, 2.72% range
+ASM benchmark report written

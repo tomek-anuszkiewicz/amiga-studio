@@ -1,0 +1,2 @@
+and/and_w_d2_a7_postincrement: 100000 targets/run, 36.743 ns/target minimum, 2.97% range
+ASM benchmark report written

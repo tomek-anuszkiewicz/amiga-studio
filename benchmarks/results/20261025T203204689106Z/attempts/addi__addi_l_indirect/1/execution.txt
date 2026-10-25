@@ -1,0 +1,2 @@
+addi/addi_l_indirect: 100000 targets/run, 67.350 ns/target minimum, 4.34% range
+ASM benchmark report written

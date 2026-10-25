@@ -1,0 +1,2 @@
+subq/subq_w_d6: 100000 targets/run, 22.429 ns/target minimum, 2.42% range
+ASM benchmark report written

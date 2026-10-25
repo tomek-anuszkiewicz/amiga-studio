@@ -1,0 +1,2 @@
+dbcc/dbcc_branch: 100000 targets/run, 67.906 ns/target minimum, 1.27% range
+ASM benchmark report written

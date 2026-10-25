@@ -1,0 +1,2 @@
+move/move_l_address_register_to_absolute_long: 100000 targets/run, 52.636 ns/target minimum, 4.50% range
+ASM benchmark report written

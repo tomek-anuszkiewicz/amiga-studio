@@ -1,0 +1,2 @@
+movea/movea_l_absolute_long_a7_destination: 100000 targets/run, 56.222 ns/target minimum, 3.21% range
+ASM benchmark report written

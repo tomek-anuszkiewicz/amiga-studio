@@ -1,0 +1,2 @@
+roxl/roxl_w_indexed: 100000 targets/run, 45.555 ns/target minimum, 4.24% range
+ASM benchmark report written

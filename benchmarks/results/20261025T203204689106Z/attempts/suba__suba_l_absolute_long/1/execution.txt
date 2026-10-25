@@ -1,0 +1,2 @@
+suba/suba_l_absolute_long: 100000 targets/run, 60.636 ns/target minimum, 0.81% range
+ASM benchmark report written

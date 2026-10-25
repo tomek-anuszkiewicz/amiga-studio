@@ -1,0 +1,2 @@
+subi/subi_w_predecrement: 100000 targets/run, 48.579 ns/target minimum, 4.28% range
+ASM benchmark report written

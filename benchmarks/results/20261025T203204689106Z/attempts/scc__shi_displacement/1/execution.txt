@@ -1,0 +1,2 @@
+scc/shi_displacement: 100000 targets/run, 42.830 ns/target minimum, 4.17% range
+ASM benchmark report written

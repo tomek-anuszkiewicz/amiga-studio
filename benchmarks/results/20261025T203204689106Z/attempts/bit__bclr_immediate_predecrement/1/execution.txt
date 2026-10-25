@@ -1,0 +1,2 @@
+bit/bclr_immediate_predecrement: 100000 targets/run, 46.703 ns/target minimum, 1.92% range
+ASM benchmark report written

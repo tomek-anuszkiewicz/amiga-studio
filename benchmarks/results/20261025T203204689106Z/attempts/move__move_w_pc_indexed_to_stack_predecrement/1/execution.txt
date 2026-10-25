@@ -1,0 +1,2 @@
+move/move_w_pc_indexed_to_stack_predecrement: 100000 targets/run, 47.815 ns/target minimum, 2.48% range
+ASM benchmark report written

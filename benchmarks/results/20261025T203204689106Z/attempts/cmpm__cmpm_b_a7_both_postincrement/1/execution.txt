@@ -1,0 +1,2 @@
+cmpm/cmpm_b_a7_both_postincrement: 100000 targets/run, 35.667 ns/target minimum, 2.74% range
+ASM benchmark report written

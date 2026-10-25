@@ -1,0 +1,2 @@
+lea/lea_d16_a7: 100000 targets/run, 30.690 ns/target minimum, 0.63% range
+ASM benchmark report written

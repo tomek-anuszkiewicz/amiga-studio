@@ -1,0 +1,2 @@
+negx/negx_l_d4: 100000 targets/run, 22.955 ns/target minimum, 2.26% range
+ASM benchmark report written

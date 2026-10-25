@@ -1,0 +1,2 @@
+pea/pea_d16: 100000 targets/run, 42.781 ns/target minimum, 3.77% range
+ASM benchmark report written

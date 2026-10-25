@@ -1,0 +1,2 @@
+move/move_w_stack_predecrement_to_data_register: 100000 targets/run, 31.778 ns/target minimum, 1.11% range
+ASM benchmark report written

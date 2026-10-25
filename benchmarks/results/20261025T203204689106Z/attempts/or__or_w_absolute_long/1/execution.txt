@@ -1,0 +1,2 @@
+or/or_w_absolute_long: 100000 targets/run, 48.816 ns/target minimum, 6.16% range
+ASM benchmark report written

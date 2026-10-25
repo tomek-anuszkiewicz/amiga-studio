@@ -1,0 +1,2 @@
+muls/muls_w_d5_d2: 100000 targets/run, 65.665 ns/target minimum, 2.24% range
+ASM benchmark report written

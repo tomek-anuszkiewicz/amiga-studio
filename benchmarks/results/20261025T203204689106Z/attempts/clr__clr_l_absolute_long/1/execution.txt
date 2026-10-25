@@ -1,0 +1,2 @@
+clr/clr_l_absolute_long: 100000 targets/run, 68.237 ns/target minimum, 1.40% range
+ASM benchmark report written

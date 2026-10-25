@@ -1,0 +1,2 @@
+move/move_b_address_displacement_to_address_postincrement: 100000 targets/run, 40.665 ns/target minimum, 1.65% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+cmpa/cmpa_l_immediate: 100000 targets/run, 42.713 ns/target minimum, 1.60% range
+ASM benchmark report written

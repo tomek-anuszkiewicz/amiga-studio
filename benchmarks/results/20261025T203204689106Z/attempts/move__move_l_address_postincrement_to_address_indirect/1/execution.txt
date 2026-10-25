@@ -1,0 +1,2 @@
+move/move_l_address_postincrement_to_address_indirect: 100000 targets/run, 51.297 ns/target minimum, 3.12% range
+ASM benchmark report written

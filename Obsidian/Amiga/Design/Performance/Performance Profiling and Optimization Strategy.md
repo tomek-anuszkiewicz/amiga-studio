@@ -6,10 +6,11 @@ category: "Design"
 subsystem: "test_runner"
 status: "active"
 created: 2026-09-14
-updated: 2026-10-23
+updated: 2026-10-25
 related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[General Architecture.md](../General%20Architecture.md)", "[Machine Loop.md](../Machine%20Loop.md)"]
 tracked_paths:
-  - "baselines/benchmarks"
+  - "benchmarks/m68k_benchmark_baseline.csv"
+  - "benchmarks/m68k_benchmark_baseline.json"
   - ".agents/skills/profile-external"
   - "tools/verification/profile_benchmark.py"
   - "crates/test_runner/benches/bench_instructions"
@@ -28,12 +29,11 @@ CPU instruction measurements use the Cargo benchmark target in
 [`crates/test_runner/benches/bench_instructions`](../../../../crates/test_runner/benches/bench_instructions).
 Program generation, timing, statistics and report persistence follow
 [CPU Instruction Benchmarking](CPU%20Instruction%20Benchmarking.md).
-The tracked CSV and JSON baselines in `baselines/benchmarks/` contain the reviewed
-decoder-derived CPU run. Their recorded binary and source hashes identify the
-measured build; they are not fresh measurements of the current build.
-They also retain the earlier NOP-every-100 protocol. The analyzer marks new
-once-at-start runs incompatible for regression labels until a comparable baseline
-is approved.
+The approved CSV and JSON baseline in `benchmarks/` records the first complete
+default-parameter handwritten catalog run. Comparable completed, committed
+full runs provide previous-run timing comparisons. The former decoder-derived
+baseline remains in Git history and is incompatible with handwritten workloads.
+Later reference changes require the same evidence and explicit approval.
 
 The previous vAmigaTS execution harness, dependent chipset benchmark and chipset
 baseline have been removed. There is currently no executable chipset throughput

@@ -1,0 +1,2 @@
+roxl/roxl_w_absolute_short: 100000 targets/run, 42.650 ns/target minimum, 9.90% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+suba/suba_w_displacement_a7_destination: 100000 targets/run, 43.690 ns/target minimum, 1.27% range
+ASM benchmark report written

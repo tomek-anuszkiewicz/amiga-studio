@@ -1,0 +1,2 @@
+mul/mulu_w_pc_indexed: 100000 targets/run, 87.811 ns/target minimum, 1.76% range
+ASM benchmark report written

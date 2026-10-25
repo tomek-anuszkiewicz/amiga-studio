@@ -1,0 +1,2 @@
+muls/muls_w_pc_displacement: 100000 targets/run, 90.496 ns/target minimum, 1.39% range
+ASM benchmark report written

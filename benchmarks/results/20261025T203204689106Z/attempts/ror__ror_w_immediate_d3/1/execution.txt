@@ -1,0 +1,2 @@
+ror/ror_w_immediate_d3: 100000 targets/run, 29.270 ns/target minimum, 0.95% range
+ASM benchmark report written

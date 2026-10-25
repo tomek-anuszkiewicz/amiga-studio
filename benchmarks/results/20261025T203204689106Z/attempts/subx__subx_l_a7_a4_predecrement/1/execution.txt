@@ -1,0 +1,2 @@
+subx/subx_l_a7_a4_predecrement: 100000 targets/run, 70.994 ns/target minimum, 1.42% range
+ASM benchmark report written

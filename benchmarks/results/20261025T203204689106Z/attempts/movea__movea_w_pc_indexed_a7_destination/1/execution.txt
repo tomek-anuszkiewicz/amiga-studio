@@ -1,0 +1,2 @@
+movea/movea_w_pc_indexed_a7_destination: 100000 targets/run, 40.821 ns/target minimum, 2.97% range
+ASM benchmark report written

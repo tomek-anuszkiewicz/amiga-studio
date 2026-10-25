@@ -1,0 +1,2 @@
+eori/eori_l_postincrement: 100000 targets/run, 66.513 ns/target minimum, 4.11% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+movem/movem_w_stack_pointer_absolute_long: 100000 targets/run, 65.698 ns/target minimum, 1.04% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+div/divu_w_a7_postincrement: 100000 targets/run, 142.400 ns/target minimum, 1.20% range
+ASM benchmark report written

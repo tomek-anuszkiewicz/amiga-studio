@@ -1,0 +1,2 @@
+suba/suba_w_indirect: 100000 targets/run, 34.460 ns/target minimum, 2.11% range
+ASM benchmark report written

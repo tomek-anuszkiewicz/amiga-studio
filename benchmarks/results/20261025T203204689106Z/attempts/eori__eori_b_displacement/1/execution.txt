@@ -1,0 +1,2 @@
+eori/eori_b_displacement: 100000 targets/run, 53.664 ns/target minimum, 1.47% range
+ASM benchmark report written

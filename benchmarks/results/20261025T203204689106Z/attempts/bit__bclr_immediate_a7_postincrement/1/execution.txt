@@ -1,0 +1,2 @@
+bit/bclr_immediate_a7_postincrement: 100000 targets/run, 43.260 ns/target minimum, 1.25% range
+ASM benchmark report written

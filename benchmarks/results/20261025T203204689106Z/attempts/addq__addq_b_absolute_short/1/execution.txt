@@ -1,0 +1,2 @@
+addq/addq_b_absolute_short: 100000 targets/run, 43.093 ns/target minimum, 0.19% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+tas/tas_absw_chip_ram: 100000 targets/run, 47.085 ns/target minimum, 2.06% range
+ASM benchmark report written

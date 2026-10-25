@@ -1,0 +1,2 @@
+cmp/cmp_w_indirect: 100000 targets/run, 30.245 ns/target minimum, 1.64% range
+ASM benchmark report written

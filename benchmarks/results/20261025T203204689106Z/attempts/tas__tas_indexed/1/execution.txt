@@ -1,0 +1,2 @@
+tas/tas_indexed: 100000 targets/run, 46.045 ns/target minimum, 1.18% range
+ASM benchmark report written

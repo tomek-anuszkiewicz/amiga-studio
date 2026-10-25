@@ -1,0 +1,2 @@
+jmp/jmp_idx: 100000 targets/run, 58.481 ns/target minimum, 0.42% range
+ASM benchmark report written

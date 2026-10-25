@@ -1,0 +1,2 @@
+roxr/roxr_w_d3_d4: 100000 targets/run, 29.401 ns/target minimum, 2.28% range
+ASM benchmark report written

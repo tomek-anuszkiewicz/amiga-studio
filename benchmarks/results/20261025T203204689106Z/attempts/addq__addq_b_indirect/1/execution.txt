@@ -1,0 +1,2 @@
+addq/addq_b_indirect: 100000 targets/run, 34.648 ns/target minimum, 2.04% range
+ASM benchmark report written

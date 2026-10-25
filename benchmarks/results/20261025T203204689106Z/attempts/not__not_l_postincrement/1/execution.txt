@@ -1,0 +1,2 @@
+not/not_l_postincrement: 100000 targets/run, 48.992 ns/target minimum, 4.29% range
+ASM benchmark report written

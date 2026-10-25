@@ -1,0 +1,2 @@
+cmp/cmp_l_postincrement: 100000 targets/run, 40.132 ns/target minimum, 1.51% range
+ASM benchmark report written

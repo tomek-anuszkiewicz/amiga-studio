@@ -1,0 +1,2 @@
+divs/divs_w_valid_fast: 100000 targets/run, 137.702 ns/target minimum, 1.45% range
+ASM benchmark report written

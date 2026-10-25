@@ -1,0 +1,2 @@
+ori/ori_l_absolute_short: 100000 targets/run, 73.570 ns/target minimum, 1.24% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+lea/lea_ai_a4: 100000 targets/run, 21.752 ns/target minimum, 0.98% range
+ASM benchmark report written

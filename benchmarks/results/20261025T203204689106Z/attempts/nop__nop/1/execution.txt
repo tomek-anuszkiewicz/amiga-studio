@@ -1,0 +1,2 @@
+nop/nop: 100000 targets/run, 20.697 ns/target minimum, 2.05% range
+ASM benchmark report written

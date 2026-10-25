@@ -1,0 +1,2 @@
+or/or_b_d1_d0: 100000 targets/run, 21.315 ns/target minimum, 1.19% range
+ASM benchmark report written

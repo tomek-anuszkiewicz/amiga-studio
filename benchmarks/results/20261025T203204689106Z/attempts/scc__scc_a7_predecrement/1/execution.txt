@@ -1,0 +1,2 @@
+scc/scc_a7_predecrement: 100000 targets/run, 39.144 ns/target minimum, 3.52% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+jsr/jsr_idx_return: 100000 targets/run, 74.894 ns/target minimum, 3.45% range
+ASM benchmark report written

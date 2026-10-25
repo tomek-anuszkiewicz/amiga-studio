@@ -1,0 +1,2 @@
+move/move_b_absolute_short_to_address_indirect: 100000 targets/run, 41.228 ns/target minimum, 4.13% range
+ASM benchmark report written

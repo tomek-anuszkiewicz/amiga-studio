@@ -1,0 +1,2 @@
+clr/clr_b_indexed: 100000 targets/run, 46.669 ns/target minimum, 22.09% range
+ASM benchmark report written

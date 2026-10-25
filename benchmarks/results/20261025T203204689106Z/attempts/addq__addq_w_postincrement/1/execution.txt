@@ -1,0 +1,2 @@
+addq/addq_w_postincrement: 100000 targets/run, 37.374 ns/target minimum, 3.20% range
+ASM benchmark report written

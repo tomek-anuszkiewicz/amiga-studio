@@ -1,0 +1,2 @@
+movem/movem_w_stack_pointer_address_displacement: 100000 targets/run, 59.657 ns/target minimum, 2.16% range
+ASM benchmark report written

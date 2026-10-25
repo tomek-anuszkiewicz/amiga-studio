@@ -1,0 +1,2 @@
+jsr/jsr_pcdisp_no_return: 100000 targets/run, 45.111 ns/target minimum, 6.00% range
+ASM benchmark report written

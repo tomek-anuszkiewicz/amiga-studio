@@ -1,0 +1,2 @@
+movem/movem_w_register_list_address_predecrement: 100000 targets/run, 80.325 ns/target minimum, 1.74% range
+ASM benchmark report written

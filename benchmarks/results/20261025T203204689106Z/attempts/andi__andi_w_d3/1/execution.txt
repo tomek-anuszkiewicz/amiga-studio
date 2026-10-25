@@ -1,0 +1,2 @@
+andi/andi_w_d3: 100000 targets/run, 29.363 ns/target minimum, 5.54% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+eori/eori_b_indirect: 100000 targets/run, 42.379 ns/target minimum, 0.62% range
+ASM benchmark report written

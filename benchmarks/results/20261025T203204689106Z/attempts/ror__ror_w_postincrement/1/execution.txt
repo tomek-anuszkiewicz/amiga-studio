@@ -1,0 +1,2 @@
+ror/ror_w_postincrement: 100000 targets/run, 37.301 ns/target minimum, 3.13% range
+ASM benchmark report written

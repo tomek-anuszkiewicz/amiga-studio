@@ -1,0 +1,2 @@
+negx/negx_l_postincrement: 100000 targets/run, 48.242 ns/target minimum, 1.30% range
+ASM benchmark report written

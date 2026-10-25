@@ -1,0 +1,2 @@
+cmpi/cmpi_b_displacement: 100000 targets/run, 46.767 ns/target minimum, 2.13% range
+ASM benchmark report written

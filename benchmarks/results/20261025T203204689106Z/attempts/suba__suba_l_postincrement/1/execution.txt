@@ -1,0 +1,2 @@
+suba/suba_l_postincrement: 100000 targets/run, 41.733 ns/target minimum, 1.05% range
+ASM benchmark report written

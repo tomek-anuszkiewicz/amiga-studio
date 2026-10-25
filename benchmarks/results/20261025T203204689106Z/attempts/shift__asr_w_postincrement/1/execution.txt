@@ -1,0 +1,2 @@
+shift/asr_w_postincrement: 100000 targets/run, 37.694 ns/target minimum, 1.23% range
+ASM benchmark report written

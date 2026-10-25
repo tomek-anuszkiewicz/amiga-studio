@@ -1,0 +1,2 @@
+neg/neg_l_a7_predecrement: 100000 targets/run, 49.860 ns/target minimum, 1.93% range
+ASM benchmark report written

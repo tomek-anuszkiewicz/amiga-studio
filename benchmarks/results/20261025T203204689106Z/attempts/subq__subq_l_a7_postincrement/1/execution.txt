@@ -1,0 +1,2 @@
+subq/subq_l_a7_postincrement: 100000 targets/run, 48.970 ns/target minimum, 0.50% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+scc/sge_indexed: 100000 targets/run, 45.054 ns/target minimum, 4.13% range
+ASM benchmark report written

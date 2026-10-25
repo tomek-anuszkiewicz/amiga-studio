@@ -1,0 +1,2 @@
+scc/svs_register: 100000 targets/run, 24.236 ns/target minimum, 1.34% range
+ASM benchmark report written

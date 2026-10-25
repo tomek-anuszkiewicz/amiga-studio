@@ -1,0 +1,2 @@
+dbcc/dbcs_condition_true: 100000 targets/run, 66.345 ns/target minimum, 1.96% range
+ASM benchmark report written

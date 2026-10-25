@@ -1,0 +1,2 @@
+movem/movem_w_stack_postincrement_data_register: 100000 targets/run, 65.028 ns/target minimum, 2.56% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+move/move_w_address_indirect_to_stack_postincrement: 100000 targets/run, 36.104 ns/target minimum, 1.58% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+dbcc/dblt_condition_true: 100000 targets/run, 64.750 ns/target minimum, 3.27% range
+ASM benchmark report written

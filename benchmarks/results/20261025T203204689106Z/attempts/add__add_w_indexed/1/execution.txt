@@ -1,0 +1,2 @@
+add/add_w_indexed: 100000 targets/run, 42.015 ns/target minimum, 1.30% range
+ASM benchmark report written

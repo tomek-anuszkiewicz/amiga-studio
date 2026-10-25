@@ -1,0 +1,2 @@
+trap/trap_3_supervisor: 100000 targets/run, 114.690 ns/target minimum, 2.12% range
+ASM benchmark report written

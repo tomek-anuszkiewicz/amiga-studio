@@ -1,0 +1,2 @@
+adda/adda_l_absolute_short_a7_destination: 100000 targets/run, 49.112 ns/target minimum, 1.29% range
+ASM benchmark report written

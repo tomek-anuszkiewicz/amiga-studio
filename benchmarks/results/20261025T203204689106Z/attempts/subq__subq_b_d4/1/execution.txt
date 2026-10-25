@@ -1,0 +1,2 @@
+subq/subq_b_d4: 100000 targets/run, 21.734 ns/target minimum, 4.99% range
+ASM benchmark report written

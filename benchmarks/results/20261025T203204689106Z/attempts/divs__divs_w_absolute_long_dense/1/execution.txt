@@ -1,0 +1,2 @@
+divs/divs_w_absolute_long_dense: 100000 targets/run, 173.113 ns/target minimum, 0.58% range
+ASM benchmark report written

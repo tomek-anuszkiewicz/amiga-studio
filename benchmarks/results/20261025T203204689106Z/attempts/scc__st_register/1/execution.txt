@@ -1,0 +1,2 @@
+scc/st_register: 100000 targets/run, 25.528 ns/target minimum, 2.54% range
+ASM benchmark report written

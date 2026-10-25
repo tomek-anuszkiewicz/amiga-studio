@@ -28,10 +28,10 @@ includes a module path.
 | `check code|hardware|formatting|clippy` | One quality gate |
 | `check build [crate NAME]` | Cargo compilation check; workspace by default |
 | `runner build` | Compile release test and benchmark targets without running them |
-| `runner bench [inventory\|probe\|pilot\|measure\|retry]` | Decoder-derived CPU benchmark workflow |
+| `runner bench [case ID\|mnemonic NAME\|opcode XXXX] [duration-ms N] [series N]` | Handwritten CPU workload measurement |
 | `runner gui -- OPTIONS` | GUI inspector capture |
-| `runner profile bench pilot` | Build the CPU benchmark and sample a short representative run with samply |
-| `runner analyze RUN_DIRECTORY [retry RETRY_DIRECTORY]` | Analyze a validated candidate run and compare it with the tracked baseline |
+| `runner profile bench case FAMILY/CASE` | Build and sample one handwritten CPU workload with samply |
+| `runner analyze RUN_DIRECTORY` | Regenerate a stored run analysis without measurement |
 
 `--plan` previews the exact child commands and environment. `--log-level
 full|warn|error` controls output; both options may appear among sentence selectors.
@@ -132,87 +132,54 @@ finalization; the launcher prints build/reuse time separately.
 
 ## CPU benchmark entry point
 
-CPU measurements run through the `bench_instructions` Cargo target declared in
-[`Cargo.toml`](../../crates/test_runner/Cargo.toml). SingleStep reports are
-finalized automatically inside the aggregate SingleStep test.
+The active CPU measurement catalog is [benchmarks/m68k](../../benchmarks/m68k/README.md).
+The pinned assembler is installed with `tools/bootstrap/bootstrap.ps1 -Assembler`.
+Install the monitor dependency with `python -m pip install -r tools/verification/requirements.txt`.
+The decoder inventory remains available for the separate coverage audit.
 
 ```powershell
-cargo bench -p test_runner --bench bench_instructions -- --help
-cargo bench -p test_runner --bench bench_instructions -- --inventory
-python tools/verification/benchmark_candidates.py
-cargo bench -p test_runner --bench bench_instructions -- --probe-candidates
-cargo bench -p test_runner --bench bench_instructions -- --export-composition
-cargo bench -p test_runner --bench bench_instructions -- --measure-candidates
-python tools/verification/analyze_candidate_benchmarks.py --prepare-retry-latest
-cargo bench -p test_runner --bench bench_instructions -- --retry-candidates
-python tools/verification/analyze_candidate_benchmarks.py .agent/tmp/benchmarks/inventory/full_<run-id> --retry-dir .agent/tmp/benchmarks/inventory/retry_<run-id>
+python tools/verification/verify.py runner bench
+python tools/verification/verify.py runner bench case add/add_w_d1_d0 duration-ms 50 series 1
+python tools/verification/verify.py runner bench mnemonic ADD
+python tools/verification/verify.py runner bench opcode D041
+python tools/verification/verify.py runner bench inventory
+python tools/verification/verify.py runner analyze benchmarks/results/<run-id>
+python tools/verification/verify.py runner profile bench case add/add_w_d1_d0
 ```
 
-The hand-written cases are documented in
-[`benchmarks/m68k/README.md`](../../benchmarks/m68k/README.md). Provision the pinned
-assembler and select a case with:
+Each measurement invocation creates one `benchmarks/results/<run-id>/` directory.
+The manifest records the selected cases, effective duration and series count,
+all attempts, host-load observations, failures and completion status. The runner
+executes complete guest programs and resets CPU and memory outside each timer.
+The default is three series of at least 400 ms of timed execution per case.
+The minimum series nanoseconds per target is the selected whole-workload cost;
+all series remain in the case report. No separate guest inspection run is made.
+Assembly sources and binaries stay under `.agent/tmp/benchmarks/handwritten/`.
 
-```powershell
-.\tools\bootstrap\bootstrap.ps1 -Assembler
-cargo bench -p test_runner --bench bench_instructions -- --measure-asm add/add_w_d1_postincrement
-cargo bench -p test_runner --bench bench_instructions -- --measure-asm add/add_w_d1_d0
-```
+The external monitor samples the pinned host core during each measured series
+(all logical cores when affinity is unavailable). It subtracts the benchmark
+process's CPU time from busy time and treats more than 20% average external
+busy time in any series, or unavailable observation, as a
+load disturbance. One disturbed attempt triggers one full-case rerun with the
+same settings. Both attempts remain in the manifest, and a second disturbance
+marks the result. Execution failure is recorded as a failed case without retry.
 
-The shared runner substitutes `instruction_count` from
-`benchmarks/m68k/config.json` and any declared seeded memory regions into
-`program.s`, assembles the complete image, and executes it to a validated end
-address. With the current shared settings, seven series repeat complete runs
-until each has at least 400 ms of timed CPU execution. Each case writes its
-image and report under `.agent/tmp/benchmarks/handwritten/<family>/<case-id>/`.
-These cases do not update the decoder-derived baseline or claim comparable
-case fingerprints.
-
-Running without options prints instructions without measuring. The decoder-derived
-inventory and validated candidate sequence above is the current benchmark workflow.
-It saves raw JSONL, fixture hashes, host settings, controls, and derived JSON/CSV
-reports under `.agent/tmp/benchmarks/inventory/`. Each measurement session starts
-with one NOP control using three series near 1.2 seconds each. An unstable control
-stops that session before candidate timing. The runner does not measure host CPU
-load or wait for an idle threshold. A full run may still exit with unstable
-candidate cases. The retry plan selects those cases plus matching-fixture cases
-whose raw time differs from the retained baseline by more than 3% in either
-direction. With the older baseline's NOP policy, this difference only selects
-cases for confirmation; it is not a regression verdict. A retry session uses
-one new initial NOP control and retains up to three measurements per selected
-case. It stops when two measurements agree within 3%, including the full-run
-measurement when valid. An unresolved case remains invalid for final reporting.
-The report accepts a retry only with matching candidate and validation hashes
-and keeps its host control separate. A complete validated analysis with no
-pending retry cases writes
-`latest_candidate_run.json` as the current report pointer. Most blocks execute 700 targets; halting `STOP`
-requires one target per block. The measured cost includes guest helpers and the
-host stepping loop.
-
-`verify.py runner bench inventory` writes the decoder inventory and generates the
-candidate manifest. `probe` validates every candidate before `measure`; `retry`
-prepares the plan and remeasures selected cases, and `pilot` runs a short
-representative sample. Direct Cargo retry requires the plan command above first.
-`runner analyze RUN_DIRECTORY [retry RETRY_DIRECTORY]` validates a completed run,
-writes the report and anomaly tables, and compares matching fixtures with the
-tracked version-2 baseline. The comparison requires identical fixture hashes,
-target counts and CPU clocks with the same host OS, architecture, power plan,
-priority, affinity, and NOP control policy. The tracked baseline uses the former
-control-every-100 policy; a new run remains incompatible for NOP-adjusted
-regression labels until a comparable baseline is explicitly approved. Raw and
-NOP-adjusted changes are diagnostic signals, not correctness gates. A report
-without a required retry is preliminary and does not update the current report
-pointer. Running
-`runner bench` without an action prints help. `runner profile bench pilot` builds
-the same target without running it, takes the executable path from Cargo's
-artifact messages, and passes it to `samply record`. A failed build or missing
-artifact cannot launch a previous executable.
+Completed runs automatically write `aggregate.json`, `aggregate.csv`,
+`anomalies.json`, `comparison.json` and a readable `report.md`. Explicit analysis regenerates those
+reports from stored data. An incomplete run cannot be analyzed or selected as
+a comparison. Only an earlier committed, completed full run with matching host
+and settings is eligible. Each case additionally requires matching source,
+configuration, image, target count and CPU clocks. Filtered runs compare their
+measured intersection but do not become full-run references. The approved
+`m68k_benchmark_baseline` records the first complete handwritten run. Future
+reference changes require the reference-artifact approval procedure.
 
 ## Completion verification
 
 Verification orchestration and coverage result processing live in `tools/verification/`;
 worktree management lives in `tools/worktree.ps1`. The shared diary appender lives in `tools/log_diary.py`. Concrete project audits and checks live in `tools/verification/checks/`. Run these scripts from the repository root. Task selection uses subcommands; the former selection switches are rejected.
 
-The `test_runner` suites retain emulator execution checks and reference-result invariants. Candidate benchmark fixtures have targeted execution tests; Python tests check analyzer and command contracts. Empirical anomaly reports use stored results and do not establish fresh performance measurements.
+The `test_runner` suites retain emulator execution checks and reference-result invariants. The decoder inventory has a targeted test; Python tests check handwritten benchmark selection, analysis and command contracts. Empirical anomaly reports use stored results and do not establish fresh performance measurements.
 
 Commit verification starts with ordinary workspace crate tests under LLVM coverage instrumentation, excluding `test_runner`. This is automatic, with no coverage switch. Only this execution contributes to the coverage report; the remaining quality gates and harness suites use normal Cargo artifacts. `cargo-llvm-cov` uses its separate `target/llvm-cov-target` cache, while normal Cargo commands retain their usual target directory. Raw measurement counters and the previous summary are cleared before each measurement, without deleting the build caches. Yellow `[INFO]` messages identify the instrumented and uninstrumented phases and summarize line, function and region coverage. Full summary data is saved to `.agent/tmp/coverage/summary.json`; there is no percentage threshold. Coverage does not measure performance or prove assertion quality. Stable coverage does not include doctest execution; branch coverage is not enabled.
 
@@ -321,7 +288,7 @@ PhysicalMemory. Its selection is owned by [commands.py](commands.py):
 
 Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory. The separate milestone set runs the full language audit and full SingleStepTests; vAmigaTS Cargo suites and automatic chipset/capture runs have been removed.
 
-Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks and external sampling profiles run explicitly. CPU benchmark regression test targets, the old chipset throughput workload and capture execution commands have been removed. Retained CPU baselines are measurement comparison inputs. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
+Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks and external sampling profiles run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the first full handwritten run. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
 
 ---
 

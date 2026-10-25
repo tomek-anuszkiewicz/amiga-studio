@@ -1,0 +1,2 @@
+eor/eor_w_d4_d2: 100000 targets/run, 21.845 ns/target minimum, 0.61% range
+ASM benchmark report written

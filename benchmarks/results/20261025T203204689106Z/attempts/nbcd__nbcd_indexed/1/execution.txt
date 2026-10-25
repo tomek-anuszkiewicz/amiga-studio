@@ -1,0 +1,2 @@
+nbcd/nbcd_indexed: 100000 targets/run, 44.148 ns/target minimum, 3.75% range
+ASM benchmark report written

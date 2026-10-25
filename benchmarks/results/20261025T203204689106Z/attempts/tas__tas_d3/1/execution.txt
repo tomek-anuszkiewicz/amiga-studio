@@ -1,0 +1,2 @@
+tas/tas_d3: 100000 targets/run, 24.244 ns/target minimum, 1.35% range
+ASM benchmark report written

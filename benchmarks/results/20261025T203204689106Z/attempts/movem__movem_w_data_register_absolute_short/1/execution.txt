@@ -1,0 +1,2 @@
+movem/movem_w_data_register_absolute_short: 100000 targets/run, 56.395 ns/target minimum, 1.39% range
+ASM benchmark report written

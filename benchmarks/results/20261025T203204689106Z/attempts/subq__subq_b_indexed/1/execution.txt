@@ -1,0 +1,2 @@
+subq/subq_b_indexed: 100000 targets/run, 45.168 ns/target minimum, 1.46% range
+ASM benchmark report written

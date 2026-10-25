@@ -1,0 +1,2 @@
+bsr/bsr_w_no_return: 100000 targets/run, 45.746 ns/target minimum, 1.88% range
+ASM benchmark report written

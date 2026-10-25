@@ -1,0 +1,2 @@
+scc/st_indirect: 100000 targets/run, 36.277 ns/target minimum, 0.30% range
+ASM benchmark report written

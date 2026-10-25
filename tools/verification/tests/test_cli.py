@@ -36,8 +36,8 @@ class SelectionTests(unittest.TestCase):
             for command in ("milestone [singlestep]", "crate NAME [suite NAME] [case FILTER]",
                             "python [directory PATH [file PATTERN] [case FILTER]]",
                             "singlestep [case FILTER] [full|sample N]",
-                            "architecture [case FILTER]", "profile bench pilot",
-                            "analyze RUN_DIRECTORY [retry RETRY_DIRECTORY]"):
+                            "architecture [case FILTER]", "profile bench case FAMILY/CASE",
+                            "analyze RUN_DIRECTORY"):
                 self.assertIn(command, help_text)
 
     def test_focused_rust_preserves_suite_and_case_without_completion(self):
@@ -164,12 +164,12 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(commands[0][1][-2:], ["docs/testing.md", "AGENTS.md"])
 
     def test_settings_can_follow_subcommands_without_eating_runner_arguments(self):
-        _, args = parse_args(["runner", "bench", "--log-level", "full", "--plan", "measure"])
+        _, args = parse_args(["runner", "bench", "--log-level", "full", "--plan", "case", "add/add_w_d1_d0"])
         self.assertTrue(args.plan)
         self.assertEqual(args.log_level, "full")
         command = select_phases(args, set())[0][1][0][1]
-        self.assertEqual(command[:2], ["cargo", "bench"])
-        self.assertEqual(command[-2:], ["--", "--measure-candidates"])
+        self.assertEqual(command[1:3], ["tools/verification/handwritten_benchmarks.py", "measure"])
+        self.assertEqual(command[-2:], ["case", "add/add_w_d1_d0"])
 
     def test_results_directory_is_a_common_option(self):
         _, args = parse_args(["test", "runner", "singlestep", "case", "test_add_b",
@@ -181,20 +181,13 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(parse_args(["runner", "analyze", "fixture.csv", "--log-level", "error"])[1].log_level, "error")
         self.assertEqual(parse_args(["commit"])[1].log_level, "warn")
 
-    def test_benchmark_and_profiler_select_the_cargo_benchmark(self):
-        self.assertEqual(selected("runner profile bench pilot")[0][1][1:],
-                         ["tools/verification/profile_benchmark.py", "--measure-candidates-pilot"])
-        self.assertEqual(selected("runner bench measure")[0][1],
-                         ["cargo", "bench", "-p", "test_runner", "--bench", "bench_instructions",
-                          "--", "--measure-candidates"])
-        retry_commands = selected("runner bench retry")
-        self.assertEqual(retry_commands[0][1][1:],
-                         ["tools/verification/analyze_candidate_benchmarks.py",
-                          "--prepare-retry-latest"])
-        self.assertEqual(retry_commands[1][1][-1], "--retry-candidates")
-        self.assertEqual(selected("runner analyze full_run retry retry_run")[0][1][1:],
-                         ["tools/verification/analyze_candidate_benchmarks.py", "full_run",
-                          "--retry-dir", "retry_run"])
+    def test_benchmark_and_profiler_select_the_handwritten_workflow(self):
+        self.assertEqual(selected("runner profile bench case add/add_w_d1_d0")[0][1][1:4],
+                         ["tools/verification/profile_benchmark.py", "--measure-case", "add/add_w_d1_d0"])
+        self.assertEqual(selected("runner bench case add/add_w_d1_d0")[0][1][1:],
+                         ["tools/verification/handwritten_benchmarks.py", "measure", "case", "add/add_w_d1_d0"])
+        self.assertEqual(selected("runner analyze full_run")[0][1][1:],
+                         ["tools/verification/handwritten_benchmarks.py", "analyze", "full_run"])
 
     def test_gui_keeps_its_separate_native_options(self):
         self.assertEqual(selected("runner gui -- --frames 10")[0][1][-2:], ["--frames", "10"])
@@ -206,7 +199,8 @@ class SelectionTests(unittest.TestCase):
                          "test runner singlestep sample 0", "test runner singlestep sample 50 full",
                          "milestone singlestep singlestep", "check english case name",
                          "runner bench -- --quick", "runner bench measure retry",
-                         "runner bench passes 0", "runner bench pin maybe",
+                         "runner bench duration-ms 0", "runner bench series 0",
+                         "runner bench case add/add_w_d1_d0 mnemonic ADD",
                          "runner bench measure filter ADD", "runner bench measure unroll 500",
                          "runner bench measure passes 9", "runner bench measure output reports",
                          "runner bench measure pin off", "runner profile bench pilot pin off",
@@ -250,18 +244,15 @@ class ExecutionTests(unittest.TestCase):
                          REPO_ROOT / ".agent/tmp/experiments/add/verify")
         self.assertEqual(execute.call_args.args[1]["SINGLESTEP_RESULTS_DIR"],
                          str(REPO_ROOT / ".agent/tmp/experiments/add/singlestep"))
-    def test_candidate_generation_follows_successful_inventory_only(self):
+    def test_inventory_runs_without_candidate_generation(self):
         for success in (True, False):
             with self.subTest(success=success), \
                  patch.object(verify, "execute_command", return_value=(success, "result", 0)) as execute, \
                  patch.object(verify, "snapshot", return_value="same"), \
                  contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(verify.main(["runner", "bench", "inventory"]), 0 if success else 1)
-            self.assertEqual(execute.call_count, 2 if success else 1)
+            self.assertEqual(execute.call_count, 1)
             self.assertEqual(execute.call_args_list[0].args[0][:2], ["cargo", "bench"])
-            if success:
-                self.assertEqual(execute.call_args_list[1].args[0][1:], [
-                    "tools/verification/benchmark_candidates.py"])
 
     def test_unrelated_changes_execute_no_python_contracts(self):
         with patch.object(verify, "collect_changes", return_value={"crates/cpu/src/state.rs"}), \

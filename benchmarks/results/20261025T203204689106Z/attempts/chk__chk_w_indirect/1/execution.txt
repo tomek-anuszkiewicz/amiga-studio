@@ -1,0 +1,2 @@
+chk/chk_w_indirect: 100000 targets/run, 35.674 ns/target minimum, 3.15% range
+ASM benchmark report written

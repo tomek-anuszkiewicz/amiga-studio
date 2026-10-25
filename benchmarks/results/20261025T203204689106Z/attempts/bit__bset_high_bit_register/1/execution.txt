@@ -1,0 +1,2 @@
+bit/bset_high_bit_register: 100000 targets/run, 34.458 ns/target minimum, 0.51% range
+ASM benchmark report written

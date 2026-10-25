@@ -1,0 +1,2 @@
+chk/chk_w_absolute_long: 100000 targets/run, 56.267 ns/target minimum, 1.65% range
+ASM benchmark report written

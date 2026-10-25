@@ -1,0 +1,2 @@
+mul/mulu_w_displacement_dense: 100000 targets/run, 99.500 ns/target minimum, 2.30% range
+ASM benchmark report written

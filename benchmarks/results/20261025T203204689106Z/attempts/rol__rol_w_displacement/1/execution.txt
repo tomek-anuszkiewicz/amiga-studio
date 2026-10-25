@@ -1,0 +1,2 @@
+rol/rol_w_displacement: 100000 targets/run, 44.124 ns/target minimum, 1.31% range
+ASM benchmark report written

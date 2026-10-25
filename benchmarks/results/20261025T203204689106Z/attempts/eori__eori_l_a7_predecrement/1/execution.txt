@@ -1,0 +1,2 @@
+eori/eori_l_a7_predecrement: 100000 targets/run, 69.277 ns/target minimum, 2.60% range
+ASM benchmark report written

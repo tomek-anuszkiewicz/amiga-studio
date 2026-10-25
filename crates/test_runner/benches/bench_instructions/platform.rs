@@ -1,12 +1,11 @@
 #![allow(unsafe_code, clippy::cast_ptr_alignment)]
 
-//! Host topology detection for candidate benchmark affinity selection.
+//! Host topology detection for handwritten benchmark affinity selection.
 //!
 //! The measurement runner applies and verifies its own host affinity policy.
 
 #[derive(Debug, Clone)]
 pub struct HostEnvironment {
-    pub platform_name: &'static str,
     pub p_core_id: Option<usize>,
 }
 
@@ -21,37 +20,25 @@ impl HostEnvironment {
     pub fn detect() -> Self {
         #[cfg(target_arch = "wasm32")]
         {
-            Self {
-                platform_name: "WebAssembly",
-                p_core_id: None,
-            }
+            Self { p_core_id: None }
         }
 
         #[cfg(all(windows, not(target_arch = "wasm32")))]
         {
             let (_, p_core_id) = detect_windows_p_core();
-            Self {
-                platform_name: "Windows",
-                p_core_id,
-            }
+            Self { p_core_id }
         }
 
         #[cfg(all(target_os = "linux", not(target_arch = "wasm32")))]
         {
             let (_, p_core_id) = detect_linux_p_core();
-            Self {
-                platform_name: "Linux",
-                p_core_id,
-            }
+            Self { p_core_id }
         }
 
         #[cfg(all(target_os = "macos", not(target_arch = "wasm32")))]
         {
             let (_, p_core_id) = detect_macos_p_core();
-            Self {
-                platform_name: "macOS",
-                p_core_id,
-            }
+            Self { p_core_id }
         }
 
         #[cfg(all(
@@ -61,10 +48,7 @@ impl HostEnvironment {
             not(target_arch = "wasm32")
         ))]
         {
-            Self {
-                platform_name: "Generic Unix",
-                p_core_id: Some(0),
-            }
+            Self { p_core_id: Some(0) }
         }
     }
 }

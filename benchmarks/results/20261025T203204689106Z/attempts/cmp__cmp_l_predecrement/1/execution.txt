@@ -1,0 +1,2 @@
+cmp/cmp_l_predecrement: 100000 targets/run, 42.146 ns/target minimum, 0.95% range
+ASM benchmark report written

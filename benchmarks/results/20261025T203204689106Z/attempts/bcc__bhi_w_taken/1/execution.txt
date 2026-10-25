@@ -1,0 +1,2 @@
+bcc/bhi_w_taken: 100000 targets/run, 58.865 ns/target minimum, 2.17% range
+ASM benchmark report written

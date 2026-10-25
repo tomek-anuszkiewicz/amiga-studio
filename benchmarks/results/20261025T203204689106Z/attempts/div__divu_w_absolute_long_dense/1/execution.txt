@@ -1,0 +1,2 @@
+div/divu_w_absolute_long_dense: 100000 targets/run, 162.826 ns/target minimum, 1.34% range
+ASM benchmark report written

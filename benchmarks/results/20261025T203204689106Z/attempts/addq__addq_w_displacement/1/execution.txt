@@ -1,0 +1,2 @@
+addq/addq_w_displacement: 100000 targets/run, 44.878 ns/target minimum, 2.54% range
+ASM benchmark report written

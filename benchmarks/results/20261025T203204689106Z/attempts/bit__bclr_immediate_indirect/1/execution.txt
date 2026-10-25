@@ -1,0 +1,2 @@
+bit/bclr_immediate_indirect: 100000 targets/run, 43.377 ns/target minimum, 1.15% range
+ASM benchmark report written

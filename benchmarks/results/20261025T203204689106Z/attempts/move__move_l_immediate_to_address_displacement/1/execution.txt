@@ -1,0 +1,2 @@
+move/move_l_immediate_to_address_displacement: 100000 targets/run, 62.383 ns/target minimum, 3.83% range
+ASM benchmark report written

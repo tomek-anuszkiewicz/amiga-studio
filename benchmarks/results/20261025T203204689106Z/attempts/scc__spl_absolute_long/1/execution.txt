@@ -1,0 +1,2 @@
+scc/spl_absolute_long: 100000 targets/run, 51.198 ns/target minimum, 4.28% range
+ASM benchmark report written

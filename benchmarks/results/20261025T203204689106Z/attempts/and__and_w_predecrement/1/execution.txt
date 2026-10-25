@@ -1,0 +1,2 @@
+and/and_w_predecrement: 100000 targets/run, 32.692 ns/target minimum, 0.95% range
+ASM benchmark report written

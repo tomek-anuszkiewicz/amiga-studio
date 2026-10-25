@@ -1,0 +1,2 @@
+add/add_l_d1_d0: 100000 targets/run, 25.351 ns/target minimum, 2.11% range
+ASM benchmark report written

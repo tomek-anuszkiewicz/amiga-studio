@@ -1,0 +1,2 @@
+negx/negx_b_indexed: 100000 targets/run, 44.231 ns/target minimum, 1.92% range
+ASM benchmark report written

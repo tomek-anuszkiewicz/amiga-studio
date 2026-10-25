@@ -1,0 +1,2 @@
+bit/bset_dynamic_memory: 100000 targets/run, 36.147 ns/target minimum, 3.77% range
+ASM benchmark report written

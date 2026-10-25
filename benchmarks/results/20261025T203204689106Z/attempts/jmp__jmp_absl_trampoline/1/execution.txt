@@ -1,0 +1,2 @@
+jmp/jmp_absl_trampoline: 100000 targets/run, 66.560 ns/target minimum, 1.31% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+div/divu_w_valid_fast: 100000 targets/run, 124.670 ns/target minimum, 0.43% range
+ASM benchmark report written

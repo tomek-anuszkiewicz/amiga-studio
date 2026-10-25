@@ -1,0 +1,2 @@
+scc/shi_predecrement: 100000 targets/run, 38.915 ns/target minimum, 5.95% range
+ASM benchmark report written

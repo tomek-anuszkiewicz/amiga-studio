@@ -1,0 +1,2 @@
+move/move_l_data_register_to_stack_postincrement: 100000 targets/run, 34.887 ns/target minimum, 1.47% range
+ASM benchmark report written

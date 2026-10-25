@@ -25,10 +25,10 @@ COMMAND_TREE = """Command tree (run from the repository root):
   │  └─ build [crate NAME]
   └─ runner
      ├─ build
-     ├─ bench [inventory|probe|pilot|measure|retry]
+     ├─ bench [case ID|mnemonic NAME|opcode XXXX] [duration-ms N] [series N]
      ├─ gui -- OPTIONS
-     ├─ profile bench pilot
-     └─ analyze RUN_DIRECTORY [retry RETRY_DIRECTORY]
+     ├─ profile bench case FAMILY/CASE
+     └─ analyze RUN_DIRECTORY
 
 The test rust, test runner and runner bench branches also accept no selector.
 Execution options: --plan, --log-level full|warn|error and --results-dir PATH
@@ -49,8 +49,8 @@ EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py test runner singlestep case test_add_b --exact sample 5 --results-dir .agent/tmp/experiments/add
   python tools/verification/verify.py check architecture case test_file_size_limits
   python tools/verification/verify.py runner bench inventory
-  python tools/verification/verify.py runner bench probe
-  python tools/verification/verify.py runner bench measure
+  python tools/verification/verify.py runner bench case add/add_w_d1_d0 duration-ms 50 series 1
+  python tools/verification/verify.py runner bench mnemonic ADD
 
 Focused commands do not run completion gates or coverage. Commit always runs
 ordinary crate coverage, quality gates, standard harness and Python contracts.

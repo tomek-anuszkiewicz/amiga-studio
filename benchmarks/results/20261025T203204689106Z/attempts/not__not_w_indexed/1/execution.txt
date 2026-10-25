@@ -1,0 +1,2 @@
+not/not_w_indexed: 100000 targets/run, 47.166 ns/target minimum, 0.51% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+movea/movea_l_a2_d5: 100000 targets/run, 22.173 ns/target minimum, 0.67% range
+ASM benchmark report written

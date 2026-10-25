@@ -1,0 +1,2 @@
+move/move_w_address_indexed_to_address_postincrement: 100000 targets/run, 45.780 ns/target minimum, 1.41% range
+ASM benchmark report written

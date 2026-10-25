@@ -1,0 +1,2 @@
+shift/asr_b_d3_d4: 100000 targets/run, 30.337 ns/target minimum, 1.14% range
+ASM benchmark report written

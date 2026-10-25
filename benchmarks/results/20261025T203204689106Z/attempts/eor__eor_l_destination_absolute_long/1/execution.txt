@@ -1,0 +1,2 @@
+eor/eor_l_destination_absolute_long: 100000 targets/run, 67.388 ns/target minimum, 2.91% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+move/move_w_pc_indexed_to_absolute_short: 100000 targets/run, 54.110 ns/target minimum, 1.45% range
+ASM benchmark report written

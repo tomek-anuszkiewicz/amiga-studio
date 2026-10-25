@@ -1,0 +1,2 @@
+or/or_l_a7_predecrement_d0: 100000 targets/run, 40.753 ns/target minimum, 1.95% range
+ASM benchmark report written

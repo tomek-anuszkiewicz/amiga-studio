@@ -1,0 +1,2 @@
+cmp/cmp_l_pc_displacement: 100000 targets/run, 48.326 ns/target minimum, 1.06% range
+ASM benchmark report written

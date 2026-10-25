@@ -1,0 +1,2 @@
+eor/eor_w_destination_indirect: 100000 targets/run, 36.390 ns/target minimum, 1.11% range
+ASM benchmark report written

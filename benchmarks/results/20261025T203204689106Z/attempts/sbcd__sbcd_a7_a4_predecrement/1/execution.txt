@@ -1,0 +1,2 @@
+sbcd/sbcd_a7_a4_predecrement: 100000 targets/run, 45.324 ns/target minimum, 1.97% range
+ASM benchmark report written

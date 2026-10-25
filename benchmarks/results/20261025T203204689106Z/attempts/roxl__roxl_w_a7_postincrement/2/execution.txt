@@ -1,0 +1,2 @@
+roxl/roxl_w_a7_postincrement: 100000 targets/run, 36.898 ns/target minimum, 2.39% range
+ASM benchmark report written

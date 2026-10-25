@@ -1,0 +1,2 @@
+lea/lea_pcdisp_a4: 100000 targets/run, 30.816 ns/target minimum, 3.10% range
+ASM benchmark report written

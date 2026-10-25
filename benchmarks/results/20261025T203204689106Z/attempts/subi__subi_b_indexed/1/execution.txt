@@ -1,0 +1,2 @@
+subi/subi_b_indexed: 100000 targets/run, 57.446 ns/target minimum, 0.62% range
+ASM benchmark report written

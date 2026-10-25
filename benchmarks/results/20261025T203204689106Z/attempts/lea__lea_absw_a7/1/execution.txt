@@ -1,0 +1,2 @@
+lea/lea_absw_a7: 100000 targets/run, 29.964 ns/target minimum, 1.58% range
+ASM benchmark report written

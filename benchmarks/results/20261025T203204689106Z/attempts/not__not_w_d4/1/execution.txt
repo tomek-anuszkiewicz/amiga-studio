@@ -1,0 +1,2 @@
+not/not_w_d4: 100000 targets/run, 21.774 ns/target minimum, 2.65% range
+ASM benchmark report written

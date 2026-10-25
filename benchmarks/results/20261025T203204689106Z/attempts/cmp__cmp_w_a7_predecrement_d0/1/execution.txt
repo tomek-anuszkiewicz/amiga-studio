@@ -1,0 +1,2 @@
+cmp/cmp_w_a7_predecrement_d0: 100000 targets/run, 32.245 ns/target minimum, 1.64% range
+ASM benchmark report written

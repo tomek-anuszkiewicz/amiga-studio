@@ -1,0 +1,2 @@
+shift/lsr_b_immediate_d4: 100000 targets/run, 30.453 ns/target minimum, 1.87% range
+ASM benchmark report written

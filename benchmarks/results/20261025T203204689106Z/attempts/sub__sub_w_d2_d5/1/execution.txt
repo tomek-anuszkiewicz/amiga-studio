@@ -1,0 +1,2 @@
+sub/sub_w_d2_d5: 100000 targets/run, 22.567 ns/target minimum, 0.69% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+ror/ror_w_displacement: 100000 targets/run, 44.485 ns/target minimum, 2.46% range
+ASM benchmark report written

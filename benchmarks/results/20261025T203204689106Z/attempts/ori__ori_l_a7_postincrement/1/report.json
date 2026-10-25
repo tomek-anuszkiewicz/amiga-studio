@@ -1,0 +1,77 @@
+{
+  "case_id": "ori/ori_l_a7_postincrement",
+  "case_config": {
+    "origin": 2097152,
+    "target_primary_opcode": "009F",
+    "instructions_per_loop": 4,
+    "initial_registers": {
+      "ssp": 2097152
+    },
+    "memory_regions": [
+      {
+        "label": "operand_data",
+        "address": 2097152,
+        "fill": {
+          "kind": "random_words",
+          "count": 200000
+        }
+      }
+    ]
+  },
+  "benchmark_config": {
+    "instruction_count": 100000,
+    "instruction_limit": 100000000,
+    "series": 3,
+    "target_series_ms": 400
+  },
+  "assembler_release": "v2.4.6",
+  "assembler_sha256": "c8af2cc573b6f4901f410b6aae4aa49fa7b76400d5bd7c58aad707bc08699495",
+  "host_os": "windows",
+  "host_arch": "x86_64",
+  "affinity_core": 14,
+  "priority_class": 32,
+  "source_sha256": "6360f63e234f80131e597292bbf8e473c10c3c5378cfad8bf255545c0eb60ad5",
+  "assembly_source_sha256": "0da2c7a47e38813fdefc75b73a5e366f57d45529c11825b953edcf40dfc35613",
+  "image_sha256": "8fd658b04f531e8912e44d00a4e021fb34afc5bf7fbbc4c23ad4a0ef23f558f2",
+  "origin": 2097152,
+  "entry": 2497152,
+  "program_end": 3297152,
+  "results": [
+    {
+      "target_instructions_per_run": 100000,
+      "total_instructions_per_run": 200000,
+      "helper_instructions_per_run": 100000,
+      "image_bytes": 1200016,
+      "clocks_per_run": 3200000,
+      "median_ns_per_target": 66.54949180327868,
+      "min_ns_per_target": 66.42608196721311,
+      "range_pct": 2.322323224558698,
+      "samples": [
+        {
+          "runs": 61,
+          "target_instruction_count": 6100000,
+          "total_instruction_count": 12200000,
+          "elapsed_ns": 405951900,
+          "wall_elapsed_ns": 477111400,
+          "ns_per_target": 66.54949180327868
+        },
+        {
+          "runs": 59,
+          "target_instruction_count": 5900000,
+          "total_instruction_count": 11800000,
+          "elapsed_ns": 401032300,
+          "wall_elapsed_ns": 473328700,
+          "ns_per_target": 67.97157627118644
+        },
+        {
+          "runs": 61,
+          "target_instruction_count": 6100000,
+          "total_instruction_count": 12200000,
+          "elapsed_ns": 405199100,
+          "wall_elapsed_ns": 476175300,
+          "ns_per_target": 66.42608196721311
+        }
+      ]
+    }
+  ]
+}

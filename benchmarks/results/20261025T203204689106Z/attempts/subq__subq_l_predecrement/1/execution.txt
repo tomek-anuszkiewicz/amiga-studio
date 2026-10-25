@@ -1,0 +1,2 @@
+subq/subq_l_predecrement: 100000 targets/run, 51.784 ns/target minimum, 0.39% range
+ASM benchmark report written

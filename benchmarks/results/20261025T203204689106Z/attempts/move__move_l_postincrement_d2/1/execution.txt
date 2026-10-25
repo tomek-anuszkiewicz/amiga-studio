@@ -1,0 +1,2 @@
+move/move_l_postincrement_d2: 100000 targets/run, 36.595 ns/target minimum, 1.64% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+moveq/moveq_immediate_d4: 100000 targets/run, 21.574 ns/target minimum, 1.81% range
+ASM benchmark report written

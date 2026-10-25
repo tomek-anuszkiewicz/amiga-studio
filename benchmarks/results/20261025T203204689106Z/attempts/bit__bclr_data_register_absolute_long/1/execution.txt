@@ -1,0 +1,2 @@
+bit/bclr_data_register_absolute_long: 100000 targets/run, 53.341 ns/target minimum, 1.89% range
+ASM benchmark report written

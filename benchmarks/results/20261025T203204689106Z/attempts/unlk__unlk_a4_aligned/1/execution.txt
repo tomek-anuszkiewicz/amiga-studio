@@ -1,0 +1,2 @@
+unlk/unlk_a4_aligned: 100000 targets/run, 38.859 ns/target minimum, 2.32% range
+ASM benchmark report written

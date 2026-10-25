@@ -1,0 +1,2 @@
+bit/bchg_data_register_postincrement: 100000 targets/run, 35.516 ns/target minimum, 1.39% range
+ASM benchmark report written

@@ -1,0 +1,78 @@
+{
+  "case_id": "rte/rte_supervisor",
+  "case_config": {
+    "origin": 2097152,
+    "stack_reserve_bytes": 600000,
+    "target_primary_opcode": "4E73",
+    "instructions_per_loop": 4,
+    "initial_registers": {
+      "d6": 324508639,
+      "ssp": 5691456
+    },
+    "memory_regions": [
+      {
+        "address": 5691456,
+        "fill": {
+          "kind": "return_frames",
+          "status_word": 9984
+        }
+      }
+    ]
+  },
+  "benchmark_config": {
+    "instruction_count": 100000,
+    "instruction_limit": 100000000,
+    "series": 3,
+    "target_series_ms": 400
+  },
+  "assembler_release": "v2.4.6",
+  "assembler_sha256": "c8af2cc573b6f4901f410b6aae4aa49fa7b76400d5bd7c58aad707bc08699495",
+  "host_os": "windows",
+  "host_arch": "x86_64",
+  "affinity_core": 14,
+  "priority_class": 32,
+  "source_sha256": "14d7f7e8240b02e99bfeeaa81f53162e8c836cc24b842ea4e8b8bfd2010100cd",
+  "assembly_source_sha256": "02c3b73104e86e1cf73f01b21e928f8e7be5901f4a957b86d1bfc1d7c1b76eb5",
+  "image_sha256": "bad3326abd52f594b1c7c1db027f70190d5cd5fa0f23eb736b69b5f25543d5f9",
+  "origin": 2097152,
+  "entry": 2097152,
+  "program_end": 2497152,
+  "results": [
+    {
+      "target_instructions_per_run": 100000,
+      "total_instructions_per_run": 200000,
+      "helper_instructions_per_run": 100000,
+      "image_bytes": 400016,
+      "clocks_per_run": 2400000,
+      "median_ns_per_target": 59.441911764705885,
+      "min_ns_per_target": 58.95141176470588,
+      "range_pct": 2.604660299644765,
+      "samples": [
+        {
+          "runs": 68,
+          "target_instruction_count": 6800000,
+          "total_instruction_count": 13600000,
+          "elapsed_ns": 404205000,
+          "wall_elapsed_ns": 487377100,
+          "ns_per_target": 59.441911764705885
+        },
+        {
+          "runs": 67,
+          "target_instruction_count": 6700000,
+          "total_instruction_count": 13400000,
+          "elapsed_ns": 405347800,
+          "wall_elapsed_ns": 490509900,
+          "ns_per_target": 60.499671641791046
+        },
+        {
+          "runs": 68,
+          "target_instruction_count": 6800000,
+          "total_instruction_count": 13600000,
+          "elapsed_ns": 400869600,
+          "wall_elapsed_ns": 486391000,
+          "ns_per_target": 58.95141176470588
+        }
+      ]
+    }
+  ]
+}

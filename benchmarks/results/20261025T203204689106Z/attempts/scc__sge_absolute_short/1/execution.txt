@@ -1,0 +1,2 @@
+scc/sge_absolute_short: 100000 targets/run, 43.056 ns/target minimum, 0.84% range
+ASM benchmark report written

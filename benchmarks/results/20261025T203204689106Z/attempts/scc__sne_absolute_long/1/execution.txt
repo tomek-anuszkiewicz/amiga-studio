@@ -1,0 +1,2 @@
+scc/sne_absolute_long: 100000 targets/run, 52.791 ns/target minimum, 1.80% range
+ASM benchmark report written

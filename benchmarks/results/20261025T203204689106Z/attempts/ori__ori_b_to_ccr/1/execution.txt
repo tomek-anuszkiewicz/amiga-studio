@@ -1,0 +1,2 @@
+ori/ori_b_to_ccr: 100000 targets/run, 71.854 ns/target minimum, 0.63% range
+ASM benchmark report written

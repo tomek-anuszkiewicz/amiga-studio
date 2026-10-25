@@ -1,0 +1,2 @@
+ori/ori_w_displacement: 100000 targets/run, 56.282 ns/target minimum, 1.54% range
+ASM benchmark report written

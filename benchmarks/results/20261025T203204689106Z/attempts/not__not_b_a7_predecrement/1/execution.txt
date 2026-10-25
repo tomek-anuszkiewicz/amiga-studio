@@ -1,0 +1,2 @@
+not/not_b_a7_predecrement: 100000 targets/run, 36.518 ns/target minimum, 4.12% range
+ASM benchmark report written

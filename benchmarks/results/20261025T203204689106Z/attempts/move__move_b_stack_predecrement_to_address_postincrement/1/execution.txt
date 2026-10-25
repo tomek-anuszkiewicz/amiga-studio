@@ -1,0 +1,2 @@
+move/move_b_stack_predecrement_to_address_postincrement: 100000 targets/run, 34.435 ns/target minimum, 2.60% range
+ASM benchmark report written

@@ -1,0 +1,2 @@
+shift/asr_w_a7_predecrement: 100000 targets/run, 41.410 ns/target minimum, 7.09% range
+ASM benchmark report written

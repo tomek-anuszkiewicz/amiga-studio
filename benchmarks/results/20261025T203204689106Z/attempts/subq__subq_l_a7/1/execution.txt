@@ -1,0 +1,2 @@
+subq/subq_l_a7: 100000 targets/run, 24.234 ns/target minimum, 2.72% range
+ASM benchmark report written

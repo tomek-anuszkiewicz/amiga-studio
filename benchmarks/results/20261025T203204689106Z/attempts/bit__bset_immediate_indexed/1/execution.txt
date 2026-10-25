@@ -1,0 +1,2 @@
+bit/bset_immediate_indexed: 100000 targets/run, 56.513 ns/target minimum, 2.39% range
+ASM benchmark report written

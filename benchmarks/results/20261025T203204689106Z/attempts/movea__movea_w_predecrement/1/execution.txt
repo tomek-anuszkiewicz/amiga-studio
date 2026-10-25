@@ -1,0 +1,2 @@
+movea/movea_w_predecrement: 100000 targets/run, 32.174 ns/target minimum, 2.92% range
+ASM benchmark report written

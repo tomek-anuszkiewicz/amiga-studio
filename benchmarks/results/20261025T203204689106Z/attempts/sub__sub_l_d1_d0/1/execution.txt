@@ -1,0 +1,2 @@
+sub/sub_l_d1_d0: 100000 targets/run, 26.944 ns/target minimum, 1.13% range
+ASM benchmark report written

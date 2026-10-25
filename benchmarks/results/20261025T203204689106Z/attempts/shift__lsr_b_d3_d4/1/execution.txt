@@ -1,0 +1,2 @@
+shift/lsr_b_d3_d4: 100000 targets/run, 30.564 ns/target minimum, 1.46% range
+ASM benchmark report written

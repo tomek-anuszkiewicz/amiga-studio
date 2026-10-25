@@ -1,0 +1,2 @@
+ror/ror_l_immediate_d4: 100000 targets/run, 31.340 ns/target minimum, 2.05% range
+ASM benchmark report written
