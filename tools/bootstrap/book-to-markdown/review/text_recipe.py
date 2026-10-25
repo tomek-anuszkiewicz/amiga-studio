@@ -1,10 +1,44 @@
 """Single-pass templates preserving PDF text, with separate table-markup import."""
 
 from difflib import SequenceMatcher
+import json
 import re
 from markdown_it import MarkdownIt
 
 REFERENCE = re.compile(r"\{\{text page=(\d+) block=(\d+) chars=(\d+):(\d+)\}\}")
+
+
+def join_adjacent_references(template, workspace):
+    """Combine source ranges only when their rendered text stays the same."""
+    pages = {}
+    pattern = re.compile(f'(?P<left>{REFERENCE.pattern})(?P<space> ?)(?P<right>{REFERENCE.pattern})')
+
+    def join(match):
+        left = REFERENCE.fullmatch(match['left'])
+        right = REFERENCE.fullmatch(match['right'])
+        page, block, start, end = map(int, left.groups())
+        next_page, next_block, next_start, next_end = map(int, right.groups())
+        if (page, block) != (next_page, next_block) or next_start < end:
+            return match[0]
+        if next_start == end and not match['space']:
+            pass
+        elif next_start == end + 1 and match['space'] == ' ':
+            if page not in pages:
+                path = workspace / '02_preprocess' / f'page_{page:04d}.json'
+                pages[page] = json.loads(path.read_text(encoding='utf-8'))['blocks'] if path.is_file() else []
+            source = next((item['text'] for item in pages[page]
+                           if item['block_id'] == block), '')
+            if end >= len(source) or source[end] != ' ':
+                return match[0]
+        else:
+            return match[0]
+        return f'{{{{text page={page} block={block} chars={start}:{next_end}}}}}'
+
+    while True:
+        joined = pattern.sub(join, template)
+        if joined == template:
+            return template
+        template = joined
 
 
 def escape_literal(text):

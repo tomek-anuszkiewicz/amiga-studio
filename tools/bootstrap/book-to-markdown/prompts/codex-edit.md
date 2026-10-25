@@ -4,7 +4,7 @@ user's instruction in the designated instruction field within the supplied
 FORMAT RULE, TEXT ORDER RULE and ADDITION RULE. If the instruction conflicts with those rules,
 return an error.
 
-The element ID is its Copy ID in Book Review. Work only on that element. Keep
+The element ID identifies its record in Book Review. Work only on that element. Keep
 every original word, number, other symbol, case and repetition. Apply the supplied
 TEXT ORDER RULE to their order. You may change dashes, commas, periods and spacing, including
 removing a table column made entirely of those marks. Do not join or split words.

@@ -3,6 +3,7 @@
 from copy import deepcopy
 import json
 from pathlib import Path
+import re
 import sys
 import time
 import uuid
@@ -10,6 +11,8 @@ import uuid
 import yaml
 
 from .model import elements, read_json, write_json
+from .content_validation import validate_content
+from .source_validation import validate_book
 from .text_recipe import REFERENCE, resolve_template
 
 
@@ -25,13 +28,31 @@ EDITOR_COMMANDS = {
     'merge': 'merge', 'merge_tables': 'merge_tables', 'move': 'move',
     'visibility': 'visibility', 'hide_page': 'hide_page', 'toc': 'toc',
 }
+PROMPT_PRESETS = {
+    'describe_images': 'describe-images.md',
+    'describe_tables': 'describe-tables.md',
+    'proofreading': 'proofreading.md',
+}
+SUGGESTED_TASKS = {
+    'join_paragraphs': 'join-paragraphs-across-pdf-pages.md',
+    'source_cleanup': 'clean-direct-book-text.md',
+    'describe_images': 'describe-images-working.md',
+    'describe_tables': 'describe-tables-working.md',
+    'proofreading': 'proofreading-working.md',
+}
+
+
+def suggested_task_instructions():
+    return {key: (PROGRAM / 'prompts' / filename).read_text(encoding='utf-8').strip()
+            for key, filename in SUGGESTED_TASKS.items()}
 MAX_STEPS = 500
 MAX_ERRORS = 8
 
 
 def validate_action(value):
     if not isinstance(value, dict) or value.get('action') not in {
-            'list', 'read', 'image', 'editor', 'patch', 'element_transform', 'finish'}:
+            'list', 'read', 'image', 'source_audit', 'source_search',
+            'editor', 'patch', 'source_replace', 'element_transform', 'finish'}:
         raise ValueError('Codex must return a supported tool action')
     if 'memory' in value and (not isinstance(value['memory'], str) or len(value['memory']) > 4000):
         raise ValueError('Codex memory must be at most 4000 characters')
@@ -122,20 +143,93 @@ def read_elements(book, action):
     offset, length = action.get('offset', 0), action.get('length', 12000)
     if type(offset) is not int or type(length) is not int or offset < 0 or not 1 <= length <= 12000:
         raise ValueError('Read requires a nonnegative offset and length up to 12000')
-    by_id = {element['id']: (chapter, element) for chapter in book['chapters'] for element in chapter['elements']}
+    by_id = {element['id']: (chapter, element, f'/chapters/{chapter_index}/elements/{element_index}')
+             for chapter_index, chapter in enumerate(book['chapters'])
+             for element_index, element in enumerate(chapter['elements'])}
     result = []
     for identifier in ids:
-        chapter, element = by_id[identifier]
+        chapter, element, path = by_id[identifier]
         item = deepcopy(element)
         for name in ('md_text', 'resolved_md_text'):
             if name in item:
                 text = item[name]
                 item[name] = text[offset:offset + length]
                 item[name + '_length'] = len(text)
-        result.append({'chapter': {'id': chapter['id'], 'title': chapter.get('resolved_title', chapter['title']),
+        result.append({'element_path': path,
+                       'chapter': {'id': chapter['id'], 'title': chapter.get('resolved_title', chapter['title']),
                                    'markdown_file': chapter.get('resolved_markdown_file', chapter['markdown_file'])},
                        'element': item})
     return {'offset': offset, 'elements': result}
+
+
+def source_audit(book, workspace, action):
+    cursor, limit = action.get('cursor', 0), action.get('limit', 20)
+    if type(cursor) is not int or type(limit) is not int or cursor < 0 or not 1 <= limit <= 50:
+        raise ValueError('Source audit requires a nonnegative cursor and limit from 1 to 50')
+    identifier = action.get('id')
+    if identifier is not None and not isinstance(identifier, str):
+        raise ValueError('Source audit ID must be an element ID')
+    report = validate_book(book, workspace)
+    paths = {(chapter['id'], None, 'title'): f'/chapters/{chapter_index}/title'
+             for chapter_index, chapter in enumerate(book['chapters'])}
+    paths.update({(chapter['id'], element['id'], 'md_text'):
+                  f'/chapters/{chapter_index}/elements/{element_index}/md_text'
+                  for chapter_index, chapter in enumerate(book['chapters'])
+                  for element_index, element in enumerate(chapter['elements'])})
+    fields = {}
+    for issue in report['issues']:
+        if issue['code'] not in {'literal_content', 'literal_whitespace'}:
+            continue
+        if identifier is not None and issue['element_id'] != identifier:
+            continue
+        key = (issue['chapter_id'], issue['element_id'], issue['field'])
+        entry = fields.setdefault(key, {'chapter_id': key[0], 'element_id': key[1],
+                                        'field': key[2], 'path': paths[key],
+                                        'issue_count': 0, 'literals': []})
+        entry['issue_count'] += 1
+        if issue['text'] not in entry['literals'] and len(entry['literals']) < 10:
+            entry['literals'].append(issue['text'])
+    rows = list(fields.values())
+    return {'total': len(rows), 'cursor': cursor,
+            'next_cursor': min(cursor + limit, len(rows)), 'fields': rows[cursor:cursor + limit]}
+
+
+def source_search(workspace, action):
+    query = action.get('query')
+    pages = action.get('pages')
+    if not isinstance(query, str) or not 3 <= len(query) <= 100 or not query.strip():
+        raise ValueError('Source search requires 3 to 100 query characters')
+    if pages is not None and (not isinstance(pages, list) or not 1 <= len(pages) <= 10
+                              or any(type(page) is not int or page < 1 for page in pages)):
+        raise ValueError('Source search accepts up to 10 positive page numbers')
+    directory = workspace / '02_preprocess'
+    if not directory.is_dir():
+        raise ValueError('Prepared Stage 02 text is missing')
+    paths = ([directory / f'page_{page:04d}.json' for page in pages] if pages is not None
+             else sorted(directory.glob('page_*.json')))
+    matches = []
+    def result(truncated):
+        response = {'matches': matches, 'truncated': truncated}
+        if pages is not None and not any(match['exact_case'] for match in matches):
+            response['hint'] = 'No exact-case match on these pages; search without pages to check the whole prepared book.'
+        return response
+    for path in paths:
+        if not path.is_file():
+            raise ValueError(f'Source page {path.stem} does not exist')
+        page = int(path.stem.split('_')[-1])
+        for block in read_json(path)['blocks']:
+            content = block['text']
+            for match in re.finditer(re.escape(query), content, re.IGNORECASE):
+                found = match.start()
+                matches.append({'page': page, 'block': block['block_id'],
+                                'chars': [found, match.end()],
+                                'exact_case': content[found:match.end()] == query,
+                                'reference': ('{{text ' + f'page={page} block={block["block_id"]} '
+                                              + f'chars={found}:{match.end()}' + '}}'),
+                                'block_text': content[:1000], 'block_length': len(content)})
+                if len(matches) == 20:
+                    return result(True)
+    return result(False)
 
 
 def editor_arguments(root, name, args):
@@ -156,11 +250,39 @@ def editor_arguments(root, name, args):
     return converted
 
 
+def replace_source_text(book, root, action):
+    path, template = action.get('path'), action.get('template')
+    if not isinstance(path, str) or not path.endswith(('/md_text', '/title')):
+        raise ValueError('Source replacement requires an md_text or title path')
+    if not isinstance(template, str) or not REFERENCE.search(template):
+        raise ValueError('Source replacement requires a PDF text reference')
+    parent, key = pointer(book, path, parent=True)
+    if not isinstance(parent, dict) or key not in parent:
+        raise ValueError('Source replacement target does not exist')
+    before = parent.get('resolved_md_text' if key == 'md_text' else 'resolved_title', parent[key])
+    after = editor_arguments(root, 'markdown', {'text': template})['text']
+    representation = (parent.get('text_format', parent.get('table_format', 'markdown'))
+                      if key == 'md_text' else 'markdown')
+    validate_content(before, after, representation, representation)
+    parent[key] = template
+    if key == 'md_text':
+        parent['resolved_md_text'] = after
+
+
 def run_agent(state, command, *, client_factory=None, progress=None, cancelled=None):
     """Let Codex request context and Working edits until it finishes or fails."""
     instruction = command.get('instruction')
     if not isinstance(instruction, str) or not instruction.strip() or len(instruction) > 12000:
         raise ValueError('Enter a Codex instruction of at most 12000 characters')
+    task_kind = command.get('task_kind')
+    if task_kind not in (None, 'source_cleanup'):
+        raise ValueError('Unknown Codex Working task kind')
+    prompt_preset = command.get('prompt_preset')
+    if prompt_preset is not None and (not isinstance(prompt_preset, str)
+                                      or prompt_preset not in PROMPT_PRESETS):
+        raise ValueError('Unknown Codex Working prompt preset')
+    reference_prompt = ((PROGRAM / 'prompts' / PROMPT_PRESETS[prompt_preset]).read_text(encoding='utf-8')
+                        if prompt_preset is not None else None)
     with state.lock:
         book, _, revision = state.input_cache.load(state.root / 'working')
         if revision != command.get('expected_revision'):
@@ -177,8 +299,14 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
     job = REPOSITORY / '.agent/tmp/book-codex-agent' / uuid.uuid4().hex
     job.mkdir(parents=True)
     write_json(job / 'request.json', {'revision': revision, 'instruction': instruction,
+                                      'task_kind': task_kind,
+                                      'prompt_preset': prompt_preset,
                                       'opening': opening})
     guide = (PROGRAM / 'prompts/codex-agent.md').read_text(encoding='utf-8')
+    if reference_prompt is not None:
+        wrapper = (PROGRAM / 'prompts/codex-agent-selected-task.md').read_text(encoding='utf-8').strip()
+        guide += '\n\n' + wrapper.replace('{filename}', PROMPT_PRESETS[prompt_preset]).replace(
+            '{prompt}', reference_prompt)
     config = yaml.safe_load((PROGRAM / 'config.yaml').read_text(encoding='utf-8'))
     client_factory = client_factory or CodexClient
     memory, result, next_image, edits, errors = '', {'opening': opening}, None, 0, 0
@@ -208,6 +336,14 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
                 memory = action['memory']
             write_json(job / f'action_{step:04d}.json', action)
             kind = action['action']
+            if task_kind == 'source_cleanup' and kind in {'patch', 'editor', 'element_transform'}:
+                result = {'tool_error': 'Use source_replace for this source cleanup task',
+                          'revision': revision}
+                write_json(job / f'result_{step:04d}.json', result)
+                errors += 1
+                if errors >= MAX_ERRORS:
+                    raise ValueError('Codex repeated invalid tool requests')
+                continue
             if progress:
                 progress(step=step, action=kind, edits=edits)
             if kind == 'finish':
@@ -224,6 +360,10 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
                     result = read_elements(book, action)
                     if len(json.dumps(result, ensure_ascii=False)) > 50000:
                         raise ValueError('Read result is too large; request fewer IDs or a shorter slice')
+                elif kind == 'source_audit':
+                    result = source_audit(book, state.root / 'pdf-to-markdown', action)
+                elif kind == 'source_search':
+                    result = source_search(state.root / 'pdf-to-markdown', action)
                 elif kind == 'image':
                     if 'page' in action:
                         page = action['page']
@@ -241,6 +381,12 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
                         result = {'asset': asset, 'image_attached_to_next_turn': True}
                 elif kind == 'patch':
                     state.mutate(revision, lambda current: patch_book(current, action.get('operations')))
+                    with state.lock:
+                        revision = state.input_cache.load(state.root / 'working')[2]
+                    edits += 1
+                    result = {'applied': True, 'revision': revision}
+                elif kind == 'source_replace':
+                    state.mutate(revision, lambda current: replace_source_text(current, state.root, action))
                     with state.lock:
                         revision = state.input_cache.load(state.root / 'working')[2]
                     edits += 1

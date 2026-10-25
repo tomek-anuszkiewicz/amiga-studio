@@ -410,6 +410,9 @@ class TextRecipeTest(unittest.TestCase):
             write_json(metadata_page, {'blocks': [{'block_id': 0, 'text': 'chapter'}]})
             name_template = '{{text page=2 block=0 chars=0:7}}'
             book = {'toc': {'depth': 2},
+                    'source_cleanup_exceptions': [{
+                        'anchor': 'a' * 64, 'element_id': 'h', 'field': 'md_text',
+                        'literal': 'Q', 'note': 'OCR text differs from the page image.'}],
                     'chapters': [{'id': 'c', 'title': 'Title ' + name_template,
                     'markdown_file': name_template + '.md',
                     'elements': [{'id': 'h', 'type': 'heading', 'heading_level': 1,
@@ -423,6 +426,7 @@ class TextRecipeTest(unittest.TestCase):
             finally:
                 renderer.close()
             accepted, _, _ = load_input(root / 'accepted')
+            self.assertEqual(accepted['source_cleanup_exceptions'], book['source_cleanup_exceptions'])
             self.assertEqual(accepted['chapters'][0]['resolved_title'], 'Title chapter')
             self.assertEqual(accepted['chapters'][0]['resolved_markdown_file'], 'chapter.md')
             export_markdown(accepted, root / 'accepted')

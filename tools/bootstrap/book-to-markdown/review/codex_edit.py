@@ -21,27 +21,22 @@ from .text_recipe import (REFERENCE, compile_region_template, edit_template,
 
 PROGRAM = Path(__file__).resolve().parents[1]
 REPOSITORY = PROGRAM.parents[2]
+def prompt_text(filename):
+    return (PROGRAM / 'prompts' / filename).read_text(encoding='utf-8').strip()
+
+
 FORMAT_GUIDANCE = {
-    'preserve': ('Keep the element in its current representation. Do not convert Markdown, HTML, '
-                 'CSV or text to another format. If the requested edit requires a different '
-                 'representation, return an error explaining why no change was made.'),
-    'allow_change': ('You may change the element representation when the requested edit requires it. '
-                     'When producing HTML, convert Markdown and LaTeX formatting in HTML text and '
-                     'every table cell to equivalent HTML: use <strong>, <em>, <sub>, <sup>, <br> and '
-                     '<span style="text-decoration: overline">...</span> as appropriate. '
-                     'Do not leave Markdown math delimiters, LaTeX commands or Markdown emphasis '
-                     'markers as literal cell text. Preserve each original word and substantive symbol. '
-                     'You may restructure table rows and cells, including splitting, merging and changing spans. '
-                     'If a notation cannot be converted without changing meaning, return an error.')
+    'preserve': prompt_text('codex-format-preserve.md'),
+    'allow_change': prompt_text('codex-format-allow-change.md'),
 }
 ORDER_GUIDANCE = {
-    False: 'Keep all words, numbers and substantive symbols in their original reading order.',
-    True: ('You may reorder the existing words, numbers and substantive symbols when the '
-           'user instruction requires it. Preserve each original item, its case and its number of occurrences.'),
+    False: prompt_text('codex-order-preserve.md'),
+    True: prompt_text('codex-order-allow-change.md'),
 }
-ADDITION_GUIDANCE = ('You may add only the following explicitly permitted content: {items}. '
-                     'You may repeat listed content where the user instruction requires it. Preserve all original content. '
-                     'Do not add any other words, numbers or substantive symbols.')
+ADDITION_GUIDANCE = {
+    False: prompt_text('codex-additions-forbid.md'),
+    True: prompt_text('codex-additions-allow.md'),
+}
 
 
 class HTMLTableDetector(HTMLParser):
@@ -211,8 +206,7 @@ def run_command(state, command, *, client_factory=None):
               '\n\nFORMAT RULE:\n' + FORMAT_GUIDANCE[format_mode] +
               '\n\nTEXT ORDER RULE:\n' + ORDER_GUIDANCE[allow_reorder] +
               '\n\nADDITION RULE:\n' +
-              (ADDITION_GUIDANCE.format(items='; '.join(allowed_additions)) if allow_additions else
-               'Do not add new words, numbers or substantive symbols.') +
+              ADDITION_GUIDANCE[allow_additions].replace('{items}', '; '.join(allowed_additions)) +
               '\n\nREQUEST JSON:\n' + json.dumps(request, ensure_ascii=False))
     images = None
     if crop is not None:

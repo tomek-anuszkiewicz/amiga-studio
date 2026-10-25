@@ -11,11 +11,20 @@ from PIL import Image
 from playwright.sync_api import sync_playwright
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from review.model import load_input, write_json
+from review.model import element_markdown, load_input, set_element_type, write_json
 from review.service import Handler, ReviewState
 
 
 class ReviewCommandFlowTests(unittest.TestCase):
+    def test_changing_fenced_code_to_prose_removes_only_outer_fence(self):
+        reference = '{{text page=83 block=14 chars=0:27}}'
+        element = {'type': 'code_block', 'md_text': f'```text\n{reference}\n```',
+                   'resolved_md_text': '```text\noldEnable = SetJanusEnable\n```'}
+        set_element_type(element, 'prose')
+        self.assertEqual(element['md_text'], reference)
+        self.assertEqual(element['resolved_md_text'], 'oldEnable = SetJanusEnable')
+        self.assertFalse(element_markdown(element).startswith('```'))
+
     def test_move_type_table_merge_reload_and_discard(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

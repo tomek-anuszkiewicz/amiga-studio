@@ -10,7 +10,8 @@ let lastLogical = null, publishing = false;
 const showHidden = document.getElementById("show-hidden");
 const showTypes = document.getElementById("show-types");
 const typeLabelContext=document.createElement("canvas").getContext("2d");
-const actionsButton = document.getElementById("element-actions");
+const bookActionsButton = document.getElementById("book-actions");
+const bookMenu = document.getElementById("book-menu");
 const elementMenu = document.getElementById("element-menu");
 const visibilityButton = document.getElementById("menu-visibility");
 const hidePageButton = document.getElementById("menu-hide-page");
@@ -26,6 +27,10 @@ const markdownDialog = document.getElementById("markdown-dialog");
 const markdownText = document.getElementById("markdown-text");
 const markdownSecond = document.getElementById("markdown-second");
 const codexDialog = document.getElementById("codex-dialog");
+const sourceCleanupDialog = document.getElementById("source-cleanup-dialog");
+let sourceCleanupReport=null;
+const sourceCleanupExceptionDialog = document.getElementById("source-cleanup-exception-dialog");
+let sourceCleanupExceptionId=null;
 let codexCommand=null, codexRunning=false, codexScope="element";
 let codexAutoCloseJob=null, codexAutoClosePending=false;
 let textCommand=null, splitting=false, merging=false, activeText=markdownText;
@@ -34,19 +39,29 @@ let selectedPane="working", selectedPage=null, menuCommand=null, pageCommand=nul
 const chapterTitle=chapter=>chapter.toc_title || chapter.resolved_title || chapter.title;
 function closeMenu(restoreFocus=false) {
   const wasOpen=!elementMenu.hidden;
-  elementMenu.hidden=true; actionsButton.setAttribute("aria-expanded","false");
+  elementMenu.hidden=true;
   headingMenu.hidden=true; headingButton.setAttribute("aria-expanded","false");
   typeMenu.hidden=true; typeButton.setAttribute("aria-expanded","false");
   roleMenu.hidden=true; roleButton.setAttribute("aria-expanded","false");
   rotateMenu.hidden=true; rotateButton.setAttribute("aria-expanded","false");
   if(restoreFocus && wasOpen && menuReturnFocus?.isConnected) menuReturnFocus.focus({preventScroll:true});
 }
+function closeBookMenu(restoreFocus=false) {
+  const wasOpen=!bookMenu.hidden;
+  bookMenu.hidden=true;bookActionsButton.setAttribute("aria-expanded","false");
+  if(restoreFocus && wasOpen)bookActionsButton.focus({preventScroll:true});
+}
 function openMenu(x,y) {
   if((!selected && selectedPage === null) || !state) return;
+  closeBookMenu();
    menuReturnFocus=document.activeElement;
   menuScrollPosition=Object.fromEntries(Object.entries(panes).map(([name,pane])=>[name,pane.scrollTop]));
   const element=elementIndex(state.working).get(selected)?.element;
   const acceptedElement=elementIndex(state.accepted).get(selected)?.element;
+  const hasElement=Boolean(element || acceptedElement);
+  const idLabel=document.getElementById("menu-current-id");
+  idLabel.hidden=!hasElement;
+  idLabel.textContent=hasElement ? `ID: ${selected}` : "ID:";
   const typeLabel=document.getElementById("menu-current-type");
   typeLabel.hidden=!element && !acceptedElement;
   const types=acceptedElement && element && acceptedElement.type !== element.type ?
@@ -59,9 +74,6 @@ function openMenu(x,y) {
     `${roleName(acceptedElement.role)} / ${roleName(element.role)}` : roleName((element ?? acceptedElement)?.role);
   roleLabel.textContent=`Role: ${roles}`;
   const editable=element && !state.pending && !loading;
-  document.getElementById("menu-codex").hidden=!element;
-  document.getElementById("menu-codex").disabled=!editable || codexRunning;
-  document.getElementById("menu-codex-working").disabled=!state.authored_revision;
   const newChapterButton=document.getElementById("menu-new-chapter");
   newChapterButton.hidden=!element;
   newChapterButton.disabled=!editable || elementIndex(state.working).get(element?.id)?.chapter.elements[0]?.id === element?.id;
@@ -76,7 +88,7 @@ function openMenu(x,y) {
       element.pdf_regions.some(region=>region.page === selectedPage));
   hidePageButton.title=selectedPage === null ? "This element has no PDF source page" :
     `Hide all Working elements from PDF page ${selectedPage}`;
-  document.getElementById("menu-copy").disabled=!selected || selected === "generated-toc";
+  document.getElementById("menu-copy").hidden=!hasElement || selected === "generated-toc";
   headingButton.hidden=!element || !state.heading_types.includes(element.type);
   headingButton.disabled=!editable;
   headingButton.textContent=element?.heading_level ? `Heading H${element.heading_level} ▸` : "Heading ▸";
@@ -145,18 +157,40 @@ function openMenu(x,y) {
   discardElementButton.hidden=!element;
   discardElementButton.disabled=!editable || !state.discardable_elements?.includes(element.id);
   discardElementButton.title="Restore this element's text and properties from Accepted";
-  elementMenu.hidden=false; actionsButton.setAttribute("aria-expanded","true");
+  elementMenu.hidden=false;
   const rect=elementMenu.getBoundingClientRect();
   elementMenu.style.left=`${Math.max(8,Math.min(x,innerWidth-rect.width-8))}px`;
   elementMenu.style.top=`${Math.max(8,Math.min(y,innerHeight-rect.height-8))}px`;
   elementMenu.querySelector("button:not([hidden]):not(:disabled)")?.focus({preventScroll:true});
 }
-actionsButton.onclick=()=>{
-  if(!elementMenu.hidden){closeMenu(true);return;}
-  const rect=actionsButton.getBoundingClientRect();openMenu(rect.left,rect.bottom+4);
+document.getElementById("menu-copy").onclick=async()=>{
+  const id=selected;
+  closeMenu(true);
+  try{await navigator.clipboard.writeText(id);}catch(error){showError(error.message);}
+};
+bookActionsButton.onclick=()=>{
+  if(!bookMenu.hidden){closeBookMenu(true);return;}
+  closeMenu();
+  const rect=bookActionsButton.getBoundingClientRect();
+  bookMenu.hidden=false;bookActionsButton.setAttribute("aria-expanded","true");
+  const width=bookMenu.getBoundingClientRect().width;
+  bookMenu.style.left=`${Math.max(8,Math.min(rect.left,innerWidth-width-8))}px`;
+  bookMenu.style.top=`${rect.bottom+4}px`;
+  bookMenu.querySelector("button:not(:disabled)")?.focus({preventScroll:true});
 };
 document.addEventListener("pointerdown",event=>{
-  if(!event.composedPath().includes(elementMenu) && !event.composedPath().includes(actionsButton))closeMenu();
+  if(!event.composedPath().includes(elementMenu))closeMenu();
+  if(!event.composedPath().includes(bookMenu) && !event.composedPath().includes(bookActionsButton))closeBookMenu();
+});
+bookMenu.addEventListener("keydown",event=>{
+  const buttons=[...bookMenu.querySelectorAll("button:not(:disabled)")];
+  const index=buttons.indexOf(document.activeElement);
+  if(["ArrowDown","ArrowUp","Home","End"].includes(event.key)){
+    event.preventDefault();
+    const next=event.key==="Home" ? 0 : event.key==="End" ? buttons.length-1 :
+      (index+(event.key==="ArrowDown" ? 1 : -1)+buttons.length)%buttons.length;
+    buttons[next]?.focus();
+  }else if(event.key==="Tab")closeBookMenu();
 });
 elementMenu.addEventListener("keydown",event=>{
   const buttons=[...elementMenu.querySelectorAll("button:not([hidden]):not(:disabled)")].filter(button=>!button.closest("[hidden]"));
@@ -181,7 +215,7 @@ function clearSelection() {
   let focused=document.activeElement;
   while(focused?.shadowRoot?.activeElement)focused=focused.shadowRoot.activeElement;
   if(focused?.matches("[data-id],[data-element],.page"))focused.blur();
-  closeMenu();highlight();
+  closeMenu();closeBookMenu();highlight();
 }
 document.addEventListener("keydown",event=>{if(event.key === "Escape")clearSelection();});
 document.addEventListener("click",event=>{
@@ -308,9 +342,6 @@ document.getElementById("menu-merge").onclick=()=>{
   if(!element || !next)return;
   textCommand={id:element.id,next_id:next.id,expected_revision:menuCommand.expected_revision};
   closeMenu(true);editMarkdown(element,false,next);
-};
-document.getElementById("menu-copy").onclick=async()=>{
-  closeMenu(true);try{await navigator.clipboard.writeText(selected);}catch(error){showError(error.message);}
 };
 showHidden.onchange=()=>{
   const logical=anchor(leader);closeMenu();hovered=null;highlight();
@@ -617,8 +648,6 @@ function highlight() {
   for (const page of panes.pdf.querySelectorAll(".page")) {
     page.hidden=page.dataset.allHidden === "true" && !showHidden.checked;
   }
-  document.getElementById("copy").disabled = !selected || selected === "generated-toc";
-  actionsButton.disabled = !selected && selectedPage === null;
   updateChangeNavigation();
 }
 function anchor(pane) {
@@ -863,7 +892,8 @@ async function refresh() {
       } else state=next;
       document.getElementById("accept").disabled=!state.can_accept;
       document.getElementById("discard").disabled=!state.can_discard;
-      document.getElementById("codex-working").disabled=!state.authored_revision;
+      bookActionsButton.disabled=!state.authored_revision;
+      if(bookActionsButton.disabled)closeBookMenu();
       updateCodexStatus();
       document.getElementById("toc-depth").value=state.working?.toc.depth ?? 2;
       const status=document.getElementById("status");status.classList.toggle("error",Boolean(state.error));
@@ -917,7 +947,6 @@ function nextChange(delta) {
 }
 document.getElementById("previous").onclick=()=>nextChange(-1);
 document.getElementById("next").onclick=()=>nextChange(1);
-document.getElementById("copy").onclick=async()=>{try{await navigator.clipboard.writeText(selected);}catch(error){showError(error.message);}};
 async function saveToc() {
   scheduleLocations();
   try {await post("/api/toc",{depth:Number(document.getElementById("toc-depth").value),
@@ -977,15 +1006,91 @@ function openCodex(scope,id=null) {
   document.getElementById("codex-instruction").disabled=false;
   codexDialog.showModal();updateCodexStatus();document.getElementById("codex-instruction").focus();
 }
-document.getElementById("menu-codex").onclick=()=>{
-  const id=menuCommand.id;closeMenu(true);openCodex("element",id);
+function openBookAction(task=null) {
+  closeBookMenu(true);
+  if(task === "source_cleanup") {openSourceCleanup();return;}
+  openCodex("working",selected && elementIndex(state.working).has(selected) ? selected : null);
+  if(task){
+    const preset=document.getElementById("codex-preset");
+    preset.value=task;preset.dispatchEvent(new Event("change"));
+  }
+}
+async function openSourceCleanup() {
+  const summary=document.getElementById("source-cleanup-summary");
+  const findings=document.getElementById("source-cleanup-findings");
+  const error=document.getElementById("source-cleanup-error");
+  findings.replaceChildren();error.hidden=true;sourceCleanupReport=null;
+  summary.textContent="Searching the Working recipe and nearby PDF text...";
+  sourceCleanupDialog.showModal();
+  try {
+    const report=await post("/api/source-cleanup/preview",{expected_revision:state.authored_revision});
+    sourceCleanupReport=report;
+    const matched=report.findings.filter(item=>item.status === "matched").length;
+    summary.textContent=`${matched} proposed matches; ${report.findings.length-matched} unresolved literals.`;
+    for(const item of report.findings) {
+      const row=document.createElement("div");row.className="source-cleanup-row";
+      if(item.status === "matched") {
+        const label=document.createElement("label");
+        const input=document.createElement("input");input.type="checkbox";
+        input.value=item.id;
+        label.append(input,document.createTextNode(` ${item.element_id}: ${item.literal} → ${item.source_text}`));
+        row.append(label);
+        const detail=document.createElement("small");
+        detail.textContent=`PDF page ${item.page}, block ${item.block}, chars ${item.chars.join(":")} — ${item.reference}`;
+        row.append(detail);
+      } else {
+        const description=document.createElement("span");
+        description.textContent=`${item.element_id}: ${item.literal} — ${item.reason}`;
+        const accept=document.createElement("button");accept.type="button";
+        accept.textContent="Accept exception";
+        accept.onclick=()=>{
+          sourceCleanupExceptionId=item.id;
+          document.getElementById("source-cleanup-exception-target").textContent=`${item.element_id}: ${item.literal}`;
+          for(const id of ["source-cleanup-exception-note","source-cleanup-exception-source","source-cleanup-exception-corrected"])
+            document.getElementById(id).value="";
+          document.getElementById("source-cleanup-exception-error").hidden=true;
+          sourceCleanupExceptionDialog.showModal();
+        };
+        row.append(description,document.createTextNode(" "),accept);
+      }
+      findings.append(row);
+    }
+  } catch(failure) {summary.textContent="Search failed.";error.textContent=failure.message;error.hidden=false;}
+}
+document.getElementById("source-cleanup-close").onclick=()=>sourceCleanupDialog.close();
+document.getElementById("source-cleanup-exception-cancel").onclick=()=>sourceCleanupExceptionDialog.close();
+document.getElementById("source-cleanup-exception-save").onclick=async()=>{
+  const note=document.getElementById("source-cleanup-exception-note").value.trim();
+  const source_text=document.getElementById("source-cleanup-exception-source").value.trim();
+  const corrected_text=document.getElementById("source-cleanup-exception-corrected").value.trim();
+  const error=document.getElementById("source-cleanup-exception-error");
+  if(!note){error.textContent="Explain why this literal is an exception.";error.hidden=false;return;}
+  const button=document.getElementById("source-cleanup-exception-save");button.disabled=true;
+  try {
+    await post("/api/source-cleanup/exception",{expected_revision:sourceCleanupReport.revision,
+      finding_id:sourceCleanupExceptionId,note,source_text,corrected_text});
+    sourceCleanupExceptionDialog.close();sourceCleanupDialog.close();await refresh();
+  } catch(failure) {error.textContent=failure.message;error.hidden=false;}
+  finally {button.disabled=false;}
 };
-document.getElementById("menu-codex-working").onclick=()=>{
-  const id=selected && elementIndex(state.working).has(selected) ? selected : null;
-  closeMenu(true);openCodex("working",id);
+document.getElementById("source-cleanup-select-all").onclick=()=>{
+  for(const input of sourceCleanupDialog.querySelectorAll("#source-cleanup-findings input[type=checkbox]"))input.checked=true;
 };
-document.getElementById("codex-working").onclick=()=>openCodex("working",
-  selected && elementIndex(state.working).has(selected) ? selected : null);
+document.getElementById("source-cleanup-apply").onclick=async()=>{
+  const selections=[...document.querySelectorAll("#source-cleanup-findings input:checked")].map(input=>input.value);
+  const error=document.getElementById("source-cleanup-error");
+  if(!sourceCleanupReport || !selections.length){error.textContent="Select at least one proposed match.";error.hidden=false;return;}
+  const button=document.getElementById("source-cleanup-apply");button.disabled=true;
+  try {
+    await post("/api/source-cleanup/apply",{expected_revision:sourceCleanupReport.revision,selections});
+    sourceCleanupDialog.close();await refresh();
+  } catch(failure) {error.textContent=failure.message;error.hidden=false;}
+  finally {button.disabled=false;}
+};
+document.getElementById("book-codex").onclick=()=>openBookAction();
+for(const button of bookMenu.querySelectorAll("[data-book-task]")){
+  button.onclick=()=>openBookAction(button.dataset.bookTask);
+}
 function updateCodexStatus() {
   if(!codexDialog.open || codexScope !== "working")return;
   const job=state?.codex_agent;
@@ -1015,12 +1120,13 @@ codexDialog.addEventListener("close",()=>{codexAutoCloseJob=null;codexAutoCloseP
 document.getElementById("codex-preset").onchange=event=>{
   if(event.target.value){
     const field=document.getElementById("codex-instruction");
-    field.value=event.target.value;field.focus();
+    field.value=state?.codex_suggested_tasks?.[event.target.value] || "";field.focus();
   }
 };
 document.getElementById("codex-instruction").oninput=event=>{
   const preset=document.getElementById("codex-preset");
-  if(event.target.value !== preset.value)preset.value="";
+  if(event.target.value !== state?.codex_suggested_tasks?.[preset.value] &&
+     !preset.selectedOptions[0]?.dataset.promptPreset)preset.value="";
 };
 function updateCodexFormatGuidance() {
   const mode=document.getElementById("codex-format-mode").value;
@@ -1028,9 +1134,7 @@ function updateCodexFormatGuidance() {
   const additions=document.getElementById("codex-allow-additions").checked;
   const items=document.getElementById("codex-allowed-additions").value.split(";").map(item=>item.trim()).filter(Boolean);
   document.getElementById("codex-format-guidance").value=
-    `${state?.codex_format_guidance?.[mode] || ""}\n\n${state?.codex_order_guidance?.[String(reorder)] || ""}\n\n${additions ?
-      `You may add only the following explicitly permitted content: ${items.join("; ")}. You may repeat listed content where the user instruction requires it. Preserve all original content. Do not add any other words, numbers or substantive symbols.` :
-      "Do not add new words, numbers or substantive symbols."}`.trim();
+    `${state?.codex_format_guidance?.[mode] || ""}\n\n${state?.codex_order_guidance?.[String(reorder)] || ""}\n\n${(state?.codex_addition_guidance?.[String(additions)] || "").replace("{items}", items.join("; "))}`.trim();
 }
 document.getElementById("codex-format-mode").onchange=updateCodexFormatGuidance;
 document.getElementById("codex-allow-reorder").onchange=updateCodexFormatGuidance;
@@ -1056,8 +1160,14 @@ document.getElementById("run-codex").onclick=async()=>{
   document.getElementById("codex-preset").disabled=true;error.hidden=true;
   progress.textContent=codexScope === "working" ? "Starting Codex Working task…" : "Running Codex and checking content…";progress.hidden=false;
   try {
+    const taskKind=codexScope === "working" ?
+      document.getElementById("codex-preset").selectedOptions[0]?.dataset.taskKind : null;
+    const promptPreset=codexScope === "working" ?
+      document.getElementById("codex-preset").selectedOptions[0]?.dataset.promptPreset : null;
     const result=await post(codexScope === "working" ? "/api/codex-agent" : "/api/codex",
-      {...codexCommand,instruction:field.value,...(codexScope === "element" ?
+      {...codexCommand,instruction:field.value,...(taskKind ? {task_kind:taskKind} : {}),
+       ...(promptPreset ? {prompt_preset:promptPreset} : {}),
+       ...(codexScope === "element" ?
         {format_mode:document.getElementById("codex-format-mode").value,
          allow_reorder:document.getElementById("codex-allow-reorder").checked,
          allow_additions:allowAdditions,

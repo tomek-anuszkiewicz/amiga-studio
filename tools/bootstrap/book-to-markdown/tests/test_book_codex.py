@@ -188,7 +188,7 @@ class CodexCommandTests(unittest.TestCase):
             def __exit__(self, *args):
                 pass
             def generate_json(self, prompt, image_path=None, validator=None):
-                owner.assertIn('Copy ID', prompt)
+                owner.assertIn('The element ID identifies its record', prompt)
                 owner.assertNotIn('Keep this.', prompt)
                 owner.assertIsNotNone(image_path)
                 if callback:
@@ -367,8 +367,7 @@ class CodexCommandTests(unittest.TestCase):
                     page.on('pageerror', lambda e: errors.append(str(e)))
                     page.goto(f'http://127.0.0.1:{server.server_port}')
                     page.wait_for_function('state?.can_accept && !loading')
-                    page.locator('#working [data-element="selected"]').click(button='right')
-                    page.locator('#menu-codex').click()
+                    page.evaluate('openCodex("element", "selected")')
                     page.locator('#codex-instruction').fill('Convert this table to HTML')
                     self.assertEqual(page.locator('#codex-format-mode').input_value(), 'preserve')
                     self.assertFalse(page.locator('#codex-allow-reorder').is_checked())
@@ -410,8 +409,7 @@ class CodexCommandTests(unittest.TestCase):
                     self.assertFalse(page.locator('#next').is_enabled())
                     self.response['text'] = HTML.replace('DATA', 'DATO')
                     before = (self.root / 'working/book.json').read_bytes()
-                    page.locator('#working [data-element="selected"]').click(button='right')
-                    page.locator('#menu-codex').click()
+                    page.evaluate('openCodex("element", "selected")')
                     self.assertFalse(page.locator('#codex-allow-reorder').is_checked())
                     self.assertFalse(page.locator('#codex-allow-additions').is_checked())
                     page.locator('#codex-instruction').fill('Convert again')

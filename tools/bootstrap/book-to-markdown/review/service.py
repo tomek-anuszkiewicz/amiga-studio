@@ -56,15 +56,18 @@ def render_accepted(root, renderer):
     return snapshot
 
 
-def replace_bundle(root, snapshot, source_name, target_name, expected_working):
+def replace_bundle(root, snapshot, source_name, target_name, expected_working, publish_book=False):
     """Prepare a coherent bundle before replacement; roll back a failed rename."""
     prepared = root / f".{target_name}-prepare-{uuid.uuid4().hex}"
+    prepared_book = root / f".book-prepare-{uuid.uuid4().hex}.json" if publish_book else None
     backup = root / f".{target_name}-backup"
     target = root / target_name
     source = root / source_name
     prepared.mkdir()
     try:
         book = {k: deepcopy(snapshot[k]) for k in ("toc", "chapters")}
+        if 'source_cleanup_exceptions' in snapshot:
+            book['source_cleanup_exceptions'] = deepcopy(snapshot['source_cleanup_exceptions'])
         write_json(prepared / "book.json", book)
         write_json(prepared / "rendered.json", snapshot)
         export_markdown(book, prepared)
@@ -79,7 +82,10 @@ def replace_bundle(root, snapshot, source_name, target_name, expected_working):
             raise ValueError("Working changed during bundle preparation; reload and retry")
         if backup.exists():
             raise RuntimeError("Previous bundle recovery is required before replacement")
+        if prepared_book is not None:
+            prepared_book.write_bytes((prepared / "book.json").read_bytes())
         moved_renders = []
+        replaced_target = False
         try:
             if target.exists():
                 target.rename(backup)
@@ -91,15 +97,22 @@ def replace_bundle(root, snapshot, source_name, target_name, expected_working):
                         old.rename(destination)
                         moved_renders.append((destination, old))
             prepared.rename(target)
+            replaced_target = True
+            if prepared_book is not None:
+                prepared_book.replace(root / "book.json")
         except BaseException:
             for destination, old in reversed(moved_renders):
                 destination.rename(old)
+            if replaced_target:
+                shutil.rmtree(target)
             if backup.exists():
                 backup.rename(target)
             raise
     finally:
         if prepared.exists():
             shutil.rmtree(prepared)
+        if prepared_book is not None:
+            prepared_book.unlink(missing_ok=True)
     if backup.exists():
         try:
             shutil.rmtree(backup)
@@ -108,8 +121,8 @@ def replace_bundle(root, snapshot, source_name, target_name, expected_working):
             log(f"[{target_name} backup cleanup] {error}")
 
 
-def replace_accepted(root, snapshot):
-    replace_bundle(root, snapshot, "working", "accepted", snapshot["input_fingerprint"])
+def replace_accepted(root, snapshot, publish_book=False):
+    replace_bundle(root, snapshot, "working", "accepted", snapshot["input_fingerprint"], publish_book)
 
 
 class ReviewState:
@@ -144,7 +157,8 @@ class ReviewState:
         self.condition.notify_all()
 
     def status(self):
-        from .codex_edit import FORMAT_GUIDANCE, ORDER_GUIDANCE
+        from .codex_edit import FORMAT_GUIDANCE, ORDER_GUIDANCE, ADDITION_GUIDANCE
+        from .codex_agent import suggested_task_instructions
         with self.lock:
             try:
                 authored = self.input_cache.load(self.root / "working")[2]
@@ -178,7 +192,9 @@ class ReviewState:
                     "editable_types": EDITABLE_TYPES, "protected_types": PROTECTED_TYPES,
                     "roles": ELEMENT_ROLES, "codex_agent": deepcopy(self.codex_agent),
                     "codex_format_guidance": FORMAT_GUIDANCE,
-                    "codex_order_guidance": ORDER_GUIDANCE}
+                    "codex_order_guidance": ORDER_GUIDANCE,
+                    "codex_addition_guidance": ADDITION_GUIDANCE,
+                    "codex_suggested_tasks": suggested_task_instructions()}
 
     def render_loop(self):
         renderer = None
@@ -342,6 +358,29 @@ class ReviewState:
     def codex(self, command):
         from .codex_edit import run_command
         return run_command(self, command)
+
+    def preview_source_cleanup(self, command):
+        from .source_cleanup import preview
+        with self.lock:
+            book, _, revision = self.input_cache.load(self.root / 'working')
+            if revision != command.get('expected_revision'):
+                raise ValueError('Stale source cleanup preview; reload Working')
+            return {'revision': revision, 'findings': preview(book, self.root / 'pdf-to-markdown')}
+
+    def apply_source_cleanup(self, command):
+        from .source_cleanup import apply, preview
+        def update(book):
+            report = preview(book, self.root / 'pdf-to-markdown')
+            apply(book, report, command.get('selections'))
+        self.mutate(command.get('expected_revision'), update)
+
+    def accept_source_cleanup_exception(self, command):
+        from .source_cleanup import accept_exception, preview
+        def update(book):
+            report = preview(book, self.root / 'pdf-to-markdown')
+            accept_exception(book, report, command.get('finding_id'), command.get('note'),
+                             command.get('source_text', ''), command.get('corrected_text', ''))
+        self.mutate(command.get('expected_revision'), update)
 
     def start_codex_agent(self, command):
         from .codex_agent import run_agent
@@ -678,7 +717,7 @@ class ReviewState:
             status = self.status()
             if not status["can_accept"] or self.working["revision"] != command["revision"]:
                 raise ValueError("Acceptance requires the newest complete Working revision")
-            replace_accepted(self.root, self.working)
+            replace_accepted(self.root, self.working, publish_book=True)
             self.accepted = read_snapshot(self.root / "accepted")
             self.announce()
 
@@ -781,6 +820,12 @@ class Handler(BaseHTTPRequestHandler):
                 self.state.markdown(command)
             elif self.path == "/api/codex":
                 result.update(self.state.codex(command))
+            elif self.path == "/api/source-cleanup/preview":
+                result.update(self.state.preview_source_cleanup(command))
+            elif self.path == "/api/source-cleanup/apply":
+                self.state.apply_source_cleanup(command)
+            elif self.path == "/api/source-cleanup/exception":
+                self.state.accept_source_cleanup_exception(command)
             elif self.path == "/api/codex-agent":
                 result.update(self.state.start_codex_agent(command))
             elif self.path == "/api/codex-agent/stop":

@@ -13,7 +13,7 @@ from unittest.mock import patch
 BOOK_TO_MARKDOWN = Path(__file__).resolve().parents[4] / "tools/bootstrap/book-to-markdown"
 sys.path.insert(0, str(BOOK_TO_MARKDOWN))
 from review.model import load_input, write_json
-from review.service import ReviewState
+from review.service import ReviewState, replace_accepted
 
 
 class FailingMathRenderer:
@@ -48,6 +48,35 @@ class SnapshotRenderer:
 
 
 class RenderRecoveryTest(unittest.TestCase):
+    def test_failed_main_book_update_restores_accepted(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            book = {"toc": {"depth": 2}, "chapters": [
+                {"id": "c", "title": "Chapter", "markdown_file": "chapter.md", "elements": [
+                    {"id": "p", "type": "prose", "md_text": "Initial", "pdf_regions": [], "role": None}]}]}
+            renderer = SnapshotRenderer()
+            write_json(root / "book.json", book)
+            for version in ("working", "accepted"):
+                directory = root / version
+                write_json(directory / "book.json", book)
+                data, assets, fingerprint = load_input(directory)
+                write_json(directory / "rendered.json", renderer.render(directory, data, assets, fingerprint, None))
+            original_main = (root / "book.json").read_bytes()
+            original_accepted = (root / "accepted/book.json").read_bytes()
+            book["chapters"][0]["elements"][0]["md_text"] = "Changed"
+            write_json(root / "working/book.json", book)
+            data, assets, fingerprint = load_input(root / "working")
+            snapshot = renderer.render(root / "working", data, assets, fingerprint, None)
+            write_json(root / "working/rendered.json", snapshot)
+
+            with patch.object(Path, "replace", side_effect=OSError("book.json locked")):
+                with self.assertRaisesRegex(OSError, "book.json locked"):
+                    replace_accepted(root, snapshot, publish_book=True)
+
+            self.assertEqual((root / "book.json").read_bytes(), original_main)
+            self.assertEqual((root / "accepted/book.json").read_bytes(), original_accepted)
+            self.assertFalse((root / ".accepted-backup").exists())
+
     def test_later_render_preserves_newly_accepted_snapshot_and_its_files(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -55,6 +84,7 @@ class RenderRecoveryTest(unittest.TestCase):
                 {"id": "c", "title": "Chapter", "markdown_file": "chapter.md", "elements": [
                     {"id": "p", "type": "prose", "md_text": "Initial", "pdf_regions": [], 'role': None}]}]}
             renderer = SnapshotRenderer()
+            write_json(root / "book.json", book)
             for version in ("working", "accepted"):
                 directory = root / version
                 write_json(directory / "book.json", book)
@@ -69,8 +99,10 @@ class RenderRecoveryTest(unittest.TestCase):
                     book["chapters"][0]["elements"][0]["md_text"] = "Accepted update"
                     write_json(root / "working/book.json", book)
                     self.wait_for(lambda: state.status()["can_accept"])
+                    self.assertEqual(load_input(root)[0]["chapters"][0]["elements"][0]["md_text"], "Initial")
                     accepted_revision = state.working["revision"]
                     state.accept({"revision": accepted_revision})
+                    self.assertEqual((root / "book.json").read_bytes(), (root / "accepted/book.json").read_bytes())
                     book["chapters"][0]["elements"][0]["md_text"] = "Later working update"
                     write_json(root / "working/book.json", book)
                     self.wait_for(lambda: state.status()["can_accept"])
@@ -78,6 +110,7 @@ class RenderRecoveryTest(unittest.TestCase):
                     self.assertEqual(state.accepted["revision"], accepted_revision)
                     self.assertTrue((root / "accepted/renders" / state.accepted["revision"] / "chapter.html").exists())
                     self.assertEqual(state.accepted["chapters"][0]["elements"][0]["md_text"], "Accepted update")
+                    self.assertEqual(load_input(root)[0]["chapters"][0]["elements"][0]["md_text"], "Accepted update")
                 finally:
                     state.stopping.set()
                     worker.join(5)

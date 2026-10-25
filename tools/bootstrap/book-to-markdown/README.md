@@ -191,7 +191,7 @@ or changing their authored models.
 
 ### Editing and publication
 
-**Element actions → New chapter from here** starts a chapter at the selected
+**New chapter from here** in the element context menu starts a chapter at the selected
 Working element. That element and the remaining elements of its current chapter
 move into a new chapter immediately after it; later chapters remain in place.
 Text, references, IDs, roles, heading levels and PDF regions are preserved. The
@@ -269,17 +269,50 @@ does not prove that repeated letters were selected from the correct occurrence.
 
 ### Codex Working task
 
-Use **Codex...** in the top bar or **Codex Working...** in an element menu to
-give Codex a task across the authored Working book. A selected element is only
+Use **Book Actions → Codex...** in the top bar to
+give Codex a task across the authored Working book. The same menu opens proofreading,
+image description and table description with their task instructions already selected.
+A selected element is only
 a starting hint; the task can inspect other chapters and elements. The model asks
 for paginated element lists, element text slices or PDF/Working images as needed.
-The **Suggested task** list can fill the instruction with a reusable English
-prompt for joining paragraphs that continue across PDF pages. The text remains
-editable, and selecting a task does not start Codex.
-It may invoke editor commands, submit validated changes to the authored book
-model, or use the existing
-one-element transformation. Each model turn receives the last tool result and a
-short progress memory, so the entire book is not sent in one prompt.
+The **Suggested task** list fills instructions from Markdown files under
+`prompts/`, including [joining paragraphs](prompts/join-paragraphs-across-pdf-pages.md).
+The text remains editable, and selecting a task does not start Codex.
+
+**Book Actions → Clean direct book text** runs a deterministic, read-only preview.
+It finds literal word sequences in Working element text and chapter titles, then
+searches their PDF page and adjacent pages for exact, case-sensitive Stage 02 text. The report
+shows each proposed source page, block, character range and replacement reference.
+When several source occurrences have the same page distance, a match directly
+beside an existing reference in the same PDF block takes precedence. Otherwise,
+the preview follows preceding references through their PDF block and advances past
+each matched word. For reordered table text, a sole earlier occurrence in that
+same block can still be proposed.
+Missing matches and equally near repeated matches remain unresolved. For a single
+character after a text reference, the preview searches forward from that reference's
+end in the same PDF block and binds the first following occurrence. Consecutive
+single characters continue from the previous match, stopping before the next text
+reference in that block. Select the proposed
+matches to apply; the server checks the Working revision and recomputes the report
+before one Working update. Accepted remains unchanged until **Accept Changes**.
+For an unresolved literal, **Accept exception** records a required explanation
+and optional source/corrected text in Working `book.json` under
+`source_cleanup_exceptions`. The literal stays in the recipe, but the same
+occurrence is omitted from later cleanup previews. Its element, surrounding
+references and local text identify it across unrelated edits; changing that
+context brings it back for review. Accepting Working carries the exception into
+Accepted and the published recipe. The source PDF and Stage 02 text remain intact.
+The agent may invoke editor commands, submit validated changes to the authored
+book model, or use the existing one-element transformation. Each model turn
+receives the last tool result and a short progress memory, so the entire book is
+not sent in one prompt.
+
+Image description, table description and proofreading tasks load their full guidance
+from the corresponding Markdown files under `prompts/` when started. Their Working
+task instructions also live there. Description
+tasks require already prepared `<details>` groups; they do not infer group
+membership or create missing groups. The proofreading task applies the chapter
+prompt through Working element edits, preserving the agent's JSON action protocol.
 
 The task runs in the background and reports its current step and saved edits in
 the dialog. **Stop task** takes effect between model calls; closing the dialog
@@ -292,32 +325,24 @@ general Working tasks may intentionally edit text when the user requests it.
 
 Task requests and action results are recorded under
 `.agent/tmp/book-codex-agent/<request-id>/`. The dialog closes automatically
-after a successful task; reopening Codex Working shows its edit count and
+after a successful task; reopening **Book Actions → Codex...** shows its edit count and
 summary. A stopped or failed task leaves the dialog open and retains any already
 saved Working edits for review or **Discard Changes**. Agent judgments about
 source quality still need human review before acceptance.
 
 ### Codex element command
 
-Select an element, open **Element actions → Codex on element...**, enter an instruction and
-click **Run Codex**. The command works on that element's Working version using its
-Copy ID. The request contains its recipe, resolved text, chapter context and the
+The one-element transformation remains available to the Codex Working agent through
+its `element_transform` action. It works on the selected Working element by ID.
+The request contains its recipe, resolved text, chapter context and the
 original PDF-region crop. The model returns resolved text in JSON; the application
 preserves existing references while replacing the selected element in place.
 Accepted remains unchanged until normal acceptance. The viewer refreshes after
 the validated change. Failures appear in the dialog and leave Working unchanged.
 
-**Keep current format** is the default for this command. Choose **Allow format
-change** when the edit requires another representation, such as a headerless
-table in HTML. The dialog shows the additional instruction sent with the task.
-Select **Allow text reordering** when the edit must correct the order of existing
-content, such as a reversed table column. This option is off for each new
-command. It permits rearrangement while still checking every word, number and
-substantive symbol with its original number of occurrences.
-Select **Allow listed additions** to enter new content separated by semicolons.
-For example, `x` permits adding `x` markers wherever the requested edit needs them;
-`x; y` permits both markers. Original content still has to be preserved. This option and its list
-reset for each new command.
+The one-element transformation keeps the current format by default and checks
+that every original word, number and substantive symbol remains present. Its
+format, text-order and permitted-addition rules are held in `prompts/`.
 The server enforces the selected mode and checks table markup as well as its
 declared format. HTML output must convert Markdown math notation in cells to
 equivalent HTML; unrendered math commands are rejected. The Codex Working task
@@ -390,6 +415,11 @@ template, but import does not insert transcription literals.
 `resolved_md_text` is derived preview/snapshot data,
 never persisted in authored `book.json`. All text uses the same template syntax;
 there is no separate plain-Markdown compatibility format.
+Every `book.json` write joins consecutive references to the same PDF block when
+their character ranges touch. It also absorbs a literal space between references
+when that space occupies the single intervening source character. The resolved
+text stays identical; omitted source characters and formatting boundaries remain
+separate.
 
 Edit `working/book.json` externally for text, type, order, visibility, source
 regions, chapter organization or TOC options. Preserve logical IDs for ordinary
@@ -402,8 +432,8 @@ Only the current depth-only TOC format is supported.
 Chapter titles do not add duplicate TOC entries. Links use stable element-ID
 anchors; generated TOC content has no invented source regions.
 
-Click an element to select it, then use **Element actions**, right-click, or
-Enter/Shift+F10 on a focused element to open its menu. The same actions are
+Right-click an element or press Enter/Shift+F10 on a focused element to open its
+menu. The same actions are
 available from PDF, Accepted and Working; edits always target the corresponding
 Working element. Elements expose **Hide Element** or **Unhide Element**; headings expose
 an expandable **Heading** menu with **H1** through **H6**, applied immediately.
@@ -610,10 +640,12 @@ The first successful current rendering initializes Accepted with the identical
 bundle. Later changes require **Accept Changes**. Acceptance is enabled only
 when the completed snapshot matches current authored data/assets and the queue
 has no pending or failed cycle. It generates full Markdown and TOC, prepares a
-complete copy, rechecks input freshness, then replaces Accepted under the server
-lock. Failed preparation leaves Accepted untouched; failed final rename restores
-its backup. Startup recovers an interrupted rename. Obsolete files disappear
-with the old bundle. This action does not commit, publish or upload anything.
+complete copy, rechecks input freshness, then replaces Accepted and the main
+`book.json` under the server lock. The main file receives the same authored recipe
+as `accepted/book.json`. Failed preparation leaves Accepted untouched; a failed
+main-file replacement restores the previous Accepted bundle. Startup recovers an
+interrupted bundle rename. Obsolete files disappear with the old bundle. This
+action does not commit or upload anything.
 
 **Discard Changes** restores the entire Working bundle from the current Accepted
 version through `/api/discard`: authored data, referenced assets, chapter HTML,
@@ -639,7 +671,7 @@ PDF contains original physical page bitmaps, loaded lazily with reserved heights
 Accepted and Working contain direct HTML with stable element-ID containers.
 Changed elements have a 5-pixel orange vertical marker in the left margin of
 both columns, spanning the element's height without shifting the content.
-Hover/selection matches exact IDs; Copy ID copies that identity. Selecting text
+Hover/selection matches exact IDs. Selecting text
 does not open the heading menu. Document styling is isolated from the toolbar.
 Hovering or focusing an element shows no tooltip or property popup.
 The toolbar counts changed elements, using `1 change` for one;

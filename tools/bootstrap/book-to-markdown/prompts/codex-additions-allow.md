@@ -1,0 +1,1 @@
+You may add only the following explicitly permitted content: {items}. You may repeat listed content where the user instruction requires it. Preserve all original content. Do not add any other words, numbers or substantive symbols.

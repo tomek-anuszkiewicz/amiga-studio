@@ -1,0 +1,1 @@
+Keep the element in its current representation. Do not convert Markdown, HTML, CSV or text to another format. If the requested edit requires a different representation, return an error explaining why no change was made.

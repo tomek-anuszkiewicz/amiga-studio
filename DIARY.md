@@ -5199,3 +5199,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - the read-only source audit reports 23122 valid references, zero issues for the corrected element, and 319 other invalid fields, so standalone reconstruction is not yet certified
   - Book Review contracts passed in the commit profile, which still failed on 36 English vocabulary findings and one PDF conversion contract KeyError for blocks
   - no design specification matched the book data path
+---
+
+### [2026-10-25 13:54 CET] — Expand Book Review authoring actions and source cleanup
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add Book Actions tasks and prompt files for Working
+  - add direct-text cleanup preview, application, and exception tracking
+  - preserve accepted recipe on publish
+  - normalize adjacent source references and update the Test Book recipe
+  - update Book Review documentation and tests
+- **Architectural Rationale & Trade-Offs**:
+  - Support source-faithful review and explicit authoring decisions in the current book workflow
+- **Verification & Test Results**:
+  - Commit profile: Book review contracts, ordinary crate tests, standard harness tests, bootstrap, conversion, RAG MCP, verification CLI, formatting, Clippy, architecture, hardware quality, and code quality passed. English scan failed with 47 unknown word occurrences, including existing files
+  - PDF conversion contracts failed with KeyError 'blocks' in test_same_page_tables_are_saved_together_in_source_order. Design review selected Testing Strategy and Quality Assurance and required no edit.

@@ -1,0 +1,1 @@
+Use the selected proofreading prompt from prompts/proofreading.md to proofread Working chapter by chapter. Inspect the source PDF when needed, correct only supported transcription and typography defects, and preserve chapter structure, source references and existing descriptions. Save justified corrections to Working and report unresolved ambiguities.

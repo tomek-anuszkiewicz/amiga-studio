@@ -14,7 +14,8 @@ from common.pdf_page_conversion import read_conversion
 from common.pdf_elements import ELEMENT_ROLES, ELEMENT_TYPES
 from .markdown import PARSER, preserve_line_breaks
 from .text_recipe import (REFERENCE, escape_literal, edit_template, literal_html_tags,
-                          compile_markdown_template, region_blocks, resolve_template)
+                          compile_markdown_template, join_adjacent_references,
+                          region_blocks, resolve_template)
 
 HEADING_TYPES = {"heading", "toc_heading", "index_heading",
                  "list_of_tables_heading", "list_of_figures_heading"}
@@ -42,6 +43,15 @@ def write_json(path, value):
     """Replace a single file only after its complete contents are written."""
     if path.name == "book.json":
         value = deepcopy(value)
+        bundle = path.parent.name in {"working", "accepted"} or path.parent.name.startswith('.')
+        root = path.parent.parent if bundle else path.parent
+        workspace = root / 'pdf-to-markdown'
+        for chapter in value["chapters"]:
+            for field in ("title", "markdown_file"):
+                chapter[field] = join_adjacent_references(chapter[field], workspace)
+            for element in chapter["elements"]:
+                if "md_text" in element:
+                    element["md_text"] = join_adjacent_references(element["md_text"], workspace)
         for element in elements(value):
             element.pop("resolved_md_text", None)
         for chapter in value["chapters"]:
@@ -85,6 +95,20 @@ def set_element_type(element, kind):
     previous = element['type']
     if previous == kind:
         return
+    if previous in {'code_block', 'preformatted_text'} and kind not in {'code_block', 'preformatted_text'}:
+        def without_outer_fence(value):
+            lines = value.splitlines()
+            if len(lines) < 2:
+                return value
+            opener = re.fullmatch(r' {0,3}(`{3,}|~{3,})[^\n]*', lines[0])
+            if not opener:
+                return value
+            marker = opener[1]
+            closer = r' {0,3}' + re.escape(marker[0]) + '{' + str(len(marker)) + r',}[ \t]*'
+            return '\n'.join(lines[1:-1]) if re.fullmatch(closer, lines[-1]) else value
+        element['md_text'] = without_outer_fence(element['md_text'])
+        if 'resolved_md_text' in element:
+            element['resolved_md_text'] = without_outer_fence(element['resolved_md_text'])
     element['type'] = kind
     if kind in HEADING_TYPES:
         level = element.get('heading_level', 1) if kind == 'heading' else 1
@@ -259,6 +283,24 @@ def load_input(working, book=None, *, cache=None):
     read_bytes = (lambda path: cache.read(path, Path.read_bytes)) if cache else Path.read_bytes
     read_source = (lambda path: cache.read(path, read_json)) if cache else read_json
     book = json.loads(read_bytes(working / "book.json")) if book is None else deepcopy(book)
+    exceptions = book.get('source_cleanup_exceptions', [])
+    if not isinstance(exceptions, list):
+        raise ValueError('Source cleanup exceptions must be a list')
+    anchors = set()
+    for entry in exceptions:
+        if (not isinstance(entry, dict) or
+                not isinstance(entry.get('anchor'), str) or
+                not re.fullmatch(r'[0-9a-f]{64}', entry['anchor']) or
+                entry['anchor'] in anchors or
+                not isinstance(entry.get('element_id'), str) or
+                entry.get('field') not in {'md_text', 'title'} or
+                not isinstance(entry.get('literal'), str) or not entry['literal'] or
+                not isinstance(entry.get('note'), str) or not entry['note'].strip() or
+                len(entry['note']) > 500 or
+                any(not isinstance(entry.get(key), str) or len(entry[key]) > 120
+                    for key in ('source_text', 'corrected_text') if key in entry)):
+            raise ValueError('Invalid source cleanup exception')
+        anchors.add(entry['anchor'])
     templates = [element.get("md_text", "") for element in elements(book)]
     templates += [chapter[field] for chapter in book["chapters"] for field in ("title", "markdown_file")]
     referenced_pages = {int(match[1]) for template in templates for match in REFERENCE.finditer(template)}

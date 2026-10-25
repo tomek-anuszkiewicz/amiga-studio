@@ -1,0 +1,1 @@
+Use the selected table description prompt from prompts/describe-tables.md. Find existing prepared table <details> groups in Working. For each group, read the table, caption, notes and legend, then add only the description inside that group. Keep its table markup and existing content. If no prepared group exists, report that without inventing one.
