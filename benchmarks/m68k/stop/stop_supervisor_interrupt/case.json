@@ -1,0 +1,20 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4E72",
+  "instructions_per_loop": 4,
+  "initial_sr": 8192,
+  "stack_reserve_bytes": 1024,
+  "wake_ipl": 2,
+  "initial_registers": {
+    "ssp": 6291452
+  },
+  "memory_regions": [
+    {
+      "vector": "autovector_2",
+      "fill": {
+        "kind": "label_address",
+        "label": "interrupt_handler"
+      }
+    }
+  ]
+}

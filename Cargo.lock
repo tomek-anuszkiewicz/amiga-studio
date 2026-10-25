@@ -3473,10 +3473,16 @@ dependencies = [
 name = "test_runner"
 version = "0.1.0"
 dependencies = [
+ "agnus",
+ "cia",
  "cpu",
+ "denise",
  "disassembler",
  "flate2",
+ "memory_bus",
+ "paula",
  "physical_memory",
+ "rtc",
  "serde",
  "serde_json",
  "sha2",

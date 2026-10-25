@@ -11,6 +11,12 @@ serde_json = { workspace = true, features = ["std"] }
 cpu = { workspace = true }
 disassembler = { workspace = true }
 physical_memory = { workspace = true }
+memory_bus = { workspace = true }
+agnus = { workspace = true }
+denise = { workspace = true }
+paula = { workspace = true }
+cia = { workspace = true }
+rtc = { workspace = true }
 flate2 = { workspace = true }
 sha2 = { workspace = true }
 

@@ -8,7 +8,10 @@ use std::process::Command;
 use std::time::Instant;
 
 use cpu::Cpu;
-use physical_memory::{A500Config, A500Preset, PhysicalMemory, VideoStandard, MAX_FAST_RAM_SIZE};
+use memory_bus::MemoryBus;
+use physical_memory::{
+    A500Config, A500Preset, AddressBus, PhysicalMemory, VideoStandard, MAX_FAST_RAM_SIZE,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -35,10 +38,14 @@ struct BenchmarkConfig {
 #[derive(Clone, Deserialize, Serialize)]
 struct CaseConfig {
     origin: u32,
+    #[serde(default, skip_serializing_if = "is_false")]
+    platform_bus: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     initial_sr: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     stack_reserve_bytes: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    wake_ipl: Option<u8>,
     target_primary_opcode: String,
     #[serde(default = "one")]
     instructions_per_loop: usize,
@@ -50,6 +57,10 @@ fn one() -> usize {
     1
 }
 
+fn is_false(value: &bool) -> bool {
+    !value
+}
+
 #[derive(Clone, Deserialize, Serialize)]
 struct MemoryRegionConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -58,6 +69,8 @@ struct MemoryRegionConfig {
     address: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     vector: Option<ExceptionVector>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    executable: bool,
     fill: MemoryFill,
 }
 
@@ -68,6 +81,12 @@ enum ExceptionVector {
     ZeroDivide,
     Chk,
     PrivilegeViolation,
+    #[serde(rename = "trap_3")]
+    Trap3,
+    #[serde(rename = "trapv")]
+    Trapv,
+    #[serde(rename = "autovector_2")]
+    Autovector2,
 }
 
 impl ExceptionVector {
@@ -77,6 +96,9 @@ impl ExceptionVector {
             Self::ZeroDivide => cpu::vector::addr(cpu::vector::ZERO_DIVIDE),
             Self::Chk => cpu::vector::addr(cpu::vector::CHK),
             Self::PrivilegeViolation => cpu::vector::addr(cpu::vector::PRIVILEGE_VIOLATION),
+            Self::Trap3 => cpu::vector::addr(cpu::vector::TRAP_BASE + 3),
+            Self::Trapv => cpu::vector::addr(cpu::vector::TRAPV),
+            Self::Autovector2 => cpu::vector::addr(cpu::vector::AUTOVECTOR_BASE + 2),
         }
     }
 }
@@ -88,6 +110,8 @@ enum MemoryFill {
     RandomBcdWords { count: usize },
     FixedWords { values: Vec<u16> },
     LabelAddress { label: String },
+    ReturnFrames { status_word: u16 },
+    ReturnAddresses,
 }
 
 #[derive(Deserialize)]
@@ -159,11 +183,14 @@ struct PreparedRegion {
 struct Fixture {
     initial_cpu: Cpu,
     initial_bus: PhysicalMemory,
+    initial_peripherals: Option<Peripherals>,
     image: Vec<u8>,
     origin: u32,
     program_end: u32,
+    executable_regions: Vec<(u32, u32)>,
     instruction_limit: usize,
     target_count: usize,
+    wake_ipl: Option<u8>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -177,7 +204,31 @@ struct ProgramMeasurement {
     counts: ExecutionCounts,
     cpu: Cpu,
     bus: PhysicalMemory,
+    peripherals: Option<Peripherals>,
     samples: Vec<Sample>,
+}
+
+#[derive(Clone)]
+struct Peripherals {
+    agnus: agnus::Agnus,
+    denise: denise::Denise,
+    paula: paula::Paula,
+    cia_a: cia::Cia,
+    cia_b: cia::Cia,
+    rtc: rtc::RtcMsm6242b,
+}
+
+impl Peripherals {
+    fn new(config: &A500Config) -> Self {
+        Self {
+            agnus: agnus::Agnus::new(config.agnus_model()),
+            denise: denise::Denise::new(config.denise_model()),
+            paula: paula::Paula::new(),
+            cia_a: cia::Cia::new(cia::CiaId::A),
+            cia_b: cia::Cia::new(cia::CiaId::B),
+            rtc: rtc::RtcMsm6242b::new(config.rtc()),
+        }
+    }
 }
 
 fn repository_root() -> Result<PathBuf, String> {
@@ -372,6 +423,9 @@ fn prepare(
         return Err("assembly image must start at an even Fast RAM address".to_owned());
     }
     let stack_reserve_bytes = case.stack_reserve_bytes.unwrap_or(0);
+    if case.wake_ipl.is_some_and(|level| !(1..=6).contains(&level)) {
+        return Err("wake IPL must be an interrupt level from 1 to 6".to_owned());
+    }
     if stack_reserve_bytes != 0
         && (stack_reserve_bytes < 16
             || stack_reserve_bytes % 4 != 0
@@ -387,7 +441,7 @@ fn prepare(
     if case.target_primary_opcode.len() != 4 {
         return Err("target primary opcode must have four hexadecimal digits".to_owned());
     }
-    u16::from_str_radix(&case.target_primary_opcode, 16)
+    let target_opcode = u16::from_str_radix(&case.target_primary_opcode, 16)
         .map_err(|error| format!("invalid target primary opcode: {error}"))?;
     let case_dir = case_directory(root, case_id)?;
     let source = case_dir.join("program.s");
@@ -400,6 +454,9 @@ fn prepare(
     let mut labels = HashSet::new();
     let mut regions = Vec::with_capacity(case.memory_regions.len());
     for region in &case.memory_regions {
+        if region.executable && !matches!(region.fill, MemoryFill::FixedWords { .. }) {
+            return Err("only fixed word regions can be executable".to_owned());
+        }
         match &region.fill {
             MemoryFill::RandomWords { count } | MemoryFill::RandomBcdWords { count } => {
                 let address = region
@@ -461,6 +518,18 @@ fn prepare(
                     return Err(
                         "label address region needs a vector and a target label, but no address"
                             .to_owned(),
+                    );
+                }
+            }
+            MemoryFill::ReturnFrames { .. } => {
+                if region.label.is_some() || region.vector.is_some() || region.address.is_none() {
+                    return Err("return frames need an address, but no label or vector".to_owned());
+                }
+            }
+            MemoryFill::ReturnAddresses => {
+                if region.label.is_some() || region.vector.is_some() || region.address.is_none() {
+                    return Err(
+                        "return addresses need an address, but no label or vector".to_owned()
                     );
                 }
             }
@@ -548,13 +617,12 @@ fn prepare(
         }
     }
 
-    let mut bus = PhysicalMemory::from_config(A500Config::from_preset(
-        A500Preset::ExpandedPowerUser,
-        VideoStandard::Pal,
-    ));
+    let machine_config = A500Config::from_preset(A500Preset::ExpandedPowerUser, VideoStandard::Pal);
+    let mut bus = PhysicalMemory::from_config(machine_config.clone());
     bus.map_chip_ram_to_low_memory();
     let fast_ram = bus.fast_ram.as_mut().ok_or("Fast RAM is not installed")?;
     fast_ram[start..start + image.len()].copy_from_slice(&image);
+    let mut executable_regions = Vec::new();
     for region in &case.memory_regions {
         let (region_address, values) = match &region.fill {
             MemoryFill::RandomWords { .. } | MemoryFill::RandomBcdWords { .. } => continue,
@@ -577,6 +645,87 @@ fn prepare(
                         .address(),
                     vec![(target >> 16) as u16, target as u16],
                 )
+            }
+            MemoryFill::ReturnFrames { status_word } => {
+                let address = region.address.ok_or("return frames need an address")?;
+                let frame_bytes = benchmark
+                    .instruction_count
+                    .checked_mul(6)
+                    .ok_or("return frame size overflowed")?;
+                let reserve_start =
+                    FAST_RAM_BASE + (MAX_FAST_RAM_SIZE - stack_reserve_bytes) as u32;
+                if frame_bytes != stack_reserve_bytes
+                    || case.initial_registers.get("ssp") != Some(&address)
+                    || address != reserve_start
+                {
+                    return Err("return frames must fill the reserved SSP stack".to_owned());
+                }
+                if !matches!(target_opcode, 0x4E73 | 0x4E77)
+                    || target_opcode == 0x4E73 && status_word & 0x2000 == 0
+                {
+                    return Err(
+                        "return frames require RTE/RTR and supervisor SR for RTE".to_owned()
+                    );
+                }
+                let program_bytes = benchmark
+                    .instruction_count
+                    .checked_mul(4)
+                    .ok_or("return target layout overflowed")?;
+                if program_end - entry != program_bytes as u32 {
+                    return Err(
+                        "return targets must be two-byte instructions with two-byte helpers"
+                            .to_owned(),
+                    );
+                }
+                let mut values = Vec::with_capacity(benchmark.instruction_count * 3);
+                for index in 0..benchmark.instruction_count {
+                    let target = entry + (index * 4) as u32;
+                    let offset = (target - case.origin) as usize;
+                    if u16::from_be_bytes([image[offset], image[offset + 1]]) != target_opcode {
+                        return Err(format!("return target opcode mismatch at ${target:06X}"));
+                    }
+                    let return_pc = target + 2;
+                    values.extend_from_slice(&[
+                        *status_word,
+                        (return_pc >> 16) as u16,
+                        return_pc as u16,
+                    ]);
+                }
+                (address, values)
+            }
+            MemoryFill::ReturnAddresses => {
+                let address = region.address.ok_or("return addresses need an address")?;
+                let stack_bytes = benchmark
+                    .instruction_count
+                    .checked_mul(4)
+                    .ok_or("return address size overflowed")?;
+                let reserve_start =
+                    FAST_RAM_BASE + (MAX_FAST_RAM_SIZE - stack_reserve_bytes) as u32;
+                if stack_bytes != stack_reserve_bytes
+                    || case.initial_registers.get("ssp") != Some(&address)
+                    || address != reserve_start
+                {
+                    return Err("return addresses must fill the reserved SSP stack".to_owned());
+                }
+                let program_bytes = (program_end - entry) as usize;
+                if program_bytes % benchmark.instruction_count != 0 {
+                    return Err("return target layout is not uniform".to_owned());
+                }
+                let target_bytes = program_bytes / benchmark.instruction_count;
+                if target_bytes < 2 || target_bytes & 1 != 0 {
+                    return Err("return target size must be an even number of bytes".to_owned());
+                }
+                let mut values = Vec::with_capacity(benchmark.instruction_count * 2);
+                for index in 0..benchmark.instruction_count {
+                    let target = entry + (index * target_bytes) as u32;
+                    let offset = (target - case.origin) as usize;
+                    if u16::from_be_bytes([image[offset], image[offset + 1]]) != target_opcode {
+                        return Err(format!("return target opcode mismatch at ${target:06X}"));
+                    }
+                    let return_pc = target + target_bytes as u32;
+                    values.extend_from_slice(&[(return_pc >> 16) as u16, return_pc as u16]);
+                }
+                (address, values)
             }
         };
         let address = region_address as usize;
@@ -606,6 +755,9 @@ fn prepare(
                 "memory region overlaps the image: ${region_address:06X}"
             ));
         }
+        if region.executable {
+            executable_regions.push((region_address, end as u32));
+        }
         for (index, value) in values.iter().enumerate() {
             let word_address = region_address + (index * 2) as u32;
             bus.write_word_debug(word_address, *value);
@@ -622,11 +774,14 @@ fn prepare(
     let fixture = Fixture {
         initial_cpu: cpu,
         initial_bus: bus,
+        initial_peripherals: case.platform_bus.then(|| Peripherals::new(&machine_config)),
         image,
         origin: case.origin,
         program_end,
+        executable_regions,
         instruction_limit: benchmark.instruction_limit,
         target_count: benchmark.instruction_count,
+        wake_ipl: case.wake_ipl,
     };
     let report = Report {
         case_id: case_id.to_owned(),
@@ -653,12 +808,44 @@ fn execute_program(
     fixture: &Fixture,
     cpu: &mut Cpu,
     bus: &mut PhysicalMemory,
+    peripherals: &mut Option<Peripherals>,
+) -> Result<ExecutionCounts, String> {
+    if let Some(peripherals) = peripherals {
+        let mut platform_bus = MemoryBus {
+            mem: bus,
+            agnus: &mut peripherals.agnus,
+            denise: &mut peripherals.denise,
+            paula: &mut peripherals.paula,
+            cia_a: &mut peripherals.cia_a,
+            cia_b: &mut peripherals.cia_b,
+            rtc: &mut peripherals.rtc,
+        };
+        execute_on_bus(fixture, cpu, &mut platform_bus)
+    } else {
+        execute_on_bus(fixture, cpu, bus)
+    }
+}
+
+fn execute_on_bus(
+    fixture: &Fixture,
+    cpu: &mut Cpu,
+    bus: &mut dyn AddressBus,
 ) -> Result<ExecutionCounts, String> {
     let mut clocks = 0u64;
     let mut total = 0usize;
-    while cpu.state.instruction_pc() != fixture.program_end {
+    while cpu.state.instruction_pc() != fixture.program_end
+        || fixture.wake_ipl.is_some() && cpu.state.is_stopped()
+    {
         let pc = cpu.state.instruction_pc();
-        if pc < fixture.origin || pc >= fixture.program_end {
+        let waiting_at_end =
+            pc == fixture.program_end && fixture.wake_ipl.is_some() && cpu.state.is_stopped();
+        if (pc < fixture.origin || pc >= fixture.program_end)
+            && !waiting_at_end
+            && !fixture
+                .executable_regions
+                .iter()
+                .any(|&(start, end)| pc >= start && pc < end)
+        {
             return Err(format!("execution left the program at ${pc:06X}"));
         }
         if total >= fixture.instruction_limit {
@@ -672,6 +859,14 @@ fn execute_program(
             .checked_add(u64::from(step_clocks))
             .ok_or("CPU clock count overflowed")?;
         total += 1;
+        if let Some(level) = fixture.wake_ipl {
+            // The STOP case injects an IPL after each halt and clears it after wakeup.
+            if cpu.state.is_stopped() {
+                cpu.state.set_ipl(level);
+            } else if cpu.state.ipl() != 0 {
+                cpu.state.set_ipl(0);
+            }
+        }
     }
     if total < fixture.target_count {
         return Err("executed fewer instructions than configured targets".to_owned());
@@ -686,7 +881,8 @@ fn execute_program(
 fn inspect_program(fixture: &Fixture) -> Result<ExecutionCounts, String> {
     let mut cpu = fixture.initial_cpu.clone();
     let mut bus = fixture.initial_bus.clone();
-    execute_program(fixture, &mut cpu, &mut bus)
+    let mut peripherals = fixture.initial_peripherals.clone();
+    execute_program(fixture, &mut cpu, &mut bus, &mut peripherals)
 }
 
 fn run_program(
@@ -694,11 +890,13 @@ fn run_program(
     inspected: &ExecutionCounts,
     cpu: &mut Cpu,
     bus: &mut PhysicalMemory,
+    peripherals: &mut Option<Peripherals>,
 ) -> Result<u128, String> {
     cpu.clone_from(&fixture.initial_cpu);
     bus.clone_from(&fixture.initial_bus);
+    peripherals.clone_from(&fixture.initial_peripherals);
     let start = Instant::now();
-    let counts = execute_program(fixture, cpu, bus)?;
+    let counts = execute_program(fixture, cpu, bus, peripherals)?;
     let elapsed = start.elapsed().as_nanos();
     if counts.clocks != inspected.clocks || counts.total != inspected.total {
         return Err("timed run changed its instruction or clock count".to_owned());
@@ -720,6 +918,7 @@ fn measure_series(
             &measurement.counts,
             &mut measurement.cpu,
             &mut measurement.bus,
+            &mut measurement.peripherals,
         )?;
         runs += 1;
         if elapsed_ns >= target_ns {
@@ -792,6 +991,7 @@ pub fn measure(case_id: &str) -> Result<(), String> {
         counts,
         cpu: fixture.initial_cpu.clone(),
         bus: fixture.initial_bus.clone(),
+        peripherals: fixture.initial_peripherals.clone(),
         samples: Vec::with_capacity(benchmark.series),
     };
     let target_ns = u128::from(benchmark.target_series_ms) * 1_000_000;

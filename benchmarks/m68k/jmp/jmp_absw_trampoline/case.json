@@ -1,0 +1,27 @@
+{
+  "origin": 2097152,
+  "stack_reserve_bytes": 400000,
+  "instructions_per_loop": 4,
+  "memory_regions": [
+    {
+      "address": 4096,
+      "executable": true,
+      "fill": {
+        "kind": "fixed_words",
+        "values": [
+          20085
+        ]
+      }
+    },
+    {
+      "address": 5891456,
+      "fill": {
+        "kind": "return_addresses"
+      }
+    }
+  ],
+  "target_primary_opcode": "4EF8",
+  "initial_registers": {
+    "ssp": 5891456
+  }
+}

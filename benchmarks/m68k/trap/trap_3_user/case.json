@@ -1,0 +1,20 @@
+{
+  "origin": 2097152,
+  "target_primary_opcode": "4E43",
+  "instructions_per_loop": 4,
+  "initial_sr": 0,
+  "stack_reserve_bytes": 1024,
+  "initial_registers": {
+    "ssp": 6291452,
+    "usp": 5242880
+  },
+  "memory_regions": [
+    {
+      "vector": "trap_3",
+      "fill": {
+        "kind": "label_address",
+        "label": "trap_handler"
+      }
+    }
+  ]
+}

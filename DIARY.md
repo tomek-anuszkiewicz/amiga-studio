@@ -5306,3 +5306,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - focused disassembler suite, CPU suite, architecture check and roadmap checker passed
   - commit verification passed all selected checks except Book Review contracts, which had five UI timeouts and two missing local math-asset errors
   - the full Motorola-derived inventory and milestone verification were not run for this closure.
+---
+
+### [2026-10-25 20:57 CET] — Remove filler instructions from exception and JMP benchmarks
+- **Affected Subsystems**:
+  - `benchmarks/m68k`
+  - `crates/test_runner`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove inline fillers from eight CHK, JMP, STOP, TRAP, and TRAPV cases
+  - prepare RTS return addresses for the two absolute JMP trampolines
+  - finish the last STOP wake and document CPU step counting and runner dependencies
+- **Architectural Rationale & Trade-Offs**:
+  - Use required RTE and RTS returns as the interleaving work while preserving all 100000 target paths
+- **Verification & Test Results**:
+  - PASS: all eight complete benchmark runs with 100000 target opcodes each
+  - PASS: cargo fmt, Clippy, architecture, ordinary crate and harness tests, vault links and frontmatter
+  - FAIL: commit verification Book Review contracts with five UI timeouts and two missing local math assets
+  - full SingleStep and hardware capture checks not run

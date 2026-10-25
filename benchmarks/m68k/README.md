@@ -19,11 +19,19 @@ that image, such as absolute-short operands. A `random_bcd_words` region uses
 the same assembly-image placement and validation as `random_words`, but packs
 two decimal digits (0-9) into each byte. A `label_address` region names an
 exception vector and an assembly handler label; the runner resolves the label
-and writes its address into the vector table. The case supplies initial register
-values in `initial_registers`, including `ssp` or `usp` for an A7 workload, and
-may supply `initial_sr`. The CPU's built-in defaults are SR `$2700` (supervisor
-mode, interrupt mask 7) and zeroed registers. The runner applies only
-case-configured initial register values.
+and writes its address into the vector table. A `return_frames` region fills
+the reserved SSP stack with one status word and return PC per RTE or RTR
+target before timing. For RTE/RTR return frames, the runner requires two-byte
+targets and helpers.
+A `return_addresses` region fills the reserved SSP stack with the continuation
+PC after each contiguous target; an absolute JMP trampoline uses RTS to pop it.
+An executable `fixed_words` region can hold a JSR or JMP trampoline outside
+the assembly image; execution is allowed only within its declared words.
+The case supplies initial register values in `initial_registers`, including
+`ssp` or `usp` for an A7 workload, and may supply `initial_sr`. The CPU's
+built-in defaults are SR `$2700` (supervisor mode, interrupt mask 7) and
+zeroed registers. The runner applies only case-configured initial register
+values.
 
 The shared runner checks the program layout and executed instruction counts.
 The pinned assembler has no command-line symbol definition, and `rept` does
@@ -65,17 +73,25 @@ The benchmark fixture maps Chip RAM into `$000000`-`$07FFFF` instead of the
 boot ROM overlay. It loads `fixed_words` and `label_address` regions at their
 CPU-visible RAM addresses outside the assembly image and checks that the CPU can
 read them before running the program.
+Cases with `platform_bus: true` execute through the production `MemoryBus`
+router so bank-specific effects such as the TAS write suppression in Chip RAM
+are included. The default cases execute through `PhysicalMemory`. Neither path
+advances the chipset or measures Chip RAM contention.
 
 The marker bytes are never executed. The cases use `endr` to close `rept`;
 with this assembler, `endm` also repeats a following directive. The shared
 `instruction_count` controls target instructions per run;
-target, helper, and total executed guest instructions are observed separately.
+the runner observes total CPU steps and derives the helper count by subtracting
+the configured target count. Interrupt acceptance can add a step to that count.
 Each Bcc target is followed by `MOVE.W #imm,CCR` to select its taken or
 untaken path. DBcc cases reload the counter with `MOVE.L` and then set CCR
 with `MOVE.W #imm,CCR`. Scc uses the usual `MOVE.L` helper; its flags select
 the `$FF` or `$00` byte written to the destination, without a branch. Other
 targets use a `MOVE.L` between data registers to prepare the next target or
-perform an inert copy.
+perform an inert copy when no restoration is needed. Targets that require a
+register or status restoration use that instruction as the sole helper.
+For an exception or interrupt target, the handler's RTE can be the sole
+executed helper. Absolute JMP trampoline cases use RTS as that helper.
 
 The `random_words` memory fill starts from the runner's fixed seed
 `0x12345678` and uses a deterministic 32-bit recurrence:
