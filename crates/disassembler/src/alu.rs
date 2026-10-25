@@ -124,8 +124,7 @@ pub(crate) fn try_disassemble_alu(
             if !base_mnem.is_empty() {
                 let mode = ((op >> 3) & 7) as u8;
                 let reg = (op & 7) as u8;
-                let valid_ea = is_data_alterable_ea(mode, reg)
-                    || (base_mnem == "CMPI" && mode == 7 && matches!(reg, 2 | 3));
+                let valid_ea = is_data_alterable_ea(mode, reg);
                 if !valid_ea {
                     return None;
                 }

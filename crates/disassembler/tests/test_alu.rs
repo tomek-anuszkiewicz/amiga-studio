@@ -30,15 +30,6 @@ fn test_invalid_alu_effective_addresses_fall_back_to_raw_word() {
 }
 
 #[test]
-fn test_cmpi_pc_relative_can_decode() {
-    let words = [0x0C3A, 0x0001, 0x0010];
-    let (d, bytes) = disassemble(0x1000, |pc| words[((pc - 0x1000) / 2) as usize]);
-    assert_eq!(d.mnemonic, "CMPI.B");
-    assert_eq!(d.operands, "#$01, ($0010, PC)");
-    assert_eq!(bytes, 6);
-}
-
-#[test]
 fn test_disassemble_arithmetic_and_logic() {
     let mem: [u16; 16] = [
         0xD240, // ADD.W D0, D1

@@ -11,7 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # Preserve the reviewed exceptions; pruning requires explicit user approval.
 LINE_COUNT_EXCEPTIONS = (
     "dispatch_table.rs", "move_w.rs", "move_b.rs", "move_l.rs", "add.rs",
-    "sub.rs", "and.rs", "or.rs", "cmpi.rs",
+    "sub.rs", "and.rs", "or.rs",
 )
 CORE_EMULATION_CRATES = (
     "cpu", "physical_memory", "memory_bus", "config", "rtc", "disassembler",

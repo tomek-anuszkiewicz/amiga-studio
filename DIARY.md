@@ -5283,3 +5283,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: second commit profile's ordinary crate tests, English scan, formatting, Clippy, architecture, hardware and code quality, standard harness, bootstrap, conversion, PDF, RAG MCP and verification contracts
   - FAIL: Book Review contracts in both commit profile runs: five UI timeouts and two missing local math assets
   - Full SingleStep and physical hardware captures not run
+---
+
+### [2026-10-25 13:33 CET] — Close MC68000 opcode legality roadmap point at user direction
+- **Affected Subsystems**:
+  - `crates/cpu`
+  - `crates/disassembler`
+  - `tools/verification`
+  - `Obsidian/Amiga/Design/Performance`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed six PC-relative CMPI primary words from CPU and disassembler decoding after checking Motorola PRM p. 4-80
+  - removed the obsolete disassembler acceptance test and cmpi.rs architecture exception
+  - corrected the local ignored legal-opcode CSV and benchmark inventory counts
+  - removed roadmap point 2.2 at the user direction
+- **Architectural Rationale & Trade-Offs**:
+  - The user closed CPU-OPCODE-01 at the current scope and declined permanent opcode regression tests. The source-attributed Motorola inventory for all 65,536 primary words was not completed
+  - the user chose to handle any later findings during subsequent work.
+- **Verification & Test Results**:
+  - PASS: corrected dispatch, disassembler and local CSV agree with all 65,536 entries in the software-generated SingleStep official map
+  - checked all 124 local SingleStep JSON files and found no disputed CMPI words
+  - focused disassembler suite, CPU suite, architecture check and roadmap checker passed
+  - commit verification passed all selected checks except Book Review contracts, which had five UI timeouts and two missing local math-asset errors
+  - the full Motorola-derived inventory and milestone verification were not run for this closure.

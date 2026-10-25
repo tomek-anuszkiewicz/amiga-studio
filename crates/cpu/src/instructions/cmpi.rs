@@ -266,53 +266,6 @@ pub static STEPS_CMPI_B_ABSL: [MicroStep; 10] = [
     common::BUS_READ_IDLE,
 ];
 
-pub static STEPS_CMPI_B_PC_D16: [MicroStep; 8] = [
-    MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
-        alu_fn: Some(latch_imm_b),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_FINISH,
-    MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
-        alu_fn: Some(ea::ea_calc_d16_pc),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_FINISH,
-    common::READ_DST_BYTE,
-    common::BUS_READ_IDLE,
-    MicroStep {
-        bus_fn: Some(Cpu::step_prefetch_next_read),
-        alu_fn: Some(alu_cmpi_b_mem),
-        base_clocks: 2,
-    },
-    common::BUS_READ_IDLE,
-];
-
-pub static STEPS_CMPI_B_PC_IDX: [MicroStep; 9] = [
-    MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
-        alu_fn: Some(latch_imm_b),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_FINISH,
-    MicroStep {
-        bus_fn: None,
-        alu_fn: Some(ea::ea_calc_idx_pc),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_READ,
-    common::FETCH_EXT_FINISH,
-    common::READ_DST_BYTE,
-    common::BUS_READ_IDLE,
-    MicroStep {
-        bus_fn: Some(Cpu::step_prefetch_next_read),
-        alu_fn: Some(alu_cmpi_b_mem),
-        base_clocks: 2,
-    },
-    common::BUS_READ_IDLE,
-];
-
 // ============================================================================
 // Static Micro-Step Slices: CMPI Word
 // ============================================================================
@@ -483,52 +436,7 @@ pub static STEPS_CMPI_W_ABSL: [MicroStep; 10] = [
     common::BUS_READ_IDLE,
 ];
 
-pub static STEPS_CMPI_W_PC_D16: [MicroStep; 8] = [
-    MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
-        alu_fn: Some(latch_imm_w),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_FINISH,
-    MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
-        alu_fn: Some(ea::ea_calc_d16_pc),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_FINISH,
-    common::READ_DST_WORD,
-    common::BUS_READ_IDLE,
-    MicroStep {
-        bus_fn: Some(Cpu::step_prefetch_next_read),
-        alu_fn: Some(alu_cmpi_w_mem),
-        base_clocks: 2,
-    },
-    common::BUS_READ_IDLE,
-];
-
-pub static STEPS_CMPI_W_PC_IDX: [MicroStep; 9] = [
-    MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
-        alu_fn: Some(latch_imm_w),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_FINISH,
-    MicroStep {
-        bus_fn: None,
-        alu_fn: Some(ea::ea_calc_idx_pc),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_READ,
-    common::FETCH_EXT_FINISH,
-    common::READ_DST_WORD,
-    common::BUS_READ_IDLE,
-    MicroStep {
-        bus_fn: Some(Cpu::step_prefetch_next_read),
-        alu_fn: Some(alu_cmpi_w_mem),
-        base_clocks: 2,
-    },
-    common::BUS_READ_IDLE,
-];
+// ============================================================================
 // Static Micro-Step Slices: CMPI Long
 // ============================================================================
 
@@ -793,76 +701,7 @@ pub static STEPS_CMPI_L_ABSL: [MicroStep; 14] = [
     common::BUS_READ_IDLE,
 ];
 
-pub static STEPS_CMPI_L_PC_D16: [MicroStep; 12] = [
-    MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
-        alu_fn: Some(latch_imm_l_hi),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_FINISH,
-    MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
-        alu_fn: Some(latch_imm_l_lo),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_FINISH,
-    MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
-        alu_fn: Some(ea::ea_calc_d16_pc),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_FINISH,
-    MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_dst_long_high),
-        alu_fn: None,
-        base_clocks: 2,
-    },
-    common::BUS_READ_IDLE,
-    common::READ_DST_LONG_LOW,
-    common::BUS_READ_IDLE,
-    MicroStep {
-        bus_fn: Some(Cpu::step_prefetch_next_read),
-        alu_fn: Some(alu_cmpi_l_mem),
-        base_clocks: 2,
-    },
-    common::BUS_READ_IDLE,
-];
-
-pub static STEPS_CMPI_L_PC_IDX: [MicroStep; 13] = [
-    MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
-        alu_fn: Some(latch_imm_l_hi),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_FINISH,
-    MicroStep {
-        bus_fn: Some(Cpu::step_fetch_extension_read),
-        alu_fn: Some(latch_imm_l_lo),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_FINISH,
-    MicroStep {
-        bus_fn: None,
-        alu_fn: Some(ea::ea_calc_idx_pc),
-        base_clocks: 2,
-    },
-    common::FETCH_EXT_READ,
-    common::FETCH_EXT_FINISH,
-    MicroStep {
-        bus_fn: Some(Cpu::step_bus_read_dst_long_high),
-        alu_fn: None,
-        base_clocks: 2,
-    },
-    common::BUS_READ_IDLE,
-    common::READ_DST_LONG_LOW,
-    common::BUS_READ_IDLE,
-    MicroStep {
-        bus_fn: Some(Cpu::step_prefetch_next_read),
-        alu_fn: Some(alu_cmpi_l_mem),
-        base_clocks: 2,
-    },
-    common::BUS_READ_IDLE,
-];
+// ============================================================================
 // Instruction Decoder Callback
 // ============================================================================
 
@@ -878,8 +717,6 @@ pub const fn decode_cmpi_steps(size: u8, mode: u8, reg: u8) -> Option<&'static [
             7 => match reg {
                 0 => Some(&STEPS_CMPI_B_ABSW),
                 1 => Some(&STEPS_CMPI_B_ABSL),
-                2 => Some(&STEPS_CMPI_B_PC_D16),
-                3 => Some(&STEPS_CMPI_B_PC_IDX),
                 _ => None,
             },
             _ => None,
@@ -894,8 +731,6 @@ pub const fn decode_cmpi_steps(size: u8, mode: u8, reg: u8) -> Option<&'static [
             7 => match reg {
                 0 => Some(&STEPS_CMPI_W_ABSW),
                 1 => Some(&STEPS_CMPI_W_ABSL),
-                2 => Some(&STEPS_CMPI_W_PC_D16),
-                3 => Some(&STEPS_CMPI_W_PC_IDX),
                 _ => None,
             },
             _ => None,
@@ -910,8 +745,6 @@ pub const fn decode_cmpi_steps(size: u8, mode: u8, reg: u8) -> Option<&'static [
             7 => match reg {
                 0 => Some(&STEPS_CMPI_L_ABSW),
                 1 => Some(&STEPS_CMPI_L_ABSL),
-                2 => Some(&STEPS_CMPI_L_PC_D16),
-                3 => Some(&STEPS_CMPI_L_PC_IDX),
                 _ => None,
             },
             _ => None,
