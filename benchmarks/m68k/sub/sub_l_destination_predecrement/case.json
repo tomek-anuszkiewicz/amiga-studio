@@ -22,6 +22,5 @@
       }
     }
   ],
-  "instructions_per_loop": 4,
-  "target_opcode_mask": "F1F8"
+  "instructions_per_loop": 4
 }

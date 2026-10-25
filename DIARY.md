@@ -5217,3 +5217,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - FAIL: Book Review contracts, five UI timeouts and two missing local math asset errors
   - Full SingleStep and hardware captures not run
   - Six CMPI PC-relative destination forms excluded because the 68000 manual permits them only on later CPUs
+---
+
+### [2026-10-25 10:02 CET] — Remove opcode-mask counting from handwritten M68000 benchmarks
+- **Affected Subsystems**:
+  - `benchmarks/m68k`
+  - `Obsidian/Amiga/Design/Performance`
+  - `.agents/skills/add-m68k-benchmark`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove target_opcode_mask from 124 existing case configurations
+  - Use the declared loop count for target reporting and observe total instructions and CPU clocks
+  - Update benchmark guidance and design specification
+- **Architectural Rationale & Trade-Offs**:
+  - A primary opcode mask can misclassify helper opcodes
+  - the authored four-target loop defines the target count
+- **Verification & Test Results**:
+  - PASS: ordinary crate and standard harness tests, English, formatting, Clippy, architecture, hardware and code quality, bootstrap, conversion, PDF, RAG, verification contracts, vault links and frontmatter, staged diff check
+  - FAIL: Book Review contracts with five UI timeouts and two missing local math-asset errors
+  - Full SingleStep and hardware captures not run

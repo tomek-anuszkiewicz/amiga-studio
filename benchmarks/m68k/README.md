@@ -30,8 +30,9 @@ The pinned assembler has no command-line symbol definition, and `rept` does
 not accept an `equ` symbol, so the runner substitutes the shared
 `{{instruction_count}}` marker before assembly. A case with several targets per
 repetition sets `instructions_per_loop`; the runner divides the shared count by
-this value. Its `target_opcode_mask` ignores register-number bits when counting
-the executed targets.
+this value. Each assembly program is measured as a separate benchmark. The
+configured target count comes from the program's declared loop structure;
+the runner observes the total executed instruction count and CPU clocks.
 
 Run from the repository root:
 
@@ -81,10 +82,11 @@ For `random_bcd_words`, two successive upper-word samples are each reduced
 modulo 100 and encoded as packed decimal bytes in one word. A single region
 can supply disjoint source and destination byte arrays for BCD operations.
 
-Before timing, the runner executes the whole program once to count target and
-helper instructions. Timed runs must retain the same instruction and clock counts;
-the runner does not calculate
-expected instruction effects or compare final registers, flags, or memory.
+Before timing, the runner executes the whole program once to count total
+instructions and CPU clocks. It reports the configured target count and derives
+the helper count by subtraction. Timed runs must retain the same instruction
+and clock counts; the runner does not calculate expected instruction effects
+or compare final registers, flags, or memory.
 Before each timed run, it restores the initial CPU and complete memory bus
 outside the timer. With the current shared settings, each of seven series
 repeats complete runs until their combined

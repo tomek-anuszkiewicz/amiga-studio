@@ -8,6 +8,5 @@
     "d7": 42299
   },
   "memory_regions": [],
-  "instructions_per_loop": 4,
-  "target_opcode_mask": "F3F8"
+  "instructions_per_loop": 4
 }

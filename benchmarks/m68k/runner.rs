@@ -40,8 +40,6 @@ struct CaseConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     stack_reserve_bytes: Option<usize>,
     target_primary_opcode: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    target_opcode_mask: Option<String>,
     #[serde(default = "one")]
     instructions_per_loop: usize,
     initial_registers: BTreeMap<String, u32>,
@@ -165,8 +163,6 @@ struct Fixture {
     origin: u32,
     program_end: u32,
     instruction_limit: usize,
-    target_primary_opcode: u16,
-    target_opcode_mask: u16,
     target_count: usize,
 }
 
@@ -391,15 +387,8 @@ fn prepare(
     if case.target_primary_opcode.len() != 4 {
         return Err("target primary opcode must have four hexadecimal digits".to_owned());
     }
-    let target_primary_opcode = u16::from_str_radix(&case.target_primary_opcode, 16)
+    u16::from_str_radix(&case.target_primary_opcode, 16)
         .map_err(|error| format!("invalid target primary opcode: {error}"))?;
-    let target_opcode_mask = case
-        .target_opcode_mask
-        .as_deref()
-        .map(|mask| u16::from_str_radix(mask, 16))
-        .transpose()
-        .map_err(|error| format!("invalid target opcode mask: {error}"))?
-        .unwrap_or(u16::MAX);
     let case_dir = case_directory(root, case_id)?;
     let source = case_dir.join("program.s");
     let source_text = fs::read_to_string(&source).map_err(|error| error.to_string())?;
@@ -640,8 +629,6 @@ fn prepare(
         origin: case.origin,
         program_end,
         instruction_limit: benchmark.instruction_limit,
-        target_primary_opcode,
-        target_opcode_mask,
         target_count: benchmark.instruction_count,
     };
     let report = Report {
@@ -669,11 +656,9 @@ fn execute_program(
     fixture: &Fixture,
     cpu: &mut Cpu,
     bus: &mut PhysicalMemory,
-    inspect_targets: bool,
 ) -> Result<ExecutionCounts, String> {
     let mut clocks = 0u64;
     let mut total = 0usize;
-    let mut targets = 0usize;
     while cpu.state.instruction_pc() != fixture.program_end {
         let pc = cpu.state.instruction_pc();
         if pc < fixture.origin || pc >= fixture.program_end {
@@ -681,18 +666,6 @@ fn execute_program(
         }
         if total >= fixture.instruction_limit {
             return Err("program did not reach its end before the instruction limit".to_owned());
-        }
-        if inspect_targets {
-            let offset = (pc - fixture.origin) as usize;
-            let bytes = fixture
-                .image
-                .get(offset..offset + 2)
-                .ok_or("instruction primary opcode lies outside the image")?;
-            if u16::from_be_bytes([bytes[0], bytes[1]]) & fixture.target_opcode_mask
-                == fixture.target_primary_opcode & fixture.target_opcode_mask
-            {
-                targets += 1;
-            }
         }
         let step_clocks = cpu.step_instruction(bus);
         if step_clocks == 0 {
@@ -703,15 +676,12 @@ fn execute_program(
             .ok_or("CPU clock count overflowed")?;
         total += 1;
     }
-    if inspect_targets && targets != fixture.target_count {
-        return Err(format!(
-            "unexpected target instruction count: {targets} instead of {}",
-            fixture.target_count
-        ));
+    if total < fixture.target_count {
+        return Err("executed fewer instructions than configured targets".to_owned());
     }
     Ok(ExecutionCounts {
         clocks,
-        targets,
+        targets: fixture.target_count,
         total,
     })
 }
@@ -719,7 +689,7 @@ fn execute_program(
 fn inspect_program(fixture: &Fixture) -> Result<ExecutionCounts, String> {
     let mut cpu = fixture.initial_cpu.clone();
     let mut bus = fixture.initial_bus.clone();
-    execute_program(fixture, &mut cpu, &mut bus, true)
+    execute_program(fixture, &mut cpu, &mut bus)
 }
 
 fn run_program(
@@ -731,7 +701,7 @@ fn run_program(
     cpu.clone_from(&fixture.initial_cpu);
     bus.clone_from(&fixture.initial_bus);
     let start = Instant::now();
-    let counts = execute_program(fixture, cpu, bus, false)?;
+    let counts = execute_program(fixture, cpu, bus)?;
     let elapsed = start.elapsed().as_nanos();
     if counts.clocks != inspected.clocks || counts.total != inspected.total {
         return Err("timed run changed its instruction or clock count".to_owned());

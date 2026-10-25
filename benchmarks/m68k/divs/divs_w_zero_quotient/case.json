@@ -1,7 +1,6 @@
 {
   "origin": 2097152,
   "target_primary_opcode": "81C0",
-  "target_opcode_mask": "F1F8",
   "initial_registers": {
     "d0": 311,
     "d1": 57,

@@ -1,7 +1,6 @@
 {
   "origin": 2097152,
   "target_primary_opcode": "E5F1",
-  "target_opcode_mask": "FFF8",
   "initial_registers": {
     "a1": 2097152,
     "a2": 2097152,

@@ -1,7 +1,6 @@
 {
   "origin": 2097152,
   "target_primary_opcode": "0273",
-  "target_opcode_mask": "FFF8",
   "initial_registers": {
     "a3": 2097152,
     "a4": 2097152,

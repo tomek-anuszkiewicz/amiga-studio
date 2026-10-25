@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-10
-updated: 2026-10-24
+updated: 2026-10-25
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](../Verification/CPU%20SingleStepTests.md)", "[Performance Profiling and Optimization Strategy.md](Performance%20Profiling%20and%20Optimization%20Strategy.md)"]
 tracked_paths:
   - "crates/test_runner/Cargo.toml"
@@ -42,7 +42,7 @@ The measured scope is deliberately bounded. Decode exceptions are excluded; lega
 
 The [assembly case catalog](../../../../benchmarks/m68k/README.md) selects instruction forms, addressing modes, and execution paths for direct workload measurements. Each case contains `program.s` and `case.json`; shared settings live in `config.json`. The [shared runner](../../../../benchmarks/m68k/runner.rs) substitutes the target count, assembles the program with the pinned external assembler, loads the entire image into Fast RAM, and restores configured CPU and memory state between complete runs. The [assembler manifest](../../../../tools/bootstrap/assembler-manifest.json) pins release and executable hashes, which the runner checks before assembly.
 
-The runner observes target, helper, and total guest instruction counts and CPU clocks before timing, then requires the timed runs to retain those counts. The measured duration includes the complete program and its helpers. Nanoseconds per target therefore describes host cost for that whole workload. These case reports do not update or compare against the tracked decoder-derived baseline and do not assert final CPU correctness against silicon.
+The runner takes the target count from each case's declared loop structure, observes the total guest instruction count and CPU clocks before timing, and derives the helper count by subtraction. Timed runs must retain the observed totals. The measured duration includes the complete program and its helpers. Nanoseconds per target therefore describes host cost for that whole workload. These case reports do not update or compare against the tracked decoder-derived baseline and do not assert final CPU correctness against silicon.
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Assembler
