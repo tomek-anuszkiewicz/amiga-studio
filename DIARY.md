@@ -5181,3 +5181,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - roadmap and diary structure checks passed
   - Test Book source hash matched source.json and current Working and Accepted book.json hashes matched
   - no source book import or generated recipe publication was run
+---
+
+### [2026-10-25 10:13 CET] — Version current Test Book recipe with source text reference
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books/test-book-example-4567/1cea0b35ee62`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the standalone LINE DRAW literal in the accepted Test Book model with page 92 block 0 characters 0 through 10
+  - Publish the current accepted 14-chapter 975-element book.json over the older one-chapter repository snapshot
+- **Architectural Rationale & Trade-Offs**:
+  - Stage 02 missed the boxed label on page 93
+  - so the recipe reuses identical source characters visible on adjacent page 92 while retaining the element's page 93 PDF region. Preserve the accepted editor state without importing or regenerating the book.
+- **Verification & Test Results**:
+  - The source PDF SHA-256 matches source.json and the published book.json is byte-identical to Accepted
+  - Working and Accepted models are semantically equal, the affected generated chapter Markdown is byte-identical, and the review server reports no pending render or error
+  - the read-only source audit reports 23122 valid references, zero issues for the corrected element, and 319 other invalid fields, so standalone reconstruction is not yet certified
+  - Book Review contracts passed in the commit profile, which still failed on 36 English vocabulary findings and one PDF conversion contract KeyError for blocks
+  - no design specification matched the book data path
