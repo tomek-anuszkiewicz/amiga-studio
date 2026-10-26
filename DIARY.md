@@ -5424,3 +5424,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: vault frontmatter and link audit (35 specifications and 691 links)
   - PASS: benchmark CSV and manifest hashes, full-run status, and 86 refreshed source rows
   - NOT RUN: new timing measurements or full SingleStep milestone suite
+---
+
+### [2026-10-26 15:27 CET] — Name physical memory address constants
+- **Affected Subsystems**:
+  - `crates/memory_bus`
+  - `crates/physical_memory`
+- **What Was Changed (The Concrete Reality)**:
+  - Named the 24-bit CPU address mask in MemoryBus
+  - named Fast and Slow RAM base addresses in PhysicalMemory handlers
+  - derived the synthetic boot SSP from the configured 512 KB Chip RAM size
+- **Architectural Rationale & Trade-Offs**:
+  - Keep repeated address values explicit and tie the fallback boot stack to the memory size it describes without changing routing behavior
+- **Verification & Test Results**:
+  - cargo test -p physical_memory -p memory_bus passed (55 integration tests)
+  - graphify update . completed with no topology changes
+  - git diff --check passed
+  - commit profile pending

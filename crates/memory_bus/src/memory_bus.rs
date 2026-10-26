@@ -27,6 +27,8 @@ pub struct MemoryBus<'a> {
 }
 
 impl<'a> MemoryBus<'a> {
+    const PHYSICAL_ADDRESS_MASK: u32 = 0x00FF_FFFF;
+
     /// Physical memory map constants decoded by Gary logic
     pub const BANK_CIA: u8 = 0xBF;
     pub const BANK_RTC: u8 = 0xDC;
@@ -398,7 +400,7 @@ impl<'a> MemoryBus<'a> {
 impl<'a> AddressBus for MemoryBus<'a> {
     #[inline(always)]
     fn read_byte(&mut self, addr: u32) -> BusResult<u8> {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & Self::PHYSICAL_ADDRESS_MASK;
         let bank = (addr >> 16) as u8;
         match bank {
             Self::BANK_CUSTOM => {
@@ -425,7 +427,7 @@ impl<'a> AddressBus for MemoryBus<'a> {
 
     #[inline(always)]
     fn read_word(&mut self, addr: u32) -> BusResult<u16> {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & Self::PHYSICAL_ADDRESS_MASK;
         let bank = (addr >> 16) as u8;
         match bank {
             Self::BANK_CUSTOM => BusResult::Ready(
@@ -456,7 +458,7 @@ impl<'a> AddressBus for MemoryBus<'a> {
 
     #[inline(always)]
     fn write_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & Self::PHYSICAL_ADDRESS_MASK;
         let bank = (addr >> 16) as u8;
         match bank {
             Self::BANK_CUSTOM => {
@@ -479,7 +481,7 @@ impl<'a> AddressBus for MemoryBus<'a> {
 
     #[inline]
     fn write_tas_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & Self::PHYSICAL_ADDRESS_MASK;
         let bank = self.mem.bank_map[(addr >> 16) as usize].bank;
         if matches!(bank, MemoryBank::ChipRam | MemoryBank::SlowRam) {
             if self.mem.chip_ram_blocked {
@@ -494,7 +496,7 @@ impl<'a> AddressBus for MemoryBus<'a> {
 
     #[inline(always)]
     fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & Self::PHYSICAL_ADDRESS_MASK;
         let bank = (addr >> 16) as u8;
         match bank {
             Self::BANK_CUSTOM => {
@@ -525,7 +527,7 @@ impl<'a> AddressBus for MemoryBus<'a> {
 
     #[inline(always)]
     fn read_word_debug(&self, addr: u32) -> u16 {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & Self::PHYSICAL_ADDRESS_MASK;
         let bank = (addr >> 16) as u8;
         match bank {
             Self::BANK_CUSTOM => {

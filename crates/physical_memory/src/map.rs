@@ -6,6 +6,9 @@
 use super::{BusResult, PhysicalMemory, OPEN_BUS_BYTE, OPEN_BUS_WORD};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+const FAST_RAM_BASE: u32 = 0x200000;
+const SLOW_RAM_BASE: u32 = 0xC00000;
+
 /// Classification of a 64 KB physical memory bank
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MemoryBank {
@@ -209,7 +212,7 @@ fn write_chip_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> BusResu
 #[inline]
 fn read_fast_ram_internal(bus: &PhysicalMemory, addr: u32) -> u8 {
     if let Some(fast_ram) = &bus.fast_ram {
-        let offset = (addr - 0x200000) as usize;
+        let offset = (addr - FAST_RAM_BASE) as usize;
         fast_ram[offset]
     } else {
         OPEN_BUS_BYTE
@@ -224,7 +227,7 @@ fn read_fast_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
 #[inline]
 fn read_fast_ram_word_internal(bus: &PhysicalMemory, addr: u32) -> u16 {
     if let Some(fast_ram) = &bus.fast_ram {
-        let offset = (addr - 0x200000) as usize;
+        let offset = (addr - FAST_RAM_BASE) as usize;
         u16::from_be_bytes([fast_ram[offset], fast_ram[offset + 1]])
     } else {
         OPEN_BUS_WORD
@@ -239,7 +242,7 @@ fn read_fast_ram_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
 #[inline]
 fn write_fast_ram_internal(bus: &mut PhysicalMemory, addr: u32, val: u8) {
     if let Some(fast_ram) = &mut bus.fast_ram {
-        let offset = (addr - 0x200000) as usize;
+        let offset = (addr - FAST_RAM_BASE) as usize;
         fast_ram[offset] = val;
     }
 }
@@ -252,7 +255,7 @@ fn write_fast_ram_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
 #[inline]
 fn write_fast_ram_word_internal(bus: &mut PhysicalMemory, addr: u32, val: u16) {
     if let Some(fast_ram) = &mut bus.fast_ram {
-        let offset = (addr - 0x200000) as usize;
+        let offset = (addr - FAST_RAM_BASE) as usize;
         let bytes = val.to_be_bytes();
         fast_ram[offset] = bytes[0];
         fast_ram[offset + 1] = bytes[1];
@@ -289,7 +292,7 @@ fn write_fast_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> BusResu
 #[inline]
 fn read_slow_ram_internal(bus: &PhysicalMemory, addr: u32) -> u8 {
     if let Some(slow_ram) = &bus.slow_ram {
-        let offset = (addr - 0xC00000) as usize;
+        let offset = (addr - SLOW_RAM_BASE) as usize;
         slow_ram[offset]
     } else {
         OPEN_BUS_BYTE
@@ -304,7 +307,7 @@ fn read_slow_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
 #[inline]
 fn read_slow_ram_word_internal(bus: &PhysicalMemory, addr: u32) -> u16 {
     if let Some(slow_ram) = &bus.slow_ram {
-        let offset = (addr - 0xC00000) as usize;
+        let offset = (addr - SLOW_RAM_BASE) as usize;
         u16::from_be_bytes([slow_ram[offset], slow_ram[offset + 1]])
     } else {
         OPEN_BUS_WORD
@@ -319,7 +322,7 @@ fn read_slow_ram_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
 #[inline]
 fn write_slow_ram_internal(bus: &mut PhysicalMemory, addr: u32, val: u8) {
     if let Some(slow_ram) = &mut bus.slow_ram {
-        let offset = (addr - 0xC00000) as usize;
+        let offset = (addr - SLOW_RAM_BASE) as usize;
         slow_ram[offset] = val;
     }
 }
@@ -332,7 +335,7 @@ fn write_slow_ram_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
 #[inline]
 fn write_slow_ram_word_internal(bus: &mut PhysicalMemory, addr: u32, val: u16) {
     if let Some(slow_ram) = &mut bus.slow_ram {
-        let offset = (addr - 0xC00000) as usize;
+        let offset = (addr - SLOW_RAM_BASE) as usize;
         let bytes = val.to_be_bytes();
         slow_ram[offset] = bytes[0];
         slow_ram[offset + 1] = bytes[1];
