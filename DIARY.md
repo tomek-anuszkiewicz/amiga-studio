@@ -5383,3 +5383,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Staged diff checked
   - commit profile pending. Full SingleStep and milestone profile not run.
+---
+
+### [2026-10-26 01:39 CET] — Publish CPU benchmark anomaly analysis and review snapshot
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `benchmarks`
+  - `Obsidian/Amiga/Design/Performance`
+- **What Was Changed (The Concrete Reality)**:
+  - Compare complete CPU runs with the approved baseline and related instruction workloads
+  - report A7 and measurement outliers
+  - publish a current snapshot with machine-readable and Markdown reports
+  - document review and baseline approval workflow
+- **Architectural Rationale & Trade-Offs**:
+  - Keep benchmark regressions and workload-specific timing differences reviewable without changing the approved baseline automatically
+- **Verification & Test Results**:
+  - PASS: 12 focused Python tests
+  - PASS: 36 vault frontmatter checks and 709 links
+  - PASS: current snapshot CSV hash and 2257 rows with matching report run IDs
+  - NOT RUN: new timing measurement or full SingleStep milestone suite

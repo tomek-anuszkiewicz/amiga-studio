@@ -165,14 +165,54 @@ same settings. Both attempts remain in the manifest, and a second disturbance
 marks the result. Execution failure is recorded as a failed case without retry.
 
 Completed runs automatically write `aggregate.json`, `aggregate.csv`,
-`anomalies.json`, `comparison.json` and a readable `report.md`. Explicit analysis regenerates those
-reports from stored data. An incomplete run cannot be analyzed or selected as
-a comparison. Only an earlier locally available, completed full run with matching host
-and settings is eligible. Each case additionally requires matching source,
-configuration, image, target count and CPU clocks. Filtered runs compare their
-measured intersection but do not become full-run references. The approved
-`m68k_benchmark_baseline` records the first complete CPU performance test run. Future
-reference changes require the reference-artifact approval procedure.
+`anomalies.json`, `comparison.json`, `baseline_comparison.json`,
+`cross_case_anomalies.json`, `a7_comparison.json` and a readable `report.md`. Explicit analysis
+regenerates those reports from stored data without measuring again. An incomplete
+run cannot be analyzed or selected as a comparison. The existing previous-run
+comparison uses the latest earlier locally available, completed full run with
+matching host and settings. Each case additionally requires matching source,
+configuration, image, target count and CPU clocks.
+
+The baseline comparison uses the approved
+`benchmarks/m68k_benchmark_baseline.json` and `.csv` directly, so it also works
+when older local run directories are unavailable. It reports new, missing,
+disturbed and incompatible cases separately from comparable timing changes.
+The cross-case report compares matched ADD/SUB, ADDI/SUBI, ADDQ/SUBQ,
+ADDA/SUBA, AND/OR, ANDI/ORI/EORI and NEG/NOT workloads. Matches require the
+same target count, CPU clocks and normalized program shape. For canonical
+addressing forms, operand size and source/destination direction are separated;
+the gap at each mode is compared with the median gap across matched modes.
+Other matched variants receive direct comparisons. The A7 report compares the
+same instruction on A7 with matching A0-A6 workloads after normalizing register
+numbers in the program. Unmatched cases remain visible in machine-readable data.
+The Markdown report lists timing deviations of at least 5% that also exceed
+their measured series spread, baseline regressions and incompatible cases,
+failed or load-disturbed measurements, and series spreads of at least 10%.
+Series-spread rows are collapsed for quick review. These diagnostic limits are
+not pass/fail gates or estimates of statistical confidence. Whole-program times
+include helpers and do not establish isolated opcode latency or CPU correctness.
+
+Only a successful, complete, default-parameter catalog run updates the
+trackable `benchmarks/m68k_benchmark_current.json` and `.csv` files. It also
+writes `m68k_benchmark_anomalies.json`, `m68k_benchmark_baseline_comparison.json`,
+`m68k_benchmark_cross_case_anomalies.json`, `m68k_benchmark_a7_comparison.json`
+and `m68k_benchmark_anomaly_report.md`
+beside them in `benchmarks/`. These are the reviewable reports to commit with
+the current snapshot. The run directory retains its own detailed copies.
+Filtered runs and shortened development runs receive reports only in their run
+directories and leave the root snapshot and reports alone. Reanalyzing an older
+run cannot replace newer root files. The approved baseline remains tracked and
+is never updated by the runner. To accept new results, inspect the root report
+and both comparison JSON files, then explicitly copy the current JSON and CSV
+pair over the baseline pair after approval under the reference-artifact
+procedure. Review the resulting Git diff; the normal commit verification and
+commit policy still apply.
+
+```powershell
+Copy-Item -LiteralPath benchmarks/m68k_benchmark_current.json -Destination benchmarks/m68k_benchmark_baseline.json
+Copy-Item -LiteralPath benchmarks/m68k_benchmark_current.csv -Destination benchmarks/m68k_benchmark_baseline.csv
+git diff -- benchmarks/m68k_benchmark_baseline.json benchmarks/m68k_benchmark_baseline.csv
+```
 
 ## Completion verification
 

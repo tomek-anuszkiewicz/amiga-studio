@@ -59,18 +59,30 @@ Each invocation creates a portable ID under `benchmarks/results/`. Its manifest
 records effective settings, selected cases, attempts, load samples, failures and
 completion status. Assembled source, binary and symbols remain disposable under
 `.agent/tmp/benchmarks/cpu_performance_tests/`. Completed runs automatically produce
-aggregate JSON/CSV, anomaly findings, previous-run comparison and a readable report. Explicit
-analysis regenerates those reports from the stored measurements without timing.
+aggregate JSON/CSV, anomaly findings, previous-run and approved-baseline
+comparisons, related-case comparisons and a readable report. Explicit analysis
+regenerates those reports from the stored measurements without timing.
 An incomplete run is ineligible for analysis and comparison.
 
-The anomaly report records every series spread without a cutoff, plus persistent
-host load and failed executions. These findings are diagnostic, not correctness gates. A
-filtered run compares only its measured intersection. Its reference is the
-latest earlier locally available, completed full run with matching host and settings;
-a case additionally needs matching source, configuration, image, target count
-and observed CPU clocks. Missing or incompatible rows are explicit. Raw timing
-changes are reported without NOP adjustment. Thresholds for future anomaly
-rules remain a separate decision.
+The machine-readable anomaly data records every series spread without a cutoff, plus persistent
+host load and failed executions. A filtered run compares only its measured
+intersection. The previous-run reference is the latest earlier locally available,
+completed full run with matching host and settings; a case additionally needs
+matching source, configuration, image, target count and observed CPU clocks.
+The approved-baseline comparison reads the tracked JSON/CSV pair and reports
+missing, new, disturbed and incompatible cases separately from timing changes.
+Related-case analysis compares matching arithmetic, logical and unary instruction
+pairs with equal target counts, CPU clocks and program shape. Canonical addressing
+forms are grouped by operand size and source/destination direction. The median
+instruction gap across matched forms identifies unusual mode-specific gaps;
+register and special-path variants receive direct comparisons. A separate A7
+analysis compares each stack-pointer workload with matching A0-A6 workloads of
+the same instruction and program shape. The Markdown report lists only findings:
+baseline regressions and incompatible cases, instruction and mode outliers, A7
+outliers, and unstable or failed measurements. The JSON files retain all
+comparisons and skipped cases.
+The 5% timing and 10% series-spread limits are review signals, not correctness
+gates; whole-program timing includes helpers. Raw changes have no NOP adjustment.
 
 The approved [JSON](../../../../benchmarks/m68k_benchmark_baseline.json) and
 [CSV](../../../../benchmarks/m68k_benchmark_baseline.csv) baseline record the
@@ -79,10 +91,13 @@ of at least 400 ms, and the minimum whole-program nanoseconds per target. Its
 source run and manifest are retained only on the measuring host under the
 ignored `benchmarks/results/`. The former decoder-derived baseline is retained
 in Git history; its cases and NOP control
-policy are incompatible with this catalog. Later comparisons use an earlier
-locally available compatible full run, with the baseline files serving as the approved
-reference snapshot. Future baseline corrections follow the
-[reference-artifact approval procedure](../../../../.agents/rules/spec-compliance.md).
+policy are incompatible with this catalog. A successful complete run with
+default settings writes trackable `m68k_benchmark_current.json` and `.csv`,
+four machine-readable anomaly reports and `m68k_benchmark_anomaly_report.md`
+beside the approved baseline. Filtered and shortened runs cannot replace these
+root artifacts. The runner never updates the approved files. Baseline
+replacement requires manual review of the current snapshot and reports, followed
+by the [reference-artifact approval procedure](../../../../.agents/rules/spec-compliance.md).
 The [decoder inventory](../../../../crates/test_runner/benches/bench_instructions/inventory.rs)
 remains available to the separate coverage audit; it is not a measurement path.
 

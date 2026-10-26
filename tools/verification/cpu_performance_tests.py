@@ -12,10 +12,15 @@ from pathlib import Path
 
 import psutil
 
+from benchmark_anomalies import (compare_a7, compare_baseline, compare_related, load_snapshot,
+                                 publish_current, publish_reports, report_lines,
+                                 snapshot_from_run)
 from repository import REPO_ROOT
 
 CASES = REPO_ROOT / "benchmarks/m68k"
 RESULTS = REPO_ROOT / "benchmarks/results"
+BASELINE = REPO_ROOT / "benchmarks/m68k_benchmark_baseline.json"
+CURRENT = REPO_ROOT / "benchmarks/m68k_benchmark_current.json"
 LOAD_LIMIT_PERCENT = 20.0
 SAMPLE_SECONDS = 0.02
 
@@ -283,28 +288,55 @@ def analyze(run_dir):
                in manifest["cases"].items() if case["status"] == "failed"]})
     write_json(run_dir / "anomalies.json", anomalies)
     write_json(run_dir / "comparison.json", {"cases": comparisons})
-    with (run_dir / "aggregate.csv").open("w", newline="", encoding="utf-8") as target:
+    aggregate_csv_path = run_dir / "aggregate.csv"
+    with aggregate_csv_path.open("w", newline="", encoding="utf-8") as target:
         fields = ("case_id", "ns_per_target", "target_count", "cpu_clocks", "fingerprint", "disturbed")
         target.write(",".join(fields) + "\n")
         for row in rows:
             target.write(",".join(str(row[field]) for field in fields) + "\n")
+    snapshot = snapshot_from_run(manifest, rows, aggregate_csv_path.read_bytes(),
+                                 (run_dir / "manifest.json").read_bytes())
+    baseline_comparison = compare_baseline(load_snapshot(BASELINE), snapshot,
+                                           None if manifest["full_catalog"] else
+                                           manifest["selected_cases"])
+    related = compare_related(rows, CASES)
+    a7 = compare_a7(rows, CASES)
+    write_json(run_dir / "baseline_comparison.json", baseline_comparison)
+    write_json(run_dir / "cross_case_anomalies.json", related)
+    write_json(run_dir / "a7_comparison.json", a7)
     statuses = Counter(row["status"] for row in comparisons)
     spreads = [row["range_pct"] for row in anomalies["series_spread"]]
+    anomaly_lines = ["## Current-run anomalies", "",
+                     f"Failed cases: {len(anomalies['failures'])}",
+                     f"Persistent host-load disturbances: {len(anomalies['load_disturbances'])}",
+                     f"Largest observed series spread: {max(spreads):.2f}%" if spreads else
+                     "Series spread: no successful cases", ""]
+    anomaly_lines.extend(f"- {row['case_id']}: {row['finding']}" for category in
+                         ("failures", "load_disturbances") for row in anomalies[category])
     lines = ["# M68000 Benchmark Run", "", f"Run: `{manifest['run_id']}`", "",
              f"Measured cases: {len(rows)} of {len(manifest['selected_cases'])}",
              f"Series: {manifest['settings']['series']}; duration: "
              f"{manifest['settings']['duration_ms']} ms of timed execution per series", "",
-             "## Current-run anomalies", "",
-             f"Failed cases: {len(anomalies['failures'])}",
-             f"Persistent host-load disturbances: {len(anomalies['load_disturbances'])}",
-             f"Largest observed series spread: {max(spreads):.2f}%" if spreads else
-             "Series spread: no successful cases", ""]
-    lines.extend(f"- {row['case_id']}: {row['finding']}" for category in
-                 ("failures", "load_disturbances") for row in anomalies[category])
+             *anomaly_lines]
     lines.extend(["", "## Previous-run comparison", ""])
     lines.extend(f"- {status}: {count}" for status, count in sorted(statuses.items()))
     lines.extend(["", "Raw per-case timing changes and compatibility reasons are in `comparison.json`.",
                   "Series spread values are in `anomalies.json`; no spread threshold is applied.", ""])
+    lines.extend(report_lines(baseline_comparison, related, a7, anomalies))
+    shared = json.loads((CASES / "config.json").read_text(encoding="utf-8"))
+    publishable = (manifest["full_catalog"] and not anomalies["failures"] and
+                   set(manifest["selected_cases"]) == set(catalog()) and
+                   len(rows) == len(manifest["selected_cases"]) and
+                   manifest["settings"]["duration_ms"] == shared["target_series_ms"] and
+                   manifest["settings"]["series"] == shared["series"])
+    if publishable:
+        updated = publish_current(CURRENT, snapshot, aggregate_csv_path.read_bytes())
+        if updated:
+            publish_reports(CURRENT.parent, manifest["run_id"], anomalies,
+                            baseline_comparison, related, a7)
+        lines.extend(["", f"Current snapshot: {'updated' if updated else 'kept a newer full run'}."])
+    else:
+        lines.extend(["", "Current snapshot: unchanged (this is not a successful default full-catalog run)."])
     (run_dir / "report.md").write_bytes("\n".join(lines).encode("utf-8"))
     print(f"Analyzed {len(rows)} measured cases; "
           f"{len(anomalies['load_disturbances']) + len(anomalies['failures'])} anomaly findings; "

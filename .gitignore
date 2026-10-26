@@ -35,7 +35,7 @@ __pycache__/
 /tests/benchmarks/quick/
 /tests/benchmarks/standard/
 /tests/benchmarks/thorough/
-# Local CPU performance test runs; approved baselines remain tracked.
+# Local CPU performance test runs; root snapshots and reports remain trackable.
 /benchmarks/results/
 
 # ------------------------------------------------------------------------------

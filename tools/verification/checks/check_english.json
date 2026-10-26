@@ -27,6 +27,13 @@
   "excluded_files": [
     "benchmarks/m68k_benchmark_baseline.csv",
     "benchmarks/m68k_benchmark_baseline.json",
+    "benchmarks/m68k_benchmark_current.csv",
+    "benchmarks/m68k_benchmark_current.json",
+    "benchmarks/m68k_benchmark_anomalies.json",
+    "benchmarks/m68k_benchmark_baseline_comparison.json",
+    "benchmarks/m68k_benchmark_cross_case_anomalies.json",
+    "benchmarks/m68k_benchmark_a7_comparison.json",
+    "benchmarks/m68k_benchmark_anomaly_report.md",
     "tools/verification/checks/check_english.json",
     "tools/bootstrap/book-to-markdown/package-lock.json"
   ],
