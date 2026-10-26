@@ -7,7 +7,7 @@ import threading
 import unittest
 
 from PIL import Image
-from playwright.sync_api import sync_playwright
+from browser_session import browser_page
 
 REVIEW = Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown'
 sys.path.insert(0, str(REVIEW))
@@ -37,9 +37,7 @@ class VisibilityReviewTest(unittest.TestCase):
             worker.start()
             http.start()
             try:
-                with sync_playwright() as playwright:
-                    browser = playwright.chromium.launch(channel='msedge')
-                    page = browser.new_page(viewport={'width': 1600, 'height': 950})
+                with browser_page(viewport={'width': 1600, 'height': 950}) as page:
                     errors = []
                     page.on('pageerror', lambda error: errors.append(str(error)))
                     page.goto(f'http://127.0.0.1:{server.server_port}/')
@@ -281,7 +279,6 @@ class VisibilityReviewTest(unittest.TestCase):
                         self.assertTrue(page.locator('#' + action).is_enabled())
                     self.assertFalse(page.locator('#menu-merge').is_enabled())
                     self.assertEqual(errors, [])
-                    browser.close()
             finally:
                 state.stopping.set()
                 with state.condition:

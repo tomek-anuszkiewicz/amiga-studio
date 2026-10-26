@@ -9,6 +9,8 @@ let lastLogical = null, publishing = false;
 
 const showHidden = document.getElementById("show-hidden");
 const showTypes = document.getElementById("show-types");
+const showSourceDifferences = document.getElementById("show-source-differences");
+let sourceFindingsRevision=null;
 const typeLabelContext=document.createElement("canvas").getContext("2d");
 const bookActionsButton = document.getElementById("book-actions");
 const bookMenu = document.getElementById("book-menu");
@@ -29,8 +31,6 @@ const markdownSecond = document.getElementById("markdown-second");
 const codexDialog = document.getElementById("codex-dialog");
 const sourceCleanupDialog = document.getElementById("source-cleanup-dialog");
 let sourceCleanupReport=null;
-const sourceCleanupExceptionDialog = document.getElementById("source-cleanup-exception-dialog");
-let sourceCleanupExceptionId=null;
 let codexCommand=null, codexRunning=false, codexScope="element";
 let codexAutoCloseJob=null, codexAutoClosePending=false;
 let textCommand=null, splitting=false, merging=false, activeText=markdownText;
@@ -423,14 +423,16 @@ function imageHolder(image, width, height, className) {
   holder.append(img); return holder;
 }
 function typeLabel(element) {
-  const type=element.type === "heading" ? `heading ${element.heading_level}` : element.type.replaceAll("_"," ");
-  return element.role ? `${type} · ${element.role}` : type;
+  return element.type === "heading" ? `heading ${element.heading_level}` : element.type.replaceAll("_"," ");
 }
 function overlay(holder, id, bbox, width, height, pane, source = null) {
   if (height <= 0) return;
   const node = document.createElement("div"); node.className = "overlay";
   node.dataset.id = id;
-  if(source) node.dataset.typeLabel=typeLabel(source.element);
+  if(source) {
+    node.dataset.typeLabel=typeLabel(source.element);
+    if(source.element.role)node.dataset.roleLabel=source.element.role;
+  }
   boxStyle(node,bbox,width,height); holder.append(node);
   nodes[pane].push({id, node, source});
   bindElement(node,id,pane);
@@ -442,11 +444,24 @@ function positionTypeLabels() {
     const page=node.closest(".page").getBoundingClientRect(), box=node.getBoundingClientRect();
     const right=page.right-box.right-3, left=box.left-page.left-3;
     const needed=typeLabelContext.measureText(node.dataset.typeLabel).width+10;
-    const below=Math.max(left,right)<24;
-    const useLeft=!below && right<needed && left>right;
+    const roleNeeded=node.dataset.roleLabel ? typeLabelContext.measureText(node.dataset.roleLabel).width+10 : 0;
+    const below=right<needed && left<needed;
+    const useLeft=!below && right<needed;
+    const belowSpace=page.right-box.left;
+    const side=below ? belowSpace : useLeft ? left : right;
+    const roleInline=!!roleNeeded && side>=needed+3+roleNeeded;
+    const roleUnderType=!!roleNeeded && !below && !roleInline && side>=roleNeeded;
     node.classList.toggle("type-label-left",useLeft);
     node.classList.toggle("type-label-below",below);
-    node.style.setProperty("--type-label-space",`${Math.max(0,below ? page.width : useLeft ? left : right)}px`);
+    node.classList.toggle("role-label-inline",roleInline);
+    node.classList.toggle("role-label-under-type",roleUnderType);
+    node.classList.toggle("role-label-below",!!roleNeeded && !roleInline && !roleUnderType);
+    node.style.setProperty("--type-label-space",`${Math.max(0,side)}px`);
+    node.style.setProperty("--type-label-width",`${needed}px`);
+    const roleBelowLeft=!below && !useLeft ? Math.max(0,Math.min(box.width+3,belowSpace-roleNeeded)) : 0;
+    node.style.setProperty("--role-below-left",`${roleBelowLeft}px`);
+    node.style.setProperty("--role-label-space",`${Math.max(0,roleInline ? side-needed-3 :
+      roleUnderType ? side : belowSpace-roleBelowLeft)}px`);
   }
 }
 function elementPage(node, id, pane, y) {
@@ -489,6 +504,77 @@ function bindElement(node, id, pane) {
     selectedPane = pane; selectedPage=elementPage(node,id,pane,event.clientY); closeMenu();
   });
 }
+function differenceTextNodes(node) {
+  const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);
+  const textNodes=[];
+  let current;
+  while((current=walker.nextNode())) {
+    if(!current.parentElement?.closest('.katex-mathml'))textNodes.push(current);
+  }
+  return textNodes;
+}
+function differenceText(node) {
+  return differenceTextNodes(node).map(textNode=>textNode.textContent).join('');
+}
+function differenceOffset(node, mark) {
+  if(!mark?.needle)return -1;
+  const content=differenceText(node);
+  let position=-1;
+  for(let index=0;index<=mark.occurrence;index++) {
+    position=content.indexOf(mark.needle,position+1);
+    if(position<0)return -1;
+  }
+  return position+mark.within_needle;
+}
+function wrapDifference(node, start, text, kind, title) {
+  if(start<0 || !text)return null;
+  const textNodes=differenceTextNodes(node);
+  if(textNodes.map(textNode=>textNode.textContent).join('').slice(start,start+text.length)!==text)return null;
+  let position=0, firstMarker=null;
+  for(const current of textNodes) {
+    const end=position+current.length;
+    const left=Math.max(start,position), right=Math.min(start+text.length,end);
+    if(left<right) {
+      const fragment=current.splitText(left-position);
+      fragment.splitText(right-left);
+      const marker=document.createElement("span");
+      marker.className=`source-diff-${kind}`;
+      marker.title=title;
+      fragment.replaceWith(marker);
+      marker.append(fragment);
+      firstMarker ||= marker;
+    }
+    position=end;
+  }
+  return firstMarker;
+}
+function annotateSourceDifferences(node, element) {
+  const marks=(element?.source_differences || []).map(mark=>({...mark,position:differenceOffset(node,mark)}));
+  for(const mark of marks.sort((a,b)=>b.position-a.position)) {
+    if(mark.position<0)continue;
+    const title=mark.kind==="correction" ? `PDF text: ${mark.source_text} → Working: ${mark.text}` :
+      `No PDF text reference: ${mark.text}`;
+    wrapDifference(node,mark.position,mark.text,mark.kind,title);
+  }
+}
+async function loadSourceFindings() {
+  const revision=state?.authored_revision;
+  if(!showSourceDifferences.checked || !revision || state.pending || revision===sourceFindingsRevision)return;
+  const report=await post("/api/source-cleanup/preview",{expected_revision:revision});
+  if(!showSourceDifferences.checked || state?.authored_revision!==revision)return;
+  for(const item of report.findings) {
+    if(item.token?.startsWith("{{accepted text="))continue;
+    const node=nodes.working.find(entry=>entry.id===item.element_id)?.node;
+    if(node)wrapDifference(node,differenceOffset(node,item),item.literal,"unanchored",
+                           `No PDF text reference: ${item.literal}`);
+  }
+  sourceFindingsRevision=revision;
+}
+showSourceDifferences.addEventListener("change",()=>{
+  for(const content of panes.working.querySelectorAll(".chapter-content"))
+    content.classList.toggle("show-source-differences",showSourceDifferences.checked);
+  if(showSourceDifferences.checked)loadSourceFindings().catch(error=>showError(error.message));
+});
 async function buildMarkdown(version, snapshot) {
   const index = elementIndex(snapshot), entries = [];
   const stage = document.createElement("div"); stage.className = "render-stage";
@@ -508,6 +594,7 @@ async function buildMarkdown(version, snapshot) {
     const chapter = snapshot.chapters.find(c => c.id === layout.id);
     const section = document.createElement("div"); section.dataset.chapter = layout.id;
     const content = document.createElement("div"); content.className = "chapter-content";
+    if(version === "working")content.classList.toggle("show-source-differences",showSourceDifferences.checked);
     if (chapter) {
       const toggle = document.createElement("button"); toggle.className = "chapter-toggle";
       toggle.textContent = `${collapsed.has(layout.id) ? "▸" : "▾"} ${chapterTitle(chapter)}`;
@@ -519,6 +606,13 @@ async function buildMarkdown(version, snapshot) {
     }
     // Shadow DOM isolates book typography/tables from the application's controls.
     const shadow = content.attachShadow({mode:"open"});
+    if(version === "working") {
+      const style=document.createElement("style");
+      style.textContent=`:host(.show-source-differences) .source-diff-correction { background: #ffe68a; box-shadow: inset 0 -2px #ba8200; }
+        :host(.show-source-differences) .source-diff-unanchored { background: #b9e7fa; box-shadow: inset 0 -2px #187999; }
+        .source-diff-focus { background: #ffb45d !important; outline: 2px solid #c85a00; }`;
+      shadow.append(style);
+    }
     for (const url of [new URL("document.css", response.url).href, "/katex/katex.min.css"]) {
       const link = document.createElement("link"); link.rel = "stylesheet"; link.href = url;
       waitFor(new Promise((resolve,reject) => {
@@ -536,6 +630,7 @@ async function buildMarkdown(version, snapshot) {
       const id = node.dataset.element;
       if (index.has(id) || id === "generated-toc") {
         bindElement(node,id,version); entries.push({id,node,source:null,element:index.get(id)?.element});
+        if(version === "working")annotateSourceDifferences(node,index.get(id)?.element);
       }
     }
     for (const link of documentRoot.querySelectorAll("a[href]")) {
@@ -881,6 +976,8 @@ async function refresh() {
             }
           }
           highlight();
+          if(versions.includes("working"))sourceFindingsRevision=null;
+          if(showSourceDifferences.checked)loadSourceFindings().catch(error=>showError(error.message));
           if(!pdfPageRestored)restorePdfPage();
         } finally {publishing=false;for(const item of prepared) item.stage.remove();}
         const chapter=document.getElementById("chapter"), old=chapter.value;chapter.replaceChildren(new Option("Choose…",""));
@@ -1041,38 +1138,48 @@ async function openSourceCleanup() {
       } else {
         const description=document.createElement("span");
         description.textContent=`${item.element_id}: ${item.literal} — ${item.reason}`;
-        const accept=document.createElement("button");accept.type="button";
-        accept.textContent="Accept exception";
-        accept.onclick=()=>{
-          sourceCleanupExceptionId=item.id;
-          document.getElementById("source-cleanup-exception-target").textContent=`${item.element_id}: ${item.literal}`;
-          for(const id of ["source-cleanup-exception-note","source-cleanup-exception-source","source-cleanup-exception-corrected"])
-            document.getElementById(id).value="";
-          document.getElementById("source-cleanup-exception-error").hidden=true;
-          sourceCleanupExceptionDialog.showModal();
+        row.append(description);
+        if(item.token === item.literal) {
+          const accept=document.createElement("button");accept.type="button";
+          accept.textContent="Accept literal";
+          accept.onclick=async()=>{
+            accept.disabled=true;
+            try {
+              await post("/api/source-cleanup/accept-literal",
+                         {expected_revision:sourceCleanupReport.revision,finding_id:item.id});
+              sourceCleanupDialog.close();await refresh();
+            } catch(failure) {error.textContent=failure.message;error.hidden=false;}
+            finally {accept.disabled=false;}
+          };
+          row.append(document.createTextNode(" "),accept);
+        }
+      }
+      if(item.context) {
+        const context=document.createElement("small");
+        context.className="source-cleanup-context";
+        context.textContent=item.context;
+        row.append(context);
+      }
+      if(elementIndex(state.working).has(item.element_id)) {
+        const locate=document.createElement("a");locate.href="#";
+        locate.textContent="Show in book";
+        locate.onclick=event=>{
+          event.preventDefault();
+          sourceCleanupDialog.close();navigate(item.element_id);
+          const target=nodes.working.find(entry=>entry.id===item.element_id)?.node;
+          if(target) {
+            const position=differenceOffset(target,item);
+            const marker=wrapDifference(target,position,item.literal,"focus",`Source finding: ${item.literal}`);
+            marker?.scrollIntoView({block:"center"});
+          }
         };
-        row.append(description,document.createTextNode(" "),accept);
+        row.append(locate);
       }
       findings.append(row);
     }
   } catch(failure) {summary.textContent="Search failed.";error.textContent=failure.message;error.hidden=false;}
 }
 document.getElementById("source-cleanup-close").onclick=()=>sourceCleanupDialog.close();
-document.getElementById("source-cleanup-exception-cancel").onclick=()=>sourceCleanupExceptionDialog.close();
-document.getElementById("source-cleanup-exception-save").onclick=async()=>{
-  const note=document.getElementById("source-cleanup-exception-note").value.trim();
-  const source_text=document.getElementById("source-cleanup-exception-source").value.trim();
-  const corrected_text=document.getElementById("source-cleanup-exception-corrected").value.trim();
-  const error=document.getElementById("source-cleanup-exception-error");
-  if(!note){error.textContent="Explain why this literal is an exception.";error.hidden=false;return;}
-  const button=document.getElementById("source-cleanup-exception-save");button.disabled=true;
-  try {
-    await post("/api/source-cleanup/exception",{expected_revision:sourceCleanupReport.revision,
-      finding_id:sourceCleanupExceptionId,note,source_text,corrected_text});
-    sourceCleanupExceptionDialog.close();sourceCleanupDialog.close();await refresh();
-  } catch(failure) {error.textContent=failure.message;error.hidden=false;}
-  finally {button.disabled=false;}
-};
 document.getElementById("source-cleanup-select-all").onclick=()=>{
   for(const input of sourceCleanupDialog.querySelectorAll("#source-cleanup-findings input[type=checkbox]"))input.checked=true;
 };

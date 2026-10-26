@@ -13,7 +13,8 @@ stages:
 
 llm:
   # Maximum simultaneous page/table requests within one stage invocation.
-  concurrency: 4
+  concurrency: 1
+  post_request_delay_seconds: 60
   stages:
     03_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     05_transform_page_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

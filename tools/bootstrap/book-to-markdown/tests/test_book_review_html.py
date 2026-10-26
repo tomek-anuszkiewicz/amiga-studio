@@ -48,6 +48,51 @@ class SnapshotRenderer:
 
 
 class RenderRecoveryTest(unittest.TestCase):
+    def test_working_mutation_wakes_renderer_without_poll_delay(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            book = {"toc": {"depth": 2}, "chapters": [
+                {"id": "c", "title": "Chapter", "markdown_file": "chapter.md", "elements": [
+                    {"id": "p", "type": "prose", "md_text": "Initial", "pdf_regions": [], "role": None}]}]}
+            renderer = SnapshotRenderer()
+            for version in ("working", "accepted"):
+                directory = root / version
+                write_json(directory / "book.json", book)
+                data, assets, fingerprint = load_input(directory)
+                write_json(directory / "rendered.json", renderer.render(directory, data, assets, fingerprint, None))
+            state = ReviewState(root)
+            scanned = threading.Event()
+            rendered = threading.Event()
+            original_load = state.input_cache.load
+
+            def observed_load(directory, *args):
+                result = original_load(directory, *args)
+                if directory == root / "working" and threading.current_thread() is worker:
+                    scanned.set()
+                return result
+
+            class RecordingRenderer(SnapshotRenderer):
+                def render(self, *args):
+                    result = super().render(*args)
+                    rendered.set()
+                    return result
+
+            with patch("review.service.Renderer", RecordingRenderer), patch.object(
+                    state.input_cache, "load", side_effect=observed_load):
+                worker = threading.Thread(target=state.render_loop)
+                worker.start()
+                try:
+                    self.assertTrue(scanned.wait(2), "Renderer did not scan Working")
+                    revision = load_input(root / "working")[2]
+                    state.mutate(revision, lambda current: current["chapters"][0]["elements"][0].update(
+                        md_text="Changed"))
+                    self.assertTrue(rendered.wait(0.3), "Working mutation waited for the periodic poll")
+                finally:
+                    state.stopping.set()
+                    with state.condition:
+                        state.condition.notify_all()
+                    worker.join(5)
+
     def test_failed_main_book_update_restores_accepted(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

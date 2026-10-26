@@ -6,7 +6,9 @@ import re
 
 from .model import read_json
 from .source_validation import validate_book
-from .text_recipe import REFERENCE
+from .text_recipe import (ACCEPTED, REFERENCE, accepted_literal,
+                          attach_adjacent_corrections, difference_locator,
+                          resolve_template)
 
 
 WORDS = re.compile(r'(?u)[^\W_]+(?:[ \t]+[^\W_]+)*[.,:;!?]*')
@@ -17,14 +19,17 @@ def _literal_spans(template):
     """Ignore references and markup while retaining offsets in the recipe."""
     masked = list(template)
     for match in REFERENCE.finditer(template):
-        masked[match.start():match.end()] = ' ' * len(match[0])
+        masked[match.start():match.end()] = '\0' * len(match[0])
+    accepted = list(ACCEPTED.finditer(template))
+    for match in accepted:
+        masked[match.start():match.end()] = '\0' * len(match[0])
     for match in TAG.finditer(template):
-        masked[match.start():match.end()] = ' ' * len(match[0])
-    for match in WORDS.finditer(''.join(masked)):
-        yield match.start(), match.end(), template[match.start():match.end()]
+        masked[match.start():match.end()] = '\0' * len(match[0])
+    yield from ((match.start(), match.end(), match[0], match[0])
+                for match in WORDS.finditer(''.join(masked)))
 
 
-def preview(book, workspace):
+def preview(book, workspace, selected_paths=None):
     """Return matches and unresolved literals without changing book data."""
     directory = workspace / '02_preprocess'
     pages = {}
@@ -53,17 +58,24 @@ def preview(book, workspace):
                            chapter['id'], element['id'], 'md_text', element.get('md_text'),
                            {region['page'] for region in element.get('pdf_regions', [])}))
         for path, chapter_id, element_id, field, template, anchors in fields:
+            if selected_paths is not None and path not in selected_paths:
+                continue
             if not isinstance(template, str):
                 continue
             anchors = set(anchors)
             anchors.update(int(match[1]) for match in REFERENCE.finditer(template))
+            text_pages = {page: blocks(page) for page in anchors}
+            try:
+                display = resolve_template(template, text_pages)
+            except ValueError:
+                display = None
             candidate_pages = sorted({page + delta for page in anchors for delta in (-1, 0, 1)
                                       if page + delta > 0})
             audited_words = audited.get((chapter_id, element_id, field), set())
             references = list(REFERENCE.finditer(template))
             cursors = {}
             occurrences = {}
-            for start, end, literal in _literal_spans(template):
+            for start, end, literal, token in _literal_spans(template):
                 words = literal.rstrip('.,:;!?')
                 # Subscript and superscript digits express notation around a PDF
                 # reference; they are not standalone words to bind to OCR text.
@@ -87,7 +99,17 @@ def preview(book, workspace):
                 if anchor in exceptions:
                     continue
                 entry = {'path': path, 'element_id': element_id or chapter_id, 'literal': literal,
+                         'token': token,
                          'offsets': [start, end], 'anchor': anchor}
+                if display is not None:
+                    try:
+                        offset = len(resolve_template(template[:start], text_pages))
+                        entry['context'] = (display[max(0, offset - 45):offset] +
+                                            '[' + literal + ']' +
+                                            display[offset + len(literal):offset + len(literal) + 45])
+                        entry.update(difference_locator(display, offset, literal))
+                    except ValueError:
+                        pass
                 entry['id'] = anchor
                 found = []
                 pattern = r'(?<!\w)' + re.escape(words) + r'(?!\w)'
@@ -190,11 +212,86 @@ def preview(book, workspace):
                         entry.update(status='matched', page=page, block=block['block_id'],
                                      chars=[match.start(), source_end],
                                      source_text=source[match.start():source_end],
-                                     reference=reference)
+                                     reference=reference,
+                                     local_match=(len(words) == 1 or matches[0] in anchored))
                         identity = [path, start, end, literal, reference, entry['source_text']]
                         entry['id'] = hashlib.sha256(json.dumps(identity, ensure_ascii=False).encode()).hexdigest()
                 results.append(entry)
     return results
+
+
+def reconcile_working(book, original, workspace):
+    """Align changed Working fields without republishing Accepted content."""
+    old_elements = {element['id']: element for chapter in original['chapters']
+                    for element in chapter['elements']}
+    old_chapters = {chapter['id']: chapter for chapter in original['chapters']}
+    changed = set()
+    def has_source(pages):
+        return any((workspace / '02_preprocess' / f'page_{page:04d}.json').is_file()
+                   for page in pages)
+    for chapter_index, chapter in enumerate(book['chapters']):
+        previous = old_chapters.get(chapter['id'])
+        title_pages = {region['page'] for element in chapter['elements'][:1]
+                       for region in element.get('pdf_regions', [])}
+        title_pages.update(int(ref[1]) for ref in REFERENCE.finditer(chapter['title']))
+        if ((previous is None or chapter['title'] != previous['title']) and
+                has_source(title_pages)):
+            changed.add(f'/chapters/{chapter_index}/title')
+        for element_index, element in enumerate(chapter['elements']):
+            if 'md_text' not in element:
+                continue
+            previous = old_elements.get(element['id'])
+            if previous is None or element['md_text'] != previous.get('md_text'):
+                pages = {region['page'] for region in element.get('pdf_regions', [])}
+                pages.update(int(ref[1]) for ref in REFERENCE.finditer(element['md_text']))
+                if not has_source(pages):
+                    continue
+                path = f'/chapters/{chapter_index}/elements/{element_index}/md_text'
+                changed.add(path)
+                pages = {int(ref[1]) for ref in REFERENCE.finditer(element['md_text'])}
+                blocks = {}
+                for page in pages:
+                    source = workspace / '02_preprocess' / f'page_{page:04d}.json'
+                    if source.is_file():
+                        blocks[page] = read_json(source)['blocks']
+                element['md_text'] = attach_adjacent_corrections(element['md_text'], blocks)
+    if not changed:
+        return
+    while True:
+        report = preview(book, workspace, changed)
+        by_path = {}
+        for item in report:
+            path = item['path']
+            parts = path.split('/')
+            chapter = book['chapters'][int(parts[2])]
+            element = chapter['elements'][int(parts[4])] if len(parts) == 6 else None
+            anchors = ({region['page'] for region in element.get('pdf_regions', [])}
+                       if element else set())
+            template = (element or chapter)[parts[-1]]
+            anchors.update(int(ref[1]) for ref in REFERENCE.finditer(template))
+            replacement = None
+            if (item['status'] == 'matched' and item['local_match'] and item['page'] in anchors and
+                    item['source_text'] == item['literal']):
+                replacement = item['reference']
+            elif item['token'] == item['literal']:
+                replacement = accepted_literal(item['literal'])
+            if replacement is not None:
+                by_path.setdefault(path, []).append((item['offsets'], item['token'], replacement))
+        if not by_path:
+            return
+        for path, edits in by_path.items():
+            parts = path.split('/')
+            target = book['chapters'][int(parts[2])]
+            if len(parts) == 6:
+                target = target['elements'][int(parts[4])]
+            field = parts[-1]
+            template = target[field]
+            for (start, end), token, replacement in sorted(edits, reverse=True):
+                if template[start:end] != token:
+                    raise ValueError(f'Working text changed during source alignment at {path}:{start}:{end}: '
+                                     f'{template[start:end][:120]!r} != {token[:120]!r}')
+                template = template[:start] + replacement + template[end:]
+            target[field] = template
 
 
 def accept_exception(book, report, finding_id, note, source_text='', corrected_text=''):
@@ -218,6 +315,24 @@ def accept_exception(book, report, finding_id, note, source_text='', corrected_t
     book.setdefault('source_cleanup_exceptions', []).append(entry)
 
 
+def accept_literal(book, report, finding_id):
+    """Record baseline content without hiding its missing source address."""
+    finding = next((item for item in report if item['id'] == finding_id and
+                    item['status'] != 'matched' and item['token'] == item['literal']), None)
+    if finding is None:
+        raise ValueError('Select one current unanchored literal')
+    parts = finding['path'].split('/')
+    target = book['chapters'][int(parts[2])]
+    if len(parts) == 6:
+        target = target['elements'][int(parts[4])]
+    field = parts[-1]
+    start, end = finding['offsets']
+    template = target[field]
+    if template[start:end] != finding['literal']:
+        raise ValueError('Working text changed after the source preview')
+    target[field] = template[:start] + accepted_literal(finding['literal']) + template[end:]
+
+
 def apply(book, report, selections):
     """Apply only proposals named in a freshly recomputed preview."""
     matched = {item['id']: item
@@ -239,7 +354,7 @@ def apply(book, report, selections):
         template = target[field]
         for entry in sorted(entries, key=lambda item: item['offsets'][0], reverse=True):
             start, end = entry['offsets']
-            if template[start:end] != entry['literal']:
+            if template[start:end] != entry['token']:
                 raise ValueError('Working text changed after the source preview')
             template = template[:start] + entry['reference'] + template[end:]
         target[field] = template

@@ -1,6 +1,7 @@
 """Shared calls, completion handling, response caching and metrics."""
 
 import json
+import math
 import os
 from pathlib import Path
 import time
@@ -9,6 +10,7 @@ from .cache import ResponseCache, identity
 from .config import selection
 from .transport import CodexTransport
 from .metrics import record
+from .trace import trace
 
 
 _REQUEST_TIMEOUT_SECONDS = 180
@@ -17,6 +19,11 @@ _REQUEST_TIMEOUT_SECONDS = 180
 class CodexClient:
     def __init__(self, config, *, stage, operation, transport=None, cache=None, timeout=_REQUEST_TIMEOUT_SECONDS):
         self.selected = selection(config, stage)
+        delay = config["llm"].get("post_request_delay_seconds", 0)
+        if type(delay) not in (int, float) or not math.isfinite(delay) or delay < 0:
+            raise ValueError("llm.post_request_delay_seconds must be a nonnegative finite number")
+        self.post_request_delay_seconds = delay
+        self._previous_request_finished = None
         self.operation = operation
         self.timeout = timeout
         self.transport = transport or CodexTransport()
@@ -45,11 +52,19 @@ class CodexClient:
             cached = True
         else:
             self.call_count += 1
+            if self._previous_request_finished is not None:
+                remaining = self.post_request_delay_seconds - (
+                    time.monotonic() - self._previous_request_finished)
+                if remaining > 0:
+                    trace("request.wait", stage=self.selected.stage, seconds=f"{remaining:.1f}")
+                    time.sleep(remaining)
             started = time.monotonic()
             try:
                 result = self.transport.run(self.selected, prompt, images=images, timeout=self.timeout)
+                self._previous_request_finished = time.monotonic()
                 checked(result)
             except Exception as error:
+                trace("request.failed", stage=self.selected.stage, error=type(error).__name__)
                 self._record({"stage": self.selected.stage, "model": self.selected.model,
                                      "reasoning_effort": self.selected.reasoning_effort, "cached": False,
                                      "status": "failed", "error_type": type(error).__name__,
@@ -57,6 +72,8 @@ class CodexClient:
                 raise
             self.cache.save(request, result)
             cached = False
+            trace("request.completed", stage=self.selected.stage,
+                  seconds=f"{time.monotonic() - started:.1f}")
         self._record({"stage": self.selected.stage, "model": self.selected.model,
                              "reasoning_effort": self.selected.reasoning_effort, "cached": cached,
                              "usage": result.get("usage"), "duration_seconds": result.get("duration_seconds"),

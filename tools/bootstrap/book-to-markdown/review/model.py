@@ -13,9 +13,10 @@ from common.pdf_artifacts import read_json
 from common.pdf_page_conversion import read_conversion
 from common.pdf_elements import ELEMENT_ROLES, ELEMENT_TYPES
 from .markdown import PARSER, preserve_line_breaks
-from .text_recipe import (REFERENCE, escape_literal, edit_template, literal_html_tags,
+from .text_recipe import (ACCEPTED, REFERENCE, bind_unique_region_literals,
+                          escape_literal, edit_template, literal_html_tags,
                           compile_markdown_template, join_adjacent_references,
-                          region_blocks, resolve_template)
+                          region_blocks, resolve_template, source_differences)
 
 HEADING_TYPES = {"heading", "toc_heading", "index_heading",
                  "list_of_tables_heading", "list_of_figures_heading"}
@@ -54,6 +55,7 @@ def write_json(path, value):
                     element["md_text"] = join_adjacent_references(element["md_text"], workspace)
         for element in elements(value):
             element.pop("resolved_md_text", None)
+            element.pop("source_differences", None)
         for chapter in value["chapters"]:
             chapter.pop("resolved_title", None)
             chapter.pop("resolved_markdown_file", None)
@@ -186,6 +188,22 @@ def import_book(root):
         shutil.copy2(image, destination / image.name)
     book = {"toc": {"depth": 2},
             "chapters": [new_chapter(elements, "chapter-001")]}
+    from .source_cleanup import reconcile_working
+    reconcile_working(book, {"chapters": []}, workspace)
+    source_pages = {}
+    for element in elements:
+        if not ACCEPTED.search(element.get('md_text', '')):
+            continue
+        pages = {region['page'] for region in element['pdf_regions']}
+        if len(pages) != 1:
+            continue
+        page = pages.pop()
+        if page not in source_pages:
+            source_pages[page] = read_json(workspace / '02_preprocess' / f'page_{page:04d}.json')
+        selected = {block['block_id']: block for region in element['pdf_regions']
+                    for block in region_blocks(source_pages[page], region['bbox'])}
+        element['md_text'] = bind_unique_region_literals(page, list(selected.values()),
+                                                         element['md_text'])
     write_json(working / "book.json", book)
     return book
 
@@ -226,7 +244,8 @@ def update_markdown_heading(element, text):
 
 def authored_element(element):
     """Return element properties without resolved text."""
-    return {k: v for k, v in element.items() if k != "resolved_md_text"}
+    return {k: v for k, v in element.items()
+            if k not in {"resolved_md_text", "source_differences"}}
 
 
 def chapter_value(chapter, field):
@@ -313,6 +332,8 @@ def load_input(working, book=None, *, cache=None):
     for element in elements(book):
         if "md_text" in element:
             element["resolved_md_text"] = resolve(element["md_text"])
+            element["source_differences"] = source_differences(
+                element["md_text"], text_pages, block_index=block_index)
     ids, filenames, chapters = set(), {"table-of-contents.md"}, set()
     assets = {}
     if type(book["toc"]["depth"]) is not int or book["toc"]["depth"] not in (1, 2, 3):

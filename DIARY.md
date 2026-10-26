@@ -5216,3 +5216,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Commit profile: Book review contracts, ordinary crate tests, standard harness tests, bootstrap, conversion, RAG MCP, verification CLI, formatting, Clippy, architecture, hardware quality, and code quality passed. English scan failed with 47 unknown word occurrences, including existing files
   - PDF conversion contracts failed with KeyError 'blocks' in test_same_page_tables_are_saved_together_in_source_order. Design review selected Testing Strategy and Quality Assurance and required no edit.
+---
+
+### [2026-10-26 21:32 CET] — Record Test Book source provenance and review workflow
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/verification`
+  - `ROADMAP.md`
+  - `Obsidian/Amiga/Design/Verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the tracked Test Book source metadata and recipe with the rebuilt 78e52f075e17 variant
+  - add source-backed text substitutions, accepted literals, cleanup navigation and viewer highlighting
+  - share browser sessions in Book Review contracts
+  - add conversion request pacing and trace output
+  - select Bootstrap contracts when Bootstrap inputs change
+  - synchronize the testing specification and tool documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the rebuilt PDF identity and current recipe snapshot in Git while preserving ignored Working and Accepted bundles and their editorial review boundary
+  - record source provenance and keep the commit verification selection aligned with affected tools
+- **Verification & Test Results**:
+  - Commit profile failed: English scan reported 117 unknown-word occurrences and one PDF conversion contract failed with KeyError 'blocks'
+  - ordinary crate and standard harness tests, formatting, Clippy, architecture, hardware quality, code quality, Bootstrap, conversion, Book Review, RAG MCP and verification CLI contracts passed. Vault link and frontmatter audit passed. The source PDF SHA-256 matches source.json. The committed root recipe snapshot has 999 elements and differs from ignored Accepted in 74 elements
+  - source review and standalone reconstruction remain pending. Full SingleStep and milestone checks were not run.

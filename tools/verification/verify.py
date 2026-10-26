@@ -19,10 +19,12 @@ def main(argv=None):
         return 0
     try:
         automatic_python = args.command == "test" and args.kind == "python" and not args.words
-        changes = collect_changes(REPO_ROOT) if automatic_python else set()
+        changes = collect_changes(REPO_ROOT) if automatic_python or args.command == "commit" else set()
         phases = select_phases(args, changes)
     except (RuntimeError, OSError, ValueError) as error:
         parser.error(str(error))
+    if args.command == "commit" and not any(path.startswith("tools/bootstrap/") for path in changes):
+        print("[INFO] Bootstrap contract suites skipped: no tools/bootstrap/ changes.")
     if args.plan:
         print("[PLAN] Preview only; no checks or tests will run.")
         if not any(commands for _, commands in phases):

@@ -10,7 +10,7 @@ import unittest
 from unittest.mock import patch
 
 from PIL import Image
-from playwright.sync_api import sync_playwright
+from browser_session import browser_page
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from review.codex_edit import run_command
@@ -360,9 +360,7 @@ class CodexCommandTests(unittest.TestCase):
         rendering.start()
         try:
             with patch('review.codex_edit.CodexClient', self.client(self.response)):
-                with sync_playwright() as p:
-                    browser = p.chromium.launch(channel='msedge')
-                    page = browser.new_page(viewport={'width': 1600, 'height': 950})
+                with browser_page(viewport={'width': 1600, 'height': 950}) as page:
                     errors = []
                     page.on('pageerror', lambda e: errors.append(str(e)))
                     page.goto(f'http://127.0.0.1:{server.server_port}')
@@ -418,7 +416,6 @@ class CodexCommandTests(unittest.TestCase):
                     self.assertIn('changed content', page.locator('#codex-error').inner_text())
                     self.assertEqual((self.root / 'working/book.json').read_bytes(), before)
                     self.assertFalse(errors)
-                    browser.close()
         finally:
             self.state.stopping.set()
             with self.state.condition:

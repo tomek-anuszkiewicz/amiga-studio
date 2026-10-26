@@ -5,7 +5,7 @@ from pathlib import Path
 import unittest
 from urllib.parse import urlsplit
 
-from playwright.sync_api import sync_playwright
+from browser_session import browser_page
 
 REVIEW = Path(__file__).resolve().parents[4] / "tools/bootstrap/book-to-markdown/review"
 
@@ -39,9 +39,7 @@ class BookOverflowTest(unittest.TestCase):
             else:
                 route.fulfill(path=str(REVIEW / ("viewer.html" if path == "/" else Path(path).name)))
 
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(channel="msedge")
-            page = browser.new_page(viewport={"width": 1200, "height": 800})
+        with browser_page(viewport={"width": 1200, "height": 800}) as page:
             page.add_init_script("window.EventSource=class {constructor(){}}")
             page.route("**/*", respond)
             page.goto("http://book-review.test/")
@@ -51,7 +49,6 @@ class BookOverflowTest(unittest.TestCase):
             page.reload()
             page.wait_for_function("state && !loading && document.getElementById('pdf-location').textContent === 'Page 3'")
             self.assertEqual(page.evaluate("localStorage.getItem('book-review.pdf-page')"), "3")
-            browser.close()
 
     def test_wide_tables_scroll_in_panel_while_text_and_images_follow_width(self):
         prose = "Ordinary paragraph text wraps to the panel width. " * 60
@@ -89,9 +86,7 @@ class BookOverflowTest(unittest.TestCase):
                 name = "viewer.html" if path == "/" else Path(path).name
                 route.fulfill(path=str(REVIEW / name))
 
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(channel="msedge")
-            page = browser.new_page(viewport={"width": 1200, "height": 800})
+        with browser_page(viewport={"width": 1200, "height": 800}) as page:
             page.add_init_script("window.EventSource=class {constructor(){}}")
             page.route("**/*", respond)
             page.on("pageerror", lambda error: errors.append(str(error)))
@@ -158,7 +153,6 @@ class BookOverflowTest(unittest.TestCase):
             self.assertEqual(page.evaluate("Number(localStorage.getItem('book-review.pdf-width'))"), initial_width + 130)
             self.assertFalse(page.locator("body").evaluate("n=>n.classList.contains('resizing-pdf')"))
             self.assertEqual(errors, [])
-            browser.close()
 
 
 if __name__ == "__main__":

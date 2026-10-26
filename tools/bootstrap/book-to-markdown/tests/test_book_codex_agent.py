@@ -10,7 +10,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from playwright.sync_api import sync_playwright
+from browser_session import browser_page
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -588,6 +588,59 @@ class WorkingAgentTests(unittest.TestCase):
         self.assertEqual(job['state'], 'completed')
         self.assertEqual(job['summary'], 'Inspected Working.')
 
+    def test_browser_shows_source_correction_and_unanchored_text_separately(self):
+        write_json(self.root / 'pdf-to-markdown/02_preprocess/page_0001.json',
+                   {'blocks': [{'block_id': 0, 'text': 'ADDO'}]})
+        book = read_json(self.root / 'working/book.json')
+        book['chapters'][0]['elements'][0]['md_text'] = (
+            '{{text page=1 block=0 chars=0:4 replace=3:4 with="Q"}} '
+            '{{accepted text="X"}} Y '
+            r'$\\overline\{\\mathrm\{{{accepted text="AS"}}\}\}$')
+        write_json(self.root / 'working/book.json', book)
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        server.daemon_threads = True
+        server.state = self.state
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        rendering = threading.Thread(target=self.state.render_loop, daemon=True)
+        rendering.start()
+        try:
+            with browser_page(viewport={'width': 1400, 'height': 850}) as page:
+                errors = []
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.goto(f'http://127.0.0.1:{server.server_port}')
+                page.wait_for_function('state?.can_accept && !loading')
+                self.assertEqual(page.locator('#working .source-diff-correction').inner_text(), 'Q')
+                self.assertEqual(page.locator('#working .source-diff-unanchored').first.inner_text(), 'X')
+                self.assertEqual(page.locator('#working .source-diff-correction').get_attribute('title'),
+                                 'PDF text: O → Working: Q')
+                self.assertEqual(page.locator('#accepted .source-diff-correction').count(), 0)
+                self.assertFalse(page.locator('#show-source-differences').is_checked())
+                page.locator('#show-source-differences').check()
+                self.assertTrue(page.locator('#working .chapter-content').first.evaluate(
+                    "node => node.classList.contains('show-source-differences')"))
+                math_addition = page.locator('#working .katex-html .source-diff-unanchored').filter(
+                    has_text='AS')
+                self.assertEqual(math_addition.count(), 1)
+                self.assertNotEqual(math_addition.evaluate(
+                    'node => getComputedStyle(node).backgroundColor'),
+                    page.locator('#working .source-diff-correction').evaluate(
+                        'node => getComputedStyle(node).backgroundColor'))
+                page.locator('#book-actions').click()
+                page.locator('[data-book-task="source_cleanup"]').click()
+                page.wait_for_function('sourceCleanupReport?.findings?.length > 0')
+                raw_index = page.evaluate('sourceCleanupReport.findings.findIndex(item => item.literal === "Y")')
+                self.assertGreaterEqual(raw_index, 0)
+                page.locator('#source-cleanup-findings .source-cleanup-row').nth(raw_index).locator('a').click()
+                self.assertEqual(page.locator('#working .source-diff-focus').inner_text(), 'Y')
+                self.assertFalse(errors)
+        finally:
+            self.state.stopping.set()
+            with self.state.condition:
+                self.state.condition.notify_all()
+            server.shutdown()
+            server.server_close()
+            rendering.join(20)
+
     def test_browser_starts_general_command_without_element_selection(self):
         write_json(self.root / 'pdf-to-markdown/02_preprocess/page_0001.json',
                    {'blocks': [{'block_id': 0, 'text': 'Example'}]})
@@ -604,9 +657,7 @@ class WorkingAgentTests(unittest.TestCase):
         rendering.start()
         try:
             with patch('review.codex_agent.CodexClient', self.client(actions)):
-                with sync_playwright() as playwright:
-                    browser = playwright.chromium.launch(channel='msedge')
-                    page = browser.new_page(viewport={'width': 1500, 'height': 900})
+                with browser_page(viewport={'width': 1500, 'height': 900}) as page:
                     errors = []
                     page.on('pageerror', lambda error: errors.append(str(error)))
                     page.goto(f'http://127.0.0.1:{server.server_port}')
@@ -655,17 +706,17 @@ class WorkingAgentTests(unittest.TestCase):
                     self.assertFalse(any(matches.nth(index).is_checked() for index in range(matches.count())))
                     page.locator('#source-cleanup-select-all').click()
                     self.assertTrue(all(matches.nth(index).is_checked() for index in range(matches.count())))
-                    exceptions = page.locator('#source-cleanup-findings button')
-                    before = exceptions.count()
+                    literals = page.locator('#source-cleanup-findings button')
+                    before = literals.count()
                     self.assertGreater(before, 0)
-                    exceptions.first.click()
-                    page.locator('#source-cleanup-exception-note').fill('The PDF text is inaccurate.')
-                    page.locator('#source-cleanup-exception-save').click()
+                    literals.first.click()
                     page.wait_for_function('!document.getElementById("source-cleanup-dialog").open')
                     saved_revision = load_input(self.root / 'working')[2]
                     page.wait_for_function('(revision) => state?.authored_revision === revision && !state.pending',
                                            arg=saved_revision)
-                    self.assertEqual(len(read_json(self.root / 'working/book.json')['source_cleanup_exceptions']), 1)
+                    saved_book = read_json(self.root / 'working/book.json')
+                    self.assertTrue(any('{{accepted text=' in element.get('md_text', '')
+                                        for chapter in saved_book['chapters'] for element in chapter['elements']))
                     page.locator('#book-actions').click()
                     page.locator('[data-book-task="source_cleanup"]').click()
                     page.wait_for_function('sourceCleanupReport?.findings?.length > 0')
@@ -692,7 +743,6 @@ class WorkingAgentTests(unittest.TestCase):
                     page.wait_for_function('!loading && !state.pending')
                     self.assertEqual(page.locator('#menu-codex, #menu-codex-working').count(), 0)
                     self.assertFalse(errors)
-                    browser.close()
         finally:
             self.state.stopping.set()
             with self.state.condition:

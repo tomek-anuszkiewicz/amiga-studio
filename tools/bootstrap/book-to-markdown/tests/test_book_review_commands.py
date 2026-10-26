@@ -8,7 +8,7 @@ import threading
 import unittest
 
 from PIL import Image
-from playwright.sync_api import sync_playwright
+from browser_session import browser_page
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from review.model import element_markdown, load_input, set_element_type, write_json
@@ -52,9 +52,7 @@ class ReviewCommandFlowTests(unittest.TestCase):
             rendering = threading.Thread(target=state.render_loop, daemon=True)
             rendering.start()
             try:
-                with sync_playwright() as p:
-                    browser = p.chromium.launch(channel='msedge')
-                    page = browser.new_page(viewport={'width': 1600, 'height': 950})
+                with browser_page(viewport={'width': 1600, 'height': 950}) as page:
                     errors = []
                     page.on('pageerror', lambda e: errors.append(str(e)))
                     page.goto(f'http://127.0.0.1:{server.server_port}')
@@ -116,7 +114,6 @@ class ReviewCommandFlowTests(unittest.TestCase):
                     self.assertEqual(page.locator('#working [data-element="table1"] tr').count(), 2)
                     self.assertEqual(page.locator('#working [data-element="table2"] tr').count(), 2)
                     self.assertFalse(errors)
-                    browser.close()
             finally:
                 state.stopping.set()
                 with state.condition:

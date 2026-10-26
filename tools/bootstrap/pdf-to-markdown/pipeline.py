@@ -344,6 +344,8 @@ def main():
     parser.add_argument("--to-stage", help="Last stage to execute; does not limit cleanup")
     parser.add_argument("--page-ranges", help="Physical 1-based pages to clear and process; omitted clears all pages (Stage 01 is always document-wide)")
     parser.add_argument("--status", action="store_true")
+    parser.add_argument("--trace-codex", action="store_true",
+                        help="Print live Codex request and turn events without prompt or response content")
     args = parser.parse_args()
     skill_dir = Path(__file__).resolve().parent
     pdf = args.pdf.resolve() if args.pdf else None
@@ -354,6 +356,8 @@ def main():
     if args.status:
         print_pipeline_status(workspace)
         return
+    if args.trace_codex:
+        os.environ["CONVERSION_TRACE"] = "1"
     if pdf is None:
         parser.error("--pdf is required for conversion and restart")
     start = resolve_stage_idx(args.from_stage) if args.from_stage else 0

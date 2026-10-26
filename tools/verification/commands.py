@@ -14,7 +14,7 @@ def singlestep_command(profile="verification", case=None):
 
 # Full silicon verification runs automatically only at milestones.
 # SingleStep uses TestMemoryBus, not production MemoryBus/PhysicalMemory.
-def select_tests(root, mode, verify_singlestep=False):
+def select_tests(root, mode, verify_singlestep=False, changes=()):
     completion = mode == "commit"
     singlestep = mode == "milestone" or verify_singlestep
     commands = []
@@ -24,7 +24,8 @@ def select_tests(root, mode, verify_singlestep=False):
         commands.append(("Full SingleStepTests", singlestep_command(),
                          {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"}))
     if completion:
-        commands.extend(python_commands())
+        commands.extend(python_commands(
+            include_bootstrap=any(path.startswith("tools/bootstrap/") for path in changes)))
     return commands
 
 
@@ -127,8 +128,11 @@ PYTHON_INPUTS = {
 }
 
 
-def python_commands(directory=None, pattern=None, case=None, changes=None):
+def python_commands(directory=None, pattern=None, case=None, changes=None, include_bootstrap=True):
     selections = PYTHON_SUITES if directory is None else [("Python contracts", directory)]
+    if directory is None and not include_bootstrap:
+        selections = [(name, target) for name, target in selections
+                      if not target.startswith("tools/bootstrap/")]
     if directory is None and changes is not None:
         selections = [(name, target) for name, target in selections
                       if any(path.startswith(owned) if owned.endswith("/") else path == owned
@@ -140,7 +144,10 @@ def python_commands(directory=None, pattern=None, case=None, changes=None):
             path = REPO_ROOT / path
         if not path.is_dir():
             raise ValueError(f"Python test directory does not exist: {target}")
-        command = [sys.executable, "-m", "unittest", "discover", "-s", str(target), "-q"]
+        if path == REPO_ROOT / "tools/bootstrap/book-to-markdown/tests":
+            command = [sys.executable, "tools/bootstrap/book-to-markdown/tests/run_suite.py", "-q"]
+        else:
+            command = [sys.executable, "-m", "unittest", "discover", "-s", str(target), "-q"]
         if pattern:
             command += ["-p", pattern]
         if case:
@@ -285,7 +292,8 @@ def select_phases(args, changes):
             raise ValueError("Completion profiles accept singlestep at most once")
         coverage = select_coverage_commands(args.command)
         commands = select_quality_commands(args.command) + select_tests(
-            REPO_ROOT, args.command, verify_singlestep="singlestep" in args.sets)
+            REPO_ROOT, args.command, verify_singlestep="singlestep" in args.sets,
+            changes=changes)
         phases = []
         if coverage:
             phases.append(("Coverage", coverage))

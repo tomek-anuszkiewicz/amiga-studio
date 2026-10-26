@@ -16,8 +16,8 @@ import uuid
 from PIL import Image
 
 from .model import (EDITABLE_TYPES, ELEMENT_ROLES, HEADING_TYPES, PROTECTED_TYPES, InputCache, authored_element, changes, confined, digest, edit_markdown, elements, export_markdown, json_bytes,
-                    load_input, new_chapter, set_element_role, set_element_type, set_heading_level, update_markdown_heading, write_json)
-from .text_recipe import slice_template
+                    load_input, new_chapter, read_json, set_element_role, set_element_type, set_heading_level, update_markdown_heading, write_json)
+from .text_recipe import REFERENCE, slice_template
 from .markdown import format_html_table, html_table_structure, table_structure
 from .render import HERE, KATEX, Renderer
 
@@ -26,6 +26,13 @@ def log(message):
     """Console encoding must not turn a recoverable render error into a dead queue."""
     encoding = sys.stdout.encoding or "utf-8"
     print(message.encode(encoding, errors="backslashreplace").decode(encoding), flush=True)
+
+
+def slice_source(root, template, start, end):
+    pages = {int(ref[1]) for ref in REFERENCE.finditer(template)}
+    sources = {page: read_json(root / 'pdf-to-markdown' / '02_preprocess' /
+                               f'page_{page:04d}.json')['blocks'] for page in pages}
+    return slice_template(template, start, end, sources)
 
 
 def is_html_table(element):
@@ -208,6 +215,7 @@ class ReviewState:
             while not self.stopping.is_set():
                 try:
                     with self.lock:
+                        observed_sequence = self.sequence
                         book, assets, fingerprint = self.input_cache.load(self.root / "working")
                         previous = self.working
                         needs_render = (not previous or previous["input_fingerprint"] != fingerprint
@@ -244,7 +252,10 @@ class ReviewState:
                             self.announce()
                             log(f"[render failed] {message}")
                         self.failed_fingerprint = locals().get("fingerprint")
-                self.stopping.wait(0.5)
+                with self.condition:
+                    self.condition.wait_for(
+                        lambda: self.stopping.is_set() or self.sequence != observed_sequence,
+                        timeout=0.5)
         except Exception as error:
             with self.lock:
                 self.error, self.pending = str(error), False
@@ -253,7 +264,7 @@ class ReviewState:
             if renderer:
                 renderer.close()
 
-    def mutate(self, expected_revision, update):
+    def mutate(self, expected_revision, update, *, reconcile=True):
         with self.lock:
             original, _, fingerprint = self.input_cache.load(self.root / "working")
             book = deepcopy(original)
@@ -269,6 +280,9 @@ class ReviewState:
                         previous.get('text_format', previous.get('table_format')))):
                     formatted = format_html_table(element.get('resolved_md_text', element['md_text']))
                     edit_markdown(self.root, element, formatted)
+            if reconcile:
+                from .source_cleanup import reconcile_working
+                reconcile_working(book, original, self.root / 'pdf-to-markdown')
             self.input_cache.load(self.root / "working", book)
             if self.input_cache.load(self.root / "working")[2] != fingerprint:
                 raise ValueError("Working changed before save; retry the command")
@@ -372,7 +386,7 @@ class ReviewState:
         def update(book):
             report = preview(book, self.root / 'pdf-to-markdown')
             apply(book, report, command.get('selections'))
-        self.mutate(command.get('expected_revision'), update)
+        self.mutate(command.get('expected_revision'), update, reconcile=False)
 
     def accept_source_cleanup_exception(self, command):
         from .source_cleanup import accept_exception, preview
@@ -381,6 +395,13 @@ class ReviewState:
             accept_exception(book, report, command.get('finding_id'), command.get('note'),
                              command.get('source_text', ''), command.get('corrected_text', ''))
         self.mutate(command.get('expected_revision'), update)
+
+    def accept_source_literal(self, command):
+        from .source_cleanup import accept_literal, preview
+        def update(book):
+            report = preview(book, self.root / 'pdf-to-markdown')
+            accept_literal(book, report, command.get('finding_id'))
+        self.mutate(command.get('expected_revision'), update, reconcile=False)
 
     def start_codex_agent(self, command):
         from .codex_agent import run_agent
@@ -462,7 +483,7 @@ class ReviewState:
                     template = element['md_text']
                     for part, text, start, end in ((element, first_text, 0, len(first_text)),
                                                   (second, second_text, len(first_text), len(first_text + second_text))):
-                        part['md_text'] = slice_template(template, start, end)
+                        part['md_text'] = slice_source(self.root, template, start, end)
                         part['resolved_md_text'] = text
                         update_markdown_heading(part, text)
                     second['id'] = 'split-' + uuid.uuid4().hex
@@ -546,9 +567,9 @@ class ReviewState:
             # Slice each original recipe so PDF references stay attached to their rows.
             edit_markdown(self.root, first, first_text)
             edit_markdown(self.root, second, second_text)
-            first['md_text'] = (slice_template(first['md_text'], 0, first_end) + '\n'
-                                + slice_template(second['md_text'], body_start, second_end)
-                                + (slice_template(first['md_text'], first_end, len(first_text))
+            first['md_text'] = (slice_source(self.root, first['md_text'], 0, first_end) + '\n'
+                                + slice_source(self.root, second['md_text'], body_start, second_end)
+                                + (slice_source(self.root, first['md_text'], first_end, len(first_text))
                                    if table_format == 'html' else ''))
             first['resolved_md_text'] = (first_text[:first_end] + '\n' + second_text[body_start:second_end]
                                          + (first_text[first_end:] if table_format == 'html' else ''))
@@ -826,6 +847,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.state.apply_source_cleanup(command)
             elif self.path == "/api/source-cleanup/exception":
                 self.state.accept_source_cleanup_exception(command)
+            elif self.path == "/api/source-cleanup/accept-literal":
+                self.state.accept_source_literal(command)
             elif self.path == "/api/codex-agent":
                 result.update(self.state.start_codex_agent(command))
             elif self.path == "/api/codex-agent/stop":

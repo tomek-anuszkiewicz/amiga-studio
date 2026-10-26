@@ -6,6 +6,7 @@
 <button id="book-actions" disabled aria-haspopup="menu" aria-expanded="false" aria-controls="book-menu">Book Actions</button>
 <label><input type="checkbox" id="show-hidden"> Show hidden elements</label>
 <label><input type="checkbox" id="show-types"> Show Types</label>
+<label><input type="checkbox" id="show-source-differences"> Show source differences</label>
 <button id="accept" disabled>Accept Changes</button>
 <button id="discard" disabled>Discard Changes</button>
 <label>TOC depth <select id="toc-depth"><option>1</option><option selected>2</option><option>3</option></select></label>
@@ -96,13 +97,5 @@
 <div id="source-cleanup-findings"></div>
 <p id="source-cleanup-error" role="alert" hidden></p>
 <div class="dialog-actions"><button type="button" id="source-cleanup-select-all">Select All</button><button type="button" id="source-cleanup-close">Close</button><button type="button" id="source-cleanup-apply">Apply selected</button></div>
-</dialog>
-<dialog id="source-cleanup-exception-dialog"><h3>Accept source exception</h3>
-<p id="source-cleanup-exception-target"></p>
-<label>Explanation<textarea id="source-cleanup-exception-note" rows="3" maxlength="500" placeholder="OCR text reads ADDO; PDF image reads ADDQ."></textarea></label>
-<label>Source text, if known<input id="source-cleanup-exception-source" maxlength="120"></label>
-<label>Corrected text, if known<input id="source-cleanup-exception-corrected" maxlength="120"></label>
-<p id="source-cleanup-exception-error" role="alert" hidden></p>
-<div class="dialog-actions"><button type="button" id="source-cleanup-exception-cancel">Cancel</button><button type="button" id="source-cleanup-exception-save">Accept exception</button></div>
 </dialog>
 <script src="/viewer.js"></script></body></html>

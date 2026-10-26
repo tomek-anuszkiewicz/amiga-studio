@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from urllib.parse import urlsplit
 
-from playwright.sync_api import sync_playwright
+from browser_session import browser_page
 
 REVIEW = Path(__file__).resolve().parents[4] / "tools/bootstrap/book-to-markdown/review"
 sys.path.insert(0, str(REVIEW.parent))
@@ -49,9 +49,7 @@ class ReviewHintsTest(unittest.TestCase):
             else:
                 route.fulfill(path=str(REVIEW / ("viewer.html" if path == "/" else Path(path).name)))
 
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(channel="msedge")
-            page = browser.new_page(viewport={"width": 1600, "height": 900})
+        with browser_page(viewport={"width": 1600, "height": 900}) as page:
             page.add_init_script("window.EventSource=class {constructor(){}}")
             page.route("**/*", respond)
             page.on("pageerror", lambda error: errors.append(str(error)))
@@ -68,4 +66,3 @@ class ReviewHintsTest(unittest.TestCase):
             self.assertEqual(page.locator('#element-hint, [role="tooltip"]').count(), 0)
             page.keyboard.press("Escape")
             self.assertEqual(errors, [])
-            browser.close()

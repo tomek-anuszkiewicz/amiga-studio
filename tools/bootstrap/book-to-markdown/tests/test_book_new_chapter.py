@@ -8,7 +8,7 @@ import tempfile
 import threading
 import unittest
 
-from playwright.sync_api import sync_playwright
+from browser_session import browser_page
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from review.model import changes, load_input, write_json
@@ -85,9 +85,7 @@ class NewChapterTests(unittest.TestCase):
             directory = self.root / 'accepted'
             return {p.relative_to(directory): p.read_bytes() for p in directory.rglob('*') if p.is_file()}
         try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(channel='msedge')
-                page = browser.new_page(viewport={'width': 1600, 'height': 950})
+            with browser_page(viewport={'width': 1600, 'height': 950}) as page:
                 errors = []
                 page.on('pageerror', lambda e: errors.append(str(e)))
                 page.goto(f'http://127.0.0.1:{server.server_port}')
@@ -143,7 +141,6 @@ class NewChapterTests(unittest.TestCase):
                 self.assertFalse((self.root / 'working' / extra).exists())
                 self.assertEqual(accepted_files(), accepted_split)
                 self.assertFalse(errors)
-                browser.close()
         finally:
             self.state.stopping.set()
             with self.state.condition:

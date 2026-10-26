@@ -18,8 +18,12 @@ Book recipe and review tests live in `tests/` beside this program. Run them from
 the repository root:
 
 ```powershell
-python -m unittest discover -s tools/bootstrap/book-to-markdown/tests -q
+python tools/verification/verify.py test python directory tools/bootstrap/book-to-markdown/tests
 ```
+
+The suite reuses one Edge process for browser tests and opens a fresh browser
+context for each test. Tests that render chapters start their own Playwright
+session after the shared browser closes.
 
 The [documentation and RAG roadmap](../../../ROADMAP.md#step-1-manual-conversion-and-initial-knowledge-base)
 tracks portable recipes and standalone Markdown reconstruction from matching PDFs. New imports
@@ -69,8 +73,8 @@ The [bootstrap instructions](../AGENTS.md#preparing-the-book-source-collection)
 describe source acquisition during book authoring.
 
 The local source collection contains one manual reserved for later full-book
-authoring and three parked references. The composite Test Book is the current
-editor review target:
+authoring and three parked references. The rebuilt composite Test Book is the
+next editor review source:
 
 | Manual | Variant under `books/` | Use |
 | --- | --- | --- |
@@ -83,10 +87,12 @@ Book IDs use lowercase names separated by hyphens. The hash suffix identifies
 the exact PDF variant, and `source.json` stores its full hash. Source PDFs remain
 local and are ignored by Git; the catalog metadata is tracked.
 
-The composite Test Book PDF and its existing review data are the current recipe
-target. The selected A500/A2000 PDF is reserved for a separate reviewed book and
-later bootstrap regeneration. The other three local PDFs remain references and
-Test Book reconstruction sources; they do not have reviewed recipes. Alternate
+The rebuilt composite Test Book PDF is the next recipe review source. Existing
+review data for the previous Test Book hash remains separate and has not been
+regenerated for this source. The selected A500/A2000 PDF is reserved for a
+separate reviewed book and later bootstrap regeneration. The other three local
+PDFs remain references and Test Book reconstruction sources; they do not have
+reviewed recipes. Alternate
 variants and their full hashes and observed download URLs are in a separate
 private archive, outside this source collection. They are not supported conversion
 inputs.
@@ -95,14 +101,14 @@ The same directory convention applies to the four manuals and composite Test Boo
 
 ```text
 books/<book-id>/<first-12-characters-of-sha256>/
-  source.pdf          # local original PDF
+  source.pdf          # local source or assembled composite PDF
   source.json         # tracked full SHA-256
   pdf-to-markdown/    # local default preparation workspace, created on first run
 ```
 
-The Test Book variant is `books/test-book-example-4567/1cea0b35ee62/`, with full
-SHA-256 `1cea0b35ee622aec0e4c728a170edb6b9324a1baab1f14fe8c67a7f7f2fc45c0`.
-Its [page tracker](books/test-book-example-4567/1cea0b35ee62/test_pages_tracker.md)
+The rebuilt Test Book variant is `books/test-book-example-4567/78e52f075e17/`,
+with full SHA-256 `78e52f075e17e69f6124e63c614fbbdf329b7b472d0f6cc30c024859b16112bf`.
+Its [page tracker](books/test-book-example-4567/78e52f075e17/test_pages_tracker.md)
 lives beside `source.pdf` and records the four source variants, their full hashes
 and the 160-page assembly order. The prefix names the variant directory;
 the full hash identifies the exact source PDF. Future book preparation uses this layout.
@@ -131,14 +137,15 @@ bundled Chromium, run `python -m playwright install chromium` and pass
 longer captures Markdown screenshots. The review browser displays the resulting
 HTML directly. Preparation and review use local resources.
 
-Use the existing Test Book variant. After checking preparation statuses, import
-deletes Working, Accepted and the copied PDF page directory, then rebuilds Working
-and PDF pages from the prepared input. It retains no old exports, assets, renders
+Use the rebuilt Test Book variant after preparing its PDF through Stage 07 and
+checking preparation statuses. Import deletes Working, Accepted and the copied
+PDF page directory, then rebuilds Working and PDF pages from the prepared input.
+It retains no old exports, assets, renders
 or authored settings. The first render initializes a new Accepted bundle from
 the rebuilt Working:
 
 ```powershell
-$Book = "tools/bootstrap/book-to-markdown/books/test-book-example-4567/1cea0b35ee62"
+$Book = "tools/bootstrap/book-to-markdown/books/test-book-example-4567/78e52f075e17"
 python tools/bootstrap/book-to-markdown/book_review.py import --book $Book
 python tools/bootstrap/book-to-markdown/book_review.py render --book $Book
 python tools/bootstrap/book-to-markdown/book_review.py serve --book $Book
@@ -231,11 +238,27 @@ New imports keep conversion Markdown/HTML structure as literal recipe syntax,
 replacing matching source text with `{{text page=3 block=1 chars=0:6}}` references.
 Stage 07 supplies complete final pages, preserving transcribed tables and callouts.
 Positioned Stage 02 blocks intersecting the element region supply candidate text.
-Exact matching can reorder source selections, such as a wrapped label beside an
-assembly listing. Fences, their language tags and HTML tags/attributes remain
-literal structure. Unmatched transcription/corrections currently remain explicit
-literals, which the optional strict source audit reports as noncompliant. Matching equal
-characters does not certify semantic attribution of repeated text.
+Source matching can reorder selections, such as a wrapped label beside an
+assembly listing. A one-character OCR substitution keeps its Stage 02 source
+range and records the visible replacement. Ambiguous content remains explicitly
+unanchored for review; fences, language tags and HTML tags/attributes remain
+literal structure. Matching equal characters does not certify semantic
+attribution of repeated text.
+An alphanumeric word is not assembled from partial matches in separate source
+words or blocks. Exact fallback matches stop at word boundaries in both the
+visible text and Stage 02 source. A full source word with a supported OCR
+substitution retains one contiguous range and a `replace` correction; words
+without a defensible complete source address stay unanchored.
+When Markdown inserts a hyphen inside one OCR word, as in `TABLE 3-2` versus
+source `TABLE  32`, each side of the hyphen keeps its adjacent character range
+only if the joined word has one eligible source occurrence.
+Short words also retain a source range for unique, local OCR `0`/`D` or
+`0`/`O` substitutions in either direction, including multiple changes in one
+word. For long prose blocks, matching words on both sides must also agree.
+That same neighboring-word check permits a one- or two-letter transcription
+correction within a complete word; it does not infer arbitrary digit changes.
+The correction covers only the changed character span. Repeated candidates
+remain unanchored.
 Loading a new recipe resolves PDF ranges without consulting converted page Markdown.
 Chapter titles retain the imported heading's recipe.
 
@@ -257,15 +280,22 @@ and visible attribute text are reported. Visible math symbol commands without
 source references are reported too. Unsupported markup is reported rather than
 silently exempted.
 
-This is an optional diagnostic command. Import results and manual editor changes
-are trusted authoring input; normal loading, editing and status polling do not
-run this audit or display its findings. Existing reference resolution, model
-structure and stale-revision checks still apply. The audit does not repair or
-regenerate prepared results.
+This is an optional diagnostic command. Import and saved Working edits also
+reconcile affected text against prepared Stage 02 pages, keeping valid references,
+binding reliable matches and recording supported OCR substitutions. Content that
+cannot be bound reliably becomes an explicit accepted literal during initial
+import; its missing source address remains visible through Show source differences.
+The audit remains available to inspect pending plain content; it does not regenerate
+prepared results. Existing reference resolution, model structure and stale-revision
+checks still apply.
 
 The audit validates provenance syntax and literal content, not semantic source
 attribution, word order, duplication or transcription quality. A valid range
 does not prove that repeated letters were selected from the correct occurrence.
+During automatic Working reconciliation, an exact literal is bound only when
+the source occurrence is adjacent to an existing reference in its PDF block.
+Other exact occurrences remain visible as review proposals in Clean direct
+book text, so the importer does not silently borrow a word from elsewhere.
 
 ### Codex Working task
 
@@ -280,7 +310,7 @@ The **Suggested task** list fills instructions from Markdown files under
 The text remains editable, and selecting a task does not start Codex.
 
 **Book Actions → Clean direct book text** runs a deterministic, read-only preview.
-It finds literal word sequences in Working element text and chapter titles, then
+It finds pending plain word sequences in Working element text and chapter titles, then
 searches their PDF page and adjacent pages for exact, case-sensitive Stage 02 text. The report
 shows each proposed source page, block, character range and replacement reference.
 When several source occurrences have the same page distance, a match directly
@@ -292,16 +322,15 @@ Missing matches and equally near repeated matches remain unresolved. For a singl
 character after a text reference, the preview searches forward from that reference's
 end in the same PDF block and binds the first following occurrence. Consecutive
 single characters continue from the previous match, stopping before the next text
-reference in that block. Select the proposed
-matches to apply; the server checks the Working revision and recomputes the report
-before one Working update. Accepted remains unchanged until **Accept Changes**.
-For an unresolved literal, **Accept exception** records a required explanation
-and optional source/corrected text in Working `book.json` under
-`source_cleanup_exceptions`. The literal stays in the recipe, but the same
-occurrence is omitted from later cleanup previews. Its element, surrounding
-references and local text identify it across unrelated edits; changing that
-context brings it back for review. Accepting Working carries the exception into
-Accepted and the published recipe. The source PDF and Stage 02 text remain intact.
+reference in that block. The dialog shows surrounding text and can navigate to
+the Working occurrence. Select proposed matches to apply; the server checks the
+Working revision and recomputes the report before one Working update. **Accept
+literal** records an unresolved authored fragment as accepted and removes it from
+the Clean direct book text queue. Its missing source address remains available in
+the top-bar **Show source differences** view, which marks
+source-backed substitutions in yellow and unanchored content in blue in Working;
+the overlay is absent from exported Markdown. Accepted remains unchanged until
+**Accept Changes**. The source PDF and Stage 02 text remain intact.
 The agent may invoke editor commands, submit validated changes to the authored
 book model, or use the existing one-element transformation. Each model turn
 receives the last tool result and a short progress memory, so the entire book is
@@ -390,7 +419,17 @@ has only plain OCR, the model's new cell layout is left for user review.
 
 `{{text page=3 block=1 chars=0:6}}` selects Unicode characters from a Stage 02
 block, with a zero-based start and exclusive end. Ordered references can combine
-blocks; intervening literal text retains Markdown formatting and corrections.
+blocks. `{{text page=23 block=6 chars=0:4 replace=3:4 with="Q"}}` retains source
+`ADDO` while displaying `ADDQ`; the replacement offsets are zero-based and
+half-open relative to the selected source range. The replacement and replaced
+span must have equal Unicode character lengths unless the replacement covers
+the entire selected span, as when spaced OCR letters are joined into words, or
+expands an OCR ligature to its equivalent letters.
+`{{accepted text="Vision"}}`
+records visible text without assigning a PDF block. Both markers resolve before
+Markdown rendering and remain in the authored recipe; source substitutions can
+be ignored when reconstructing the original Stage 02 text. Intervening literal
+text retains Markdown formatting.
 Escape literal backslashes as `\\`, opening braces as `\{` and closing braces as
 `\}` in the decoded template (JSON requires its own additional escaping).
 Resolution is single-pass: braces or template-looking text fetched from the PDF
@@ -449,12 +488,13 @@ inspection. Equal types appear once; different types appear as
 type appears once. The label does not open an editor.
 
 **Show Types** in the toolbar displays each PDF region's Working type in a
-blue label beside its upper-right corner. Labels move to the left when the
-right margin is too narrow, or below a region spanning the page width.
-Heading labels include the heading level;
-an assigned role follows the type (for example, `prose · footnote`). Regions
-that exist only in Accepted show the Accepted classification. Turning the
-checkbox off hides the labels without changing the book.
+blue label. An assigned role appears in a separate purple label. The role sits
+beside the type when there is room, below the type when the side margin is
+narrower, or just below the region when neither label fits beside its text.
+Labels can move to the left or below a region near a page edge. Heading labels
+include the heading level. Regions that exist only in Accepted show their
+Accepted classification. Turning the checkbox off hides the labels without
+changing the book.
 
 **Change type** offers `heading`, `callout`, `callout_text`, `prose`, `code_block`,
 `preformatted_text` for text elements from the
@@ -722,8 +762,10 @@ hidden background process and return control of the console:
 ./tools/bootstrap/book-to-markdown/review-server.ps1 stop
 ```
 
-The default book is the Test Book variant above, on port 8765. Pass `-Book`
-and `-Port` to select another book and port. PID identity and stdout/stderr logs
+The controller still defaults to the previous Test Book review variant
+`1cea0b35ee62` on port 8765. After preparing and importing the rebuilt
+variant, pass its path with `-Book`; pass `-Port` to select another port. PID
+identity and stdout/stderr logs
 live in `.agent/tmp/book-review/<port>/`. Each start replaces the logs. The
 controller checks process identity before stopping it and refuses to start over
 an occupied port. Stop a foreground server with Ctrl+C before switching to the

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-10-14
+updated: 2026-10-26
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/src"
@@ -25,15 +25,18 @@ tracked_paths:
 
 Completion uses [verify.py](../../../../tools/verification/verify.py) with
 `commit` for ordinary crate tests with coverage, quality gates, all available
-standard harness suites, all Python tool contracts and the full English audit.
+standard harness suites, Python tool contracts and the full English audit.
 Standard harness selection excludes the aggregate `test_singlestep` target.
 Transaction checker regressions, SingleStep override contracts and the bounded
 [JSON mutation pilot](../../../../crates/test_runner/tests/test_singlestep_mutations.rs)
 are standard suites. The pilot checks the verifier using selected silicon cases;
 it does not run the full external suite. If no
 standard suites remain, it schedules no Cargo test command. Python contracts
-are discovered separately for bootstrap, shared conversion, PDF conversion,
-book review, the RAG MCP adapter and verification tooling.
+for the RAG MCP adapter and verification tooling always run. Bootstrap, shared
+conversion, PDF conversion and book review contracts run when Git reports staged,
+unstaged or nonignored new paths under `tools/bootstrap/`. The book review suite
+shares one browser process across its browser tests while isolating each test in
+a separate browser context.
 
 The separate `milestone` profile always runs full SingleStepTests
 and the full English audit, including on a clean tree. It does not repeat
