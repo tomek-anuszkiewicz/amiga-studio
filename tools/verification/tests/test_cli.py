@@ -36,7 +36,7 @@ class SelectionTests(unittest.TestCase):
             for command in ("milestone [singlestep]", "crate NAME [suite NAME] [case FILTER]",
                             "python [directory PATH [file PATTERN] [case FILTER]]",
                             "singlestep [case FILTER] [full|sample N]",
-                            "architecture [case FILTER]", "profile bench case FAMILY/CASE",
+                            "architecture [case FILTER]",
                             "analyze RUN_DIRECTORY"):
                 self.assertIn(command, help_text)
 
@@ -181,13 +181,23 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(parse_args(["runner", "analyze", "fixture.csv", "--log-level", "error"])[1].log_level, "error")
         self.assertEqual(parse_args(["commit"])[1].log_level, "warn")
 
-    def test_benchmark_and_profiler_select_cpu_performance_tests(self):
-        self.assertEqual(selected("runner profile bench case add/add_w_d1_d0")[0][1][1:4],
-                         ["tools/verification/profile_benchmark.py", "--measure-case", "add/add_w_d1_d0"])
+    def test_benchmark_selects_cpu_performance_tests(self):
         self.assertEqual(selected("runner bench case add/add_w_d1_d0")[0][1][1:],
                          ["tools/verification/cpu_performance_tests.py", "measure", "case", "add/add_w_d1_d0"])
         self.assertEqual(selected("runner analyze full_run")[0][1][1:],
                          ["tools/verification/cpu_performance_tests.py", "analyze", "full_run"])
+        self.assertEqual(selected("runner bench cases selected.txt")[0][1][1:],
+                         ["tools/verification/cpu_performance_tests.py", "measure", "cases",
+                          "selected.txt"])
+        self.assertEqual(selected("runner refresh filtered_run")[0][1][1:],
+                         ["tools/verification/cpu_performance_tests.py", "refresh", "filtered_run"])
+
+    def test_refresh_allows_intended_current_snapshot_change(self):
+        with patch.object(verify, "execute_command", return_value=(True, "refreshed", 0.1)), \
+             patch.object(verify, "snapshot") as snapshot, \
+             contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(verify.main(["runner", "refresh", "filtered_run"]), 0)
+        snapshot.assert_not_called()
 
     def test_gui_keeps_its_separate_native_options(self):
         self.assertEqual(selected("runner gui -- --frames 10")[0][1][-2:], ["--frames", "10"])
@@ -203,8 +213,7 @@ class SelectionTests(unittest.TestCase):
                          "runner bench case add/add_w_d1_d0 mnemonic ADD",
                          "runner bench measure filter ADD", "runner bench measure unroll 500",
                          "runner bench measure passes 9", "runner bench measure output reports",
-                         "runner bench measure pin off", "runner profile bench pilot pin off",
-                         "runner bench unroll", "runner profile bench unknown"):
+                         "runner bench measure pin off", "runner bench unroll"):
             with self.subTest(sentence=sentence), self.assertRaises(ValueError):
                 selected(sentence)
 

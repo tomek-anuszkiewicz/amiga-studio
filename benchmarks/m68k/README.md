@@ -132,6 +132,11 @@ records reports under `benchmarks/results/<run-id>/`. The default command runs
 the complete catalog. A selector accepts an exact `family/case-id`, mnemonic,
 or four-digit primary opcode and measures all matches. The declared opcode
 identifies a case; it does not describe every word in the assembled program.
+An explicit `cases FILE` selector accepts one case ID per line for a measured
+group. `runner refresh RUN_DIRECTORY` can replace matching rows in the current
+snapshot from a completed default-setting filtered run; the current JSON records
+the source run of every replaced row and the anomaly report is regenerated.
 The approved baseline in `benchmarks/m68k_benchmark_baseline.json` and `.csv`
-records the first complete default-parameter run of these workloads. Its
-source reports remain locally under the ignored `benchmarks/results/`.
+records the latest user-approved snapshot of these workloads. Its source runs
+remain locally under the ignored `benchmarks/results/`; refreshed cases retain
+their run IDs in the baseline JSON.

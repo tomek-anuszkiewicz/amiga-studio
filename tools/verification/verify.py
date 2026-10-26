@@ -49,7 +49,7 @@ def main(argv=None):
         print("[INFO] No Python tool contracts selected: their inputs are unchanged."
                   if automatic_python else "[INFO] No checks or tests selected.")
         return 0
-    produces_reports = args.command == "runner" and args.action in ("bench", "analyze")
+    produces_reports = args.command == "runner" and args.action in ("bench", "analyze", "refresh")
     if not produces_reports:
         try:
             before = snapshot(REPO_ROOT)

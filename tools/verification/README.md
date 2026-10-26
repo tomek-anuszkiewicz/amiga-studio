@@ -30,7 +30,6 @@ includes a module path.
 | `runner build` | Compile release test and benchmark targets without running them |
 | `runner bench [case ID\|mnemonic NAME\|opcode XXXX] [duration-ms N] [series N]` | CPU performance test measurement |
 | `runner gui -- OPTIONS` | GUI inspector capture |
-| `runner profile bench case FAMILY/CASE` | Build and sample one CPU performance test workload with samply |
 | `runner analyze RUN_DIRECTORY` | Regenerate a stored run analysis without measurement |
 
 `--plan` previews the exact child commands and environment. `--log-level
@@ -52,7 +51,7 @@ Counts must be positive; the parser rejects unknown or repeated selectors and
 missing or invalid values before execution, with exit code 2.
 The `test_runner` crate contains test and benchmark targets with shared helpers
 in `tests/common/`; chipset baseline recording has no executable entry point.
-Benchmark analysis and profiling default to full output; other commands default
+Benchmark analysis defaults to full output; other commands default
 to warnings and errors. Full logs are always stored in `.agent/tmp/verify/`.
 
 Examples:
@@ -140,11 +139,12 @@ The decoder inventory remains available for the separate coverage audit.
 ```powershell
 python tools/verification/verify.py runner bench
 python tools/verification/verify.py runner bench case add/add_w_d1_d0 duration-ms 50 series 1
+python tools/verification/verify.py runner bench cases .agent/tmp/benchmark_cases.txt
 python tools/verification/verify.py runner bench mnemonic ADD
 python tools/verification/verify.py runner bench opcode D041
+python tools/verification/verify.py runner refresh benchmarks/results/<run-id>
 python tools/verification/verify.py runner bench inventory
 python tools/verification/verify.py runner analyze benchmarks/results/<run-id>
-python tools/verification/verify.py runner profile bench case add/add_w_d1_d0
 ```
 
 Each measurement invocation creates one `benchmarks/results/<run-id>/` directory.
@@ -192,7 +192,7 @@ Series-spread rows are collapsed for quick review. These diagnostic limits are
 not pass/fail gates or estimates of statistical confidence. Whole-program times
 include helpers and do not establish isolated opcode latency or CPU correctness.
 
-Only a successful, complete, default-parameter catalog run updates the
+Only a successful, complete, default-parameter catalog run automatically replaces the
 trackable `benchmarks/m68k_benchmark_current.json` and `.csv` files. It also
 writes `m68k_benchmark_anomalies.json`, `m68k_benchmark_baseline_comparison.json`,
 `m68k_benchmark_cross_case_anomalies.json`, `m68k_benchmark_a7_comparison.json`
@@ -200,13 +200,20 @@ and `m68k_benchmark_anomaly_report.md`
 beside them in `benchmarks/`. These are the reviewable reports to commit with
 the current snapshot. The run directory retains its own detailed copies.
 Filtered runs and shortened development runs receive reports only in their run
-directories and leave the root snapshot and reports alone. Reanalyzing an older
-run cannot replace newer root files. The approved baseline remains tracked and
-is never updated by the runner. To accept new results, inspect the root report
-and both comparison JSON files, then explicitly copy the current JSON and CSV
-pair over the baseline pair after approval under the reference-artifact
-procedure. Review the resulting Git diff; the normal commit verification and
-commit policy still apply.
+directories. `runner refresh RUN_DIRECTORY` explicitly replaces matching cases in
+the current snapshot from one completed, undisturbed filtered run made with the
+current host, settings, workload fingerprint, target count and CPU clocks. The
+current CSV and JSON remain paired by SHA-256; `case_sources` in the JSON records
+each replaced case's run ID. The root anomaly reports are regenerated from the
+combined current snapshot. A `cases FILE` selector reads one case ID per line,
+so related instruction and addressing-mode workloads can be measured together
+before refresh. Reanalyzing an older full run cannot replace newer root files.
+The approved baseline remains tracked and is never updated by the runner.
+After review and explicit approval under the reference-artifact procedure, the
+complete current JSON/CSV pair may become the next baseline, including a
+composite snapshot with documented per-case sources. Copy both files together,
+regenerate the baseline comparison and root anomaly reports, then review the
+resulting Git diff. The normal commit verification and commit policy still apply.
 
 ```powershell
 Copy-Item -LiteralPath benchmarks/m68k_benchmark_current.json -Destination benchmarks/m68k_benchmark_baseline.json
@@ -329,7 +336,7 @@ PhysicalMemory. Its selection is owned by [commands.py](commands.py):
 
 Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory. The separate milestone set runs the full language audit and full SingleStepTests; vAmigaTS Cargo suites and automatic chipset/capture runs have been removed.
 
-Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks and external sampling profiles run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the first full CPU performance test run. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
+Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the latest user-approved snapshot. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
 
 ---
 

@@ -12,9 +12,9 @@ from pathlib import Path
 
 import psutil
 
-from benchmark_anomalies import (compare_a7, compare_baseline, compare_related, load_snapshot,
-                                 publish_current, publish_reports, report_lines,
-                                 snapshot_from_run)
+from benchmark_anomalies import (compare_a7, compare_baseline, compare_related, csv_bytes,
+                                  load_snapshot, publish_current, publish_reports, report_lines,
+                                  snapshot_from_run, write_snapshot)
 from repository import REPO_ROOT
 
 CASES = REPO_ROOT / "benchmarks/m68k"
@@ -40,6 +40,11 @@ def select_cases(cases, selector=None):
     kind, value = selector
     if kind == "case":
         selected = [value] if value in cases else []
+    elif kind == "cases":
+        selected = [line.strip() for line in Path(value).read_text(encoding="utf-8").splitlines()
+                    if line.strip()]
+        if len(selected) != len(set(selected)) or any(case_id not in cases for case_id in selected):
+            raise ValueError("case list contains a duplicate or unknown case")
     elif kind == "mnemonic":
         selected = [case_id for case_id in cases
                     if case_id.split("/")[1].split("_")[0].upper() == value.upper()]
@@ -343,14 +348,71 @@ def analyze(run_dir):
           f"compatible comparisons: {sum(row['status'] == 'compatible' for row in comparisons)}")
 
 
+def refresh_current(run_dir):
+    """Replace matching current cases with a completed default-setting filtered run."""
+    run_dir = Path(run_dir).resolve()
+    manifest_path = run_dir / "manifest.json"
+    manifest_bytes = manifest_path.read_bytes()
+    manifest = json.loads(manifest_bytes)
+    if manifest["status"] != "complete" or manifest["full_catalog"]:
+        raise ValueError("refresh requires a completed filtered run")
+    current = load_snapshot(CURRENT)
+    if manifest["host"] != current["host"] or manifest["settings"] != current["settings"]:
+        raise ValueError("refresh run has incompatible host or settings")
+    if not manifest["selected_cases"] or any(
+            manifest["cases"][case_id]["status"] != "measured" or
+            manifest["cases"][case_id]["disturbed"]
+            for case_id in manifest["selected_cases"]):
+        raise ValueError("refresh requires successful undisturbed cases")
+    aggregate_csv = (run_dir / "aggregate.csv").read_bytes()
+    run_rows = json.loads((run_dir / "aggregate.json").read_text(encoding="utf-8"))["rows"]
+    measured = snapshot_from_run(manifest, run_rows, aggregate_csv, manifest_bytes)
+    replacements = {row["case_id"]: row for row in measured["rows"]}
+    if set(replacements) != set(manifest["selected_cases"]):
+        raise ValueError("refresh aggregate differs from selected cases")
+    old = {row["case_id"]: row for row in current["rows"]}
+    sources = dict(current.get("case_sources", {}))
+    for case_id, row in replacements.items():
+        previous = old.get(case_id)
+        if previous is None or any(previous[field] != row[field] for field in
+                                   ("fingerprint", "target_count", "cpu_clocks")):
+            raise ValueError(f"refresh workload differs from current: {case_id}")
+        if manifest["run_id"] <= sources.get(case_id, current["source_run"]):
+            raise ValueError(f"refresh run is not newer for {case_id}")
+        sources[case_id] = manifest["run_id"]
+    merged_rows = [replacements.get(row["case_id"], row) for row in current["rows"]]
+    merged_csv = csv_bytes(merged_rows)
+    merged = dict(current, rows=merged_rows, case_sources=dict(sorted(sources.items())),
+                  aggregate_csv_sha256=hashlib.sha256(merged_csv).hexdigest())
+    old_anomalies = json.loads((CURRENT.parent / "m68k_benchmark_anomalies.json")
+                               .read_text(encoding="utf-8"))
+    new_anomalies = json.loads((run_dir / "anomalies.json").read_text(encoding="utf-8"))
+    spreads = {row["case_id"]: row for row in old_anomalies["series_spread"]}
+    spreads.update({row["case_id"]: row for row in new_anomalies["series_spread"]})
+    anomalies = dict(old_anomalies, series_spread=[spreads[row["case_id"]] for row in merged_rows],
+                     load_disturbances=[row for row in old_anomalies["load_disturbances"]
+                                        if row["case_id"] not in replacements],
+                     failures=[row for row in old_anomalies["failures"]
+                               if row["case_id"] not in replacements])
+    baseline_comparison = compare_baseline(load_snapshot(BASELINE), merged)
+    related = compare_related(merged_rows, CASES)
+    a7 = compare_a7(merged_rows, CASES)
+    write_snapshot(CURRENT, merged, merged_csv)
+    publish_reports(CURRENT.parent, merged["source_run"], anomalies, baseline_comparison,
+                    related, a7, merged["case_sources"])
+    print(f"Refreshed {len(replacements)} current cases from {manifest['run_id']}")
+
+
 if __name__ == "__main__":
     try:
         if sys.argv[1:2] == ["analyze"] and len(sys.argv) == 3:
             analyze(sys.argv[2])
+        elif sys.argv[1:2] == ["refresh"] and len(sys.argv) == 3:
+            refresh_current(sys.argv[2])
         elif sys.argv[1:2] == ["measure"]:
             arguments = sys.argv[2:]
             selector = None
-            if arguments[:1] and arguments[0] in ("case", "mnemonic", "opcode"):
+            if arguments[:1] and arguments[0] in ("case", "cases", "mnemonic", "opcode"):
                 selector, arguments = tuple(arguments[:2]), arguments[2:]
             values = {}
             if len(arguments) % 2:
@@ -361,8 +423,9 @@ if __name__ == "__main__":
                 values[key] = int(value)
             sys.exit(measure(selector, values.get("duration-ms"), values.get("series")))
         else:
-            raise ValueError("use measure [case ID|mnemonic NAME|opcode XXXX] "
-                             "[duration-ms N] [series N], or analyze RUN_DIRECTORY")
+            raise ValueError("use measure [case ID|cases FILE|mnemonic NAME|opcode XXXX] "
+                             "[duration-ms N] [series N], analyze RUN_DIRECTORY, "
+                             "or refresh RUN_DIRECTORY")
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Error: {error}", file=sys.stderr)
         sys.exit(1)

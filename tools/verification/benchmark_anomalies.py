@@ -42,6 +42,8 @@ def load_snapshot(path):
         raise ValueError(f"benchmark snapshot CSV hash differs from JSON: {path}")
     if saved_csv != csv_bytes(rows):
         raise ValueError(f"benchmark snapshot CSV rows differ from JSON: {path}")
+    if not set(snapshot.get("case_sources", {})).issubset({row["case_id"] for row in rows}):
+        raise ValueError(f"benchmark snapshot contains unknown case sources: {path}")
     return snapshot
 
 
@@ -60,9 +62,7 @@ def snapshot_from_run(manifest, rows, aggregate_csv, manifest_bytes):
             "rows": selected}
 
 
-def publish_current(path, snapshot, aggregate_csv):
-    if path.is_file() and load_snapshot(path)["source_run"] > snapshot["source_run"]:
-        return False
+def write_snapshot(path, snapshot, aggregate_csv):
     csv_path = path.with_suffix(".csv")
     csv_temp = csv_path.with_suffix(".csv.tmp")
     json_temp = path.with_suffix(".json.tmp")
@@ -70,6 +70,15 @@ def publish_current(path, snapshot, aggregate_csv):
     json_temp.write_text(json.dumps(snapshot, indent=2) + "\n", encoding="utf-8")
     csv_temp.replace(csv_path)
     json_temp.replace(path)
+
+
+def publish_current(path, snapshot, aggregate_csv):
+    if path.is_file():
+        previous = load_snapshot(path)
+        latest = max([previous["source_run"], *previous.get("case_sources", {}).values()])
+        if latest > snapshot["source_run"]:
+            return False
+    write_snapshot(path, snapshot, aggregate_csv)
     return True
 
 
@@ -381,10 +390,16 @@ def report_lines(baseline_comparison, related, a7=None, anomalies=None, file_pre
     return lines
 
 
-def publish_reports(directory, source_run, anomalies, baseline_comparison, related, a7):
+def publish_reports(directory, source_run, anomalies, baseline_comparison, related, a7,
+                    case_sources=None):
     prefix = "m68k_benchmark_"
-    report = ["# M68000 Benchmark Anomaly Report", "", f"Run: `{source_run}`", "",
-              *report_lines(baseline_comparison, related, a7, anomalies, prefix), ""]
+    case_sources = case_sources or {}
+    report = ["# M68000 Benchmark Anomaly Report", "", f"Base full run: `{source_run}`"]
+    if case_sources:
+        runs = ", ".join(f"`{run}`" for run in sorted(set(case_sources.values())))
+        report.append(f"Current snapshot also contains {len(case_sources)} refreshed cases "
+                      f"from run(s) {runs}; per-case sources are in the current JSON snapshot.")
+    report.extend(["", *report_lines(baseline_comparison, related, a7, anomalies, prefix), ""])
     files = {
         prefix + "anomalies.json": dict(anomalies, source_run=source_run),
         prefix + "baseline_comparison.json": baseline_comparison,

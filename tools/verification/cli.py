@@ -25,10 +25,10 @@ COMMAND_TREE = """Command tree (run from the repository root):
   │  └─ build [crate NAME]
   └─ runner
      ├─ build
-     ├─ bench [case ID|mnemonic NAME|opcode XXXX] [duration-ms N] [series N]
+     ├─ bench [case ID|cases FILE|mnemonic NAME|opcode XXXX] [duration-ms N] [series N]
      ├─ gui -- OPTIONS
-     ├─ profile bench case FAMILY/CASE
-     └─ analyze RUN_DIRECTORY
+     ├─ analyze RUN_DIRECTORY
+     └─ refresh RUN_DIRECTORY
 
 The test rust, test runner and runner bench branches also accept no selector.
 Execution options: --plan, --log-level full|warn|error and --results-dir PATH
@@ -50,6 +50,8 @@ EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py check architecture case test_file_size_limits
   python tools/verification/verify.py runner bench inventory
   python tools/verification/verify.py runner bench case add/add_w_d1_d0 duration-ms 50 series 1
+  python tools/verification/verify.py runner bench cases .agent/tmp/benchmark_cases.txt
+  python tools/verification/verify.py runner refresh benchmarks/results/<run-id>
   python tools/verification/verify.py runner bench mnemonic ADD
 
 Focused commands do not run completion gates or coverage. Commit always runs
@@ -105,8 +107,8 @@ def parser():
     checks.add_argument("name", choices=("all", "architecture", "english", "code", "hardware",
                                          "formatting", "clippy", "build"))
     checks.add_argument("words", nargs="*", metavar="SELECTOR")
-    runs = commands.add_parser("runner", help="Reports, CPU benchmarks, GUI captures and profiling")
-    runs.add_argument("action", choices=("build", "bench", "gui", "profile", "analyze"))
+    runs = commands.add_parser("runner", help="Reports, CPU benchmarks and GUI captures")
+    runs.add_argument("action", choices=("build", "bench", "gui", "analyze", "refresh"))
     runs.add_argument("words", nargs=argparse.REMAINDER)
     return root
 
@@ -125,7 +127,7 @@ def parse_args(argv):
     separator = argv.index("--") if "--" in argv else len(argv)
     settings, words = common.parse_known_args(argv[:separator])
     args = root.parse_args(words + argv[separator:])
-    report = args.command == "runner" and args.action in ("analyze", "profile")
+    report = args.command == "runner" and args.action in ("analyze", "refresh")
     args.plan = settings.plan
     args.log_level = settings.log_level or ("full" if report else "warn")
     args.results_dir = settings.results_dir

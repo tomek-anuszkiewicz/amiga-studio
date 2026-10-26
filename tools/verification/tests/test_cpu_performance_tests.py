@@ -31,6 +31,14 @@ class CatalogTests(unittest.TestCase):
         for selector in (("case", "absent"), ("mnemonic", "MULU"), ("opcode", "D04")):
             with self.subTest(selector=selector), self.assertRaises(ValueError):
                 bench.select_cases(cases, selector)
+        with tempfile.TemporaryDirectory() as tmp:
+            case_list = Path(tmp) / "cases.txt"
+            case_list.write_text("dbcc/dbf_taken\nadd/add_w_d1_d0\n", encoding="utf-8")
+            self.assertEqual(bench.select_cases(cases, ("cases", str(case_list))),
+                             ["dbcc/dbf_taken", "add/add_w_d1_d0"])
+            case_list.write_text("dbcc/dbf_taken\ndbcc/dbf_taken\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "duplicate"):
+                bench.select_cases(cases, ("cases", str(case_list)))
 
     def test_bounded_load_retry_retains_both_attempts(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -166,7 +174,7 @@ class CatalogTests(unittest.TestCase):
             root_report = root / "m68k_benchmark_anomaly_report.md"
             root_related = root / "m68k_benchmark_cross_case_anomalies.json"
             root_a7 = root / "m68k_benchmark_a7_comparison.json"
-            self.assertIn("Run: `003`", root_report.read_text(encoding="utf-8"))
+            self.assertIn("Base full run: `003`", root_report.read_text(encoding="utf-8"))
             self.assertIn("m68k_benchmark_baseline_comparison.json",
                           root_report.read_text(encoding="utf-8"))
             self.assertEqual(json.loads(root_related.read_text(encoding="utf-8"))["source_run"], "003")
@@ -303,6 +311,71 @@ class CatalogTests(unittest.TestCase):
             older = dict(snapshot, source_run="001")
             self.assertFalse(anomalies.publish_current(path, older, csv_data))
             self.assertEqual(anomalies.load_snapshot(path)["source_run"], "002")
+
+    def test_refresh_current_replaces_matching_rows_and_records_sources(self):
+        def row(case_id, ns, fingerprint="same"):
+            return {"case_id": case_id, "ns_per_target": ns, "target_count": 100000,
+                    "cpu_clocks": 800000, "fingerprint": fingerprint, "disturbed": False}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            host = {"os": "Windows", "architecture": "AMD64", "processor": "host"}
+            settings = {"duration_ms": 400, "series": 3}
+            baseline_path = root / "m68k_benchmark_baseline.json"
+            current_path = root / "m68k_benchmark_current.json"
+            baseline_rows = [row("other/other", 20), row("test/test", 20)]
+            current_rows = [row("other/other", 21), row("test/test", 24)]
+            for path, source, rows in ((baseline_path, "001", baseline_rows),
+                                       (current_path, "002", current_rows)):
+                csv_data = anomalies.csv_bytes(rows)
+                snapshot = {"schema_version": 3, "kind": "handwritten_m68000",
+                            "source_run": source, "host": host, "settings": settings,
+                            "case_count": 2, "rows": rows,
+                            "aggregate_csv_sha256": hashlib.sha256(csv_data).hexdigest()}
+                anomalies.write_snapshot(path, snapshot, csv_data)
+            bench.write_json(root / "m68k_benchmark_anomalies.json",
+                             {"source_run": "002", "series_spread": [
+                                 {"case_id": "other/other", "range_pct": 1.0},
+                                 {"case_id": "test/test", "range_pct": 12.0}],
+                              "load_disturbances": [], "failures": []})
+            run = root / "003"
+            run.mkdir()
+            bench.write_json(run / "manifest.json",
+                             {"run_id": "003", "status": "complete", "full_catalog": False,
+                              "selected_cases": ["test/test"], "host": host, "settings": settings,
+                              "cases": {"test/test": {"status": "measured", "disturbed": False}}})
+            replacement = row("test/test", 20)
+            bench.write_json(run / "aggregate.json", {"rows": [replacement]})
+            (run / "aggregate.csv").write_bytes(anomalies.csv_bytes([replacement]))
+            bench.write_json(run / "anomalies.json", {"series_spread": [
+                {"case_id": "test/test", "range_pct": 2.0}],
+                "load_disturbances": [], "failures": []})
+            cases_root = root / "cases"
+            cases_root.mkdir()
+            with patch.object(bench, "CURRENT", current_path), \
+                 patch.object(bench, "BASELINE", baseline_path), \
+                 patch.object(bench, "CASES", cases_root):
+                bench.refresh_current(run)
+            refreshed = anomalies.load_snapshot(current_path)
+            self.assertEqual(refreshed["source_run"], "002")
+            self.assertEqual(refreshed["case_sources"], {"test/test": "003"})
+            self.assertEqual([item["ns_per_target"] for item in refreshed["rows"]], [21, 20])
+            self.assertEqual(anomalies.load_snapshot(baseline_path)["rows"], baseline_rows)
+            report = (root / "m68k_benchmark_anomaly_report.md").read_text(encoding="utf-8")
+            self.assertIn("1 refreshed cases", report)
+            self.assertEqual(json.loads((root / "m68k_benchmark_anomalies.json").read_text())
+                             ["series_spread"][1]["range_pct"], 2.0)
+            older_full = dict(refreshed, source_run="002", case_sources={})
+            self.assertFalse(anomalies.publish_current(current_path, older_full,
+                                                        anomalies.csv_bytes(refreshed["rows"])))
+            replacement["fingerprint"] = "changed"
+            bench.write_json(run / "aggregate.json", {"rows": [replacement]})
+            (run / "aggregate.csv").write_bytes(anomalies.csv_bytes([replacement]))
+            with patch.object(bench, "CURRENT", current_path), self.assertRaisesRegex(
+                    ValueError, "workload differs"):
+                bench.refresh_current(run)
+            self.assertEqual(anomalies.load_snapshot(current_path)["case_sources"],
+                             {"test/test": "003"})
 
 
 if __name__ == "__main__":

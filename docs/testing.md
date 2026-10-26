@@ -63,7 +63,7 @@ comparison entry point. Whole-machine capture verification remains future work.
 
 Performance also needs separate evidence. A benchmark measures host execution
 time, whereas a cycle assertion measures emulated time. Stored benchmark results
-provide a comparison reference; fresh measurements and sampling profiles run
+provide a comparison reference; fresh measurements run
 explicitly. Benchmark regression test targets and the old chipset throughput
 runner have been removed. The [benchmark design](../Obsidian/Amiga/Design/Performance/CPU%20Instruction%20Benchmarking.md)
 explains the measurement model.

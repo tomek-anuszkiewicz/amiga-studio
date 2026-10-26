@@ -256,22 +256,19 @@ def runner_commands(action, words):
             raise ValueError("Use runner analyze RUN_DIRECTORY")
         command = [sys.executable, "tools/verification/cpu_performance_tests.py", "analyze", args[0]]
         return [("Benchmark analysis", command, {})]
+    if action == "refresh":
+        if len(args) != 1:
+            raise ValueError("Use runner refresh RUN_DIRECTORY")
+        command = [sys.executable, "tools/verification/cpu_performance_tests.py", "refresh", args[0]]
+        return [("Refresh current benchmark cases", command, {})]
     if action == "gui":
         return [("GUI inspector", ["cargo", "run", "-p", "gui", "--bin", "gui-inspector", "--", *args], {})]
-    if action == "profile":
-        if not args or args[0] != "bench":
-            raise ValueError("Use runner profile bench [sentence selectors]")
-        if len(args) != 3 or args[1] != "case":
-            raise ValueError("Use runner profile bench case FAMILY/CASE")
-        return [("External sampling profile", [sys.executable, "tools/verification/profile_benchmark.py",
-                                                "--measure-case", args[2], "400", "3",
-                                                ".agent/tmp/benchmarks/profile-report.json"], {})]
     if action == "bench":
         if args == ["inventory"]:
             return [("Decoder inventory", ["cargo", "bench", "-p", "test_runner", "--bench",
                                             "bench_instructions", "--", "--inventory"], {})]
         selector = []
-        if args and args[0] in ("case", "mnemonic", "opcode"):
+        if args and args[0] in ("case", "cases", "mnemonic", "opcode"):
             if len(args) < 2:
                 raise ValueError("benchmark selector requires a value")
             selector, args = args[:2], args[2:]

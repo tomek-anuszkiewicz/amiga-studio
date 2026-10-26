@@ -12,7 +12,7 @@ Use this procedure when reorganizing [ROADMAP.md](../../../ROADMAP.md), reviewin
 1. Read the affected tasks and the user's intended next actions. Distinguish project descriptions, methods, completed history, and pending work before editing.
 2. Check current implementation, relevant commits, and recorded validation for suspected completed tasks. A plan, prompt, or prepared output directory does not prove delivery. If evidence is incomplete, keep a concrete verification task; for partial delivery, keep only the missing scope.
 3. Consolidate related tasks into one workstream with concise scope and acceptance evidence. Preserve substantive requirements, dependencies, unresolved decisions, and failure handling; remove repeated objectives and generic process prose. Detailed execution plans belong in `.agent/tasks/`.
-4. Order work by the user's priorities and hardware dependencies. Preparatory conversion, test orientation, or profiling may precede hardware implementation; within that implementation preserve bus/clocks -> DMA -> video -> peripherals -> firmware.
+4. Order work by the user's priorities and hardware dependencies. Preparatory conversion may precede hardware implementation; within that implementation preserve bus/clocks -> DMA -> video -> peripherals -> firmware.
 5. Renumber tasks and update internal references and affected consumers. Preserve pending extensions when removing project summaries. Keep maintenance instructions here and in the rule rather than copying them into the roadmap.
 
 ## Complete a Listed Task

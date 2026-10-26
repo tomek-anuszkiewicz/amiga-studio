@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-10-25
+updated: 2026-10-26
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/src"
@@ -111,7 +111,7 @@ is tested separately. See [CPU wait coverage](CPU%20SingleStepTests.md#8-ordinar
 Custom-chip and peripheral tests should check register behavior, algorithms,
 and boundary conditions against HRM-derived expectations in isolated fixtures.
 Production-machine integration tests check the cross-chip interactions they
-assert, but do not establish those isolated behaviors. [Roadmap step 3.6](../../../../ROADMAP.md)
+assert, but do not establish those isolated behaviors. [Roadmap step 2.5](../../../../ROADMAP.md)
 plans the subsystem coverage.
 
 ### Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)

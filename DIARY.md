@@ -5402,3 +5402,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: 36 vault frontmatter checks and 709 links
   - PASS: current snapshot CSV hash and 2257 rows with matching report run IDs
   - NOT RUN: new timing measurement or full SingleStep milestone suite
+---
+
+### [2026-10-26 11:03 CET] — Refresh CPU benchmark snapshot and simplify profiling workflow
+- **Affected Subsystems**:
+  - `benchmarks`
+  - `tools/verification`
+  - `Obsidian/Amiga/Design`
+  - `ROADMAP.md`
+  - `.agents`
+- **What Was Changed (The Concrete Reality)**:
+  - Publish user-approved 2257-case benchmark baseline and current snapshot with 86 refreshed cases from two filtered runs
+  - add explicit case-list measurement and provenance-preserving current refresh
+  - remove unused external profiling workflow and its roadmap item
+  - update benchmark and verification documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the approved performance reference traceable to its full and filtered source runs while using the existing benchmark workflow for host timing comparisons.
+- **Verification & Test Results**:
+  - PASS: focused Python contracts
+  - PASS: roadmap structure check
+  - PASS: vault frontmatter and link audit (35 specifications and 691 links)
+  - PASS: benchmark CSV and manifest hashes, full-run status, and 86 refreshed source rows
+  - NOT RUN: new timing measurements or full SingleStep milestone suite

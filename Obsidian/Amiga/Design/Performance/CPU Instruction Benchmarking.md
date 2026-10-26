@@ -7,7 +7,7 @@ subsystem: "m68000"
 status: "active"
 created: 2026-09-10
 updated: 2026-10-26
-related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](../Verification/CPU%20SingleStepTests.md)", "[Performance Profiling and Optimization Strategy.md](Performance%20Profiling%20and%20Optimization%20Strategy.md)"]
+related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](../Verification/CPU%20SingleStepTests.md)"]
 tracked_paths:
   - "crates/test_runner/Cargo.toml"
   - "crates/test_runner/benches"
@@ -86,24 +86,29 @@ gates; whole-program timing includes helpers. Raw changes have no NOP adjustment
 
 The approved [JSON](../../../../benchmarks/m68k_benchmark_baseline.json) and
 [CSV](../../../../benchmarks/m68k_benchmark_baseline.csv) baseline record the
-first complete default-parameter CPU performance test run: 2,257 cases, three series
-of at least 400 ms, and the minimum whole-program nanoseconds per target. Its
-source run and manifest are retained only on the measuring host under the
-ignored `benchmarks/results/`. The former decoder-derived baseline is retained
-in Git history; its cases and NOP control
-policy are incompatible with this catalog. A successful complete run with
+latest user-approved snapshot: 2,257 cases, three series of at least 400 ms,
+and the minimum whole-program nanoseconds per target. The JSON identifies its
+base full run and the source run of each refreshed case; manifests remain only
+on the measuring host under the ignored `benchmarks/results/`. Earlier
+baselines remain in Git history. The former decoder-derived baseline has an
+incompatible catalog and NOP control policy. A successful complete run with
 default settings writes trackable `m68k_benchmark_current.json` and `.csv`,
 four machine-readable anomaly reports and `m68k_benchmark_anomaly_report.md`
 beside the approved baseline. Filtered and shortened runs cannot replace these
-root artifacts. The runner never updates the approved files. Baseline
-replacement requires manual review of the current snapshot and reports, followed
-by the [reference-artifact approval procedure](../../../../.agents/rules/spec-compliance.md).
+root artifacts automatically. A completed, undisturbed filtered run with the
+same host and default settings may explicitly refresh matching current cases.
+The current JSON records the source run for each refreshed case; its CSV hash
+and anomaly reports are regenerated from the combined snapshot. The base full
+run remains identified separately from the refreshed cases. The runner never
+updates the approved files. After reviewing the current snapshot and its reports,
+the user may approve its complete JSON/CSV pair as the next baseline, including
+documented filtered-run refreshes. Promotion retains per-case provenance and
+follows the [reference-artifact approval procedure](../../../../.agents/rules/spec-compliance.md).
 The [decoder inventory](../../../../crates/test_runner/benches/bench_instructions/inventory.rs)
 remains available to the separate coverage audit; it is not a measurement path.
 
 ## References
 
 - [Assembly case catalog](../../../../benchmarks/m68k/README.md): case format and whole-program execution.
-- [Verification commands](../../../../tools/verification/README.md): measurement, analysis and profiling entry points.
-- [Profiling strategy](Performance%20Profiling%20and%20Optimization%20Strategy.md): interpretation of host measurements.
+- [Verification commands](../../../../tools/verification/README.md): measurement and analysis entry points.
 - [Motorola 68000 timing tables](../../Reference/68000%20User%27s%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): hardware timing context, separate from host wall time.
