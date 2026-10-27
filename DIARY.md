@@ -5240,3 +5240,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Commit profile failed: English scan reported 117 unknown-word occurrences and one PDF conversion contract failed with KeyError 'blocks'
   - ordinary crate and standard harness tests, formatting, Clippy, architecture, hardware quality, code quality, Bootstrap, conversion, Book Review, RAG MCP and verification CLI contracts passed. Vault link and frontmatter audit passed. The source PDF SHA-256 matches source.json. The committed root recipe snapshot has 999 elements and differs from ignored Accepted in 74 elements
   - source review and standalone reconstruction remain pending. Full SingleStep and milestone checks were not run.
+---
+
+### [2026-10-27 18:08 CET] — Add page proofreading before book import
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/book-to-markdown`
+  - `tools/bootstrap/conversion`
+  - `ROADMAP.md`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add PDF Stage 08 text-first proofreading with optional page-image resolution, validated text patches and retained-page output
+  - require Stage 08 for book import and remove the chapter proofreading action and prompt
+  - improve PDF source binding for split words, compact tables, letter-spaced text and inline math
+  - update conversion flow, Stage 03 guidance, documentation and regression tests
+- **Architectural Rationale & Trade-Offs**:
+  - Proofread source page objects before assembling chapters while keeping recipe text attributable to PDF spans
+  - leave unresolved OCR and chapter formatting in Roadmap 1.3
+  - keep local Test Book backup copies out of the commit
+- **Verification & Test Results**:
+  - Commit profile failed only at the English scan: 145 unknown-word occurrences across 589 files, including pre-existing terms and source/OCR fixtures
+  - ordinary crate tests, standard harnesses, Bootstrap, conversion, PDF, Book Review, RAG MCP and verification CLI contracts passed
+  - formatting, Clippy, architecture, hardware and code quality checks passed
+  - vault links and frontmatter passed
+  - git diff --check passed
+  - no live Stage 08 conversion, Test Book import or chapter quality review was run

@@ -20,7 +20,7 @@ The numbered scenario descriptions and the matrix's Historical Pipeline Objectiv
 were written for a retired pipeline. Their Stage 12–21 references, `image` type,
 automatic page fusion and index omission are historical expectations, not current
 acceptance criteria or commands. The current [PDF pipeline](../../../../pdf-to-markdown/README.md)
-ends at Stage 07 and uses `graphic`; the [book importer](../../../README.md)
+ends at Stage 08 and uses `graphic`; the [book importer](../../../README.md)
 retains source elements for review. Keep the source-page mapping below when
 reconstructing the Test Book, and use the current program documentation when
 evaluating conversion output.

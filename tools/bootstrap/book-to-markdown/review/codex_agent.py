@@ -31,14 +31,12 @@ EDITOR_COMMANDS = {
 PROMPT_PRESETS = {
     'describe_images': 'describe-images.md',
     'describe_tables': 'describe-tables.md',
-    'proofreading': 'proofreading.md',
 }
 SUGGESTED_TASKS = {
     'join_paragraphs': 'join-paragraphs-across-pdf-pages.md',
     'source_cleanup': 'clean-direct-book-text.md',
     'describe_images': 'describe-images-working.md',
     'describe_tables': 'describe-tables-working.md',
-    'proofreading': 'proofreading-working.md',
 }
 
 

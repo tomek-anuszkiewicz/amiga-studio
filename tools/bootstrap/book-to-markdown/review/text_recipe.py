@@ -134,6 +134,38 @@ def source_span_with_spacing(page, block, start, end, visible):
     return ''.join(pieces)
 
 
+def localize_spacing_corrections(template, blocks):
+    """Keep exact source characters when a split-word anchor reflows prose."""
+    index = {block['block_id']: block['text'] for block in blocks}
+
+    def localize(match):
+        if not CORRECTION.search(match[0]):
+            return match[0]
+        page, block, start, end = map(int, match.groups())
+        source = index[block][start:end]
+        visible = source_text(match, index[block])
+        if ''.join(source.split()) != ''.join(visible.split()):
+            return match[0]
+        operations = SequenceMatcher(None, source, visible, autojunk=False).get_opcodes()
+        if any(kind != 'equal' and
+               any(not char.isspace() for char in source[left:right] + visible[target_left:target_right])
+               for kind, left, right, target_left, target_right in operations):
+            return match[0]
+        pieces = []
+        for kind, left, right, target_left, target_right in operations:
+            shown = visible[target_left:target_right]
+            if kind == 'equal':
+                pieces.append(source_reference(page, block, start + left, start + right))
+            elif left < right and shown:
+                pieces.append(source_reference(page, block, start + left, start + right,
+                                               (0, right - left, shown)))
+            elif shown:
+                pieces.append(escape_literal(shown))
+        return ''.join(pieces)
+
+    return REFERENCE.sub(localize, template)
+
+
 def attach_adjacent_corrections(template, pages):
     """Keep a one-letter OCR substitution on its adjacent source span."""
     raw_ligature_suffix = re.compile(rf'(?P<reference>{REFERENCE.pattern})(?P<letter>ffi|ffl|fi|fl|ff)(?!\w)')
@@ -341,7 +373,7 @@ def math_semantic_parts(expression):
         char = expression[position]
         if char == '\\':
             command = re.match(r'\\([A-Za-z]+|[, ])', expression[position:])
-            if not command or command[1] not in {'mathrm', ',', ' '}:
+            if not command or command[1] not in {'mathrm', 'overline', ',', ' '}:
                 return None
             kind, value = 'syntax', command[0]
             position += len(value)
@@ -354,6 +386,70 @@ def math_semantic_parts(expression):
         else:
             parts.append((kind, value))
     return parts
+
+
+def contextual_inline_math_template(page, blocks, target):
+    """Bind inline math through unique surrounding PDF text in one source block."""
+    formulas = list(re.finditer(r'(?<!\\)\$[^$\n]+\$', target))
+    if not formulas:
+        return None
+    outside = [target[:formulas[0].start()]]
+    semantic = []
+    for index, formula in enumerate(formulas):
+        parts = math_semantic_parts(formula[0])
+        if parts is None:
+            return None
+        visible = ''.join(value for kind, value in parts if kind == 'text')
+        if not visible or not any(char.isalnum() for char in visible):
+            return None
+        semantic.append((parts, visible))
+        end = formulas[index + 1].start() if index + 1 < len(formulas) else len(target)
+        outside.append(target[formula.end():end])
+    if (any(not part for part in outside) or
+            sum(char.isalnum() for char in outside[0]) < 8):
+        return None
+
+    candidates = []
+    for block in blocks:
+        source = block['text']
+        for initial in re.finditer(re.escape(outside[0]), source):
+            def follow(index, cursor, spans):
+                if index == len(semantic):
+                    candidates.append((block, initial.start(), spans))
+                    return
+                visible = semantic[index][1]
+                limit = max(len(visible) + 3, len(visible) * 2)
+                next_text = outside[index + 1]
+                position = source.find(next_text, cursor + 1)
+                while position >= 0 and position - cursor <= limit:
+                    original = source[cursor:position]
+                    if (any(char.isalnum() for char in original) and
+                            set(char.casefold() for char in original if char.isalnum()) &
+                            set(char.casefold() for char in visible if char.isalnum())):
+                        follow(index + 1, position + len(next_text),
+                               spans + [(cursor, position, position, position + len(next_text))])
+                    position = source.find(next_text, position + 1)
+
+            follow(0, initial.end(), [])
+            if len(candidates) > 1:
+                return None
+    if len(candidates) != 1:
+        return None
+
+    block, start, spans = candidates[0]
+    result = [source_reference(page, block['block_id'], start, start + len(outside[0]))]
+    for ((parts, visible), (source_start, source_end, next_start, next_end)) in zip(semantic, spans):
+        mapped = source_span_with_spacing(page, block, source_start, source_end, visible)
+        offset = 0
+        for kind, value in parts:
+            if kind == 'syntax':
+                result.append(escape_literal(value))
+            else:
+                result.append(slice_template(mapped, offset, offset + len(value),
+                                             {page: [block]}))
+                offset += len(value)
+        result.append(source_reference(page, block['block_id'], next_start, next_end))
+    return ''.join(result)
 
 
 def bind_unique_region_literals(page, blocks, template):
@@ -402,10 +498,129 @@ def bind_unique_region_literals(page, blocks, template):
     return template
 
 
+def bind_ordered_compact_literals(page, blocks, template):
+    """Bind repeated table labels when their source and rendered order agree."""
+    if not ACCEPTED.search(template):
+        return template
+    sources = {block['block_id']: block['text'] for block in blocks}
+    if any(int(ref[1]) != page or int(ref[2]) not in sources
+           for ref in REFERENCE.finditer(template)):
+        return template
+    positions = [(block, index) for block in blocks
+                 for index, char in enumerate(block['text']) if not char.isspace()]
+    compact_source = ''.join(block['text'][index] for block, index in positions)
+    resolved = resolve_template(template, {page: blocks})
+    compact_target = ''.join(resolved.split())
+    claimed = {block_id: [] for block_id in sources}
+    for ref in REFERENCE.finditer(template):
+        if int(ref[1]) == page and int(ref[2]) in claimed:
+            claimed[int(ref[2])].append((int(ref[3]), int(ref[4])))
+
+    edits, cursor, offset, previous_source_end = [], 0, 0, 0
+    while cursor < len(template):
+        ref = REFERENCE.match(template, cursor)
+        accepted = ACCEPTED.match(template, cursor) if ref is None else None
+        if ref:
+            offset += len(source_text(ref, sources[int(ref[2])]))
+            cursor = ref.end()
+            continue
+        if accepted:
+            value = json.loads(accepted[1])
+            compact_value = ''.join(value.split())
+            target_start = len(''.join(resolved[:offset].split()))
+            if len(compact_value) >= 2 and any(char.isalnum() for char in compact_value):
+                source_hits = list(re.finditer(re.escape(compact_value), compact_source))
+                target_hits = list(re.finditer(re.escape(compact_value), compact_target))
+                target_index = next((index for index, hit in enumerate(target_hits)
+                                     if hit.start() == target_start), None)
+                if (source_hits and len(source_hits) == len(target_hits) and
+                        target_index is not None):
+                    hit = source_hits[target_index]
+                    first_block, start = positions[hit.start()]
+                    last_block, last = positions[hit.end() - 1]
+                    block_id = first_block['block_id']
+                    end = last + 1
+                    original = first_block['text'][start:end]
+                    if (first_block is last_block and hit.start() >= previous_source_end and
+                            sum(char.isspace() for char in original) >=
+                            max(1, len(compact_value) // 3) and
+                            not any(start < right and end > left
+                                    for left, right in claimed[block_id])):
+                        replacement = source_span_with_spacing(page, first_block,
+                                                               start, end, value)
+                        if resolve_template(replacement, {page: blocks}) == value:
+                            edits.append((accepted.start(), accepted.end(), replacement))
+                            claimed[block_id].append((start, end))
+                            previous_source_end = hit.end()
+            offset += len(value)
+            cursor = accepted.end()
+            continue
+        if template[cursor] == '\\' and cursor + 1 < len(template):
+            offset += 1
+            cursor += 2
+        else:
+            offset += 1
+            cursor += 1
+    for start, end, replacement in reversed(edits):
+        template = template[:start] + replacement + template[end:]
+    return template
+
+
 def compile_markdown_template(page, blocks, target):
     """Compile a template and bind unique literal phrases inside its source region."""
     return bind_unique_region_literals(page, blocks,
                                        _compile_markdown_template(page, blocks, target))
+
+
+def letter_spaced_region_template(page, page_data, bbox, target):
+    """Bind words in a letter-spaced PDF region to their original character ranges."""
+    if ('\n' in target or '\\' in target or target.count('`') % 2 or
+            any(char in target for char in '<>{}*_|#[]')):
+        return None
+    a, b, c, d, e, f = page_data['raster']['display_to_pixels']
+    selected = []
+    for block in region_blocks(page_data, bbox):
+        boxes = block.get('char_bboxes')
+        if boxes is None or len(boxes) != len(block['text']):
+            return None
+        for index, (char, (x0, y0, x1, y1)) in enumerate(zip(block['text'], boxes)):
+            x, y = (x0 + x1) / 2, (y0 + y1) / 2
+            px, py = a*x + c*y + e, b*x + d*y + f
+            if bbox[0] <= px < bbox[2] and bbox[1] <= py < bbox[3]:
+                selected.append((block, index, char))
+    source_chars = [(block, index, char) for block, index, char in selected
+                    if not char.isspace()]
+    visible = target.replace('`', '')
+    target_chars = ''.join(visible.split())
+    if not source_chars or len(source_chars) != len(target_chars):
+        return None
+    letter_gaps = sum(1 for (_, _, left), (_, _, right) in zip(selected, selected[1:])
+                      if left.isalnum() and right == ' ')
+    if letter_gaps < max(4, len(source_chars) // 4):
+        return None
+    differences = sum(char != shown for (_, _, char), shown in zip(source_chars, target_chars))
+    if differences > max(2, len(source_chars) // 100):
+        return None
+
+    parts, cursor = [], 0
+    for token in re.findall(r'`+|\s+|[^\s`]+', target):
+        if token[0].isspace() or token[0] == '`':
+            parts.append(escape_literal(token))
+            continue
+        end = cursor + len(token)
+        first, last = source_chars[cursor], source_chars[end - 1]
+        if first[0] is not last[0]:
+            return None
+        block, start = first[:2]
+        chosen = {index for _, index, _ in source_chars[cursor:end]}
+        if any(not char.isspace() and index not in chosen
+               for index, char in enumerate(block['text'][start:last[1] + 1], start)):
+            return None
+        parts.append(source_span_with_spacing(page, block, start, last[1] + 1, token))
+        cursor = end
+    template = ''.join(parts)
+    return template if cursor == len(source_chars) and resolve_template(
+        template, {page: page_data['blocks']}) == target else None
 
 
 def _compile_markdown_template(page, blocks, target):
@@ -423,8 +638,50 @@ def _compile_markdown_template(page, blocks, target):
                 if matcher.ratio() >= 0.8:
                     candidates.append((matcher.ratio(), block, matcher))
         candidates.sort(key=lambda item: -item[0])
-        if candidates and (len(candidates) == 1 or
-                           candidates[0][0] - candidates[1][0] >= 0.05):
+
+        def separate_source_line(candidate):
+            """Detect a target line supplied by another positioned PDF block."""
+            if '\n' not in target:
+                return False
+            def comparable(value):
+                return ''.join(LIGATURES.get(char, char) for char in value
+                               if not char.isspace())
+
+            candidate_text = comparable(candidate['text'])
+            other_texts = [comparable(block['text']) for block in blocks
+                           if block is not candidate]
+            return any(len(line_text) >= 8 and line_text not in candidate_text and
+                       any(line_text in source for source in other_texts)
+                       for line_text in (comparable(line) for line in target.splitlines()))
+
+        def nearby_source_block(candidate, visible, used):
+            """Find one nearby block for an exact inserted source phrase."""
+            candidate_box = candidate.get('bbox')
+            if not candidate_box:
+                return None
+            compact_candidate = ''.join(candidate['text'].split())
+            compact_visible = ''.join(visible.split())
+            matches = []
+            for other in blocks:
+                other_box = other.get('bbox')
+                if other is candidate or id(other) in used or not other_box:
+                    continue
+                compact_other = ''.join(other['text'].split())
+                if (len(compact_other) < 5 or compact_other != compact_visible or
+                        compact_other in compact_candidate):
+                    continue
+                x0, y0, x1, y1 = candidate_box
+                u0, v0, u1, v1 = other_box
+                line_height = max(y1 - y0, v1 - v0)
+                horizontal_gap = max(0, u0 - x1, x0 - u1)
+                vertical_gap = max(0, v0 - y1, y0 - v1)
+                if horizontal_gap <= line_height and vertical_gap <= line_height:
+                    matches.append(other)
+            return matches[0] if len(matches) == 1 else None
+
+        if (candidates and
+                (len(candidates) == 1 or candidates[0][0] - candidates[1][0] >= 0.05) and
+                not separate_source_line(candidates[0][1])):
             _, block, _ = candidates[0]
             source = block['text']
             source_tokens = re.findall(r'(?u)\w+|\W+', source)
@@ -440,6 +697,7 @@ def _compile_markdown_template(page, blocks, target):
                            target_offsets[c], target_offsets[d])
                           for kind, a, b, c, d in matcher.get_opcodes()]
             position = 0
+            used_other_blocks = set()
             while position < len(operations):
                 kind, source_start, source_end, target_start, target_end = operations[position]
                 if kind == 'equal':
@@ -454,7 +712,18 @@ def _compile_markdown_template(page, blocks, target):
                 source_end = operations[next_position - 1][2]
                 target_end = operations[next_position - 1][4]
                 visible = target[target_start:target_end]
-                if source_end > source_start:
+                other = (nearby_source_block(block, visible, used_other_blocks)
+                         if not any(char.isalnum() for char in source[source_start:source_end])
+                         else None)
+                if other is not None:
+                    shown = visible.strip()
+                    start = len(other['text']) - len(other['text'].lstrip())
+                    end = len(other['text'].rstrip())
+                    parts.append(escape_literal(visible[:len(visible) - len(visible.lstrip())]))
+                    parts.append(source_span_with_spacing(page, other, start, end, shown))
+                    parts.append(escape_literal(visible[len(visible.rstrip()):]))
+                    used_other_blocks.add(id(other))
+                elif source_end > source_start:
                     parts.append(source_reference(page, block['block_id'], source_start, source_end,
                                                   (0, source_end - source_start, visible)))
                 elif visible:
@@ -512,6 +781,51 @@ def _compile_markdown_template(page, blocks, target):
 
         core = text.strip(' \t\r\n')
         raw_hits = []
+        # Bind a word split by a printed line-end hyphen before matching the
+        # surrounding prose. The split fixes the source order of repeated words.
+        bridges = []
+        if len(core) >= 4:
+            for index, (left, right) in enumerate(zip(blocks, blocks[1:])):
+                suffix = re.search(r'(?u)([^\W_]{2,})-\s*$', left['text'])
+                prefix = re.match(r'(?u)\s*([^\W_]{2,})', right['text'])
+                if not suffix or not prefix:
+                    continue
+                word = suffix[1] + prefix[1]
+                left_start, left_end = suffix.span(1)
+                right_start, right_end = prefix.span(1)
+                left_low, left_high = allowed(left)
+                right_low, right_high = allowed(right)
+                if (not left_low <= left_start < left_end <= left_high or
+                        not right_low <= right_start < right_end <= right_high or
+                        not unclaimed(left, left_start, left_end) or
+                        not unclaimed(right, right_start, right_end)):
+                    continue
+                source_before = re.findall(r'(?u)[^\W_]+', left['text'][:left_start])
+                source_after = re.findall(r'(?u)[^\W_]+', right['text'][right_end:])
+                for hit in re.finditer(r'(?<!\w)' + re.escape(word) + r'(?!\w)', text):
+                    visible_before = re.findall(r'(?u)[^\W_]+', text[:hit.start()])
+                    visible_after = re.findall(r'(?u)[^\W_]+', text[hit.end():])
+                    before_matches = bool(source_before and visible_before and
+                                          source_before[-1] == visible_before[-1])
+                    after_matches = bool(source_after and visible_after and
+                                         source_after[0] == visible_after[0])
+                    if ((source_before and visible_before and not before_matches) or
+                            (source_after and visible_after and not after_matches) or
+                            (len(core) > len(word) and not (before_matches or after_matches))):
+                        continue
+                    bridges.append((index, left, left_start, left_end,
+                                    right, right_start, right_end, hit))
+        if len(bridges) == 1:
+            index, left, left_start, left_end, right, right_start, right_end, hit = bridges[0]
+            before_bounds = {**bounds, **{id(block): (0, 0) for block in blocks[index + 1:]},
+                             id(left): (allowed(left)[0], left_start)}
+            after_bounds = {**bounds, **{id(block): (0, 0) for block in blocks[:index + 1]},
+                            id(right): (right_end, allowed(right)[1])}
+            anchored = (reference_text(text[:hit.start()], before_bounds) +
+                        source_reference(page, left['block_id'], left_start, left_end) +
+                        source_reference(page, right['block_id'], right_start, right_end) +
+                        reference_text(text[hit.end():], after_bounds))
+            return localize_spacing_corrections(anchored, blocks)
         if (core and len(core) >= 2 and any(char.isalnum() for char in core) and
                 not any(char in '|<>#`{}[]&' for char in core) and
                 ('*' not in core or re.fullmatch(r'\*[0-9A-Fa-f]{2,}', core))):
@@ -548,6 +862,30 @@ def _compile_markdown_template(page, blocks, target):
                 return (escape_literal(text[:offset]) +
                         source_reference(page, block['block_id'], start, end) +
                         escape_literal(text[offset + len(core):]))
+            # A soft hyphen and line break can split one word inside a single
+            # positioned block. Both visible parts retain their source ranges.
+            if not raw_hits and re.fullmatch(r'(?u)[^\W_]{4,}', core):
+                soft_bridges = []
+                for block in preferred:
+                    for hit in re.finditer(
+                            r'(?u)(?<!\w)([^\W_]{2,})\u00ad[ \t]*\r?\n[ \t]*([^\W_]{2,})(?!\w)',
+                            block['text']):
+                        if hit[1] + hit[2] != core:
+                            continue
+                        left_start, left_end = hit.span(1)
+                        right_start, right_end = hit.span(2)
+                        low, high = allowed(block)
+                        if (low <= left_start and right_end <= high and
+                                unclaimed(block, left_start, left_end) and
+                                unclaimed(block, right_start, right_end)):
+                            soft_bridges.append((block, left_start, left_end, right_start, right_end))
+                if len(soft_bridges) == 1:
+                    block, left_start, left_end, right_start, right_end = soft_bridges[0]
+                    offset = text.index(core)
+                    return (escape_literal(text[:offset]) +
+                            source_reference(page, block['block_id'], left_start, left_end) +
+                            source_reference(page, block['block_id'], right_start, right_end) +
+                            escape_literal(text[offset + len(core):]))
             # Markdown may insert a hyphen inside one OCR word, for example
             # TABLE 3-2 from Stage 02 "TABLE  32". Bind its parts only when
             # their joined characters identify one complete source word.
@@ -812,6 +1150,14 @@ def _compile_markdown_template(page, blocks, target):
     used_blocks = set()
     used_table_blocks = set()
     for line in target.splitlines(keepends=True):
+        content = line.rstrip('\r\n')
+        marker = re.match(r'^ {0,3}(`{3,}|~{3,})(.*)$', content)
+        inline_math = (contextual_inline_math_template(page, blocks, content)
+                       if fence is None and marker is None else None)
+        if inline_math is not None:
+            parts.append(inline_math + escape_literal(line[len(content):]))
+            used_blocks.update(int(ref[2]) for ref in REFERENCE.finditer(inline_math))
+            continue
         line_start = len(parts)
         visible = re.sub(r'<[^>]*>', '', line).replace('|', ' ').replace('*', '')
         compact_visible = ''.join(char for char in visible if not char.isspace())
@@ -897,7 +1243,6 @@ def _compile_markdown_template(page, blocks, target):
                     offset += len(piece)
             append_mapped(''.join(rebuilt))
 
-        marker = re.match(r'^ {0,3}(`{3,}|~{3,})(.*)$', line.rstrip('\r\n'))
         if marker and fence is None:
             fence = marker[1]
             parts.append(escape_literal(line))

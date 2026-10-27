@@ -471,8 +471,7 @@ class WorkingAgentTests(unittest.TestCase):
 
     def test_markdown_prompt_presets_are_loaded_into_agent_context(self):
         presets = {'describe_images': 'describe-images.md',
-                   'describe_tables': 'describe-tables.md',
-                   'proofreading': 'proofreading.md'}
+                   'describe_tables': 'describe-tables.md'}
         for identifier, filename in presets.items():
             with self.subTest(identifier=identifier):
                 seen = []
@@ -508,8 +507,7 @@ class WorkingAgentTests(unittest.TestCase):
         filenames = {'join_paragraphs': 'join-paragraphs-across-pdf-pages.md',
                      'source_cleanup': 'clean-direct-book-text.md',
                      'describe_images': 'describe-images-working.md',
-                     'describe_tables': 'describe-tables-working.md',
-                     'proofreading': 'proofreading-working.md'}
+                     'describe_tables': 'describe-tables-working.md'}
         instructions = self.state.status()['codex_suggested_tasks']
         for key, filename in filenames.items():
             with self.subTest(key=key):
@@ -618,6 +616,15 @@ class WorkingAgentTests(unittest.TestCase):
                 page.locator('#show-source-differences').check()
                 self.assertTrue(page.locator('#working .chapter-content').first.evaluate(
                     "node => node.classList.contains('show-source-differences')"))
+                pending_text = page.locator('#working .source-diff-pending').filter(has_text='Y')
+                pending_text.wait_for(state='attached')
+                self.assertEqual(pending_text.inner_text(), 'Y')
+                self.assertNotEqual(pending_text.evaluate('node => getComputedStyle(node).backgroundColor'),
+                                    page.locator('#working .source-diff-unanchored').first.evaluate(
+                                        'node => getComputedStyle(node).backgroundColor'))
+                self.assertNotEqual(pending_text.evaluate('node => getComputedStyle(node).backgroundColor'),
+                                    page.locator('#working .source-diff-correction').evaluate(
+                                        'node => getComputedStyle(node).backgroundColor'))
                 math_addition = page.locator('#working .katex-html .source-diff-unanchored').filter(
                     has_text='AS')
                 self.assertEqual(math_addition.count(), 1)
@@ -665,9 +672,9 @@ class WorkingAgentTests(unittest.TestCase):
                     self.assertEqual(page.locator('#element-actions, #copy, #menu-codex, #menu-codex-working').count(), 0)
                     page.locator('#book-actions').click()
                     self.assertEqual(page.locator('#book-menu button').all_text_contents(),
-                                     ['Codex...', 'Proofread chapters', 'Describe images',
+                                     ['Codex...', 'Describe images',
                                       'Describe tables', 'Clean direct book text'])
-                    for task in ['proofreading', 'describe_images', 'describe_tables']:
+                    for task in ['describe_images', 'describe_tables']:
                         page.locator(f'[data-book-task="{task}"]').click()
                         self.assertEqual(page.locator('#codex-preset').input_value(), task)
                         self.assertEqual(page.locator('#codex-instruction').input_value(),
@@ -680,13 +687,12 @@ class WorkingAgentTests(unittest.TestCase):
                                      'Find places where a paragraph continues across a PDF page boundary, '
                                      'and merge the split paragraphs.')
                     for label, filename in [('Describe images', 'describe-images.md'),
-                                            ('Describe tables', 'describe-tables.md'),
-                                            ('Proofread chapters', 'proofreading.md')]:
+                                            ('Describe tables', 'describe-tables.md')]:
                         page.locator('#codex-preset').select_option(label=label)
                         self.assertIn(filename, page.locator('#codex-instruction').input_value())
-                    page.locator('#codex-instruction').fill('Proofread the first selected chapter')
+                    page.locator('#codex-instruction').fill('Review the first selected chapter')
                     self.assertEqual(page.locator('#codex-preset').locator('option:checked').inner_text(),
-                                     'Proofread chapters')
+                                     'Describe tables')
                     page.locator('#codex-preset').select_option(label='Join paragraphs across PDF pages')
                     page.locator('#codex-instruction').fill('Edit the first phrase in Working')
                     self.assertEqual(page.locator('#codex-preset').input_value(), '')

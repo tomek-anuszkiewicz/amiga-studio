@@ -25,4 +25,5 @@ cache apply. The status entry records this invocation's page range.
 
 [Stage 06](../06_extract_crops/README.md) overlays these replacement pages on
 Stage 04 and extracts graphic assets. [Stage 07](../07_repair_callouts/README.md)
-uses the same overlay to produce the final page objects for book import.
+uses the same overlay to assemble callouts before [Stage 08](../08_proofreading/README.md)
+proofreads the final page objects for book import.

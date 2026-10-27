@@ -270,7 +270,8 @@ class PdfRestartTests(unittest.TestCase):
         self.assertIsNone(self.pipeline.resolve_stage_idx("02k"))
         self.assertIsNone(self.pipeline.resolve_stage_idx("02.90"))
         self.assertIsNone(self.pipeline.resolve_stage_idx("2.9"))
-        self.assertEqual(self.pipeline.STAGE_REGISTRY[-1]["id"], "07")
+        self.assertEqual(self.pipeline.STAGE_REGISTRY[-1]["id"], "08")
+        self.assertEqual(self.pipeline.STAGE_REGISTRY[-1]["inputs"], ["07"])
         self.assertEqual(self.pipeline.resolve_stage_idx("04"), self.stage_idx("04"))
         before = read_json(self.workspace / "stage_status.json")["03"]
         def worker(stage, *args):
@@ -464,7 +465,8 @@ class PdfConfigurationTests(unittest.TestCase):
 
     def test_all_inference_stage_pairs_are_explicit(self):
         config = load_config(ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml")
-        self.assertEqual(set(config["llm"]["stages"]), {"03_page_conversion", "05_transform_page_tables"})
+        self.assertEqual(set(config["llm"]["stages"]), {"03_page_conversion", "05_transform_page_tables",
+                                                        "08_proofreading"})
 
 
     def test_missing_predecessor_does_not_clear_downstream(self):

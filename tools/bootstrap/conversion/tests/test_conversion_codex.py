@@ -517,6 +517,28 @@ class TransportTests(unittest.TestCase):
 
 
 class ParallelConversionTests(unittest.TestCase):
+    def test_single_worker_interrupt_runs_on_invoking_thread(self):
+        caller = threading.get_ident()
+        converted = []
+
+        class Client:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                pass
+
+        def convert(client, job):
+            converted.append(job)
+            self.assertEqual(threading.get_ident(), caller)
+            raise KeyboardInterrupt
+
+        with self.assertRaises(KeyboardInterrupt):
+            convert_parallel({"llm": {"concurrency": 1}}, stage="stage", operation="operation",
+                             jobs=range(3), convert=convert, accept=lambda *_: self.fail("No result"),
+                             client_factory=lambda *_, **__: Client())
+        self.assertEqual(converted, [0])
+
     def test_worker_clients_are_isolated_and_accept_runs_on_coordinator(self):
         barrier = threading.Barrier(2)
         coordinator = threading.get_ident()

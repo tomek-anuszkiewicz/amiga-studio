@@ -565,8 +565,8 @@ async function loadSourceFindings() {
   for(const item of report.findings) {
     if(item.token?.startsWith("{{accepted text="))continue;
     const node=nodes.working.find(entry=>entry.id===item.element_id)?.node;
-    if(node)wrapDifference(node,differenceOffset(node,item),item.literal,"unanchored",
-                           `No PDF text reference: ${item.literal}`);
+    if(node)wrapDifference(node,differenceOffset(node,item),item.literal,"pending",
+                           `Direct book text pending source cleanup: ${item.literal}`);
   }
   sourceFindingsRevision=revision;
 }
@@ -610,6 +610,7 @@ async function buildMarkdown(version, snapshot) {
       const style=document.createElement("style");
       style.textContent=`:host(.show-source-differences) .source-diff-correction { background: #ffe68a; box-shadow: inset 0 -2px #ba8200; }
         :host(.show-source-differences) .source-diff-unanchored { background: #b9e7fa; box-shadow: inset 0 -2px #187999; }
+        :host(.show-source-differences) .source-diff-pending { background: #e6d5ff; box-shadow: inset 0 -2px #7941ad; }
         .source-diff-focus { background: #ffb45d !important; outline: 2px solid #c85a00; }`;
       shadow.append(style);
     }

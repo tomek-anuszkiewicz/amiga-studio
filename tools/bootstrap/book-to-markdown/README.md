@@ -5,10 +5,11 @@ and local HTML review application. It consumes existing prepared data from
 [PDF-to-Markdown](../pdf-to-markdown/README.md). Ordinary review is deterministic;
 the explicit Codex element command makes model calls.
 
-PDF preparation ends at Stage 07. The handoff uses Stage 02 original page PNGs
-and positioned text, final Stage 07 page objects, and Stage 06 graphic assets at
-`06_extract_crops/assets/<segment_id>.png`. Stage 07 assembles callouts before
-book import. A partial PDF refresh preserves other prepared pages.
+PDF preparation ends at Stage 08. The handoff uses Stage 02 original page PNGs
+and positioned text, final Stage 08 page objects, and Stage 06 graphic assets at
+`06_extract_crops/assets/<segment_id>.png`. Stage 07 assembles callouts and
+Stage 08 proofreads page text before book import. A partial PDF refresh preserves
+other prepared pages.
 The generator emits chapter Markdown and copies these prepared assets.
 No intermediate page-ordered Markdown export is required.
 
@@ -33,7 +34,7 @@ source acquisition and reconstruction directly from a PDF remain pending.
 
 ## Book authoring sequence
 
-1. Prepare the selected PDF pages through Stage 07 with
+1. Prepare the selected PDF pages through Stage 08 with
    [PDF-to-Markdown](../pdf-to-markdown/README.md). Check the preparation status
    before importing the book.
 2. Import once to create the local Working book, then review it in the editor.
@@ -57,10 +58,9 @@ source acquisition and reconstruction directly from a PDF remain pending.
    The current [table](prompts/describe-tables.md) and
    [image](prompts/describe-images.md) prompts support manual agent authoring;
    automatic generation and insertion are pending.
-6. Proofread completed chapters against the PDF using the
-   [proofreading prompt](prompts/proofreading.md). Preserve source wording,
-   structural choices and accepted descriptions; record justified corrections
-   in the authored recipe, then repeat the source-reference audit.
+6. Review Stage 08 corrections and unresolved ambiguities against the PDF after
+   assembly. Check chapter-level code formatting and links, record any justified
+   further corrections in the authored recipe, then repeat the source-reference audit.
 7. Review the final Working render and Markdown exports, accept the intended
    changes, and record the reviewed recipe and matching source identity as
    described in Roadmap 1.4. The local Accepted bundle is not a published recipe.
@@ -137,7 +137,7 @@ bundled Chromium, run `python -m playwright install chromium` and pass
 longer captures Markdown screenshots. The review browser displays the resulting
 HTML directly. Preparation and review use local resources.
 
-Use the rebuilt Test Book variant after preparing its PDF through Stage 07 and
+Use the rebuilt Test Book variant after preparing its PDF through Stage 08 and
 checking preparation statuses. Import deletes Working, Accepted and the copied
 PDF page directory, then rebuilds Working and PDF pages from the prepared input.
 It retains no old exports, assets, renders
@@ -166,8 +166,8 @@ and port. Accepted and Working share the remaining space, with a 240-pixel minim
 each; narrower windows scroll the complete three-column layout horizontally.
 These layout changes do not modify the book or request server rendering.
 
-The import requires successful Stages 02, 06 and 07 and reads all retained
-Stage 07 final page objects. Earlier page-object stages are never consulted.
+The import requires successful Stages 02, 06, 07 and 08 and reads all retained
+Stage 08 final page objects. Earlier page-object stages are never consulted.
 Thumb indexes are removed in PDF Stage 04 and callouts are repaired in PDF
 Stage 07; the importer does not perform either transformation. All imported elements
 start visible, including source contents and lists of figures/tables.
@@ -236,7 +236,7 @@ or output filename. The initial imported chapter title references its first head
 its output filename is an identifier.
 New imports keep conversion Markdown/HTML structure as literal recipe syntax,
 replacing matching source text with `{{text page=3 block=1 chars=0:6}}` references.
-Stage 07 supplies complete final pages, preserving transcribed tables and callouts.
+Stage 08 supplies complete final pages, preserving transcribed tables and callouts.
 Positioned Stage 02 blocks intersecting the element region supply candidate text.
 Source matching can reorder selections, such as a wrapped label beside an
 assembly listing. A one-character OCR substitution keeps its Stage 02 source
@@ -244,11 +244,14 @@ range and records the visible replacement. Ambiguous content remains explicitly
 unanchored for review; fences, language tags and HTML tags/attributes remain
 literal structure. Matching equal characters does not certify semantic
 attribution of repeated text.
-An alphanumeric word is not assembled from partial matches in separate source
-words or blocks. Exact fallback matches stop at word boundaries in both the
-visible text and Stage 02 source. A full source word with a supported OCR
-substitution retains one contiguous range and a `replace` correction; words
-without a defensible complete source address stay unanchored.
+An alphanumeric word is not assembled from arbitrary partial matches in
+separate source words or blocks. A unique word split by a printed line-end
+hyphen across blocks, or by a soft hyphen and newline inside one block, keeps
+both source ranges without the layout characters. Exact fallback matches stop
+at word boundaries in both the visible text and Stage 02 source. A full source
+word with a supported OCR substitution retains one contiguous range and a
+`replace` correction; words without a defensible complete source address stay
+unanchored.
 When Markdown inserts a hyphen inside one OCR word, as in `TABLE 3-2` versus
 source `TABLE  32`, each side of the hyphen keeps its adjacent character range
 only if the joined word has one eligible source occurrence.
@@ -300,7 +303,7 @@ book text, so the importer does not silently borrow a word from elsewhere.
 ### Codex Working task
 
 Use **Book Actions → Codex...** in the top bar to
-give Codex a task across the authored Working book. The same menu opens proofreading,
+give Codex a task across the authored Working book. The same menu opens
 image description and table description with their task instructions already selected.
 A selected element is only
 a starting hint; the task can inspect other chapters and elements. The model asks
@@ -328,7 +331,8 @@ Working revision and recomputes the report before one Working update. **Accept
 literal** records an unresolved authored fragment as accepted and removes it from
 the Clean direct book text queue. Its missing source address remains available in
 the top-bar **Show source differences** view, which marks
-source-backed substitutions in yellow and unanchored content in blue in Working;
+source-backed substitutions in yellow, explicitly accepted unanchored content in
+blue, and plain text awaiting source cleanup in purple in Working;
 the overlay is absent from exported Markdown. Accepted remains unchanged until
 **Accept Changes**. The source PDF and Stage 02 text remain intact.
 The agent may invoke editor commands, submit validated changes to the authored
@@ -336,12 +340,11 @@ book model, or use the existing one-element transformation. Each model turn
 receives the last tool result and a short progress memory, so the entire book is
 not sent in one prompt.
 
-Image description, table description and proofreading tasks load their full guidance
+Image description and table description tasks load their full guidance
 from the corresponding Markdown files under `prompts/` when started. Their Working
 task instructions also live there. Description
 tasks require already prepared `<details>` groups; they do not infer group
-membership or create missing groups. The proofreading task applies the chapter
-prompt through Working element edits, preserving the agent's JSON action protocol.
+membership or create missing groups. Page proofreading runs before import in PDF Stage 08.
 
 The task runs in the background and reports its current step and saved edits in
 the dialog. **Stop task** takes effect between model calls; closing the dialog
@@ -784,13 +787,12 @@ read on HTTP requests: reload the browser after editing them. Working book data
 changes are detected by the existing render queue without a process restart.
 Reload an open viewer after restarting the server.
 
-## Chapter proofreading
+## Page proofreading
 
-The initial [proofreading instruction](prompts/proofreading.md) is intended for manual agent processing of an already generated Markdown chapter. Handling guidance is in the [bootstrap instructions](../AGENTS.md#manual-chapter-processing).
-
-The instruction combines source-faithful OCR correction with limited Markdown formatting, including inline-code emphasis of technical terms. It preserves table structure, code/ASCII alignment, chapter organization and links. HTML blocks use HTML formatting and escaping rather than Markdown inline syntax. Image/table descriptions remain separately requested tasks.
-
-The prompt is self-contained and preserves chapter Markdown structure and filenames.
+[PDF Stage 08](../pdf-to-markdown/stages/08_proofreading/README.md) corrects
+source-supported text and limited Markdown formatting before import. Review its
+unresolved items against the PDF and check chapter-level formatting after assembly.
+Image and table descriptions remain separate authoring tasks.
 
 ## Table and image descriptions
 

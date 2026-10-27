@@ -58,7 +58,7 @@ class ParallelTableTests(unittest.TestCase):
             workspace = Path(directory)
             (workspace / "02_preprocess").mkdir()
             (workspace / "04_filter_page_content").mkdir()
-            write_json(workspace / "02_preprocess/page_0001.json", {"page_id": "page_0001"})
+            write_json(workspace / "02_preprocess/page_0001.json", {"page_id": "page_0001", "blocks": []})
             with Image.new("RGB", (20, 20), "white") as image:
                 image.save(workspace / "02_preprocess/page_0001.png")
             segments = [{"segment_id": f"page_0001_seg_{index:03d}", "type": "table",

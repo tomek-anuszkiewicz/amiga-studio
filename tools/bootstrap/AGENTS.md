@@ -71,6 +71,6 @@ review. Report HTTP availability separately from pending rendering or render err
 
 ## Manual chapter processing
 
-For requested proofreading, use the [proofreading prompt](book-to-markdown/prompts/proofreading.md) and the generated chapter. Inspect linked images when needed. Keep the generated source chapter available for comparison and retain the edited copy outside generator-managed output cleanup. Preserve chapter Markdown structure and filenames; table and image descriptions are separate requested tasks.
+Page-object proofreading runs in [PDF Stage 08](pdf-to-markdown/stages/08_proofreading/README.md) before book import. Visual ambiguities and chapter-level formatting remain for review after assembly. Table and image descriptions are separate requested tasks.
 
 For a requested [table](book-to-markdown/prompts/describe-tables.md) or [image description](book-to-markdown/prompts/describe-images.md), supply one already identified group in a `<details>` section: its name or caption, associated notes and legend, and the Markdown/HTML table or image reference. Use that grouping directly and inspect the actual image for image descriptions. These prompts support manual agent processing; do not describe automatic execution or insertion as implemented.

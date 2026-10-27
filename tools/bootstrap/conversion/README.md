@@ -37,8 +37,9 @@ An allowed `imageView` is an event within the same request; the converter does
 not send a follow-up turn.
 
 HTML performs configuration/capability checks and validates Markdown responses.
-PDF parses JSON without local response-schema enforcement. A successful request
-confirms execution, not transcription quality.
+PDF Stages 03 and 05 parse JSON without local response-schema enforcement;
+Stage 08 validates proofreading patch targets before applying them. A successful
+request confirms execution, not transcription quality.
 
 ## Cache and metrics
 

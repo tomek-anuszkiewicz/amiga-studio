@@ -66,6 +66,12 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
         "targets": ["07_repair_callouts"],
         "inspect": ("page_*_segments.json", "final page object JSON files"),
     },
+    {
+        "id": "08", "dir": "08_proofreading", "script": "proofread.py",
+        "desc": "Proofread retained page text with neighboring page context",
+        "targets": ["08_proofreading"],
+        "inspect": ("page_*_segments.json", "proofread page object JSON files"),
+    },
 ]
 
 # Each stage reads explicitly named predecessor artifacts.
@@ -73,7 +79,7 @@ for stage in STAGE_REGISTRY:
     stage["inputs"] = {
         "01": [], "02": ["01"], "03": ["02"], "04": ["02", "03"],
         "05": ["02", "04"], "06": ["02", "04", "05"],
-        "07": ["02", "04", "05", "06"],
+        "07": ["02", "04", "05", "06"], "08": ["07"],
     }[stage["id"]]
 
 

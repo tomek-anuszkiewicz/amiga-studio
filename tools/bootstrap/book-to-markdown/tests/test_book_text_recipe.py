@@ -9,11 +9,11 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown'))
-from review.text_recipe import REFERENCE, attach_adjacent_corrections, compile_template, compile_region_template, compile_markdown_template, edit_template, slice_template, preserve_bold, resolve_template, source_differences, source_reference
+from review.text_recipe import REFERENCE, attach_adjacent_corrections, bind_ordered_compact_literals, compile_template, compile_region_template, compile_markdown_template, edit_template, slice_template, preserve_bold, resolve_template, source_differences, source_reference
 
 
 from review.markdown import callout_plugin
-from review.model import InputCache, element_markdown, export_markdown, import_book, load_input, set_heading_level, toc_markdown, write_json
+from review.model import InputCache, element_markdown, export_markdown, import_book, load_input, read_json, set_heading_level, toc_markdown, write_json
 from review.service import replace_accepted
 from review.service import ReviewState
 from review.source_cleanup import preview, reconcile_working
@@ -34,6 +34,149 @@ from common.pdf_geometry import text_blocks
 
 
 class TextRecipeTest(unittest.TestCase):
+    def test_heading_word_in_adjacent_pdf_block_is_not_a_correction(self):
+        blocks = [
+            {'block_id': 0, 'text': 'EXPANSION \nARCHITECTURE \n',
+             'bbox': [36, 72, 131, 99]},
+            {'block_id': 1, 'text': 'OVERVIEW \n',
+             'bbox': [37, 99, 104, 112]},
+        ]
+        target = 'EXPANSION ARCHITECTURE OVERVIEW'
+        template = compile_markdown_template(70, blocks, target)
+
+        self.assertEqual(resolve_template(template, {70: blocks}), target)
+        self.assertIn('page=70 block=1 chars=0:8', template)
+        self.assertEqual(source_differences(template, {70: blocks}), [])
+
+        distant = [blocks[0], {**blocks[1], 'bbox': [400, 400, 467, 413]}]
+        distant_template = compile_markdown_template(70, distant, target)
+        self.assertNotIn('page=70 block=1', distant_template)
+
+    def test_adjacent_block_preserves_other_ocr_corrections(self):
+        blocks = [
+            {'block_id': 18,
+             'text': 'Register ﬁeld—Speciﬁes any of the eight address registers. '
+                     'This is always the\n',
+             'bbox': [94, 395, 549, 412]},
+            {'block_id': 19, 'text': 'destination. \n',
+             'bbox': [104, 409, 170, 426]},
+        ]
+        target = ('Register field—Specifies any of the eight address registers. '
+                  'This is always the destination.')
+        template = compile_markdown_template(56, blocks, target)
+
+        self.assertEqual(resolve_template(template, {56: blocks}), target)
+        self.assertIn('page=56 block=19 chars=0:12', template)
+        self.assertNotIn('�', template)
+        self.assertEqual([mark['text'] for mark in source_differences(template, {56: blocks})],
+                         ['fi', 'fi'])
+
+    def test_separate_ligature_line_keeps_its_pdf_block_reference(self):
+        blocks = [
+            {'block_id': 20,
+             'text': 'Opmode \ufb01eld\u2014Speci\ufb01es the size of the operation. \n',
+             'bbox': [96, 435, 367, 452]},
+            {'block_id': 21,
+             'text': ('011\u2014 Word operation; the source operand is sign-extended to a long '
+                      'operand and\nthe operation is performed on the address register '
+                      'using all 32 bits. \n111\u2014 Long operation. \n'),
+             'bbox': [109, 449, 549, 494]},
+        ]
+        target = ('Opmode field\u2014Specifies the size of the operation.\n'
+                  '011\u2014 Word operation; the source operand is sign-extended to a long '
+                  'operand and the operation is performed on the address register '
+                  'using all 32 bits.\n111\u2014 Long operation.')
+
+        template = compile_markdown_template(56, blocks, target)
+
+        self.assertEqual(resolve_template(template, {56: blocks}), target)
+        self.assertIn('page=56 block=20', template)
+        self.assertIn('page=56 block=21', template)
+        self.assertNotIn('{{accepted text=', template)
+        self.assertEqual([(mark['kind'], mark['text'])
+                          for mark in source_differences(template, {56: blocks})],
+                         [('correction', 'fi'), ('correction', 'fi')])
+
+    def test_word_hyphenated_across_pdf_blocks_keeps_both_source_ranges(self):
+        blocks = [{'block_id': 2, 'text': 'The ex- \n'},
+                  {'block_id': 3, 'text': 'pansion bus.'}]
+        target = 'The expansion bus.'
+        template = compile_markdown_template(70, blocks, target)
+
+        self.assertEqual(resolve_template(template, {70: blocks}), target)
+        self.assertIn('page=70 block=2 chars=4:6', template)
+        self.assertIn('page=70 block=3 chars=0:7', template)
+        self.assertNotIn('{{accepted text="expansion"}}', template)
+        self.assertEqual(source_differences(template, {70: blocks}), [])
+
+    def test_split_word_in_prose_preserves_order_of_repeated_words(self):
+        blocks = [
+            {'block_id': 0, 'text': ('As  you  will  notice,  the  A500  and  2000  '
+                                   'deletes  clocks  and  interrupt \nlines  from  '
+                                   'the  A 1000.  The  +/-5Vdc  and  reset  '
+                                   'lines  are  also  de- \n')},
+            {'block_id': 1, 'text': ('leted. The  +/-  12Vdc  lines  are  '
+                                   'identical  to  a  PCI  0/20. \n')},
+        ]
+        target = ('As you will notice, the A500 and 2000 deletes clocks and '
+                  'interrupt lines from the A1000. The +/-5Vdc and reset '
+                  'lines are also deleted. The +/-12Vdc lines are identical '
+                  'to a PC10/20.')
+        template = compile_markdown_template(65, blocks, target)
+
+        self.assertEqual(resolve_template(template, {65: blocks}), target)
+        self.assertNotIn('{{accepted text=', template)
+        self.assertEqual([(mark['kind'], mark['text'])
+                          for mark in source_differences(template, {65: blocks})],
+                         [('correction', '1')])
+        self.assertIn('page=65 block=0 chars=150:152', template)
+        self.assertIn('page=65 block=1 chars=0:5', template)
+        self.assertIn('page=65 block=1 chars=24:29', template)
+        self.assertNotIn('page=65 block=0 chars=131:138', template)
+        self.assertTrue(all(int(ref[4]) - int(ref[3]) <= 20
+                            for ref in REFERENCE.finditer(template)
+                            if ' replace=' in ref[0]))
+
+    def test_repeated_split_word_has_no_automatic_source_address(self):
+        blocks = [
+            {'block_id': 0, 'text': 'The de- \n'},
+            {'block_id': 1, 'text': 'leted. '},
+            {'block_id': 2, 'text': 'The de- \n'},
+            {'block_id': 3, 'text': 'leted. '},
+        ]
+        template = compile_markdown_template(65, blocks, 'The deleted.')
+
+        self.assertEqual(resolve_template(template, {65: blocks}), 'The deleted.')
+        self.assertNotIn('block=0 chars=4:6', template)
+        self.assertNotIn('block=1 chars=0:5', template)
+        self.assertNotIn('block=2 chars=4:6', template)
+        self.assertNotIn('block=3 chars=0:5', template)
+
+    def test_soft_hyphenated_word_in_one_pdf_block_keeps_both_source_ranges(self):
+        blocks = [{'block_id': 18, 'text': 'It is recom\u00ad\nmended that sprite DMA stop.'}]
+        target = 'recommended'
+        template = compile_markdown_template(116, blocks, target)
+
+        self.assertEqual(resolve_template(template, {116: blocks}), target)
+        self.assertIn('page=116 block=18 chars=6:11', template)
+        self.assertIn('page=116 block=18 chars=13:19', template)
+        self.assertNotIn('accepted text=', template)
+        self.assertEqual(source_differences(template, {116: blocks}), [])
+
+    def test_multiline_heading_uses_both_pdf_source_blocks(self):
+        blocks = [
+            {'block_id': 0, 'text': 'Section  3.1 \n'},
+            {'block_id': 1, 'text': ('Designing  Hardware  for  the  Amiga  Expansion \n'
+                                     'Architecture \n')},
+        ]
+        target = 'Section 3.1\nDesigning Hardware for the Amiga Expansion Architecture'
+        template = compile_markdown_template(69, blocks, target)
+
+        self.assertEqual(resolve_template(template, {69: blocks}), target)
+        self.assertIn('page=69 block=0', template)
+        self.assertIn('page=69 block=1', template)
+        self.assertNotIn('{{accepted text="Section 3.1', template)
+
     def test_source_overlay_ignores_paragraph_reflow_and_marks_only_ocr_character(self):
         source = 'A system implementation based on an 8-bit data bus reduces cost in comparison to 16-\nbit systems.'
         visible = 'A system implementation based on an 8-bit data bus reduces cost in comparison to 16-bit systems.'
@@ -70,6 +213,37 @@ class TextRecipeTest(unittest.TestCase):
         self.assertNotIn('{{accepted text="m"}}', template)
         self.assertIn('with="8"', template)
         self.assertNotIn('{{accepted text="8"}}', template)
+
+    def test_inline_overline_terms_use_local_ocr_corrections(self):
+        blocks = [
+            {'block_id': 14, 'text': "Upper And Lower Data Strobes (ODS, [O'S'). \n"},
+            {'block_id': 15, 'text': 'In 8-bit mode, UDS is always forced high.\n'},
+        ]
+        target = ('Upper And Lower Data Strobes '
+                  r'($\overline{\mathrm{UDS}}$, $\overline{\mathrm{LDS}}$).')
+
+        template = compile_markdown_template(27, blocks, target)
+
+        self.assertEqual(resolve_template(template, {27: blocks}), target)
+        self.assertIn('block=14 chars=30:31 replace=0:1 with="U"', template)
+        self.assertIn('block=14 chars=31:33', template)
+        self.assertIn('block=14 chars=35:40 replace=0:5 with="LDS"', template)
+        self.assertNotIn('block=15', template)
+        self.assertNotIn('{{accepted text=', template)
+        self.assertEqual({mark['kind'] for mark in source_differences(template, {27: blocks})},
+                         {'correction'})
+
+    def test_inline_math_does_not_claim_ambiguous_pdf_region(self):
+        source = "Upper And Lower Data Strobes (ODS, [O'S'). \n"
+        blocks = [{'block_id': 14, 'text': source}, {'block_id': 15, 'text': source}]
+        target = ('Upper And Lower Data Strobes '
+                  r'($\overline{\mathrm{UDS}}$, $\overline{\mathrm{LDS}}$).')
+
+        template = compile_markdown_template(27, blocks, target)
+
+        self.assertEqual(resolve_template(template, {27: blocks}), target)
+        self.assertNotIn('chars=30:31 replace=0:1 with="U"', template)
+        self.assertNotIn('chars=35:40 replace=0:5 with="LDS"', template)
 
     def test_subscript_line_can_bridge_missing_ocr_separator(self):
         source = 'da \n8-Bit Offset (Displacement) \nd15 \n16-Bit Offset (Displacement) \n'
@@ -682,18 +856,18 @@ class TextRecipeTest(unittest.TestCase):
         self.assertNotIn('language-text', html)
 
     def test_import_preserves_prepared_markdown_without_literal_transcription(self):
-        prepared = ['**Operation:** Source + Destination',
+        prepared = ['**Operation:** Source + Dest ination',
                     '```asm\nADD <ea>,Dn\nADD Dn,<ea>\n```',
                     '| X | N |\n|---|---|\n| * | * |', '\\*Word and long only', 'NOTE', 'Read carefully.']
-        expected = prepared[:-2] + ['> [!NOTE] NOTE\n>\n> Read carefully.']
+        expected = ['**Operation:** Source + Destination'] + prepared[1:-2] + ['> [!NOTE] NOTE\n>\n> Read carefully.']
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             workspace = root / 'pdf-to-markdown'
-            status = {s: {'status': 'success'} for s in ('02', '04', '05', '06', '07')}
+            status = {s: {'status': 'success'} for s in ('02', '04', '05', '06', '07', '08')}
             # The last table refresh does not restrict the retained page collection.
             status['05']['page_ranges'] = '2'
             write_json(workspace / 'stage_status.json', status)
-            source = 'Operation: Source + Destination\nADD <ea>,Dn\nADD Dn,<ea>\nX N\n* *\n*Word and long only\nNOTE\nRead carefully.\n'
+            source = 'Operation: Source + Dest ination\nADD <ea>,Dn\nADD Dn,<ea>\nX N\n* *\n*Word and long only\nNOTE\nRead carefully.\n'
             write_json(workspace / '02_preprocess/page_0001.json', {'page': 1, 'page_id': 'page_0001',
                 'raster': {'display_to_pixels': [1, 0, 0, 1, 0, 0]},
                 'blocks': [{'block_id': 0, 'text': source, 'bbox': [0, 0, 100, 10],
@@ -710,6 +884,9 @@ class TextRecipeTest(unittest.TestCase):
             stage = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(stage)
             stage.repair_callouts(workspace)
+            final = read_json(workspace / '07_repair_callouts/page_0001_segments.json')
+            final['segments'][0]['md_text'] = '**Operation:** Source + Destination'
+            write_json(workspace / '08_proofreading/page_0001_segments.json', final)
             write_json(root / 'working/book.json', {'toc': {'depth': 3}, 'chapters': []})
             obsolete = ['working/old-chapter.md', 'working/assets/old.png',
                         'working/renders/old/document.html', 'accepted/book.json',
@@ -718,6 +895,13 @@ class TextRecipeTest(unittest.TestCase):
                 path = root / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text('obsolete output', encoding='utf-8')
+            status_without_proofreading = dict(status)
+            status_without_proofreading.pop('08')
+            write_json(workspace / 'stage_status.json', status_without_proofreading)
+            with self.assertRaisesRegex(ValueError, 'Preparation stage 08 is not successful'):
+                import_book(root)
+            self.assertTrue((root / 'working/book.json').exists())
+            write_json(workspace / 'stage_status.json', status)
             imported = import_book(root)
             for relative in obsolete:
                 self.assertFalse((root / relative).exists(), relative)
@@ -739,6 +923,92 @@ class TextRecipeTest(unittest.TestCase):
             write_json(workspace / '02_preprocess/page_0001.json', page_data)
             updated, _, _ = load_input(root / 'working')
             self.assertEqual(updated['chapters'][0]['elements'][0]['resolved_md_text'], '**Operation:** Target + Destination')
+
+    def test_import_anchors_letter_spaced_notes_sharing_one_source_block(self):
+        first_source = ('n o t e Is A 5 0 0 a n d A 2 0 0 0 k e y b o a r d s '
+                        'o n l y ( n u m e r i c p a d ) \n')
+        second_source = ('n o t e 2: I n t e r n a t i o n a l k e y b o a r d s '
+                         'o n l y (the s e k e y s a r e c u t o u t s o f t h e \n')
+        continuation = ('l a r g e r k e y o n t h e U S A S C I I v e r s i o n . ) \n'
+                        'T h e k e y t h a t g e n e r a t e s \n')
+        ending = ('$ 3 0 is c u t o u t o f t h e l e f t s h i f t key. \n'
+                  'K e y $ 2 B is c u t o u t o f \n'
+                  'r e t u r n . \nT h e s e k e y s a r e l a b e l e d w i t h '
+                  'c o u n t r y - s p e c i f i c m a r k i n g s , \n')
+        first = 'note 1: A500 and A2000 keyboards only (numeric pad)'
+        second = ('note 2: International keyboards only (these keys are cutouts of the larger '
+                  'key on the US ASCII version.) The key that generates `$30` is cut out of '
+                  'the left shift key. Key `$2B` is cut out of return. These keys are labeled '
+                  'with country-specific markings.')
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace = root / 'pdf-to-markdown'
+            write_json(workspace / 'stage_status.json',
+                       {stage: {'status': 'success'} for stage in ('02', '06', '07', '08')})
+            blocks = [
+                {'block_id': 15, 'text': first_source + second_source,
+                 'bbox': [0, 0, 100, 30],
+                 'char_bboxes': ([[0, 0, 100, 10]] * len(first_source) +
+                                 [[0, 20, 100, 30]] * len(second_source))},
+                {'block_id': 16, 'text': continuation, 'bbox': [0, 40, 100, 50],
+                 'char_bboxes': [[0, 40, 100, 50]] * len(continuation)},
+                {'block_id': 17, 'text': ending, 'bbox': [0, 60, 100, 70],
+                 'char_bboxes': [[0, 60, 100, 70]] * len(ending)},
+            ]
+            write_json(workspace / '02_preprocess/page_0001.json',
+                       {'page': 1, 'page_id': 'page_0001', 'blocks': blocks,
+                        'raster': {'display_to_pixels': [1, 0, 0, 1, 0, 0]}})
+            segments = [
+                {'segment_id': 'first', 'type': 'prose', 'role': 'footnote',
+                 'bbox': [0, 0, 100, 10], 'md_text': first},
+                {'segment_id': 'second', 'type': 'prose', 'role': 'footnote',
+                 'bbox': [0, 20, 100, 70], 'md_text': second},
+            ]
+            write_json(workspace / '08_proofreading/page_0001_segments.json',
+                       {'page': 1, 'page_id': 'page_0001', 'segments': segments})
+            imported = import_book(root)
+            elements = imported['chapters'][0]['elements']
+            self.assertEqual([element['resolved_md_text'] for element in elements], [first, second])
+            for element in elements:
+                self.assertNotIn('{{accepted text=', element['md_text'])
+                self.assertTrue(all(int(ref[1]) == 1 for ref in REFERENCE.finditer(element['md_text'])))
+            self.assertIn('block=15 chars=', elements[0]['md_text'])
+            self.assertIn('block=16 chars=', elements[1]['md_text'])
+            self.assertIn('block=17 chars=', elements[1]['md_text'])
+            self.assertEqual(resolve_template(elements[0]['md_text'], {1: blocks}), first)
+            self.assertEqual(resolve_template(elements[1]['md_text'], {1: blocks}), second)
+            self.assertEqual([(mark['text'], mark['source_text']) for mark in
+                              source_differences(elements[0]['md_text'], {1: blocks})],
+                             [('1:', 'Is')])
+            self.assertEqual([(mark['text'], mark['source_text']) for mark in
+                              source_differences(elements[1]['md_text'], {1: blocks})],
+                             [('.', ',')])
+
+    def test_import_anchors_repeated_spaced_table_labels_in_source_order(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace = root / 'pdf-to-markdown'
+            write_json(workspace / 'stage_status.json',
+                       {stage: {'status': 'success'} for stage in ('02', '06', '07', '08')})
+            source = '| s p a r e | s p a r e | C U R S | C U R S | F 1 0 |\n'
+            block = {'block_id': 0, 'text': source, 'bbox': [0, 0, 100, 10],
+                     'char_bboxes': [[0, 0, 100, 10]] * len(source)}
+            write_json(workspace / '02_preprocess/page_0001.json',
+                       {'page': 1, 'page_id': 'page_0001', 'blocks': [block],
+                        'raster': {'display_to_pixels': [1, 0, 0, 1, 0, 0]}})
+            target = '| spare | spare | CURS | CURS | F10 |'
+            write_json(workspace / '08_proofreading/page_0001_segments.json',
+                       {'page': 1, 'page_id': 'page_0001', 'segments': [
+                           {'segment_id': 'table', 'type': 'table', 'role': None,
+                            'bbox': [0, 0, 100, 10], 'md_text': target}]})
+            element = import_book(root)['chapters'][0]['elements'][0]
+            self.assertEqual(element['resolved_md_text'], target)
+            self.assertNotIn('{{accepted text=', element['md_text'])
+            self.assertEqual(resolve_template(element['md_text'], {1: [block]}), target)
+            ambiguous = {'block_id': 0,
+                         'text': '| s p a r e | s p a r e | s p a r e |'}
+            template = compile_markdown_template(1, [ambiguous], '| spare | spare |')
+            self.assertEqual(bind_ordered_compact_literals(1, [ambiguous], template), template)
 
     def test_obsolete_prepared_reference_is_not_interpreted(self):
         with self.assertRaisesRegex(ValueError, 'Invalid text reference'):

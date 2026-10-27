@@ -12,6 +12,11 @@ def convert_parallel(config, *, stage, operation, jobs, convert, accept,
     concurrency = config["llm"]["concurrency"]
     if type(concurrency) is not int or concurrency < 1:
         raise ValueError("llm.concurrency must be a positive integer")
+    if concurrency == 1:
+        with client_factory(config, stage=stage, operation=operation) as client:
+            for job in jobs:
+                accept(job, convert(client, job))
+        return
     pending = iter(jobs)
     lock = Lock()
     results = Queue(maxsize=concurrency)

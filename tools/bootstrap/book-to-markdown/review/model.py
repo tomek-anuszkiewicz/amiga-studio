@@ -13,9 +13,11 @@ from common.pdf_artifacts import read_json
 from common.pdf_page_conversion import read_conversion
 from common.pdf_elements import ELEMENT_ROLES, ELEMENT_TYPES
 from .markdown import PARSER, preserve_line_breaks
-from .text_recipe import (ACCEPTED, REFERENCE, bind_unique_region_literals,
+from .text_recipe import (ACCEPTED, REFERENCE, bind_ordered_compact_literals,
+                          bind_unique_region_literals,
                           escape_literal, edit_template, literal_html_tags,
                           compile_markdown_template, join_adjacent_references,
+                          letter_spaced_region_template,
                           region_blocks, resolve_template, source_differences)
 
 HEADING_TYPES = {"heading", "toc_heading", "index_heading",
@@ -142,11 +144,11 @@ def new_chapter(elements, chapter_id, existing_files=()):
 
 
 def import_book(root):
-    """Replace book outputs with final Stage 07 objects and Stage 06 assets."""
+    """Replace book outputs with final Stage 08 objects and Stage 06 assets."""
     working = root / "working"
     workspace = root / "pdf-to-markdown"
     status = read_json(workspace / "stage_status.json")
-    for stage in ("02", "06", "07"):
+    for stage in ("02", "06", "07", "08"):
         if status.get(stage, {}).get("status") != "success":
             raise ValueError(f"Preparation stage {stage} is not successful")
     outputs = [confined(root, name) for name in ("working", "accepted", "pdf/pages")]
@@ -158,7 +160,7 @@ def import_book(root):
     elements = []
     assets = working / "assets"
     assets.mkdir(parents=True, exist_ok=True)
-    for entry, page in read_conversion(workspace, "07_repair_callouts"):
+    for entry, page in read_conversion(workspace, "08_proofreading"):
         text_page = read_json(workspace / '02_preprocess' / f"{entry['page_id']}.json")
         for segment in page["segments"]:
             element = {"id": segment["segment_id"], "type": segment["type"],
@@ -174,8 +176,10 @@ def import_book(root):
             if "md_text" in element:
                 # Conversion supplies formatting; source text comes from PDF ranges.
                 prefix = "#" * element["heading_level"] + " " if element["type"] in HEADING_TYPES else ""
-                template = prefix + compile_markdown_template(
-                    page['page'], region_blocks(text_page, segment['bbox']), segment['md_text'])
+                mapped = letter_spaced_region_template(
+                    page['page'], text_page, segment['bbox'], segment['md_text'])
+                template = prefix + (mapped if mapped is not None else compile_markdown_template(
+                    page['page'], region_blocks(text_page, segment['bbox']), segment['md_text']))
                 element.update(md_text=template, resolved_md_text=prefix + segment['md_text'])
             if element["type"] == "graphic":
                 name = f"{element['id']}.png"
@@ -204,6 +208,9 @@ def import_book(root):
                     for block in region_blocks(source_pages[page], region['bbox'])}
         element['md_text'] = bind_unique_region_literals(page, list(selected.values()),
                                                          element['md_text'])
+        if element['type'] in {'table', 'preformatted_text'}:
+            element['md_text'] = bind_ordered_compact_literals(
+                page, list(selected.values()), element['md_text'])
     write_json(working / "book.json", book)
     return book
 
