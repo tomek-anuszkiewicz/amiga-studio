@@ -5,6 +5,9 @@ make one Codex request using its exact, unpadded pixel crop and the
 [table prompt](prompt.md). Replace table `md_text` and record `table_format`.
 The prompt is the sole source of transcription instructions and response format;
 no separate JSON schema is sent.
+Before saving, literal angle-bracket notation present in the extracted PDF text
+is escaped in the returned markup. Formatting tags added by the transcription,
+such as `<br>`, remain markup when they are absent from the PDF text.
 An `unconverted` result retains the original table content.
 
 Save a full page JSON to `05_transform_page_tables/` only when its data changes.
@@ -22,4 +25,5 @@ cache apply. The status entry records this invocation's page range.
 
 [Stage 06](../06_extract_crops/README.md) overlays these replacement pages on
 Stage 04 and extracts graphic assets. [Stage 07](../07_repair_callouts/README.md)
-uses the same overlay to produce the final page objects for book import.
+uses the same overlay to assemble callouts before [Stage 08](../08_proofreading/README.md)
+proofreads the final page objects for book import.

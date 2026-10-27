@@ -1,5 +1,5 @@
 # Global configuration for the modular PDF-to-Markdown pipeline
-# Preparation ends at Stage 06; book generation is a separate program.
+# Preparation ends at Stage 08; book generation is a separate program.
 
 # Shared rendering settings for Stages 01 and 02.
 rendering:
@@ -13,7 +13,9 @@ stages:
 
 llm:
   # Maximum simultaneous page/table requests within one stage invocation.
-  concurrency: 4
+  concurrency: 1
+  post_request_delay_seconds: 60
   stages:
     03_page_conversion: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
     05_transform_page_tables: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    08_proofreading: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

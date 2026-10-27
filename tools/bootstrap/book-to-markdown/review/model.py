@@ -13,8 +13,10 @@ from common.pdf_artifacts import read_json
 from common.pdf_page_conversion import read_conversion
 from common.pdf_elements import ELEMENT_ROLES, ELEMENT_TYPES
 from .markdown import PARSER, preserve_line_breaks
+from .source_alignment import compile_page_template
 from .text_recipe import (REFERENCE, escape_literal, edit_template,
-                          compile_markdown_template, region_blocks, resolve_template)
+                          literal_html_tags, join_adjacent_references,
+                          resolve_template, source_differences)
 
 HEADING_TYPES = {"heading", "toc_heading", "index_heading",
                  "list_of_tables_heading", "list_of_figures_heading"}
@@ -42,11 +44,22 @@ def write_json(path, value):
     """Replace a single file only after its complete contents are written."""
     if path.name == "book.json":
         value = deepcopy(value)
+        bundle = path.parent.name in {"working", "accepted"} or path.parent.name.startswith('.')
+        root = path.parent.parent if bundle else path.parent
+        workspace = root / 'pdf-to-markdown'
+        for chapter in value["chapters"]:
+            for field in ("title", "markdown_file"):
+                chapter[field] = join_adjacent_references(chapter[field], workspace)
+            for element in chapter["elements"]:
+                if "md_text" in element:
+                    element["md_text"] = join_adjacent_references(element["md_text"], workspace)
         for element in elements(value):
             element.pop("resolved_md_text", None)
+            element.pop("source_differences", None)
         for chapter in value["chapters"]:
             chapter.pop("resolved_title", None)
             chapter.pop("resolved_markdown_file", None)
+            chapter.pop("toc_title", None)
         value = {"toc": value["toc"], **{k: v for k, v in value.items() if k != "toc"}}
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
@@ -84,6 +97,20 @@ def set_element_type(element, kind):
     previous = element['type']
     if previous == kind:
         return
+    if previous in {'code_block', 'preformatted_text'} and kind not in {'code_block', 'preformatted_text'}:
+        def without_outer_fence(value):
+            lines = value.splitlines()
+            if len(lines) < 2:
+                return value
+            opener = re.fullmatch(r' {0,3}(`{3,}|~{3,})[^\n]*', lines[0])
+            if not opener:
+                return value
+            marker = opener[1]
+            closer = r' {0,3}' + re.escape(marker[0]) + '{' + str(len(marker)) + r',}[ \t]*'
+            return '\n'.join(lines[1:-1]) if re.fullmatch(closer, lines[-1]) else value
+        element['md_text'] = without_outer_fence(element['md_text'])
+        if 'resolved_md_text' in element:
+            element['resolved_md_text'] = without_outer_fence(element['resolved_md_text'])
     element['type'] = kind
     if kind in HEADING_TYPES:
         level = element.get('heading_level', 1) if kind == 'heading' else 1
@@ -115,11 +142,11 @@ def new_chapter(elements, chapter_id, existing_files=()):
 
 
 def import_book(root):
-    """Replace book outputs with final Stage 07 objects and Stage 06 assets."""
+    """Replace book outputs with final Stage 08 objects and Stage 06 assets."""
     working = root / "working"
     workspace = root / "pdf-to-markdown"
     status = read_json(workspace / "stage_status.json")
-    for stage in ("02", "06", "07"):
+    for stage in ("02", "06", "07", "08"):
         if status.get(stage, {}).get("status") != "success":
             raise ValueError(f"Preparation stage {stage} is not successful")
     outputs = [confined(root, name) for name in ("working", "accepted", "pdf/pages")]
@@ -131,7 +158,7 @@ def import_book(root):
     elements = []
     assets = working / "assets"
     assets.mkdir(parents=True, exist_ok=True)
-    for entry, page in read_conversion(workspace, "07_repair_callouts"):
+    for entry, page in read_conversion(workspace, "08_proofreading"):
         text_page = read_json(workspace / '02_preprocess' / f"{entry['page_id']}.json")
         for segment in page["segments"]:
             element = {"id": segment["segment_id"], "type": segment["type"],
@@ -147,8 +174,8 @@ def import_book(root):
             if "md_text" in element:
                 # Conversion supplies formatting; source text comes from PDF ranges.
                 prefix = "#" * element["heading_level"] + " " if element["type"] in HEADING_TYPES else ""
-                template = prefix + compile_markdown_template(
-                    page['page'], region_blocks(text_page, segment['bbox']), segment['md_text'])
+                template = prefix + compile_page_template(
+                    page['page'], text_page, segment['bbox'], segment['md_text'])
                 element.update(md_text=template, resolved_md_text=prefix + segment['md_text'])
             if element["type"] == "graphic":
                 name = f"{element['id']}.png"
@@ -181,6 +208,8 @@ def edit_markdown(root, element, text):
     blocks = {page: read_json(root / 'pdf-to-markdown' / '02_preprocess' / f'page_{page:04d}.json')['blocks']
               for page in pages}
     element['md_text'] = edit_template(template, blocks, text)
+    if element.get('table_format') == 'html':
+        element['md_text'] = literal_html_tags(element['md_text'], blocks)
     element['resolved_md_text'] = text
     update_markdown_heading(element, text)
 
@@ -199,7 +228,8 @@ def update_markdown_heading(element, text):
 
 def authored_element(element):
     """Return element properties without resolved text."""
-    return {k: v for k, v in element.items() if k != "resolved_md_text"}
+    return {k: v for k, v in element.items()
+            if k not in {"resolved_md_text", "source_differences"}}
 
 
 def chapter_value(chapter, field):
@@ -256,6 +286,24 @@ def load_input(working, book=None, *, cache=None):
     read_bytes = (lambda path: cache.read(path, Path.read_bytes)) if cache else Path.read_bytes
     read_source = (lambda path: cache.read(path, read_json)) if cache else read_json
     book = json.loads(read_bytes(working / "book.json")) if book is None else deepcopy(book)
+    exceptions = book.get('source_cleanup_exceptions', [])
+    if not isinstance(exceptions, list):
+        raise ValueError('Source cleanup exceptions must be a list')
+    anchors = set()
+    for entry in exceptions:
+        if (not isinstance(entry, dict) or
+                not isinstance(entry.get('anchor'), str) or
+                not re.fullmatch(r'[0-9a-f]{64}', entry['anchor']) or
+                entry['anchor'] in anchors or
+                not isinstance(entry.get('element_id'), str) or
+                entry.get('field') not in {'md_text', 'title'} or
+                not isinstance(entry.get('literal'), str) or not entry['literal'] or
+                not isinstance(entry.get('note'), str) or not entry['note'].strip() or
+                len(entry['note']) > 500 or
+                any(not isinstance(entry.get(key), str) or len(entry[key]) > 120
+                    for key in ('source_text', 'corrected_text') if key in entry)):
+            raise ValueError('Invalid source cleanup exception')
+        anchors.add(entry['anchor'])
     templates = [element.get("md_text", "") for element in elements(book)]
     templates += [chapter[field] for chapter in book["chapters"] for field in ("title", "markdown_file")]
     referenced_pages = {int(match[1]) for template in templates for match in REFERENCE.finditer(template)}
@@ -268,6 +316,8 @@ def load_input(working, book=None, *, cache=None):
     for element in elements(book):
         if "md_text" in element:
             element["resolved_md_text"] = resolve(element["md_text"])
+            element["source_differences"] = source_differences(
+                element["md_text"], text_pages, block_index=block_index)
     ids, filenames, chapters = set(), {"table-of-contents.md"}, set()
     assets = {}
     if type(book["toc"]["depth"]) is not int or book["toc"]["depth"] not in (1, 2, 3):
@@ -299,6 +349,11 @@ def load_input(working, book=None, *, cache=None):
                 if not name.startswith("assets/"):
                     raise ValueError("Assets must be under assets/")
                 assets[name] = read_bytes(confined(working, name))
+    for chapter in book["chapters"]:
+        chapter["toc_title"] = None
+    for chapter, element in toc_entries(book):
+        if chapter["toc_title"] is None:
+            chapter["toc_title"] = toc_label(element) or None
     fingerprint = digest(json_bytes({"model": book, "assets": {k: digest(v) for k, v in sorted(assets.items())}}))
     return book, assets, fingerprint
 
@@ -328,10 +383,19 @@ def toc_entries(book):
             and e["heading_level"] <= book["toc"]["depth"]]
 
 
+def toc_label(element):
+    """Use heading words without carrying inline styling into contents links."""
+    tokens = PARSER.parseInline(heading_text(element))[0].children or []
+    return " ".join("".join(
+        " " if token.type in {"softbreak", "hardbreak"} else token.content
+        for token in tokens if token.type in {"text", "code_inline", "image", "math_inline",
+                                       "softbreak", "hardbreak"}).split())
+
+
 def toc_markdown(book):
     lines = ["# Table of Contents", ""]
     for chapter, e in toc_entries(book):
-        title = " ".join(heading_text(e).split()).replace("[", r"\[").replace("]", r"\]")
+        title = toc_label(e).replace("[", r"\[").replace("]", r"\]")
         lines.append("  " * (e["heading_level"] - 1) + f"- [{title}]({chapter_value(chapter, 'markdown_file')}#element-{e['id']})")
     return "\n".join(lines) + "\n"
 

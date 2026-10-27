@@ -54,7 +54,7 @@ def main():
     try:
         ensure_python_packages()
         ensure_katex()
-        command = [sys.executable, "-m", "unittest", "discover", "-s", str(HERE / "tests"), "-q"]
+        command = [sys.executable, str(HERE / "tests/run_suite.py"), "-q"]
         if args.pattern:
             command += ["-p", args.pattern]
         if args.case:

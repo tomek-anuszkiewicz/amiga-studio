@@ -2,3 +2,4 @@
 llm:
   stages:
     book_codex_edit: {model: "gpt-6.1-sol", reasoning_effort: "medium"}
+    book_codex_agent: {model: "gpt-6.1-sol", reasoning_effort: "medium"}

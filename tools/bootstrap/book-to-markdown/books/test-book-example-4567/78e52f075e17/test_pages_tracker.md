@@ -5,20 +5,22 @@
 **Source Documents:**\
 - `../../m68000-users-manual-rev8/e41cbe7e14dc/source.pdf` (Pages 1–2, 4–9, 12–19, 23–24, 26–29, 32–33, 35–36, 39, 41, 44, 47, 59, 62, 70, 96, 112, 115, 208) [37 pages]\
 - `../../m68000-programmers-reference-manual/06e4864b78da/source.pdf` (Pages 13, 16, 22, 23, 29, 32, 42, 46, 65, 80, 97, 104, 105, 106–111, 112, 338, 597–598, 603, 632, 639) [26 pages]\
-- `../../amiga-a500-a2000-technical-reference-manual/adc8d1eecb72/source.pdf` (Pages 5, 7, 13–15, 20, 21, 29–31, 42–45, 109, 110, 113, 124, 126, 131, 135, 138, 139, 151–152, 155, 178, 184, 201, 202, 205, 207, 211, 228, 233, 235, 237, 247, 248) [39 pages]\
+- `../../amiga-a500-a2000-technical-reference-manual/01972997a09b/source.pdf` (Pages 5, 7, 13–15, 20, 21, 29–31, 42–45, 109, 110, 113, 124, 126, 131, 135, 138, 139, 151–152, 155, 178, 184, 201, 202, 205, 207, 211, 228, 233, 235, 237, 247, 248) [39 pages]\
 - `../../amiga-hardware-reference-manual-2nd-edition/69bbdd2f8cfc/source.pdf` (Pages 26, 28, 35, 37, 42, 43, 57, 58, 71, 84, 88, 90, 109, 124, 136, 145, 151, 153, 155, 156, 159, 171, 176, 183, 186, 187, 191, 201, 203, 204, 206, 208, 210, 229, 234, 241, 256, 257, 267, 270, 271, 277, 279, 293, 301, 302, 303, 308, 312, 320, 321, 336, 346, 356, 362, 368, 369, 391) [58 pages]\
-**Status:** Source assembly and page mapping recorded; current pipeline results
-have not been verified by this tracker.
+**Status:** The composite `source.pdf` was rebuilt from the selected sources on
+2026-10-26. It has 160 pages, and `source.json` records its full SHA-256. PDF
+preparation and Book Review artifacts have not been regenerated or verified for
+this variant.
 
 ### Local Reconstruction and Source Identification
 
-This tracker records page selection, technical facts, and historical test objectives. It does not contain the source pages or grant permission to use or redistribute the manuals. Reconstruct the test PDF locally from source copies you are authorized to process; keep the PDFs and converted book content outside Git.
+This tracker records page selection, technical facts, and historical test objectives. It does not contain the source pages or grant permission to use or redistribute the manuals. Reconstruct the test PDF locally from source copies you are authorized to process; keep the PDFs and converted book content outside Git. The selected A500/A2000 source is the 308-page OCR variant `01972997a09b`. The composite built from that selection is recorded by the adjacent `source.json`; old review artifacts are not evidence for this new source.
 
 The numbered scenario descriptions and the matrix's Historical Pipeline Objective column
 were written for a retired pipeline. Their Stage 12–21 references, `image` type,
 automatic page fusion and index omission are historical expectations, not current
 acceptance criteria or commands. The current [PDF pipeline](../../../../pdf-to-markdown/README.md)
-ends at Stage 07 and uses `graphic`; the [book importer](../../../README.md)
+ends at Stage 08 and uses `graphic`; the [book importer](../../../README.md)
 retains source elements for review. Keep the source-page mapping below when
 reconstructing the Test Book, and use the current program documentation when
 evaluating conversion output.
@@ -29,12 +31,14 @@ Use the **Complete 160-Page Mapping Matrix** as the assembly order. Both `Test P
 | --- | ---: | --- |
 | `../../m68000-users-manual-rev8/e41cbe7e14dc/source.pdf` | 216 | `e41cbe7e14dc7cb853f1185adb1dcd7043d2a2a3f43cdc909e0f6c146007a8e5` |
 | `../../m68000-programmers-reference-manual/06e4864b78da/source.pdf` | 646 | `06e4864b78da0e815054cead9326b7ec9914661f240fd39a455f2061ff47c4e8` |
-| `../../amiga-a500-a2000-technical-reference-manual/adc8d1eecb72/source.pdf` | 308 | `adc8d1eecb727f2cb7e524192722e7e2cfe90bc91c1139b0a7a2d7efe3af2379` |
+| `../../amiga-a500-a2000-technical-reference-manual/01972997a09b/source.pdf` | 308 | `01972997a09bcf4425e74825aad95f27c29bbbd3062d09645ad5915b60d6ce58` |
 | `../../amiga-hardware-reference-manual-2nd-edition/69bbdd2f8cfc/source.pdf` | 405 | `69bbdd2f8cfc3c0b337fa662445e75dbbae39c113654a666964c68a26234a86a` |
 
-On 2026-10-05, all 160 matrix entries matched the local test PDF's decoded page content streams and media boxes against these sources. This verifies page selection and order, not byte-identical output files or complete rendering equivalence; PDF writer settings and metadata can differ.
+On 2026-10-05, all 160 matrix entries matched the local test PDF's decoded page content streams and media boxes against the previous source selection, which used A500/A2000 variant `adc8d1eecb72`. This historical check does not verify the updated selection or byte-identical output files; PDF writer settings and metadata can differ.
 
-On 2026-10-08, local reconstruction from the four `books` source paths produced `test-book-example-4567-reassembled.pdf` (160 pages). Every page matched its selected source page and `test-book-example-4567.pdf` in decoded content streams, media boxes, rotation and RGB rendering at 72 DPI. The reconstructed file's SHA-256 is `168ffbe6030ea6d419e84cee659c4a0a470ff9a52225261eb61645bcf8eb2776`; byte identity with the original file is not required. The copied workspace retains its original artifact contents and provenance; copying it does not validate earlier conversion runs.
+On 2026-10-08, local reconstruction from the previous four source paths produced `test-book-example-4567-reassembled.pdf` (160 pages). Every page matched its selected source page and `test-book-example-4567.pdf` in decoded content streams, media boxes, rotation and RGB rendering at 72 DPI. The reconstructed file's SHA-256 is `168ffbe6030ea6d419e84cee659c4a0a470ff9a52225261eb61645bcf8eb2776`; byte identity with the original file is not required. This result does not verify a composite assembled with `01972997a09b`. The copied workspace retains its original artifact contents and provenance; copying it does not validate earlier conversion runs.
+
+On 2026-10-26, assembly from the four source paths above produced a 160-page composite with SHA-256 `78e52f075e17e69f6124e63c614fbbdf329b7b472d0f6cc30c024859b16112bf`. Comparison with the preserved previous composite found identical decoded page content and 72 DPI renderings on the 121 pages outside A500/A2000. The 39 replaced pages occupy the same positions; each new page was the closest visual match to its previous counterpart among those 39 pages. All rotations agree. The first 35 replaced pages have media boxes smaller by approximately 0.04 point in width and 0.02 point in height. The new A500/A2000 pages include OCR text absent from the previous scan. No PDF preparation or Book Review regeneration was run for this composite.
 
 Alert examples below use placeholders to illustrate Markdown syntax. Verify the actual source text locally during conversion tests.
 
@@ -192,7 +196,7 @@ Test pages in this composite test book are sourced from four reference manuals:
     - **Appendix A (Instruction Set Summary):** Test Pages 59–61 (Source PDF Pages 597, 598, 603 | Folios: `A-1`, `A-2`, `A-7`)
     - **Appendix B (Exception Stack Frames):** Test Pages 62–63 (Source PDF Pages 632, 639 | Folios: `B-5`, `B-12`)
 - **Source Manual 3:** `amiga-a500-a2000-technical-reference-manual`
-  - **Source PDF Path:** `../../amiga-a500-a2000-technical-reference-manual/adc8d1eecb72/source.pdf` (Total 308 pages)
+  - **Source PDF Path:** `../../amiga-a500-a2000-technical-reference-manual/01972997a09b/source.pdf` (Total 308 pages)
   - **Test Pages:** 64–102 (39 pages)
   - **Section Distribution Across Test Book:**
     - **Section 1 (Introduction & System Overview):** Test Pages 64–68 (Source PDF Pages 5, 7, 13, 14, 15 | Folios: `2`, `4`, `10`, `11`, `12`)

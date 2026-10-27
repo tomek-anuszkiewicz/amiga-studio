@@ -8,14 +8,23 @@ import threading
 import unittest
 
 from PIL import Image
-from playwright.sync_api import sync_playwright
+from browser_session import browser_page
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from review.model import load_input, write_json
+from review.model import element_markdown, load_input, set_element_type, write_json
 from review.service import Handler, ReviewState
 
 
 class ReviewCommandFlowTests(unittest.TestCase):
+    def test_changing_fenced_code_to_prose_removes_only_outer_fence(self):
+        reference = '{{text page=83 block=14 chars=0:27}}'
+        element = {'type': 'code_block', 'md_text': f'```text\n{reference}\n```',
+                   'resolved_md_text': '```text\noldEnable = SetJanusEnable\n```'}
+        set_element_type(element, 'prose')
+        self.assertEqual(element['md_text'], reference)
+        self.assertEqual(element['resolved_md_text'], 'oldEnable = SetJanusEnable')
+        self.assertFalse(element_markdown(element).startswith('```'))
+
     def test_move_type_table_merge_reload_and_discard(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -43,9 +52,7 @@ class ReviewCommandFlowTests(unittest.TestCase):
             rendering = threading.Thread(target=state.render_loop, daemon=True)
             rendering.start()
             try:
-                with sync_playwright() as p:
-                    browser = p.chromium.launch(channel='msedge')
-                    page = browser.new_page(viewport={'width': 1600, 'height': 950})
+                with browser_page(viewport={'width': 1600, 'height': 950}) as page:
                     errors = []
                     page.on('pageerror', lambda e: errors.append(str(e)))
                     page.goto(f'http://127.0.0.1:{server.server_port}')
@@ -89,9 +96,17 @@ class ReviewCommandFlowTests(unittest.TestCase):
                     self.assertEqual(merged['pdf_regions'], [book['chapters'][0]['elements'][i]['pdf_regions'][0] for i in (2, 3)])
                     self.assertEqual(page.locator('#working [data-element="table1"] tr').count(), 3)
                     self.assertEqual((root / 'accepted/book.json').read_bytes(), accepted)
+                    menu('table1')
+                    page.locator('#menu-type').click()
+                    page.locator('#type-menu').get_by_role('menuitemradio', name='Image', exact=True).click()
+                    page.wait_for_function('!loading && state.can_accept && state.working.chapters[0].elements[2].type === "graphic"')
+                    image_element = load_input(root / 'working')[0]['chapters'][0]['elements'][2]
+                    self.assertEqual(image_element['md_text'], merged['md_text'])
+                    self.assertTrue((root / 'working' / image_element['asset']).is_file())
+                    self.assertEqual(page.locator('#working [data-element="table1"] img').count(), 1)
                     page.reload()
                     page.wait_for_function('state?.can_discard && !loading')
-                    self.assertEqual(page.locator('#working [data-element="table1"] tr').count(), 3)
+                    self.assertEqual(page.locator('#working [data-element="table1"] img').count(), 1)
                     page.locator('#discard').click()
                     page.wait_for_function('state?.can_accept && !state.can_discard && !loading')
                     self.assertEqual(load_input(root / 'working'), baseline)
@@ -99,7 +114,6 @@ class ReviewCommandFlowTests(unittest.TestCase):
                     self.assertEqual(page.locator('#working [data-element="table1"] tr').count(), 2)
                     self.assertEqual(page.locator('#working [data-element="table2"] tr').count(), 2)
                     self.assertFalse(errors)
-                    browser.close()
             finally:
                 state.stopping.set()
                 with state.condition:

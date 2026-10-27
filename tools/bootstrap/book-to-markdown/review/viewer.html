@@ -3,13 +3,22 @@
 <title>Book Review</title><link rel="stylesheet" href="/viewer.css"></head><body>
 <header><strong>Book Review</strong><label>Chapter <select id="chapter"><option value="">Choose…</option></select></label>
 <button id="previous" disabled>Previous Change</button><button id="next" disabled>Next Change</button>
-<button id="element-actions" disabled aria-haspopup="menu" aria-expanded="false" aria-controls="element-menu">Element actions</button>
+<button id="book-actions" disabled aria-haspopup="menu" aria-expanded="false" aria-controls="book-menu">Book Actions</button>
 <label><input type="checkbox" id="show-hidden"> Show hidden elements</label>
-<button id="copy" disabled>Copy ID</button><button id="accept" disabled>Accept Working</button>
+<label><input type="checkbox" id="show-types"> Show Types</label>
+<label><input type="checkbox" id="show-source-differences"> Show source differences</label>
+<button id="accept" disabled>Accept Changes</button>
 <button id="discard" disabled>Discard Changes</button>
 <label>TOC depth <select id="toc-depth"><option>1</option><option selected>2</option><option>3</option></select></label>
 <span id="status" role="status">Connecting…</span></header>
+<div id="book-menu" role="menu" aria-label="Book Actions" hidden>
+<button id="book-codex" role="menuitem">Codex...</button>
+<button data-book-task="describe_images" role="menuitem">Describe images</button>
+<button data-book-task="describe_tables" role="menuitem">Describe tables</button>
+<button data-book-task="source_cleanup" role="menuitem">Clean direct book text</button>
+</div>
 <div id="element-menu" role="menu" aria-label="Element actions" hidden>
+<button id="menu-current-id" role="menuitem" disabled hidden>ID:</button>
 <button id="menu-current-type" role="menuitem" disabled hidden>Type:</button>
 <button id="menu-current-role" role="menuitem" disabled hidden>Role:</button>
 <button id="menu-visibility" role="menuitem">Hide Element</button>
@@ -23,10 +32,17 @@
 <button id="menu-bold" role="menuitem">Bold</button>
 <button id="menu-remove-bold" role="menuitem">Remove Bold</button>
 <button id="menu-markdown" role="menuitem">Edit Markdown...</button>
-<button id="menu-codex" role="menuitem">Codex...</button>
 <button id="menu-new-chapter" role="menuitem">New chapter from here</button>
 <button id="menu-split" role="menuitem">Split...</button>
+<button id="menu-duplicate" role="menuitem">Duplicate element</button>
 <button id="menu-merge" role="menuitem">Merge with next...</button>
+  <button id="menu-merge-graphics" role="menuitem">Merge graphics with next</button>
+<button id="menu-rotate" role="menuitem" aria-haspopup="menu" aria-expanded="false">Rotate image &#9656;</button>
+<div id="rotate-menu" role="menu" aria-label="Image rotation" hidden>
+<button data-direction="clockwise" role="menuitem">90° clockwise</button>
+<button data-direction="counterclockwise" role="menuitem">90° counterclockwise</button>
+<button data-direction="half_turn" role="menuitem">180°</button>
+</div>
 <button id="menu-merge-tables" role="menuitem">Merge tables</button>
 <button id="menu-move-up" role="menuitem">Move up</button>
 <button id="menu-move-down" role="menuitem">Move down</button>
@@ -49,13 +65,35 @@
 <p id="markdown-error" role="alert" hidden></p>
 <div class="dialog-actions"><button value="cancel" id="cancel-markdown">Cancel</button><button type="button" id="save-markdown">Save</button></div>
 </form></dialog>
-<dialog id="codex-dialog"><form method="dialog"><h3>Codex</h3>
+<dialog id="codex-dialog"><form method="dialog"><h3 id="codex-title">Codex</h3>
 <p id="codex-id"></p>
+<div id="codex-preset-section" hidden><label for="codex-preset">Suggested task</label>
+<select id="codex-preset"><option value="">Choose a task...</option>
+<option value="join_paragraphs">Join paragraphs across PDF pages</option>
+<option data-prompt-preset="describe_images" value="describe_images">Describe images</option>
+<option data-prompt-preset="describe_tables" value="describe_tables">Describe tables</option>
+</select></div>
 <label for="codex-instruction">Instruction</label>
 <textarea id="codex-instruction" placeholder="Convert this table to HTML, preserving all its text." spellcheck="false"></textarea>
-<p>Changes are applied to Working after checking that the original text is preserved.</p>
+<div id="codex-format-section"><label for="codex-format-mode">Format rule</label>
+<select id="codex-format-mode"><option value="preserve">Keep current format</option>
+<option value="allow_change">Allow format change</option></select>
+<label class="codex-order-option"><input id="codex-allow-reorder" type="checkbox"> Allow text reordering</label>
+<label class="codex-order-option"><input id="codex-allow-additions" type="checkbox"> Allow listed additions</label>
+<label id="codex-additions-section" for="codex-allowed-additions" hidden>Permitted additions (separate items with semicolons)
+<input id="codex-allowed-additions" type="text" placeholder="x; y" autocomplete="off" spellcheck="false"></label>
+<label for="codex-format-guidance">Additional instruction sent to Codex</label>
+<textarea id="codex-format-guidance" readonly spellcheck="false"></textarea></div>
+<p id="codex-help">Changes are applied to Working after checking that original content is preserved and only listed additions are added. Dashes, commas, periods and spaces may change.</p>
 <p id="codex-status" role="status" hidden></p>
 <p id="codex-error" role="alert" hidden></p>
-<div class="dialog-actions"><button id="cancel-codex" value="cancel">Cancel</button><button type="button" id="run-codex">Run Codex</button></div>
+<div class="dialog-actions"><button type="button" id="stop-codex-agent" hidden>Stop task</button><button id="cancel-codex" value="cancel">Close</button><button type="button" id="run-codex">Run Codex</button></div>
 </form></dialog>
+<dialog id="source-cleanup-dialog"><h3>Clean direct book text</h3>
+<p>Review exact PDF matches before changing Working. Repeated or missing matches stay unchanged.</p>
+<p id="source-cleanup-summary" role="status"></p>
+<div id="source-cleanup-findings"></div>
+<p id="source-cleanup-error" role="alert" hidden></p>
+<div class="dialog-actions"><button type="button" id="source-cleanup-select-all">Select All</button><button type="button" id="source-cleanup-close">Close</button><button type="button" id="source-cleanup-apply">Apply selected</button></div>
+</dialog>
 <script src="/viewer.js"></script></body></html>

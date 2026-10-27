@@ -1,6 +1,7 @@
 """One-element Codex transformations with exact authored-content checks."""
 
 from copy import deepcopy
+from html.parser import HTMLParser
 import io
 import json
 from pathlib import Path
@@ -11,7 +12,8 @@ import uuid
 from PIL import Image
 import yaml
 
-from .content_validation import validate_content
+from .content_validation import significant_tokens, text_tokens, validate_content
+from .markdown import PARSER
 from .model import HEADING_TYPES, digest, elements, write_json
 from .text_recipe import (REFERENCE, compile_region_template, edit_template,
                           resolve_template)
@@ -19,6 +21,41 @@ from .text_recipe import (REFERENCE, compile_region_template, edit_template,
 
 PROGRAM = Path(__file__).resolve().parents[1]
 REPOSITORY = PROGRAM.parents[2]
+def prompt_text(filename):
+    return (PROGRAM / 'prompts' / filename).read_text(encoding='utf-8').strip()
+
+
+FORMAT_GUIDANCE = {
+    'preserve': prompt_text('codex-format-preserve.md'),
+    'allow_change': prompt_text('codex-format-allow-change.md'),
+}
+ORDER_GUIDANCE = {
+    False: prompt_text('codex-order-preserve.md'),
+    True: prompt_text('codex-order-allow-change.md'),
+}
+ADDITION_GUIDANCE = {
+    False: prompt_text('codex-additions-forbid.md'),
+    True: prompt_text('codex-additions-allow.md'),
+}
+
+
+class HTMLTableDetector(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.found = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'table':
+            self.found = True
+
+
+def has_html_table(text):
+    detector = HTMLTableDetector()
+    for token in PARSER.parse(text):
+        if token.type == 'html_block':
+            detector.feed(token.content)
+    detector.close()
+    return detector.found
 sys.path.insert(0, str(PROGRAM.parent))
 from conversion.client import CodexClient
 from common.pdf_artifacts import read_json
@@ -66,7 +103,8 @@ def pdf_crop(root, regions):
     return data.getvalue()
 
 
-def replacement(root, original, response):
+def replacement(root, original, response, format_mode='preserve', allow_reorder=False,
+                allowed_additions=()):
     if not isinstance(response, dict):
         raise ValueError('Codex must return one JSON object')
     if set(response) == {'error'}:
@@ -83,7 +121,17 @@ def replacement(root, original, response):
     if response['format'] == 'csv' and response['type'] not in {'table', 'graphic'}:
         raise ValueError('CSV representation requires a table or graphic element')
     before_format = original.get('text_format', original.get('table_format', 'markdown'))
-    validation = validate_content(original['resolved_md_text'], response['text'], before_format, response['format'])
+    if format_mode == 'preserve' and response['format'] != before_format:
+        raise ValueError('Codex changed the element format in preserve mode')
+    if response['type'] == 'table':
+        html_table = has_html_table(response['text'])
+        if response['format'] == 'markdown' and html_table:
+            raise ValueError('Codex returned an HTML table declared as Markdown')
+        if response['format'] == 'html' and not html_table:
+            raise ValueError('Codex declared an HTML table without HTML table markup')
+    validation = validate_content(original['resolved_md_text'], response['text'], before_format,
+                                  response['format'], allow_reorder=allow_reorder,
+                                  allowed_additions=allowed_additions)
     if response['type'] in HEADING_TYPES:
         level = response.get('heading_level')
         if type(level) is not int or not 1 <= level <= 6:
@@ -95,7 +143,8 @@ def replacement(root, original, response):
               for page in pages}
     candidate = deepcopy(original)
     candidate.update(type=response['type'], text_format=response['format'],
-                     md_text=edit_template(original['md_text'], blocks, response['text']),
+                     md_text=edit_template(original['md_text'], blocks, response['text'],
+                                           allow_reorder=allow_reorder),
                      resolved_md_text=response['text'])
     candidate.pop('asset', None)
     candidate.pop('heading_level', None)
@@ -114,6 +163,25 @@ def run_command(state, command, *, client_factory=None):
         raise ValueError('Enter a Codex instruction')
     if len(instruction) > 12000:
         raise ValueError('Codex instruction is too long')
+    format_mode = command.get('format_mode', 'preserve')
+    if format_mode not in FORMAT_GUIDANCE:
+        raise ValueError('Choose a supported Codex format mode')
+    allow_reorder = command.get('allow_reorder', False)
+    if type(allow_reorder) is not bool:
+        raise ValueError('Codex text reordering permission must be a boolean')
+    allow_additions = command.get('allow_additions', False)
+    if type(allow_additions) is not bool:
+        raise ValueError('Codex content addition permission must be a boolean')
+    allowed_additions = command.get('allowed_additions', [])
+    if not isinstance(allowed_additions, list) or any(
+            not isinstance(item, str) or not item.strip() or ';' in item or len(item) > 200
+            for item in allowed_additions) or len(allowed_additions) > 50:
+        raise ValueError('List permitted additions separated by semicolons')
+    allowed_additions = [item.strip() for item in allowed_additions]
+    if allow_additions != bool(allowed_additions):
+        raise ValueError('Enable additions and list the permitted content')
+    if any(not significant_tokens(text_tokens(item)) for item in allowed_additions):
+        raise ValueError('Each permitted addition must contain a word, number or substantive symbol')
     with state.lock:
         book, _, revision = state.input_cache.load(state.root / 'working')
         if revision != command['expected_revision']:
@@ -123,15 +191,23 @@ def run_command(state, command, *, client_factory=None):
             raise ValueError('Element no longer exists')
         original = source_text(state.root, selected)
         chapter = next(c for c in book['chapters'] if selected in c['elements'])
-        chapter_context = {'id': chapter['id'], 'title': chapter.get('resolved_title', chapter['title'])}
+        chapter_context = {'id': chapter['id'],
+                           'title': chapter.get('toc_title') or chapter.get('resolved_title', chapter['title'])}
         # Snapshot source pixels before inference, just as the authored text is.
         crop = pdf_crop(state.root, original['pdf_regions'])
     job = REPOSITORY / '.agent/tmp/book-codex' / uuid.uuid4().hex
     job.mkdir(parents=True)
-    request = {'instruction': instruction.strip(), 'element': original,
+    request = {'instruction': instruction.strip(), 'format_mode': format_mode,
+               'allow_reorder': allow_reorder, 'allowed_additions': allowed_additions,
+               'element': original,
                'chapter': chapter_context, 'allowed_types': ELEMENT_TYPES}
     write_json(job / 'request.json', {'revision': revision, **request})
-    prompt = (PROGRAM / 'prompts/codex-edit.md').read_text(encoding='utf-8') + '\n\nREQUEST JSON:\n' + json.dumps(request, ensure_ascii=False)
+    prompt = ((PROGRAM / 'prompts/codex-edit.md').read_text(encoding='utf-8') +
+              '\n\nFORMAT RULE:\n' + FORMAT_GUIDANCE[format_mode] +
+              '\n\nTEXT ORDER RULE:\n' + ORDER_GUIDANCE[allow_reorder] +
+              '\n\nADDITION RULE:\n' +
+              ADDITION_GUIDANCE[allow_additions].replace('{items}', '; '.join(allowed_additions)) +
+              '\n\nREQUEST JSON:\n' + json.dumps(request, ensure_ascii=False))
     images = None
     if crop is not None:
         (job / 'source.png').write_bytes(crop)
@@ -141,14 +217,16 @@ def run_command(state, command, *, client_factory=None):
     try:
         def validate(response):
             write_json(job / 'response.json', response)
-            checked, _ = replacement(state.root, original, response)
+            checked, _ = replacement(state.root, original, response, format_mode, allow_reorder,
+                                     allowed_additions)
             if checked['type'] == 'graphic' and crop is None:
                 raise ValueError('A graphic requires an original PDF region')
 
         config = yaml.safe_load((PROGRAM / 'config.yaml').read_text(encoding='utf-8'))
         with client_factory(config, stage='book_codex_edit', operation='book.codex_edit') as client:
             response = client.generate_json(prompt, image_path=images, validator=validate)
-        candidate, report = replacement(state.root, original, response)
+        candidate, report = replacement(state.root, original, response, format_mode, allow_reorder,
+                                        allowed_additions)
         write_json(job / 'validation.json', report)
         asset = None
         if candidate['type'] == 'graphic':

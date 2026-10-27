@@ -1,6 +1,8 @@
 """Offline conversion contracts: explicit selection, cache validity and failure propagation."""
 
 import importlib.util
+from contextlib import redirect_stderr
+from io import StringIO
 import json
 import os
 from pathlib import Path
@@ -166,6 +168,37 @@ class ClientTests(unittest.TestCase):
                     self.assertTrue(replay.metrics[-1]["cached"])
                 self.assertEqual(len(transport.calls), 1)
                 self.assertEqual(unused.calls, [])
+
+    def test_request_delay_starts_after_response_and_skips_cache(self):
+        paced = config()
+        paced["llm"]["post_request_delay_seconds"] = 60
+        clock = [0.0]
+        starts = []
+
+        class SlowTransport(FakeTransport):
+            def run(self, selected, prompt, **options):
+                starts.append(clock[0])
+                clock[0] += 90
+                return super().run(selected, prompt, **options)
+
+        transport = SlowTransport(text="Saved text")
+        output = StringIO()
+        with patch("conversion.client.time.monotonic", side_effect=lambda: clock[0]), \
+                patch("conversion.client.time.sleep", side_effect=lambda seconds: clock.__setitem__(0, clock[0] + seconds)) as sleep, \
+                patch.dict(os.environ, {"CONVERSION_TRACE": "1"}), redirect_stderr(output):
+            with CodexClient(paced, stage="html_to_markdown", operation="paced",
+                             transport=transport, cache=self.cache) as client:
+                client._generate("first")
+                client._generate("first")
+                client._generate("second")
+        self.assertEqual(len(transport.calls), 2)
+        sleep.assert_called_once()
+        self.assertEqual(sleep.call_args.args[0], 60)
+        self.assertEqual(starts, [0, 150])
+        self.assertEqual(output.getvalue().count("request.completed"), 2)
+        self.assertNotIn("cache", output.getvalue())
+        self.assertIn("request.wait", output.getvalue())
+        self.assertNotIn("Saved text", output.getvalue())
 
     def test_operation_cache_survives_stage_rename(self):
         original = config()
@@ -390,14 +423,29 @@ class TransportTests(unittest.TestCase):
 
     def test_fresh_thread_original_image_and_explicit_effort(self):
         wire = WireClient()
+        original_notification = wire.next_turn_notification
+        notifications = [SimpleNamespace(method="item/agentMessage/delta",
+                                         payload=SimpleNamespace(model_dump=lambda **_: {"delta": "private response"}))]
+        wire.next_turn_notification = lambda turn_id: (
+            notifications.pop() if notifications else original_notification(turn_id))
         transport = self.transport(wire)
         selected = selection(config(), "html_to_markdown")
-        transport.run(selected, "one", images=[Path("image.png")])
+        output = StringIO()
+        with patch.dict(os.environ, {"CONVERSION_TRACE": "1"}), redirect_stderr(output):
+            transport.run(selected, "private prompt", images=[Path("image.png")])
+        trace = output.getvalue()
+        self.assertIn("request.sent", trace)
+        self.assertNotIn("turn.event", trace)
+        self.assertNotIn("delta", trace)
+        self.assertNotIn("thread.started", trace)
+        self.assertNotIn("turn.finished", trace)
+        self.assertNotIn("private prompt", trace)
+        self.assertNotIn("image.png", trace)
         transport.run(selected, "two")
         self.assertEqual(len(wire.threads), 2)
         self.assertTrue(all(p["sandbox"] == "read-only" and p["ephemeral"] for p in wire.threads))
         self.assertTrue(all(p['baseInstructions'] == '' and p['developerInstructions'] == '' for p in wire.threads))
-        self.assertEqual(wire.turns[0][1], [{'type': 'text', 'text': 'one'},
+        self.assertEqual(wire.turns[0][1], [{'type': 'text', 'text': 'private prompt'},
             {'type': 'localImage', 'path': str(Path('image.png').resolve()), 'detail': 'original'}])
         self.assertEqual(wire.turns[1][1], [{'type': 'text', 'text': 'two'}])
         self.assertTrue(all(set(turn[2]) == {'model', 'effort'} for turn in wire.turns))
@@ -469,6 +517,28 @@ class TransportTests(unittest.TestCase):
 
 
 class ParallelConversionTests(unittest.TestCase):
+    def test_single_worker_interrupt_runs_on_invoking_thread(self):
+        caller = threading.get_ident()
+        converted = []
+
+        class Client:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                pass
+
+        def convert(client, job):
+            converted.append(job)
+            self.assertEqual(threading.get_ident(), caller)
+            raise KeyboardInterrupt
+
+        with self.assertRaises(KeyboardInterrupt):
+            convert_parallel({"llm": {"concurrency": 1}}, stage="stage", operation="operation",
+                             jobs=range(3), convert=convert, accept=lambda *_: self.fail("No result"),
+                             client_factory=lambda *_, **__: Client())
+        self.assertEqual(converted, [0])
+
     def test_worker_clients_are_isolated_and_accept_runs_on_coordinator(self):
         barrier = threading.Barrier(2)
         coordinator = threading.get_ident()

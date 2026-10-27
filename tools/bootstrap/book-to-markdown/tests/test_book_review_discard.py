@@ -59,10 +59,35 @@ class DiscardBundleTest(unittest.TestCase):
             self.assertFalse(state.status()['can_discard'])
             self.assertEqual(state.status()['changes'], [])
 
+    def test_discard_retains_historical_render_urls_without_copying_them(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state, command = self.prepare(root)
+            history = root / 'working/renders/older-revision'
+            history.mkdir()
+            (history / 'chapter.html').write_text('old view', encoding='utf-8')
+
+            from review.service import shutil
+            copytree = shutil.copytree
+
+            def reject_historical_copy(source, destination, *args, **kwargs):
+                if Path(source).name in {'working', 'older-revision'}:
+                    raise AssertionError('Historical render directory was copied')
+                return copytree(source, destination, *args, **kwargs)
+
+            with patch.object(shutil, 'copytree', reject_historical_copy):
+                state.discard(command)
+            self.assertEqual((root / 'working/renders/working/chapter.html').read_text(encoding='utf-8'),
+                             'working')
+            self.assertEqual((history / 'chapter.html').read_text(encoding='utf-8'), 'old view')
+
     def test_failed_final_rename_restores_working(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             state, command = self.prepare(root)
+            history = root / 'working/renders/older-revision'
+            history.mkdir()
+            (history / 'chapter.html').write_text('old view', encoding='utf-8')
             before = {p.relative_to(root / 'working'): p.read_bytes()
                       for p in (root / 'working').rglob('*') if p.is_file()}
             rename = Path.rename

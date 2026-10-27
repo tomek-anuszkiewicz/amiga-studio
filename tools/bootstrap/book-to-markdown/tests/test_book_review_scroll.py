@@ -8,7 +8,7 @@ import unittest
 from urllib.parse import urlsplit
 
 from PIL import Image
-from playwright.sync_api import sync_playwright
+from browser_session import browser_page
 
 REVIEW = Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown/review'
 sys.path.insert(0, str(REVIEW.parent))
@@ -60,9 +60,7 @@ class ScrollReviewTest(unittest.TestCase):
             else:
                 route.fulfill(path=str(REVIEW / ('viewer.html' if path == '/' else Path(path).name)))
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(channel='msedge')
-            page = browser.new_page(viewport={'width': 1600, 'height': 950})
+        with browser_page(viewport={'width': 1600, 'height': 950}) as page:
             page.add_init_script('window.EventSource=class {constructor(){}}')
             page.route('**/*', respond)
             page.goto('http://book-review.test/')
@@ -86,4 +84,3 @@ class ScrollReviewTest(unittest.TestCase):
                 '(n)=>n.getBoundingClientRect().top-document.getElementById("accepted").getBoundingClientRect().top')
             self.assertAlmostEqual(accepted_offset, expected_offset, delta=2)
             self.assertFalse(page.locator(f'#working [data-element="{hidden_id}"]').is_visible())
-            browser.close()

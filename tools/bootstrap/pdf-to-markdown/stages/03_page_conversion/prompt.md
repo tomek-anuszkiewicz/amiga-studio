@@ -26,7 +26,10 @@ priority, not the order of the returned segments.
 1. `header`: Running content in the top margin, such as the repeated document,
    chapter or section title, recurring publisher logo or branding. Include margin
    logos in this type even when they are images rather than text. Identify this
-   content for later removal and do not analyze it further.
+   content for later removal and do not analyze it further. A chapter or section
+   opening that introduces the content on this page is not a running header,
+   even when its number appears high on the page or above a horizontal rule.
+   Classify that opening as a heading in check 10.
 2. `footer`: Running content in the bottom margin, printed page numbers and
    recurring publisher logos or branding. Identify it for later removal and do
    not analyze it further. Logos within the main page artwork remain graphic.
@@ -56,6 +59,9 @@ priority, not the order of the returned segments.
 9. `thumb_index`: Printed edge tabs and marginal chapter navigation markers.
 10. `heading`: A chapter, appendix, section or subsection title. Use heading_level for
     hierarchy depth and an optional number string for source numbering.
+    Keep a section number label and its title together as one logical heading
+    when they introduce the same section, even if they have different alignment
+    or a horizontal rule between them. Preserve both in md_text.
     Bold text or a trailing colon alone does not make a heading; run-in titles
     remain with their paragraph.
 11. `prose`: Remaining narrative text, paragraphs and lists. Keep complete

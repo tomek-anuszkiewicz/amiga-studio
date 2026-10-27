@@ -7,7 +7,7 @@ import threading
 import unittest
 
 from PIL import Image
-from playwright.sync_api import sync_playwright
+from browser_session import browser_page
 
 REVIEW = Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown'
 sys.path.insert(0, str(REVIEW))
@@ -37,16 +37,21 @@ class VisibilityReviewTest(unittest.TestCase):
             worker.start()
             http.start()
             try:
-                with sync_playwright() as playwright:
-                    browser = playwright.chromium.launch(channel='msedge')
-                    page = browser.new_page(viewport={'width': 1600, 'height': 950})
+                with browser_page(viewport={'width': 1600, 'height': 950}) as page:
                     errors = []
                     page.on('pageerror', lambda error: errors.append(str(error)))
                     page.goto(f'http://127.0.0.1:{server.server_port}/')
                     page.wait_for_function('state?.can_accept && !loading')
                     self.assertFalse(page.locator("#discard").is_enabled())
+                    page.context.grant_permissions(['clipboard-read', 'clipboard-write'])
+                    page.locator('#working [data-element="heading"]').click(button='right')
+                    self.assertEqual(page.locator('#menu-current-id').inner_text(), 'ID: heading')
+                    self.assertTrue(page.locator('#menu-current-id').is_disabled())
+                    page.locator('#menu-copy').click()
+                    self.assertEqual(page.evaluate('navigator.clipboard.readText()'), 'heading')
                     for selector in ('#pdf [data-id="heading"]', '#accepted [data-element="heading"]', '#working [data-element="heading"]'):
                         page.locator(selector).click(button='right')
+                        self.assertEqual(page.locator('#menu-current-id').inner_text(), 'ID: heading')
                         self.assertEqual(page.locator('#menu-current-role').inner_text(), 'Role: None')
                         page.locator('#menu-role').click()
                         page.locator('#role-menu').get_by_role('menuitemradio', name='note', exact=True).click()
@@ -63,7 +68,7 @@ class VisibilityReviewTest(unittest.TestCase):
                     heading.click()
                     self.assertIsNone(page.evaluate('selected'))
                     self.assertEqual(page.locator('#pdf .selected').count(), 0)
-                    self.assertTrue(page.locator('#element-actions').is_disabled())
+                    self.assertEqual(page.locator('#element-actions').count(), 0)
                     heading.click()
                     page.keyboard.press('Escape')
                     self.assertIsNone(page.evaluate('selected'))
@@ -85,10 +90,19 @@ class VisibilityReviewTest(unittest.TestCase):
                     page.locator('#menu-visibility').click()
                     page.wait_for_function('!loading && state.can_accept && state.working.chapters[0].elements[1].visible === false')
                     heading.click(button='right')
+                    self.assertEqual(page.locator('#menu-heading').inner_text(), 'Heading H2 ▸')
                     page.locator('#menu-heading').click()
+                    current = page.locator('#heading-menu button[data-level="2"]')
+                    self.assertEqual(current.get_attribute('aria-checked'), 'true')
+                    self.assertEqual(current.evaluate('(n)=>getComputedStyle(n).fontWeight'), '700')
+                    self.assertNotEqual(current.evaluate('(n)=>getComputedStyle(n).backgroundColor'),
+                                        page.locator('#heading-menu button[data-level="3"]').evaluate('(n)=>getComputedStyle(n).backgroundColor'))
                     page.locator('#heading-menu button[data-level="4"]').click()
                     page.wait_for_function('!loading && state.can_accept && state.working.chapters[0].elements[0].heading_level === 4')
                     heading.click(button='right')
+                    self.assertEqual(page.locator('#menu-heading').inner_text(), 'Heading H4 ▸')
+                    page.locator('#menu-heading').click()
+                    self.assertEqual(page.locator('#heading-menu button[data-level="4"]').get_attribute('aria-checked'), 'true')
                     self.assertTrue(page.locator('#menu-discard').is_enabled())
                     page.locator('#menu-discard').click()
                     page.wait_for_function('!loading && state.can_accept && state.working.chapters[0].elements[0].heading_level === 2')
@@ -115,7 +129,7 @@ class VisibilityReviewTest(unittest.TestCase):
                     page.keyboard.press('Escape')
                     heading.click()
                     self.assertFalse(page.locator('#heading-menu').is_visible())
-                    page.locator('#element-actions').click()
+                    heading.click(button='right')
                     self.assertEqual(page.locator('#menu-visibility').inner_text(), 'Hide Element')
                     self.assertTrue(page.locator('#menu-heading').is_visible())
                     page.locator('#menu-heading').click()
@@ -265,7 +279,6 @@ class VisibilityReviewTest(unittest.TestCase):
                         self.assertTrue(page.locator('#' + action).is_enabled())
                     self.assertFalse(page.locator('#menu-merge').is_enabled())
                     self.assertEqual(errors, [])
-                    browser.close()
             finally:
                 state.stopping.set()
                 with state.condition:

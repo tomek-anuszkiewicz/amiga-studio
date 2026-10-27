@@ -7,6 +7,8 @@ import tempfile
 import threading
 import time
 
+from .trace import trace
+
 SDK_VERSION = "0.160.1"
 # Empty overrides suppress inherited/default conversion instructions.
 BASE_INSTRUCTIONS = ""
@@ -89,6 +91,8 @@ class CodexTransport:
             items.extend({"type": "localImage", "path": str(Path(p).resolve()), "detail": "original"} for p in images)
             options = {"model": selected.model, "effort": selected.reasoning_effort}
             turn = self._client.turn_start(thread.thread.id, items, options)
+            trace("request.sent", stage=selected.stage, model=selected.model,
+                  thread_id=thread.thread.id, turn_id=turn.turn.id)
             usage = None
             messages = []
             methods = set()

@@ -10,7 +10,7 @@ from markdown_it import MarkdownIt
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from playwright.sync_api import sync_playwright
 
-from .model import asset_names, digest, element_markdown, elements, heading_text, json_bytes, toc_entries, write_json
+from .model import asset_names, digest, element_markdown, elements, json_bytes, toc_entries, toc_label, write_json
 from .markdown import callout_plugin
 
 HERE = Path(__file__).resolve().parent
@@ -120,7 +120,7 @@ class Renderer:
         entries = toc_entries(book)
         toc_body = '<h1>Table of Contents</h1>' + "".join(
             f'<p class="toc-level-{e["heading_level"]}"><a href="#element-{e["id"]}" '
-            f'data-target="{e["id"]}">{self.md.renderInline(" ".join(heading_text(e).split()))}</a></p>'
+            f'data-target="{e["id"]}">{html.escape(toc_label(e))}</a></p>'
             for _, e in entries)
         documents = [("toc", [{"id": "generated-toc", "html": toc_body}])]
         documents += [(c["id"], c["elements"]) for c in book["chapters"]]

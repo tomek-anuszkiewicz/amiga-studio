@@ -6,6 +6,9 @@ one row and one column. Bold or italic text, long or multiline cell content,
 and surrounding captions, notes or legends are not reasons to use HTML.
 Use `<br>` for line breaks within Markdown cells and escape literal pipes as
 `\|`. Preserve bold, italic, superscript and subscript formatting.
+Escape literal angle-bracket notation from the source as HTML entities inside
+cells: `#<data>` must be written as `#&lt;data&gt;`. Keep actual formatting tags
+such as `<br>`, `<sub>` and `<sup>` as markup.
 Column labels aligned with the table, including bit-position numbers above a
 register or instruction layout, belong in its header row even when drawn outside
 the grid border. Preserve their column positions and the corresponding field

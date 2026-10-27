@@ -1,7 +1,7 @@
 # Stage 07: Repair Callouts
 
 Read retained Stage 04 pages with full Stage 05 replacements where available.
-Stage 06 must have completed before this final preparation stage. No model request
+Stage 06 must have completed before this callout stage. No model request
 or new role inference is performed.
 
 Within each page, join an immediately adjacent `callout` label and `callout_text`
@@ -24,8 +24,8 @@ roles unchanged and report
 warnings with segment IDs. Do not guess associations across page boundaries.
 
 Write every selected retained page to `07_repair_callouts/page_*_segments.json`,
-including unchanged pages. This directory is the final page-object input for book
-import; graphic assets still come from Stage 06. Preserve unrelated fields and
+including unchanged pages. [Stage 08](../08_proofreading/README.md) reads these
+pages before book import; graphic assets still come from Stage 06. Preserve unrelated fields and
 transcribed tables. An empty output is valid when filtering retained no pages.
 
 Run through the [pipeline](../../README.md) with `--from-stage 07 --to-stage 07`

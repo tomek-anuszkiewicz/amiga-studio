@@ -32,11 +32,18 @@ class SourceValidationTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(self.check(text, 'callout')['issues'], [])
 
-    def test_literal_words_digits_punctuation_and_code_are_reported(self):
+    def test_literal_words_digits_and_code_are_reported(self):
         for text in (self.reference + ' invented', self.reference + '123',
-                     self.reference + '.', '`invented`', '```asm\ninvented\n```'):
+                     '`invented`', '```asm\ninvented\n```'):
             with self.subTest(text=text):
                 self.assertTrue(self.check(text)['issues'])
+
+    def test_literal_separators_are_not_missing_text(self):
+        for text in (self.reference + '.', self.reference + '\t',
+                     '| ' + self.reference + ' |', '*' + self.reference + '*',
+                     self.reference + '/'):
+            with self.subTest(text=text):
+                self.assertEqual(self.check(text)['issues'], [])
 
     def test_html_structure_does_not_hide_literal_cell_or_attribute_text(self):
         text = '<table><tr><th colspan="2">' + self.reference + '</th></tr></table>'
@@ -58,8 +65,8 @@ class SourceValidationTests(unittest.TestCase):
         text = '$\\\\m{{text page=1 block=0 chars=1:3}}hrm\\{{{text page=1 block=0 chars=7:12}}\\}$'
         self.assertEqual(self.check(text)['issues'], [])
 
-    def test_literal_tabs_and_invalid_source_ranges_are_reported(self):
-        for text in (self.reference + '\t', '{{text page=1 block=0 chars=0:99}}',
+    def test_invalid_source_ranges_are_reported(self):
+        for text in ('{{text page=1 block=0 chars=0:99}}',
                      '{{text page=2 block=0 chars=0:5}}', '{{text broken}}'):
             with self.subTest(text=text):
                 self.assertTrue(self.check(text)['issues'])
@@ -69,7 +76,7 @@ class SourceValidationTests(unittest.TestCase):
                    {'blocks': [{'block_id': 0, 'text': 'Alpha $FF\n'}]})
         self.assertEqual(self.check('```asm\n{{text page=1 block=0 chars=0:10}}```')['issues'], [])
         self.assertEqual(self.check('\\\\{{text page=1 block=0 chars=6:9}}')['issues'], [])
-        self.assertTrue(self.check('`\\\\{{text page=1 block=0 chars=6:9}}`')['issues'])
+        self.assertEqual(self.check('`\\\\{{text page=1 block=0 chars=6:9}}`')['issues'], [])
 
     def test_chapter_titles_are_checked_and_file_identifiers_are_not_prose(self):
         report = validate_book({'chapters': [{'id': 'c', 'title': 'Invented title',

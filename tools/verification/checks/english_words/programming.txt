@@ -12,6 +12,7 @@ async
 attr
 attrib
 attrs
+autocomplete
 autojunk
 basename
 bboxes
@@ -29,8 +30,10 @@ cim
 cmdlet
 codebase
 codebases
+colgroup
 const
 contextlib
+contextmanager
 contextmenu
 copyfile
 copyfileobj
@@ -101,6 +104,7 @@ fullmatch
 fx
 getattr
 getpid
+getpos
 getters
 getuser
 getvalue
@@ -130,6 +134,7 @@ isalnum
 isalpha
 isascii
 isatty
+isdecimal
 isdigit
 isfinite
 isidentifier
@@ -155,6 +160,7 @@ lto
 magicmock
 mathcal
 mathit
+mathml
 mathrm
 mathsf
 mathtt
@@ -176,6 +182,7 @@ namespaces
 netloc
 nnnn
 nocapture
+nonspace
 noopener
 nosniff
 nowrap
@@ -188,6 +195,7 @@ ol
 onchange
 onclick
 onerror
+oninput
 onload
 onmessage
 onopen
@@ -195,6 +203,7 @@ operatorname
 ord
 orig
 osfhandle
+overlines
 pageerror
 param
 params
@@ -214,12 +223,14 @@ proc
 ps1
 psutil
 ptr
+putdata
 py
 pycache
 pytest
 pythonpath
 rawdict
 rc
+readonly
 rects
 regex
 reindex
@@ -228,6 +239,7 @@ removesuffix
 repr
 rept
 res
+resultclass
 returncode
 rfc
 rfile
@@ -246,6 +258,7 @@ serde
 serializer
 serializers
 setdefault
+setitem
 shutil
 sizeof
 softbreak
@@ -281,6 +294,7 @@ tempfile
 textarea
 tfoot
 tfrac
+timespec
 tobytes
 toml
 tomllib

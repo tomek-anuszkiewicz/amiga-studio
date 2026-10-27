@@ -37,7 +37,8 @@ class ReviewSelectionTests(unittest.TestCase):
             value = {"page": page, "segments": [{"segment_id": "s1", "type": "prose",
                       "md_text": "NOTE: Advisory.", "role": "note", "bbox": [0, 0, 10, 10]}]}
             (self.workspace / "03_page_conversion" / f"{identity}_segments.json").write_text(json.dumps(value))
-            (self.workspace / "02_preprocess" / f"{identity}.json").write_text(json.dumps({"page": page, "page_id": identity}))
+            (self.workspace / "02_preprocess" / f"{identity}.json").write_text(
+                json.dumps({"page": page, "page_id": identity, "blocks": []}))
             Image.new("RGB", (10, 10), "white").save(self.workspace / "02_preprocess" / f"{identity}.png")
 
     def test_page_conversion_requests_only_selected_page(self):
@@ -185,6 +186,23 @@ class ReviewSelectionTests(unittest.TestCase):
             self.assertNotIn(key, table)
         self.assertFalse((output / "assets").exists())
         self.assertFalse(list(self.workspace.glob(".05-*")))
+
+    def test_table_conversion_escapes_literal_pdf_angle_notation(self):
+        stage = stage_module("05_transform_page_tables", "transform_page_tables")
+        self.table_pages("04_filter_page_content")
+        source = self.workspace / "02_preprocess/page_0064.json"
+        page = json.loads(source.read_text())
+        page['raster'] = {'display_to_pixels': [1, 0, 0, 1, 0, 0]}
+        page['blocks'] = [{'block_id': 0, 'text': '#<data>', 'bbox': [0, 0, 10, 10]},
+                          {'block_id': 1, 'text': '<br>', 'bbox': [20, 20, 30, 30]}]
+        source.write_text(json.dumps(page))
+        with patch.object(stage, "CodexClient") as client:
+            client.return_value.__enter__.return_value.generate_json.return_value = {
+                'format': 'markdown', 'md_text': '| Syntax |\n| --- |\n| #<data><br>EA=Dn |'}
+            stage.transform_tables(self.workspace, {'llm': {'concurrency': 1}}, pages=[64])
+        converted = json.loads((self.workspace / stage.STAGE / 'page_0064_segments.json').read_text())
+        self.assertEqual(converted['segments'][0]['md_text'],
+                         '| Syntax |\n| --- |\n| #&lt;data&gt;<br>EA=Dn |')
 
 
 if __name__ == "__main__":

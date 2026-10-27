@@ -6,7 +6,7 @@ import re
 
 from common.pdf_artifacts import read_json
 from .markdown import PARSER
-from .text_recipe import REFERENCE, resolve_template
+from .text_recipe import ACCEPTED, REFERENCE, resolve_template
 
 
 SOURCE = '\ue000'
@@ -98,6 +98,15 @@ def validate_book(book, workspace):
                 masked.append(''.join(char if char in ' \n' else SOURCE for char in source))
                 resolved.append(source)
                 position = match.end()
+            elif accepted := ACCEPTED.match(template, position):
+                try:
+                    source = resolve_template(accepted[0], {})
+                except ValueError as error:
+                    issue('invalid_accepted_literal', f'{accepted[0]}: {error}')
+                    source = ''
+                masked.append(source)
+                resolved.append(source)
+                position = accepted.end()
             elif template[position] == '\\':
                 if position + 1 >= len(template) or template[position + 1] not in '\\{}':
                     issue('invalid_template_escape', template[position:position + 2])
@@ -110,14 +119,14 @@ def validate_book(book, workspace):
                 char = template[position]
                 if char in '{}':
                     issue('invalid_reference_syntax', template[position:position + 80])
-                if char.isspace() and char not in ' \n':
-                    issue('literal_whitespace', repr(char))
                 masked.append(char)
                 resolved.append(char)
                 position += 1
 
         def content(text):
-            for match in re.finditer('[^' + SOURCE + ' \n]+', text):
+            # Layout whitespace and punctuation are recipe separators, not
+            # unanchored book text. Only literal letters and digits need review.
+            for match in re.finditer(r'(?u)[^\W_]+', text):
                 issue('literal_content', match[0])
 
         def math(text):

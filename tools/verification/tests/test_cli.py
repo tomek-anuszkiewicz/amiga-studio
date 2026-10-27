@@ -74,6 +74,10 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(len(commands), 1)
         self.assertEqual(commands[0][1][1:], ["-m", "unittest", "discover", "-s", "tools/bootstrap/tests",
                                             "-q", "-p", "test_bootstrap_contract.py", "-k", "test_all"])
+        book = selected("test python directory tools/bootstrap/book-to-markdown/tests "
+                        "file test_book_review_overflow.py case test_pdf_page")
+        self.assertEqual(book[0][1][1:], ["tools/bootstrap/book-to-markdown/run_tests.py",
+                                         "-p", "test_book_review_overflow.py", "-k", "test_pdf_page"])
 
     def test_default_python_selection_skips_unrelated_changes(self):
         for changes in ([], ["crates/cpu/src/state.rs"], ["docs/testing.md"],
@@ -145,12 +149,27 @@ class SelectionTests(unittest.TestCase):
             self.assertEqual(commands[1][2], {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})
             self.assertEqual(commands[1][1][-2:], ["--profile", "verification"])
 
-    def test_commit_keeps_coverage_quality_and_all_python_directories(self):
-        commands = selected("commit")
+    def test_commit_keeps_coverage_quality_and_all_python_suites_for_bootstrap_changes(self):
+        commands = selected("commit", ["tools/bootstrap/book-to-markdown/review/service.py"])
         self.assertTrue(any("llvm-cov" in item[1] for item in commands))
         self.assertTrue(any(any(part.endswith("checks/check_architecture.py") for part in item[1]) for item in commands))
         self.assertEqual(sum("discover" in item[1] for item in commands), 5)
         self.assertTrue(any("tools/bootstrap/book-to-markdown/run_tests.py" in item[1] for item in commands))
+
+    def test_commit_skips_bootstrap_contracts_without_bootstrap_changes(self):
+        bootstrap = {"Bootstrap contracts", "Conversion contracts",
+                     "PDF conversion contracts", "Book review contracts"}
+        for changes in ([], ["crates/cpu/src/cpu.rs"], ["tools/verification/commands.py"]):
+            with self.subTest(changes=changes):
+                names = {name for name, _, _ in selected("commit", changes)}
+                self.assertFalse(names & bootstrap)
+                self.assertIn("RAG MCP contracts", names)
+                self.assertIn("Verification CLI contracts", names)
+        for path in ("tools/bootstrap/conversion/client.py",
+                     "tools/bootstrap/book-to-markdown/books/new/source.json"):
+            with self.subTest(path=path):
+                names = {name for name, _, _ in selected("commit", [path])}
+                self.assertEqual(names & bootstrap, bootstrap)
 
     def test_focused_architecture_filter_does_not_select_other_checks(self):
         commands = selected("check architecture case test_file_size_limits")
@@ -279,6 +298,13 @@ class ExecutionTests(unittest.TestCase):
         collect.assert_called_once_with(REPO_ROOT)
         self.assertIn("RAG MCP contracts", output.getvalue())
         self.assertNotIn("Bootstrap contracts", output.getvalue())
+
+    def test_commit_plan_collects_working_tree_changes(self):
+        with patch.object(verify, "collect_changes", return_value={"tools/bootstrap/conversion/client.py"}) as collect:
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main(["commit", "--plan"]), 0)
+        collect.assert_called_once_with(REPO_ROOT)
+        self.assertIn("Book review contracts", output.getvalue())
 
     def test_plan_never_executes_or_fingerprints_source(self):
         with patch.object(verify, "execute_command") as execute, patch.object(verify, "snapshot") as snapshot:

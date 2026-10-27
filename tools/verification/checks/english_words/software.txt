@@ -494,6 +494,7 @@ hc
 hd
 hdivisor
 hdr
+headerless
 hflop
 hh
 hist
@@ -1102,6 +1103,7 @@ unmultiplied
 unoptimized
 unpadded
 unreferenced
+unrendered
 unrequested
 unreviewed
 unrotated

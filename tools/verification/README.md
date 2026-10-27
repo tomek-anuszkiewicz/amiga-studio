@@ -248,17 +248,20 @@ python tools/verification/verify.py milestone
 
 Routine commits use only the first command. The profiles are invoked separately. Commit first runs ordinary workspace crate tests with coverage, reports the measured coverage, then runs quality gates, standard `test_runner` suites and Python tool contracts without coverage instrumentation. It never selects full SingleStepTests, even for CPU changes. Every commit scans all repository-owned text files against the English dictionary and reviewed project vocabulary, regardless of staging or changes, using `tools/verification/checks/check_english.json`. Milestone runs that language audit plus full SingleStepTests, including on a clean tree so already committed milestone work is covered. It does not repeat the other commit checks. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification.
 
-Python tool contracts live beside their owning tools. Commit verification runs
-`unittest discover` separately for each directory below; Book Review first checks
-its pinned Python packages and local KaTeX assets. The tools do not run
-these tests during normal operation. Without a commit, run only checks relevant
+Python tool contracts live beside their owning tools. Commit verification always
+runs RAG MCP and verification CLI contracts. It runs the four Bootstrap contract
+suites when Git reports staged, unstaged or nonignored new paths under
+`tools/bootstrap/`, including book data. Renames count at both endpoints. The
+Book Review suite checks pinned Python packages and local KaTeX assets, then uses
+its own runner to share a browser process. Other Python suites use `unittest
+discover`. The tools do not run these tests during normal operation. Without a
+commit, run only checks relevant
 to a coherent change, not after every edit. Repeat checks only after affected
 input changes, failures or unresolved concerns. `python tools/verification/verify.py test python` selects contracts
 whose owning tool inputs or shared dependencies have staged, unstaged or nonignored
 new changes; unrelated changes and a clean tree select no Python suites. Shared
 conversion changes select conversion, PDF and book review contracts; PDF changes
-select PDF and book review contracts. The full contract set remains mandatory
-before every authorized commit. Run a focused suite from the repository root
+select PDF and book review contracts. Run a focused suite from the repository root
 with `python tools/verification/verify.py test python directory <directory>`,
 optionally adding `file <test_file.py>` and `case <filter>` to narrow discovery.
 

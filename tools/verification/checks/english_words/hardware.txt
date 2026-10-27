@@ -175,6 +175,7 @@ ffff
 fpga
 gameport
 gameports
+gcr
 genlock
 gpio
 hblank

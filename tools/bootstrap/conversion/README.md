@@ -23,10 +23,23 @@ Rate, usage-budget and server-capacity error notifications close the affected
 transport immediately, including notifications for which the runtime proposes
 a retry. The converter does not retry those requests. PDF parallel workers own
 separate transports so a timeout cannot close another worker's connection.
+`llm.post_request_delay_seconds` optionally delays a new request to the same
+client until the specified time has elapsed since the previous model response.
+Response generation time does not count toward the delay; cache hits do not
+wait or reset it. Set `llm.concurrency: 1` to apply the delay to the entire PDF
+conversion stage.
+
+Set `CONVERSION_TRACE=1` to print a concise live trace to stderr: spacing waits,
+requests sent to Codex, and request completion or failure. Sent requests include
+the worker, thread and turn IDs. Cached results produce no trace events. Prompt,
+image and response content and streaming notification fragments are omitted.
+An allowed `imageView` is an event within the same request; the converter does
+not send a follow-up turn.
 
 HTML performs configuration/capability checks and validates Markdown responses.
-PDF parses JSON without local response-schema enforcement. A successful request
-confirms execution, not transcription quality.
+PDF Stages 03 and 05 parse JSON without local response-schema enforcement;
+Stage 08 validates proofreading patch targets before applying them. A successful
+request confirms execution, not transcription quality.
 
 ## Cache and metrics
 

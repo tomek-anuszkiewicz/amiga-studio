@@ -19,7 +19,7 @@ def main(argv=None):
         return 0
     try:
         automatic_python = args.command == "test" and args.kind == "python" and not args.words
-        changes = collect_changes(REPO_ROOT) if automatic_python else set()
+        changes = collect_changes(REPO_ROOT) if automatic_python or args.command == "commit" else set()
         phases = select_phases(args, changes)
         if args.results_dir is not None and not args.results_dir.strip():
             raise ValueError("--results-dir requires a nonempty path")
@@ -32,6 +32,8 @@ def main(argv=None):
                             if "tools/verification/run_singlestep.py" in command else overrides)
                            for name, command, overrides in commands])
                   for phase, commands in phases]
+    if args.command == "commit" and not any(path.startswith("tools/bootstrap/") for path in changes):
+        print("[INFO] Bootstrap contract suites skipped: no tools/bootstrap/ changes.")
     if args.plan:
         print("[PLAN] Preview only; no checks or tests will run.")
         if results_dir is not None:

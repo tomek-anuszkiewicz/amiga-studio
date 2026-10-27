@@ -37,7 +37,7 @@ Follow [defect resolution](../../rules/structural-root-cause.md#defect-resolutio
    ```powershell
    python tools/verification/verify.py commit
    ```
-   The commit profile runs standard suites and all Python contracts, without full SingleStep.
+   The commit profile runs standard suites, RAG and verification contracts, and Bootstrap contracts when Git reports changes under `tools/bootstrap/`, without full SingleStep.
    Full `test runner singlestep` runs remain available for explicit diagnosis or user requests.
    After the commit verification above, run `python tools/verification/verify.py milestone` for stage completion.
    Milestone runs full SingleStep and the language audit, including on clean trees, without repeating other commit checks. Use `--plan` to inspect either set.

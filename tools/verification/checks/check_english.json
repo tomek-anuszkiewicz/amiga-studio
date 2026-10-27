@@ -159,11 +159,25 @@
     ],
     "tools/bootstrap/book-to-markdown/tests/test_book_text_recipe.py": [
       "abc",
+      "addo",
+      "comm",
+      "ecooo",
       "hcooo",
-      "speci\ufb01ed"
+      "ination",
+      "infonnation",
+      "ooo",
+      "speci\ufb01ed",
+      "stra\u00dfe",
+      "\u03bf\u03c2"
     ],
     "tools/bootstrap/book-to-markdown/review/text_recipe.py": [
-      "za"
+      "ffl",
+      "za",
+      "\ufb00",
+      "\ufb01",
+      "\ufb02",
+      "\ufb03",
+      "\ufb04"
     ],
     "tools/bootstrap/pdf-to-markdown/stages/07_repair_callouts/repair_callouts.py": [
       "za"
@@ -186,7 +200,9 @@
       "intro"
     ],
     "tools/bootstrap/book-to-markdown/tests/test_book_codex.py": [
-      "da"
+      "da",
+      "rr",
+      "za"
     ],
     "tests/test_html_assembly_sources.py": [
       "readclock"
@@ -195,7 +211,41 @@
       "readclock"
     ],
     "tools/bootstrap/book-to-markdown/tests/test_book_review_commands.py": [
-      "eid"
+      "eid",
+      "nold"
+    ],
+    "tools/bootstrap/book-to-markdown/README.md": [
+      "addo"
+    ],
+    "tools/bootstrap/book-to-markdown/review/content_validation.py": [
+      "za"
+    ],
+    "tools/bootstrap/book-to-markdown/review/source_alignment.py": [
+      "za"
+    ],
+    "tools/bootstrap/book-to-markdown/tests/test_book_codex_agent.py": [
+      "addo",
+      "cdq"
+    ],
+    "tools/bootstrap/book-to-markdown/tests/test_book_source_alignment.py": [
+      "adflfnctnjnfo",
+      "ao",
+      "audoen",
+      "audolc",
+      "bo",
+      "brar",
+      "ecooo",
+      "execjnterrupts",
+      "infor",
+      "marborough",
+      "mation",
+      "nculation",
+      "precontp",
+      "uanus"
+    ],
+    "tools/bootstrap/pdf-to-markdown/tests/test_pdf_proofreading.py": [
+      "audovol",
+      "hardw"
     ]
   }
 }

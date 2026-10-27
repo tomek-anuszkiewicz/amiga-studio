@@ -1,4 +1,6 @@
 # Keep local reference PDFs, conversion workspaces and caches outside Git history.
+# A reviewed recipe can be copied from accepted/book.json to the variant's book.json.
+# The root-level copy survives import, which replaces the local review bundles.
 *.pdf
 workspace/
 pdf-to-markdown/

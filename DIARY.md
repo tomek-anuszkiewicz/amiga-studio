@@ -5115,6 +5115,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Commit profile passed ordinary Rust tests, English, formatting, Clippy, architecture, quality, harness, and four Python suites
   - Commit profile failed Book Review contracts (7 errors: missing local KaTeX assets and UI wait timeouts) and RAG MCP contracts (1 initialization timeout)
   - Full SingleStep and hardware captures not run
+
 ---
 
 ### [2026-10-14 12:42 CEST] — CPU-BENCH-01: complete decoder-derived instruction benchmarks
@@ -5141,6 +5142,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Commit profile failed in pre-existing Book Review asset/UI contracts (7 errors) and RAG MCP initialization (1 timeout)
   - Workspace semantic audit reported five existing MemoryBus findings outside the changed benchmark scope
   - No protected baseline was modified
+
 ---
 
 ### [2026-10-23 17:17 CEST] — Validate disassembler effective-address forms
@@ -5157,6 +5159,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: ordinary crate tests, standard harness, English, formatting, Clippy, architecture, hardware and code-quality checks, verification Python contracts, and vault audit on the working tree
   - FAIL: Book Review contracts, seven existing local-asset or UI timeout errors
   - Full SingleStep and hardware captures not run
+
 ---
 
 ### [2026-10-23 17:24 CEST] — Replace legacy M68000 benchmark catalog with decoder-derived candidate workflow
@@ -5179,6 +5182,44 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - FAIL: Book Review contracts with five existing Playwright UI timeouts and two missing local math-asset errors
   - Current counted-JMP fixture rejects replay of the historical raw baseline run, and the earlier NOP-every-100 baseline protocol is incompatible with current once-at-start NOP regression labels
   - full new benchmark measurement, full SingleStep, and hardware captures not run
+
+---
+
+### [2026-10-23 17:42 CET] — Version reviewed Test Book recipe
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books`
+- **What Was Changed (The Concrete Reality)**:
+  - Copied the accepted Test Book book.json to the variant root as a reviewed Git snapshot
+  - Documented that the root copy survives replacement of local review bundles
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve accepted chapter and element decisions in Git history while keeping rendered output and runtime bundles local
+- **Verification & Test Results**:
+  - Snapshot bytes match accepted/book.json for 1 chapter and 993 elements
+  - git diff --check passed
+  - commit verification passed all checks except the English scan, which failed on seven words in unrelated in-progress SVG files
+
+---
+
+### [2026-10-23 21:01 CEST] — Narrow book authoring to one source and park reference PDFs
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `tools/bootstrap/book-to-markdown/README.md`
+  - `tools/bootstrap/book-to-markdown/books`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Selected the 308-page A500/A2000 OCR PDF as the sole active recipe source
+  - kept one hashed PDF for each of the other three manuals as local references and Test Book inputs
+  - removed ten alternate variant source records from the active catalog
+  - updated the Test Book reconstruction note and renumbered the single-source roadmap
+- **Architectural Rationale & Trade-Offs**:
+  - Keep book authoring tied to one exact source hash while retaining the other manuals for reference and preserving alternate PDFs in a separate private archive
+- **Verification & Test Results**:
+  - Four local manual PDFs matched their full source.json SHA-256 values and archive copies
+  - roadmap checker and staged diff check passed
+  - commit verification passed all selected checks
+  - no manual conversion or milestone gate was run
+  - no Design specification matched the changed paths
+
 ---
 
 ### [2026-10-24 16:39 CEST] — Add hand-written M68000 instruction benchmarks
@@ -5217,6 +5258,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - FAIL: Book Review contracts, five UI timeouts and two missing local math asset errors
   - Full SingleStep and hardware captures not run
   - Six CMPI PC-relative destination forms excluded because the 68000 manual permits them only on later CPUs
+
+---
+
+### [2026-10-24 19:47 CET] — Milestone Digest: Test Book editor review
+- **Timestamp & Context**:
+  - 2026-10-23 through 2026-10-25, Roadmap 1.1 editor review and user-directed closure
+- **Affected Subsystems**:
+  - `Book-to-Markdown review editor`
+  - `PDF table conversion`
+  - `roadmap`
+- **What Was Changed (The Concrete Reality)**:
+  - Added a general Codex Working task with paginated context and validated editor actions
+  - Extended table and graphic merge controls, HTML structure validation, source recipe resolution, and reviewer UI
+  - Escaped literal angle brackets from PDF table text
+  - Updated Test Book workflow guidance and roadmap
+  - Matched HTML table merge groups across colspan subdivisions
+- **Architectural Rationale & Trade-Offs**:
+  - Keep authoring changes in Working until accepted, preserve source references and explicit table spans, and leave generated bundles local
+  - The user completed the Test Book presentation review; descriptions, proofreading, portable recipe publication, and reconstruction remain separate roadmap work
+- **Verification & Test Results**:
+  - Focused HTML table merge tests passed, including a copy of the page 71 to 73 recipe
+  - At the 2026-10-24 checkpoint, review server responded after restart. verify.py commit failed: English audit found 27 unknown word occurrences, PDF conversion contracts had one KeyError for missing blocks, and book review contracts had four navigation and scroll failures. Ordinary crate tests, coverage report, formatting, Clippy, architecture, hardware and code quality checks, standard harness tests, bootstrap and shared conversion contracts, RAG MCP contracts, and verification CLI contracts passed. Milestone verification was not run at that checkpoint.
+  - The later closure commit records current verification separately; the checkpoint failures above are historical.
+
 ---
 
 ### [2026-10-25 10:02 CET] — Remove opcode-mask counting from handwritten M68000 benchmarks
@@ -5235,6 +5300,51 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: ordinary crate and standard harness tests, English, formatting, Clippy, architecture, hardware and code quality, bootstrap, conversion, PDF, RAG, verification contracts, vault links and frontmatter, staged diff check
   - FAIL: Book Review contracts with five UI timeouts and two missing local math-asset errors
   - Full SingleStep and hardware captures not run
+
+---
+
+### [2026-10-25 10:05 CET] — Close Test Book editor review (Roadmap 1.1)
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `ROADMAP.md`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Record the user's Test Book content and presentation review and remove Roadmap 1.1
+  - Complete editor changes for Codex content permissions, table and graphic handling, movement, rotation and rendering
+  - Add the ordered book authoring checklist while retaining local Working and Accepted bundles
+- **Architectural Rationale & Trade-Offs**:
+  - The authoring editor is ready for the user's next description pass. Keep source derived text in PDF references
+  - preserve Working and Accepted review state
+  - and defer descriptions
+  - proofreading and portable recipe publication to their separate roadmap points.
+- **Verification & Test Results**:
+  - Book review contracts: 102 passed
+  - commit profile: failed on 36 unknown word occurrences and one PDF conversion contract KeyError for blocks, while other selected checks passed
+  - milestone profile: full SingleStepTests passed but English scan failed
+  - semantic sync script: five unrelated memory bus and specification discrepancies
+  - roadmap and diary structure checks passed
+  - Test Book source hash matched source.json and current Working and Accepted book.json hashes matched
+  - no source book import or generated recipe publication was run
+
+---
+
+### [2026-10-25 10:13 CET] — Version current Test Book recipe with source text reference
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown/books/test-book-example-4567/1cea0b35ee62`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the standalone LINE DRAW literal in the accepted Test Book model with page 92 block 0 characters 0 through 10
+  - Publish the current accepted 14-chapter 975-element book.json over the older one-chapter repository snapshot
+- **Architectural Rationale & Trade-Offs**:
+  - Stage 02 missed the boxed label on page 93
+  - so the recipe reuses identical source characters visible on adjacent page 92 while retaining the element's page 93 PDF region. Preserve the accepted editor state without importing or regenerating the book.
+- **Verification & Test Results**:
+  - The source PDF SHA-256 matches source.json and the published book.json is byte-identical to Accepted
+  - Working and Accepted models are semantically equal, the affected generated chapter Markdown is byte-identical, and the review server reports no pending render or error
+  - the read-only source audit reports 23122 valid references, zero issues for the corrected element, and 319 other invalid fields, so standalone reconstruction is not yet certified
+  - Book Review contracts passed in the commit profile, which still failed on 36 English vocabulary findings and one PDF conversion contract KeyError for blocks
+  - no design specification matched the book data path
+
 ---
 
 ### [2026-10-25 10:33 CET] — Add conditional M68000 benchmark workloads
@@ -5254,6 +5364,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: ordinary crate and standard harness tests, English, formatting, Clippy, architecture, hardware and code quality, bootstrap, conversion, PDF, RAG and verification contracts
   - FAIL: Book Review contracts with five UI timeouts and two missing local math-asset errors
   - Full SingleStep and hardware captures not run
+
 ---
 
 ### [2026-10-25 13:02 CET] — Correct DBcc expiry timing and SingleStep evidence coverage
@@ -5283,6 +5394,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: second commit profile's ordinary crate tests, English scan, formatting, Clippy, architecture, hardware and code quality, standard harness, bootstrap, conversion, PDF, RAG MCP and verification contracts
   - FAIL: Book Review contracts in both commit profile runs: five UI timeouts and two missing local math assets
   - Full SingleStep and physical hardware captures not run
+
 ---
 
 ### [2026-10-25 13:33 CET] — Close MC68000 opcode legality roadmap point at user direction
@@ -5306,6 +5418,25 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - focused disassembler suite, CPU suite, architecture check and roadmap checker passed
   - commit verification passed all selected checks except Book Review contracts, which had five UI timeouts and two missing local math-asset errors
   - the full Motorola-derived inventory and milestone verification were not run for this closure.
+
+---
+
+### [2026-10-25 13:54 CET] — Expand Book Review authoring actions and source cleanup
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add Book Actions tasks and prompt files for Working
+  - add direct-text cleanup preview, application, and exception tracking
+  - preserve accepted recipe on publish
+  - normalize adjacent source references and update the Test Book recipe
+  - update Book Review documentation and tests
+- **Architectural Rationale & Trade-Offs**:
+  - Support source-faithful review and explicit authoring decisions in the current book workflow
+- **Verification & Test Results**:
+  - Commit profile: Book review contracts, ordinary crate tests, standard harness tests, bootstrap, conversion, RAG MCP, verification CLI, formatting, Clippy, architecture, hardware quality, and code quality passed. English scan failed with 47 unknown word occurrences, including existing files
+  - PDF conversion contracts failed with KeyError 'blocks' in test_same_page_tables_are_saved_together_in_source_order. Design review selected Testing Strategy and Quality Assurance and required no edit.
+
 ---
 
 ### [2026-10-25 20:57 CET] — Remove filler instructions from exception and JMP benchmarks
@@ -5324,6 +5455,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: cargo fmt, Clippy, architecture, ordinary crate and harness tests, vault links and frontmatter
   - FAIL: commit verification Book Review contracts with five UI timeouts and two missing local math assets
   - full SingleStep and hardware capture checks not run
+
 ---
 
 ### [2026-10-25 21:00 CET] — Commit remaining hand-written M68000 benchmark catalog
@@ -5339,6 +5471,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Not run: tests and verification were explicitly waived by the user for this commit
   - the staged catalog was not remeasured in this turn
+
 ---
 
 ### [2026-10-25 23:45 CET] — CPU-BENCH-REPLACE-01: Replace decoder-derived CPU measurements
@@ -5364,6 +5497,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - FAIL: commit verification Book Review contracts with five UI timeouts and two missing local math assets
   - PASS: other selected commit checks
   - NOT RUN: full SingleStep milestone suite
+
 ---
 
 ### [2026-10-26 00:30 CET] — Keep CPU performance runs local and prepare portable review tests
@@ -5383,6 +5517,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - Staged diff checked
   - commit profile pending. Full SingleStep and milestone profile not run.
+
 ---
 
 ### [2026-10-26 01:39 CET] — Publish CPU benchmark anomaly analysis and review snapshot
@@ -5402,6 +5537,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: 36 vault frontmatter checks and 709 links
   - PASS: current snapshot CSV hash and 2257 rows with matching report run IDs
   - NOT RUN: new timing measurement or full SingleStep milestone suite
+
 ---
 
 ### [2026-10-26 11:03 CET] — Refresh CPU benchmark snapshot and simplify profiling workflow
@@ -5424,6 +5560,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: vault frontmatter and link audit (35 specifications and 691 links)
   - PASS: benchmark CSV and manifest hashes, full-run status, and 86 refreshed source rows
   - NOT RUN: new timing measurements or full SingleStep milestone suite
+
 ---
 
 ### [2026-10-26 15:27 CET] — Name physical memory address constants
@@ -5441,3 +5578,73 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - graphify update . completed with no topology changes
   - git diff --check passed
   - commit profile pending
+
+---
+
+### [2026-10-27 18:08 CET] — Milestone Digest: Rebuilt Test Book source and page proofreading
+- **Timestamp & Context**: 2026-10-26 to 2026-10-27; rebuilt Test Book source provenance and PDF Stage 08 preparation before import.
+- **Affected Subsystems**: `tools/bootstrap/book-to-markdown`, `tools/bootstrap/pdf-to-markdown`, shared conversion transport, verification selection, Book documentation and the testing specification.
+- **What Was Changed**:
+  - Record the rebuilt `78e52f075e17` PDF identity and a tracked 999-element recipe snapshot. At that time the root recipe differed from ignored Accepted in 74 elements; Working and Accepted stayed outside Git.
+  - Add source-backed substitutions, accepted literals, cleanup navigation and source-difference highlighting. Share browser sessions in Book Review tests, add request pacing and content-free tracing, and select Bootstrap contracts for Bootstrap changes.
+  - Add Stage 08 text-first proofreading with optional page-image resolution and validated `md_text` patches for all retained pages. Require Stage 08 before Book import, retire chapter proofreading, and improve source binding for split words, compact tables, spaced text and inline math.
+- **Architectural Rationale & Trade-Offs**: Keep prepared page text and graphics as the import handoff, source identity and OCR provenance separate from editor bundles, and ambiguous OCR visible for later review. The source PDF and local backup bundles were not committed.
+- **Verification & Invariants**:
+  - The 2026-10-26 commit profile failed with 117 unknown English words and a PDF conversion `KeyError: 'blocks'`; its other selected suites, formatting and architecture checks passed. Source SHA-256, vault links and frontmatter passed.
+  - The 2026-10-27 commit profile failed with 145 unknown English words; its other selected suites, formatting, quality and vault checks passed. No live Stage 08 conversion, Test Book import or chapter-quality review was run in that commit. These historical results do not establish current closure gates.
+
+---
+
+### [2026-10-27 23:29 CET] — Publish aligned Test Book recipe and close authoring points
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `ROADMAP.md`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace historical import matching with page-local source alignment and remove obsolete compiler tests
+  - route new Working literals through the aligner without the old adjacent-correction helper
+  - publish the current Accepted Test Book recipe at the variant root
+  - close Roadmap 1.3 and 1.4 by user direction and expand 1.7 to four manual recipes
+  - carry standalone extraction requirements into 1.5
+  - compact the settled source-provenance and Stage 08 entries into a milestone digest
+- **Architectural Rationale & Trade-Offs**:
+  - The user confirmed the chapter-formatting review and chose the current Accepted book as the published recipe. Existing source references remain authored
+  - a short edited fragment can stay explicitly accepted. Publication does not establish standalone reconstruction or semantic source attribution.
+- **Verification & Test Results**:
+  - Book review suite passed 160 tests
+  - commit and milestone profiles failed the English scan with 101 unknown-word occurrences, while their other selected suites passed
+  - semantic-sync audit failed five emulator documentation/code checks
+  - source audit reported 56 fields requiring attention among 940 checked fields and 26360 references
+  - root and Accepted book hashes match and source PDF SHA-256 matches source.json
+  - roadmap check and git diff --check passed. Roadmap closure is user-directed despite these verification limits. No standalone reconstruction or RAG ingestion was run.
+---
+
+### [2026-10-27 23:39 CET] — Merge bootstrap-codex-api into master
+- **Affected Subsystems**:
+  - `.agents`
+  - `tools/bootstrap`
+  - `tools/verification`
+  - `Obsidian/Amiga/Design/Verification`
+  - `ROADMAP.md`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Integrated the reviewed Test Book authoring, Stage 08 proofreading, and verification routing with the master CPU benchmark and memory work
+  - reconciled seven text conflicts across testing rules, Book Review runner, verifier, tests, and documentation
+  - interleaved 25 existing diary entries chronologically
+  - reviewed 63 changed Markdown paths and their local links
+  - applied the reviewed English vocabulary and exact-file literal decisions; reworded one agent prompt sentence
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve both branches' implementation and history while retaining dependency setup and the shared browser test runner
+  - retain the master CPU reference-vector coverage rule and the source branch's conditional Bootstrap contracts
+- **Verification & Test Results**:
+  - Fast-forward rejected because the branches diverged
+  - focused verification CLI contracts passed
+  - Book Review contracts passed
+  - Book Review dependency setup tests passed
+  - git diff --cached --check passed
+  - formatting, architecture, vault links and frontmatter passed
+  - ordinary Rust workspace tests passed
+  - commit profile passed Rust coverage tests, formatting, Clippy, architecture, quality, standard harness and all six Python contract suites
+  - initial commit profile failed only the English scan with 101 unknown-word occurrences in the merged Bootstrap text
+  - user approved the reviewed vocabulary and exact-file literal entries; focused English scan passed after those changes
+  - final commit profile passed the English scan, ordinary Rust coverage tests, formatting, Clippy, architecture, quality, standard harness and all six Python contract suites
