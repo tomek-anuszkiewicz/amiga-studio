@@ -164,7 +164,7 @@ class WorkingAgentTests(unittest.TestCase):
                                          'task_kind': 'source_cleanup',
                                          'expected_revision': owner.revision}, client_factory=Client)
         self.assertEqual(result['edits'], 1)
-        self.assertIn('"literals": ["LINE", "DRAW:."]', observed[1])
+        self.assertIn('"literals": ["LINE", "DRAW"]', observed[1])
         self.assertIn('"md_text": "LINE DRAW:."', observed[2])
         self.assertIn('"chars": [0, 9]', observed[3])
         self.assertIn('"reference": "{{text page=1 block=0 chars=0:9}}"', observed[3])

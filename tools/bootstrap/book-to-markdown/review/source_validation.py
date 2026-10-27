@@ -119,14 +119,14 @@ def validate_book(book, workspace):
                 char = template[position]
                 if char in '{}':
                     issue('invalid_reference_syntax', template[position:position + 80])
-                if char.isspace() and char not in ' \n':
-                    issue('literal_whitespace', repr(char))
                 masked.append(char)
                 resolved.append(char)
                 position += 1
 
         def content(text):
-            for match in re.finditer('[^' + SOURCE + ' \n]+', text):
+            # Layout whitespace and punctuation are recipe separators, not
+            # unanchored book text. Only literal letters and digits need review.
+            for match in re.finditer(r'(?u)[^\W_]+', text):
                 issue('literal_content', match[0])
 
         def math(text):

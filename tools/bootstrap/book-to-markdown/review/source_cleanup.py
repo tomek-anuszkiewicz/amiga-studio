@@ -5,10 +5,10 @@ import json
 import re
 
 from .model import read_json
+from .source_alignment import align_template_literals
 from .source_validation import validate_book
 from .text_recipe import (ACCEPTED, REFERENCE, accepted_literal,
-                          attach_adjacent_corrections, difference_locator,
-                          resolve_template)
+                          difference_locator, resolve_template)
 
 
 WORDS = re.compile(r'(?u)[^\W_]+(?:[ \t]+[^\W_]+)*[.,:;!?]*')
@@ -221,77 +221,43 @@ def preview(book, workspace, selected_paths=None):
 
 
 def reconcile_working(book, original, workspace):
-    """Align changed Working fields without republishing Accepted content."""
+    """Align newly written Working text without moving authored references."""
     old_elements = {element['id']: element for chapter in original['chapters']
                     for element in chapter['elements']}
     old_chapters = {chapter['id']: chapter for chapter in original['chapters']}
-    changed = set()
-    def has_source(pages):
-        return any((workspace / '02_preprocess' / f'page_{page:04d}.json').is_file()
-                   for page in pages)
-    for chapter_index, chapter in enumerate(book['chapters']):
+    prepared = {}
+
+    def align(value, pages, bbox):
+        for page in sorted(pages):
+            source = workspace / '02_preprocess' / f'page_{page:04d}.json'
+            if source.is_file() and page not in prepared:
+                prepared[page] = read_json(source)
+        if any(page in prepared for page in pages):
+            page = next(page for page in sorted(pages) if page in prepared)
+            source_pages = {source_page: prepared[source_page]['blocks']
+                            for source_page in pages if source_page in prepared}
+            return align_template_literals(page, prepared[page], bbox, value, source_pages)
+        return value
+
+    for chapter in book['chapters']:
         previous = old_chapters.get(chapter['id'])
-        title_pages = {region['page'] for element in chapter['elements'][:1]
-                       for region in element.get('pdf_regions', [])}
-        title_pages.update(int(ref[1]) for ref in REFERENCE.finditer(chapter['title']))
-        if ((previous is None or chapter['title'] != previous['title']) and
-                has_source(title_pages)):
-            changed.add(f'/chapters/{chapter_index}/title')
-        for element_index, element in enumerate(chapter['elements']):
+        if previous is None or chapter['title'] != previous['title']:
+            regions = [region for element in chapter['elements'][:1]
+                       for region in element.get('pdf_regions', [])]
+            pages = {region['page'] for region in regions}
+            pages.update(int(ref[1]) for ref in REFERENCE.finditer(chapter['title']))
+            chapter['title'] = align(chapter['title'], pages,
+                                     regions[0]['bbox'] if regions else [0, 0, 0, 0])
+        for element in chapter['elements']:
             if 'md_text' not in element:
                 continue
             previous = old_elements.get(element['id'])
             if previous is None or element['md_text'] != previous.get('md_text'):
-                pages = {region['page'] for region in element.get('pdf_regions', [])}
+                regions = element.get('pdf_regions', [])
+                pages = {region['page'] for region in regions}
                 pages.update(int(ref[1]) for ref in REFERENCE.finditer(element['md_text']))
-                if not has_source(pages):
-                    continue
-                path = f'/chapters/{chapter_index}/elements/{element_index}/md_text'
-                changed.add(path)
-                pages = {int(ref[1]) for ref in REFERENCE.finditer(element['md_text'])}
-                blocks = {}
-                for page in pages:
-                    source = workspace / '02_preprocess' / f'page_{page:04d}.json'
-                    if source.is_file():
-                        blocks[page] = read_json(source)['blocks']
-                element['md_text'] = attach_adjacent_corrections(element['md_text'], blocks)
-    if not changed:
-        return
-    while True:
-        report = preview(book, workspace, changed)
-        by_path = {}
-        for item in report:
-            path = item['path']
-            parts = path.split('/')
-            chapter = book['chapters'][int(parts[2])]
-            element = chapter['elements'][int(parts[4])] if len(parts) == 6 else None
-            anchors = ({region['page'] for region in element.get('pdf_regions', [])}
-                       if element else set())
-            template = (element or chapter)[parts[-1]]
-            anchors.update(int(ref[1]) for ref in REFERENCE.finditer(template))
-            replacement = None
-            if (item['status'] == 'matched' and item['local_match'] and item['page'] in anchors and
-                    item['source_text'] == item['literal']):
-                replacement = item['reference']
-            elif item['token'] == item['literal']:
-                replacement = accepted_literal(item['literal'])
-            if replacement is not None:
-                by_path.setdefault(path, []).append((item['offsets'], item['token'], replacement))
-        if not by_path:
-            return
-        for path, edits in by_path.items():
-            parts = path.split('/')
-            target = book['chapters'][int(parts[2])]
-            if len(parts) == 6:
-                target = target['elements'][int(parts[4])]
-            field = parts[-1]
-            template = target[field]
-            for (start, end), token, replacement in sorted(edits, reverse=True):
-                if template[start:end] != token:
-                    raise ValueError(f'Working text changed during source alignment at {path}:{start}:{end}: '
-                                     f'{template[start:end][:120]!r} != {token[:120]!r}')
-                template = template[:start] + replacement + template[end:]
-            target[field] = template
+                element['md_text'] = align(element['md_text'], pages,
+                                           regions[0]['bbox'] if regions else [0, 0, 0, 0])
 
 
 def accept_exception(book, report, finding_id, note, source_text='', corrected_text=''):

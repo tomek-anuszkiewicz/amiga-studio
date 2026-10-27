@@ -5218,50 +5218,38 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PDF conversion contracts failed with KeyError 'blocks' in test_same_page_tables_are_saved_together_in_source_order. Design review selected Testing Strategy and Quality Assurance and required no edit.
 ---
 
-### [2026-10-26 21:32 CET] — Record Test Book source provenance and review workflow
-- **Affected Subsystems**:
-  - `tools/bootstrap/book-to-markdown`
-  - `tools/bootstrap/conversion`
-  - `tools/bootstrap/pdf-to-markdown`
-  - `tools/verification`
-  - `ROADMAP.md`
-  - `Obsidian/Amiga/Design/Verification`
-- **What Was Changed (The Concrete Reality)**:
-  - Replace the tracked Test Book source metadata and recipe with the rebuilt 78e52f075e17 variant
-  - add source-backed text substitutions, accepted literals, cleanup navigation and viewer highlighting
-  - share browser sessions in Book Review contracts
-  - add conversion request pacing and trace output
-  - select Bootstrap contracts when Bootstrap inputs change
-  - synchronize the testing specification and tool documentation
-- **Architectural Rationale & Trade-Offs**:
-  - Keep the rebuilt PDF identity and current recipe snapshot in Git while preserving ignored Working and Accepted bundles and their editorial review boundary
-  - record source provenance and keep the commit verification selection aligned with affected tools
-- **Verification & Test Results**:
-  - Commit profile failed: English scan reported 117 unknown-word occurrences and one PDF conversion contract failed with KeyError 'blocks'
-  - ordinary crate and standard harness tests, formatting, Clippy, architecture, hardware quality, code quality, Bootstrap, conversion, Book Review, RAG MCP and verification CLI contracts passed. Vault link and frontmatter audit passed. The source PDF SHA-256 matches source.json. The committed root recipe snapshot has 999 elements and differs from ignored Accepted in 74 elements
-  - source review and standalone reconstruction remain pending. Full SingleStep and milestone checks were not run.
+### [2026-10-27 18:08 CET] — Milestone Digest: Rebuilt Test Book source and page proofreading
+- **Timestamp & Context**: 2026-10-26 to 2026-10-27; rebuilt Test Book source provenance and PDF Stage 08 preparation before import.
+- **Affected Subsystems**: `tools/bootstrap/book-to-markdown`, `tools/bootstrap/pdf-to-markdown`, shared conversion transport, verification selection, Book documentation and the testing specification.
+- **What Was Changed**:
+  - Record the rebuilt `78e52f075e17` PDF identity and a tracked 999-element recipe snapshot. At that time the root recipe differed from ignored Accepted in 74 elements; Working and Accepted stayed outside Git.
+  - Add source-backed substitutions, accepted literals, cleanup navigation and source-difference highlighting. Share browser sessions in Book Review tests, add request pacing and content-free tracing, and select Bootstrap contracts for Bootstrap changes.
+  - Add Stage 08 text-first proofreading with optional page-image resolution and validated `md_text` patches for all retained pages. Require Stage 08 before Book import, retire chapter proofreading, and improve source binding for split words, compact tables, spaced text and inline math.
+- **Architectural Rationale & Trade-Offs**: Keep prepared page text and graphics as the import handoff, source identity and OCR provenance separate from editor bundles, and ambiguous OCR visible for later review. The source PDF and local backup bundles were not committed.
+- **Verification & Invariants**:
+  - The 2026-10-26 commit profile failed with 117 unknown English words and a PDF conversion `KeyError: 'blocks'`; its other selected suites, formatting and architecture checks passed. Source SHA-256, vault links and frontmatter passed.
+  - The 2026-10-27 commit profile failed with 145 unknown English words; its other selected suites, formatting, quality and vault checks passed. No live Stage 08 conversion, Test Book import or chapter-quality review was run in that commit. These historical results do not establish current closure gates.
 ---
 
-### [2026-10-27 18:08 CET] — Add page proofreading before book import
+### [2026-10-27 23:29 CET] — Publish aligned Test Book recipe and close authoring points
 - **Affected Subsystems**:
-  - `tools/bootstrap/pdf-to-markdown`
   - `tools/bootstrap/book-to-markdown`
-  - `tools/bootstrap/conversion`
   - `ROADMAP.md`
   - `DIARY.md`
 - **What Was Changed (The Concrete Reality)**:
-  - Add PDF Stage 08 text-first proofreading with optional page-image resolution, validated text patches and retained-page output
-  - require Stage 08 for book import and remove the chapter proofreading action and prompt
-  - improve PDF source binding for split words, compact tables, letter-spaced text and inline math
-  - update conversion flow, Stage 03 guidance, documentation and regression tests
+  - Replace historical import matching with page-local source alignment and remove obsolete compiler tests
+  - route new Working literals through the aligner without the old adjacent-correction helper
+  - publish the current Accepted Test Book recipe at the variant root
+  - close Roadmap 1.3 and 1.4 by user direction and expand 1.7 to four manual recipes
+  - carry standalone extraction requirements into 1.5
+  - compact the settled source-provenance and Stage 08 entries into a milestone digest
 - **Architectural Rationale & Trade-Offs**:
-  - Proofread source page objects before assembling chapters while keeping recipe text attributable to PDF spans
-  - leave unresolved OCR and chapter formatting in Roadmap 1.3
-  - keep local Test Book backup copies out of the commit
+  - The user confirmed the chapter-formatting review and chose the current Accepted book as the published recipe. Existing source references remain authored
+  - a short edited fragment can stay explicitly accepted. Publication does not establish standalone reconstruction or semantic source attribution.
 - **Verification & Test Results**:
-  - Commit profile failed only at the English scan: 145 unknown-word occurrences across 589 files, including pre-existing terms and source/OCR fixtures
-  - ordinary crate tests, standard harnesses, Bootstrap, conversion, PDF, Book Review, RAG MCP and verification CLI contracts passed
-  - formatting, Clippy, architecture, hardware and code quality checks passed
-  - vault links and frontmatter passed
-  - git diff --check passed
-  - no live Stage 08 conversion, Test Book import or chapter quality review was run
+  - Book review suite passed 160 tests
+  - commit and milestone profiles failed the English scan with 101 unknown-word occurrences, while their other selected suites passed
+  - semantic-sync audit failed five emulator documentation/code checks
+  - source audit reported 56 fields requiring attention among 940 checked fields and 26360 references
+  - root and Accepted book hashes match and source PDF SHA-256 matches source.json
+  - roadmap check and git diff --check passed. Roadmap closure is user-directed despite these verification limits. No standalone reconstruction or RAG ingestion was run.

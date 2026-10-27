@@ -18,7 +18,7 @@ Actions:
   reads up to eight complete element records and their JSON Pointer paths.
   Large text fields are sliced; use a later offset to read the rest.
 - `{"action":"source_audit","cursor":0,"limit":20}` lists up to 50 authored
-  Working fields containing literal text or whitespace. Rows include chapter and
+  Working fields containing literal words or digits. Rows include chapter and
   element IDs, field names, patch paths, issue counts and sample literals. Use `"id":"..."`
   to audit one element. Rerun after edits because field positions change. This
   is a read-only audit, not a repair.

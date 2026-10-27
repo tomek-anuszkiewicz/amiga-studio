@@ -13,12 +13,10 @@ from common.pdf_artifacts import read_json
 from common.pdf_page_conversion import read_conversion
 from common.pdf_elements import ELEMENT_ROLES, ELEMENT_TYPES
 from .markdown import PARSER, preserve_line_breaks
-from .text_recipe import (ACCEPTED, REFERENCE, bind_ordered_compact_literals,
-                          bind_unique_region_literals,
-                          escape_literal, edit_template, literal_html_tags,
-                          compile_markdown_template, join_adjacent_references,
-                          letter_spaced_region_template,
-                          region_blocks, resolve_template, source_differences)
+from .source_alignment import compile_page_template
+from .text_recipe import (REFERENCE, escape_literal, edit_template,
+                          literal_html_tags, join_adjacent_references,
+                          resolve_template, source_differences)
 
 HEADING_TYPES = {"heading", "toc_heading", "index_heading",
                  "list_of_tables_heading", "list_of_figures_heading"}
@@ -176,10 +174,8 @@ def import_book(root):
             if "md_text" in element:
                 # Conversion supplies formatting; source text comes from PDF ranges.
                 prefix = "#" * element["heading_level"] + " " if element["type"] in HEADING_TYPES else ""
-                mapped = letter_spaced_region_template(
+                template = prefix + compile_page_template(
                     page['page'], text_page, segment['bbox'], segment['md_text'])
-                template = prefix + (mapped if mapped is not None else compile_markdown_template(
-                    page['page'], region_blocks(text_page, segment['bbox']), segment['md_text']))
                 element.update(md_text=template, resolved_md_text=prefix + segment['md_text'])
             if element["type"] == "graphic":
                 name = f"{element['id']}.png"
@@ -192,25 +188,6 @@ def import_book(root):
         shutil.copy2(image, destination / image.name)
     book = {"toc": {"depth": 2},
             "chapters": [new_chapter(elements, "chapter-001")]}
-    from .source_cleanup import reconcile_working
-    reconcile_working(book, {"chapters": []}, workspace)
-    source_pages = {}
-    for element in elements:
-        if not ACCEPTED.search(element.get('md_text', '')):
-            continue
-        pages = {region['page'] for region in element['pdf_regions']}
-        if len(pages) != 1:
-            continue
-        page = pages.pop()
-        if page not in source_pages:
-            source_pages[page] = read_json(workspace / '02_preprocess' / f'page_{page:04d}.json')
-        selected = {block['block_id']: block for region in element['pdf_regions']
-                    for block in region_blocks(source_pages[page], region['bbox'])}
-        element['md_text'] = bind_unique_region_literals(page, list(selected.values()),
-                                                         element['md_text'])
-        if element['type'] in {'table', 'preformatted_text'}:
-            element['md_text'] = bind_ordered_compact_literals(
-                page, list(selected.values()), element['md_text'])
     write_json(working / "book.json", book)
     return book
 

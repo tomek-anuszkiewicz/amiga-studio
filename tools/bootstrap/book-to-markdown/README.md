@@ -61,9 +61,10 @@ source acquisition and reconstruction directly from a PDF remain pending.
 6. Review Stage 08 corrections and unresolved ambiguities against the PDF after
    assembly. Check chapter-level code formatting and links, record any justified
    further corrections in the authored recipe, then repeat the source-reference audit.
-7. Review the final Working render and Markdown exports, accept the intended
-   changes, and record the reviewed recipe and matching source identity as
-   described in Roadmap 1.4. The local Accepted bundle is not a published recipe.
+7. Review the final Working render and Markdown exports, then accept the intended
+   changes. Acceptance synchronizes the variant-root `book.json` with Accepted;
+   record the matching source identity. The local Accepted bundle alone is not a
+   published recipe.
 8. Reconstruct and test retrieval through Roadmap 1.5 and 1.6 after those
    commands exist. These steps do not repeat model authoring.
 
@@ -234,36 +235,49 @@ when there is no such heading, it uses `resolved_title`. This label updates with
 heading visibility, type, level and TOC depth without changing the authored title
 or output filename. The initial imported chapter title references its first heading;
 its output filename is an identifier.
-New imports keep conversion Markdown/HTML structure as literal recipe syntax,
-replacing matching source text with `{{text page=3 block=1 chars=0:6}}` references.
-Stage 08 supplies complete final pages, preserving transcribed tables and callouts.
-Positioned Stage 02 blocks intersecting the element region supply candidate text.
-Source matching can reorder selections, such as a wrapped label beside an
-assembly listing. A one-character OCR substitution keeps its Stage 02 source
-range and records the visible replacement. Ambiguous content remains explicitly
-unanchored for review; fences, language tags and HTML tags/attributes remain
-literal structure. Matching equal characters does not certify semantic
-attribution of repeated text.
-An alphanumeric word is not assembled from arbitrary partial matches in
-separate source words or blocks. A unique word split by a printed line-end
-hyphen across blocks, or by a soft hyphen and newline inside one block, keeps
-both source ranges without the layout characters. Exact fallback matches stop
-at word boundaries in both the visible text and Stage 02 source. A full source
-word with a supported OCR substitution retains one contiguous range and a
-`replace` correction; words without a defensible complete source address stay
-unanchored.
-When Markdown inserts a hyphen inside one OCR word, as in `TABLE 3-2` versus
-source `TABLE  32`, each side of the hyphen keeps its adjacent character range
-only if the joined word has one eligible source occurrence.
-Short words also retain a source range for unique, local OCR `0`/`D` or
-`0`/`O` substitutions in either direction, including multiple changes in one
-word. For long prose blocks, matching words on both sides must also agree.
-That same neighboring-word check permits a one- or two-letter transcription
-correction within a complete word; it does not infer arbitrary digit changes.
-The correction covers only the changed character span. Repeated candidates
-remain unanchored.
-Loading a new recipe resolves PDF ranges without consulting converted page Markdown.
-Chapter titles retain the imported heading's recipe.
+New imports align each Stage 08 segment's final `md_text` against Stage 02 text
+on the same PDF page. Candidate PDF blocks are ranked by compact text matches,
+then proximity to the segment box, character trigrams and sequence similarity.
+When text repeats, an exact match in the segment box wins over an exact match
+elsewhere on the same page. A single-word table cell prefers a complete,
+case-identical PDF word over a matching prefix inside a longer word.
+Markdown and HTML structure stays literal in the recipe. Visible words in
+prose, math and table cells receive real Stage 02 character ranges where a
+reasonable match exists, including OCR spelling corrections and words spaced
+apart by OCR. If one source glyph disappears during compact normalization,
+consecutive matches for the other characters can recover it as a narrow OCR
+correction. A formula or table can reference source words in a different
+order. An exact occurrence elsewhere on the pinned page is an acceptable fallback;
+the region box is a preference, not a source boundary. When the fallback has
+several whole-word matches, the same-case spelling wins over a case-changing
+match, even when this reuses a source occurrence.
+Adjacent PDF blocks can contribute separate parts of one hyphenated word.
+Page-local OCR words with one or two character changes retain exact source runs;
+inserted target letters alone remain accepted. A line of spaced OCR letters can
+address a register name, and uppercase code suffixes can address corrected
+identifiers without replacing the whole word.
+Two-character words can use a one-glyph OCR correction. Repeated equally ranked
+two-character matches use the first occurrence on the page, preferring common
+OCR glyph confusions and nearby blocks; the address need not identify the exact
+printed table cell.
+
+Words the first pass cannot address become `{{accepted text="..."}}`, shown as
+blue source differences. OCR corrections in addressed words are shown in yellow.
+Whitespace, line breaks, slashes, stars, punctuation and table separators stay
+literal in the recipe and do not create blue source differences.
+The importer requires every generated recipe to resolve exactly to the Stage 08
+Markdown. A valid reference proves only that its characters came from the
+pinned Stage 02 page; repeated text and imperfect OCR can still yield a wrong
+occurrence or a broad correction. HTML tables and mathematical expressions are
+handled cell or text run at a time, so some content can remain blue. Loading a
+recipe resolves PDF ranges without consulting converted page Markdown. Chapter
+titles retain the imported heading's recipe.
+
+After a Working text edit, newly written literal fragments use the same page-local
+alignment. Existing authored source references and explicit accepted spans stay
+in place. The editor's text-diff step retains references for unchanged characters
+before new fragments are aligned. A single changed letter can remain accepted
+even when its surrounding word has a plausible OCR correction.
 
 ### Source validation
 
@@ -276,18 +290,17 @@ python tools/bootstrap/book-to-markdown/book_review.py validate --book $Book
 The command prints a JSON report and exits with code 1 for a noncompliant book.
 It checks element `md_text`, chapter titles and every referenced PDF character
 range. Filenames and IDs are structural metadata. Source text remains behind
-references; literal whitespace is limited to spaces and newlines. Markdown
-structure, recognized HTML tags/attributes, code fence language identifiers and
-math formatting commands are allowed, but literal cell text, code, math arguments
-and visible attribute text are reported. Visible math symbol commands without
-source references are reported too. Unsupported markup is reported rather than
-silently exempted.
+references; literal whitespace and punctuation are treated as separators.
+Markdown structure, recognized HTML tags/attributes, code fence language
+identifiers and math formatting commands are allowed, but literal words and
+digits in cells, code, math arguments and visible attributes are reported.
+Visible math symbol commands without source references are reported too.
+Unsupported markup is reported rather than silently exempted.
 
-This is an optional diagnostic command. Import and saved Working edits also
-reconcile affected text against prepared Stage 02 pages, keeping valid references,
-binding reliable matches and recording supported OCR substitutions. Content that
-cannot be bound reliably becomes an explicit accepted literal during initial
-import; its missing source address remains visible through Show source differences.
+This is an optional diagnostic command. Import and saved Working edits align
+visible words against prepared Stage 02 pages. Content that cannot be bound
+becomes an explicit accepted literal; its missing source address remains visible
+through Show source differences.
 The audit remains available to inspect pending plain content; it does not regenerate
 prepared results. Existing reference resolution, model structure and stale-revision
 checks still apply.
@@ -295,10 +308,9 @@ checks still apply.
 The audit validates provenance syntax and literal content, not semantic source
 attribution, word order, duplication or transcription quality. A valid range
 does not prove that repeated letters were selected from the correct occurrence.
-During automatic Working reconciliation, an exact literal is bound only when
-the source occurrence is adjacent to an existing reference in its PDF block.
-Other exact occurrences remain visible as review proposals in Clean direct
-book text, so the importer does not silently borrow a word from elsewhere.
+**Clean direct book text** remains a separate read-only exact-match preview for
+any pending plain text; its proposals need not match the importer's ranked
+page-local choices.
 
 ### Codex Working task
 
@@ -428,6 +440,15 @@ half-open relative to the selected source range. The replacement and replaced
 span must have equal Unicode character lengths unless the replacement covers
 the entire selected span, as when spaced OCR letters are joined into words, or
 expands an OCR ligature to its equivalent letters.
+`{{text page=93 block=2 chars=0:3 case="lower"}}` changes only the letter case
+of the selected source range; `case="upper"` is also supported. A reference
+accepts either `case` or `replace`, and the case transformation must preserve
+each source character position. Explicit case changes keep their PDF address
+and are omitted from the yellow source-correction markers. Select a narrower
+source range when only part of a block should change case; omitted source
+characters require a separate range selection. For OCR words with spaces
+between every letter, import selects each source letter separately before
+applying the case change.
 `{{accepted text="Vision"}}`
 records visible text without assigning a PDF block. Both markers resolve before
 Markdown rendering and remain in the authored recipe; source substitutions can

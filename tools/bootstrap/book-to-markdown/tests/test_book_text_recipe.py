@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown'))
-from review.text_recipe import REFERENCE, attach_adjacent_corrections, bind_ordered_compact_literals, compile_template, compile_region_template, compile_markdown_template, edit_template, slice_template, preserve_bold, resolve_template, source_differences, source_reference
+from review.text_recipe import REFERENCE, compile_region_template, edit_template, join_adjacent_references, slice_template, preserve_bold, resolve_template, source_differences, source_reference, source_span_with_spacing
 
 
 from review.markdown import callout_plugin
@@ -34,148 +34,60 @@ from common.pdf_geometry import text_blocks
 
 
 class TextRecipeTest(unittest.TestCase):
-    def test_heading_word_in_adjacent_pdf_block_is_not_a_correction(self):
-        blocks = [
-            {'block_id': 0, 'text': 'EXPANSION \nARCHITECTURE \n',
-             'bbox': [36, 72, 131, 99]},
-            {'block_id': 1, 'text': 'OVERVIEW \n',
-             'bbox': [37, 99, 104, 112]},
-        ]
-        target = 'EXPANSION ARCHITECTURE OVERVIEW'
-        template = compile_markdown_template(70, blocks, target)
+    def test_source_span_uses_case_for_case_only_changes(self):
+        block = {'block_id': 2, 'text': 'bit EXAMPLE res LOAD nd'}
+        pages = {93: [block]}
+        for start, end, visible, mode in ((0, 3, 'BIT', 'upper'),
+                                           (4, 11, 'example', 'lower'),
+                                           (12, 15, 'RES', 'upper'),
+                                           (16, 20, 'load', 'lower')):
+            with self.subTest(visible=visible):
+                template = source_span_with_spacing(93, block, start, end, visible)
+                self.assertEqual(template, source_reference(93, 2, start, end, case=mode))
+                self.assertEqual(resolve_template(template, pages), visible)
+                self.assertEqual(source_differences(template, pages), [])
+        substantive = source_span_with_spacing(93, block, 21, 23, 'AND')
+        self.assertNotIn(' case=', substantive)
+        self.assertTrue(source_differences(substantive, pages))
+        for source, visible, mode in (('r e s', 'RES', 'upper'),
+                                      ('L O A D', 'load', 'lower')):
+            with self.subTest(source=source):
+                spaced = {'block_id': 3, 'text': source}
+                template = source_span_with_spacing(93, spaced, 0, len(source), visible)
+                self.assertEqual(resolve_template(template, {93: [spaced]}), visible)
+                self.assertEqual(source_differences(template, {93: [spaced]}), [])
+                self.assertEqual(template.count(f' case="{mode}"'), len(visible))
+                self.assertNotIn(' replace=', template)
 
-        self.assertEqual(resolve_template(template, {70: blocks}), target)
-        self.assertIn('page=70 block=1 chars=0:8', template)
-        self.assertEqual(source_differences(template, {70: blocks}), [])
+    def test_case_reference_preserves_source_and_has_no_correction_marker(self):
+        blocks = [{'block_id': 2, 'text': 'BIT example AND'}]
+        pages = {93: blocks}
+        lower = source_reference(93, 2, 0, 3, case='lower')
+        upper = source_reference(93, 2, 4, 11, case='upper')
+        narrowed = source_reference(93, 2, 13, 15, case='lower')
+        template = f'{lower} {upper} {narrowed}'
+        self.assertEqual(resolve_template(template, pages), 'bit EXAMPLE nd')
+        self.assertEqual(source_differences(template, pages), [])
+        self.assertEqual(slice_template(upper, 2, 5, pages),
+                         source_reference(93, 2, 6, 9, case='upper'))
+        self.assertEqual(resolve_template(slice_template(upper, 2, 5, pages), pages), 'AMP')
+        self.assertEqual(resolve_template(edit_template(lower, pages, '**bit**'), pages),
+                         '**bit**')
+        adjacent = lower + source_reference(93, 2, 3, 4)
+        self.assertEqual(join_adjacent_references(adjacent, Path('.')), adjacent)
+        self.assertEqual(source_differences(
+            source_reference(93, 2, 0, 3, (0, 3, 'bit')), pages)[0]['kind'],
+            'correction')
 
-        distant = [blocks[0], {**blocks[1], 'bbox': [400, 400, 467, 413]}]
-        distant_template = compile_markdown_template(70, distant, target)
-        self.assertNotIn('page=70 block=1', distant_template)
+    def test_case_reference_rejects_ambiguous_or_length_changing_transformations(self):
+        pages = {1: [{'block_id': 0, 'text': 'Straße ΟΣ'}]}
+        with self.assertRaises(ValueError):
+            resolve_template(source_reference(1, 0, 0, 6, case='upper'), pages)
+        with self.assertRaises(ValueError):
+            resolve_template(source_reference(1, 0, 7, 9, case='lower'), pages)
+        with self.assertRaises(ValueError):
+            resolve_template('{{text page=1 block=0 chars=0:3 case="UPPER|LOWER"}}', pages)
 
-    def test_adjacent_block_preserves_other_ocr_corrections(self):
-        blocks = [
-            {'block_id': 18,
-             'text': 'Register ﬁeld—Speciﬁes any of the eight address registers. '
-                     'This is always the\n',
-             'bbox': [94, 395, 549, 412]},
-            {'block_id': 19, 'text': 'destination. \n',
-             'bbox': [104, 409, 170, 426]},
-        ]
-        target = ('Register field—Specifies any of the eight address registers. '
-                  'This is always the destination.')
-        template = compile_markdown_template(56, blocks, target)
-
-        self.assertEqual(resolve_template(template, {56: blocks}), target)
-        self.assertIn('page=56 block=19 chars=0:12', template)
-        self.assertNotIn('�', template)
-        self.assertEqual([mark['text'] for mark in source_differences(template, {56: blocks})],
-                         ['fi', 'fi'])
-
-    def test_separate_ligature_line_keeps_its_pdf_block_reference(self):
-        blocks = [
-            {'block_id': 20,
-             'text': 'Opmode \ufb01eld\u2014Speci\ufb01es the size of the operation. \n',
-             'bbox': [96, 435, 367, 452]},
-            {'block_id': 21,
-             'text': ('011\u2014 Word operation; the source operand is sign-extended to a long '
-                      'operand and\nthe operation is performed on the address register '
-                      'using all 32 bits. \n111\u2014 Long operation. \n'),
-             'bbox': [109, 449, 549, 494]},
-        ]
-        target = ('Opmode field\u2014Specifies the size of the operation.\n'
-                  '011\u2014 Word operation; the source operand is sign-extended to a long '
-                  'operand and the operation is performed on the address register '
-                  'using all 32 bits.\n111\u2014 Long operation.')
-
-        template = compile_markdown_template(56, blocks, target)
-
-        self.assertEqual(resolve_template(template, {56: blocks}), target)
-        self.assertIn('page=56 block=20', template)
-        self.assertIn('page=56 block=21', template)
-        self.assertNotIn('{{accepted text=', template)
-        self.assertEqual([(mark['kind'], mark['text'])
-                          for mark in source_differences(template, {56: blocks})],
-                         [('correction', 'fi'), ('correction', 'fi')])
-
-    def test_word_hyphenated_across_pdf_blocks_keeps_both_source_ranges(self):
-        blocks = [{'block_id': 2, 'text': 'The ex- \n'},
-                  {'block_id': 3, 'text': 'pansion bus.'}]
-        target = 'The expansion bus.'
-        template = compile_markdown_template(70, blocks, target)
-
-        self.assertEqual(resolve_template(template, {70: blocks}), target)
-        self.assertIn('page=70 block=2 chars=4:6', template)
-        self.assertIn('page=70 block=3 chars=0:7', template)
-        self.assertNotIn('{{accepted text="expansion"}}', template)
-        self.assertEqual(source_differences(template, {70: blocks}), [])
-
-    def test_split_word_in_prose_preserves_order_of_repeated_words(self):
-        blocks = [
-            {'block_id': 0, 'text': ('As  you  will  notice,  the  A500  and  2000  '
-                                   'deletes  clocks  and  interrupt \nlines  from  '
-                                   'the  A 1000.  The  +/-5Vdc  and  reset  '
-                                   'lines  are  also  de- \n')},
-            {'block_id': 1, 'text': ('leted. The  +/-  12Vdc  lines  are  '
-                                   'identical  to  a  PCI  0/20. \n')},
-        ]
-        target = ('As you will notice, the A500 and 2000 deletes clocks and '
-                  'interrupt lines from the A1000. The +/-5Vdc and reset '
-                  'lines are also deleted. The +/-12Vdc lines are identical '
-                  'to a PC10/20.')
-        template = compile_markdown_template(65, blocks, target)
-
-        self.assertEqual(resolve_template(template, {65: blocks}), target)
-        self.assertNotIn('{{accepted text=', template)
-        self.assertEqual([(mark['kind'], mark['text'])
-                          for mark in source_differences(template, {65: blocks})],
-                         [('correction', '1')])
-        self.assertIn('page=65 block=0 chars=150:152', template)
-        self.assertIn('page=65 block=1 chars=0:5', template)
-        self.assertIn('page=65 block=1 chars=24:29', template)
-        self.assertNotIn('page=65 block=0 chars=131:138', template)
-        self.assertTrue(all(int(ref[4]) - int(ref[3]) <= 20
-                            for ref in REFERENCE.finditer(template)
-                            if ' replace=' in ref[0]))
-
-    def test_repeated_split_word_has_no_automatic_source_address(self):
-        blocks = [
-            {'block_id': 0, 'text': 'The de- \n'},
-            {'block_id': 1, 'text': 'leted. '},
-            {'block_id': 2, 'text': 'The de- \n'},
-            {'block_id': 3, 'text': 'leted. '},
-        ]
-        template = compile_markdown_template(65, blocks, 'The deleted.')
-
-        self.assertEqual(resolve_template(template, {65: blocks}), 'The deleted.')
-        self.assertNotIn('block=0 chars=4:6', template)
-        self.assertNotIn('block=1 chars=0:5', template)
-        self.assertNotIn('block=2 chars=4:6', template)
-        self.assertNotIn('block=3 chars=0:5', template)
-
-    def test_soft_hyphenated_word_in_one_pdf_block_keeps_both_source_ranges(self):
-        blocks = [{'block_id': 18, 'text': 'It is recom\u00ad\nmended that sprite DMA stop.'}]
-        target = 'recommended'
-        template = compile_markdown_template(116, blocks, target)
-
-        self.assertEqual(resolve_template(template, {116: blocks}), target)
-        self.assertIn('page=116 block=18 chars=6:11', template)
-        self.assertIn('page=116 block=18 chars=13:19', template)
-        self.assertNotIn('accepted text=', template)
-        self.assertEqual(source_differences(template, {116: blocks}), [])
-
-    def test_multiline_heading_uses_both_pdf_source_blocks(self):
-        blocks = [
-            {'block_id': 0, 'text': 'Section  3.1 \n'},
-            {'block_id': 1, 'text': ('Designing  Hardware  for  the  Amiga  Expansion \n'
-                                     'Architecture \n')},
-        ]
-        target = 'Section 3.1\nDesigning Hardware for the Amiga Expansion Architecture'
-        template = compile_markdown_template(69, blocks, target)
-
-        self.assertEqual(resolve_template(template, {69: blocks}), target)
-        self.assertIn('page=69 block=0', template)
-        self.assertIn('page=69 block=1', template)
-        self.assertNotIn('{{accepted text="Section 3.1', template)
 
     def test_source_overlay_ignores_paragraph_reflow_and_marks_only_ocr_character(self):
         source = 'A system implementation based on an 8-bit data bus reduces cost in comparison to 16-\nbit systems.'
@@ -192,160 +104,6 @@ class TextRecipeTest(unittest.TestCase):
         marks = source_differences(template, blocks)
         self.assertEqual([(mark['text'], mark['source_text']) for mark in marks], [('000', 'OOO')])
 
-    def test_subscript_characters_keep_their_own_ocr_addresses(self):
-        source = ('Relative with Offset\nEA = (PC)+d15\n(d15,PC)\n'
-                  'Relative with Index and Offset\nEA= (PC)+da\n(d5,PC,Xn)\n')
-        blocks = [{'block_id': 7, 'text': source}]
-        target = '| <br>(d<sub>16</sub>,PC)<br>(d<sub>8</sub>,PC,Xn) |'
-        template = compile_markdown_template(19, blocks, target)
-        self.assertEqual(resolve_template(template, {19: blocks}), target)
-        self.assertIn('<sub>{{text page=19 block=7', template)
-        self.assertIn('with="8"', template)
-        self.assertNotIn('{{accepted text="8"}}', template)
-
-    def test_math_command_syntax_is_not_mistaken_for_pdf_letters(self):
-        source = 'EA = (PC)+d15\nEA= (PC)+da\n'
-        blocks = [{'block_id': 7, 'text': source}]
-        target = ('$\\mathrm{EA} = (\\mathrm{PC})+\\mathrm{d}_{16}$<br>'
-                  '$\\mathrm{EA} = (\\mathrm{PC})+\\mathrm{d}_{8}$')
-        template = compile_markdown_template(19, blocks, target)
-        self.assertEqual(resolve_template(template, {19: blocks}), target)
-        self.assertNotIn('{{accepted text="m"}}', template)
-        self.assertIn('with="8"', template)
-        self.assertNotIn('{{accepted text="8"}}', template)
-
-    def test_inline_overline_terms_use_local_ocr_corrections(self):
-        blocks = [
-            {'block_id': 14, 'text': "Upper And Lower Data Strobes (ODS, [O'S'). \n"},
-            {'block_id': 15, 'text': 'In 8-bit mode, UDS is always forced high.\n'},
-        ]
-        target = ('Upper And Lower Data Strobes '
-                  r'($\overline{\mathrm{UDS}}$, $\overline{\mathrm{LDS}}$).')
-
-        template = compile_markdown_template(27, blocks, target)
-
-        self.assertEqual(resolve_template(template, {27: blocks}), target)
-        self.assertIn('block=14 chars=30:31 replace=0:1 with="U"', template)
-        self.assertIn('block=14 chars=31:33', template)
-        self.assertIn('block=14 chars=35:40 replace=0:5 with="LDS"', template)
-        self.assertNotIn('block=15', template)
-        self.assertNotIn('{{accepted text=', template)
-        self.assertEqual({mark['kind'] for mark in source_differences(template, {27: blocks})},
-                         {'correction'})
-
-    def test_inline_math_does_not_claim_ambiguous_pdf_region(self):
-        source = "Upper And Lower Data Strobes (ODS, [O'S'). \n"
-        blocks = [{'block_id': 14, 'text': source}, {'block_id': 15, 'text': source}]
-        target = ('Upper And Lower Data Strobes '
-                  r'($\overline{\mathrm{UDS}}$, $\overline{\mathrm{LDS}}$).')
-
-        template = compile_markdown_template(27, blocks, target)
-
-        self.assertEqual(resolve_template(template, {27: blocks}), target)
-        self.assertNotIn('chars=30:31 replace=0:1 with="U"', template)
-        self.assertNotIn('chars=35:40 replace=0:5 with="LDS"', template)
-
-    def test_subscript_line_can_bridge_missing_ocr_separator(self):
-        source = 'da \n8-Bit Offset (Displacement) \nd15 \n16-Bit Offset (Displacement) \n'
-        blocks = [{'block_id': 14, 'text': source}]
-        target = ('d<sub>8</sub> = 8-Bit Offset (Displacement)\n'
-                  'd<sub>16</sub> = 16-Bit Offset (Displacement)')
-        template = compile_markdown_template(19, blocks, target)
-        self.assertEqual(resolve_template(template, {19: blocks}), target)
-        self.assertIn('<sub>{{text page=19 block=14', template)
-        self.assertNotIn('{{accepted text="8"}}', template)
-        self.assertNotIn('{{accepted text="16"}}', template)
-        self.assertNotIn('{{accepted text="6"}}', template)
-        self.assertIn('block=14 chars=1:2 replace=0:1 with="8"', template)
-        self.assertIn('block=14 chars=34:36 replace=0:2 with="16"', template)
-
-    def test_repeated_near_subscript_rows_do_not_claim_one_source(self):
-        source = 'da \n8-Bit Offset (Displacement) \n'
-        blocks = [{'block_id': 1, 'text': source}, {'block_id': 2, 'text': source}]
-        target = 'd<sub>8</sub> = 8-Bit Offset (Displacement)'
-        template = compile_markdown_template(19, blocks, target)
-        self.assertEqual(resolve_template(template, {19: blocks}), target)
-        self.assertNotIn('chars=1:2 replace=0:1 with="8"', template)
-
-    def test_ocr_letter_correction_keeps_the_original_source_range(self):
-        blocks = [{'block_id': 6, 'text': 'ADDO'}]
-        template = compile_markdown_template(23, blocks, 'ADDQ')
-        self.assertEqual(resolve_template(template, {23: blocks}), 'ADDQ')
-        self.assertIn('chars=0:4', template)
-        self.assertIn('replace=3:4', template)
-        self.assertNotIn('}}Q', template)
-        self.assertEqual(resolve_template('{{text page=23 block=6 chars=0:4}}', {23: blocks}), 'ADDO')
-        self.assertEqual(resolve_template(slice_template(template, 3, 4), {23: blocks}), 'Q')
-
-    def test_short_ocr_digit_letter_confusions_keep_source_addresses(self):
-        for source, visible, offset in (('07', 'D7', 0), ('O7', 'D7', 0),
-                                        ('D7', '07', 0),
-                                        ('0K', 'OK', 0), ('DO', 'D0', 1)):
-            with self.subTest(source=source, visible=visible):
-                blocks = [{'block_id': 6, 'text': source}]
-                template = compile_markdown_template(27, blocks, visible)
-                self.assertEqual(resolve_template(template, {27: blocks}), visible)
-                self.assertIn('block=6 chars=0:2', template)
-                self.assertIn(f'replace={offset}:{offset + 1}', template)
-                self.assertNotIn('{{accepted text=', template)
-
-    def test_multiple_ocr_digit_letter_confusions_in_one_word_share_a_source_range(self):
-        blocks = [{'block_id': 6, 'text': 'MC68ECOOO'}]
-        template = compile_markdown_template(1, blocks, 'MC68EC000')
-        self.assertEqual(resolve_template(template, {1: blocks}), 'MC68EC000')
-        self.assertIn('block=6 chars=0:9', template)
-        self.assertIn('replace=6:9 with="000"', template)
-        self.assertNotIn('{{accepted text=', template)
-
-        blocks = [{'block_id': 6, 'text': 'MC68OOO'}]
-        template = compile_markdown_template(1, blocks, 'MC68000')
-        self.assertIn('block=6 chars=0:7 replace=4:7 with="000"', template)
-
-    def test_repeated_ocr_words_use_their_table_row_context(self):
-        source = ('10.13 \nMC68ECOOO DC Electrical Specifications 10-23\n'
-                  '10.14 \nMC68ECOOO AC Electrical Specifications-Read and Write 10-24\n'
-                  '10.15 \nMC68ECOOO AC Electrical Specifications-Bus Arbitration 10-28\n')
-        blocks = [{'block_id': 6, 'text': source}]
-        target = ('<tr><td>10.13</td><td>MC68EC000 DC Electrical Specifications</td></tr>\n'
-                  '<tr><td>10.14</td><td>MC68EC000 AC Electrical Specifications—Read and Write</td></tr>\n'
-                  '<tr><td>10.15</td><td>MC68EC000 AC Electrical Specifications—Bus Arbitration</td></tr>')
-        template = compile_markdown_template(9, blocks, target)
-        self.assertEqual(resolve_template(template, {9: blocks}), target)
-        starts = [match.start() for match in re.finditer('MC68ECOOO', source)]
-        for start in starts:
-            self.assertIn(f'block=6 chars={start}:{start + 9} replace=6:9 with="000"',
-                          template)
-        self.assertNotIn('{{accepted text="MC68EC000"}}', template)
-
-    def test_ocr_word_continues_the_selected_source_block(self):
-        blocks = [
-            {'block_id': 14, 'text': 'MC68HC001/MC68ECOOO'},
-            {'block_id': 16, 'text': 'MC68HCOOO/MC68ECOOO/MC68HC001'},
-        ]
-        target = '- MC68HC001/MC68EC000\n- MC68HC000/MC68EC000/MC68HC001'
-        template = compile_markdown_template(15, blocks, target)
-        self.assertEqual(resolve_template(template, {15: blocks}), target)
-        self.assertIn('block=14 chars=10:19 replace=6:9 with="000"', template)
-        self.assertIn('block=16 chars=10:19 replace=6:9 with="000"', template)
-        self.assertNotIn('{{accepted text="MC68EC000"}}', template)
-
-    def test_unique_phrase_in_the_selected_region_keeps_its_source_address(self):
-        sentence = "The supervisor programmer's model supplement of the MC68010 is shown in Figure 2-3. "
-        blocks = [
-            {'block_id': 26, 'text': sentence + '\n'},
-            {'block_id': 27, 'text':
-             'In addition to the supervisor stack pointer and status register, it includes the vector base \n'
-             'register (VRB) and the alternate function code registers (AFC).The VBR is used to \n'
-             'determine the location of the exception vector table in memory to support multiple vector \n'},
-        ]
-        target = (sentence + 'In addition to the supervisor stack pointer and status register, it includes '
-                  'the vector base register (VRB) and the alternate function code registers (AFC).'
-                  'The VBR is used to determine the location of the exception vector table in memory '
-                  'to support multiple vector')
-        template = compile_markdown_template(17, blocks, target)
-        self.assertEqual(resolve_template(template, {17: blocks}), target)
-        self.assertIn('block=26 chars=0:84', template)
-        self.assertNotIn('{{accepted text=' + json.dumps(sentence, ensure_ascii=False) + '}}', template)
 
     def test_accepted_literal_is_not_a_pending_cleanup_finding(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -360,239 +118,6 @@ class TextRecipeTest(unittest.TestCase):
             findings = [item for item in preview(book, workspace) if item['element_id'] == 'e']
             self.assertEqual([item['literal'] for item in findings], ['Raw'])
 
-    def test_reconciliation_rechecks_math_after_accepting_other_fragments(self):
-        blocks = [{'block_id': 10, 'text': 'D = A(B + B)C + (A + A)B(C + C)\n'},
-                  {'block_id': 11, 'text': 'D = ABC + ABC + AB(C + C) + AB(C + C)\n'},
-                  {'block_id': 12, 'text': 'D = ABC + ABC + ABC + ABC + ABC + ABC\n'}]
-        target = (r'$$' '\n'
-                  r'D = A(B + \overline{B})\overline{C} + (A + \overline{A})B(C + \overline{C})' '\n'
-                  r'$$' '\n\n' r'$$' '\n'
-                  r'D = AB\overline{C} + A\overline{BC} + AB(C + \overline{C})'
-                  r' + \overline{A}B(C + \overline{C})' '\n'
-                  r'$$' '\n\n' r'$$' '\n'
-                  r'D = AB\overline{C} + A\overline{BC} + ABC + AB\overline{C}'
-                  r' + \overline{A}BC + \overline{A}B\overline{C}' '\n' r'$$')
-        with tempfile.TemporaryDirectory() as temporary:
-            workspace = Path(temporary)
-            write_json(workspace / '02_preprocess/page_0128.json', {'blocks': blocks})
-            book = {'chapters': [{'id': 'c', 'title': 'Math', 'elements': [
-                {'id': 'e', 'type': 'prose', 'role': None,
-                 'md_text': compile_markdown_template(128, blocks, target),
-                 'pdf_regions': [{'page': 128, 'bbox': [0, 0, 10, 10]}]}]}]}
-            reconcile_working(book, {'chapters': []}, workspace)
-            self.assertEqual(preview(book, workspace), [])
-
-    def test_unique_long_ocr_word_in_large_block_keeps_one_contiguous_address(self):
-        source = 'Table of contents ' * 8 + 'MC68ECOOO Read Cycle Timing Diagram'
-        blocks = [{'block_id': 6, 'text': source}]
-        template = compile_markdown_template(7, blocks, 'MC68EC000')
-        start = source.index('MC68ECOOO')
-        self.assertEqual(resolve_template(template, {7: blocks}), 'MC68EC000')
-        self.assertIn(f'block=6 chars={start}:{start + 9} replace=6:9 with="000"', template)
-
-    def test_repeated_long_ocr_word_in_large_block_stays_unanchored(self):
-        source = 'Table of contents ' * 8 + 'MC68ECOOO and MC68ECOOO'
-        blocks = [{'block_id': 6, 'text': source}]
-        template = compile_markdown_template(7, blocks, 'MC68EC000')
-        self.assertNotIn('{{text page=', template)
-
-    def test_a_word_cannot_borrow_its_suffix_from_another_source_block(self):
-        blocks = [{'block_id': 1, 'text': 'MC68ECXXX'},
-                  {'block_id': 2, 'text': '000'}]
-        template = compile_markdown_template(1, blocks, 'MC68EC000')
-        self.assertEqual(resolve_template(template, {1: blocks}), 'MC68EC000')
-        self.assertNotIn('block=2', template)
-        self.assertNotIn('chars=0:6', template)
-
-    def test_a_word_cannot_be_assembled_from_two_exact_fragments(self):
-        blocks = [{'block_id': 1, 'text': 'Marl'},
-                  {'block_id': 2, 'text': 'borough'}]
-        template = compile_markdown_template(1, blocks, 'Marlborough')
-        self.assertEqual(resolve_template(template, {1: blocks}), 'Marlborough')
-        self.assertNotIn('{{text page=', template)
-
-    def test_inserted_hyphen_keeps_adjacent_digits_in_one_ocr_word(self):
-        blocks = [{'block_id': 0, 'text': 'TABLE  32 \n'}]
-        template = compile_markdown_template(76, blocks, 'TABLE 3-2')
-        self.assertEqual(resolve_template(template, {76: blocks}), 'TABLE 3-2')
-        self.assertIn('block=0 chars=7:8', template)
-        self.assertIn('block=0 chars=8:9', template)
-        self.assertNotIn('{{accepted text="3"}}', template)
-        self.assertNotIn('{{accepted text="2"}}', template)
-
-    def test_inserted_hyphen_does_not_claim_repeated_ocr_words(self):
-        blocks = [{'block_id': 0, 'text': 'TABLE  32 32 \n'}]
-        template = compile_markdown_template(76, blocks, 'TABLE 3-2')
-        self.assertEqual(resolve_template(template, {76: blocks}), 'TABLE 3-2')
-        self.assertNotIn('chars=7:8', template)
-        self.assertNotIn('chars=8:9', template)
-
-    def test_markup_in_prose_keeps_the_second_ocr_word_correction(self):
-        source = ('This manual includes hardware details and programming information for the MC68000, \n'
-                  'the MC68HCOOO, the MC68HC001, the MC68008, the MC68010, and the MC68ECOOO. \n'
-                  'For ease of reading, the name M68000 MPUs will be used when referring to all \n'
-                  'processors. Refer to M68000PM/AD, M68000 Programmer\'s Reference Manual, for \n'
-                  'detailed infonnation on the MC68000 instruction set. \n')
-        target = ('This manual includes hardware details and programming information for the MC68000, '
-                  'the MC68HC000, the MC68HC001, the MC68008, the MC68010, and the MC68EC000. '
-                  'For ease of reading, the name M68000 MPUs will be used when referring to all '
-                  'processors. Refer to M68000PM/AD, *M68000 Programmer\'s Reference Manual*, '
-                  'for detailed information on the MC68000 instruction set.')
-        blocks = [{'block_id': 1, 'text': source}]
-        template = compile_markdown_template(15, blocks, target)
-        start = source.index('MC68ECOOO')
-        self.assertEqual(resolve_template(template, {15: blocks}), target)
-        self.assertNotIn('chars=0:87 replace=0:87', template)
-        self.assertIn('chars=83:84 replace=0:1 with=""', template)
-        self.assertIn(f'block=1 chars={start}:{start + len("MC68ECOOO")}', template)
-        self.assertIn('replace=6:9 with="000"', template)
-        self.assertNotIn('{{accepted text="000."}}', template)
-        information_start = source.index('infonnation')
-        self.assertIn(f'block=1 chars={information_start}:{information_start + 11} '
-                      'replace=4:6 with="rm"', template)
-        self.assertNotIn('block=1 chars=54:65', template)
-
-    def test_short_ocr_confusions_bind_words_inside_punctuation(self):
-        blocks = [{'block_id': 6, 'text': '07-DO'}]
-        template = compile_markdown_template(27, blocks, 'D7-D0')
-        self.assertEqual(resolve_template(template, {27: blocks}), 'D7-D0')
-        self.assertIn('block=6 chars=0:2', template)
-        self.assertIn('block=6 chars=3:5', template)
-        self.assertNotIn('{{accepted text=', template)
-
-    def test_short_ocr_confusion_does_not_choose_repeated_source_word(self):
-        blocks = [{'block_id': 6, 'text': '07 07'}]
-        template = compile_markdown_template(27, blocks, 'D7')
-        self.assertNotIn('{{text page=', template)
-
-    def test_short_ocr_confusion_needs_local_context_in_a_long_block(self):
-        blocks = [{'block_id': 6, 'text': 'unrelated text ' * 10 + '07'}]
-        template = compile_markdown_template(27, blocks, 'D7')
-        self.assertNotIn('{{text page=', template)
-
-    def test_context_selects_the_ocr_block_in_a_table_row(self):
-        blocks = [{'block_id': 3, 'text': 'ADD \nSource + Destination'},
-                  {'block_id': 5, 'text': 'ADDI \nImmediate Data + Destination'},
-                  {'block_id': 6, 'text': 'ADDO \nImmediate Data + Destination'}]
-        template = compile_markdown_template(23, blocks, '| ADDQ | Immediate Data + Destination |')
-        self.assertEqual(resolve_template(template, {23: blocks}),
-                         '| ADDQ | Immediate Data + Destination |')
-        self.assertIn('block=6 chars=0:4 replace=3:4 with="Q"', template)
-        self.assertNotIn('block=3 chars=0:3', template)
-
-    def test_table_cells_split_from_one_ocr_block_keep_character_addresses(self):
-        blocks = [{'block_id': 39, 'text': '0\r\nx\r\n'},
-                  {'block_id': 40, 'text': '1\r\n0\r\n'},
-                  {'block_id': 41, 'text': '1\r\n1\r\n'},
-                  {'block_id': 42, 'text': 'USP\r\n'},
-                  {'block_id': 43, 'text': 'ISP\r\n'},
-                  {'block_id': 44, 'text': 'MSP\r\n'}]
-        target = ('| S | M | ACTIVE STACK |\n| --- | --- | --- |\n'
-                  '| 0 | x | USP |\n| 1 | 0 | ISP |\n| 1 | 1 | MSP |\n')
-        template = compile_markdown_template(40, blocks, target)
-        self.assertEqual(resolve_template(template, {40: blocks}), target)
-        self.assertIn('block=39 chars=0:1', template)
-        self.assertIn('block=39 chars=3:4', template)
-        self.assertNotIn('{{accepted text="x"}}', template)
-
-    def test_repeated_target_word_does_not_reuse_the_same_source_range(self):
-        blocks = [{'block_id': 1, 'text': 'START ABC END'}]
-        template = compile_markdown_template(1, blocks, 'START ABC ABC END')
-        self.assertEqual(resolve_template(template, {1: blocks}), 'START ABC ABC END')
-        ranges = [(int(match[3]), int(match[4])) for match in REFERENCE.finditer(template)]
-        self.assertTrue(all(first[1] <= second[0] for first, second in zip(ranges, ranges[1:])))
-
-    def test_letter_spaced_register_name_with_ocr_zero_error_keeps_source(self):
-        blocks = [{'block_id': 0, 'text': 'B L T C O N O'}]
-        template = compile_markdown_template(145, blocks, 'BLTCON0')
-        self.assertEqual(resolve_template(template, {145: blocks}), 'BLTCON0')
-        self.assertIn('chars=0:13 replace=0:13 with="BLTCON0"', template)
-        self.assertEqual(resolve_template('{{text page=145 block=0 chars=0:13}}', {145: blocks}),
-                         'B L T C O N O')
-        last_character = slice_template(template, 6, 7, {145: blocks})
-        self.assertEqual(resolve_template(last_character, {145: blocks}), '0')
-        self.assertIn('chars=12:13', last_character)
-
-    def test_bold_table_cell_does_not_hide_letter_spaced_source_text(self):
-        blocks = [{'block_id': 0, 'text': 'B L T C O N O'}]
-        target = '| **BLTCON0** |'
-        template = compile_markdown_template(145, blocks, target)
-        self.assertEqual(resolve_template(template, {145: blocks}), target)
-        self.assertIn('chars=0:13 replace=0:13 with="BLTCON0"', template)
-
-    def test_short_table_address_keeps_ocr_symbol_in_source(self):
-        blocks = [{'block_id': 32, 'text': '" 0 4 0\n'}]
-        template = compile_markdown_template(147, blocks, '| ~040 |')
-        self.assertEqual(resolve_template(template, {147: blocks}), '| ~040 |')
-        self.assertIn('block=32 chars=0:7', template)
-        self.assertNotIn('{{accepted text=', template)
-
-    def test_short_heading_attaches_ocr_digit_to_complete_source_line(self):
-        blocks = [{'block_id': 1, 'text': 'Address Bus (A23-AO) \n'}]
-        target = 'Address Bus (A23-A0)'
-        template = compile_markdown_template(27, blocks, target)
-        self.assertEqual(resolve_template(template, {27: blocks}), target)
-        self.assertNotIn('{{accepted text=', template)
-        self.assertIn('block=1', template)
-
-    def test_table_row_prefers_zero_read_as_letter_o(self):
-        blocks = [{'block_id': 0, 'text': 'J O Y O D A T\n'},
-                  {'block_id': 1, 'text': 'J O Y 1 D A T\n'}]
-        template = compile_markdown_template(146, blocks, '| JOY0DAT |')
-        self.assertEqual(resolve_template(template, {146: blocks}), '| JOY0DAT |')
-        self.assertIn('block=0 chars=0:13', template)
-        self.assertNotIn('{{accepted text=', template)
-
-    def test_short_ocr_gap_between_source_ranges_is_recorded_as_a_correction(self):
-        blocks = [{'block_id': 0, 'text': 'ABCltlDEF'}]
-        template = ('{{text page=1 block=0 chars=0:3}}'
-                    '{{accepted text="ili"}}'
-                    '{{text page=1 block=0 chars=6:9}}')
-        corrected = attach_adjacent_corrections(template, {1: blocks})
-        self.assertIn('chars=3:6 replace=0:3 with="ili"', corrected)
-        self.assertEqual(resolve_template(corrected, {1: blocks}), 'ABCiliDEF')
-
-    def test_plain_paragraph_aligns_all_ocr_errors_without_loose_letters(self):
-        source = ('Motorola specifically disclaims any and all llabltlty, '
-                  'including without limitation consequential damages.\n')
-        visible = ('Motorola specifically disclaims any and all liability, '
-                   'including without limitation consequential damages.')
-        blocks = [{'block_id': 4, 'text': source}]
-        template = compile_markdown_template(3, blocks, visible)
-        self.assertEqual(resolve_template(template, {3: blocks}), visible)
-        self.assertNotIn('{{accepted text=', template)
-        self.assertEqual(''.join(source[int(ref[3]):int(ref[4])]
-                                 for ref in REFERENCE.finditer(template)), source)
-
-    def test_plain_multiline_list_keeps_ocr_suffix_as_correction(self):
-        source = ('MC68000 \nMC68008 \nNiC68010 \nMC68HCOOO \nMC68HC001 \n'
-                  'and the New \nMC68ECOOO \n')
-        visible = ('MC68000\nMC68008\nMC68010\nMC68HC000\nMC68HC001\n'
-                   'and the New\nMC68EC000')
-        blocks = [{'block_id': 4, 'text': source}]
-        template = compile_markdown_template(1, blocks, visible)
-        self.assertEqual(resolve_template(template, {1: blocks}), visible)
-        self.assertNotIn('{{accepted text=', template)
-        self.assertEqual(''.join(source[int(ref[3]):int(ref[4])]
-                                 for ref in REFERENCE.finditer(template)), source)
-
-    def test_letter_spaced_paragraph_across_blocks_keeps_each_block_address(self):
-        phrases = ('These two control registers ', 'are used together to ',
-                   'control blitter operations.')
-        blocks = [{'block_id': number, 'text': ' '.join(phrase) + '\n'}
-                  for number, phrase in enumerate(phrases, 2)]
-        visible = ''.join(phrases)
-        template = compile_markdown_template(145, blocks, visible)
-        self.assertEqual(resolve_template(template, {145: blocks}), visible)
-        self.assertNotIn('{{accepted text=', template)
-        self.assertEqual([int(ref[2]) for ref in REFERENCE.finditer(template)], [2, 3, 4])
-
-    def test_unanchored_literal_remains_explicit_and_editable(self):
-        blocks = [{'block_id': 1, 'text': 'Source'}]
-        template = compile_markdown_template(1, blocks, 'Source Vision')
-        self.assertIn('{{accepted text="Vision"}}', template)
-        self.assertEqual(resolve_template(template, {1: blocks}), 'Source Vision')
-        self.assertEqual(resolve_template(slice_template(template, 7, 13), {1: blocks}), 'Vision')
 
     def test_reconciliation_does_not_take_an_earlier_exact_word_for_a_local_typo(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -612,7 +137,7 @@ class TextRecipeTest(unittest.TestCase):
             self.assertIn('{{accepted text="information"}}', result)
             self.assertNotIn('chars=0:11', result)
 
-    def test_saved_working_edit_reconciles_ocr_correction_without_accepting_book(self):
+    def test_saved_working_edit_keeps_unmatched_letter_explicit_without_accepting_book(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             write_json(root / 'pdf-to-markdown/02_preprocess/page_0023.json',
@@ -629,73 +154,11 @@ class TextRecipeTest(unittest.TestCase):
                             'text': 'ADDQ'})
             saved = load_input(root / 'working')[0]['chapters'][0]['elements'][0]
             self.assertEqual(saved['resolved_md_text'], 'ADDQ')
-            self.assertIn('chars=0:4 replace=3:4 with="Q"', saved['md_text'])
-            self.assertEqual(saved['source_differences'][0]['kind'], 'correction')
+            self.assertIn('chars=0:3', saved['md_text'])
+            self.assertIn('{{accepted text="Q"}}', saved['md_text'])
+            self.assertEqual(saved['source_differences'][0]['kind'], 'unanchored')
             self.assertEqual((root / 'accepted/book.json').read_bytes(), accepted_before)
 
-    def test_letter_spaced_ocr_retains_full_source_span(self):
-        blocks = [{'block_id': 1, 'text': 'B L T D D A T\nB l i t t e r d e s t i n a t i o n\n'}]
-        target = '| BLTDDAT | Blitter destination |'
-        template = compile_markdown_template(147, blocks, target)
-        self.assertEqual(resolve_template(template, {147: blocks}), target)
-        self.assertIn('block=1 chars=0:13 replace=0:13 with="BLTDDAT"', template)
-        self.assertIn('with="Blitter destination"', template)
-        self.assertEqual(resolve_template(slice_template(template, 2, 9), {147: blocks}), 'BLTDDAT')
-        first = slice_template(template, 12, 20, {147: blocks})
-        second = slice_template(template, 20, len(target) - 2, {147: blocks})
-        self.assertEqual(resolve_template(first + second, {147: blocks}), 'Blitter destination')
-        self.assertIn('block=1', first)
-        self.assertIn('block=1', second)
-
-    def test_long_letter_spaced_paragraph_uses_reviewable_source_spans(self):
-        visible = ('These two control registers work together to manage the display. '
-                   'Each register keeps a separate setting for the next operation.')
-        source = ' '.join(visible)
-        blocks = [{'block_id': 1, 'text': source}]
-        template = compile_markdown_template(145, blocks, visible)
-        self.assertEqual(resolve_template(template, {145: blocks}), visible)
-        references = list(REFERENCE.finditer(template))
-        self.assertEqual(''.join(source[int(ref[3]):int(ref[4])] for ref in references), source)
-        self.assertLessEqual(max(int(ref[4]) - int(ref[3]) for ref in references), 80)
-        self.assertNotIn('{{accepted text=', template)
-
-    def test_long_letter_spaced_blocks_keep_short_source_corrections(self):
-        phrases = ('These two control registers work together to manage the display. ',
-                   'Each register keeps a separate setting for the next operation.')
-        blocks = [{'block_id': number, 'text': ' '.join(phrase) + '\n'}
-                  for number, phrase in enumerate(phrases, 1)]
-        target = ''.join(phrases)
-        template = compile_markdown_template(145, blocks, target)
-        self.assertEqual(resolve_template(template, {145: blocks}), target)
-        for block in blocks:
-            references = [ref for ref in REFERENCE.finditer(template)
-                          if int(ref[2]) == block['block_id']]
-            self.assertEqual(''.join(block['text'][int(ref[3]):int(ref[4])]
-                                     for ref in references), block['text'])
-            self.assertLessEqual(max(int(ref[4]) - int(ref[3]) for ref in references), 80)
-
-    def test_styled_prose_does_not_replace_a_whole_phrase_for_one_ocr_digit(self):
-        source = ('This register is the audio channel x (x=0,l,2,3) \n'
-                  'DMA data buffer. It contains 2 bytes of data that are each 2s complement.\n')
-        target = ('This register is the audio channel x (x=0,1,2,3) '
-                  'DMA data buffer. It contains 2 bytes of data that are each 2s complement. *Note*')
-        blocks = [{'block_id': 20, 'text': source}]
-        template = compile_markdown_template(144, blocks, target)
-        self.assertEqual(resolve_template(template, {144: blocks}), target)
-        corrections = [ref for ref in REFERENCE.finditer(template) if ' replace=' in ref[0]]
-        self.assertTrue(corrections)
-        self.assertLess(max(int(ref[4]) - int(ref[3]) for ref in corrections), 20)
-
-    def test_ocr_ligature_expands_within_the_source_word(self):
-        blocks = [{'block_id': 15, 'text': 'bit ﬁeld'}]
-        template = compile_markdown_template(38, blocks, 'bit field')
-        self.assertEqual(resolve_template(template, {38: blocks}), 'bit field')
-        self.assertIn('chars=4:8 replace=0:1 with="fi"', template)
-        self.assertEqual(resolve_template('{{text page=38 block=15 chars=4:5}}',
-                                          {38: blocks}), 'ﬁ')
-        sliced = slice_template(template, 4, 6, {38: blocks})
-        self.assertEqual(resolve_template(sliced, {38: blocks}), 'fi')
-        self.assertIn('block=15 chars=4:5 replace=0:1 with="fi"', sliced)
 
     def test_chapter_display_title_tracks_first_visible_contents_entry(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -839,21 +302,6 @@ class TextRecipeTest(unittest.TestCase):
             heading = load_input(root / 'working')[0]['chapters'][0]['elements'][0]
             self.assertEqual((heading['type'], heading['heading_level']), ('heading', 3))
 
-    def test_recipe_reorders_pdf_label_and_preserves_listing_structure(self):
-        source = 'Assembler\nADD < ea > ,Dn \nSyntax:\nADD Dn, < ea > \n'
-        blocks = [{'block_id': 10, 'text': source}]
-        target = '**Assembler Syntax:**\n\n```asm\nADD < ea > ,Dn\nADD Dn, < ea >\n```'
-        template = compile_markdown_template(53, blocks, target)
-        self.assertEqual(resolve_template(template, {53: blocks}), target)
-        self.assertNotIn('Assembler', template)
-        self.assertNotIn('Syntax', template)
-        self.assertNotIn('ADD', template)
-        self.assertIn('```asm', template)
-        html = MarkdownIt('commonmark', {'html': True}).render(element_markdown(
-            {'type': 'code_block', 'resolved_md_text': target, 'role': None}))
-        self.assertIn('<strong>Assembler Syntax:</strong>', html)
-        self.assertIn('class="language-asm"', html)
-        self.assertNotIn('language-text', html)
 
     def test_import_preserves_prepared_markdown_without_literal_transcription(self):
         prepared = ['**Operation:** Source + Dest ination',
@@ -970,19 +418,13 @@ class TextRecipeTest(unittest.TestCase):
             elements = imported['chapters'][0]['elements']
             self.assertEqual([element['resolved_md_text'] for element in elements], [first, second])
             for element in elements:
-                self.assertNotIn('{{accepted text=', element['md_text'])
                 self.assertTrue(all(int(ref[1]) == 1 for ref in REFERENCE.finditer(element['md_text'])))
+            self.assertIn('{{accepted text="1"}}', elements[0]['md_text'])
             self.assertIn('block=15 chars=', elements[0]['md_text'])
             self.assertIn('block=16 chars=', elements[1]['md_text'])
             self.assertIn('block=17 chars=', elements[1]['md_text'])
             self.assertEqual(resolve_template(elements[0]['md_text'], {1: blocks}), first)
             self.assertEqual(resolve_template(elements[1]['md_text'], {1: blocks}), second)
-            self.assertEqual([(mark['text'], mark['source_text']) for mark in
-                              source_differences(elements[0]['md_text'], {1: blocks})],
-                             [('1:', 'Is')])
-            self.assertEqual([(mark['text'], mark['source_text']) for mark in
-                              source_differences(elements[1]['md_text'], {1: blocks})],
-                             [('.', ',')])
 
     def test_import_anchors_repeated_spaced_table_labels_in_source_order(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -1005,10 +447,6 @@ class TextRecipeTest(unittest.TestCase):
             self.assertEqual(element['resolved_md_text'], target)
             self.assertNotIn('{{accepted text=', element['md_text'])
             self.assertEqual(resolve_template(element['md_text'], {1: [block]}), target)
-            ambiguous = {'block_id': 0,
-                         'text': '| s p a r e | s p a r e | s p a r e |'}
-            template = compile_markdown_template(1, [ambiguous], '| spare | spare |')
-            self.assertEqual(bind_ordered_compact_literals(1, [ambiguous], template), template)
 
     def test_obsolete_prepared_reference_is_not_interpreted(self):
         with self.assertRaisesRegex(ValueError, 'Invalid text reference'):
@@ -1029,7 +467,8 @@ class TextRecipeTest(unittest.TestCase):
     def test_bold_spans_cross_blocks_and_follow_matching_context(self):
         blocks = [{'block_id': 1, 'text': 'Same label. Bold\n'},
                   {'block_id': 2, 'text': 'across blocks. Same label.\n'}]
-        template = preserve_bold(compile_template(1, blocks), {1: blocks},
+        source = source_reference(1, 1, 0, len(blocks[0]['text'])) + source_reference(1, 2, 0, len(blocks[1]['text']))
+        template = preserve_bold(source, {1: blocks},
                                 'Same label. **Bold across blocks.** __Same label.__')
         self.assertEqual(resolve_template(template, {1: blocks}),
                          'Same label. **Bold\nacross blocks.** **Same label.**\n')
@@ -1142,13 +581,13 @@ class TextRecipeTest(unittest.TestCase):
 
     def test_source_and_literal_braces_are_never_executed(self):
         blocks = [{"block_id": 4, "text": r"PDF {{text page=9 block=0 chars=0:4}} {x} \\ end"}]
-        template = compile_template(1, blocks)
+        template = source_reference(1, 4, 0, len(blocks[0]['text']))
         self.assertEqual(resolve_template(template, {1: blocks}), blocks[0]['text'])
 
     def test_multiple_blocks_preserve_ocr_and_whitespace_exactly(self):
         blocks = [{"block_id": 1, "text": "M68000 \n"},
                   {"block_id": 2, "text": "MC68HCOOO \nUser's Manual \n"}]
-        template = compile_template(3, blocks)
+        template = ''.join(source_reference(3, block['block_id'], 0, len(block['text'])) for block in blocks)
         self.assertIn('block=1', template)
         self.assertIn('block=2', template)
         self.assertEqual(resolve_template(template, {3: blocks}), ''.join(b['text'] for b in blocks))
@@ -1165,7 +604,7 @@ class TextRecipeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             blocks = [{"block_id": 1, "text": "Heading {x}\n"}]
-            template = '# ' + compile_template(1, blocks)
+            template = '# ' + source_reference(1, 1, 0, len(blocks[0]['text']))
             page_path = root / 'pdf-to-markdown/02_preprocess/page_0001.json'
             write_json(page_path, {'blocks': blocks})
             metadata_page = root / 'pdf-to-markdown/02_preprocess/page_0002.json'
