@@ -31,11 +31,12 @@ def main():
         print(f"Imported {sum(len(c['elements']) for c in book['chapters'])} elements")
     elif args.command == "render":
         book, assets, fingerprint = load_input(root / "working")
+        previous = read_snapshot(root / "working")
         renderer = Renderer(args.width, args.channel)
         try:
-            snapshot = renderer.render(root / "working", book, assets, fingerprint, read_snapshot(root / "working"))
+            snapshot = renderer.render(root / "working", book, assets, fingerprint, previous)
             write_json(root / "working" / "rendered.json", snapshot)
-            export_markdown(book, root / "working")
+            export_markdown(book, root / "working", previous)
             if not (root / "accepted").exists():
                 replace_accepted(root, snapshot)
             else:

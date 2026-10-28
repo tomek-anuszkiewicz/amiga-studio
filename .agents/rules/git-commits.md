@@ -20,6 +20,8 @@ python tools/verification/verify.py commit
 
 Commit only if this command exits successfully and every selected check passes on the final intended source. Any failed check, including an unrelated test or a local environment failure, stops the commit workflow.
 
-Diagnose and resolve the failure, then rerun the full commit profile on the final intended source before committing. Report blocked verification and leave the changes uncommitted. A focused passing test or a written explanation of the failure does not waive this gate. For milestone completion, the required milestone profile must also pass before its completion commit.
+Diagnose and resolve the failure, then rerun the full commit profile on the final intended source before committing. When resolution needs a user decision, present the findings and concrete choices in an interactive dialog when available. Keep the authorized commit workflow active while awaiting the answer. For English findings, follow [language-policy.md](language-policy.md): do not change text or vocabulary before the user decides. After the decision, apply it and continue verification and the same authorized commit without requesting commit permission again.
+
+If the failure cannot be resolved, report blocked verification and leave the changes uncommitted. A focused passing test or a written explanation of the failure does not waive this gate. For milestone completion, the required milestone profile must also pass before its completion commit.
 
 `verify.py` owns test selection and includes the architecture gate. Do not replace it with individually chosen completion suites. Milestone requirements are in [roadmap-maintenance.md](roadmap-maintenance.md). Run [audit-code-quality](../skills/audit-code-quality/SKILL.md) only on explicit request or before a major branch merge.

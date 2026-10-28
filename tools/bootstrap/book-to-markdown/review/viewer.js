@@ -31,8 +31,12 @@ const markdownSecond = document.getElementById("markdown-second");
 const codexDialog = document.getElementById("codex-dialog");
 const sourceCleanupDialog = document.getElementById("source-cleanup-dialog");
 let sourceCleanupReport=null;
-let codexCommand=null, codexRunning=false, codexScope="element";
-let codexAutoCloseJob=null, codexAutoClosePending=false;
+const renameChaptersDialog = document.getElementById("rename-chapters-dialog");
+let renameChaptersRevision=null, renameChaptersEntries=[], renameTocEntry=null;
+let codexCommand=null, codexRunning=false, codexScope="element", codexDescriptionTask=null;
+let codexContextIds=[];
+let codexAutoCloseJob=null, codexAutoClosePending=false, codexDialogJobId=null;
+let codexPromptPreviewRequest=0, codexPromptPreviewTimer=null;
 let textCommand=null, splitting=false, merging=false, activeText=markdownText;
 const discardElementButton = document.getElementById("menu-discard");
 let selectedPane="working", selectedPage=null, menuCommand=null, pageCommand=null, menuReturnFocus=null, menuScrollPosition={};
@@ -60,27 +64,23 @@ function openMenu(x,y) {
   const acceptedElement=elementIndex(state.accepted).get(selected)?.element;
   const hasElement=Boolean(element || acceptedElement);
   const idLabel=document.getElementById("menu-current-id");
-  idLabel.hidden=!hasElement;
-  idLabel.textContent=hasElement ? `ID: ${selected}` : "ID:";
+  idLabel.textContent=hasElement ? `ID: ${selected}` : "ID: None";
   const typeLabel=document.getElementById("menu-current-type");
-  typeLabel.hidden=!element && !acceptedElement;
   const types=acceptedElement && element && acceptedElement.type !== element.type ?
     `${acceptedElement.type} / ${element.type}` : element?.type ?? acceptedElement?.type;
-  typeLabel.textContent=types ? `Type: ${types}` : "Type:";
+  typeLabel.textContent=types ? `Type: ${types}` : "Type: None";
   const roleLabel=document.getElementById("menu-current-role");
-  roleLabel.hidden=!element && !acceptedElement;
   const roleName=value=>value ?? "None";
   const roles=acceptedElement && element && acceptedElement.role !== element.role ?
     `${roleName(acceptedElement.role)} / ${roleName(element.role)}` : roleName((element ?? acceptedElement)?.role);
   roleLabel.textContent=`Role: ${roles}`;
   const editable=element && !state.pending && !loading;
   const newChapterButton=document.getElementById("menu-new-chapter");
-  newChapterButton.hidden=!element;
   newChapterButton.disabled=!editable || elementIndex(state.working).get(element?.id)?.chapter.elements[0]?.id === element?.id;
   newChapterButton.title="Start a chapter at this element and move the rest of its current chapter into it";
   menuCommand=element ? {id:element.id,expected_revision:state.authored_revision,
     accepted_revision:state.accepted?.revision,visible:element.visible === false} : null;
-  visibilityButton.hidden=!element; visibilityButton.disabled=!editable;
+  visibilityButton.disabled=!editable;
   visibilityButton.textContent=element?.visible === false ? "Unhide Element" : "Hide Element";
   pageCommand={page:selectedPage,expected_revision:state.authored_revision};
   hidePageButton.disabled=selectedPage === null || state.pending || loading ||
@@ -88,20 +88,19 @@ function openMenu(x,y) {
       element.pdf_regions.some(region=>region.page === selectedPage));
   hidePageButton.title=selectedPage === null ? "This element has no PDF source page" :
     `Hide all Working elements from PDF page ${selectedPage}`;
-  document.getElementById("menu-copy").hidden=!hasElement || selected === "generated-toc";
-  headingButton.hidden=!element || !state.heading_types.includes(element.type);
-  headingButton.disabled=!editable;
+  document.getElementById("menu-copy").disabled=!hasElement || selected === "generated-toc";
+  headingButton.disabled=!editable || !state.heading_types.includes(element.type);
   headingButton.textContent=element?.heading_level ? `Heading H${element.heading_level} ▸` : "Heading ▸";
-  typeButton.hidden=!element;
   const imageTarget=element?.type === "table" && !element.asset && element.pdf_regions.length > 0;
   typeButton.disabled=!editable || (!imageTarget && (state.protected_types.includes(element.type) || !!element.asset ||
     typeof element.md_text !== "string" || !element.md_text.trim()));
   typeMenu.replaceChildren();
-  for(const kind of imageTarget ? ["graphic"] : state.editable_types) {
+  for(const kind of [...state.editable_types,"graphic"]) {
     const button=document.createElement("button");button.type="button";button.dataset.type=kind;
     button.textContent=kind === "graphic" ? "Image" : kind;button.setAttribute("role","menuitemradio");
     button.setAttribute("aria-checked",String(kind === element?.type));
-    button.disabled=typeButton.disabled || kind === element?.type;
+    button.disabled=typeButton.disabled || (imageTarget ? kind !== "graphic" : kind === "graphic") ||
+      kind === element?.type;
     button.onclick=async()=>{
       const command={id:menuCommand.id,expected_revision:menuCommand.expected_revision,type:kind};
       closeMenu(true);
@@ -110,7 +109,6 @@ function openMenu(x,y) {
     };
     typeMenu.append(button);
   }
-  roleButton.hidden=!element;
   roleButton.disabled=!editable;
   roleMenu.replaceChildren();
   for(const role of state.roles) {
@@ -128,33 +126,31 @@ function openMenu(x,y) {
   }
   for(const id of ["menu-bold","menu-remove-bold","menu-markdown","menu-split"]) {
     const button=document.getElementById(id);
-    button.hidden=!element || typeof element.md_text !== "string" || !!element.asset;
-    button.disabled=!editable;
+    button.disabled=!editable || typeof element.md_text !== "string" || !!element.asset;
+  }
+  for(const [id,type] of [["menu-describe-image","graphic"],["menu-describe-table","table"]]) {
+    const button=document.getElementById(id);
+    button.disabled=!editable || element.type !== type ||
+      (type === "table" && ["legend","note","footnote"].includes(element.role));
   }
   const next=nextElement(element?.id);
   const duplicateButton=document.getElementById("menu-duplicate");
-  duplicateButton.hidden=!element;
   duplicateButton.disabled=!editable;
   const mergeButton=document.getElementById("menu-merge");
-  mergeButton.hidden=!element || typeof element.md_text !== "string" || !!element.asset;
-  mergeButton.disabled=!editable || !next || typeof next.md_text !== "string" || !!next.asset;
+  mergeButton.disabled=!editable || typeof element.md_text !== "string" || !!element.asset ||
+    !next || typeof next.md_text !== "string" || !!next.asset;
   const mergeGraphicsButton=document.getElementById("menu-merge-graphics");
-  mergeGraphicsButton.hidden=!element || element.type !== "graphic";
-  mergeGraphicsButton.disabled=!editable || !next || next.type !== "graphic" ||
+  mergeGraphicsButton.disabled=!editable || element.type !== "graphic" || !next || next.type !== "graphic" ||
     !!next.md_text || !element.pdf_regions.length || !next.pdf_regions.length ||
     [...element.pdf_regions,...next.pdf_regions].some(region=>region.page !== element.pdf_regions[0].page);
-  rotateButton.hidden=!element || element.type !== "graphic" || !element.asset;
-  rotateButton.disabled=!editable;
+  rotateButton.disabled=!editable || element.type !== "graphic" || !element.asset;
   const mergeTablesButton=document.getElementById("menu-merge-tables");
-  mergeTablesButton.hidden=!element || element.type !== "table";
-  mergeTablesButton.disabled=!editable;
+  mergeTablesButton.disabled=!editable || element.type !== "table";
   for(const [id,offset] of [["menu-move-up",-1],["menu-move-down",1]]) {
     const button=document.getElementById(id);
-    button.hidden=!element;
     button.disabled=!editable || !adjacentElement(element?.id,offset);
   }
   for(const button of headingMenu.children)button.setAttribute("aria-checked",String(Number(button.dataset.level) === element?.heading_level));
-  discardElementButton.hidden=!element;
   discardElementButton.disabled=!editable || !state.discardable_elements?.includes(element.id);
   discardElementButton.title="Restore this element's text and properties from Accepted";
   elementMenu.hidden=false;
@@ -1076,11 +1072,58 @@ document.getElementById("menu-new-chapter").onclick=async()=>{
   try{await post("/api/new-chapter",command);await refresh();}
   catch(error){await refresh();showError(error.message);}
 };
-function openCodex(scope,id=null) {
+function openCodex(scope,id=null,task=null) {
   codexScope=scope;
-  codexCommand={expected_revision:state.authored_revision,...(id ? {id} : {})};
+  codexDialogJobId=scope === "working" && state.codex_agent?.state === "running" ?
+    state.codex_agent.id : null;
+  codexDescriptionTask=scope === "description" ? task : null;
+  codexCommand={expected_revision:state.authored_revision,...(id ? {id} : {}),
+    ...(codexDescriptionTask ? {target_id:id,prompt_preset:codexDescriptionTask} : {})};
   const preset=document.getElementById("codex-preset");
   document.getElementById("codex-preset-section").hidden=scope !== "working";
+  const contextSection=document.getElementById("codex-context-section");
+  const contextItems=document.getElementById("codex-context-items");
+  contextSection.hidden=scope !== "description";
+  contextItems.replaceChildren();codexContextIds=[];
+  if(scope === "description") {
+    const chapter=elementIndex(state.working).get(id)?.chapter;
+    const target=elementIndex(state.working).get(id)?.element;
+    const evidence=captionStyleEvidence(state.working)[target.type];
+    const neighbors=descriptionNeighbors(chapter,id);
+    const localStyle=localCaptionStyle(chapter,id,neighbors);
+    const autoStyle=localStyle || evidence.style;
+    const captionStyle=document.getElementById("codex-caption-style");
+    const label=document.getElementById("codex-caption-evidence");
+    captionStyle.value="auto";
+    label.textContent=`Book evidence for ${target.type}: ${evidence.above} above, ${evidence.below} below. `+
+      (autoStyle ? `Auto uses captions ${autoStyle}${localStyle ? " from this group" : ""}.` :
+        "No clear style; choose a caption position.");
+    const updateContext=()=>{
+      const style=captionStyle.value === "auto" ? autoStyle : captionStyle.value;
+      const included=descriptionContext(neighbors,style);
+      codexContextIds=[...included];
+      contextItems.replaceChildren();
+      for(const [side,items] of [["Above",neighbors.above],["Below",neighbors.below]]) {
+        for(const element of items) {
+          const row=document.createElement("div");
+          row.dataset.contextId=element.id;
+          row.dataset.included=String(included.has(element.id));
+          const page=element.pdf_regions?.[0]?.page;
+          const heading=document.createElement("strong");
+          heading.textContent=`${side} · ${element.role} ${element.id}${page ? ` (PDF ${page})` : ""}`;
+          const content=document.createElement("div");
+          content.className="context-source";
+          content.textContent=element.resolved_md_text || element.md_text || "";
+          row.append(heading,content);
+          contextItems.append(row);
+        }
+      }
+      if(!contextItems.children.length)contextItems.textContent="No nearby labeled source elements.";
+      if(codexDialog.open)void updateCodexPromptPreview();
+    };
+    captionStyle.onchange=updateContext;
+    updateContext();
+  }
   document.getElementById("codex-format-section").hidden=scope !== "element";
   document.getElementById("codex-format-mode").value="preserve";
   document.getElementById("codex-allow-reorder").checked=false;
@@ -1089,30 +1132,194 @@ function openCodex(scope,id=null) {
   document.getElementById("codex-additions-section").hidden=true;
   updateCodexFormatGuidance();
   preset.value="";preset.disabled=false;
-  document.getElementById("codex-title").textContent=scope === "working" ? "Codex Working" : "Codex on element";
-  document.getElementById("codex-id").textContent=scope === "working" ?
+  document.getElementById("codex-title").textContent=scope === "description" ?
+    (task === "describe_images" ? "Describe image with Codex" : "Describe table with Codex") :
+    scope === "working" ? "Codex Working" : "Codex on element";
+  document.getElementById("codex-id").textContent=scope === "description" ? id : scope === "working" ?
     (id ? `Starting at ${id}; the whole Working book is available.` : "The whole Working book is available.") : id;
-  document.getElementById("codex-help").textContent=scope === "working" ?
+  document.getElementById("codex-help").textContent=scope === "description" ?
+    "Codex can inspect the selected item and its source. Only this item's description can change in Working." : scope === "working" ?
     "Codex can request more book context and edit Working. Accepted and PDF sources remain read-only." :
     "Changes are applied to Working after checking that original content is preserved and only listed additions are added. Dashes, commas, periods and spaces may change.";
+  document.querySelector('label[for="codex-instruction"]').textContent=scope === "description" ?
+    "Additional instruction" : "Instruction";
   document.getElementById("codex-instruction").value=scope === "working" && state.codex_agent?.state === "running" ?
-    state.codex_agent.instruction : "";
+    state.codex_agent.instruction : scope === "description" ?
+    `Describe only the selected ${task === "describe_images" ? "image" : "table"}.` : "";
   document.getElementById("codex-error").hidden=true;
   document.getElementById("codex-status").hidden=true;
   document.getElementById("stop-codex-agent").hidden=true;
+  document.getElementById("codex-prompt-section").hidden=scope!=="description";
+  document.getElementById("cancel-codex").textContent="Close";
   document.getElementById("run-codex").disabled=false;
   document.getElementById("codex-instruction").disabled=false;
   codexDialog.showModal();updateCodexStatus();document.getElementById("codex-instruction").focus();
+  if(scope==="description")void updateCodexPromptPreview();
+}
+async function updateCodexPromptPreview() {
+  if(codexScope!=="description" || !codexDialog.open)return null;
+  const request=++codexPromptPreviewRequest;
+  const field=document.getElementById("codex-prompt-preview");
+  field.value="Loading prompt...";
+  try {
+    const result=await post("/api/codex-agent/preview",{
+      ...codexCommand,instruction:document.getElementById("codex-instruction").value,
+      context_ids:codexContextIds});
+    if(request===codexPromptPreviewRequest && codexDialog.open)field.value=result.prompt;
+    return result.prompt;
+  } catch(error) {
+    if(request===codexPromptPreviewRequest && codexDialog.open)field.value=`Prompt unavailable: ${error.message}`;
+    return null;
+  }
+}
+function captionStyleEvidence(book) {
+  const votes={table:{above:0,below:0},graphic:{above:0,below:0}};
+  for(const chapter of book?.chapters || []) {
+    const entries=chapter.elements;
+    for(let index=0;index<entries.length;index++) {
+      const caption=entries[index];
+      if(caption.role !== "caption")continue;
+      const title=(caption.resolved_md_text || caption.md_text || "").replace(/^[^a-z]*/i,"");
+      const name=/^(?:Table)(?=\s|[-.:]|$)/i.test(title) ? "table" :
+        /^(?:Figure|Fig\.)(?=\s|[-:]|$)/i.test(title) ? "graphic" : null;
+      const candidates=[];
+      for(const [direction,position] of [[-1,"below"],[1,"above"]]) {
+        let neighbor=index+direction;
+        while(neighbor>=0 && neighbor<entries.length &&
+              ["note","legend","footnote"].includes(entries[neighbor].role))neighbor+=direction;
+        const element=entries[neighbor];
+        if(element && ["table","graphic"].includes(element.type) && (!name || name === element.type))
+          candidates.push({type:element.type,position});
+      }
+      if(candidates.length === 1)votes[candidates[0].type][candidates[0].position]++;
+    }
+  }
+  for(const score of Object.values(votes)) {
+    const winner=score.above > score.below ? "above" : "below";
+    const loser=winner === "above" ? score.below : score.above;
+    score.style=score[winner] >= 3 && score[winner] >= 2*loser && score[winner] > loser ? winner : null;
+  }
+  return votes;
+}
+function descriptionNeighbors(chapter,id) {
+  const neighbors={above:[],below:[]};
+  const entries=chapter?.elements || [];
+  const targetIndex=entries.findIndex(element=>element.id === id);
+  if(targetIndex < 0)return neighbors;
+  const roles=new Set(["caption","note","legend","footnote"]);
+  for(let index=targetIndex-1;index>=0;index--) {
+    const element=entries[index];
+    if(!roles.has(element.role))break;
+    neighbors.above.unshift(element);
+  }
+  for(let index=targetIndex+1;index<entries.length;index++) {
+    const element=entries[index];
+    if(!roles.has(element.role))break;
+    neighbors.below.push(element);
+  }
+  return neighbors;
+}
+function localCaptionStyle(chapter,id,neighbors) {
+  const entries=chapter?.elements || [];
+  const targetIndex=entries.findIndex(element=>element.id === id);
+  if(targetIndex < 0)return null;
+  const primary=element=>element && ["table","graphic"].includes(element.type) && !element.role;
+  const above=neighbors.above.at(-1)?.role === "caption" &&
+    !primary(entries[targetIndex-neighbors.above.length-1]);
+  const below=neighbors.below.some(element=>element.role === "caption") &&
+    !primary(entries[targetIndex+neighbors.below.length+1]);
+  return above === below ? null : above ? "above" : "below";
+}
+function descriptionContext(neighbors,style) {
+  const included=new Set();
+  if(style === "above" && neighbors.above.at(-1)?.role === "caption")
+    included.add(neighbors.above.at(-1).id);
+  let captionBelow=false;
+  for(const element of neighbors.below) {
+    if(["note","legend","footnote"].includes(element.role))included.add(element.id);
+    else if(style === "below" && element.role === "caption" && !captionBelow) {
+      included.add(element.id);captionBelow=true;
+    }
+  }
+  return included;
+}
+for(const [id,task] of [["menu-describe-image","describe_images"],["menu-describe-table","describe_tables"]]) {
+  document.getElementById(id).onclick=()=>{
+    const target=menuCommand.id;
+    closeMenu(true);
+    openCodex("description",target,task);
+  };
 }
 function openBookAction(task=null) {
   closeBookMenu(true);
   if(task === "source_cleanup") {openSourceCleanup();return;}
+  if(task === "rename_chapters") {openRenameChapters();return;}
   openCodex("working",selected && elementIndex(state.working).has(selected) ? selected : null);
   if(task){
     const preset=document.getElementById("codex-preset");
     preset.value=task;preset.dispatchEvent(new Event("change"));
   }
 }
+function openRenameChapters() {
+  const list=document.getElementById("rename-chapters-list");
+  const error=document.getElementById("rename-chapters-error");
+  list.replaceChildren();error.hidden=true;
+  renameChaptersRevision=state.authored_revision;
+  renameChaptersEntries=[];
+  const toc=state.working.toc;
+  const tocRow=document.createElement("section");tocRow.className="rename-chapter-row";
+  const tocHeading=document.createElement("strong");tocHeading.textContent="Table of Contents";
+  const tocTitleLabel=document.createElement("label");tocTitleLabel.textContent="Title";
+  const tocTitle=document.createElement("textarea");tocTitle.spellcheck=false;
+  tocTitle.value=toc.resolved_title ?? toc.title ?? "Table of Contents";
+  tocTitleLabel.append(tocTitle);
+  const tocFileLabel=document.createElement("label");tocFileLabel.textContent="Markdown filename";
+  const tocFilename=document.createElement("input");tocFilename.type="text";tocFilename.spellcheck=false;
+  tocFilename.value=toc.resolved_markdown_file ?? toc.markdown_file ?? "table-of-contents.md";
+  tocFileLabel.append(tocFilename);
+  tocRow.append(tocHeading,tocTitleLabel,tocFileLabel);list.append(tocRow);
+  renameTocEntry={toc,title:tocTitle,filename:tocFilename};
+  for(const chapter of state.working.chapters) {
+    const row=document.createElement("section");row.className="rename-chapter-row";
+    const heading=document.createElement("strong");heading.textContent=chapterTitle(chapter);
+    const titleLabel=document.createElement("label");titleLabel.textContent="Title";
+    const title=document.createElement("textarea");title.spellcheck=false;
+    title.value=chapter.resolved_title ?? chapter.title;
+    titleLabel.append(title);
+    const fileLabel=document.createElement("label");fileLabel.textContent="Markdown filename";
+    const filename=document.createElement("input");filename.type="text";filename.spellcheck=false;
+    filename.value=chapter.resolved_markdown_file ?? chapter.markdown_file;
+    fileLabel.append(filename);
+    row.append(heading,titleLabel,fileLabel);list.append(row);
+    renameChaptersEntries.push({chapter,title,filename});
+  }
+  renameChaptersDialog.showModal();
+  tocTitle.focus();
+}
+document.getElementById("rename-chapters-close").onclick=()=>renameChaptersDialog.close();
+document.getElementById("rename-chapters-save").onclick=async()=>{
+  const button=document.getElementById("rename-chapters-save");
+  const error=document.getElementById("rename-chapters-error");
+  const chapters=renameChaptersEntries.map(({chapter,title,filename})=>({
+    id:chapter.id,
+    title:title.value === (chapter.resolved_title ?? chapter.title) ? chapter.title : title.value,
+    markdown_file:filename.value === (chapter.resolved_markdown_file ?? chapter.markdown_file) ?
+      chapter.markdown_file : filename.value
+  }));
+  const {toc,title,filename}=renameTocEntry;
+  const tocEdit={
+    title:title.value === (toc.resolved_title ?? toc.title ?? "Table of Contents") ?
+      (toc.title ?? "Table of Contents") : title.value,
+    markdown_file:filename.value === (toc.resolved_markdown_file ?? toc.markdown_file ?? "table-of-contents.md") ?
+      (toc.markdown_file ?? "table-of-contents.md") : filename.value
+  };
+  button.disabled=true;
+  try {
+    await post("/api/rename-chapters",{expected_revision:renameChaptersRevision,chapters,toc:tocEdit});
+    renameChaptersDialog.close();await refresh();
+  } catch(failure) {error.textContent=failure.message;error.hidden=false;}
+  finally {button.disabled=false;}
+};
 async function openSourceCleanup() {
   const summary=document.getElementById("source-cleanup-summary");
   const findings=document.getElementById("source-cleanup-findings");
@@ -1200,15 +1407,20 @@ for(const button of bookMenu.querySelectorAll("[data-book-task]")){
   button.onclick=()=>openBookAction(button.dataset.bookTask);
 }
 function updateCodexStatus() {
-  if(!codexDialog.open || codexScope !== "working")return;
-  const job=state?.codex_agent;
+  if(!codexDialog.open || codexScope === "element")return;
+  const activeJob=state?.codex_agent;
+  const job=activeJob?.id === codexDialogJobId ? activeJob : null;
   const running=job?.state === "running";
+  const busy=activeJob?.state === "running";
   const button=document.getElementById("run-codex"), stop=document.getElementById("stop-codex-agent");
-  button.disabled=running || codexRunning;
-  document.getElementById("codex-preset").disabled=running || codexRunning;
-  document.getElementById("codex-instruction").disabled=running || codexRunning;
+  document.getElementById("cancel-codex").textContent=running ? "Cancel task" : "Close";
+  button.disabled=busy || codexRunning;
+  document.getElementById("codex-preset").disabled=busy || codexRunning;
+  document.getElementById("codex-instruction").disabled=busy || codexRunning;
+  document.getElementById("codex-caption-style").disabled=busy || codexRunning;
   stop.hidden=!running;stop.disabled=job?.action === "stopping";
   const status=document.getElementById("codex-status"), error=document.getElementById("codex-error");
+  if(!job){if(!codexRunning)status.hidden=true;return;}
   if(running){error.hidden=true;status.textContent=`Step ${job.step}: ${job.action}; ${job.edits} edits saved to Working.`;status.hidden=false;}
   else if(job?.state === "completed"){
     if(job.id === codexAutoCloseJob){codexDialog.close();return;}
@@ -1219,12 +1431,39 @@ function updateCodexStatus() {
     error.textContent=job.error;error.hidden=false;status.hidden=true;
   }
 }
-document.getElementById("stop-codex-agent").onclick=async()=>{
-  try{await post("/api/codex-agent/stop",{id:state.codex_agent.id});await refresh();}
-  catch(error){const field=document.getElementById("codex-error");field.textContent=error.message;field.hidden=false;}
+async function stopCodexTask(closeDialog=false) {
+  const job=state?.codex_agent?.id === codexDialogJobId ? state.codex_agent : null;
+  if(job?.state !== "running") {if(closeDialog)codexDialog.close();return;}
+  const cancel=document.getElementById("cancel-codex");
+  cancel.disabled=true;
+  try {
+    if(job.action !== "stopping")await post("/api/codex-agent/stop",{id:job.id});
+    if(closeDialog)codexDialog.close();
+    await refresh();
+  } catch(error) {
+    await refresh();
+    if(closeDialog && state?.codex_agent?.state !== "running")codexDialog.close();
+    else {const field=document.getElementById("codex-error");field.textContent=error.message;field.hidden=false;}
+  } finally {cancel.disabled=false;}
+}
+document.getElementById("stop-codex-agent").onclick=()=>stopCodexTask();
+document.getElementById("cancel-codex").onclick=()=>{
+  if(codexRunning)return;
+  if(codexScope !== "element" && state?.codex_agent?.id === codexDialogJobId &&
+     state.codex_agent.state === "running")void stopCodexTask(true);
+  else codexDialog.close();
 };
-codexDialog.addEventListener("cancel",event=>{if(codexRunning && codexScope === "element")event.preventDefault();});
-codexDialog.addEventListener("close",()=>{codexAutoCloseJob=null;codexAutoClosePending=false;});
+codexDialog.addEventListener("cancel",event=>{
+  if(codexRunning || document.getElementById("cancel-codex").disabled){event.preventDefault();return;}
+  if(codexScope !== "element" && state?.codex_agent?.id === codexDialogJobId &&
+     state.codex_agent.state === "running"){
+    event.preventDefault();void stopCodexTask(true);
+  }
+});
+codexDialog.addEventListener("close",()=>{
+  codexPromptPreviewRequest++;clearTimeout(codexPromptPreviewTimer);
+  codexAutoCloseJob=null;codexAutoClosePending=false;codexDialogJobId=null;
+});
 document.getElementById("codex-preset").onchange=event=>{
   if(event.target.value){
     const field=document.getElementById("codex-instruction");
@@ -1235,6 +1474,10 @@ document.getElementById("codex-instruction").oninput=event=>{
   const preset=document.getElementById("codex-preset");
   if(event.target.value !== state?.codex_suggested_tasks?.[preset.value] &&
      !preset.selectedOptions[0]?.dataset.promptPreset)preset.value="";
+  if(codexScope==="description"){
+    clearTimeout(codexPromptPreviewTimer);
+    codexPromptPreviewTimer=setTimeout(()=>void updateCodexPromptPreview(),250);
+  }
 };
 function updateCodexFormatGuidance() {
   const mode=document.getElementById("codex-format-mode").value;
@@ -1263,23 +1506,27 @@ document.getElementById("run-codex").onclick=async()=>{
     error.hidden=false;additionsField.focus();return;
   }
   const button=document.getElementById("run-codex"), cancel=document.getElementById("cancel-codex"), progress=document.getElementById("codex-status");
-  codexAutoCloseJob=null;codexAutoClosePending=codexScope === "working";
-  codexRunning=true;button.disabled=true;cancel.disabled=codexScope === "element";field.disabled=true;
+  codexAutoCloseJob=null;codexDialogJobId=null;codexAutoClosePending=codexScope !== "element";
+  codexRunning=true;button.disabled=true;cancel.disabled=true;field.disabled=true;
   document.getElementById("codex-preset").disabled=true;error.hidden=true;
-  progress.textContent=codexScope === "working" ? "Starting Codex Working task…" : "Running Codex and checking content…";progress.hidden=false;
+  progress.textContent=codexScope !== "element" ? "Starting Codex Working task…" : "Running Codex and checking content…";progress.hidden=false;
   try {
+    if(codexScope==="description" && !await updateCodexPromptPreview())
+      throw new Error("Could not prepare the prompt; reload Working and try again.");
     const taskKind=codexScope === "working" ?
       document.getElementById("codex-preset").selectedOptions[0]?.dataset.taskKind : null;
     const promptPreset=codexScope === "working" ?
       document.getElementById("codex-preset").selectedOptions[0]?.dataset.promptPreset : null;
-    const result=await post(codexScope === "working" ? "/api/codex-agent" : "/api/codex",
+    const result=await post(codexScope !== "element" ? "/api/codex-agent" : "/api/codex",
       {...codexCommand,instruction:field.value,...(taskKind ? {task_kind:taskKind} : {}),
        ...(promptPreset ? {prompt_preset:promptPreset} : {}),
+       ...(codexScope === "description" ? {context_ids:codexContextIds} : {}),
        ...(codexScope === "element" ?
         {format_mode:document.getElementById("codex-format-mode").value,
          allow_reorder:document.getElementById("codex-allow-reorder").checked,
          allow_additions:allowAdditions,
          allowed_additions:allowAdditions ? allowedAdditions : []} : {})});
+    if(codexScope !== "element")codexDialogJobId=result.id;
     if(codexAutoClosePending)codexAutoCloseJob=result.id;
     codexAutoClosePending=false;
     if(codexScope === "element")codexDialog.close();

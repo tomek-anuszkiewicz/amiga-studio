@@ -1,18 +1,19 @@
 {
   "toc": {
-    "depth": 2
+    "depth": 2,
+    "markdown_file": "00 Table of Contents.md"
   },
   "chapters": [
     {
       "id": "chapter-001",
-      "title": "{{text page=1 block=5 chars=0:1}}-/{{text page=1 block=5 chars=3:5}}-/{{text page=1 block=5 chars=7:9}}-{{text page=1 block=5 chars=10:13}}\n{{text page=1 block=5 chars=17:36}}'{{text page=1 block=5 chars=37:45}}",
-      "markdown_file": "8--16--32-bit-microprocessor-user-s-manual.md",
+      "title": "{{text page=15 block=0 chars=0:9}} {{text page=15 block=0 chars=11:19}}",
+      "markdown_file": "01 SECTION 1 OVERVIEW.md",
       "elements": [
         {
           "id": "page_0001_seg_002",
           "type": "graphic",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 1,
@@ -30,7 +31,7 @@
           "id": "page_0001_seg_003",
           "type": "prose",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 1,
@@ -48,7 +49,7 @@
           "id": "page_0001_seg_004",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 1,
@@ -67,7 +68,7 @@
           "id": "page_0001_seg_005",
           "type": "prose",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 1,
@@ -85,7 +86,7 @@
           "id": "page_0003_seg_002",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 3,
@@ -104,7 +105,7 @@
           "id": "page_0003_seg_003",
           "type": "prose",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 3,
@@ -122,7 +123,7 @@
           "id": "page_0003_seg_004",
           "type": "prose",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 3,
@@ -140,7 +141,7 @@
           "id": "page_0005_seg_001",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 5,
@@ -159,7 +160,7 @@
           "id": "page_0005_seg_002",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 5,
@@ -178,7 +179,7 @@
           "id": "page_0005_seg_003",
           "type": "prose",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 5,
@@ -196,7 +197,7 @@
           "id": "page_0005_seg_004",
           "type": "prose",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 5,
@@ -214,7 +215,7 @@
           "id": "page_0005_seg_005",
           "type": "prose",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 5,
@@ -232,7 +233,7 @@
           "id": "page_0005_seg_006",
           "type": "prose",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 5,
@@ -250,7 +251,7 @@
           "id": "page_0005_seg_007",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 5,
@@ -269,7 +270,7 @@
           "id": "page_0005_seg_008",
           "type": "prose",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 5,
@@ -287,7 +288,7 @@
           "id": "page_0006_seg_001",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -306,7 +307,7 @@
           "id": "page_0006_seg_002",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -325,7 +326,7 @@
           "id": "page_0006_seg_003",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -344,7 +345,7 @@
           "id": "page_0006_seg_004",
           "type": "prose",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -362,7 +363,7 @@
           "id": "page_0006_seg_005",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -381,7 +382,7 @@
           "id": "page_0006_seg_006",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -400,7 +401,7 @@
           "id": "page_0006_seg_007",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -419,7 +420,7 @@
           "id": "page_0006_seg_008",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -438,7 +439,7 @@
           "id": "page_0006_seg_009",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -457,7 +458,7 @@
           "id": "page_0006_seg_010",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -476,7 +477,7 @@
           "id": "page_0006_seg_011",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -495,7 +496,7 @@
           "id": "page_0006_seg_012",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -514,7 +515,7 @@
           "id": "page_0006_seg_013",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 6,
@@ -533,7 +534,7 @@
           "id": "page_0007_seg_001",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 7,
@@ -552,7 +553,7 @@
           "id": "page_0007_seg_002",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 7,
@@ -571,7 +572,7 @@
           "id": "page_0008_seg_001",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 8,
@@ -590,7 +591,7 @@
           "id": "page_0008_seg_002",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 8,
@@ -609,7 +610,7 @@
           "id": "page_0009_seg_001",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 9,
@@ -628,7 +629,7 @@
           "id": "page_0009_seg_002",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 9,
@@ -647,7 +648,7 @@
           "id": "page_0010_seg_001",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 10,
@@ -666,7 +667,7 @@
           "id": "page_0010_seg_002",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 10,
@@ -685,7 +686,7 @@
           "id": "page_0011_seg_001",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 11,
@@ -704,7 +705,7 @@
           "id": "page_0011_seg_002",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 11,
@@ -723,7 +724,7 @@
           "id": "page_0012_seg_001",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 12,
@@ -742,7 +743,7 @@
           "id": "page_0012_seg_002",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 12,
@@ -761,7 +762,7 @@
           "id": "page_0013_seg_001",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 13,
@@ -780,7 +781,7 @@
           "id": "page_0013_seg_002",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 13,
@@ -799,7 +800,7 @@
           "id": "page_0014_seg_001",
           "type": "heading",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 14,
@@ -818,7 +819,7 @@
           "id": "page_0014_seg_002",
           "type": "table",
           "role": null,
-          "visible": true,
+          "visible": false,
           "pdf_regions": [
             {
               "page": 14,
@@ -1359,7 +1360,8 @@
               ]
             }
           ],
-          "asset": "assets/page_0018_seg_007.png"
+          "asset": "assets/page_0018_seg_007.png",
+          "description": "Figure 2-4. Status Register shows a 16-bit register with bit 15 at the left and bit 0 at the right. Brackets divide it into the SYSTEM BYTE (bits 15–8) and USER BYTE (bits 7–0).\n\nThe system byte contains T at bit 15, connected to TRACE MODE; S at bit 13, connected to SUPERVISOR STATE; and I₂, I₁, I₀ at bits 10–8, grouped as INTERRUPT MASK. Bit 14 and bits 12–11 are shaded and unlabeled.\n\nThe user byte has shaded, unlabeled bits 7–5, followed by five flags grouped as CONDITION CODES:\n- Bit 4: X — EXTEND\n- Bit 3: N — NEGATIVE\n- Bit 2: Z — ZERO\n- Bit 1: V — OVERFLOW\n- Bit 0: C — CARRY\n\nLeader lines connect each labeled field to its corresponding meaning. The figure does not explain the shaded positions."
         },
         {
           "id": "page_0018_seg_008",
@@ -1690,7 +1692,8 @@
               ]
             }
           ],
-          "asset": "assets/page_0020_seg_007.png"
+          "asset": "assets/page_0020_seg_007.png",
+          "description": "Figure 2-5. Word Organization in Memory shows memory as rows of 16-bit words. Bit positions run from 15 at the left to 0 at the right. Each word is divided into two bytes: bits 15–8 on the left and bits 7–0 on the right.\n\nThe ADDRESS column identifies the rows:\n- $000000: WORD 0 contains BYTE 000000 on the left and BYTE 000001 on the right.\n- $000002: WORD 1 contains BYTE 000002 on the left and BYTE 000003 on the right.\n- $FFFFFE: WORD 7FFFFF occupies the final row. Both byte labels appear to read BYTE FFFFFE in the image.\n\nA vertical series of dots and breaks in both side borders indicate omitted intermediate words."
         },
         {
           "id": "page_0020_seg_008",
@@ -2571,7 +2574,8 @@
             }
           ],
           "md_text": "<table>\n<tr><th colspan=\"3\">{{text page=29 block=1 chars=0:20}}</th><th rowspan=\"2\">{{text page=29 block=2 chars=15:33}}</th></tr>\n<tr><th>{{text page=29 block=2 chars=0:3}}</th><th>{{text page=29 block=2 chars=5:8}}</th><th>{{text page=29 block=2 chars=10:12}}{{text page=29 block=2 chars=12:13 replace=0:1 with=\"0\"}}</th></tr>\n<tr><td>{{text page=29 block=3 chars=0:3}}</td><td>{{text page=29 block=3 chars=0:3}}</td><td>{{text page=29 block=3 chars=0:3}}</td><td>({{text page=29 block=3 chars=16:25}}, {{text page=29 block=3 chars=27:35}})</td></tr>\n<tr><td>{{text page=29 block=3 chars=0:3}}</td><td>{{text page=29 block=3 chars=0:3}}</td><td>{{text page=29 block=4 chars=10:14}}</td><td>{{text page=29 block=4 chars=16:25}}</td></tr>\n<tr><td>{{text page=29 block=3 chars=0:3}}</td><td>{{text page=29 block=4 chars=10:14}}</td><td>{{text page=29 block=3 chars=0:3}}</td><td>{{text page=29 block=5 chars=16:28}}</td></tr>\n<tr><td>{{text page=29 block=3 chars=0:3}}</td><td>{{text page=29 block=4 chars=10:14}}</td><td>{{text page=29 block=4 chars=10:14}}</td><td>({{text page=29 block=3 chars=16:25}}, {{text page=29 block=3 chars=27:35}})</td></tr>\n<tr><td>{{text page=29 block=4 chars=10:14}}</td><td>{{text page=29 block=3 chars=0:3}}</td><td>{{text page=29 block=3 chars=0:3}}</td><td>({{text page=29 block=3 chars=16:25}}, {{text page=29 block=3 chars=27:35}})</td></tr>\n<tr><td>{{text page=29 block=4 chars=10:14}}</td><td>{{text page=29 block=3 chars=0:3}}</td><td>{{text page=29 block=4 chars=10:14}}</td><td>{{text page=29 block=8 chars=17:32}}</td></tr>\n<tr><td>{{text page=29 block=4 chars=10:14}}</td><td>{{text page=29 block=4 chars=10:14}}</td><td>{{text page=29 block=3 chars=0:3}}</td><td>{{text page=29 block=9 chars=17:35}}</td></tr>\n<tr><td>{{text page=29 block=4 chars=10:14}}</td><td>{{text page=29 block=4 chars=10:14}}</td><td>{{text page=29 block=4 chars=10:14}}</td><td>{{text page=29 block=10 chars=18:27}}</td></tr>\n</table>",
-          "table_format": "html"
+          "table_format": "html",
+          "description": "Table 3-3, Function Code Outputs, maps each combination of function code outputs to an Address Space Type. The shared heading Function Code Output covers three columns: FC2, FC1 and FC0. Each row gives their Low or High levels and the corresponding address space.\n\nIn FC2, FC1, FC0 order, the mappings are:\n- Low, Low, Low: (Undefined, Reserved).\n- Low, Low, High: User Data.\n- Low, High, Low: User Program.\n- Low, High, High: (Undefined, Reserved).\n- High, Low, Low: (Undefined, Reserved).\n- High, Low, High: Supervisor Data.\n- High, High, Low: Supervisor Program.\n- High, High, High: CPU Space."
         },
         {
           "id": "page_0029_seg_004",
@@ -2735,7 +2739,8 @@
               ]
             }
           ],
-          "asset": "assets/page_0031_seg_001.png"
+          "asset": "assets/page_0031_seg_001.png",
+          "description": "Figure 5-7. Word and Byte Write-Cycle Timing Diagram compares three consecutive bus cycles, labeled WORD WRITE, ODD BYTE WRITE, and EVEN BYTE WRITE. Time runs left to right. The CLK waveform is marked S0 through S7 for each cycle; no numerical time scale is shown.\n\nAligned rows show FC2–FC0, A23–A1, A0*, AS, UDS, LDS, R/W, DTACK, D15–D8, and D7–D0. Overbars mark AS, UDS, LDS, and DTACK as active-low signals; the W in R/W is also overbarred. FC2–FC0 and A23–A1 are drawn as bus bands that change near the beginning of each cycle and remain stable through its central portion.\n\nThe three cycles differ as follows:\n- WORD WRITE: A0* is low; UDS and LDS both pulse low.\n- ODD BYTE WRITE: A0* is high; LDS pulses low while UDS stays high.\n- EVEN BYTE WRITE: A0* is low; UDS pulses low while LDS stays high.\n\nIn each cycle, AS falls before the selected data strobe or strobes, and R/W is low during the write interval. DTACK falls around the data-strobe assertion and returns high near the cycle boundary. The data bands on D15–D8 and D7–D0 open after R/W falls and extend through the strobe interval; no data values are specified. Both data rows are drawn in all three cycles, while the UDS and LDS waveforms distinguish the selected byte lanes.\n\nThe note “*INTERNAL SIGNAL ONLY” applies to A0*."
         },
         {
           "id": "page_0031_seg_003",
@@ -3164,7 +3169,8 @@
             }
           ],
           "md_text": "<table>\n<tr><th colspan=\"3\">{{text page=34 block=9 chars=0:20}}</th><th rowspan=\"2\">{{text page=34 block=10 chars=15:28}}</th></tr>\n<tr><th>{{text page=34 block=10 chars=0:3}}</th><th>{{text page=34 block=10 chars=5:8}}</th><th>{{text page=34 block=10 chars=10:12}}{{text page=34 block=10 chars=12:13 replace=0:1 with=\"0\"}}</th></tr>\n<tr><td>{{text page=34 block=12 chars=0:1}}</td><td>{{text page=34 block=12 chars=0:1}}</td><td>{{text page=34 block=12 chars=0:1}}</td><td>({{text page=34 block=11 chars=10:19}}, {{text page=34 block=11 chars=21:29}})*</td></tr>\n<tr><td>{{text page=34 block=12 chars=0:1}}</td><td>{{text page=34 block=12 chars=0:1}}</td><td>{{text page=34 block=12 chars=6:7}}</td><td>{{text page=34 block=12 chars=9:18}}</td></tr>\n<tr><td>{{text page=34 block=12 chars=0:1}}</td><td>{{text page=34 block=12 chars=6:7}}</td><td>{{text page=34 block=12 chars=0:1}}</td><td>{{text page=34 block=13 chars=9:21}}</td></tr>\n<tr><td>{{text page=34 block=12 chars=0:1}}</td><td>{{text page=34 block=12 chars=6:7}}</td><td>{{text page=34 block=12 chars=6:7}}</td><td>({{text page=34 block=11 chars=10:19}}, {{text page=34 block=11 chars=21:29}})*</td></tr>\n<tr><td>{{text page=34 block=12 chars=6:7}}</td><td>{{text page=34 block=12 chars=0:1}}</td><td>{{text page=34 block=12 chars=0:1}}</td><td>({{text page=34 block=11 chars=10:19}}, {{text page=34 block=11 chars=21:29}})*</td></tr>\n<tr><td>{{text page=34 block=12 chars=6:7}}</td><td>{{text page=34 block=12 chars=0:1}}</td><td>{{text page=34 block=12 chars=6:7}}</td><td>{{text page=34 block=16 chars=9:24}}</td></tr>\n<tr><td>{{text page=34 block=12 chars=6:7}}</td><td>{{text page=34 block=12 chars=6:7}}</td><td>{{text page=34 block=12 chars=0:1}}</td><td>{{text page=34 block=17 chars=9:27}}</td></tr>\n<tr><td>{{text page=34 block=12 chars=6:7}}</td><td>{{text page=34 block=12 chars=6:7}}</td><td>{{text page=34 block=12 chars=6:7}}</td><td>{{text page=34 block=18 chars=9:18}}</td></tr>\n</table>",
-          "table_format": "html"
+          "table_format": "html",
+          "description": "Table 6-1, Reference Classification, maps Function Code Output to Address Space. The shared Function Code Output heading covers three columns, FC2, FC1 and FC0; each combination corresponds to one Address Space entry.\n\nReading the bits in FC2, FC1, FC0 order:\n- 000: (Undefined, Reserved)*\n- 001: User Data\n- 010: User Program\n- 011: (Undefined, Reserved)*\n- 100: (Undefined, Reserved)*\n- 101: Supervisor Data\n- 110: Supervisor Program\n- 111: CPU Space\n\nThe asterisked note specifies that address space 3 is reserved for user definition, while 0 and 4 are reserved for future use by Motorola."
         },
         {
           "id": "page_0034_seg_010",
@@ -3219,7 +3225,8 @@
             }
           ],
           "md_text": "<table><tr><th>{{text page=35 block=1 chars=0:2}}</th><th>{{text page=35 block=1 chars=4:6}}</th><th>{{text page=35 block=1 chars=8:10}}</th><th>{{text page=35 block=1 chars=12:14}}</th><th>{{text page=35 block=1 chars=16:18}}</th><th>{{text page=35 block=1 chars=20:22}}</th><th>{{text page=35 block=1 chars=24:25}}</th><th>{{text page=35 block=1 chars=27:28}}</th><th>{{accepted text=\"7\"}}</th><th></th><th></th><th></th><th>{{text page=35 block=1 chars=9:10}}</th><th>{{text page=35 block=4 chars=2:3}}</th><th></th><th>{{text page=35 block=3 chars=0:1}}</th></tr><tr><td>{{text page=35 block=0 chars=709:711}}</td><td>*</td><td>{{text page=35 block=1 chars=41:43}}</td><td>{{text page=35 block=1 chars=41:42 replace=0:1 with=\"D\"}}{{text page=35 block=1 chars=42:43}}</td><td>{{text page=35 block=2 chars=164:166}}</td><td>{{text page=35 block=1 chars=56:58}}</td><td>{{text page=35 block=1 chars=61:63}}</td><td>{{text page=35 block=5 chars=122:124}}</td><td colspan=\"5\">*</td><td colspan=\"3\">{{text page=35 block=4 chars=0:3}}–{{text page=35 block=4 chars=4:6}}{{text page=35 block=4 chars=6:7 replace=0:1 with=\"0\"}}</td></tr></table>",
-          "table_format": "html"
+          "table_format": "html",
+          "description": "Figure 6-9, Special Status Word Format, maps the fields of a 16-bit word from bit 15 at the left to bit 0 at the right. The upper row gives bit positions; the lower row identifies individual flags and multi-bit fields.\n\n- Bit 15, RR: Rerun flag; 0=processor rerun (default), 1=software rerun.\n- Bit 14, *: Reserved.\n- Bit 13, IF: Instruction fetch to the instruction input buffer.\n- Bit 12, DF: Data fetch to the data input buffer.\n- Bit 11, RM: Read-modify-write cycle.\n- Bit 10, HB: High-byte transfer from the data output buffer or to the data input buffer.\n- Bit 9, BY: Byte-transfer flag. The legend states that HB selects the high or low byte of the transfer register. If BY is clear, the transfer is word.\n- Bit 8, RW (R/W in the legend): Read/write flag; 0=write, 1=read.\n- Bits 7 through 3 share one merged cell marked *, indicating reserved bits.\n- Bits 2 through 0 share one merged cell labeled FC2–FC0. The legend defines FC as the function code used during the faulted access.\n\nThe legend states that all bits marked * are reserved for future use by Motorola and will be zero when written by the MC68010."
         },
         {
           "id": "page_0035_seg_003",
@@ -3458,7 +3465,8 @@
             }
           ],
           "md_text": "<table>\n<tr><th rowspan=\"2\">{{text page=36 block=15 chars=0:6}}</th><th colspan=\"9\">{{text page=36 block=14 chars=0:11}}</th></tr>\n<tr><th>{{text page=36 block=16 chars=0:2}}</th><th>{{text page=36 block=15 chars=12:14}}</th><th>({{text page=36 block=15 chars=12:14}})</th><th>({{text page=36 block=15 chars=12:14}})+</th><th>−({{text page=36 block=15 chars=12:14}})</th><th>({{text page=36 block=14 chars=0:1 case=\"lower\"}}<sub>{{text page=36 block=16 chars=190:192}}</sub>, {{text page=36 block=15 chars=12:14}})</th><th>({{text page=36 block=14 chars=0:1 case=\"lower\"}}<sub>{{text page=36 block=16 chars=4:5}}</sub>, {{text page=36 block=15 chars=52:54}}, {{text page=36 block=15 chars=56:58}})*</th><th>({{text page=36 block=15 chars=63:66}}).{{text page=36 block=15 chars=68:69}}</th><th>({{text page=36 block=15 chars=72:75}}).{{text page=36 block=15 chars=77:78}}</th></tr>\n<tr><td>{{text page=36 block=16 chars=0:2}}<br>{{text page=36 block=15 chars=12:14}}<br>({{text page=36 block=15 chars=12:14}})</td><td><b>{{text page=36 block=16 chars=4:5}}</b>({{text page=36 block=16 chars=6:7}}/{{text page=36 block=16 chars=8:9}})<br><b>{{text page=36 block=16 chars=4:5}}</b>({{text page=36 block=16 chars=6:7}}/{{text page=36 block=16 chars=8:9}})<br><b>{{text page=36 block=16 chars=20:22}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=16 chars=177:178}})</td><td><b>{{text page=36 block=16 chars=4:5}}</b>({{text page=36 block=16 chars=6:7}}/{{text page=36 block=16 chars=8:9}})<br><b>{{text page=36 block=16 chars=4:5}}</b>({{text page=36 block=16 chars=6:7}}/{{text page=36 block=16 chars=8:9}})<br><b>{{text page=36 block=16 chars=20:22}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=16 chars=177:178}})</td><td><b>{{text page=36 block=16 chars=20:22}}</b>({{text page=36 block=16 chars=6:7}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=20:22}}</b>({{text page=36 block=16 chars=6:7}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=190:192}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=20:22}}</b>({{text page=36 block=16 chars=6:7}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=20:22}}</b>({{text page=36 block=16 chars=6:7}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=190:192}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=20:22}}</b>({{text page=36 block=16 chars=6:7}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=20:22}}</b>({{text page=36 block=16 chars=6:7}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=190:192}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=16 chars=50:51}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=16 chars=50:51}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=56:58}}</b>({{text page=36 block=16 chars=50:51}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=56:58}}</b>({{text page=36 block=16 chars=50:51}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=226:228}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=16 chars=50:51}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=16 chars=50:51}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=74:76}}</b>({{text page=36 block=16 chars=77:78}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=74:76}}</b>({{text page=36 block=16 chars=77:78}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=244:246}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})</td></tr>\n<tr><td>({{text page=36 block=15 chars=12:14}})+<br>−({{text page=36 block=15 chars=12:14}})<br>({{text page=36 block=14 chars=0:1 case=\"lower\"}}<sub>{{text page=36 block=16 chars=190:192}}</sub>, {{text page=36 block=15 chars=12:14}})</td><td><b>{{text page=36 block=16 chars=20:22}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=16 chars=177:178}})<br><b>{{text page=36 block=17 chars=95:97}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=16 chars=177:178}})<br><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=16 chars=8:9}})</td><td><b>{{text page=36 block=16 chars=20:22}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=16 chars=177:178}})<br><b>{{text page=36 block=17 chars=95:97}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=16 chars=177:178}})<br><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=16 chars=8:9}})</td><td><b>{{text page=36 block=16 chars=190:192}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=17 chars=113:115}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=190:192}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=17 chars=113:115}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=190:192}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=17 chars=113:115}}</b>({{text page=36 block=16 chars=175:176}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=226:228}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=244:246}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=226:228}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=74:76}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=17 chars=167:169}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=226:228}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=244:246}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=244:246}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=17 chars=167:169}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=17 chars=259:261}}</b>({{text page=36 block=15 chars=49:50}}/{{text page=36 block=18 chars=38:39}})</td></tr>\n<tr><td>({{text page=36 block=14 chars=0:1 case=\"lower\"}}<sub>{{text page=36 block=16 chars=4:5}}</sub>, {{text page=36 block=15 chars=52:54}}, {{text page=36 block=15 chars=56:58}})*<br>({{text page=36 block=15 chars=63:66}}).{{text page=36 block=15 chars=68:69}}<br>({{text page=36 block=15 chars=72:75}}).{{text page=36 block=15 chars=77:78}}</td><td><b>{{text page=36 block=16 chars=56:58}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=16 chars=8:9}})<br><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=16 chars=8:9}})<br><b>{{text page=36 block=16 chars=74:76}}</b>({{text page=36 block=17 chars=82:83}}/{{text page=36 block=17 chars=100:101}})</td><td><b>{{text page=36 block=16 chars=56:58}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=16 chars=8:9}})<br><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=16 chars=8:9}})<br><b>{{text page=36 block=16 chars=74:76}}</b>({{text page=36 block=17 chars=82:83}}/{{text page=36 block=17 chars=100:101}})</td><td><b>{{text page=36 block=16 chars=226:228}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=244:246}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=226:228}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=244:246}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=226:228}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=244:246}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=17 chars=167:169}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=244:246}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=17 chars=259:261}}</b>({{text page=36 block=15 chars=49:50}}/{{text page=36 block=18 chars=38:39}})</td><td><b>{{text page=36 block=18 chars=69:71}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=17 chars=167:169}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=18 chars=87:89}}</b>({{text page=36 block=15 chars=49:50}}/{{text page=36 block=18 chars=38:39}})</td><td><b>{{text page=36 block=17 chars=167:169}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=244:246}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=17 chars=259:261}}</b>({{text page=36 block=15 chars=49:50}}/{{text page=36 block=18 chars=38:39}})</td><td><b>{{text page=36 block=18 chars=87:89}}</b>({{text page=36 block=15 chars=49:50}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=17 chars=259:261}}</b>({{text page=36 block=15 chars=49:50}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=18 chars=267:269}}</b>({{text page=36 block=18 chars=270:272}}/{{text page=36 block=18 chars=273:274}})</td></tr>\n<tr><td>({{text page=36 block=14 chars=0:1 case=\"lower\"}}<sub>{{text page=36 block=16 chars=190:192}}</sub>, {{text page=36 block=19 chars=6:8}})<br>({{text page=36 block=14 chars=0:1 case=\"lower\"}}<sub>{{text page=36 block=16 chars=4:5}}</sub>, {{text page=36 block=19 chars=97:99}}, {{text page=36 block=19 chars=101:103}})*<br>#&lt;{{text page=36 block=19 chars=190:194}}&gt;</td><td><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=16 chars=8:9}})<br><b>{{text page=36 block=16 chars=56:58}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=16 chars=8:9}})<br><b>{{text page=36 block=16 chars=190:192}}</b>({{text page=36 block=16 chars=50:51}}/{{text page=36 block=16 chars=66:67}})</td><td><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=16 chars=8:9}})<br><b>{{text page=36 block=16 chars=56:58}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=16 chars=8:9}})<br><b>{{text page=36 block=16 chars=190:192}}</b>({{text page=36 block=16 chars=50:51}}/{{text page=36 block=16 chars=66:67}})</td><td><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=226:228}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=16 chars=50:51}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=226:228}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=16 chars=50:51}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=217:219}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=226:228}}</b>({{text page=36 block=15 chars=39:40}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=16 chars=47:49}}</b>({{text page=36 block=16 chars=50:51}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=244:246}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=17 chars=167:169}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=74:76}}</b>({{text page=36 block=16 chars=77:78}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=17 chars=167:169}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=18 chars=69:71}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=19 chars=251:253}}</b>({{text page=36 block=16 chars=77:78}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=16 chars=244:246}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=17 chars=167:169}}</b>({{text page=36 block=16 chars=247:248}}/{{text page=36 block=15 chars=38:39}})<br><b>{{text page=36 block=16 chars=74:76}}</b>({{text page=36 block=16 chars=77:78}}/{{text page=36 block=15 chars=38:39}})</td><td><b>{{text page=36 block=17 chars=259:261}}</b>({{text page=36 block=15 chars=49:50}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=18 chars=87:89}}</b>({{text page=36 block=15 chars=49:50}}/{{text page=36 block=18 chars=38:39}})<br><b>{{text page=36 block=18 chars=69:71}}</b>({{text page=36 block=16 chars=4:5}}/{{text page=36 block=15 chars=38:39}})</td></tr>\n</table>",
-          "table_format": "html"
+          "table_format": "html",
+          "description": "Table 7-2, “Move Byte Instruction Execution Times,” gives an execution-time entry for each combination of source row and destination column. The Source heading spans both header rows; Destination groups nine columns. Within each three-line body cell, the entries align with the three source labels in order.\n\nBelow, d16 and d8 represent d with subscripts 16 and 8. Each source's entries are listed in this destination-group order:\n1. Dn and An (the same entry for either destination).\n2. (An), (An)+ and −(An) (the same entry for all three).\n3. (d16, An) and (xxx).W (the same entry for either).\n4. (d8, An, Xn)*.\n5. (xxx).L.\n\nThe entries retain the table's notation: a leading number followed by a parenthesized pair. The supplied table and note do not define the time unit or the meaning of that pair.\n\nFor each source, the five destination-group entries are:\n- Dn: 8(2/0); 12(2/1); 20(4/1); 22(4/1); 28(6/1).\n- An: 8(2/0); 12(2/1); 20(4/1); 22(4/1); 28(6/1).\n- (An): 12(3/0); 16(3/1); 24(5/1); 26(5/1); 32(7/1).\n- (An)+: 12(3/0); 16(3/1); 24(5/1); 26(5/1); 32(7/1).\n- −(An): 14(3/0); 18(3/1); 26(5/1); 28(5/1); 34(7/1).\n- (d16, An): 20(5/0); 24(5/1); 32(7/1); 34(7/1); 40(9/1).\n- (d8, An, Xn)*: 22(5/0); 26(5/1); 34(7/1); 36(7/1); 42(9/1).\n- (xxx).W: 20(5/0); 24(5/1); 32(7/1); 34(7/1); 40(9/1).\n- (xxx).L: 28(7/0); 32(7/1); 40(9/1); 42(9/1); 48(11/1).\n- (d16, PC): 20(5/0); 24(5/1); 32(7/1); 34(7/1); 40(9/1).\n- (d8, PC, Xn)*: 22(5/0); 26(5/1); 34(7/1); 36(7/1); 42(9/1).\n- #<data>: 16(4/0); 20(4/1); 28(6/1); 30(6/1); 36(8/1).\n\nThe asterisks on indexed source and destination forms refer to the note: the size of the index register (Xn) does not affect execution time."
         },
         {
           "id": "page_0036_seg_009",
@@ -4567,7 +4575,8 @@
             }
           ],
           "md_text": "<table>\n<tr><th colspan=\"2\">{{text page=43 block=3 chars=0:11}}<br><table><tr><th>{{text page=43 block=41 chars=0:2}}</th><th>{{text page=43 block=41 chars=3:5}}</th><th>{{text page=43 block=7 chars=13:15}}</th><th>{{text page=43 block=41 chars=9:11}}</th><th>{{text page=43 block=41 chars=4:5}}</th></tr><tr><td>{{text page=43 block=42 chars=0:1}}</td><td colspan=\"2\">{{text page=43 block=42 chars=2:3}}</td><td colspan=\"2\">{{text page=43 block=42 chars=4:5}}</td></tr></table></th></tr>\n<tr><th colspan=\"2\">{{text page=43 block=4 chars=0:18}}</th></tr>\n<tr><td>{{text page=43 block=5 chars=0:4}} ({{text page=43 block=5 chars=6:7}})</td><td>{{text page=43 block=5 chars=9:10}}</td></tr>\n<tr><td>{{text page=43 block=6 chars=0:15}} ({{text page=43 block=6 chars=17:18}})</td><td>{{text page=43 block=6 chars=20:21}}</td></tr>\n<tr><td>{{text page=43 block=7 chars=0:8}} ({{text page=43 block=7 chars=10:11}})</td><td>{{text page=43 block=7 chars=13:15}}</td></tr>\n<tr><td>{{text page=43 block=8 chars=0:5}}</td><td>{{text page=43 block=8 chars=6:8}}</td></tr>\n<tr><th colspan=\"2\">{{text page=43 block=9 chars=0:22}}</th></tr>\n<tr><td>{{text page=43 block=10 chars=0:17}}</td><td>{{text page=43 block=42 chars=0:1}} = {{text page=43 block=10 chars=22:23}}</td></tr>\n<tr><td>{{text page=43 block=11 chars=0:17}}</td><td>{{text page=43 block=5 chars=6:7}} = {{text page=43 block=5 chars=9:10}}</td></tr>\n<tr><th colspan=\"2\">{{text page=43 block=12 chars=0:18}}</th></tr>\n<tr><td>{{text page=43 block=13 chars=0:23}}</td><td>+{{text page=43 block=13 chars=25:28}} (${{text page=43 block=13 chars=31:33}})</td></tr>\n<tr><td>{{text page=43 block=14 chars=0:24}}</td><td>{{text page=43 block=14 chars=25:26}} &lt; {{text page=43 block=14 chars=29:30}} &lt; {{text page=43 block=14 chars=33:36}} (${{text page=43 block=14 chars=39:41}})</td></tr>\n<tr><td>{{text page=43 block=21 chars=0:17}}</td><td>{{text page=43 block=15 chars=18:33}}</td></tr>\n<tr><td>{{text page=43 block=7 chars=0:8}}</td><td>{{text page=43 block=5 chars=9:10}}.{{text page=43 block=42 chars=4:5}}</td></tr>\n<tr><td>{{text page=43 block=23 chars=0:42}}</td><td>(−{{text page=43 block=5 chars=9:10}})<sup>{{text page=43 block=42 chars=0:1}}</sup> × {{text page=43 block=8 chars=7:8}}<sup>{{text page=43 block=17 chars=52:53}}−{{text page=43 block=17 chars=54:57}}</sup> × {{text page=43 block=5 chars=9:10}}.{{text page=43 block=42 chars=4:5}}</td></tr>\n<tr><th colspan=\"2\">{{text page=43 block=18 chars=0:20}}</th></tr>\n<tr><td>{{text page=43 block=19 chars=0:30}}</td><td>{{text page=43 block=19 chars=31:32}} (${{text page=43 block=19 chars=35:37}})</td></tr>\n<tr><td>{{text page=43 block=13 chars=0:23}}</td><td>+{{text page=43 block=20 chars=25:28}} (${{text page=43 block=20 chars=31:33}})</td></tr>\n<tr><td>{{text page=43 block=21 chars=0:17}}</td><td>{{text page=43 block=15 chars=26:33}}</td></tr>\n<tr><td>{{text page=43 block=7 chars=0:8}}</td><td>{{text page=43 block=10 chars=22:23}}.{{text page=43 block=42 chars=4:5}}</td></tr>\n<tr><td>{{text page=43 block=23 chars=0:42}}</td><td>(−{{text page=43 block=5 chars=9:10}})<sup>{{text page=43 block=42 chars=0:1}}</sup> × {{text page=43 block=8 chars=7:8}}<sup>−{{text page=43 block=20 chars=25:28}}</sup> × {{text page=43 block=10 chars=22:23}}.{{text page=43 block=42 chars=4:5}}</td></tr>\n<tr><th colspan=\"2\">{{text page=43 block=24 chars=0:12}}</th></tr>\n<tr><td>{{text page=43 block=19 chars=0:30}}</td><td>{{text page=43 block=19 chars=31:32}} (${{text page=43 block=19 chars=35:37}})</td></tr>\n<tr><td>{{text page=43 block=7 chars=0:8}}</td><td>{{text page=43 block=26 chars=9:10}}.{{text page=43 block=26 chars=11:12}} = {{text page=43 block=26 chars=15:16}}.{{text page=43 block=26 chars=17:18}}</td></tr>\n<tr><th colspan=\"2\">{{text page=43 block=27 chars=0:17}}</th></tr>\n<tr><td>{{text page=43 block=28 chars=0:30}}</td><td>{{text page=43 block=14 chars=33:36}} (${{text page=43 block=14 chars=39:41}})</td></tr>\n<tr><td>{{text page=43 block=7 chars=0:8}}</td><td>{{text page=43 block=26 chars=9:10}}.{{text page=43 block=26 chars=11:12}} = {{text page=43 block=26 chars=15:16}}.{{text page=43 block=26 chars=17:18}}</td></tr>\n<tr><th colspan=\"2\">{{text page=43 block=30 chars=0:4}}</th></tr>\n<tr><td>{{text page=43 block=5 chars=0:4}}</td><td>{{text page=43 block=31 chars=5:8}}’{{text page=43 block=31 chars=9:15}}</td></tr>\n<tr><td>{{text page=43 block=28 chars=0:30}}</td><td>{{text page=43 block=14 chars=33:36}} (${{text page=43 block=14 chars=39:41}})</td></tr>\n<tr><td>{{text page=43 block=7 chars=0:8}}</td><td>{{text page=43 block=15 chars=26:33}}</td></tr>\n<tr><td>{{text page=43 block=34 chars=0:26}}<br>　　{{text page=43 block=35 chars=0:12}}<br>　　{{text page=43 block=35 chars=13:22}}<br>　　{{text page=43 block=35 chars=23:58}}<br>　　{{text page=43 block=35 chars=59:88}}</td><td><br>{{text page=43 block=36 chars=0:1}}.{{text page=43 block=36 chars=2:7}}...{{text page=43 block=36 chars=8:12}}<br>{{text page=43 block=36 chars=13:14}}.{{text page=43 block=36 chars=15:20}}...{{text page=43 block=36 chars=21:25}}<br>{{text page=43 block=36 chars=26:31}}...{{text page=43 block=36 chars=8:12}}<br>{{text page=43 block=36 chars=37:42}}...{{text page=43 block=36 chars=43:47}}</td></tr>\n<tr><th colspan=\"2\">{{text page=43 block=37 chars=0:18}}</th></tr>\n<tr><td>{{text page=43 block=38 chars=0:27}}</td><td>{{text page=43 block=38 chars=28:29}}.{{text page=43 block=38 chars=30:31}} × {{text page=43 block=38 chars=34:36}}<sup>{{text page=43 block=39 chars=37:39}}</sup></td></tr>\n<tr><td>{{text page=43 block=39 chars=0:27}}</td><td>{{text page=43 block=39 chars=28:29}}.{{text page=43 block=39 chars=30:31}} × {{text page=43 block=39 chars=34:36}}<sup>−{{text page=43 block=39 chars=37:39}}</sup></td></tr>\n<tr><td>{{text page=43 block=40 chars=0:29}}</td><td>{{text page=43 block=40 chars=30:31}}.{{text page=43 block=40 chars=32:33}} × {{text page=43 block=40 chars=36:38}}<sup>−{{text page=43 block=40 chars=39:41}}</sup></td></tr>\n</table>",
-          "table_format": "html"
+          "table_format": "html",
+          "description": "Table 1-4, “Single-Precision Real Format Summary Data Format,” summarizes the 32-bit single-precision real format. Section headings span both columns; beneath each heading, the left column names a property and the right column gives its value or representation.\n\nThe data-format diagram places sign s at bit 31, biased exponent e at bits 30–23, and fraction f at bits 22–0. Their field sizes are 1, 8, and 23 bits respectively, totaling 32 bits. For a positive fraction, s = 0; for a negative fraction, s = 1.\n\nThe number categories are:\n- Normalized numbers: the biased-exponent bias is +127 ($7F), and its range is 0 < e < 255 ($FF). The fraction field may be zero or nonzero. The represented fraction is 1.f, and the real-number value is (−1)^s × 2^(e−127) × 1.f.\n- Denormalized numbers: the biased exponent is at its format minimum, 0 ($00), and the listed bias is +126 ($7E). The fraction field is nonzero, the represented fraction is 0.f, and the real-number value is (−1)^s × 2^(−126) × 0.f.\n- Signed zeros: the biased exponent is at its format minimum, 0 ($00), and the fraction is 0.f = 0.0.\n- Signed infinities: the biased exponent is at its format maximum, 255 ($FF), and the fraction is 0.f = 0.0.\n- NANs: the sign is “Don’t Care,” the biased exponent is at its format maximum, 255 ($FF), and the fraction is nonzero. Under “Representation of Fraction,” nonsignaling corresponds to 0.1xxxx...xxxx, signaling to 0.0xxxx...xxxx, “Nonzero Bit Pattern Created by User” to xxxxx...xxxx, and “Fraction When Created by FPCP” to 11111...1111. The table does not explicitly define x.\n\nThe approximate ranges list a maximum positive normalized value of 3.4 × 10^38, a minimum positive normalized value of 1.2 × 10^(−38), and a minimum positive denormalized value of 1.4 × 10^(−45)."
         },
         {
           "id": "page_0044_seg_001",
@@ -5082,7 +5091,8 @@
               ]
             }
           ],
-          "asset": "assets/page_0048_seg_002.png"
+          "asset": "assets/page_0048_seg_002.png",
+          "description": "Figure 3-2. Rounding Algorithm Flowchart shows a top-to-bottom rounding procedure with circular branch and merge points, rectangular operations, and rounded ENTRY and EXIT boxes.\n\nAt ENTRY, the branch labeled “GUARD, ROUND, AND STICKY BITS = 0” follows a separate path down the right side, labeled EXACT RESULT, directly to EXIT. The other path sets INEX2 to 1 and proceeds to SELECT ROUNDING MODE, which branches into RN, RM, RP, and RZ.\n\n- RN: A branch leads to ADD 1 TO LSB when “GUARD AND LSB = 1, ROUND AND STICKY = 0” or “GUARD = 1, ROUND OR STICKY = 1.” A separate path bypasses this addition.\n- RM: The POS intermediate-result branch bypasses addition; the NEG branch leads to ADD 1 TO LSB.\n- RP: The POS intermediate-result branch leads to the same ADD 1 TO LSB box used by RM; the NEG branch bypasses addition.\n- RZ: The path passes through “GUARD, ROUND, AND STICKY ARE CHOPPED.”\n\nThese rounding paths converge below the mode branches. A subsequent branch labeled OVERFLOW = 1 passes through “SHIFT MANTISSA RIGHT 1 BIT, ADD 1 TO EXPONENT” and rejoins the main path. The main path then sets GUARD, ROUND, and STICKY individually to 0 before reaching the lower EXIT. The EXACT RESULT path remains separate from these rounding and overflow operations."
         },
         {
           "id": "page_0048_seg_003",
@@ -5604,7 +5614,8 @@
             }
           ],
           "md_text": "<table><tr><th>{{text page=52 block=18 chars=0:2}}</th><th>{{text page=52 block=18 chars=3:5}}</th><th>{{text page=52 block=18 chars=6:8}}</th><th>{{text page=52 block=18 chars=9:11}}</th><th>{{text page=52 block=18 chars=12:14}}</th><th>{{text page=52 block=18 chars=15:17}}</th><th>{{text page=52 block=18 chars=18:19}}</th><th>{{text page=52 block=18 chars=20:21}}</th><th>{{text page=52 block=18 chars=22:23}}</th><th>{{text page=52 block=18 chars=24:25}}</th><th>{{text page=52 block=18 chars=1:2}}</th><th>{{text page=52 block=18 chars=4:5}}</th><th>{{text page=52 block=18 chars=7:8}}</th><th>{{text page=52 block=18 chars=10:11}}</th><th>{{text page=52 block=18 chars=0:1}}</th><th>{{text page=52 block=18 chars=16:17}}</th></tr><tr><td>{{text page=52 block=18 chars=0:1}}</td><td>{{text page=52 block=18 chars=0:1}}</td><td>{{text page=52 block=18 chars=16:17}}</td><td>{{text page=52 block=18 chars=16:17}}</td><td colspan=\"3\">{{text page=52 block=18 chars=47:58}}</td><td>{{text page=52 block=18 chars=0:1}}</td><td>{{text page=52 block=18 chars=16:17}}</td><td>{{text page=52 block=18 chars=16:17}}</td><td>{{text page=52 block=18 chars=16:17}}</td><td>{{text page=52 block=18 chars=16:17}}</td><td>{{text page=52 block=18 chars=69:70}}/{{text page=52 block=18 chars=71:72}}</td><td colspan=\"3\">{{text page=52 block=18 chars=73:84}}</td></tr></table>",
-          "table_format": "html"
+          "table_format": "html",
+          "description": "The table shows a 16-bit layout, with columns numbered from bit 15 on the left to bit 0 on the right. Its single data row assigns the fields as follows:\n- Bits 15–12 contain 1, 1, 0, 0, respectively.\n- Bits 11–9 form the shared field REGISTER Rx.\n- Bit 8 contains 1.\n- Bits 7–4 each contain 0.\n- Bit 3 is labeled R/M.\n- Bits 2–0 form the shared field REGISTER Ry.\nNo caption or explanation of R/M or the register fields is supplied with this table."
         },
         {
           "id": "page_0052_seg_005",
@@ -6029,7 +6040,64 @@
               ]
             }
           ],
-          "md_text": "| **{{text page=54 block=19 chars=0:15}}** | **{{text page=54 block=19 chars=11:15}}** | **{{text page=54 block=19 chars=21:29}}** |\n| --- | --- | --- |\n| {{text page=54 block=21 chars=0:2}} | {{text page=54 block=21 chars=3:6}} | {{text page=54 block=21 chars=7:10}}. {{text page=54 block=21 chars=12:18}}:{{text page=54 block=21 chars=19:21}} |\n| {{text page=54 block=22 chars=0:2}}* | {{text page=54 block=22 chars=4:7}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| ({{text page=54 block=22 chars=0:2}}) | {{text page=54 block=23 chars=5:8}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| ({{text page=54 block=22 chars=0:2}}) + | {{text page=54 block=24 chars=7:10}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| – ({{text page=54 block=22 chars=0:2}}) | {{text page=54 block=23 chars=36:39}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| ({{text page=54 block=26 chars=1:2}}<sub>{{text page=54 block=28 chars=0:2}}</sub>,{{text page=54 block=22 chars=0:2}}) | {{text page=54 block=30 chars=5:8}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| ({{text page=54 block=26 chars=1:2}}<sub>{{text page=54 block=37 chars=0:1}}</sub>,{{text page=54 block=39 chars=1:3}},{{text page=54 block=39 chars=4:6}}) | {{text page=54 block=39 chars=8:11}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n\n| **{{text page=54 block=19 chars=0:15}}** | **{{text page=54 block=19 chars=11:15}}** | **{{text page=54 block=19 chars=21:29}}** |\n| --- | --- | --- |\n| ({{text page=54 block=21 chars=23:26}}).{{text page=54 block=21 chars=28:29}} | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=21 chars=3:6}} |\n| ({{text page=54 block=22 chars=24:27}}).{{text page=54 block=22 chars=29:30}} | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=22 chars=4:7}} |\n| #&lt;{{text page=54 block=23 chars=26:30}}&gt; | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=23 chars=36:39}} |\n| | | |\n| | | |\n| ({{text page=54 block=26 chars=1:2}}<sub>{{text page=54 block=28 chars=0:2}}</sub>,{{text page=54 block=34 chars=1:3}}) | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=23 chars=5:8}} |\n| ({{text page=54 block=26 chars=1:2}}<sub>{{text page=54 block=37 chars=0:1}}</sub>,{{text page=54 block=43 chars=1:3}},{{text page=54 block=43 chars=4:6}}) | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=24 chars=7:10}} |\n\n**{{text page=54 block=45 chars=0:7}}, {{text page=54 block=45 chars=9:16}}, {{text page=54 block=45 chars=18:34}}**\n\n| | | |\n| --- | --- | --- |\n| ({{text page=54 block=47 chars=1:3}},{{text page=54 block=47 chars=4:6}},{{text page=54 block=47 chars=7:9}})\\\\*\\\\* | {{text page=54 block=39 chars=8:11}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| ([{{text page=54 block=48 chars=2:4}},{{text page=54 block=48 chars=5:7}},{{text page=54 block=48 chars=8:10}}],{{text page=54 block=48 chars=12:14}}) | {{text page=54 block=39 chars=8:11}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| ([{{text page=54 block=48 chars=2:4}},{{text page=54 block=48 chars=5:7}}],{{text page=54 block=48 chars=8:10}},{{text page=54 block=48 chars=12:14}}) | {{text page=54 block=39 chars=8:11}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n\n| | | |\n| --- | --- | --- |\n| ({{text page=54 block=47 chars=33:35}},{{text page=54 block=47 chars=36:38}},{{text page=54 block=47 chars=39:41}})† | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=24 chars=7:10}} |\n| ([{{text page=54 block=48 chars=37:39}},{{text page=54 block=48 chars=40:42}},{{text page=54 block=48 chars=43:45}}],{{text page=54 block=48 chars=47:49}}) | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=24 chars=7:10}} |\n| ([{{text page=54 block=48 chars=37:39}},{{text page=54 block=48 chars=40:42}}],{{text page=54 block=48 chars=43:45}},{{text page=54 block=48 chars=47:49}}) | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=24 chars=7:10}} |",
+          "md_text": "| **{{text page=54 block=19 chars=0:15}}** | **{{text page=54 block=19 chars=11:15}}** | **{{text page=54 block=19 chars=21:29}}** |\n| --- | --- | --- |\n| {{text page=54 block=21 chars=0:2}} | {{text page=54 block=21 chars=3:6}} | {{text page=54 block=21 chars=7:10}}. {{text page=54 block=21 chars=12:18}}:{{text page=54 block=21 chars=19:21}} |\n| {{text page=54 block=22 chars=0:2}}* | {{text page=54 block=22 chars=4:7}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| ({{text page=54 block=22 chars=0:2}}) | {{text page=54 block=23 chars=5:8}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| ({{text page=54 block=22 chars=0:2}}) + | {{text page=54 block=24 chars=7:10}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| – ({{text page=54 block=22 chars=0:2}}) | {{text page=54 block=23 chars=36:39}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| ({{text page=54 block=26 chars=1:2}}<sub>{{text page=54 block=28 chars=0:2}}</sub>,{{text page=54 block=22 chars=0:2}}) | {{text page=54 block=30 chars=5:8}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| ({{text page=54 block=26 chars=1:2}}<sub>{{text page=54 block=37 chars=0:1}}</sub>,{{text page=54 block=39 chars=1:3}},{{text page=54 block=39 chars=4:6}}) | {{text page=54 block=39 chars=8:11}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n",
+          "table_format": "markdown"
+        },
+        {
+          "id": "split-2438bd83ce174cd297850e8377d6dbf0",
+          "type": "table",
+          "role": null,
+          "visible": true,
+          "pdf_regions": [
+            {
+              "page": 54,
+              "bbox": [
+                528,
+                1299,
+                2289,
+                2215
+              ]
+            }
+          ],
+          "md_text": "| **{{text page=54 block=19 chars=0:15}}** | **{{text page=54 block=19 chars=11:15}}** | **{{text page=54 block=19 chars=21:29}}** |\n| --- | --- | --- |\n| ({{text page=54 block=21 chars=23:26}}).{{text page=54 block=21 chars=28:29}} | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=21 chars=3:6}} |\n| ({{text page=54 block=22 chars=24:27}}).{{text page=54 block=22 chars=29:30}} | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=22 chars=4:7}} |\n| #&lt;{{text page=54 block=23 chars=26:30}}&gt; | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=23 chars=36:39}} |\n| | | |\n| | | |\n| ({{text page=54 block=26 chars=1:2}}<sub>{{text page=54 block=28 chars=0:2}}</sub>,{{text page=54 block=34 chars=1:3}}) | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=23 chars=5:8}} |\n| ({{text page=54 block=26 chars=1:2}}<sub>{{text page=54 block=37 chars=0:1}}</sub>,{{text page=54 block=43 chars=1:3}},{{text page=54 block=43 chars=4:6}}) | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=24 chars=7:10}} |\n",
+          "table_format": "markdown"
+        },
+        {
+          "id": "split-8ae38e9bf4ac41578117353fad134793",
+          "type": "table",
+          "role": null,
+          "visible": true,
+          "pdf_regions": [
+            {
+              "page": 54,
+              "bbox": [
+                528,
+                1299,
+                2289,
+                2215
+              ]
+            }
+          ],
+          "md_text": "\n**{{text page=54 block=45 chars=0:7}}, {{text page=54 block=45 chars=9:16}}, {{text page=54 block=45 chars=18:34}}**\n\n| **{{text page=54 block=19 chars=0:15}}** | **{{text page=54 block=19 chars=11:15}}** | **{{text page=54 block=19 chars=21:29}}** |\n| --- | --- | --- |\n| ({{text page=54 block=47 chars=1:3}},{{text page=54 block=47 chars=4:6}},{{text page=54 block=47 chars=7:9}})\\\\*\\\\* | {{text page=54 block=39 chars=8:11}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| ([{{text page=54 block=48 chars=2:4}},{{text page=54 block=48 chars=5:7}},{{text page=54 block=48 chars=8:10}}],{{text page=54 block=48 chars=12:14}}) | {{text page=54 block=39 chars=8:11}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n| ([{{text page=54 block=48 chars=2:4}},{{text page=54 block=48 chars=5:7}}],{{text page=54 block=48 chars=8:10}},{{text page=54 block=48 chars=12:14}}) | {{text page=54 block=39 chars=8:11}} | {{text page=54 block=24 chars=11:14}}. {{text page=54 block=24 chars=16:22}}:{{text page=54 block=24 chars=23:25}} |\n",
+          "table_format": "markdown"
+        },
+        {
+          "id": "split-0b4d6dd475d1475d91e04aa6a6c3bf61",
+          "type": "table",
+          "role": null,
+          "visible": true,
+          "pdf_regions": [
+            {
+              "page": 54,
+              "bbox": [
+                528,
+                1299,
+                2289,
+                2215
+              ]
+            }
+          ],
+          "md_text": "\n| **{{text page=54 block=19 chars=0:15}}** | **{{text page=54 block=19 chars=11:15}}** | **{{text page=54 block=19 chars=21:29}}** |\n| --- | --- | --- |\n| ({{text page=54 block=47 chars=33:35}},{{text page=54 block=47 chars=36:38}},{{text page=54 block=47 chars=39:41}})† | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=24 chars=7:10}} |\n| ([{{text page=54 block=48 chars=37:39}},{{text page=54 block=48 chars=40:42}},{{text page=54 block=48 chars=43:45}}],{{text page=54 block=48 chars=47:49}}) | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=24 chars=7:10}} |\n| ([{{text page=54 block=48 chars=37:39}},{{text page=54 block=48 chars=40:42}}],{{text page=54 block=48 chars=43:45}},{{text page=54 block=48 chars=47:49}}) | {{text page=54 block=21 chars=30:33}} | {{text page=54 block=24 chars=7:10}} |",
           "table_format": "markdown"
         },
         {
@@ -6046,16 +6114,7 @@
                 875,
                 2279
               ]
-            }
-          ],
-          "md_text": "\\\\*{{text page=54 block=16 chars=1:19}}"
-        },
-        {
-          "id": "page_0054_seg_011",
-          "type": "prose",
-          "role": "footnote",
-          "visible": true,
-          "pdf_regions": [
+            },
             {
               "page": 54,
               "bbox": [
@@ -6066,7 +6125,7 @@
               ]
             }
           ],
-          "md_text": "\\\\*\\\\*{{text page=54 block=16 chars=22:44}}."
+          "md_text": "\\\\*{{text page=54 block=16 chars=1:19}}\n\\\\*\\\\*{{text page=54 block=16 chars=22:44}}."
         },
         {
           "id": "page_0055_seg_002",
@@ -8265,7 +8324,14 @@
             }
           ],
           "md_text": "```text\n{{text page=77 block=1 chars=0:7}}\n{{text page=77 block=1 chars=9:18}} {{text page=77 block=1 chars=20:24}}\n{{text page=77 block=2 chars=0:1}}-{{text page=77 block=2 chars=2:3}}-{{text page=77 block=2 chars=4:6}}\n{{text page=77 block=2 chars=8:13}}\n\n{{text page=77 block=3 chars=0:2}} /{{text page=77 block=3 chars=5:9}} /{{text page=77 block=3 chars=12:15}} /{{text page=77 block=4 chars=8:12}} /{{text page=77 block=3 chars=25:28}} /{{text page=77 block=3 chars=31:34}} /{{text page=77 block=3 chars=37:40}} /{{text page=77 block=3 chars=43:46}} /{{text page=77 block=3 chars=49:52}} {{text page=77 block=3 chars=54:57}}\n{{text page=77 block=3 chars=59:65}} /{{text page=77 block=3 chars=68:73}} /{{text page=77 block=3 chars=76:81}} /{{text page=77 block=3 chars=84:87}} /{{text page=77 block=3 chars=90:93}} /{{text page=77 block=3 chars=96:99}} /{{text page=77 block=3 chars=102:105}} /{{text page=77 block=3 chars=108:111}} /{{text page=77 block=3 chars=114:116}} {{text page=77 block=3 chars=118:121}}\n\n{{text page=77 block=4 chars=0:3}} = {{text page=77 block=4 chars=8:12}} * /{{text page=77 block=4 chars=18:23}} * {{text page=77 block=4 chars=28:31}} *                         /{{text page=77 block=4 chars=37:40}} + ;{{text page=77 block=4 chars=48:56}} {{text page=77 block=4 chars=58:61}}\n      {{text page=77 block=4 chars=8:12}} * {{text page=77 block=5 chars=5:8}}       *                           /{{text page=77 block=5 chars=21:24}}   ;{{text page=77 block=5 chars=32:36}} {{text page=77 block=5 chars=38:43}} /{{text page=77 block=5 chars=46:48}}\n\n{{text page=77 block=6 chars=0:3}} = {{text page=77 block=6 chars=8:12}} * /{{text page=77 block=6 chars=18:23}} * {{text page=77 block=6 chars=28:31}} * /{{text page=77 block=6 chars=37:40}} *                  /{{text page=77 block=6 chars=46:49}} +\n      {{text page=77 block=7 chars=0:4}} * {{text page=77 block=7 chars=9:12}}       *                           /{{text page=77 block=7 chars=24:27}}\n\n{{text page=77 block=8 chars=0:3}} = {{text page=77 block=8 chars=8:12}} * /{{text page=77 block=8 chars=18:23}} * {{text page=77 block=8 chars=28:31}} * /{{text page=77 block=8 chars=37:40}} * /{{text page=77 block=8 chars=46:48}}{{text page=77 block=8 chars=48:49 replace=0:1 with=\"2\"}} *           /{{text page=77 block=8 chars=62:65}} +\n      {{text page=77 block=9 chars=0:4}} * {{text page=77 block=9 chars=9:12}}       *                           /{{text page=77 block=3 chars=12:15}}\n\n{{text page=77 block=10 chars=0:3}} = {{text page=77 block=10 chars=8:12}} * /{{text page=77 block=10 chars=18:23}} * {{text page=77 block=10 chars=28:31}} * /{{text page=77 block=10 chars=37:40}} * /{{text page=77 block=10 chars=46:49}} * /{{text page=77 block=10 chars=55:58}} *          /{{text page=77 block=10 chars=64:67}} +\n      {{text page=77 block=4 chars=8:12}} * {{text page=77 block=11 chars=5:8}}       *                                /{{text page=77 block=11 chars=20:23}}\n\n{{text page=77 block=12 chars=0:3}} = {{text page=77 block=12 chars=8:12}} * /{{text page=77 block=12 chars=18:23}} * {{text page=77 block=12 chars=28:31}} * /{{text page=77 block=12 chars=37:40}} * /{{text page=77 block=12 chars=46:49}} * /{{text page=77 block=12 chars=55:58}} * /{{text page=77 block=12 chars=64:67}} *   /{{text page=77 block=12 chars=80:83}} +\n      {{text page=77 block=13 chars=0:4}} * {{text page=77 block=13 chars=5:8}}       *                                /{{text page=77 block=13 chars=20:23}}\n\n{{text page=77 block=14 chars=0:5}} = {{text page=77 block=14 chars=10:14}}                                             ;{{text page=77 block=14 chars=16:21}} {{text page=77 block=14 chars=23:26}} {{text page=77 block=14 chars=28:33}} {{text page=77 block=14 chars=35:37}} {{text page=77 block=14 chars=39:41}}\n\n{{text page=77 block=15 chars=0:2}}    = {{text page=77 block=15 chars=14:18}} * /{{text page=77 block=15 chars=24:27}} +                                    ;{{text page=77 block=15 chars=33:35}} {{text page=77 block=15 chars=37:39}} {{text page=77 block=15 chars=41:45}} {{text page=77 block=15 chars=47:49}} {{text page=77 block=15 chars=51:54}}\n        {{text page=77 block=6 chars=37:40}}  * /{{text page=77 block=6 chars=46:49}} +\n        {{text page=77 block=16 chars=15:18}}  * /{{text page=77 block=16 chars=24:27}} +\n        {{text page=77 block=10 chars=55:58}}  * /{{text page=77 block=10 chars=64:67}} +\n        {{text page=77 block=12 chars=64:67}}  * /{{text page=77 block=12 chars=80:83}} +\n        {{text page=77 block=16 chars=65:68}}  * /{{text page=77 block=16 chars=74:77}}\n\n{{text page=77 block=17 chars=0:5}} = {{text page=77 block=17 chars=8:12}} * {{text page=77 block=17 chars=17:22}} * /{{text page=77 block=17 chars=27:30}} * /{{text page=77 block=17 chars=35:38}} * /{{text page=77 block=17 chars=43:46}} * /{{text page=77 block=17 chars=51:54}} * /{{text page=77 block=17 chars=59:62}}\n\n{{text page=77 block=18 chars=0:11}}\n\n{{text page=77 block=19 chars=0:3}} {{text page=77 block=19 chars=5:7}} {{text page=77 block=19 chars=9:16}} {{text page=77 block=19 chars=18:26}}\n```"
-        },
+        }
+      ]
+    },
+    {
+      "id": "chapter-57d00bbf22524f638d8afabdaf3675ba",
+      "title": "{{text page=78 block=0 chars=0:7}} {{text page=78 block=0 chars=9:10}}.{{text page=78 block=0 chars=11:12}} {{text page=78 block=1 chars=0:11}} {{text page=78 block=1 chars=13:15}} {{text page=78 block=1 chars=17:19}}/{{text page=78 block=1 chars=20:22}} {{text page=78 block=1 chars=24:32}} {{text page=78 block=1 chars=34:37}} {{text page=78 block=1 chars=39:44}} {{text page=78 block=1 chars=46:50}}",
+      "markdown_file": "02 Section 4.1 Description of PC-XT Emulator for AMIGA 2000.md",
+      "elements": [
         {
           "id": "page_0078_seg_001",
           "type": "heading",
@@ -8282,8 +8348,8 @@
               ]
             }
           ],
-          "md_text": "## {{text page=78 block=0 chars=0:7}} {{text page=78 block=0 chars=9:10}}.{{text page=78 block=0 chars=11:12}}\n{{text page=78 block=1 chars=0:11}} {{text page=78 block=1 chars=13:15}} {{text page=78 block=1 chars=17:19}}/{{text page=78 block=1 chars=20:22}} {{text page=78 block=1 chars=24:32}} {{text page=78 block=1 chars=34:37}} {{text page=78 block=1 chars=39:44}} {{text page=78 block=1 chars=46:50}}",
-          "heading_level": 2
+          "md_text": "# {{text page=78 block=0 chars=0:7}} {{text page=78 block=0 chars=9:10}}.{{text page=78 block=0 chars=11:12}}\n{{text page=78 block=1 chars=0:11}} {{text page=78 block=1 chars=13:15}} {{text page=78 block=1 chars=17:19}}/{{text page=78 block=1 chars=20:22}} {{text page=78 block=1 chars=24:32}} {{text page=78 block=1 chars=34:37}} {{text page=78 block=1 chars=39:44}} {{text page=78 block=1 chars=46:50}}",
+          "heading_level": 1
         },
         {
           "id": "page_0078_seg_002",
@@ -13783,7 +13849,8 @@
               ]
             }
           ],
-          "asset": "assets/page_0119_seg_001.png"
+          "asset": "assets/page_0119_seg_001.png",
+          "description": "Three side-by-side plots compare a Sine Waveform, Triangle Waveform, and Square Wave. Each has a horizontal zero baseline pointing right and a vertical axis labeled 127 above the baseline and −127 below it. A right-pointing arrow beneath the plots is labeled “Samples taken over time —”.\n\nThe sine waveform follows a smooth curve from zero through a positive crest, back through zero, down to a negative trough, and back to zero. Filled circles mark sample positions along the curve.\n\nThe triangle waveform follows the same sequence using straight rising and falling segments, with filled circles marking sample positions, including the peak, trough, and zero crossings.\n\nThe square wave begins on the zero baseline, steps up to a flat positive level, drops vertically to a flat negative level, and then steps back to zero. No sample circles are shown on this plot."
         },
         {
           "id": "page_0119_seg_002",

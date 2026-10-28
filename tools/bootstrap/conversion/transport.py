@@ -61,9 +61,10 @@ class CodexTransport:
             self.close()
             raise
 
-    def run(self, selected, prompt, *, images=(), timeout=180):
+    def run(self, selected, prompt, *, images=(), timeout=180, cancelled=None):
         started = time.monotonic()
         expired = threading.Event()
+        finished = threading.Event()
 
         def stop():
             expired.set()
@@ -72,6 +73,15 @@ class CodexTransport:
         timer = threading.Timer(timeout, stop)
         timer.daemon = True
         timer.start()
+        if cancelled is not None:
+            def stop_when_cancelled():
+                while not finished.is_set():
+                    if cancelled.wait(0.05):
+                        if not finished.is_set():
+                            self._client.close()
+                        return
+
+            threading.Thread(target=stop_when_cancelled, daemon=True).start()
         try:
             thread = self._client.thread_start({
                 "model": selected.model, "cwd": self._directory.name, "ephemeral": True,
@@ -143,6 +153,8 @@ class CodexTransport:
                 raise RuntimeError("Codex returned no complete final response")
             if expired.is_set() or time.monotonic() - started > timeout:
                 raise TimeoutError(f"Codex conversion exceeded {timeout} seconds")
+            if cancelled is not None and cancelled.is_set():
+                raise RuntimeError("Codex task was stopped")
             return {"text": text, "status": "completed", "usage": usage,
                     "duration_seconds": time.monotonic() - started, "events": sorted(methods),
                     "execution": {"model": thread.model, "reasoning_effort": thread.reasoning_effort.value,
@@ -150,8 +162,11 @@ class CodexTransport:
         except Exception as error:
             if expired.is_set():
                 raise TimeoutError(f"Codex conversion exceeded {timeout} seconds") from error
+            if cancelled is not None and cancelled.is_set():
+                raise RuntimeError("Codex task was stopped") from error
             raise
         finally:
+            finished.set()
             timer.cancel()
 
     def close(self):

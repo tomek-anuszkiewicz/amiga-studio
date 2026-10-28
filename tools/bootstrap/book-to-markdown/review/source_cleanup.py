@@ -4,7 +4,7 @@ import hashlib
 import json
 import re
 
-from .model import read_json
+from .model import HEADING_TYPES, read_json, toc_label
 from .source_alignment import align_template_literals
 from .source_validation import validate_book
 from .text_recipe import (ACCEPTED, REFERENCE, accepted_literal,
@@ -47,14 +47,22 @@ def preview(book, workspace, selected_paths=None):
         return pages[page]
 
     results = []
-    for chapter_index, chapter in enumerate(book['chapters']):
+    chapter_rows = [(f'/chapters/{index}', chapter,
+                     {region['page'] for element in chapter['elements'][:1]
+                      for region in element.get('pdf_regions', [])})
+                    for index, chapter in enumerate(book['chapters'])]
+    if 'title' in book.get('toc', {}):
+        source_pages = {region['page'] for chapter in book['chapters']
+                        for element in chapter['elements']
+                        for region in element.get('pdf_regions', [])}
+        chapter_rows.insert(0, ('/toc', {'id': 'toc', 'title': book['toc']['title'],
+                                        'elements': []}, source_pages))
+    for prefix, chapter, title_pages in chapter_rows:
         fields = []
-        title_pages = {region['page'] for element in chapter['elements'][:1]
-                       for region in element.get('pdf_regions', [])}
-        fields.append((f'/chapters/{chapter_index}/title', chapter['id'], None,
+        fields.append((f'{prefix}/title', chapter['id'], None,
                        'title', chapter.get('title'), title_pages))
         for element_index, element in enumerate(chapter['elements']):
-            fields.append((f'/chapters/{chapter_index}/elements/{element_index}/md_text',
+            fields.append((f'{prefix}/elements/{element_index}/md_text',
                            chapter['id'], element['id'], 'md_text', element.get('md_text'),
                            {region['page'] for region in element.get('pdf_regions', [])}))
         for path, chapter_id, element_id, field, template, anchors in fields:
@@ -242,7 +250,13 @@ def reconcile_working(book, original, workspace):
     for chapter in book['chapters']:
         previous = old_chapters.get(chapter['id'])
         if previous is None or chapter['title'] != previous['title']:
-            regions = [region for element in chapter['elements'][:1]
+            title_words = ' '.join(chapter['title'].split()).casefold()
+            matching_heading = next((element for element in chapter['elements']
+                                     if element.get('visible', True)
+                                     and element['type'] in HEADING_TYPES
+                                     and toc_label(element).casefold() == title_words), None)
+            anchor_elements = [matching_heading] if matching_heading else chapter['elements'][:1]
+            regions = [region for element in anchor_elements
                        for region in element.get('pdf_regions', [])]
             pages = {region['page'] for region in regions}
             pages.update(int(ref[1]) for ref in REFERENCE.finditer(chapter['title']))
@@ -288,7 +302,7 @@ def accept_literal(book, report, finding_id):
     if finding is None:
         raise ValueError('Select one current unanchored literal')
     parts = finding['path'].split('/')
-    target = book['chapters'][int(parts[2])]
+    target = book['toc'] if parts[1] == 'toc' else book['chapters'][int(parts[2])]
     if len(parts) == 6:
         target = target['elements'][int(parts[4])]
     field = parts[-1]
@@ -313,7 +327,7 @@ def apply(book, report, selections):
         by_path.setdefault(item['path'], []).append(item)
     for path, entries in by_path.items():
         parts = path.split('/')
-        target = book['chapters'][int(parts[2])]
+        target = book['toc'] if parts[1] == 'toc' else book['chapters'][int(parts[2])]
         if len(parts) == 6:
             target = target['elements'][int(parts[4])]
         field = parts[-1]

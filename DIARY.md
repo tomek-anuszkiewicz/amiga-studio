@@ -5714,3 +5714,27 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - pre-commit design review selected no specifications
   - existing unrelated crates/test_runner/src tracked path is unresolved
   - application tests not run for documentation-only change
+---
+
+### [2026-10-28 23:22 CET] — Extend Book Review chapter and description workflows
+- **Affected Subsystems**:
+  - `.agents/rules`
+  - `tools/bootstrap/book-to-markdown`
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/books/test-book-example-4567/78e52f075e17`
+  - `tools/verification/checks/english_words`
+- **What Was Changed (The Concrete Reality)**:
+  - Add chapter and contents renaming with source-aligned titles and safe Markdown exports
+  - add selected and bulk image and table descriptions with scoped context and Working rendering
+  - support cancellation of active Codex requests
+  - update Test Book recipe chapter structure and one image description
+  - keep an authorized commit workflow active while awaiting a language-scan decision
+  - resolve reviewed scanner findings with clearer test names and an approved JavaScript term
+- **Architectural Rationale & Trade-Offs**:
+  - Keep book editing and generated Markdown consistent with the authored recipe while limiting description writes to their selected source context
+- **Verification & Test Results**:
+  - PASS: Book Review suite, 182 tests
+  - PASS: conversion contracts, 44 tests
+  - PASS: git diff --check
+  - pre-commit design review found Testing Strategy accurate
+  - NOT RUN: PDF conversion or book import

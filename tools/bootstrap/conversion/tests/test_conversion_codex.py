@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 import tempfile
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 import unittest
@@ -114,6 +115,23 @@ class ClientTests(unittest.TestCase):
         self.assertNotIn("schema", transport.calls[-1][2])
         self.assertEqual(client.generate_json("prompt-only JSON", image_path=image), {"signal": "CCK"})
         self.assertNotIn("schema", transport.calls[-1][2])
+
+    def test_cancelled_response_is_not_cached(self):
+        cancelled = threading.Event()
+
+        class CompletingAfterCancel(FakeTransport):
+            def run(self, selected, prompt, **options):
+                self.assert_cancelled = options['cancelled'] is cancelled
+                cancelled.set()
+                return {"text": '{"signal":"late"}', "status": "completed"}
+
+        transport = CompletingAfterCancel()
+        with CodexClient(config(), stage="html_to_markdown", operation="cancelled",
+                         transport=transport, cache=self.cache, cancelled=cancelled) as client:
+            with self.assertRaisesRegex(RuntimeError, 'stopped'):
+                client.generate_json("cancelled request")
+        self.assertTrue(transport.assert_cancelled)
+        self.assertFalse(self.cache.directory.exists())
 
     def test_html_request_contains_only_prompt_and_source(self):
         transport = FakeTransport()
@@ -464,6 +482,22 @@ class TransportTests(unittest.TestCase):
         wire = WireClient(blocked=True)
         with self.assertRaises(TimeoutError):
             self.transport(wire).run(selection(config(), "html_to_markdown"), "timeout", timeout=0.02)
+        self.assertTrue(wire.closed.is_set())
+
+    def test_cancel_closes_active_transport_before_timeout(self):
+        wire = WireClient(blocked=True)
+        cancelled = threading.Event()
+        transport = self.transport(wire)
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            result = pool.submit(CodexTransport.run, transport, selection(config(), "html_to_markdown"),
+                                 "cancel", timeout=10, cancelled=cancelled)
+            deadline = time.monotonic() + 2
+            while not wire.turns and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertTrue(wire.turns)
+            cancelled.set()
+            with self.assertRaisesRegex(RuntimeError, 'stopped'):
+                result.result(timeout=1)
         self.assertTrue(wire.closed.is_set())
 
     def test_interrupted_and_tool_results_are_rejected(self):

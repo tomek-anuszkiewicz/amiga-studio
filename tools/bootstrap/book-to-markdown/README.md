@@ -83,6 +83,15 @@ applying it. **Show source differences** marks source-backed corrections in
 yellow, accepted text without a source address in blue, and pending plain text
 in purple. These colors are review aids, not proof of transcription quality.
 
+Use **Book Actions → Rename Chapters** to edit Working chapter titles and Markdown
+filenames together. The generated table of contents has its own entry. Chapter
+titles remain separate from filenames: edited chapter titles are aligned to PDF
+text blocks where possible. **Clean direct book text** checks remaining direct
+title text, including an edited contents title.
+Filenames must be unique bundle-local `.md` names. Saving a rename updates
+Working Markdown exports and contents links; the old generated filenames are
+removed. Accept Changes publishes the renamed recipe and files.
+
 Refresh a complete Working Markdown export after the current revision renders:
 
 ```powershell
@@ -166,21 +175,21 @@ identifies the correct printed occurrence.
 
 ## Codex Working task
 
-Use **Book Actions → Codex...** for a requested task across Working; the
-suggested tasks come from [`prompts/`](prompts/). The task may edit several
-elements and requires review before acceptance. A selected element is a
-starting hint, not a limit on the task. Its writes check the current Working
-revision; Accepted and the source PDF are not tool write targets.
+Use **Book Actions → Codex...** for tasks across Working, or the context menu
+to describe one selected image or table. The suggested tasks and description
+rules live in [`prompts/`](prompts/); the authored `description` field and its
+rendering are defined in [elements.md](elements.md#notes-legends-and-groups).
 
-The one-element `element_transform` action preserves original words, numbers
-and substantive symbols unless the selected mode explicitly permits additions.
-Its [prompt](prompts/codex-edit.md) defines the transformation rules;
-[configuration](config.yaml) selects the model and effort. Description tasks
-require already prepared `<details>` groups; they do not create groups.
-Task diagnostics are under
-`.agent/tmp/book-codex-agent/<request-id>/`; element-transform diagnostics are
-under `.agent/tmp/book-codex/<request-id>/`. Shared authentication and cache
-behavior are documented in the
+Codex edits Working at the current revision; Accepted and PDF sources remain
+read-only. One-element transformations preserve source content by default;
+their rules are in the [transformation prompt](prompts/codex-edit.md). Review
+changes before acceptance. **Cancel task**, Escape, and
+**Stop task** interrupt the active request; edits already saved to Working
+remain. The model and effort are selected in [config.yaml](config.yaml).
+
+Task diagnostics are under `.agent/tmp/book-codex-agent/<request-id>/`, and
+element-transform diagnostics under `.agent/tmp/book-codex/<request-id>/`.
+Shared authentication and cache behavior are in the
 [conversion client README](../conversion/README.md).
 
 ## Tests

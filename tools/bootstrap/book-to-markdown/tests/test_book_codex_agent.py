@@ -14,7 +14,7 @@ from browser_session import browser_page
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from review.model import load_input, read_json, write_json
+from review.model import element_markdown, load_input, read_json, write_json
 from review.service import Handler, ReviewState
 from review.codex_agent import replace_source_text, run_agent, source_search
 from review.source_cleanup import preview
@@ -469,10 +469,10 @@ class WorkingAgentTests(unittest.TestCase):
         self.assertIn('{{text page=1 block=0 chars=0:10}}', updated['md_text'])
         self.assertNotIn('LINE DRAW:.', updated['md_text'])
 
-    def test_markdown_prompt_presets_are_loaded_into_agent_context(self):
-        presets = {'describe_images': 'describe-images.md',
-                   'describe_tables': 'describe-tables.md'}
-        for identifier, filename in presets.items():
+    def test_working_description_prompts_are_complete_without_hidden_reference(self):
+        presets = {'describe_images': ('describe-images-working.md', 'describe-images.md'),
+                   'describe_tables': ('describe-tables-working.md', 'describe-tables.md')}
+        for identifier, (filename, base_filename) in presets.items():
             with self.subTest(identifier=identifier):
                 seen = []
 
@@ -487,20 +487,289 @@ class WorkingAgentTests(unittest.TestCase):
                         seen.append(prompt)
                         return {'action': 'finish', 'summary': 'Checked the task prompt.'}
 
-                result = run_agent(self.state, {'instruction': 'Work on prepared groups or chapters',
+                source = Path(__file__).resolve().parents[1] / 'prompts' / filename
+                instruction = source.read_text(encoding='utf-8').strip()
+                result = run_agent(self.state, {'instruction': instruction,
                                                 'prompt_preset': identifier,
                                                 'expected_revision': self.revision},
                                    client_factory=Client)
-                source = Path(__file__).resolve().parents[1] / 'prompts' / filename
-                self.assertIn(source.read_text(encoding='utf-8'), seen[0])
-                self.assertIn('one JSON action per turn', seen[0])
-                wrapper = source.parent / 'codex-agent-selected-task.md'
-                self.assertIn(wrapper.read_text(encoding='utf-8').split('\n\n')[1].strip(), seen[0])
+                base = (source.parent / base_filename).read_text(encoding='utf-8')
+                description_rules = base.split('## Description\n\n', 1)[1].split('\n## Output', 1)[0]
+                self.assertIn(description_rules, instruction)
+                task_state = json.loads(seen[0].split('TASK STATE JSON:\n', 1)[1])
+                self.assertEqual(task_state['instruction'], instruction)
+                self.assertEqual(task_state['instruction'].count(description_rules), 1)
+                self.assertIn('one JSON action\nper turn', seen[0])
+                self.assertNotIn('SELECTED TASK PROMPT FROM', seen[0])
+                self.assertNotIn('Use the selected', instruction)
                 request = read_json(self.root / result['diagnostics'] / 'request.json')
                 self.assertEqual(request['prompt_preset'], identifier)
         with self.assertRaisesRegex(ValueError, 'Unknown Codex Working prompt preset'):
             run_agent(self.state, {'instruction': 'Invalid preset', 'prompt_preset': '../other',
                                    'expected_revision': self.revision})
+
+    def test_bulk_image_description_inspects_asset_and_stores_unfenced_text(self):
+        book = read_json(self.root / 'working/book.json')
+        graphic = book['chapters'][0]['elements'][0]
+        graphic.update(type='graphic', asset='assets/first.png')
+        graphic.pop('md_text')
+        write_json(self.root / 'working/book.json', book)
+        asset = self.root / 'working/assets/first.png'
+        asset.parent.mkdir(parents=True, exist_ok=True)
+        Image.new('RGB', (10, 10), 'white').save(asset)
+        self.revision = load_input(self.root / 'working')[2]
+        actions = [
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/0/description',
+                 'value': '```text\nA white square.\n```'}]},
+            {'action': 'image', 'asset': 'assets/first.png'},
+            {'action': 'read', 'ids': ['first']},
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/0/description',
+                 'value': '```text\nA white square.\n```'}]},
+            {'action': 'finish', 'summary': 'Described the image.'},
+        ]
+        seen = []
+        result = run_agent(self.state, {'instruction': 'Describe every image in Working',
+                                        'prompt_preset': 'describe_images',
+                                        'expected_revision': self.revision},
+                           client_factory=self.client(actions, seen_images=seen))
+        saved = load_input(self.root / 'working')[0]['chapters'][0]['elements'][0]
+        self.assertEqual(result['edits'], 1)
+        self.assertEqual(saved['description'], 'A white square.')
+        self.assertIn('```text\nA white square.\n```', element_markdown(saved))
+        self.assertEqual(seen[2:4], [asset, asset])
+
+    def test_bulk_table_description_cannot_edit_source_or_other_types(self):
+        book = read_json(self.root / 'working/book.json')
+        book['chapters'][0]['elements'][0].update(
+            type='table', table_format='markdown',
+            md_text='| Name | Value |\n| --- | --- |\n| A | 1 |')
+        write_json(self.root / 'working/book.json', book)
+        self.revision = load_input(self.root / 'working')[2]
+        actions = [
+            {'action': 'patch', 'operations': [
+                {'op': 'replace', 'path': '/chapters/0/elements/0/md_text', 'value': 'Changed'}]},
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/1/description', 'value': 'Wrong type'}]},
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/0/description',
+                 'value': '```text\nThe A row has value 1.\n```'}]},
+            {'action': 'finish', 'summary': 'Described the table.'},
+        ]
+        result = run_agent(self.state, {'instruction': 'Describe every table in Working',
+                                        'prompt_preset': 'describe_tables',
+                                        'expected_revision': self.revision},
+                           client_factory=self.client(actions))
+        table, prose = load_input(self.root / 'working')[0]['chapters'][0]['elements']
+        self.assertEqual(result['edits'], 1)
+        self.assertEqual(table['md_text'], '| Name | Value |\n| --- | --- |\n| A | 1 |')
+        self.assertEqual(table['description'], 'The A row has value 1.')
+        self.assertIn('<summary>Table description</summary>\n\n'
+                      '```text\nThe A row has value 1.\n```', element_markdown(table))
+        self.assertNotIn('description', prose)
+
+    def test_supporting_tables_cannot_be_description_targets(self):
+        book = read_json(self.root / 'working/book.json')
+        for element, role in zip(book['chapters'][0]['elements'], ('legend', 'note')):
+            element.update(type='table', role=role, table_format='markdown',
+                           md_text='| Symbol | Meaning |\n| --- | --- |\n| A | 1 |')
+        footnote = dict(book['chapters'][0]['elements'][1], id='third', role='footnote')
+        book['chapters'][0]['elements'].append(footnote)
+        write_json(self.root / 'working/book.json', book)
+        revision = load_input(self.root / 'working')[2]
+        for identifier in ('first', 'second', 'third'):
+            with self.subTest(identifier=identifier):
+                with self.assertRaisesRegex(ValueError, 'supporting table'):
+                    run_agent(self.state, {'instruction': 'Describe the selected table',
+                                           'id': identifier, 'target_id': identifier,
+                                           'prompt_preset': 'describe_tables',
+                                           'expected_revision': revision}, preview_prompt=True)
+        actions = [
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': f'/chapters/0/elements/{index}/description',
+                 'value': '```text\nA means 1.\n```'} for index in range(3)]},
+            {'action': 'finish', 'summary': 'Skipped supporting tables.'},
+        ]
+        result = run_agent(self.state, {'instruction': 'Describe tables',
+                                        'prompt_preset': 'describe_tables',
+                                        'expected_revision': revision},
+                           client_factory=self.client(actions))
+        self.assertEqual(result['edits'], 0)
+        self.assertTrue(all('description' not in element for element in
+                            load_input(self.root / 'working')[0]['chapters'][0]['elements']))
+
+    def test_existing_table_descriptions_render_below_html_csv_and_asset_tables(self):
+        for table in [
+            {'type': 'table', 'md_text': '<table><tr><td>A</td></tr></table>'},
+            {'type': 'table', 'table_format': 'csv', 'text_format': 'csv',
+             'md_text': 'Name,Value\nA,1'},
+            {'type': 'table', 'id': 'table_asset', 'asset': 'assets/table.png'},
+        ]:
+            with self.subTest(table=table):
+                table['description'] = 'The A row has value 1.'
+                rendered = element_markdown(table)
+                self.assertIn('<details>\n<summary>Table description</summary>\n\n'
+                              '```text\nThe A row has value 1.\n```\n\n</details>', rendered)
+                self.assertTrue(rendered.endswith('</details>'))
+
+    def test_selected_table_description_changes_only_its_target(self):
+        book = read_json(self.root / 'working/book.json')
+        book['chapters'][0]['elements'][0].update(type='table', table_format='markdown',
+                                                   md_text='| Name | Value |\n| --- | --- |\n| A | 1 |')
+        book['chapters'][0]['elements'][1].update(role='caption', md_text='Table 1')
+        write_json(self.root / 'working/book.json', book)
+        self.revision = load_input(self.root / 'working')[2]
+        accepted = (self.root / 'accepted/book.json').read_bytes()
+        actions = [
+            {'action': 'read', 'ids': ['first', 'second']},
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/1/description', 'value': 'Wrong target.'}]},
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/0/description',
+                 'value': '```text\nA has value 1.\n```'}]},
+        ]
+        result = run_agent(self.state, {'instruction': 'Describe the selected table',
+                                        'id': 'first', 'target_id': 'first',
+                                        'context_ids': ['second'],
+                                        'prompt_preset': 'describe_tables',
+                                        'expected_revision': self.revision},
+                           client_factory=self.client(actions))
+        updated = load_input(self.root / 'working')[0]['chapters'][0]['elements']
+        self.assertEqual(result['edits'], 1)
+        self.assertEqual(updated[0]['description'], 'A has value 1.')
+        self.assertNotIn('description', updated[1])
+        self.assertIn('| A | 1 |\n\n<details>\n<summary>Table description</summary>\n\n'
+                      '```text\nA has value 1.\n```\n\n</details>', element_markdown(updated[0]))
+        self.assertEqual((self.root / 'accepted/book.json').read_bytes(), accepted)
+        self.assertFalse(actions)
+        with self.assertRaisesRegex(ValueError, 'labeled elements'):
+            run_agent(self.state, {'instruction': 'Describe the selected table',
+                                   'id': 'first', 'target_id': 'first',
+                                   'context_ids': ['first'], 'prompt_preset': 'describe_tables',
+                                   'expected_revision': load_input(self.root / 'working')[2]})
+
+    def test_description_prompt_preview_matches_first_model_request(self):
+        book = read_json(self.root / 'working/book.json')
+        book['chapters'][0]['elements'][0].update(type='table', table_format='markdown',
+                                                 md_text='| A |\n| --- |\n| 1 |')
+        book['chapters'][0]['elements'][1].update(role='caption', md_text='Table 1')
+        write_json(self.root / 'working/book.json', book)
+        command = {'instruction': 'Describe the selected table', 'id': 'first',
+                   'target_id': 'first', 'context_ids': ['second'],
+                   'prompt_preset': 'describe_tables',
+                   'expected_revision': load_input(self.root / 'working')[2]}
+        preview = self.state.preview_codex_agent(command)['prompt']
+        self.assertFalse((self.root / '.agent/tmp/book-codex-agent').exists())
+        self.assertIn('# Table Description', preview)
+        self.assertIn('"target_id": "first"', preview)
+        seen = []
+
+        class Client:
+            def __init__(self, config, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def generate_json(self, prompt, **kwargs):
+                seen.append(prompt)
+                return {'action': 'finish', 'summary': 'Reviewed the prompt.'}
+
+        run_agent(self.state, command, client_factory=Client)
+        self.assertEqual(seen, [preview])
+
+    def test_selected_image_description_requires_image_inspection_and_matching_type(self):
+        book = read_json(self.root / 'working/book.json')
+        book['chapters'][0]['elements'][0].update(type='graphic', asset='assets/first.png')
+        book['chapters'][0]['elements'][0].pop('md_text')
+        write_json(self.root / 'working/book.json', book)
+        asset = self.root / 'working/assets/first.png'
+        asset.parent.mkdir(parents=True, exist_ok=True)
+        Image.new('RGB', (10, 10), 'white').save(asset)
+        self.revision = load_input(self.root / 'working')[2]
+        with self.assertRaisesRegex(ValueError, 'Description target must match'):
+            run_agent(self.state, {'instruction': 'Describe the image', 'id': 'first',
+                                   'target_id': 'first', 'prompt_preset': 'describe_tables',
+                                   'expected_revision': self.revision})
+        images = []
+        actions = [
+            {'action': 'read', 'ids': ['first']},
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/0/description',
+                 'value': 'Image not inspected.'}]},
+            {'action': 'image', 'asset': 'assets/first.png'},
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/0/description',
+                 'value': 'A white square.'}]},
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/0/description',
+                 'value': '```text\n  A white square.\n```'}]},
+        ]
+        run_agent(self.state, {'instruction': 'Describe the image', 'id': 'first',
+                               'target_id': 'first', 'prompt_preset': 'describe_images',
+                               'expected_revision': self.revision},
+                  client_factory=self.client(actions, seen_images=images))
+        self.assertEqual(images[3], asset.resolve())
+        graphic = load_input(self.root / 'working')[0]['chapters'][0]['elements'][0]
+        self.assertEqual(element_markdown(graphic),
+                         '![first](assets/first.png)\n\n<details>\n'
+                         '<summary>Image description</summary>\n\n'
+                         '```text\n  A white square.\n```\n\n</details>')
+        self.assertEqual(graphic['description'], '  A white square.')
+        self.assertFalse(actions)
+
+    def test_selected_image_keeps_read_context_with_inspected_image(self):
+        book = read_json(self.root / 'working/book.json')
+        book['chapters'][0]['elements'][0].update(type='graphic', asset='assets/first.png')
+        book['chapters'][0]['elements'][0].pop('md_text')
+        book['chapters'][0]['elements'][1].update(role='caption', md_text='Figure 1. White square')
+        write_json(self.root / 'working/book.json', book)
+        asset = self.root / 'working/assets/first.png'
+        asset.parent.mkdir(parents=True, exist_ok=True)
+        Image.new('RGB', (10, 10), 'white').save(asset)
+        revision = load_input(self.root / 'working')[2]
+        observed = []
+
+        class Client:
+            def __init__(self, config, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def generate_json(self, prompt, image_path=None, validator=None):
+                task = json.loads(prompt.split('TASK STATE JSON:\n', 1)[1])
+                read_context = task.get('read_context', {})
+                ids = [item['element']['id'] for item in read_context.get('elements', [])]
+                observed.append((ids, image_path))
+                if ids != ['first', 'second']:
+                    return {'action': 'read', 'ids': ['first', 'second']}
+                if image_path != asset.resolve():
+                    return {'action': 'image', 'asset': 'assets/first.png'}
+                return {'action': 'patch', 'operations': [
+                    {'op': 'add', 'path': '/chapters/0/elements/0/description',
+                     'value': '```text\nA white square.\n```'}]}
+
+        with patch('review.codex_agent.MAX_STEPS', 3):
+            result = run_agent(self.state, {'instruction': 'Describe the image',
+                                            'id': 'first', 'target_id': 'first',
+                                            'context_ids': ['second'],
+                                            'prompt_preset': 'describe_images',
+                                            'expected_revision': revision},
+                               client_factory=Client)
+        self.assertEqual(result['edits'], 1)
+        self.assertEqual(result['steps'], 3)
+        self.assertEqual(len(observed), 3)
+        self.assertEqual(observed[2], (['first', 'second'], asset.resolve()))
+        self.assertEqual(load_input(self.root / 'working')[0]['chapters'][0]['elements'][0]
+                         ['description'], 'A white square.')
 
     def test_suggested_tasks_are_loaded_from_markdown(self):
         prompts = Path(__file__).resolve().parents[1] / 'prompts'
@@ -585,6 +854,61 @@ class WorkingAgentTests(unittest.TestCase):
         self.assertEqual(job['id'], started['id'])
         self.assertEqual(job['state'], 'completed')
         self.assertEqual(job['summary'], 'Inspected Working.')
+
+    def test_closing_running_codex_dialog_stops_task_without_saving(self):
+        entered = threading.Event()
+        release = threading.Event()
+        before = (self.root / 'working/book.json').read_bytes()
+
+        class Client:
+            def __init__(self, config, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def generate_json(self, prompt, **kwargs):
+                entered.set()
+                if not release.wait(10):
+                    raise RuntimeError('Test request was not released')
+                return {'action': 'patch', 'operations': [
+                    {'op': 'replace', 'path': '/chapters/0/elements/0/md_text',
+                     'value': 'Cancelled edit'}]}
+
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        server.daemon_threads = True
+        server.state = self.state
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        rendering = threading.Thread(target=self.state.render_loop, daemon=True)
+        rendering.start()
+        try:
+            with patch('review.codex_agent.CodexClient', Client):
+                with browser_page(viewport={'width': 1400, 'height': 850}) as page:
+                    page.goto(f'http://127.0.0.1:{server.server_port}')
+                    page.wait_for_function('state?.can_accept && !loading')
+                    page.locator('#book-actions').click()
+                    page.locator('#book-codex').click()
+                    page.locator('#codex-instruction').fill('Edit Working')
+                    page.locator('#run-codex').click()
+                    self.assertTrue(entered.wait(5))
+                    page.wait_for_function('state?.codex_agent?.state === "running"')
+                    page.locator('#cancel-codex').click()
+                    page.wait_for_function('state?.codex_agent?.action === "stopping"')
+                    self.assertFalse(page.locator('#codex-dialog').evaluate('(dialog) => dialog.open'))
+                    release.set()
+                    page.wait_for_function('state?.codex_agent?.state === "failed"')
+                    self.assertEqual((self.root / 'working/book.json').read_bytes(), before)
+        finally:
+            release.set()
+            self.state.stopping.set()
+            with self.state.condition:
+                self.state.condition.notify_all()
+            server.shutdown()
+            server.server_close()
+            rendering.join(20)
 
     def test_browser_shows_source_correction_and_unanchored_text_separately(self):
         write_json(self.root / 'pdf-to-markdown/02_preprocess/page_0001.json',
@@ -673,7 +997,8 @@ class WorkingAgentTests(unittest.TestCase):
                     page.locator('#book-actions').click()
                     self.assertEqual(page.locator('#book-menu button').all_text_contents(),
                                      ['Codex...', 'Describe images',
-                                      'Describe tables', 'Clean direct book text'])
+                                      'Describe tables', 'Clean direct book text',
+                                      'Rename Chapters'])
                     for task in ['describe_images', 'describe_tables']:
                         page.locator(f'[data-book-task="{task}"]').click()
                         self.assertEqual(page.locator('#codex-preset').input_value(), task)
@@ -686,10 +1011,13 @@ class WorkingAgentTests(unittest.TestCase):
                     self.assertEqual(page.locator('#codex-instruction').input_value(),
                                      'Find places where a paragraph continues across a PDF page boundary, '
                                      'and merge the split paragraphs.')
-                    for label, filename in [('Describe images', 'describe-images.md'),
-                                            ('Describe tables', 'describe-tables.md')]:
+                    for label, title in [('Describe images', '# Image Description for Working'),
+                                         ('Describe tables', '# Table Description for Working')]:
                         page.locator('#codex-preset').select_option(label=label)
-                        self.assertIn(filename, page.locator('#codex-instruction').input_value())
+                        instruction = page.locator('#codex-instruction').input_value()
+                        self.assertIn(title, instruction)
+                        self.assertIn('## Description', instruction)
+                        self.assertNotIn('prompts/describe-', instruction)
                     page.locator('#codex-instruction').fill('Review the first selected chapter')
                     self.assertEqual(page.locator('#codex-preset').locator('option:checked').inner_text(),
                                      'Describe tables')
@@ -743,12 +1071,224 @@ class WorkingAgentTests(unittest.TestCase):
                     page.locator('#book-actions').click()
                     page.locator('#book-codex').click()
                     self.assertIn('Starting at first', page.locator('#codex-id').inner_text())
-                    self.assertIn('Checked table prompt.', page.locator('#codex-status').inner_text())
+                    self.assertTrue(page.locator('#codex-status').is_hidden())
                     self.assertTrue(page.locator('#codex-dialog').evaluate('(dialog) => dialog.open'))
                     page.locator('#cancel-codex').click()
                     page.wait_for_function('!loading && !state.pending')
                     self.assertEqual(page.locator('#menu-codex, #menu-codex-working').count(), 0)
                     self.assertFalse(errors)
+        finally:
+            self.state.stopping.set()
+            with self.state.condition:
+                self.state.condition.notify_all()
+            server.shutdown()
+            server.server_close()
+            rendering.join(20)
+
+    def test_browser_context_describes_only_selected_table_or_image(self):
+        book = read_json(self.root / 'working/book.json')
+        table, graphic = book['chapters'][0]['elements']
+        table.update(type='table', table_format='html', text_format='html',
+                     md_text='<table><tr><th>Name</th><th>Value</th></tr>'
+                             '<tr><td>A</td><td>1</td></tr></table>')
+        graphic.update(type='graphic', asset='assets/second.png')
+        graphic.pop('md_text')
+        book['chapters'][0]['elements'].append(
+            {'id': 'caption', 'type': 'prose', 'role': 'caption', 'visible': True,
+             'pdf_regions': [{'page': 1, 'bbox': [0, 11, 10, 20]}],
+             'md_text': 'Table 1: Values'})
+        book['chapters'][0]['elements'].append(
+            {'id': 'boundary', 'type': 'prose', 'role': None, 'visible': True,
+             'pdf_regions': [{'page': 1, 'bbox': [0, 20, 10, 21]}],
+             'md_text': 'Separate paragraph.'})
+        for role in ('legend', 'note', 'footnote'):
+            book['chapters'][0]['elements'].append(
+                {'id': f'{role}_table', 'type': 'table', 'role': role, 'visible': True,
+                 'table_format': 'markdown',
+                 'pdf_regions': [{'page': 1, 'bbox': [0, 21, 10, 30]}],
+                 'md_text': '| Symbol | Meaning |\n| --- | --- |\n| A | 1 |'})
+        write_json(self.root / 'working/book.json', book)
+        asset = self.root / 'working/assets/second.png'
+        asset.parent.mkdir(parents=True, exist_ok=True)
+        Image.new('RGB', (10, 10), 'white').save(asset)
+        actions = [
+            {'action': 'read', 'ids': ['first']},
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/0/description',
+                 'value': '```text\nA has value 1.\n```'}]},
+            {'action': 'image', 'asset': 'assets/second.png'},
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/1/description',
+                 'value': '```text\nA white square.\n```'}]},
+        ]
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        server.daemon_threads = True
+        server.state = self.state
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        rendering = threading.Thread(target=self.state.render_loop, daemon=True)
+        rendering.start()
+        try:
+            with patch('review.codex_agent.CodexClient', self.client(actions)):
+                with browser_page(viewport={'width': 1500, 'height': 900}) as page:
+                    errors = []
+                    page.on('pageerror', lambda error: errors.append(str(error)))
+                    page.goto(f'http://127.0.0.1:{server.server_port}')
+                    page.wait_for_function('state?.can_accept && !loading')
+                    menu_items=None
+                    for identifier, menu_id, other_id, description in [
+                            ('first', 'menu-describe-table', 'menu-describe-image', 'A has value 1.'),
+                            ('second', 'menu-describe-image', 'menu-describe-table', 'A white square.')]:
+                        page.locator(f'#working [data-element="{identifier}"]').click(button='right')
+                        self.assertTrue(page.locator(f'#{menu_id}').is_visible())
+                        self.assertFalse(page.locator(f'#{menu_id}').is_disabled())
+                        label='image' if identifier == 'second' else 'table'
+                        self.assertEqual(page.locator(f'#{menu_id}').inner_text(),
+                                         f'Describe {label} with Codex...')
+                        self.assertTrue(page.locator(f'#{other_id}').is_visible())
+                        self.assertTrue(page.locator(f'#{other_id}').is_disabled())
+                        current=page.locator('#element-menu > button').evaluate_all(
+                            'buttons => buttons.map(button => [button.id, button.hidden])')
+                        self.assertTrue(all(not hidden for _, hidden in current))
+                        if menu_items is None:
+                            menu_items=[item_id for item_id, _ in current]
+                        else:
+                            self.assertEqual([item_id for item_id, _ in current], menu_items)
+                        page.locator(f'#{menu_id}').click()
+                        self.assertEqual(page.locator('#codex-id').inner_text(), identifier)
+                        self.assertEqual(page.locator('#codex-title').inner_text(),
+                                         f'Describe {label} with Codex')
+                        page.wait_for_function('document.getElementById("codex-prompt-preview").value'
+                                               '.includes("TASK STATE JSON:")')
+                        prompt=page.locator('#codex-prompt-preview').input_value()
+                        self.assertIn(f'# {"Image" if identifier == "second" else "Table"} Description', prompt)
+                        self.assertIn(f'"target_id": "{identifier}"', prompt)
+                        if identifier == 'first':
+                            page.locator('#codex-instruction').fill('Preserve exact table labels.')
+                            page.wait_for_function('document.getElementById("codex-prompt-preview")'
+                                                   '.value.includes("Preserve exact table labels.")')
+                        if identifier == 'second':
+                            self.assertTrue(page.locator('#codex-status').is_hidden())
+                        self.assertEqual(page.evaluate('codexContextIds'),
+                                         [] if identifier == 'first' else ['caption'])
+                        page.locator('#run-codex').click()
+                        page.wait_for_function('!document.getElementById("codex-dialog").open && '
+                                               'state?.can_accept && !loading')
+                        updated = load_input(self.root / 'working')[0]['chapters'][0]['elements']
+                        self.assertEqual(next(e for e in updated if e['id'] == identifier)['description'],
+                                         description)
+                        details = page.locator(f'#working [data-element="{identifier}"] details')
+                        self.assertEqual(details.locator('summary').inner_text(),
+                                         f'{label.title()} description')
+                        self.assertFalse(details.evaluate('(node) => node.open'))
+                        details.locator('summary').click()
+                        self.assertEqual(details.locator('pre code').inner_text().strip(), description)
+                    for identifier in ('caption', 'legend_table', 'note_table', 'footnote_table'):
+                        page.locator(f'#working [data-element="{identifier}"]').click(button='right')
+                        self.assertEqual(page.locator('#element-menu > button').evaluate_all(
+                            'buttons => buttons.map(button => button.id)'), menu_items)
+                        self.assertTrue(page.locator('#menu-describe-image').is_disabled())
+                        self.assertTrue(page.locator('#menu-describe-table').is_disabled())
+                    page.evaluate('selected=null;selectedPage=1;openMenu(20,20)')
+                    self.assertEqual(page.locator('#menu-current-id').inner_text(), 'ID: None')
+                    self.assertEqual(page.locator('#element-menu > button').evaluate_all(
+                        'buttons => buttons.map(button => button.id)'), menu_items)
+                    self.assertTrue(page.locator('#menu-markdown').is_disabled())
+                    self.assertFalse(errors)
+                    self.assertFalse(actions)
+        finally:
+            self.state.stopping.set()
+            with self.state.condition:
+                self.state.condition.notify_all()
+            server.shutdown()
+            server.server_close()
+            rendering.join(20)
+
+    def test_browser_suggests_nearby_description_context_without_crossing_boundaries(self):
+        def element(identifier, kind, role=None):
+            return {'id': identifier, 'type': kind, 'role': role, 'visible': True,
+                    'pdf_regions': [{'page': 1, 'bbox': [0, 0, 10, 10]}],
+                    'md_text': '| A |\n| --- |\n| 1 |' if kind == 'table' else identifier}
+
+        book = read_json(self.root / 'working/book.json')
+        book['chapters'][0]['elements'] = [
+            element('introduction', 'prose'), element('footnote_above', 'prose', 'footnote'),
+            element('caption_above', 'prose', 'caption'),
+            element('first', 'table'), element('legend_after', 'prose', 'legend'),
+            element('caption_after', 'prose', 'caption'), element('second', 'table'),
+            element('body', 'prose'), element('third', 'table'),
+            element('caption_third', 'prose', 'caption'),
+            element('legend_after_caption', 'prose', 'legend'),
+            element('footnote_third', 'prose', 'footnote'),
+            element('fourth', 'table'),
+        ]
+        next(e for e in book['chapters'][0]['elements'] if e['id'] == 'legend_after')['md_text'] = (
+            'Legend ' + 'detail ' * 18 + 'last detail')
+        book['chapters'].append({'id': 'evidence', 'title': 'Evidence',
+                                 'markdown_file': 'evidence.md', 'elements': [
+            element('separator_one', 'prose'), element('caption_fifth', 'prose', 'caption'),
+            element('fifth', 'table'), element('separator_two', 'prose'),
+            element('caption_sixth', 'prose', 'caption'), element('sixth', 'table'),
+            element('separator_three', 'prose'), element('figure_one', 'graphic'),
+            element('figure_caption_one', 'prose', 'caption'),
+            element('figure_note_one', 'prose', 'note'),
+            element('figure_legend_one', 'table', 'legend'),
+            element('figure_group_caption', 'prose', 'caption'),
+            element('separator_four', 'prose'),
+            element('figure_two', 'graphic'), element('figure_caption_two', 'prose', 'caption'),
+            element('separator_five', 'prose'), element('figure_three', 'graphic'),
+            element('figure_caption_three', 'prose', 'caption'),
+            element('separator_six', 'prose'), element('bitfield', 'table'),
+            element('bitfield_legend', 'table', 'legend'),
+            element('bitfield_caption', 'prose', 'caption'),
+            element('next_section', 'prose'),
+        ]})
+        next(e for e in book['chapters'][1]['elements'] if e['id'] == 'bitfield_caption')[
+            'md_text'] = 'Figure 6-9. Special Status Word Format'
+        write_json(self.root / 'working/book.json', book)
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        server.daemon_threads = True
+        server.state = self.state
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        rendering = threading.Thread(target=self.state.render_loop, daemon=True)
+        rendering.start()
+        try:
+            with browser_page(viewport={'width': 1500, 'height': 900}) as page:
+                page.goto(f'http://127.0.0.1:{server.server_port}')
+                page.wait_for_function('state?.can_accept && !loading')
+                for target, task, expected in [
+                        ('first', 'describe_tables', {'caption_above', 'legend_after'}),
+                        ('third', 'describe_tables', {'legend_after_caption', 'footnote_third'}),
+                        ('bitfield', 'describe_tables', {'bitfield_legend', 'bitfield_caption'}),
+                        ('figure_one', 'describe_images',
+                         {'figure_caption_one', 'figure_note_one', 'figure_legend_one'})]:
+                    page.evaluate('([target, task]) => openCodex("description", target, task)',
+                                  [target, task])
+                    if target == 'first':
+                        self.assertIn('3 above, 0 below', page.locator('#codex-caption-evidence').inner_text())
+                    if target == 'figure_one':
+                        self.assertIn('0 above, 3 below', page.locator('#codex-caption-evidence').inner_text())
+                    included = set(page.evaluate('codexContextIds'))
+                    self.assertEqual(included, expected)
+                    if target == 'first':
+                        shown = set(page.locator('#codex-context-items [data-context-id]').evaluate_all(
+                            'rows => rows.map(row => row.dataset.contextId)'))
+                        self.assertEqual(shown, {'footnote_above', 'caption_above',
+                                                 'legend_after', 'caption_after'})
+                        self.assertEqual(page.locator('[data-context-id="footnote_above"]').get_attribute(
+                            'data-included'), 'false')
+                        self.assertIn('last detail', page.locator(
+                            '[data-context-id="legend_after"] .context-source').inner_text())
+                    if target == 'third':
+                        page.locator('#codex-caption-style').select_option('below')
+                        included = set(page.evaluate('codexContextIds'))
+                        self.assertEqual(included, {'caption_third', 'legend_after_caption',
+                                                    'footnote_third'})
+                    if target == 'figure_one':
+                        self.assertEqual(page.locator('[data-context-id="figure_legend_one"]')
+                                         .get_attribute('data-included'), 'true')
+                        self.assertEqual(page.locator('[data-context-id="figure_group_caption"]')
+                                         .get_attribute('data-included'), 'false')
+                    page.locator('#cancel-codex').click()
         finally:
             self.state.stopping.set()
             with self.state.condition:

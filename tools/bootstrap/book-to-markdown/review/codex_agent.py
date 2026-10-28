@@ -32,6 +32,7 @@ PROMPT_PRESETS = {
     'describe_images': 'describe-images.md',
     'describe_tables': 'describe-tables.md',
 }
+SUPPORTING_TABLE_ROLES = {'legend', 'note', 'footnote'}
 SUGGESTED_TASKS = {
     'join_paragraphs': 'join-paragraphs-across-pdf-pages.md',
     'source_cleanup': 'clean-direct-book-text.md',
@@ -116,6 +117,57 @@ def patch_book(book, operations):
                 target[key] = value
         else:
             raise ValueError('Patch target is not a container')
+
+
+def patch_description(book, action, target_id):
+    operations = action.get('operations')
+    if not isinstance(operations, list) or len(operations) != 1:
+        raise ValueError('Description task requires one patch operation')
+    operation = operations[0]
+    match = next(((chapter_index, element_index, element)
+                  for chapter_index, chapter in enumerate(book['chapters'])
+                  for element_index, element in enumerate(chapter['elements'])
+                  if element['id'] == target_id), None)
+    if match is None:
+        raise ValueError('Selected element no longer exists')
+    chapter_index, element_index, element = match
+    path = f'/chapters/{chapter_index}/elements/{element_index}/description'
+    if (not isinstance(operation, dict) or operation.get('op') not in {'add', 'replace'}
+            or operation.get('path') != path or not isinstance(operation.get('value'), str)
+            or not operation['value'].strip()):
+        raise ValueError('Description task can edit only the selected element description')
+    description = operation['value'].strip()
+    fenced = re.fullmatch(r'```text\r?\n(.+?)\r?\n```', description, re.DOTALL)
+    if fenced is None or not fenced.group(1).strip():
+        raise ValueError('Description requires one fenced text block')
+    description = fenced.group(1)
+    element['description'] = description
+
+
+def patch_bulk_descriptions(book, action, prompt_preset, inspected_assets):
+    operations = action.get('operations')
+    if not isinstance(operations, list) or not 1 <= len(operations) <= 20:
+        raise ValueError('Description patch requires 1 to 20 operations')
+    expected_type = 'graphic' if prompt_preset == 'describe_images' else 'table'
+    for operation in operations:
+        if not isinstance(operation, dict):
+            raise ValueError('Description patch requires element descriptions')
+        match = re.fullmatch(r'/chapters/(\d+)/elements/(\d+)/description',
+                             str(operation.get('path')))
+        if match is None:
+            raise ValueError('Description task can edit only element descriptions')
+        chapter_index, element_index = map(int, match.groups())
+        try:
+            element = book['chapters'][chapter_index]['elements'][element_index]
+        except (IndexError, KeyError):
+            raise ValueError('Description target no longer exists') from None
+        if element['type'] != expected_type:
+            raise ValueError('Description target has the wrong element type')
+        if expected_type == 'table' and element['role'] in SUPPORTING_TABLE_ROLES:
+            raise ValueError('Cannot describe a supporting table')
+        if expected_type == 'graphic' and element.get('asset') not in inspected_assets:
+            raise ValueError('Inspect each Working image before writing its description')
+        patch_description(book, {'operations': [operation]}, element['id'])
 
 
 def inventory(book, action):
@@ -267,7 +319,20 @@ def replace_source_text(book, root, action):
         parent['resolved_md_text'] = after
 
 
-def run_agent(state, command, *, client_factory=None, progress=None, cancelled=None):
+def agent_prompt(guide, instruction, selected, target_id, context_ids, step,
+                 memory, result, revision, read_context):
+    task_state = {
+        'instruction': instruction.strip(), 'selected_id': selected, 'target_id': target_id,
+        'context_ids': context_ids, 'step': step,
+        'memory': memory, 'last_result': result, 'working_revision': revision,
+    }
+    if target_id is not None:
+        task_state['read_context'] = {'elements': list(read_context.values())}
+    return guide + '\n\nTASK STATE JSON:\n' + json.dumps(task_state, ensure_ascii=False)
+
+
+def run_agent(state, command, *, client_factory=None, progress=None, cancelled=None,
+              preview_prompt=False):
     """Let Codex request context and Working edits until it finishes or fails."""
     instruction = command.get('instruction')
     if not isinstance(instruction, str) or not instruction.strip() or len(instruction) > 12000:
@@ -279,8 +344,17 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
     if prompt_preset is not None and (not isinstance(prompt_preset, str)
                                       or prompt_preset not in PROMPT_PRESETS):
         raise ValueError('Unknown Codex Working prompt preset')
+    target_id = command.get('target_id')
     reference_prompt = ((PROGRAM / 'prompts' / PROMPT_PRESETS[prompt_preset]).read_text(encoding='utf-8')
-                        if prompt_preset is not None else None)
+                        if target_id is not None and prompt_preset is not None else None)
+    if target_id is not None and (not isinstance(target_id, str) or
+                                  prompt_preset not in PROMPT_PRESETS or task_kind is not None):
+        raise ValueError('Description task requires a selected element and description preset')
+    context_ids = command.get('context_ids', [])
+    if (not isinstance(context_ids, list) or any(not isinstance(i, str) for i in context_ids)
+            or len(context_ids) != len(set(context_ids)) or
+            (target_id is None and context_ids)):
+        raise ValueError('Description context must contain distinct element IDs')
     with state.lock:
         book, _, revision = state.input_cache.load(state.root / 'working')
         if revision != command.get('expected_revision'):
@@ -288,28 +362,54 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
         selected = command.get('id')
         if selected is not None and selected not in {e['id'] for e in elements(book)}:
             raise ValueError('Selected element no longer exists')
+        target_chapter = next((c for c in book['chapters']
+                               if any(e['id'] == target_id for e in c['elements'])), None)
+        target = (next((e for e in target_chapter['elements'] if e['id'] == target_id), None)
+                  if target_chapter else None)
+        if target_id is not None and (selected != target_id or target is None or
+                                      target['type'] != ('graphic' if prompt_preset == 'describe_images' else 'table')):
+            raise ValueError('Description target must match the selected image or table')
+        if target_id is not None and target['type'] == 'table' and target['role'] in SUPPORTING_TABLE_ROLES:
+            raise ValueError('Cannot describe a supporting table')
+        context = {e['id']: e for e in target_chapter['elements']} if target_chapter else {}
+        if any(identifier == target_id or identifier not in context or
+               context[identifier]['role'] not in {'caption', 'note', 'legend', 'footnote'}
+               for identifier in context_ids):
+            raise ValueError('Description context must be labeled elements in the selected chapter')
         opening = {'toc': deepcopy(book['toc']),
                    'chapters': [{'id': c['id'], 'title': c.get('resolved_title', c['title']),
                                   'markdown_file': c.get('resolved_markdown_file', c['markdown_file']),
                                   'element_count': len(c['elements'])} for c in book['chapters']],
                    'element_count': sum(len(c['elements']) for c in book['chapters']),
-                   'selected_id': selected}
-    job = REPOSITORY / '.agent/tmp/book-codex-agent' / uuid.uuid4().hex
-    job.mkdir(parents=True)
-    write_json(job / 'request.json', {'revision': revision, 'instruction': instruction,
-                                      'task_kind': task_kind,
-                                      'prompt_preset': prompt_preset,
-                                      'opening': opening})
+                   'selected_id': selected, 'context_ids': context_ids}
     guide = (PROGRAM / 'prompts/codex-agent.md').read_text(encoding='utf-8')
     if reference_prompt is not None:
         wrapper = (PROGRAM / 'prompts/codex-agent-selected-task.md').read_text(encoding='utf-8').strip()
         guide += '\n\n' + wrapper.replace('{filename}', PROMPT_PRESETS[prompt_preset]).replace(
             '{prompt}', reference_prompt)
+    if target_id is not None:
+        guide += '\n\n' + (PROGRAM / 'prompts/codex-agent-one-description.md').read_text(encoding='utf-8')
+    if preview_prompt:
+        return agent_prompt(guide, instruction, selected, target_id, context_ids,
+                            1, '', {'opening': opening}, revision, {})
+    job = REPOSITORY / '.agent/tmp/book-codex-agent' / uuid.uuid4().hex
+    job.mkdir(parents=True)
+    write_json(job / 'request.json', {'revision': revision, 'instruction': instruction,
+                                      'task_kind': task_kind,
+                                      'prompt_preset': prompt_preset,
+                                      'target_id': target_id,
+                                      'context_ids': context_ids,
+                                      'opening': opening})
     config = yaml.safe_load((PROGRAM / 'config.yaml').read_text(encoding='utf-8'))
     client_factory = client_factory or CodexClient
     memory, result, next_image, edits, errors = '', {'opening': opening}, None, 0, 0
+    read_context = {}
+    selected_image = None
+    inspected_image = False
+    inspected_assets = set()
     started = time.monotonic()
-    with client_factory(config, stage='book_codex_agent', operation='book.codex_agent') as client:
+    with client_factory(config, stage='book_codex_agent', operation='book.codex_agent',
+                        cancelled=cancelled) as client:
         for step in range(1, MAX_STEPS + 1):
             if cancelled is not None and cancelled.is_set():
                 raise RuntimeError('Codex task was stopped')
@@ -319,11 +419,10 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
                 raise ValueError('Working changed outside the Codex task; stopped before another action')
             if progress:
                 progress(step=step, action='thinking', edits=edits)
-            prompt = guide + '\n\nTASK STATE JSON:\n' + json.dumps({
-                'instruction': instruction.strip(), 'selected_id': selected, 'step': step,
-                'memory': memory, 'last_result': result, 'working_revision': revision,
-            }, ensure_ascii=False)
-            action = client.generate_json(prompt, image_path=next_image, validator=validate_action)
+            prompt = agent_prompt(guide, instruction, selected, target_id, context_ids,
+                                  step, memory, result, revision, read_context)
+            action = client.generate_json(prompt, image_path=next_image or selected_image,
+                                          validator=validate_action)
             next_image = None
             if cancelled is not None and cancelled.is_set():
                 raise RuntimeError('Codex task was stopped before applying its next action')
@@ -334,6 +433,23 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
                 memory = action['memory']
             write_json(job / f'action_{step:04d}.json', action)
             kind = action['action']
+            if target_id is not None and kind not in {'read', 'image', 'patch', 'finish'}:
+                result = {'tool_error': 'Description task can only read the selected item, inspect its image, and patch its description',
+                          'revision': revision}
+                write_json(job / f'result_{step:04d}.json', result)
+                errors += 1
+                if errors >= MAX_ERRORS:
+                    raise ValueError('Codex repeated invalid tool requests')
+                continue
+            if target_id is None and prompt_preset is not None and kind not in {
+                    'list', 'read', 'image', 'patch', 'finish'}:
+                result = {'tool_error': 'Description task can only list, read, inspect images, and patch descriptions',
+                          'revision': revision}
+                write_json(job / f'result_{step:04d}.json', result)
+                errors += 1
+                if errors >= MAX_ERRORS:
+                    raise ValueError('Codex repeated invalid tool requests')
+                continue
             if task_kind == 'source_cleanup' and kind in {'patch', 'editor', 'element_transform'}:
                 result = {'tool_error': 'Use source_replace for this source cleanup task',
                           'revision': revision}
@@ -355,9 +471,16 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
                 if kind == 'list':
                     result = inventory(book, action)
                 elif kind == 'read':
+                    if target_id is not None and (not isinstance(action.get('ids'), list) or
+                                                  any(identifier not in {target_id, *context_ids}
+                                                      for identifier in action['ids'])):
+                        raise ValueError('Description task can read only the selected group')
                     result = read_elements(book, action)
                     if len(json.dumps(result, ensure_ascii=False)) > 50000:
                         raise ValueError('Read result is too large; request fewer IDs or a shorter slice')
+                    if target_id is not None:
+                        read_context.update((item['element']['id'], item)
+                                            for item in result['elements'])
                 elif kind == 'source_audit':
                     result = source_audit(book, state.root / 'pdf-to-markdown', action)
                 elif kind == 'source_search':
@@ -365,23 +488,42 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
                 elif kind == 'image':
                     if 'page' in action:
                         page = action['page']
+                        if target_id is not None and page not in {r['page'] for r in target['pdf_regions']}:
+                            raise ValueError('Description task can inspect only the selected source page')
                         if type(page) is not int or page not in {p['page'] for p in state.pdf_pages}:
                             raise ValueError('Requested PDF page does not exist')
                         next_image = state.root / 'pdf/pages' / f'page_{page:04d}.png'
                         result = {'page': page, 'image_attached_to_next_turn': True}
                     else:
                         asset = action.get('asset')
+                        if target_id is not None and asset != target.get('asset'):
+                            raise ValueError('Description task can inspect only the selected image')
                         if not isinstance(asset, str) or not asset.startswith('assets/') or Path(asset).suffix != '.png':
                             raise ValueError('Image requires a PDF page or Working PNG asset')
                         next_image = (state.root / 'working' / asset).resolve()
                         if not next_image.is_relative_to((state.root / 'working' / 'assets').resolve()) or not next_image.is_file():
                             raise ValueError('Working image asset does not exist')
+                        if target_id is not None:
+                            inspected_image = True
+                        if target_id is not None or prompt_preset == 'describe_images':
+                            selected_image = next_image
+                        inspected_assets.add(asset)
                         result = {'asset': asset, 'image_attached_to_next_turn': True}
                 elif kind == 'patch':
-                    state.mutate(revision, lambda current: patch_book(current, action.get('operations')))
+                    if target_id is not None:
+                        if target['type'] == 'graphic' and not inspected_image:
+                            raise ValueError('Inspect the selected image before writing its description')
+                        state.mutate(revision, lambda current: patch_description(current, action, target_id))
+                    elif prompt_preset is not None:
+                        state.mutate(revision, lambda current: patch_bulk_descriptions(
+                            current, action, prompt_preset, inspected_assets))
+                    else:
+                        state.mutate(revision, lambda current: patch_book(current, action.get('operations')))
                     with state.lock:
                         revision = state.input_cache.load(state.root / 'working')[2]
                     edits += 1
+                    if target_id is None and prompt_preset == 'describe_images':
+                        selected_image = None
                     result = {'applied': True, 'revision': revision}
                 elif kind == 'source_replace':
                     state.mutate(revision, lambda current: replace_source_text(current, state.root, action))
@@ -418,4 +560,10 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
                 if errors >= MAX_ERRORS:
                     raise ValueError('Codex repeated invalid tool requests') from error
             write_json(job / f'result_{step:04d}.json', result)
+            if target_id is not None and kind == 'patch' and result.get('applied'):
+                target_type = 'image' if prompt_preset == 'describe_images' else 'table'
+                return {'summary': f'Saved the selected {target_type} description.',
+                        'steps': step, 'edits': edits, 'revision': revision,
+                        'duration_seconds': round(time.monotonic() - started, 2),
+                        'diagnostics': str(job.relative_to(REPOSITORY))}
     raise RuntimeError(f'Codex exceeded {MAX_STEPS} actions without finishing')

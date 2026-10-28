@@ -20,6 +20,9 @@ from .text_recipe import (REFERENCE, escape_literal, edit_template,
 
 HEADING_TYPES = {"heading", "toc_heading", "index_heading",
                  "list_of_tables_heading", "list_of_figures_heading"}
+TOC_DEFAULTS = {"title": "Table of Contents", "markdown_file": "table-of-contents.md"}
+WINDOWS_RESERVED_STEMS = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)),
+                          *(f"LPT{i}" for i in range(1, 10))}
 PROTECTED_TYPES = ('table', 'graphic')
 EDITABLE_TYPES = ('heading', 'callout', 'callout_text', 'prose', 'code_block',
                   'preformatted_text')
@@ -47,6 +50,10 @@ def write_json(path, value):
         bundle = path.parent.name in {"working", "accepted"} or path.parent.name.startswith('.')
         root = path.parent.parent if bundle else path.parent
         workspace = root / 'pdf-to-markdown'
+        for field in TOC_DEFAULTS:
+            if field in value['toc']:
+                value['toc'][field] = join_adjacent_references(value['toc'][field], workspace)
+            value['toc'].pop('resolved_' + field, None)
         for chapter in value["chapters"]:
             for field in ("title", "markdown_file"):
                 chapter[field] = join_adjacent_references(chapter[field], workspace)
@@ -73,6 +80,18 @@ def confined(root, relative):
     if not path.is_relative_to(root.resolve()):
         raise ValueError(f"Path escapes bundle: {relative}")
     return path
+
+
+def toc_value(book, field):
+    toc = book['toc']
+    return toc.get('resolved_' + field, toc.get(field, TOC_DEFAULTS[field]))
+
+
+def valid_markdown_filename(filename):
+    return (isinstance(filename, str) and filename.endswith('.md') and bool(filename[:-3].strip(' .'))
+            and Path(filename).name == filename
+            and filename.split('.', 1)[0].rstrip(' ').upper() not in WINDOWS_RESERVED_STEMS
+            and re.search(r'[<>:"/\\|?*\x00-\x1f]', filename) is None)
 
 
 def heading_text(element):
@@ -123,18 +142,17 @@ def set_element_type(element, kind):
         element.pop('heading_level', None)
 
 
-def new_chapter(elements, chapter_id, existing_files=()):
+def new_chapter(elements, chapter_id, existing_files=(TOC_DEFAULTS['markdown_file'],)):
     heading = next((e for e in elements if e["type"] in HEADING_TYPES), None)
     title = " ".join(heading_text(heading).split()) if heading else "Draft Chapter"
     title = title or "Draft Chapter"
     stem = re.sub(r"[^\w-]+", "-", title.lower(), flags=re.UNICODE).strip("-.")[:100]
     stem = stem or "chapter"
     # Windows reserved names must also remain usable on the initial machine.
-    if stem.upper() in {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)),
-                       *(f"LPT{i}" for i in range(1, 10))}:
+    if stem.upper() in WINDOWS_RESERVED_STEMS:
         stem = "chapter-" + stem
     filename = stem + ".md"
-    if filename.casefold() in {f.casefold() for f in existing_files} or filename == "table-of-contents.md":
+    if filename.casefold() in {f.casefold() for f in existing_files}:
         filename = f"{stem}-{chapter_id}.md"
     title_template = re.sub(r"^#{1,6}[ \t]*", "", heading["md_text"]).strip() if heading else escape_literal(title)
     return {"id": chapter_id, "title": title_template, "resolved_title": title,
@@ -306,6 +324,7 @@ def load_input(working, book=None, *, cache=None):
         anchors.add(entry['anchor'])
     templates = [element.get("md_text", "") for element in elements(book)]
     templates += [chapter[field] for chapter in book["chapters"] for field in ("title", "markdown_file")]
+    templates += [book['toc'][field] for field in TOC_DEFAULTS if field in book['toc']]
     referenced_pages = {int(match[1]) for template in templates for match in REFERENCE.finditer(template)}
     text_pages = {}
     for page in sorted(referenced_pages):
@@ -318,10 +337,19 @@ def load_input(working, book=None, *, cache=None):
             element["resolved_md_text"] = resolve(element["md_text"])
             element["source_differences"] = source_differences(
                 element["md_text"], text_pages, block_index=block_index)
-    ids, filenames, chapters = set(), {"table-of-contents.md"}, set()
+    for field in TOC_DEFAULTS:
+        if field in book['toc']:
+            if not isinstance(book['toc'][field], str) or not book['toc'][field].strip():
+                raise ValueError('Table of contents title and filename cannot be empty')
+            book['toc']['resolved_' + field] = resolve(book['toc'][field])
+    ids, filenames, chapters = set(), set(), set()
     assets = {}
     if type(book["toc"]["depth"]) is not int or book["toc"]["depth"] not in (1, 2, 3):
         raise ValueError("TOC depth must be 1, 2 or 3")
+    toc_filename = toc_value(book, 'markdown_file')
+    if not valid_markdown_filename(toc_filename):
+        raise ValueError("TOC Markdown filename must be a bundle-local .md file")
+    filenames.add(toc_filename.casefold())
     for chapter in book["chapters"]:
         for field in ("title", "markdown_file"):
             chapter["resolved_" + field] = resolve(chapter[field])
@@ -329,12 +357,16 @@ def load_input(working, book=None, *, cache=None):
             raise ValueError("Duplicate chapter ID")
         chapters.add(chapter["id"])
         filename = chapter_value(chapter, "markdown_file")
-        if Path(filename).name != filename or not filename.endswith(".md") or filename.casefold() in filenames:
+        if not valid_markdown_filename(filename) or filename.casefold() in filenames:
             raise ValueError("Chapter Markdown filenames must be unique bundle-local .md files")
         filenames.add(filename.casefold())
         for element in chapter["elements"]:
             if element["type"] not in ELEMENT_TYPES:
                 raise ValueError("Unsupported element type")
+            if "description" in element and (element["type"] not in {"graphic", "table"}
+                                              or not isinstance(element["description"], str)
+                                              or not element["description"].strip()):
+                raise ValueError("Only images and tables can have a description")
             if element["role"] not in ELEMENT_ROLES:
                 raise ValueError("Unsupported element role")
             identifier = element["id"]
@@ -358,23 +390,36 @@ def load_input(working, book=None, *, cache=None):
     return book, assets, fingerprint
 
 
+def description_markdown(element):
+    if not element.get('description'):
+        return ''
+    description = element['description'].rstrip('\r\n')
+    fence = '`' * max(3, max((len(run) + 1 for run in re.findall(r'`+', description)), default=3))
+    label = 'Image' if element['type'] == 'graphic' else 'Table'
+    return (f'\n\n<details>\n<summary>{label} description</summary>\n\n'
+            f'{fence}text\n{description}\n{fence}\n\n</details>')
+
+
 def element_markdown(element):
     if not element.get("visible", True):
         return ""
     if element.get("asset"):
-        return f"![{element['id']}]({element['asset']})"
+        image = f"![{element['id']}]({element['asset']})"
+        return image + description_markdown(element)
     if element["type"] in HEADING_TYPES:
         text = element.get("resolved_md_text", element.get("md_text", ""))
         return preserve_line_breaks("#" * element["heading_level"] + " " + re.sub(r"^#{1,6}[ \t]*", "", text))
     text = element.get("resolved_md_text", element.get("md_text", ""))
     if element['type'] == 'table' and element.get('text_format', element.get('table_format')) == 'csv':
         fence = '`' * max(3, max((len(run) + 1 for run in re.findall(r'`+', text)), default=3))
-        return f'{fence}csv\n{text.rstrip()}\n{fence}'
+        table = f'{fence}csv\n{text.rstrip()}\n{fence}'
+        return table + description_markdown(element)
     if element["type"] in {"code_block", "preformatted_text"} and not any(
             token.type == 'fence' for token in PARSER.parse(text)):
         fence = "`" * max(3, max((len(run) + 1 for run in re.findall(r"`+", text)), default=3))
         return f"{fence}text\n{text}\n{fence}"
-    return preserve_line_breaks(text)
+    result = preserve_line_breaks(text)
+    return result + description_markdown(element)
 
 
 def toc_entries(book):
@@ -393,19 +438,26 @@ def toc_label(element):
 
 
 def toc_markdown(book):
-    lines = ["# Table of Contents", ""]
+    lines = ["# " + toc_value(book, 'title'), ""]
     for chapter, e in toc_entries(book):
         title = toc_label(e).replace("[", r"\[").replace("]", r"\]")
         lines.append("  " * (e["heading_level"] - 1) + f"- [{title}]({chapter_value(chapter, 'markdown_file')}#element-{e['id']})")
     return "\n".join(lines) + "\n"
 
 
-def export_markdown(book, destination):
+def export_markdown(book, destination, previous=None):
+    if previous is not None:
+        current_files = {toc_value(book, 'markdown_file'),
+                         *(chapter_value(chapter, 'markdown_file') for chapter in book['chapters'])}
+        old_files = {toc_value(previous, 'markdown_file'),
+                     *(chapter_value(chapter, 'markdown_file') for chapter in previous['chapters'])}
+        for filename in old_files - current_files:
+            confined(destination, filename).unlink(missing_ok=True)
     for chapter in book["chapters"]:
         parts = [f'<a id="element-{e["id"]}"></a>\n\n{element_markdown(e)}'
                  for e in chapter["elements"] if e.get("visible", True)]
         confined(destination, chapter_value(chapter, "markdown_file")).write_text("\n\n".join(parts) + "\n", encoding="utf-8")
-    (destination / "table-of-contents.md").write_text(toc_markdown(book), encoding="utf-8")
+    confined(destination, toc_value(book, 'markdown_file')).write_text(toc_markdown(book), encoding="utf-8")
 
 
 def changes(accepted, working):
@@ -439,6 +491,7 @@ def changes(accepted, working):
     new_hashes = working.get("asset_hashes", {})
     result = []
     if (accepted["toc"]["depth"] != working["toc"]["depth"]
+            or any(toc_value(accepted, field) != toc_value(working, field) for field in TOC_DEFAULTS)
             or toc_markdown(accepted) != toc_markdown(working)):
         result.append({"id": "generated-toc", "kind": "changed",
                        "accepted": {"depth": accepted["toc"]["depth"]},

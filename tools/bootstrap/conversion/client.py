@@ -17,7 +17,8 @@ _REQUEST_TIMEOUT_SECONDS = 180
 
 
 class CodexClient:
-    def __init__(self, config, *, stage, operation, transport=None, cache=None, timeout=_REQUEST_TIMEOUT_SECONDS):
+    def __init__(self, config, *, stage, operation, transport=None, cache=None,
+                 timeout=_REQUEST_TIMEOUT_SECONDS, cancelled=None):
         self.selected = selection(config, stage)
         delay = config["llm"].get("post_request_delay_seconds", 0)
         if type(delay) not in (int, float) or not math.isfinite(delay) or delay < 0:
@@ -26,6 +27,7 @@ class CodexClient:
         self._previous_request_finished = None
         self.operation = operation
         self.timeout = timeout
+        self.cancelled = cancelled
         self.transport = transport or CodexTransport()
         self.cache = cache or (ResponseCache(os.environ["CONVERSION_CACHE_DIR"]) if os.environ.get("CONVERSION_CACHE_DIR") else ResponseCache())
         self.call_count = 0
@@ -33,6 +35,8 @@ class CodexClient:
         self.metrics = []
 
     def _generate(self, prompt, images=(), validator=None):
+        if self.cancelled is not None and self.cancelled.is_set():
+            raise RuntimeError("Codex task was stopped")
         request = identity(self.selected, prompt, images, operation=self.operation)
 
         def checked(result):
@@ -60,9 +64,14 @@ class CodexClient:
                     time.sleep(remaining)
             started = time.monotonic()
             try:
-                result = self.transport.run(self.selected, prompt, images=images, timeout=self.timeout)
+                options = {"images": images, "timeout": self.timeout}
+                if self.cancelled is not None:
+                    options["cancelled"] = self.cancelled
+                result = self.transport.run(self.selected, prompt, **options)
                 self._previous_request_finished = time.monotonic()
                 checked(result)
+                if self.cancelled is not None and self.cancelled.is_set():
+                    raise RuntimeError("Codex task was stopped")
             except Exception as error:
                 trace("request.failed", stage=self.selected.stage, error=type(error).__name__)
                 self._record({"stage": self.selected.stage, "model": self.selected.model,

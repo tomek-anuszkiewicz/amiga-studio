@@ -201,6 +201,8 @@ def validate_book(book, workspace):
                     shadow[start:end] = expanded[start:end]
         tokens(PARSER.parse(''.join(shadow)))
 
+    if 'title' in book.get('toc', {}):
+        field(book['toc']['title'], 'toc', None, 'title', None)
     for chapter in book['chapters']:
         field(chapter['title'], chapter['id'], None, 'title', None)
         for element in chapter['elements']:

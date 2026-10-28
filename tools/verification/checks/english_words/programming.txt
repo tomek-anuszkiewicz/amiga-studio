@@ -313,6 +313,7 @@ uncheck
 unescape
 unicodedata
 unittest
+unshift
 urlparse
 urlsplit
 usize

@@ -15,8 +15,8 @@ import uuid
 
 from PIL import Image
 
-from .model import (EDITABLE_TYPES, ELEMENT_ROLES, HEADING_TYPES, PROTECTED_TYPES, InputCache, authored_element, changes, confined, digest, edit_markdown, elements, export_markdown, json_bytes,
-                    load_input, new_chapter, read_json, set_element_role, set_element_type, set_heading_level, update_markdown_heading, write_json)
+from .model import (EDITABLE_TYPES, ELEMENT_ROLES, HEADING_TYPES, PROTECTED_TYPES, TOC_DEFAULTS, InputCache, authored_element, changes, confined, digest, edit_markdown, elements, export_markdown, json_bytes,
+                    load_input, new_chapter, read_json, set_element_role, set_element_type, set_heading_level, toc_value, update_markdown_heading, write_json)
 from .text_recipe import REFERENCE, slice_template
 from .markdown import format_html_table, html_table_structure, table_structure
 from .render import HERE, KATEX, Renderer
@@ -57,7 +57,7 @@ def render_accepted(root, renderer):
     if previous["settings"] == renderer.settings and previous["input_fingerprint"] == fingerprint:
         return previous
     snapshot = renderer.render(accepted, book, assets, fingerprint, previous)
-    export_markdown(book, accepted)
+    export_markdown(book, accepted, previous)
     write_json(accepted / "rendered.json", snapshot)
     log(f"[accepted presentation] {snapshot['metrics']}")
     return snapshot
@@ -235,7 +235,7 @@ class ReviewState:
                         snapshot = renderer.render(self.root / "working", book, assets, fingerprint, previous)
                         with self.lock:
                             write_json(self.root / "working" / "rendered.json", snapshot)
-                            export_markdown(book, self.root / "working")
+                            export_markdown(book, self.root / "working", previous)
                             self.working = snapshot
                             self.pending = self.input_cache.load(self.root / "working")[2] != fingerprint
                             if self.accepted is None and not self.pending:
@@ -369,6 +369,35 @@ class ReviewState:
             edit_markdown(self.root, element, text)
         self.mutate(command['expected_revision'], update)
 
+    def rename_chapters(self, command):
+        entries = command.get('chapters')
+        toc = command.get('toc')
+
+        def update(book):
+            if (not isinstance(entries, list) or len(entries) != len(book['chapters']) or
+                    [entry.get('id') for entry in entries if isinstance(entry, dict)] !=
+                    [chapter['id'] for chapter in book['chapters']]):
+                raise ValueError('Provide every chapter in its current order')
+            for chapter, entry in zip(book['chapters'], entries):
+                title, filename = entry.get('title'), entry.get('markdown_file')
+                if not isinstance(title, str) or not title.strip():
+                    raise ValueError('Chapter title cannot be empty')
+                if not isinstance(filename, str) or not filename.strip():
+                    raise ValueError('Chapter Markdown filename cannot be empty')
+                chapter['title'] = title
+                chapter['markdown_file'] = filename
+
+            if not isinstance(toc, dict):
+                raise ValueError('Provide the generated table of contents')
+            for field in ('title', 'markdown_file'):
+                value = toc.get(field)
+                if not isinstance(value, str) or not value.strip():
+                    raise ValueError('Table of contents title and filename cannot be empty')
+                if field in book['toc'] or value != TOC_DEFAULTS[field]:
+                    book['toc'][field] = value
+
+        self.mutate(command['expected_revision'], update)
+
     def codex(self, command):
         from .codex_edit import run_command
         return run_command(self, command)
@@ -440,6 +469,12 @@ class ReviewState:
         threading.Thread(target=work, name='book-codex-agent', daemon=True).start()
         return {'id': task_id}
 
+    def preview_codex_agent(self, command):
+        from .codex_agent import run_agent
+        if command.get('target_id') is None:
+            raise ValueError('Prompt preview requires a selected description target')
+        return {'prompt': run_agent(self, command, preview_prompt=True)}
+
     def stop_codex_agent(self, command):
         with self.lock:
             if not self.codex_agent or self.codex_agent['id'] != command.get('id'):
@@ -461,7 +496,8 @@ class ReviewState:
                     raise ValueError('This element already starts a chapter')
                 following = chapter['elements'][position:]
                 created = new_chapter(following, 'chapter-' + uuid.uuid4().hex,
-                                      [c.get('resolved_markdown_file', c['markdown_file']) for c in book['chapters']])
+                                      [c.get('resolved_markdown_file', c['markdown_file']) for c in book['chapters']]
+                                      + [toc_value(book, 'markdown_file')])
                 chapter['elements'] = chapter['elements'][:position]
                 book['chapters'].insert(chapter_index + 1, created)
                 return
@@ -730,8 +766,8 @@ class ReviewState:
     def toc(self, command):
         if type(command["depth"]) is not int or command["depth"] not in (1, 2, 3):
             raise ValueError("TOC depth must be 1, 2 or 3")
-        self.mutate(command["expected_revision"], lambda book: book.update(
-            toc={"depth": command["depth"]}))
+        self.mutate(command["expected_revision"],
+                    lambda book: book['toc'].update(depth=command['depth']))
 
     def accept(self, command):
         with self.lock:
@@ -839,6 +875,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.state.change_role(command)
             elif self.path == "/api/markdown":
                 self.state.markdown(command)
+            elif self.path == "/api/rename-chapters":
+                self.state.rename_chapters(command)
             elif self.path == "/api/codex":
                 result.update(self.state.codex(command))
             elif self.path == "/api/source-cleanup/preview":
@@ -851,6 +889,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.state.accept_source_literal(command)
             elif self.path == "/api/codex-agent":
                 result.update(self.state.start_codex_agent(command))
+            elif self.path == "/api/codex-agent/preview":
+                result.update(self.state.preview_codex_agent(command))
             elif self.path == "/api/codex-agent/stop":
                 self.state.stop_codex_agent(command)
             elif self.path == "/api/new-chapter":

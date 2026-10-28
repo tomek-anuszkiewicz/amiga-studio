@@ -16,11 +16,12 @@
 <button data-book-task="describe_images" role="menuitem">Describe images</button>
 <button data-book-task="describe_tables" role="menuitem">Describe tables</button>
 <button data-book-task="source_cleanup" role="menuitem">Clean direct book text</button>
+<button data-book-task="rename_chapters" role="menuitem">Rename Chapters</button>
 </div>
 <div id="element-menu" role="menu" aria-label="Element actions" hidden>
-<button id="menu-current-id" role="menuitem" disabled hidden>ID:</button>
-<button id="menu-current-type" role="menuitem" disabled hidden>Type:</button>
-<button id="menu-current-role" role="menuitem" disabled hidden>Role:</button>
+<button id="menu-current-id" role="menuitem" disabled>ID:</button>
+<button id="menu-current-type" role="menuitem" disabled>Type:</button>
+<button id="menu-current-role" role="menuitem" disabled>Role:</button>
 <button id="menu-visibility" role="menuitem">Hide Element</button>
 <button id="menu-hide-page" role="menuitem">Hide Page</button>
 <button id="menu-heading" role="menuitem" aria-haspopup="menu" aria-expanded="false">Heading ▸</button>
@@ -32,6 +33,8 @@
 <button id="menu-bold" role="menuitem">Bold</button>
 <button id="menu-remove-bold" role="menuitem">Remove Bold</button>
 <button id="menu-markdown" role="menuitem">Edit Markdown...</button>
+<button id="menu-describe-image" role="menuitem">Describe image with Codex...</button>
+<button id="menu-describe-table" role="menuitem">Describe table with Codex...</button>
 <button id="menu-new-chapter" role="menuitem">New chapter from here</button>
 <button id="menu-split" role="menuitem">Split...</button>
 <button id="menu-duplicate" role="menuitem">Duplicate element</button>
@@ -75,6 +78,13 @@
 </select></div>
 <label for="codex-instruction">Instruction</label>
 <textarea id="codex-instruction" placeholder="Convert this table to HTML, preserving all its text." spellcheck="false"></textarea>
+<div id="codex-prompt-section" hidden><label for="codex-prompt-preview">Prompt sent to Codex (first step)</label>
+<textarea id="codex-prompt-preview" readonly spellcheck="false"></textarea>
+<p>Later steps include tool results and may attach the selected image.</p></div>
+<div id="codex-context-section" hidden><label for="codex-caption-style">Caption position</label>
+<select id="codex-caption-style"><option value="auto">Auto</option><option value="above">Above</option><option value="below">Below</option></select>
+<p id="codex-caption-evidence"></p><p>Nearby caption, notes, legend and footnotes</p>
+<div id="codex-context-items"></div></div>
 <div id="codex-format-section"><label for="codex-format-mode">Format rule</label>
 <select id="codex-format-mode"><option value="preserve">Keep current format</option>
 <option value="allow_change">Allow format change</option></select>
@@ -87,7 +97,7 @@
 <p id="codex-help">Changes are applied to Working after checking that original content is preserved and only listed additions are added. Dashes, commas, periods and spaces may change.</p>
 <p id="codex-status" role="status" hidden></p>
 <p id="codex-error" role="alert" hidden></p>
-<div class="dialog-actions"><button type="button" id="stop-codex-agent" hidden>Stop task</button><button id="cancel-codex" value="cancel">Close</button><button type="button" id="run-codex">Run Codex</button></div>
+<div class="dialog-actions"><button type="button" id="stop-codex-agent" hidden>Stop task</button><button type="button" id="cancel-codex">Close</button><button type="button" id="run-codex">Run Codex</button></div>
 </form></dialog>
 <dialog id="source-cleanup-dialog"><h3>Clean direct book text</h3>
 <p>Review exact PDF matches before changing Working. Repeated or missing matches stay unchanged.</p>
@@ -95,5 +105,11 @@
 <div id="source-cleanup-findings"></div>
 <p id="source-cleanup-error" role="alert" hidden></p>
 <div class="dialog-actions"><button type="button" id="source-cleanup-select-all">Select All</button><button type="button" id="source-cleanup-close">Close</button><button type="button" id="source-cleanup-apply">Apply selected</button></div>
+</dialog>
+<dialog id="rename-chapters-dialog"><h3>Rename Chapters</h3>
+<p>Edit titles and Markdown filenames in Working. Chapter titles are matched against PDF text when saved; check direct text with Clean direct book text.</p>
+<div id="rename-chapters-list"></div>
+<p id="rename-chapters-error" role="alert" hidden></p>
+<div class="dialog-actions"><button type="button" id="rename-chapters-close">Cancel</button><button type="button" id="rename-chapters-save">Save</button></div>
 </dialog>
 <script src="/viewer.js"></script></body></html>

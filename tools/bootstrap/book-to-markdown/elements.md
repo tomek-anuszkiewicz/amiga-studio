@@ -44,6 +44,8 @@ A symbol-definition table is `type: table, role: legend`; a qualification paragr
 is `type: prose, role: note`. Changing role preserves type and content. Advisory
 labels and bodies remain `callout` and `callout_text`, normally with null role.
 The Markdown representation and heading depth continue to follow type.
+Tables with `legend`, `note` or `footnote` roles supply description context; they
+are not separate description targets.
 
 Only the current format is supported. Every element must include an explicit
 role, including null when no role applies. Old semantic types and missing fields
@@ -63,6 +65,19 @@ An authored table or image group can associate its `table` or `graphic` with ele
 Use `note` for source notes and qualifications, and `legend` for definitions needed to interpret notation. A NOTES or LEGEND label alone does not determine the role. General narrative remains `prose`, and a table's or graphic's formal name remains `caption`. Text integrated into the artwork stays inside the `graphic`; these roles describe separate source blocks, not a requirement to extract labels from an image.
 
 Prepared groups provide the source context for the [image description prompt](prompts/describe-images.md). Generated descriptions are additions to those source elements, not source notes or legends. Table descriptions follow the [table description prompt](prompts/describe-tables.md). PDF Stage 05 continues to replace table markup only; grouping and descriptions are separate book-processing work.
+
+A `table` or `graphic` can also carry an authored `description` string. The
+context action generates it from that element, its chosen nearby caption and
+contiguous notes, legends and footnotes below it, including the image asset
+when applicable. A graphic or table description appears in a separate collapsed
+`<details>` block containing a fenced `text` block below its source element in
+rendered Working and exported Markdown; the stored description remains plain
+text. The selected context is used for the task; it does not create persistent
+group membership.
+Descriptions are model-authored additions, not PDF source recipes. Source-text
+alignment and **Clean direct book text** inspect chapter titles and `md_text`;
+the cleanup action also inspects an explicitly edited generated contents title,
+but never the `description` field of a table or graphic.
 
 ## Heading hierarchy
 
@@ -84,9 +99,13 @@ Unnumbered titles still have a level and omit `number`. Preserve appendix identi
 
 Each version has its own `book.json` with ordered `chapters` and
 `toc: {depth: 2}`. The generated TOC is mandatory; depth may be 1, 2 or 3.
+Its optional `title` and `markdown_file` properties control the generated
+heading and export filename; the defaults are `Table of Contents` and
+`table-of-contents.md`. It appears separately in Rename Chapters.
 A chapter has `id`, `title`, `markdown_file`
 and ordered `elements`. Title and safe filename are derived from its first
-heading only when the chapter is created; subsequent edits do not rename files.
+heading when the chapter is created. Rename Chapters edits these fields
+independently and updates the exported filename and contents links.
 
 The importer retains provisional source classifications without automatic
 grouping or reclassification. Each element has a stable `id` (the imported
