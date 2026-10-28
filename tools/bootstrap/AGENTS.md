@@ -24,11 +24,8 @@ books. Normal current-format transformations remain part of the requested
 pipeline. Run conversion or import only when requested; permission to overwrite
 does not itself request a regeneration run.
 
-For book import, recipe generation and reconstruction, read the local
-[book instructions](book-to-markdown/AGENTS.md). PDF text/graphics are the source;
-`book.json` stores the reconstruction decisions, rather than references to complete
-converted Markdown segments. Fix the generating code when the recipe is wrong;
-do not substitute manual repairs to generated book data.
+For book import, recipe generation and reconstruction, also read the local
+[book instructions](book-to-markdown/AGENTS.md).
 
 Make the requested code, configuration or prompt change, then run only the
 fragment and stages explicitly selected by the user. Report output paths and
@@ -47,27 +44,19 @@ execution and cache behavior are documented in the
 
 ## Preparing the book source collection
 
-Source collection is an authoring prerequisite, not part of the ordinary user's chapter-generation workflow. When source acquisition is requested, use the [book catalog and variant layout](book-to-markdown/README.md#source-catalog-and-variant-layout):
-
-1. Find and download the required manual and edition locally. Download filenames and hosting locations may differ between mirrors.
-2. Calculate the full SHA-256, for example with `Get-FileHash -LiteralPath './downloaded.pdf' -Algorithm SHA256`.
-3. Compare all 64 hexadecimal characters with the variant's `source.json` value. A title, page count or 12-character prefix alone does not identify the accepted PDF. For a mismatch, obtain the matching source or deliberately author a separate variant; do not replace an existing variant's hash to accept another download.
-4. Copy the matching PDF to `books/<book-id>/<first-12-characters-of-sha256>/source.pdf` and verify the copied file's full SHA-256 again.
-
-For Test Book reconstruction, use the page tracker linked from the catalog to preserve its source mapping and assembly order, then verify the full resulting hash.
+Source collection is an authoring prerequisite, not part of ordinary chapter
+generation. When acquisition is requested, follow the
+[variant layout and full-hash check](book-to-markdown/README.md#source-catalog-and-variant-layout).
+For Test Book reconstruction, use its linked page tracker to preserve source
+mapping and assembly order.
 
 ## Review server during development
 
 Use the [review server controller](book-to-markdown/README.md#background-server-on-windows)
-to run the local browser review server in the background and inspect its PID,
-HTTP status and logs. After changing review Python code, restart the running
-server and check `/` and `/api/status` before reporting the change ready for review.
-After viewer HTML/CSS/JavaScript changes, reload the browser; no Python restart
-is required. Changes to the renderer's `review/document.css` require a restart
-because the renderer snapshots that stylesheet at startup. Working book data is
-detected by the existing render queue.
-If the server was stopped, start it when the requested work includes browser
-review. Report HTTP availability separately from pending rendering or render errors.
+for browser review. After review Python or renderer stylesheet changes, restart
+it and check `/` and `/api/status`; reload the browser after viewer changes.
+If the requested work includes browser review and the server is stopped, start
+it. Report HTTP availability, pending rendering and render errors separately.
 
 ## Manual chapter processing
 

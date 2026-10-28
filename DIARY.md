@@ -5694,3 +5694,23 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: Graphify incremental update and git diff --check
   - Design review: Testing Strategy already accurate, no specification edit
   - NOT RUN: PDF conversion or Book import
+---
+
+### [2026-10-28 17:05 CET] — Simplify Book Review documentation and agent guidance
+- **Affected Subsystems**:
+  - `tools/bootstrap`
+  - `tools/bootstrap/book-to-markdown`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Reorganize Book Review README around server commands, review workflow, source identity, and recipe contract
+  - remove duplicated implementation and UI descriptions
+  - shorten nested agent instructions while preserving scope and source requirements
+- **Architectural Rationale & Trade-Offs**:
+  - Keep operational commands and authoring decisions easy to find while letting code and tests own implemented detail
+- **Verification & Test Results**:
+  - Focused English scan passed for three edited files
+  - 30 local Markdown links resolved
+  - git diff --check passed
+  - pre-commit design review selected no specifications
+  - existing unrelated crates/test_runner/src tracked path is unresolved
+  - application tests not run for documentation-only change

@@ -15,15 +15,12 @@ These instructions supplement the [bootstrap instructions](../AGENTS.md).
   the finished recipe. Tables retain their row/cell structure and spans while
   their source text is referenced. Graphics are reconstructed from their PDF
   regions; generated asset files are local review artifacts.
-- The publication target is a repository containing reviewed recipes and source
-  identification, allowing another reader to obtain the matching PDFs and rebuild
-  useful Markdown without repeating model inference. PDF acquisition, source
-  identity, OCR/extraction conventions and reconstruction must be explicit.
-  Do not claim that a standalone bootstrap command exists until implemented.
-- Recipe changes requested by the user mean changes to the generating and
-  consuming code. Do not hand-edit generated `book.json` to conceal an importer
-  or renderer defect. Regeneration is a separate operation, performed when requested;
-  existing authored choices and generated bundles do not constrain that operation.
+- The publication target is reviewed recipes with source identification so a
+  matching PDF can rebuild Markdown without repeating model inference. PDF
+  acquisition, identity and extraction conventions must be explicit. Standalone
+  reconstruction remains pending; follow the
+  [roadmap](../../../ROADMAP.md#step-1-manual-conversion-and-initial-knowledge-base)
+  and [recipe contract](README.md#editing-and-publication).
 - The explicit Codex editor command treats current authored text (including
   existing literals) as its trusted baseline. Validate returned content against
   the exact request snapshot before replacing one Working element; preserve its
@@ -37,20 +34,12 @@ These instructions supplement the [bootstrap instructions](../AGENTS.md).
 - Table-to-graphic displays original PDF crops and retains its text. A graphic
   without stored text uses positioned Stage 02 OCR; absent OCR must be reported,
   not invented from the image. Changed or stale model responses must not save.
-- Keep implemented reconstruction separate from pending work. See the
-  [documentation and RAG roadmap](../../../ROADMAP.md#step-1-manual-conversion-and-initial-knowledge-base) and [template contract](README.md#editing-and-publication).
 
 ## Scope
 
-Use only the current recipe format. Do not implement backward compatibility,
-automatic migrations, legacy interpretation, manual patches or inference-based
-rescue of existing content. Import rebuilds its output and may overwrite an
-existing Working and Accepted books. Import deletes both bundles before rebuilding
-Working; the first render creates Accepted from the new Working. Do not preserve
-old content, assets, renders or settings to avoid loss.
-Repair the generating code or prompt instead. Run import/regeneration only when
-the user requests it. Ordinary editor operations and current-format validation
-remain supported.
+The [parent bootstrap rules](../AGENTS.md#converter-development) govern
+current-format-only changes, generated artifacts and import timing. Ordinary
+editor operations and current-format validation remain supported.
 
 Do not publish, stage or commit book recipes or source artifacts merely because
 publication is the intended final workflow. Follow the user's requested timing
