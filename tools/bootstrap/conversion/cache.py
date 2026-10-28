@@ -9,7 +9,7 @@ import tempfile
 from .transport import BASE_INSTRUCTIONS, DEVELOPER_INSTRUCTIONS, OVERRIDES, SDK_VERSION
 
 CONTRACT_VERSION = "1"
-DEFAULT_CACHE = Path(__file__).resolve().parents[1] / "book-to-markdown/books/.cache/codex"
+DEFAULT_CACHE = Path(__file__).resolve().parents[1] / ".cache/codex"
 
 
 def identity(selected, prompt, images, *, operation):

@@ -166,7 +166,7 @@ class SelectionTests(unittest.TestCase):
                 self.assertIn("RAG MCP contracts", names)
                 self.assertIn("Verification CLI contracts", names)
         for path in ("tools/bootstrap/conversion/client.py",
-                     "tools/bootstrap/book-to-markdown/books/new/source.json"):
+                     "tools/bootstrap/books/new/source.json"):
             with self.subTest(path=path):
                 names = {name for name, _, _ in selected("commit", [path])}
                 self.assertEqual(names & bootstrap, bootstrap)

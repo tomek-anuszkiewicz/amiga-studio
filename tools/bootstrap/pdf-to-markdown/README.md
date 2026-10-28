@@ -108,7 +108,7 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF_DIRECTORY>/source
 ```
 
 PDF worker responses use the fixed shared cache at
-`tools/bootstrap/book-to-markdown/books/.cache/codex`. Cache identity uses stable
+`tools/bootstrap/.cache/codex`. Cache identity uses stable
 operation IDs (`pdf_page_to_objects`, `pdf_table_to_markup`,
 `pdf_page_proofreading`), independent of stage names and numbering. Prompts,
 inputs, model settings and isolated execution settings

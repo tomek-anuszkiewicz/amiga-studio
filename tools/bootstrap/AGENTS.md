@@ -52,7 +52,7 @@ Source collection is an authoring prerequisite, not part of the ordinary user's 
 1. Find and download the required manual and edition locally. Download filenames and hosting locations may differ between mirrors.
 2. Calculate the full SHA-256, for example with `Get-FileHash -LiteralPath './downloaded.pdf' -Algorithm SHA256`.
 3. Compare all 64 hexadecimal characters with the variant's `source.json` value. A title, page count or 12-character prefix alone does not identify the accepted PDF. For a mismatch, obtain the matching source or deliberately author a separate variant; do not replace an existing variant's hash to accept another download.
-4. Copy the matching PDF to `book-to-markdown/books/<book-id>/<first-12-characters-of-sha256>/source.pdf` and verify the copied file's full SHA-256 again.
+4. Copy the matching PDF to `books/<book-id>/<first-12-characters-of-sha256>/source.pdf` and verify the copied file's full SHA-256 again.
 
 For Test Book reconstruction, use the page tracker linked from the catalog to preserve its source mapping and assembly order, then verify the full resulting hash.
 

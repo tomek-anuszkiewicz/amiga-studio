@@ -24,7 +24,8 @@ target/
 schematics/
 graphify-out/
 *.json
-tools/bootstrap/book-to-markdown/books/
+tools/bootstrap/books/
+tools/bootstrap/.cache/
 
 # Keep one code graph for the project and three selected reference sources.
 ref_src/*

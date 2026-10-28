@@ -5671,3 +5671,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Individual and general source bootstrap checks passed on repeat runs with pinned manifests
   - a Paula DMAL query found measured Techtravels signals and separated them from reconstructed circuitry
   - Graphify query test, English scan, semantic audit, vault link audit, and roadmap check passed
+
+---
+
+### [2026-10-28 16:50 CET] — Relocate bootstrap books and shared Codex cache
+- **Affected Subsystems**:
+  - `tools/bootstrap/books`
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/book-to-markdown`
+  - `tools/verification`
+  - `.agents`
+- **What Was Changed (The Concrete Reality)**:
+  - Move the tracked book catalog and local source and review data to tools/bootstrap/books
+  - move the shared completed-response cache to tools/bootstrap/.cache without changing its entries
+  - update code paths, review server default, documentation links, Git and Graphify exclusions, and verification scope
+- **Architectural Rationale & Trade-Offs**:
+  - Keep book source data and shared conversion cache at the bootstrap level while retaining existing response identities and local review workspaces
+- **Verification & Test Results**:
+  - PASS: 6694 moved files retained matching SHA-256, including 4775 Codex cache entries
+  - PASS: existing response cache hit, PDF status, and review server HTTP and API status
+  - PASS: conversion, PDF, Book Review, bootstrap, and verification CLI focused tests
+  - PASS: Graphify incremental update and git diff --check
+  - Design review: Testing Strategy already accurate, no specification edit
+  - NOT RUN: PDF conversion or Book import

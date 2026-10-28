@@ -2,7 +2,7 @@
 
 ## Step 1: Manual Conversion and Initial Knowledge Base
 
-Continue with descriptions, Markdown reconstruction and RAG ingestion for the composite Test Book. Its [page tracker](tools/bootstrap/book-to-markdown/books/test-book-example-4567/78e52f075e17/test_pages_tracker.md) records the source pages and assembly order. Apply the book authoring workflow to four source manuals later. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [Book editor](tools/bootstrap/book-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
+Continue with descriptions, Markdown reconstruction and RAG ingestion for the composite Test Book. Its [page tracker](tools/bootstrap/books/test-book-example-4567/78e52f075e17/test_pages_tracker.md) records the source pages and assembly order. Apply the book authoring workflow to four source manuals later. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [Book editor](tools/bootstrap/book-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
 - **1.2: Author Table, Image, and ASCII-Art Descriptions**
   - During authoring, use the [table description prompt](tools/bootstrap/book-to-markdown/prompts/describe-tables.md) for reviewed tables and the [image description prompt](tools/bootstrap/book-to-markdown/prompts/describe-images.md) for reviewed images. Describe reviewed ASCII art from its source context. Store accepted descriptions as explicit recipe content so later reconstruction does not call a model again. Preserve HTML table spans, graphics and text-fenced ASCII art.

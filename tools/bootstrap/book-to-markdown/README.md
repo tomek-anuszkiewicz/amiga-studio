@@ -75,7 +75,7 @@ source acquisition and reconstruction directly from a PDF remain pending.
 The [bootstrap instructions](../AGENTS.md#preparing-the-book-source-collection)
 describe source acquisition during book authoring.
 
-The local source collection contains one manual reserved for later full-book
+The local source collection at `tools/bootstrap/books/` contains one manual reserved for later full-book
 authoring and three parked references. The rebuilt composite Test Book is the
 next editor review source:
 
@@ -103,15 +103,15 @@ inputs.
 The same directory convention applies to the four manuals and composite Test Book:
 
 ```text
-books/<book-id>/<first-12-characters-of-sha256>/
+tools/bootstrap/books/<book-id>/<first-12-characters-of-sha256>/
   source.pdf          # local source or assembled composite PDF
   source.json         # tracked full SHA-256
   pdf-to-markdown/    # local default preparation workspace, created on first run
 ```
 
-The rebuilt Test Book variant is `books/test-book-example-4567/78e52f075e17/`,
+The rebuilt Test Book variant is `tools/bootstrap/books/test-book-example-4567/78e52f075e17/`,
 with full SHA-256 `78e52f075e17e69f6124e63c614fbbdf329b7b472d0f6cc30c024859b16112bf`.
-Its [page tracker](books/test-book-example-4567/78e52f075e17/test_pages_tracker.md)
+Its [page tracker](../books/test-book-example-4567/78e52f075e17/test_pages_tracker.md)
 lives beside `source.pdf` and records the four source variants, their full hashes
 and the 160-page assembly order. The prefix names the variant directory;
 the full hash identifies the exact source PDF. Future book preparation uses this layout.
@@ -148,7 +148,7 @@ or authored settings. The first render initializes a new Accepted bundle from
 the rebuilt Working:
 
 ```powershell
-$Book = "tools/bootstrap/book-to-markdown/books/test-book-example-4567/78e52f075e17"
+$Book = "tools/bootstrap/books/test-book-example-4567/78e52f075e17"
 python tools/bootstrap/book-to-markdown/book_review.py import --book $Book
 python tools/bootstrap/book-to-markdown/book_review.py render --book $Book
 python tools/bootstrap/book-to-markdown/book_review.py serve --book $Book

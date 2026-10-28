@@ -73,6 +73,9 @@ Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analys
 # Physically copied as a seed for new worktrees, then refreshed locally with graphify update.
 /graphify-out/
 
+# Shared completed-response cache for bootstrap conversion tools.
+/tools/bootstrap/.cache/
+
 # Keir Fraser Amiga Test Kit floppy disk images (.adf), debug symbols, and release docs.
 /tools/AmigaTestKit*/
 

@@ -44,7 +44,7 @@ request confirms execution, not transcription quality.
 ## Cache and metrics
 
 The [response cache](cache.py) defaults to
-`tools/bootstrap/book-to-markdown/books/.cache/codex`. Identity includes the stable
+`tools/bootstrap/.cache/codex`. Identity includes the stable
 operation ID, model/effort, pinned runtime, contract version, execution settings,
 prompt, ordered image-byte hashes and image detail. Stage names and numbers are
 execution labels rather than cache identity.

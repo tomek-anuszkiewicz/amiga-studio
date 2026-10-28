@@ -20,7 +20,8 @@
     "graphify-out",
     "ref_src",
     "Obsidian/Amiga/Reference",
-    "tools/bootstrap/book-to-markdown/books",
+    "tools/bootstrap/books",
+    "tools/bootstrap/.cache",
     "tools/AmigaTestKit",
     "tools/blep_generator/output"
   ],

@@ -1,7 +1,7 @@
 param(
     [ValidateSet('start', 'stop', 'restart', 'status')]
     [string]$Action = 'status',
-    [string]$Book = 'tools/bootstrap/book-to-markdown/books/test-book-example-4567/1cea0b35ee62',
+    [string]$Book = 'tools/bootstrap/books/test-book-example-4567/78e52f075e17',
     [ValidateRange(1, 65535)]
     [int]$Port = 8765
 )
