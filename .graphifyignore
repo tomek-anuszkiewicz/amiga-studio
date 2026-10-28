@@ -14,20 +14,23 @@ build/
 *.bin
 
 .git/
+.agent/
 .agents/
 .codex/
 .tmp.driveupload/
 .tmp.drivedownload/
 archive/
-tests/
-tools/
+target/
 schematics/
 graphify-out/
-ref_src/Minimig-AGA_MiSTer-MiSTer/
-ref_src/EASy68K-master/
-ref_src/fx68k/
-ref_src/RetroVisor.app
-ref_src/SingleStepTests-680x0
-ref_src/SingleStepTests-m68000
-ref_src/TG68K.C
-ref_src/vAmigaTS
+*.json
+tools/bootstrap/book-to-markdown/books/
+
+# Keep one code graph for the project and three selected reference sources.
+ref_src/*
+!ref_src/minimig/
+!ref_src/minimig/**
+!ref_src/amiga_replacement_project/
+!ref_src/amiga_replacement_project/**
+!ref_src/vAmiga/
+!ref_src/vAmiga/**

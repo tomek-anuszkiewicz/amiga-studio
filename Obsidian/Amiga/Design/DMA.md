@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "dma"
 status: "draft"
 created: 2026-09-19
-updated: 2026-10-14
+updated: 2026-10-28
 related: ["[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[MemoryBus.md](MemoryBus.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/dma"
@@ -72,4 +72,4 @@ memory opportunity but does not deliver a word to a peripheral.
 - [Amiga Hardware Reference Manual, Chapter 6](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md): Explains allocated memory opportunities and bus priority.
 - [Amiga Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Identifies the chips selected by `DMACON` writes and `DMACONR` reads.
 - [DMA scheduler source](../../../crates/dma/src/dma.rs): Implements the current arbitration model.
-- [vAmiga Agnus register handling](../../../ref_src/vAmiga-4.5/Core/Components/Agnus/AgnusRegs.cpp) and [DMA events](../../../ref_src/vAmiga-4.5/Core/Components/Agnus/AgnusEvents.cpp): Reference implementation of `DMACON` gating and scheduled bitplane transfers.
+- [vAmiga Agnus register handling](../../../ref_src/vAmiga/Core/Components/Agnus/AgnusRegs.cpp) and [DMA events](../../../ref_src/vAmiga/Core/Components/Agnus/AgnusEvents.cpp): Reference implementation of `DMACON` gating and scheduled bitplane transfers.

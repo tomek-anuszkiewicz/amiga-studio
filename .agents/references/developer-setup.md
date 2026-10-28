@@ -55,7 +55,7 @@ The emulator uses external test suites, hardware measurements, and reference imp
 - **[Techtravels.org](https://www.techtravels.org/):** Amiga hardware investigations, including logic-analyzer measurements and Paula circuit analysis; distinguish measured pins from inferred internal behavior.
 
 > [!NOTE]
-> **Graphify Code Knowledge Graph Integration:** Downloaded reference source files (specifically `ref_src/vAmiga/` and test harnesses) are parsed and indexed directly into the unified **Graphify graph database** (`graphify-out/`) alongside active Rust crates (`crates/`). This allows developers and AI agents to query cross-codebase symbol definitions, trace call hierarchies, and compare Rust implementations against reference C++ algorithms via `graphify query` (see [Chapter 6: Code Structure & Relationships: Graphify](#6-code-structure-relationships-graphify)).
+> **Graphify Code Knowledge Graph Integration:** The single repository graph (`graphify-out/`) covers project code plus the bootstrapped `ref_src/vAmiga/`, `ref_src/minimig/`, and `ref_src/amiga_replacement_project/`. The bootstrap disables Git ignore rules for extraction, while `.graphifyignore` limits the reference set and excludes generated data. Use graph results to find source locations, then verify the original code; FPGA code is a model, not a hardware measurement. See [Chapter 6](#6-code-structure-relationships-graphify).
 
 Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`.
 
@@ -67,7 +67,11 @@ Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed
 | **Tom Harte SingleStepTests** | `ref_src/SingleStepTests-680x0/` | [SingleStepTests/680x0](https://github.com/SingleStepTests/680x0) | **Format v1** (`68000/v1/`), 124 opcode suites |
 | **vAmiga C++ Emulator** | `ref_src/vAmiga/` | [dirkwhoffmann/vAmiga](https://github.com/dirkwhoffmann/vAmiga) | **Release v4.5** |
 | **vAmiga Test Suite (vAmigaTS)** | `ref_src/vAmigaTS/` | [dirkwhoffmann/vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) | **`master`** (2,077 test directories) |
-| **Amiga Test Kit** | `tools/AmigaTestKit/AmigaTestKit.adf` | [keirf/amiga-stuff](https://github.com/keirf/amiga-stuff) | **Release v1.20+** (`AmigaTestKit.adf`) |
+| **Amiga Test Kit** | `tools/AmigaTestKit/AmigaTestKit.adf` | [keirf/amiga-stuff](https://github.com/keirf/amiga-stuff) | **Release v1.21** (`AmigaTestKit.adf`) |
+| **MiniMig** | `ref_src/minimig/` | [cristianoag/minimig](https://github.com/cristianoag/minimig) | **`89c2643101860be4caa6ffb275e9bdd7c60d61d2`** |
+| **Amiga Replacement Project** | `ref_src/amiga_replacement_project/` | [nonarkitten/amiga_replacement_project](https://github.com/nonarkitten/amiga_replacement_project) | **`143ad5f1b5acae093ea66186e832a8ab4fb1bc0f`** |
+
+The two FPGA archives are optional individual selections in `bootstrap_sources.ps1`; the coordinator's `-Sources` switch includes both. Their local `_bootstrap_source.json` files record the archive hash, upstream revision, and per-file hashes. They are Git-ignored research references. The [hardware researcher](../../.codex/agents/hardware_researcher.toml) also consults measured [Techtravels Paula/DMAL evidence](https://www.techtravels.org/2026/08/from-flux-to-filenames-335ms-inside-paula/) through web search when needed; web pages are not copied into the documentation RAG index.
 
 > [!TIP]
 > Information and automated scripts for downloading, decompressing, and provisioning these reference test sources are provided in **[Chapter 4: Bootstrapping & External Reference Provisioning](#sources-provisioning-sources)** (`.\tools\bootstrap\bootstrap.ps1 -Sources`).
@@ -150,11 +154,11 @@ To provision the repository-managed reference assets and tooling indexes in a si
 
 | Mode | Switch | When Needed | What It Provisions |
 | :--- | :--- | :--- | :--- |
-| **Full Setup** | `-All` | Provision repository-managed development assets | Executes all 4 phases sequentially in causal order: **Sources** $\to$ **Graphify** $\to$ **Documentation** $\to$ **RAG**. It uses the independent Qdrant container, not the external repository's Compose setup. |
-| **Verification Testbeds** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Downloads and decompresses external test suites, software-generated M68000 vectors (`SingleStepTests-680x0`), vAmiga/vAmigaTS reference testbeds, and the Amiga Test Kit ADF |
+| **Full Setup** | `-All` | Provision repository-managed development assets | Executes five tiers: **Sources** $\to$ **Graphify** $\to$ **Documentation** $\to$ **RAG** $\to$ **Assembler**. It uses the independent Qdrant container, not the external repository's Compose setup. |
+| **Verification Testbeds** | `-Sources` | Provision local test and research references | Downloads external test suites, software-generated M68000 vectors (`SingleStepTests-680x0`), vAmiga/vAmigaTS, Amiga Test Kit, MiniMig, and Amiga Replacement Project |
 | **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Downloads original archival PDF scans and OEM technical reference manuals (HRM, TRM, PRM, UM, and technical articles) |
 | **Documentation & RAG** | `-Rag` | Legacy repository-managed Qdrant bootstrap | Starts its own Qdrant container and indexes the Amiga documentation scopes through the external `rag_qdrant` CLI; it does not install or configure the separate RAG service. |
-| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | Performs AST analysis across active Rust crates (`crates/`) and reference C++ code (`ref_src/vAmiga`), generating the unified symbol dependency and call-hierarchy graph in `graphify-out/` |
+| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | Builds or updates one graph in `graphify-out/` with project code and the three selected reference implementations |
 
 ---
 
@@ -169,6 +173,8 @@ Automates downloading, unpacking, decompressing, and validating external test as
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Sources
+# Or select only the two FPGA repositories:
+.\tools\bootstrap\bootstrap_sources.ps1 -MiniMig -AmigaReplacementProject
 ```
 
 ##### Automation Lifecycle Steps
@@ -178,12 +184,12 @@ When external test sources are provisioned via `.\tools\bootstrap\bootstrap.ps1 
 1. **Zip Archive Expansion:** Scans `ref_src/SingleStepTests-680x0/` for `.zip` archives and unpacks them into place.
 2. **Gzip Decompression:** Scans for `.json.gz` or `.gz` compressed test archives and decompresses them into native `.json` files using .NET `GZipStream` (zero external dependencies).
 3. **Directory Canonicalization:** Migrates any loose `.json` test suites from `68000/` into the canonical `68000/v1/` directory.
-4. **Presence & Completeness Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
+4. **Presence & Completeness Validation:** Verifies the 124 SingleStep suites, Amiga Test Kit, vAmiga, and vAmigaTS. For the FPGA references, it checks the pinned archive SHA-256 before extraction and verifies the per-file manifest on repeat runs.
 
 > [!TIP]
 > **Fine-Grained Execution:** When you need direct execution, testing, or pipeline debugging without invoking the coordinator wrapper, invoke the dedicated sources bootstrapper directly:
 > ```powershell
-> .\tools\bootstrap\bootstrap_sources.ps1
+> .\tools\bootstrap\bootstrap_sources.ps1 -List
 > ```
 
 <a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a><a id="archival-documentation-provisioning-documentation"></a><a id="upstream-archival-reference-documents"></a><a id="multi-source-fallback-matrix-error-resilience"></a><a id="multi-source-fallback-matrix--error-resilience"></a>
@@ -257,15 +263,16 @@ Set `RAG_INDEX_JSON` to the service's canonical writable state file for indexing
 <a id="code-knowledge-graph-setup-graphify"></a>
 #### 4. Code Knowledge Graph Setup (`-Graphify`)
 
-Generates the Abstract Syntax Tree (AST) code knowledge graph connecting active Rust crates and reference implementations:
+Generates one Abstract Syntax Tree (AST) code graph connecting project sources and the three selected reference implementations:
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Graphify
 ```
 
 **What It Does:**
-- Parses Rust source code (`crates/`) and reference C++ code (`ref_src/vAmiga`).
-- Maps structs, functions, modules, and cross-codebase dependencies into `graphify-out/`.
+- Parses code under `crates/`, `tools/`, `tests/`, `benchmarks/`, and `examples/`, together with vAmiga 4.5, MiniMig, and Amiga Replacement Project under `ref_src/`.
+- Excludes SingleStep, vAmigaTS, other reference trees, generated book data, and JSON test vectors through `.graphifyignore`. The first extraction uses `--no-gitignore` so Git-ignored reference files are included; subsequent updates reuse this setting.
+- Maps code symbols and relationships into `graphify-out/graph.json`; the separate documentation RAG remains the route for hardware manuals.
 - Enables cross-codebase structural queries, call hierarchies, and architectural validation.
 - For query tools and incremental update commands, see [Chapter 6: Code Structure & Relationships: Graphify](#6-code-structure-relationships-graphify).
 
@@ -309,15 +316,11 @@ Generates the Abstract Syntax Tree (AST) code knowledge graph connecting active 
 
 <a id="7-code-structure-relationships-graphify"></a><a id="7-code-structure--relationships-graphify"></a><a id="6-code-structure-relationships-graphify"></a><a id="6-code-structure--relationships-graphify"></a><a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a>
 ## 6. Code Structure & Relationships: Graphify
-- **What is Indexed:** Graphify parses Abstract Syntax Trees (AST), symbol relationships, and call hierarchies across two distinct codebases:
-  - **Active Emulator Crates (`crates/`):** Core Rust workspace (`m68000`, `memory_bus`, `debugger`, `gui`, `config`, `rtc`, `test_runner`).
-  - **Reference Emulator Sources (`ref_src/`):** Clean C++ reference implementation (`ref_src/vAmiga`) and external test harnesses.
-- **Incremental Knowledge Graph Updates ([Graphify skill](../skills/graphify/SKILL.md)):**
-  - Graphify maintains an AST cache that extracts only modified files in 1–2 seconds without LLM calls.
-  - After modifications to code in `crates/` or `ref_src/`, run `graphify update .` from the repository root (or via `.\tools\bootstrap\bootstrap.ps1 -Graphify`).
-  - Keeps a single unified knowledge graph in `graphify-out/` connecting active emulator crates and reference implementations.
+- **What is Indexed:** One graph at `graphify-out/graph.json` holds code from `crates/`, `tools/`, `tests/`, `benchmarks/`, and `examples/`, plus `ref_src/vAmiga/` (release 4.5), `ref_src/minimig/`, and `ref_src/amiga_replacement_project/`. SingleStep and vAmigaTS are excluded. Graphify recognizes Rust, Python, PowerShell, C++, and Verilog source files, but JSON test vectors are excluded and some source files may yield partial symbols after parser errors.
+- **Updates ([Graphify skill](../skills/graphify/SKILL.md)):** Run `.\tools\bootstrap\bootstrap.ps1 -Graphify` to build or update the one graph. The first run extracts with `--no-gitignore --code-only`; later runs use `graphify update .` with the saved setting. No LLM calls are needed for code extraction.
 - **Query Tools:**
-  - `graphify query "<question>"`: Query symbol dependencies, call hierarchies, and architectural boundaries.
+  - `graphify query "<question>"`: Query the full graph; it does not strictly restrict results to a source directory.
+  - `python tools/graphify_query.py "Paula" --scope minimig`: Query only MiniMig nodes and edges. Repeat `--scope` to compare `project`, `vamiga`, `minimig`, and `arp`; filtering occurs before Graphify traverses the graph. The wrapper creates only a disposable filtered view under `.agent/tmp/`, leaving the one stored graph intact.
   - `graphify path "<A>" "<B>"`: Trace the shortest dependency or call path between two types or functions.
   - `graphify explain "<concept>"`: Extract a focused subgraph explaining a subsystem or module.
 

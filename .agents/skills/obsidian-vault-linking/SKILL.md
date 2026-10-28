@@ -53,7 +53,7 @@ Every design specification must conclude with a dedicated reference section:
 - **Motorola M68000 Programmer's Reference Manual**: [Section X](../Reference/68000%20User's%20Manual/XX%20-%20Section%20X.md)
   - *Analytical Rationale*: Ground truth for microcode execution phases and condition code updates.
 - **Silicon Reference Implementations**:
-  - [vAmiga Subsystem](../../../ref_src/vAmiga-4.5/Core/Chips/...): Verified behavioral reference for cycle timing.
+  - [vAmiga Subsystem](../../../ref_src/vAmiga/Core/Chips/...): Verified behavioral reference for cycle timing.
   - [WinUAE Subsystem](../../../ref_src/WinUAE-6030/...): Ground truth for hardware quirks and edge cases.
 - **Living Crate Source Code**:
   - [`crates/<crate>/src/<module>.rs`](../../../crates/<crate>/src/<module>.rs): Primary Rust implementation.

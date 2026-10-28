@@ -8,6 +8,8 @@
     2. Keir Fraser Amiga Test Kit diagnostic floppy disk ADF (tools/AmigaTestKit/AmigaTestKit.adf).
     3. Dirk W. Hoffmann vAmiga C++ reference emulator sources (ref_src/vAmiga).
     4. Dirk W. Hoffmann vAmigaTS chipset regression test suites (ref_src/vAmigaTS).
+    5. MiniMig FPGA Amiga implementation (ref_src/minimig).
+    6. Amiga Replacement Project FPGA chip reconstructions (ref_src/amiga_replacement_project).
 
     Decompresses .gz and .zip archives, relocates files to canonical directories, and
     validates dataset completeness.
@@ -30,22 +32,32 @@
 .PARAMETER VAmigaTS
     Provisions only vAmigaTS chipset regression test suites.
 
+.PARAMETER MiniMig
+    Provisions only the pinned MiniMig FPGA source archive.
+
+.PARAMETER AmigaReplacementProject
+    Provisions only the pinned Amiga Replacement Project source archive.
+
 .PARAMETER All
-    Provisions all external test sources (default behavior).
+    Provisions all external test and research sources.
 
 .PARAMETER Help
     Displays usage instructions and parameter descriptions.
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap_sources.ps1
-    Displays parameter list and provisions all missing external test sources.
+    Displays available source selections without downloading.
+
+.EXAMPLE
+    .\tools\bootstrap\bootstrap_sources.ps1 -MiniMig -AmigaReplacementProject
+    Provisions both pinned FPGA reference repositories.
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap_sources.ps1 -List
     Displays catalog and current local presence of test sources.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap_sources.ps1 -Force
+    .\tools\bootstrap\bootstrap_sources.ps1 -All -Force
     Forces clean re-download and re-provisioning of all sources.
 
 .EXAMPLE
@@ -61,12 +73,13 @@ param(
     [switch]$AmigaTestKit,
     [switch]$VAmiga,
     [switch]$VAmigaTS,
+    [switch]$MiniMig,
+    [switch]$AmigaReplacementProject,
     [switch]$All,
     [switch]$Help
 )
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls13
-[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
 $RepoRoot = if ($PSScriptRoot) {
     Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -112,6 +125,28 @@ $SourcesCatalog = @(
         Version     = "master"
         Url         = "https://github.com/dirkwhoffmann/vAmigaTS/archive/refs/heads/master.zip"
         Description = "2,000+ custom chipset test cases (Copper, Blitter, Denise, Paula) with golden viewports"
+    },
+    @{
+        Id          = "minimig"
+        Name        = "MiniMig FPGA Amiga Implementation"
+        TargetDir   = Join-Path $RepoRoot "ref_src\minimig"
+        Version     = "89c2643101860be4caa6ffb275e9bdd7c60d61d2"
+        Url         = "https://codeload.github.com/cristianoag/minimig/zip/89c2643101860be4caa6ffb275e9bdd7c60d61d2"
+        ArchiveSha256 = "6EAFBB93AA5D448026DC2A285DFB0AD4012AF865B1863CBD54BEA08ADFBCED03"
+        FileCount   = 142
+        RequiredFiles = @("README.md", "software and firmware/old/source/fpga core/Agnus.v", "software and firmware/old/source/fpga core/Paula.v")
+        Description = "FPGA chipset model and supporting MiniMig material for comparison with hardware evidence"
+    },
+    @{
+        Id          = "amiga_replacement_project"
+        Name        = "Amiga Replacement Project"
+        TargetDir   = Join-Path $RepoRoot "ref_src\amiga_replacement_project"
+        Version     = "143ad5f1b5acae093ea66186e832a8ab4fb1bc0f"
+        Url         = "https://codeload.github.com/nonarkitten/amiga_replacement_project/zip/143ad5f1b5acae093ea66186e832a8ab4fb1bc0f"
+        ArchiveSha256 = "FA2670EB023202B965E72F542F26C0CAA88E35D857FBDDEB7AE0671D87744FE3"
+        FileCount   = 171
+        RequiredFiles = @("README.md", "LICENSE.md", "paula/Paula.v", "agnus/ice/Agnus.v")
+        Description = "FPGA chip reconstructions for inspecting proposed signal and register behavior"
     }
 )
 
@@ -120,6 +155,10 @@ $SourcesCatalog = @(
 # -----------------------------------------------------------------------------
 function Test-SourceProvisioned {
     param([hashtable]$Source)
+
+    if ($Source.ArchiveSha256) {
+        return Test-PinnedSourceProvisioned -Source $Source
+    }
 
     if ($Source.Id -eq "singlestep") {
         $v1Dir = Join-Path $Source.TargetDir "68000\v1"
@@ -150,6 +189,84 @@ function Test-SourceProvisioned {
     return $false
 }
 
+function Test-PinnedSourceProvisioned {
+    param([hashtable]$Source)
+
+    $manifestPath = Join-Path $Source.TargetDir "_bootstrap_source.json"
+    if (-not (Test-Path -LiteralPath $manifestPath)) { return $false }
+    try {
+        $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+        if ($manifest.revision -ne $Source.Version -or
+            $manifest.archive_sha256 -ne $Source.ArchiveSha256 -or
+            $manifest.files.Count -ne $Source.FileCount) { return $false }
+        foreach ($file in $manifest.files) {
+            $path = Join-Path $Source.TargetDir $file.path
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $false }
+            if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $file.sha256) { return $false }
+        }
+        foreach ($relativePath in $Source.RequiredFiles) {
+            if (-not (Test-Path -LiteralPath (Join-Path $Source.TargetDir $relativePath) -PathType Leaf)) { return $false }
+        }
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function Install-PinnedSource {
+    param([hashtable]$Source)
+
+    $referenceRoot = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot "ref_src"))
+    $target = [System.IO.Path]::GetFullPath($Source.TargetDir)
+    if (-not $target.StartsWith($referenceRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Pinned source target is outside ref_src/: $target"
+    }
+    $staging = Join-Path $referenceRoot ("_bootstrap_{0}_{1}" -f $Source.Id, [guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $staging -Force | Out-Null
+    try {
+        $archive = Join-Path $staging "source.zip"
+        if (-not (Download-Archive -Url $Source.Url -DestinationPath $archive -Name $Source.Name)) {
+            throw "Download failed for $($Source.Name)"
+        }
+        $actualHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash
+        if ($actualHash -ne $Source.ArchiveSha256) {
+            throw "Archive hash mismatch for $($Source.Name): $actualHash"
+        }
+        $extracted = Join-Path $staging "extracted"
+        Expand-Archive -LiteralPath $archive -DestinationPath $extracted
+        $roots = @(Get-ChildItem -LiteralPath $extracted -Directory)
+        if ($roots.Count -ne 1) { throw "Expected one archive root for $($Source.Name)" }
+        $sourceRoot = $roots[0].FullName
+        $files = @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -File -Force)
+        if ($files.Count -ne $Source.FileCount) {
+            throw "Incomplete archive for $($Source.Name): $($files.Count) files, expected $($Source.FileCount)"
+        }
+        foreach ($relativePath in $Source.RequiredFiles) {
+            if (-not (Test-Path -LiteralPath (Join-Path $sourceRoot $relativePath) -PathType Leaf)) {
+                throw "Missing required file for $($Source.Name): $relativePath"
+            }
+        }
+        $manifestFiles = @($files | ForEach-Object {
+            [ordered]@{
+                path = $_.FullName.Substring($sourceRoot.Length + 1).Replace('\', '/')
+                sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+            }
+        })
+        [ordered]@{
+            upstream_url = $Source.Url
+            revision = $Source.Version
+            archive_sha256 = $Source.ArchiveSha256
+            files = $manifestFiles
+        } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $sourceRoot "_bootstrap_source.json") -Encoding UTF8
+
+        if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+        Move-Item -LiteralPath $sourceRoot -Destination $target
+        Write-Host "  [OK] Installed pinned revision $($Source.Version)" -ForegroundColor Green
+    } finally {
+        if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
+    }
+}
+
 function Show-CatalogList {
     Write-Host ""
     Write-Host "External Hardware Test Sources & Reference Catalog" -ForegroundColor Cyan
@@ -176,19 +293,23 @@ function Show-Usage {
     Write-Host "=====================================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1              : Download, verify & provision all external test sources"
+    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1              : Show usage without downloading"
+    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -All         : Download, verify & provision all external sources"
+    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -MiniMig -AmigaReplacementProject : Provision both FPGA references"
     Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -List        : Show catalog and local status of upstream sources"
-    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -Force       : Force re-download and re-extraction of all sources"
+    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -All -Force  : Re-download and replace all sources"
     Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -Help        : Display this help message"
     Write-Host ""
     Write-Host "Available Parameters:" -ForegroundColor White
     Write-Host "  -List                    : Display catalog of upstream sources and local presence"
-    Write-Host "  -Force                   : Force re-download and re-extraction even if already provisioned"
+    Write-Host "  -Force                   : With selected sources or -All, re-download and replace their local copies"
     Write-Host "  -SingleStep              : Provision only Tom Harte SingleStepTests 68000 vectors"
     Write-Host "  -AmigaTestKit            : Provision only Amiga Test Kit diagnostic disk (ADF)"
     Write-Host "  -VAmiga                  : Provision only vAmiga C++ reference emulator sources"
     Write-Host "  -VAmigaTS                : Provision only vAmigaTS chipset regression suites"
-    Write-Host "  -All                     : Provision all external test sources (default behavior)"
+    Write-Host "  -MiniMig                 : Provision only pinned MiniMig FPGA reference in ref_src/minimig"
+    Write-Host "  -AmigaReplacementProject : Provision only pinned Amiga Replacement Project in ref_src/amiga_replacement_project"
+    Write-Host "  -All                     : Provision all external test and research sources"
     Write-Host "  -Help                    : Display this usage and parameter list"
     Write-Host ""
 }
@@ -353,9 +474,10 @@ if ($List) {
     exit 0
 }
 
-# When invoked without parameters, also display the parameter list before provisioning
+# A parameterized source tool needs an explicit selection.
 if ($PSBoundParameters.Count -eq 0) {
     Show-Usage
+    exit 0
 }
 
 # Determine which sources to process
@@ -364,10 +486,15 @@ if ($SingleStep)   { $SelectedIds += "singlestep" }
 if ($AmigaTestKit) { $SelectedIds += "amigatestkit" }
 if ($VAmiga)       { $SelectedIds += "vamiga" }
 if ($VAmigaTS)     { $SelectedIds += "vamigats" }
+if ($MiniMig)      { $SelectedIds += "minimig" }
+if ($AmigaReplacementProject) { $SelectedIds += "amiga_replacement_project" }
 
-# Default to all sources if no specific source switch was passed
-if ($SelectedIds.Count -eq 0 -or $All) {
-    $SelectedIds = @("singlestep", "amigatestkit", "vamiga", "vamigats")
+if ($All) {
+    $SelectedIds = @("singlestep", "amigatestkit", "vamiga", "vamigats", "minimig", "amiga_replacement_project")
+} elseif ($SelectedIds.Count -eq 0) {
+    Write-Error "Select a source or pass -All. -Force alone does not select sources."
+    Show-Usage
+    exit 1
 }
 
 Write-Host ""
@@ -390,6 +517,15 @@ foreach ($source in $SourcesCatalog) {
         $relPath = $source.TargetDir.Substring($RepoRoot.Length).TrimStart('\', '/')
         Write-Host "  [SKIP] Already provisioned: $relPath" -ForegroundColor DarkGray
     } else {
+        if ($source.ArchiveSha256) {
+            try {
+                Install-PinnedSource -Source $source
+            } catch {
+                Write-Error $_.Exception.Message
+                $HasErrors = $true
+            }
+            continue
+        }
         if (-not (Test-Path $source.TargetDir)) {
             New-Item -ItemType Directory -Path $source.TargetDir -Force | Out-Null
         }
@@ -423,6 +559,15 @@ foreach ($source in $SourcesCatalog) {
 
         # Canonicalize 68000/ to 68000/v1/
         Canonicalize-SingleStepDirs -BaseDir $source.TargetDir -TargetDir $v1Dir
+    }
+}
+
+foreach ($source in $SourcesCatalog | Where-Object { $_.ArchiveSha256 }) {
+    if (Test-PinnedSourceProvisioned -Source $source) {
+        Write-Host "  [OK] $($source.Name): ref_src/$($source.Id) @ $($source.Version)" -ForegroundColor Green
+    } elseif ($SelectedIds -contains $source.Id) {
+        Write-Warning "  [MISSING] $($source.Name) pinned source is absent or incomplete."
+        $HasErrors = $true
     }
 }
 

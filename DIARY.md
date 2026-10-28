@@ -5648,3 +5648,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - initial commit profile failed only the English scan with 101 unknown-word occurrences in the merged Bootstrap text
   - user approved the reviewed vocabulary and exact-file literal entries; focused English scan passed after those changes
   - final commit profile passed the English scan, ordinary Rust coverage tests, formatting, Clippy, architecture, quality, standard harness and all six Python contract suites
+---
+
+### [2026-10-28 15:41 CET] — Close FPGA reference and measured web research roadmap points
+- **Affected Subsystems**:
+  - `tools/bootstrap`
+  - `tools/graphify_query.py`
+  - `.codex/agents/hardware_researcher.toml`
+  - `ROADMAP.md`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Pinned MiniMig and Amiga Replacement Project sources with individual switches and general Sources selection
+  - unified the Graphify scope and added source filtered queries
+  - routed hardware research to measured Techtravels evidence
+  - pruned roadmap points 1.9 and 1.10
+  - updated reference links and removed the duplicate ignored vAmiga directory
+  - refreshed the English hash scanner and semantic memory map audit
+- **Architectural Rationale & Trade-Offs**:
+  - Keep one canonical vAmiga source and distinguish measured hardware signals from reference implementation models
+  - validate current source locations instead of obsolete CIA constants
+- **Verification & Test Results**:
+  - Individual and general source bootstrap checks passed on repeat runs with pinned manifests
+  - a Paula DMAL query found measured Techtravels signals and separated them from reconstructed circuitry
+  - Graphify query test, English scan, semantic audit, vault link audit, and roadmap check passed

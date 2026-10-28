@@ -95,15 +95,17 @@ def check_semantic_registers():
 
 
 def check_semantic_memory_map():
-    """Validates physical 24-bit memory map ranges in MemoryBus.md against crates/memory_bus/src/memory_bus.rs."""
+    """Validate documented memory ranges against the router and CIA register addresses."""
     doc_path = REPO_ROOT / "Obsidian" / "Amiga" / "Design" / "MemoryBus.md"
     code_path = REPO_ROOT / "crates" / "memory_bus" / "src" / "memory_bus.rs"
+    registers_path = REPO_ROOT / "crates" / "config" / "src" / "registers.rs"
 
-    if not doc_path.exists() or not code_path.exists():
-        return {"checked_ranges": 0, "issues": [{"message": "Required memory bus files missing"}]}
+    if not doc_path.exists() or not code_path.exists() or not registers_path.exists():
+        return {"checked_ranges": 0, "issues": [{"message": "Required memory map files missing"}]}
 
     doc_text = doc_path.read_text(encoding="utf-8")
     code_text = code_path.read_text(encoding="utf-8")
+    registers_text = registers_path.read_text(encoding="utf-8")
 
     code_constants = {}
     for line in code_text.splitlines():
@@ -111,6 +113,14 @@ def check_semantic_memory_map():
         m = re.search(r"pub\s+const\s+([A-Z0-9_]+)\s*:\s*u\d+\s*=\s*(0x[0-9A-Fa-f]+);", line)
         if m:
             code_constants[m.group(1)] = int(m.group(2), 16)
+
+    for chip, prefix in (("cia_a", "CIA_A"), ("cia_b", "CIA_B")):
+        module = re.search(rf"pub mod {chip}\s*\{{(.*?)\n    \}}", registers_text, re.DOTALL)
+        if module:
+            for register, suffix in (("PRA", "START"), ("CRB", "END")):
+                match = re.search(rf"pub const {register}: u32 = (0x[0-9A-Fa-f]+);", module.group(1))
+                if match:
+                    code_constants[f"{prefix}_{suffix}"] = int(match.group(1), 16)
 
     expected_checks = [
         (r"\$BFD000\s*-\s*\$BFDF00", "CIA_B_START", 0xBFD000),
@@ -122,7 +132,7 @@ def check_semantic_memory_map():
         (r"\$BF", "BANK_CIA", 0xBF),
         (r"\$DC", "BANK_RTC", 0xDC),
         (r"\$DF", "BANK_CUSTOM", 0xDF),
-        (r"\$DFF000\s*-\s*\$DFFFFE", "CUSTOM_REG_OFFSET_MASK", 0x01FE),
+        (r"\$DF0000\s*-\s*\$DFFFFF", "CUSTOM_REG_OFFSET_MASK", 0x01FE),
     ]
 
     issues = []
@@ -327,7 +337,7 @@ def main():
         s_issues = sem_res["issues"]
 
         print(f"  - Custom Register Matrix: {regs['checked_offsets']} offsets verified vs registers.rs")
-        print(f"  - Memory Map Range Checks: {mmap['checked_ranges']} boundaries verified vs memory_bus.rs")
+        print(f"  - Memory Map Range Checks: {mmap['checked_ranges']} boundaries verified vs router and register sources")
         print(f"  - Crate Topology Sync: {topo['cargo_crates']} crates verified (100% Mermaid-Cargo parity)")
         print(f"  - Cross-Chip Signal Parity: {sigs['verified_methods']} action methods verified in codebase")
         print(f"  - Silicon Quirks Coverage: {quirks['covered_quirks']}/{quirks['total_quirks']} quirks covered by regression test sentinels")

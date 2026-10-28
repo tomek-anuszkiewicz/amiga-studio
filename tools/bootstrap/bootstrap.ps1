@@ -18,12 +18,12 @@
 
 .PARAMETER Sources
     Verifies and provisions software-generated SingleStepTests 68000 test vectors,
-    AmigaTestKit ADF, and reference emulators in ref_src/. Delegates to
-    tools/bootstrap_sources.ps1.
+    AmigaTestKit ADF, reference emulators, and pinned FPGA references in ref_src/.
+    Delegates to tools/bootstrap_sources.ps1 -All.
 
 .PARAMETER Graphify
-    Generates and updates the AST-level code knowledge graph in graphify-out/ for
-    structural queries, call hierarchies, and architectural navigation.
+    Generates and updates one AST-level code graph in graphify-out/ for project
+    sources and the selected vAmiga, MiniMig, and Amiga Replacement Project code.
     Delegates to tools/bootstrap_graphify.ps1.
 
 .PARAMETER Rag
@@ -52,7 +52,7 @@
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -Sources
-    Provision generated SingleStep vectors and reference sources (SingleStepTests, vAmiga).
+    Provision generated SingleStep vectors, vAmiga/vAmigaTS, MiniMig, and Amiga Replacement Project.
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -Graphify
@@ -150,7 +150,7 @@ if ($Sources -or $All) {
     if (-not (Test-Path $SourcesScript)) {
         Write-Error "bootstrap_sources.ps1 not found at: $SourcesScript"
     } else {
-        & $SourcesScript
+        & $SourcesScript -All
     }
 }
 
@@ -168,6 +168,7 @@ if ($Graphify -or $All) {
         Write-Error "bootstrap_graphify.ps1 not found at: $GraphifyScript"
     } else {
         & $GraphifyScript
+        if ($LASTEXITCODE -ne 0) { throw "Graphify bootstrap failed with exit code $LASTEXITCODE" }
     }
 }
 

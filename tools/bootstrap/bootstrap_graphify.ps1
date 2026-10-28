@@ -3,9 +3,9 @@
     AST-level code knowledge graph bootstrapper for the Amiga 500 emulator.
 
 .DESCRIPTION
-    Generates and updates the AST-level code knowledge graph in graphify-out/ using
-    the Graphify CLI tool. Maps modules, functions, structs, and dependencies across
-    the codebase for semantic code queries, call hierarchies, and architectural navigation.
+    Generates one AST-level code graph in graphify-out/ for project code and the
+    selected reference sources under ref_src/. The first run extracts Git-ignored
+    references according to .graphifyignore; later runs update that same graph.
 
     Graphify is optional and only used for AI code structure navigation.
 
@@ -14,7 +14,7 @@
 
 .EXAMPLE
     .\tools\bootstrap_graphify.ps1
-    Updates the AST code knowledge graph in graphify-out/.
+    Builds or updates the project and selected reference code graph in graphify-out/.
 
 .EXAMPLE
     .\tools\bootstrap_graphify.ps1 -CheckOnly
@@ -34,7 +34,7 @@ function Show-Usage {
     Write-Host "=====================================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap_graphify.ps1                   : Update AST code knowledge graph in graphify-out/"
+    Write-Host "  .\tools\bootstrap_graphify.ps1                   : Build/update one code graph for project sources and selected ref_src/ repositories"
     Write-Host "  .\tools\bootstrap_graphify.ps1 -CheckOnly        : Verify graphify CLI installation"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
@@ -69,16 +69,33 @@ if ($CheckOnly) {
     exit 0
 }
 
-Write-Host "Updating code AST knowledge graph in graphify-out/ (graphify update .)..." -ForegroundColor Cyan
+Write-Host "Building/updating the unified code graph in graphify-out/..." -ForegroundColor Cyan
 Push-Location $RepoRoot
 try {
-    graphify update .
+    $BuildConfigPath = Join-Path $RepoRoot "graphify-out\.graphify_build.json"
+    $IncludesIgnoredSources = $false
+    if (Test-Path -LiteralPath $BuildConfigPath) {
+        try {
+            $BuildConfig = Get-Content -LiteralPath $BuildConfigPath -Raw | ConvertFrom-Json
+            $IncludesIgnoredSources = $BuildConfig.gitignore -eq $false
+        } catch {
+            Write-Warning "Graphify build configuration is unreadable; rebuilding the selected source graph."
+        }
+    }
+
+    if ($IncludesIgnoredSources) {
+        graphify update .
+    } else {
+        graphify extract . --no-gitignore --code-only --force
+    }
+    $GraphifyExitCode = $LASTEXITCODE
 } finally {
     Pop-Location
 }
 
-if ($LASTEXITCODE -eq 0) {
+if ($GraphifyExitCode -eq 0) {
     Write-Host "Code knowledge graph updated successfully in graphify-out/." -ForegroundColor Green
 } else {
-    Write-Warning "Graphify update exited with code $LASTEXITCODE."
+    Write-Error "Graphify exited with code $GraphifyExitCode."
+    exit $GraphifyExitCode
 }
