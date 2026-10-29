@@ -874,3 +874,45 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: focused English scan and git diff --check
   - PASS: commit verification on the compacted file before this entry
   - NOT RUN: milestone profile because no roadmap point or major milestone was closed
+---
+
+### [2026-10-29 17:42 CET] — Focus Step 11 on four committed book recipes
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed the former Step 11.1 Test Book pilot by explicit user decision.
+  - Kept the four-manual PDF conversion, recipe adjustment, and `book.json` commit as Step 11.1.
+  - Removed downstream Markdown reconstruction, description authoring, publication, and RAG indexing from the roadmap; kept the user workflow in the Book-to-Markdown README.
+- **Architectural Rationale & Trade-Offs**:
+  - The pilot was removed from planned scope, not verified as complete. The freshly imported Test Book has no descriptions or Accepted bundle, and its clean reconstruction gate was not demonstrated.
+  - The repository deliverable is four accepted recipes with matching source identities. A downstream user can continue from those recipes using the documented bootstrap sequence.
+- **Verification & Test Results**:
+  - PASS: roadmap retention check, focused English scan, and `git diff --check` for the changed documentation.
+  - NOT RUN: commit and milestone profiles or semantic parity review because this was a scope removal, not verified task completion.
+---
+
+### [2026-10-29 17:48 CET] — Deliver Book Review recipe reconstruction and publication
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `tools/verification`
+  - `tools/bootstrap/books`
+  - `Obsidian/Amiga/Design/Verification`
+  - `ROADMAP.md`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add accepted recipe import and reference publication with stable heading links
+  - Limit bulk descriptions to visible Working elements
+  - Add a structural frontmatter commit gate and tests
+  - Resolve reviewed English scan findings in description prompts and vocabulary rules
+  - Restore the Test Book root recipe from a fresh import
+  - Narrow Step 11 to four committed book recipes
+- **Architectural Rationale & Trade-Offs**:
+  - Make accepted book recipes portable across clones
+  - Keep publication and RAG indexing as a downstream user workflow
+  - Preserve the requested raw Test Book import without claiming source validation
+- **Verification & Test Results**:
+  - PASS: full Test Book PDF stages 01-08 using 545 cache hits and zero model calls
+  - PASS: Book import generated 993 elements
+  - PASS: vault audit of 35 specifications and 691 links
+  - PASS: structural frontmatter on 104 local Obsidian Markdown files
+  - LIMIT: source validation reported 56 invalid fields in the raw Test Book import

@@ -190,7 +190,7 @@ class TextRecipeTest(unittest.TestCase):
             'markdown_file': 'example.md', 'elements': [{'id': 'h', 'type': 'heading',
             'heading_level': 2, 'md_text': '## **INITIALIZE COMM PORT** (AH = 00H)',
             'pdf_regions': [], 'role': None}]}]}
-        self.assertIn('[INITIALIZE COMM PORT (AH = 00H)]', toc_markdown(book))
+        self.assertIn('|INITIALIZE COMM PORT (AH = 00H)]]', toc_markdown(book))
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             renderer = Renderer()
@@ -201,6 +201,19 @@ class TextRecipeTest(unittest.TestCase):
                               contents.read_text(encoding='utf-8'))
             finally:
                 renderer.close()
+
+    def test_generated_contents_links_to_obsidian_heading_blocks(self):
+        book = {'toc': {'depth': 2}, 'chapters': [{'id': 'chapter', 'title': 'Example',
+            'markdown_file': 'Example Chapter (1).md', 'elements': [
+                {'id': 'heading-1', 'type': 'heading', 'heading_level': 1,
+                 'md_text': '# Overview', 'pdf_regions': [], 'role': None}]}]}
+        contents = toc_markdown(book)
+        self.assertIn('[[Example Chapter (1).md#^element-heading--1|Overview]]', contents)
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary)
+            export_markdown(book, destination)
+            self.assertIn('# Overview ^element-heading--1',
+                          (destination / 'Example Chapter (1).md').read_text(encoding='utf-8'))
 
     def test_input_cache_reuses_model_and_detects_external_dependency_changes(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -632,7 +645,8 @@ class TextRecipeTest(unittest.TestCase):
             self.assertEqual(accepted['chapters'][0]['resolved_markdown_file'], 'chapter.md')
             export_markdown(accepted, root / 'accepted')
             self.assertTrue((root / 'accepted/chapter.md').exists())
-            self.assertIn('(chapter.md#element-h)', (root / 'accepted/table-of-contents.md').read_text(encoding='utf-8'))
+            self.assertIn('[[chapter.md#^element-h|Heading {x}]]',
+                          (root / 'accepted/table-of-contents.md').read_text(encoding='utf-8'))
             self.assertEqual(accepted['chapters'][0]['elements'][0]['resolved_md_text'], '# Heading {x}\n')
             raw = (root / 'accepted/book.json').read_text(encoding='utf-8')
             self.assertNotIn('resolved_md_text', raw)

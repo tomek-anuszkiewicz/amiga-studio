@@ -9,11 +9,13 @@ from review.model import export_markdown, import_book, load_input, write_json
 from review.render import Renderer
 from review.service import read_snapshot, render_accepted, replace_accepted, serve
 from review.source_validation import validate_book
+from review.reconstruct import import_accepted_book
+from review.publish import publish_book
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("import", "render", "export", "serve", "validate"))
+    parser.add_argument("command", choices=("import", "import-book", "render", "export", "publish", "serve", "validate"))
     parser.add_argument("--book", type=Path, required=True)
     parser.add_argument("--width", type=int, default=1200, help="Preparation viewport width; HTML view wraps to its panel")
     parser.add_argument("--channel", default="msedge", help="Playwright channel; empty selects bundled Chromium")
@@ -29,6 +31,9 @@ def main():
         book = import_book(root)
         export_markdown(book, root / "working")
         print(f"Imported {sum(len(c['elements']) for c in book['chapters'])} elements")
+    elif args.command == "import-book":
+        count = import_accepted_book(root)
+        print(f"Reconstructed {count} accepted elements from book.json")
     elif args.command == "render":
         book, assets, fingerprint = load_input(root / "working")
         previous = read_snapshot(root / "working")
@@ -44,6 +49,10 @@ def main():
             print(snapshot["metrics"])
         finally:
             renderer.close()
+    elif args.command == "publish":
+        reference_root = Path(__file__).resolve().parents[3] / "Obsidian" / "Amiga" / "Reference"
+        destination, assets, descriptions = publish_book(root, reference_root)
+        print(f"Published {destination} with {assets} images and {descriptions} descriptions")
     elif args.command == "export":
         snapshot = read_snapshot(root / "working")
         if not snapshot or load_input(root / "working")[2] != snapshot["input_fingerprint"]:

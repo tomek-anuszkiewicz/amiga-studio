@@ -17,9 +17,9 @@ These instructions supplement the [bootstrap instructions](../AGENTS.md).
   regions; generated asset files are local review artifacts.
 - The publication target is reviewed recipes with source identification so a
   matching PDF can rebuild Markdown without repeating model inference. PDF
-  acquisition, identity and extraction conventions must be explicit. Standalone
-  reconstruction remains pending; follow the
-  [roadmap](../../../ROADMAP.md#step-1-manual-conversion-and-initial-knowledge-base)
+  acquisition, identity and extraction conventions must be explicit. Restore
+  the editor from a matching source with `book_review.py import-book`; follow the
+  [roadmap](../../../ROADMAP.md#step-11-four-manual-pdf-to-book-json-conversion)
   and [recipe contract](README.md#editing-and-publication).
 - The explicit Codex editor command treats current authored text (including
   existing literals) as its trusted baseline. Validate returned content against

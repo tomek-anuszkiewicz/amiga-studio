@@ -105,7 +105,7 @@ class NewChapterTests(unittest.TestCase):
                 self.assertEqual(accepted_files(), accepted)
                 self.assertIn('Second', (self.root / 'working' / filename).read_text(encoding='utf-8'))
                 self.assertNotIn('Second', (self.root / 'working/original.md').read_text(encoding='utf-8'))
-                self.assertIn(filename + '#element-division', (self.root / 'working/table-of-contents.md').read_text(encoding='utf-8'))
+                self.assertIn(filename + '#^element-division', (self.root / 'working/table-of-contents.md').read_text(encoding='utf-8'))
                 self.assertEqual((self.root / 'working/second.md').read_bytes(), accepted[Path('second.md')])
                 self.assertEqual(page.locator('#chapter option').count(), 4)
                 for version in ('working', 'accepted'):

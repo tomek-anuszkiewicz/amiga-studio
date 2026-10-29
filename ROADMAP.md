@@ -1,35 +1,5 @@
 # Amiga 500 Emulator: Development Roadmap
 
-## Step 1: Manual Conversion and Initial Knowledge Base
-
-Continue with descriptions, Markdown reconstruction and RAG ingestion for the composite Test Book. Its [page tracker](tools/bootstrap/books/test-book-example-4567/78e52f075e17/test_pages_tracker.md) records the source pages and assembly order. Apply the book authoring workflow to four source manuals later. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [Book editor](tools/bootstrap/book-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
-
-- **1.2: Author Table, Image, and ASCII-Art Descriptions**
-  - During authoring, use the [table description prompt](tools/bootstrap/book-to-markdown/prompts/describe-tables.md) for reviewed tables and the [image description prompt](tools/bootstrap/book-to-markdown/prompts/describe-images.md) for reviewed images. Describe reviewed ASCII art from its source context. Store accepted descriptions as explicit recipe content so later reconstruction does not call a model again. Preserve HTML table spans, graphics and text-fenced ASCII art.
-  - Render descriptions directly below the associated element in closed, collapsed `<details><summary>...</summary>...</details>` blocks. Describe source-visible labels, values and spatial/logical/timing relationships; table descriptions retain a GFM fallback with cell order and span semantics.
-  - Generate each image's `<asset filename>.txt` sidecar from the same stored description for RAG ingestion, rather than maintaining an independent transcription.
-  - Index representative generated content and test search queries separately for descriptions inside collapsed `<details>` blocks and for image `.txt` sidecars. Compare which terms and relationships are retrieved, result ranking, source attribution and duplicate results when both formats contain the same description.
-  - **Gate:** User-reviewed samples establish faithful content and placement; repeated reconstruction produces matching descriptions/sidecars without duplicated blocks or new inference. Record RAG queries and returned source fragments for both description formats, including any retrieval gaps before broad indexing.
-
-- **1.5: Implement Test Book Markdown Reconstruction (BOOK-RECIPE-BOOTSTRAP)**
-  - Add a standalone command that obtains the composite Test Book PDF, checks all 64 SHA-256 characters against its `source.json`, prepares native/OCR text with the recipe's authoring profile and extracts positioned text using the defined conventions. A directory suffix or an arbitrary existing OCR PDF is insufficient source/profile identity.
-  - Define extraction order, coordinate frame, DPI and rotation rules, including disconnected and multi-page content. Resolve any source selections that prevent standalone reconstruction; page rectangles only guide candidate selection. Execute the reviewed `book.json` recipe to rebuild chapter Markdown, the generated TOC, source graphics from PDF regions, descriptions and sidecars without relying on local editor assets. Resolve authored chapter titles/filenames and preserve explicit formatting and corrections. Do not repeat model inference, classification or description generation.
-  - Target the current format only. Reconstruction/import may overwrite generated content; do not add backward compatibility, migrations or artifact-rescue code. Local editor acceptance publishes the variant-root recipe but does not itself establish end-to-end reproducibility.
-  - **Gate:** From a clean output directory and the reviewed recipe/source record, obtain the exact Test Book PDF and rebuild a user-selected fragment without existing preparation directories, editor bundles or model calls. Demonstrate source/hash/profile mismatch handling and repeatable text/structure/assets under the supported extraction environment before expanding the run.
-
-- **1.6: Reconstruct the Test Book and Verify RAG Ingestion**
-  - Rebuild the reviewed Test Book's Markdown/assets from its recipe. Check generated chapter links, source selections, tables, graphics and description sidecars before indexing. Agent-authored descriptions remain part of the recipe; reconstruction does not generate new descriptions.
-  - Use canonical `rag_qdrant` ingestion into `projects_docs` with source `amiga`. Verify fresh and incremental indexing, hashing, chunk fidelity, embeddings and description retrieval. Project search covers `amiga` and `devnotes`; the owning DevNotes project remains responsible for indexing `devnotes`.
-  - **Gate:** Reconstructed reviewed artifacts and fresh/incremental retrieval evidence follow the [RAG setup and indexing workflow](.agents/references/developer-setup.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag). Unchanged input does not trigger unnecessary reindexing; changed content is reflected in retrieved source fragments and image descriptions.
-
-- **1.7: Prepare and Review Four Manual Recipes**
-  - After the Test Book workflow is verified, prepare and review the A500/A2000 Technical Reference Manual, Amiga Hardware Reference Manual (second edition), M68000 Programmer's Reference Manual, and M68000 User's Manual (Revision 8). Create a separate `book.json` for each source variant, with its own chapter organization, PDF source selections, formatting, graphics and authored descriptions.
-  - **Gate:** The user reviews each manual's content and accepts its chapter organization, PDF bindings and authored descriptions. Record all four reviewed recipes with their matching source identities; a prepared PDF or imported Working bundle does not complete a recipe.
-
-- **1.8: Add Full-Manual Regeneration to Bootstrap**
-  - Extend the recipe-based command and bootstrap dispatcher to obtain the exact A500/A2000 PDF and rebuild its reviewed Markdown/assets. Keep its source hash, profile and recipe independent of the Test Book.
-  - **Gate:** A clean run reconstructs the reviewed manual from its matching PDF and recipe, rejects source/profile mismatches, and produces verified chapter links, assets and descriptions without model calls.
-
 ## Step 2: HRM-Aligned Custom Chipset Reconstruction
 
 - **2.1: Verify Custom Register Paths and Physical Signal Routing**
@@ -345,3 +315,10 @@ Continue with descriptions, Markdown reconstruction and RAG ingestion for the co
 - **10.4: Resource Extractor and Reverse Engineering Assistant**
   - Extract bitplanes, sprites, palettes, and audio from guest memory; annotate assets, addresses, and game phases with optional LLM assistance and map them in the 24-bit address space.
   - **Gate:** Asset extraction unit tests in `crates/debugger/tests/` verify output and source-address provenance.
+
+## Step 11: Four-Manual PDF-to-Book JSON Conversion
+
+- **11.1: Convert Four Source PDFs to Reviewed `book.json` Recipes**
+  - Prepare the A500/A2000 Technical Reference Manual, Amiga Hardware Reference Manual (second edition), M68000 Programmer's Reference Manual, and M68000 User's Manual (Revision 8). Keep a separate source identity and preparation profile for each PDF.
+  - Import each prepared PDF into Book-to-Markdown, then adjust chapter organization, source selections, formatting, and graphics against the source. Accept the intended revision to produce each manual's `book.json`. Use the [book authoring workflow](tools/bootstrap/book-to-markdown/README.md#book-authoring-sequence).
+  - **Gate:** Review and commit all four accepted `book.json` recipes with their matching full source hashes in `source.json`. A prepared PDF or unaccepted Working bundle is insufficient.

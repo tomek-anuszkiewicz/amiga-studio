@@ -63,6 +63,7 @@ def select_quality_commands(mode):
     if mode == "commit":
         return [
             ("Strict English Policy", script("check_english"), {}),
+            ("Obsidian Frontmatter", script("check_obsidian_frontmatter"), {}),
             ("Formatting", ["cargo", "fmt", "--all", "--", "--check"], {}),
             ("Clippy Invariants", ["cargo", "clippy", "--workspace", "--all-targets"], {}),
             ("Architecture Rules", script("check_architecture"), {}),

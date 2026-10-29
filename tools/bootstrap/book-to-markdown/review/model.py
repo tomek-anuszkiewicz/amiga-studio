@@ -437,11 +437,17 @@ def toc_label(element):
                                        "softbreak", "hardbreak"}).split())
 
 
+def obsidian_block_id(identifier):
+    return "element-" + identifier.replace("-", "--").replace("_", "-u")
+
+
 def toc_markdown(book):
     lines = ["# " + toc_value(book, 'title'), ""]
     for chapter, e in toc_entries(book):
-        title = toc_label(e).replace("[", r"\[").replace("]", r"\]")
-        lines.append("  " * (e["heading_level"] - 1) + f"- [{title}]({chapter_value(chapter, 'markdown_file')}#element-{e['id']})")
+        title = toc_label(e)
+        filename = chapter_value(chapter, 'markdown_file')
+        lines.append("  " * (e["heading_level"] - 1)
+                     + f"- [[{filename}#^{obsidian_block_id(e['id'])}|{title}]]")
     return "\n".join(lines) + "\n"
 
 
@@ -454,8 +460,15 @@ def export_markdown(book, destination, previous=None):
         for filename in old_files - current_files:
             confined(destination, filename).unlink(missing_ok=True)
     for chapter in book["chapters"]:
-        parts = [f'<a id="element-{e["id"]}"></a>\n\n{element_markdown(e)}'
-                 for e in chapter["elements"] if e.get("visible", True)]
+        parts = []
+        for e in chapter["elements"]:
+            if not e.get("visible", True):
+                continue
+            body = element_markdown(e)
+            if e["type"] in HEADING_TYPES and e["heading_level"] <= book["toc"]["depth"]:
+                first, newline, rest = body.partition("\n")
+                body = f"{first} ^{obsidian_block_id(e['id'])}{newline}{rest}"
+            parts.append(f'<a id="element-{e["id"]}"></a>\n\n{body}')
         confined(destination, chapter_value(chapter, "markdown_file")).write_text("\n\n".join(parts) + "\n", encoding="utf-8")
     confined(destination, toc_value(book, 'markdown_file')).write_text(toc_markdown(book), encoding="utf-8")
 

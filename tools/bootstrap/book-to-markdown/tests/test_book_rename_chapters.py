@@ -85,7 +85,7 @@ class RenameChaptersTests(unittest.TestCase):
         self.assertEqual(book['toc']['markdown_file'], 'contents.md')
         export_markdown(book, self.root / 'working')
         self.assertIn('# Contents', (self.root / 'working/contents.md').read_text(encoding='utf-8'))
-        self.assertIn('first.md#element-heading-1',
+        self.assertIn('first.md#^element-heading--1',
                       (self.root / 'working/contents.md').read_text(encoding='utf-8'))
         self.state.toc({'expected_revision': load_input(self.root / 'working')[2], 'depth': 3})
         self.assertEqual(load_input(self.root / 'working')[0]['toc']['title'], 'Contents')

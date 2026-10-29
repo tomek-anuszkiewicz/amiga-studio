@@ -75,6 +75,12 @@ Per-commit verification:
 ```powershell
 python tools/verification/verify.py commit
 ```
+The commit profile checks frontmatter in every local Markdown file under
+`Obsidian/Amiga/`, including Git-ignored reference books. If it reports missing
+metadata, show the user the affected paths and the proposed frontmatter for
+each file, then ask for approval before editing those files. After approval,
+repair the files and rerun verification. The verifier never edits them.
+Reference book metadata follows [Reference Book Metadata](.agents/rules/docs-maintenance.md#reference-book-metadata).
 The canonical commit profile selects standard suites and architecture checks. Run relevant focused tests during development; full SingleStepTests and additional milestone checks are selected by the verification workflow at their required trigger. Do not claim unrun checks passed.
 Do not commit if the commit profile fails for any reason. Resolve the failure and rerun the full profile on the final intended source; milestone completion also requires a passing milestone profile.
 

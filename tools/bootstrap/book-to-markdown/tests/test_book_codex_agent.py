@@ -14,7 +14,7 @@ from browser_session import browser_page
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from review.model import element_markdown, load_input, read_json, write_json
+from review.model import changes, element_markdown, load_input, read_json, write_json
 from review.service import Handler, ReviewState
 from review.codex_agent import replace_source_text, run_agent, source_search
 from review.source_cleanup import preview
@@ -569,6 +569,153 @@ class WorkingAgentTests(unittest.TestCase):
                       '```text\nThe A row has value 1.\n```', element_markdown(table))
         self.assertNotIn('description', prose)
 
+    def test_bulk_descriptions_skip_elements_with_existing_descriptions(self):
+        for preset, kind in [('describe_tables', 'table'), ('describe_images', 'graphic')]:
+            with self.subTest(preset=preset):
+                book = read_json(self.root / 'accepted/book.json')
+                for element in book['chapters'][0]['elements']:
+                    element['type'] = kind
+                    if kind == 'graphic':
+                        element.pop('md_text')
+                        element['asset'] = f"assets/{element['id']}.png"
+                    else:
+                        element['table_format'] = 'markdown'
+                        element['md_text'] = '| A |\n| --- |\n| 1 |'
+                book['chapters'][0]['elements'][0]['description'] = 'Already described.'
+                write_json(self.root / 'working/book.json', book)
+                if kind == 'graphic':
+                    for identifier in ('first', 'second'):
+                        asset = self.root / 'working/assets' / f'{identifier}.png'
+                        asset.parent.mkdir(parents=True, exist_ok=True)
+                        Image.new('RGB', (10, 10), 'white').save(asset)
+                revision = load_input(self.root / 'working')[2]
+                actions = [
+                    {'action': 'patch', 'operations': [
+                        {'op': 'replace', 'path': '/chapters/0/elements/0/description',
+                         'value': '```text\nOverwritten.\n```'}]},
+                ]
+                if kind == 'graphic':
+                    actions.append({'action': 'image', 'asset': 'assets/second.png'})
+                actions.extend([
+                    {'action': 'patch', 'operations': [
+                        {'op': 'add', 'path': '/chapters/0/elements/1/description',
+                         'value': '```text\nNew description.\n```'}]},
+                    {'action': 'finish', 'summary': 'Described the remaining item.'},
+                ])
+                result = run_agent(self.state, {'instruction': 'Describe remaining items',
+                                                'prompt_preset': preset,
+                                                'expected_revision': revision},
+                                   client_factory=self.client(actions))
+                first, second = load_input(self.root / 'working')[0]['chapters'][0]['elements']
+                self.assertEqual(first['description'], 'Already described.')
+                self.assertEqual(second['description'], 'New description.')
+                self.assertEqual(result['edits'], 1)
+                self.assertIn('already has a description',
+                              read_json(self.root / result['diagnostics'] / 'result_0001.json')['tool_error'])
+
+    def test_bulk_descriptions_ignore_hidden_targets_and_context(self):
+        for preset, kind in [('describe_tables', 'table'), ('describe_images', 'graphic')]:
+            with self.subTest(preset=preset):
+                book = read_json(self.root / 'accepted/book.json')
+                book['chapters'][0]['elements'] = book['chapters'][0]['elements'][:2]
+                first, second = book['chapters'][0]['elements']
+                for element in (first, second):
+                    element['type'] = kind
+                    if kind == 'graphic':
+                        element.pop('md_text')
+                        element['asset'] = f"assets/{element['id']}.png"
+                    else:
+                        element['table_format'] = 'markdown'
+                        element['md_text'] = '| A |\n| --- |\n| 1 |'
+                second['visible'] = False
+                hidden_note = {'id': 'hidden_note', 'type': 'prose', 'role': 'footnote',
+                               'visible': False, 'pdf_regions': second['pdf_regions'],
+                               'md_text': 'Hidden context'}
+                book['chapters'][0]['elements'].append(hidden_note)
+                write_json(self.root / 'working/book.json', book)
+                write_json(self.root / 'accepted/book.json', book)
+                if kind == 'graphic':
+                    for identifier in ('first', 'second'):
+                        asset = self.root / 'working/assets' / f'{identifier}.png'
+                        asset.parent.mkdir(parents=True, exist_ok=True)
+                        Image.new('RGB', (10, 10), 'white').save(asset)
+                revision = load_input(self.root / 'working')[2]
+                preview = run_agent(self.state, {'instruction': 'Describe visible elements',
+                                                 'id': 'second', 'prompt_preset': preset,
+                                                 'expected_revision': revision}, preview_prompt=True)
+                task_state = json.loads(preview.split('TASK STATE JSON:\n', 1)[1])
+                self.assertIsNone(task_state['selected_id'])
+                actions = [
+                    {'action': 'list', 'cursor': 0, 'limit': 10},
+                    {'action': 'read', 'ids': ['hidden_note']},
+                    {'action': 'patch', 'operations': [
+                        {'op': 'add', 'path': '/chapters/0/elements/1/description',
+                         'value': '```text\nHidden description.\n```'}]},
+                    {'action': 'image', 'page': 2},
+                ]
+                if kind == 'graphic':
+                    actions.extend([{'action': 'image', 'asset': 'assets/second.png'},
+                                    {'action': 'image', 'asset': 'assets/first.png'}])
+                actions.extend([
+                    {'action': 'patch', 'operations': [
+                        {'op': 'add', 'path': '/chapters/0/elements/0/description',
+                         'value': '```text\nVisible description.\n```'}]},
+                    {'action': 'finish', 'summary': 'Described visible elements.'},
+                ])
+                result = run_agent(self.state, {'instruction': 'Describe visible elements',
+                                                'prompt_preset': preset,
+                                                'expected_revision': revision},
+                                   client_factory=self.client(actions))
+                saved = load_input(self.root / 'working')[0]['chapters'][0]['elements']
+                self.assertEqual(saved[0]['description'], 'Visible description.')
+                self.assertNotIn('description', saved[1])
+                self.assertNotIn('description', saved[2])
+                self.assertEqual(result['edits'], 1)
+                job = self.root / result['diagnostics']
+                self.assertEqual([item['id'] for item in read_json(job / 'result_0001.json')['elements']],
+                                 ['first'])
+                for step in (2, 3, 4, *((5,) if kind == 'graphic' else ())):
+                    self.assertIn('hidden', read_json(job / f'result_{step:04d}.json')['tool_error'])
+
+    def test_stopping_bulk_descriptions_keeps_completed_working_edits(self):
+        book = read_json(self.root / 'working/book.json')
+        for element in book['chapters'][0]['elements']:
+            element.update(type='table', table_format='markdown',
+                           md_text='| A |\n| --- |\n| 1 |')
+        write_json(self.root / 'working/book.json', book)
+        write_json(self.root / 'accepted/book.json', book)
+        revision = load_input(self.root / 'working')[2]
+        accepted = (self.root / 'accepted/book.json').read_bytes()
+        stopped = threading.Event()
+        calls = 0
+
+        def cancel_after_first_save():
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                stopped.set()
+
+        actions = [
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/0/description',
+                 'value': '```text\nFirst description.\n```'}]},
+            {'action': 'patch', 'operations': [
+                {'op': 'add', 'path': '/chapters/0/elements/1/description',
+                 'value': '```text\nSecond description.\n```'}]},
+        ]
+        with self.assertRaisesRegex(RuntimeError, 'stopped before applying'):
+            run_agent(self.state, {'instruction': 'Describe tables',
+                                   'prompt_preset': 'describe_tables',
+                                   'expected_revision': revision},
+                      client_factory=self.client(actions, cancel_after_first_save),
+                      cancelled=stopped)
+        first, second = load_input(self.root / 'working')[0]['chapters'][0]['elements']
+        self.assertEqual(first['description'], 'First description.')
+        self.assertNotIn('description', second)
+        self.assertEqual((self.root / 'accepted/book.json').read_bytes(), accepted)
+        self.assertEqual([change['id'] for change in changes(
+            load_input(self.root / 'accepted')[0], load_input(self.root / 'working')[0])], ['first'])
+
     def test_supporting_tables_cannot_be_description_targets(self):
         book = read_json(self.root / 'working/book.json')
         for element, role in zip(book['chapters'][0]['elements'], ('legend', 'note')):
@@ -901,6 +1048,71 @@ class WorkingAgentTests(unittest.TestCase):
                     release.set()
                     page.wait_for_function('state?.codex_agent?.state === "failed"')
                     self.assertEqual((self.root / 'working/book.json').read_bytes(), before)
+        finally:
+            release.set()
+            self.state.stopping.set()
+            with self.state.condition:
+                self.state.condition.notify_all()
+            server.shutdown()
+            server.server_close()
+            rendering.join(20)
+
+    def test_cancel_after_saved_description_keeps_accepted_unchanged(self):
+        book = read_json(self.root / 'working/book.json')
+        book['chapters'][0]['elements'][0].update(type='table', table_format='markdown',
+                                                  md_text='| A |\n| --- |\n| 1 |')
+        write_json(self.root / 'working/book.json', book)
+        write_json(self.root / 'accepted/book.json', book)
+        accepted = (self.root / 'accepted/book.json').read_bytes()
+        entered = threading.Event()
+        release = threading.Event()
+
+        class Client:
+            def __init__(self, config, **kwargs):
+                self.calls = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def generate_json(self, prompt, **kwargs):
+                self.calls += 1
+                if self.calls == 1:
+                    return {'action': 'patch', 'operations': [
+                        {'op': 'add', 'path': '/chapters/0/elements/0/description',
+                         'value': '```text\nThe table contains A.\n```'}]}
+                entered.set()
+                if not release.wait(10):
+                    raise RuntimeError('Test request was not released')
+                return {'action': 'finish', 'summary': 'Stopped.'}
+
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        server.daemon_threads = True
+        server.state = self.state
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        rendering = threading.Thread(target=self.state.render_loop, daemon=True)
+        rendering.start()
+        try:
+            with patch('review.codex_agent.CodexClient', Client):
+                with browser_page(viewport={'width': 1400, 'height': 850}) as page:
+                    page.goto(f'http://127.0.0.1:{server.server_port}')
+                    page.wait_for_function('state?.can_accept && !loading')
+                    page.locator('#book-actions').click()
+                    page.locator('[data-book-task="describe_tables"]').click()
+                    page.locator('#run-codex').click()
+                    self.assertTrue(entered.wait(5))
+                    page.wait_for_function('state?.codex_agent?.edits === 1 && '
+                                           'state?.changes?.length === 1 && !state?.pending')
+                    page.locator('#cancel-codex').click()
+                    page.wait_for_function('!document.getElementById("codex-dialog").open')
+                    release.set()
+                    page.wait_for_function('state?.codex_agent?.state === "failed"')
+                    self.assertEqual(page.locator('#status').inner_text(), '1 change')
+                    self.assertEqual((self.root / 'accepted/book.json').read_bytes(), accepted)
+                    self.assertEqual(load_input(self.root / 'working')[0]['chapters'][0]
+                                     ['elements'][0]['description'], 'The table contains A.')
         finally:
             release.set()
             self.state.stopping.set()

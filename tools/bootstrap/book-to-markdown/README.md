@@ -68,6 +68,37 @@ For a foreground server, run
 and stop it with Ctrl+C. `--port` changes its port; `--width` changes the
 preparation browser viewport, not the displayed document width.
 
+### Reconstructing a cloned book
+
+After restoring the variant's matching `source.pdf`, use the accepted recipe at
+the variant root to rebuild local editor inputs:
+
+```powershell
+$Book = "tools/bootstrap/books/test-book-example-4567/78e52f075e17"
+python tools/bootstrap/book-to-markdown/book_review.py import-book --book $Book
+python tools/bootstrap/book-to-markdown/book_review.py render --book $Book
+./tools/bootstrap/book-to-markdown/review-server.ps1 start -Book $Book
+```
+
+`import-book` runs PDF Stages 01 and 02 for the full source, generating the OCR
+PDF, positioned text and page PNGs. It copies the page PNGs into the editor,
+extracts image crops from `book.json` PDF regions, copies the accepted recipe to
+`working/book.json`, and exports Markdown. It does not run model conversion,
+proofreading or the draft-generating `import` command. The first render creates
+Accepted from the restored Working recipe; the root `book.json` stays intact.
+
+The command checks `source.json` when present and compares a tracked
+`source-ocr.json` with the OCR profile and processed page selection. OCR PDF
+bytes may differ across preparation runs; `import-book` reports that difference
+and validates that the saved text ranges still resolve. A matching source PDF
+and stable positioned text are required for reliable source references.
+It refuses to replace an existing Working or Accepted review. Existing recipes
+with edited image assets beyond a single PDF crop need those assets or an
+explicit image transformation recipe; `import-book` reports that case instead
+of silently substituting another image. Run [source validation](#source-validation)
+and inspect the PDF after reconstruction; validation cannot prove that a range
+points to the intended printed occurrence.
+
 ### Continuing a review
 
 Edit Working in the browser. The PDF pane shows the original prepared pages;
@@ -98,18 +129,88 @@ Refresh a complete Working Markdown export after the current revision renders:
 python tools/bootstrap/book-to-markdown/book_review.py export --book $Book
 ```
 
+After accepting the final revision, copy its Markdown chapters and referenced
+images into `Obsidian/Amiga/Reference/<book-directory>/`:
+
+```powershell
+python tools/bootstrap/book-to-markdown/book_review.py publish --book $Book
+```
+
+The directory name comes from the book directory above the variant. Publication
+uses the files already in Accepted, converts generated block links to ordinary
+Markdown links to chapter headings, and omits review-only element anchors and
+Obsidian block IDs from the published copy. Working and Accepted stay intact.
+Repeated heading text receives a numeric suffix in the published chapter and
+contents entry so every link names one heading. Publication also writes each
+visible image's `description` from the accepted root `book.json` to
+`assets/<image-name>.txt`. Images without a description have no sidecar;
+hidden images are omitted. The command requires the root and Accepted recipes
+to match, leaves review files intact, and refuses to replace an existing
+Reference directory.
+The published contents use relative Markdown links that can be navigated in
+Obsidian and a standard Markdown preview. The review exports still use Obsidian
+block links so identical headings retain distinct destinations during editing.
+Before a commit, review each published Markdown file and add the `book`,
+`chapter`, and content-based tags described in
+[Reference Book Metadata](../../../.agents/rules/docs-maintenance.md#reference-book-metadata).
+The commit check reports missing structural metadata; an agent asks before
+editing frontmatter.
+
 ## Book authoring sequence
 
 1. Prepare the source PDF through [Stage 08](../pdf-to-markdown/stages/08_proofreading/README.md).
 2. Import once, then arrange and correct chapters and elements in Working.
 3. Run [source validation](#source-validation) and inspect source differences
    against the PDF. A valid address can still point to the wrong repeated text.
-4. Review page corrections, chapter formatting, tables, graphics and descriptions.
-   The [table](prompts/describe-tables.md) and
-   [image](prompts/describe-images.md) prompts support requested authoring.
-5. Review the rendered book and exports, then accept the intended revision.
-   Standalone reconstruction and RAG ingestion remain in the
-   [roadmap](../../../ROADMAP.md#step-1-manual-conversion-and-initial-knowledge-base).
+4. Review page corrections, chapter organization, formatting, tables, graphics,
+   and PDF source selections.
+5. Review the rendered book and exports, accept the intended revision, and
+   commit its `book.json` with the matching `source.json`. Preparing the four
+   manual recipes remains in the
+   [roadmap](../../../ROADMAP.md#step-11-four-manual-pdf-to-book-json-conversion).
+
+The workflow below lets someone with a matching PDF continue from a committed
+recipe, add descriptions, publish Markdown, and index it for RAG.
+
+## Documentation bootstrap from an accepted `book.json`
+
+Repeat this sequence for each reviewed book. The variant needs its accepted
+`book.json`, matching `source.pdf`, and `source.json`; check the full source
+SHA-256 as described in [source catalog](#source-catalog-and-variant-layout).
+The RAG CLI and shared index state file are configured in the
+[developer setup](../../../.agents/references/developer-setup.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag).
+
+1. Run `book_review.py import-book --book <variant-directory>` to rebuild the
+   editor from the accepted recipe and PDF. Then render and open the review
+   server as in [reconstructing a cloned book](#reconstructing-a-cloned-book).
+   `import-book` refuses an existing Working or Accepted bundle, so use it for
+   a clean reconstruction, not to resume an active review.
+2. Validate the reconstructed book and inspect its text, tables, graphics,
+   chapter links, and PDF references. If image or table descriptions are still
+   missing, use the Book Review Codex actions on Working, inspect the results
+   against the PDF, and choose **Accept Changes**. This updates Accepted and
+   the variant-root `book.json`; descriptions already in the recipe need no
+   new model request. Review ASCII art in its source context.
+3. Run `book_review.py publish --book <variant-directory>` after acceptance.
+   It writes Markdown, images, and accepted image-description sidecars to
+   `Obsidian/Amiga/Reference/<book-directory>/`. It refuses an occupied target;
+   inspect the existing publication before any replacement. Review the
+   published files and add the required [reference metadata](../../../.agents/rules/docs-maintenance.md#reference-book-metadata).
+4. After validating the published Markdown, reindex the Amiga documentation
+   scopes from the repository root. The CLI skips unchanged files:
+
+   ```powershell
+   $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
+   rag_qdrant docs --source amiga --index-json $env:RAG_INDEX_JSON
+   rag_qdrant "Obsidian/Amiga/Design" --source amiga --index-json $env:RAG_INDEX_JSON
+   rag_qdrant "Obsidian/Amiga/Reference" --source amiga --index-json $env:RAG_INDEX_JSON
+   ```
+
+5. Check the index status and search for distinctive chapter text, table
+   descriptions, and image descriptions under source `amiga`. Compare returned
+   fragments with the published Markdown and image `.txt` sidecars. The
+   [RAG indexing workflow](../../../.agents/skills/index-amiga-rag/SKILL.md)
+   has the status and search commands.
 
 ## Source catalog and variant layout
 
@@ -159,8 +260,7 @@ The [element vocabulary](elements.md) lists supported types and roles.
 Import aligns Stage 08 text with Stage 02 PDF text, but OCR and repeated
 phrases can produce uncertain or incorrect source attribution. The reviewer
 must check the actual PDF. The recipe stores reviewed decisions so later
-reconstruction can avoid repeating model inference; the standalone command
-for reconstruction from a matching PDF is still pending.
+reconstruction can avoid repeating model inference through `import-book`.
 
 ### Source validation
 

@@ -186,6 +186,9 @@
     "tools/bootstrap/book-to-markdown/review/model.py": [
       "za"
     ],
+    "tools/bootstrap/book-to-markdown/review/publish.py": [
+      "za"
+    ],
     "tools/bootstrap/book-to-markdown/review/source_validation.py": [
       "za"
     ],

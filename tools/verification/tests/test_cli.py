@@ -115,6 +115,12 @@ class SelectionTests(unittest.TestCase):
             commands = selected("commit", changes)
             self.assertFalse(any("tools/verification/run_singlestep.py" in item[1] for item in commands))
 
+    def test_commit_checks_obsidian_frontmatter_without_git_change_selection(self):
+        for changes in ([], ["tools/verification/commands.py"]):
+            commands = selected("commit", changes)
+            self.assertTrue(any(item[1][-1] == "tools/verification/checks/check_obsidian_frontmatter.py"
+                                for item in commands))
+
     def test_empty_standard_harness_never_selects_all_cargo_targets(self):
         with patch.object(Path, "glob", return_value=[Path("test_singlestep.rs")]):
             commands = selected("commit")

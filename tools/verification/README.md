@@ -248,6 +248,16 @@ python tools/verification/verify.py milestone
 
 Routine commits use only the first command. The profiles are invoked separately. Commit first runs ordinary workspace crate tests with coverage, reports the measured coverage, then runs quality gates, standard `test_runner` suites and Python tool contracts without coverage instrumentation. It never selects full SingleStepTests, even for CPU changes. Every commit scans all repository-owned text files against the English dictionary and reviewed project vocabulary, regardless of staging or changes, using `tools/verification/checks/check_english.json`. Milestone runs that language audit plus full SingleStepTests, including on a clean tree so already committed milestone work is covered. It does not repeat the other commit checks. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification.
 
+The commit profile also checks every local Markdown file under `Obsidian/Amiga/`
+for line-one YAML frontmatter with `title` and `tags`, including Git-ignored
+reference books. Book files also require `book` and `chapter` properties and
+the `reference`, `book`, and `chapter` tags. The check reports paths and never
+edits files. Before an agent repairs a reported file, it presents the proposed
+frontmatter and asks the user
+for approval. Run `python tools/verification/checks/check_obsidian_frontmatter.py`
+to inspect only this gate. Missing local reference books are outside its scan.
+Topic tags are selected by reviewing the chapter and are not mechanically checked.
+
 Python tool contracts live beside their owning tools. Commit verification always
 runs RAG MCP and verification CLI contracts. It runs the four Bootstrap contract
 suites when Git reports staged, unstaged or nonignored new paths under
@@ -285,10 +295,10 @@ bus topology and DMA mastership patterns. Commit verification runs it once;
 milestone verification does not repeat it. It does
 not check CCK timing, open-bus values or test-file presence.
 
-There is no shared documentation-governance script in the verifier. Instruction
-brevity, script ownership and procedure routing are reviewed manually.
-Scoped design review, vault links and
-frontmatter, static semantic comparisons, diary chronology and roadmap retention
+The frontmatter presence gate does not replace the owning skill's design-document
+metadata and link audit. Instruction brevity, script ownership and procedure
+routing are reviewed manually. Scoped design review, vault links,
+static semantic comparisons, diary chronology and roadmap retention
 are run by their owning skills. Follow
 [sync-design-docs](../../.agents/skills/sync-design-docs/SKILL.md),
 [obsidian-vault-linking](../../.agents/skills/obsidian-vault-linking/SKILL.md),

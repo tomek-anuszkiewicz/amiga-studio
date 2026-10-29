@@ -32,3 +32,19 @@ These requirements apply to authored specifications under `Obsidian/Amiga/Design
 - Adapt document sections to the subsystem rather than duplicating a fixed outline.
 
 The owning skill provides frontmatter templates, path examples, and link-check commands.
+
+## Reference Book Metadata
+
+Each Markdown file inside a book directory under `Obsidian/Amiga/Reference/`
+has line-one frontmatter with `title`, `book`, `chapter`, and `tags`. Use `book`
+for the source book title or, for a composite test collection, its publication
+identifier. Use `chapter` for the file's section or named unit, including a
+table of contents or front matter. Replace an existing `manual` property with
+`book` without changing its value.
+
+Include `reference`, `book`, and `chapter` in `tags`. Keep existing relevant
+tags and add specific topics supported by that file's headings and content,
+such as a chip, interface, operation, or timing subject. Reuse established
+lowercase tags with hyphens between words. Do not infer a topic from the book
+title alone. Include `amiga` when the file concerns the Amiga. The commit
+frontmatter gate checks structural metadata; topic selection requires review.

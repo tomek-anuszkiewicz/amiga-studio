@@ -165,13 +165,18 @@ def patch_bulk_descriptions(book, action, prompt_preset, inspected_assets):
             raise ValueError('Description target has the wrong element type')
         if expected_type == 'table' and element['role'] in SUPPORTING_TABLE_ROLES:
             raise ValueError('Cannot describe a supporting table')
+        if not element.get('visible', True):
+            raise ValueError('Description target is hidden')
+        if isinstance(element.get('description'), str) and element['description'].strip():
+            raise ValueError('Description target already has a description')
         if expected_type == 'graphic' and element.get('asset') not in inspected_assets:
             raise ValueError('Inspect each Working image before writing its description')
         patch_description(book, {'operations': [operation]}, element['id'])
 
 
-def inventory(book, action):
-    ordered = [(chapter, element) for chapter in book['chapters'] for element in chapter['elements']]
+def inventory(book, action, *, visible_only=False):
+    ordered = [(chapter, element) for chapter in book['chapters'] for element in chapter['elements']
+               if not visible_only or element.get('visible', True)]
     cursor, limit = action.get('cursor', 0), action.get('limit', 20)
     if type(cursor) is not int or type(limit) is not int or cursor < 0 or not 1 <= limit <= 50:
         raise ValueError('List requires a nonnegative cursor and limit from 1 to 50')
@@ -345,6 +350,7 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
                                       or prompt_preset not in PROMPT_PRESETS):
         raise ValueError('Unknown Codex Working prompt preset')
     target_id = command.get('target_id')
+    bulk_description = target_id is None and prompt_preset is not None
     reference_prompt = ((PROGRAM / 'prompts' / PROMPT_PRESETS[prompt_preset]).read_text(encoding='utf-8')
                         if target_id is not None and prompt_preset is not None else None)
     if target_id is not None and (not isinstance(target_id, str) or
@@ -360,8 +366,11 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
         if revision != command.get('expected_revision'):
             raise ValueError('Stale Codex command; reload the latest authored revision')
         selected = command.get('id')
-        if selected is not None and selected not in {e['id'] for e in elements(book)}:
+        by_id = {e['id']: e for e in elements(book)}
+        if selected is not None and selected not in by_id:
             raise ValueError('Selected element no longer exists')
+        if bulk_description and selected is not None and not by_id[selected].get('visible', True):
+            selected = None
         target_chapter = next((c for c in book['chapters']
                                if any(e['id'] == target_id for e in c['elements'])), None)
         target = (next((e for e in target_chapter['elements'] if e['id'] == target_id), None)
@@ -379,8 +388,10 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
         opening = {'toc': deepcopy(book['toc']),
                    'chapters': [{'id': c['id'], 'title': c.get('resolved_title', c['title']),
                                   'markdown_file': c.get('resolved_markdown_file', c['markdown_file']),
-                                  'element_count': len(c['elements'])} for c in book['chapters']],
-                   'element_count': sum(len(c['elements']) for c in book['chapters']),
+                                   'element_count': sum(not bulk_description or e.get('visible', True)
+                                                        for e in c['elements'])} for c in book['chapters']],
+                    'element_count': sum(not bulk_description or e.get('visible', True)
+                                         for c in book['chapters'] for e in c['elements']),
                    'selected_id': selected, 'context_ids': context_ids}
     guide = (PROGRAM / 'prompts/codex-agent.md').read_text(encoding='utf-8')
     if reference_prompt is not None:
@@ -469,12 +480,17 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
                         'diagnostics': str(job.relative_to(REPOSITORY))}
             try:
                 if kind == 'list':
-                    result = inventory(book, action)
+                    result = inventory(book, action, visible_only=bulk_description)
                 elif kind == 'read':
                     if target_id is not None and (not isinstance(action.get('ids'), list) or
                                                   any(identifier not in {target_id, *context_ids}
                                                       for identifier in action['ids'])):
                         raise ValueError('Description task can read only the selected group')
+                    if (bulk_description and isinstance(action.get('ids'), list)
+                            and any(identifier not in {e['id'] for e in elements(book)
+                                                       if e.get('visible', True)}
+                                    for identifier in action['ids'])):
+                        raise ValueError('Description task cannot read hidden or unknown elements')
                     result = read_elements(book, action)
                     if len(json.dumps(result, ensure_ascii=False)) > 50000:
                         raise ValueError('Read result is too large; request fewer IDs or a shorter slice')
@@ -490,6 +506,10 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
                         page = action['page']
                         if target_id is not None and page not in {r['page'] for r in target['pdf_regions']}:
                             raise ValueError('Description task can inspect only the selected source page')
+                        if bulk_description and not any(
+                                e.get('visible', True) and any(r['page'] == page for r in e['pdf_regions'])
+                                for e in elements(book)):
+                            raise ValueError('Description task cannot inspect a hidden or unknown page')
                         if type(page) is not int or page not in {p['page'] for p in state.pdf_pages}:
                             raise ValueError('Requested PDF page does not exist')
                         next_image = state.root / 'pdf/pages' / f'page_{page:04d}.png'
@@ -498,6 +518,9 @@ def run_agent(state, command, *, client_factory=None, progress=None, cancelled=N
                         asset = action.get('asset')
                         if target_id is not None and asset != target.get('asset'):
                             raise ValueError('Description task can inspect only the selected image')
+                        if (bulk_description and asset not in {e.get('asset') for e in elements(book)
+                                                                if e.get('visible', True)}):
+                            raise ValueError('Description task cannot inspect a hidden or unknown asset')
                         if not isinstance(asset, str) or not asset.startswith('assets/') or Path(asset).suffix != '.png':
                             raise ValueError('Image requires a PDF page or Working PNG asset')
                         next_image = (state.root / 'working' / asset).resolve()

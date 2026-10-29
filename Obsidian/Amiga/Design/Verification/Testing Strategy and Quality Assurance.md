@@ -6,10 +6,9 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-10-27
+updated: 2026-10-29
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
-  - "crates/test_runner/src"
   - "crates/test_runner/tests"
   - "tools/verification"
   - "tools/bootstrap/tests"
@@ -36,7 +35,10 @@ for the RAG MCP adapter and verification tooling always run. Bootstrap, shared
 conversion, PDF conversion and book review contracts run when Git reports staged,
 unstaged or nonignored new paths under `tools/bootstrap/`. The book review suite
 shares one browser process across its browser tests while isolating each test in
-a separate browser context.
+a separate browser context. Commit verification also checks structural frontmatter
+in every local Markdown file under `Obsidian/Amiga/`, including ignored reference
+books. The check reports missing fields and tags without editing the files;
+topic selection and full vault-link review remain separate documentation tasks.
 
 The separate `milestone` profile always runs full SingleStepTests
 and the full English audit, including on a clean tree. It does not repeat
