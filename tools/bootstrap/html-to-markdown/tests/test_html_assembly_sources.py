@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 
-PIPELINE_PATH = Path(__file__).resolve().parents[1] / "tools/bootstrap/html-to-markdown/pipeline.py"
+PIPELINE_PATH = Path(__file__).resolve().parents[1] / "pipeline.py"
 spec = importlib.util.spec_from_file_location("html_assembly_pipeline", PIPELINE_PATH)
 pipeline = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pipeline)

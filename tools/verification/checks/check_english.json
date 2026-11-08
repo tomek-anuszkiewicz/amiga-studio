@@ -208,7 +208,7 @@
       "rr",
       "za"
     ],
-    "tests/test_html_assembly_sources.py": [
+    "tools/bootstrap/html-to-markdown/tests/test_html_assembly_sources.py": [
       "readclock"
     ],
     "tools/bootstrap/bootstrap_documentation.ps1": [

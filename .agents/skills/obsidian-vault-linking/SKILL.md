@@ -46,15 +46,14 @@ related: ["[SiblingDoc.md](SiblingDoc.md)"]
 ### Step 3: Audit Structural Reference Section (Layer 2)
 Every design specification must conclude with a dedicated reference section:
 ```markdown
-## Reference Documentation & Upstream Ground Truth
+## Reference Documentation & Implementations
 
 - **Commodore Amiga Hardware Reference Manual**: [Chapter X - Title](../Reference/Hardware%20Reference%20Manual/XX%20-%20Chapter%20X%20-%20Title.md)
   - *Analytical Rationale*: Defines register bitfields, timing diagrams, and DMA slot assignments.
 - **Motorola M68000 Programmer's Reference Manual**: [Section X](../Reference/68000%20User's%20Manual/XX%20-%20Section%20X.md)
   - *Analytical Rationale*: Ground truth for microcode execution phases and condition code updates.
-- **Silicon Reference Implementations**:
-  - [vAmiga Subsystem](../../../ref_src/vAmiga/Core/Chips/...): Verified behavioral reference for cycle timing.
-  - [WinUAE Subsystem](../../../ref_src/WinUAE-6030/...): Ground truth for hardware quirks and edge cases.
+- **Reference Implementations**:
+  - [vAmiga Chip Components](../../../ref_src/vAmiga/Core/Components/): Reference implementation for comparing modeled chipset behavior and timing; confirm hardware claims against manuals or measurements.
 - **Living Crate Source Code**:
   - [`crates/<crate>/src/<module>.rs`](../../../crates/<crate>/src/<module>.rs): Primary Rust implementation.
 ```

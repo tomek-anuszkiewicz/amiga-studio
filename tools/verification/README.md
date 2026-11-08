@@ -300,13 +300,19 @@ metadata and link audit. Instruction brevity, script ownership and procedure
 routing are reviewed manually. Scoped design review, vault links,
 static semantic comparisons, diary chronology and roadmap retention
 are run by their owning skills. Follow
-[sync-design-docs](../../.agents/skills/sync-design-docs/SKILL.md),
+[verify-spec-compliance](../../.agents/skills/verify-spec-compliance/SKILL.md),
 [obsidian-vault-linking](../../.agents/skills/obsidian-vault-linking/SKILL.md),
 [audit-semantic-parity](../../.agents/skills/audit-semantic-parity/SKILL.md),
 [compact-diary](../../.agents/skills/compact-diary/SKILL.md) and
 [roadmap-maintenance](../../.agents/skills/roadmap-maintenance/SKILL.md) at their defined
 triggers. Semantic milestone review is required by its skill. A successful
 `verify.py milestone` alone does not certify these separate skill checks.
+
+Every authorized commit also requires independent
+[code review](../../.agents/skills/code-review/SKILL.md) in fresh agent context
+after verification of the final intended snapshot. The coordinating agent arranges
+the review and resolves findings under [commit policy](../../.agents/rules/git-commits.md).
+The verifier does not launch reviewers or grant review approval.
 
 Full SingleStep runs automatically at milestones. Independent full runs remain available for explicit diagnosis or user requests:
 
@@ -349,7 +355,7 @@ PhysicalMemory. Its selection is owned by [commands.py](commands.py):
 
 Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory. The separate milestone set runs the full language audit and full SingleStepTests; vAmigaTS Cargo suites and automatic chipset/capture runs have been removed.
 
-Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the latest user-approved snapshot. Before each authorized commit, `sync-design-docs` reviews only the intended changed paths and specifications selected through `tracked_paths`; unchanged documents and their dates stay untouched. Semantic milestone review, diary compaction, and roadmap pruning remain separate agent procedures.
+Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the latest user-approved snapshot. Before each authorized commit, `verify-spec-compliance` checks the intended changes against approved specifications selected through `tracked_paths`, including implementation affected by changed requirements even when code has no diff. It permits significant compatible documentation enrichment; accurate documents and their dates stay untouched. The broader semantic milestone audit may satisfy the scoped review for the same snapshot and covered requirements. Diary compaction and roadmap pruning remain separate agent procedures.
 
 ---
 
@@ -460,13 +466,6 @@ python tools/verification/verify.py test runner singlestep case test_add_b sampl
 - 🟢 **Improvements:** Tests that previously failed but now pass are highlighted with `🎉 [PROGRESS / FIX]`.
 
 ---
-
-## 5. Agent Test Execution
-
-The [`$test-runner`](../../.agents/skills/test-runner/SKILL.md) skill runs tests
-across tiers, updates snapshots in `.agent/tmp/singlestep/`, and reports
-regression differences.
-
 
 ## Hardware Capture References and Availability
 

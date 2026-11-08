@@ -47,9 +47,23 @@ The generator models the exact analog filtering path of the Amiga 500 and Amiga 
 
 ---
 
-## 3. Output Files & WinUAE Comparison
+## 3. Output Files and Regression Tests
 
 Running `cargo run -p blep_generator` generates 4 CSV files and a ready-to-compile Rust module in `tools/blep_generator/output/`:
+
+The four tracked CSV files are the accepted PAL regression baselines. Run
+`cargo test -p blep_generator` to regenerate all four curves in an isolated
+temporary directory and compare every sample against those CSVs. The test does
+not overwrite the baselines or require WinUAE sources or network access. It
+checks numerical stability against the accepted curves, not independent hardware
+accuracy. Changes to the baseline curves require separate review.
+
+### One-Time Reference Comparison
+
+On 2026-11-08, all four generated tables matched the committed CSVs exactly.
+Comparison with [WinUAE sinctable.cpp at revision f4e416cf973393c317ab02c012285fcda62a9a1f](https://github.com/tonioni/WinUAE/blob/f4e416cf973393c317ab02c012285fcda62a9a1f/sinctable.cpp)
+confirmed the following differences. The WinUAE tables are an implementation
+reference, not measurements of original hardware.
 
 | Hardware Target | Filter Switch | Generated CSV File | Max Error vs WinUAE | Relative Error (% FS) |
 |---|---|---|---|---|
@@ -61,5 +75,20 @@ Running `cargo run -p blep_generator` generates 4 CSV files and a ready-to-compi
 ### Rust Source Output for Paula Core
 - **`tools/blep_generator/output/blep_tables.rs`**: Exports `BLEP_A500_FILTER_OFF`, `BLEP_A500_FILTER_ON`, `BLEP_A1200_FILTER_OFF`, `BLEP_A1200_FILTER_ON` as static const arrays (`[i32; 2048]`), ready for zero-allocation static embedding directly into Paula's audio rendering engine.
 
-*All 4 curves match WinUAE ground truth within < 0.27% across the entire dynamic range.*
-A visual vector plot comparing the curves and residuals is exported to `tools/blep_generator/output/blep_comparison.svg`.
+The largest observed difference was 0.2609% of full scale.
+
+### Optional WinUAE Comparison Chart
+
+The tracked `output/blep_comparison.svg` and its generator in `src/comparator.rs`
+are retained. To regenerate the chart and print comparison metrics, supply a
+local WinUAE `sinctable.cpp` explicitly:
+
+```powershell
+cargo run -p blep_generator -- <path/to/sinctable.cpp>
+```
+
+This also regenerates the CSV files and Rust module. Without the reference
+argument, the generator writes only those tables and leaves the chart unchanged.
+It does not download or search for WinUAE sources. Missing or malformed supplied
+references cause an error. The offline regression test uses only the committed
+CSV baselines.

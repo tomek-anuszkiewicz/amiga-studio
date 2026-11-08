@@ -1,12 +1,12 @@
 ---
-name: sync-design-docs
-description: Before every authorized Git commit, review the intended changes per crate and synchronize only the design specifications selected by tracked_paths; leave already accurate documents untouched.
+name: verify-spec-compliance
+description: Before every authorized Git commit, verify implementation against approved specifications using tracked_paths, enrich compatible implementation details, and block unresolved conflicts or verification gaps.
 ---
 
-# Design Documentation Review Before Commit
+# Specification Compliance Review Before Commit
 
 Follow [docs-maintenance.md](../../rules/docs-maintenance.md) and
-[git-commits.md](../../rules/git-commits.md). This procedure reviews documentation;
+[git-commits.md](../../rules/git-commits.md). Approved specifications govern this review;
 it does not authorize staging, committing, or modifying unrelated work.
 
 ## When to Use
@@ -14,8 +14,10 @@ it does not authorize staging, committing, or modifying unrelated work.
 Mandatory before every authorized Git commit, including documentation, rules,
 tests and merge commits. Review only the intended commit snapshot. Ordinary
 implementation or refactoring alone does not trigger this procedure. Milestone
-closure uses its completion commit's review; do not repeat it for the same
-snapshot unless relevant inputs changed. Explicit review requests remain valid.
+closure may use its broader semantic audit to satisfy this review when it covers
+the same intended snapshot, selected requirements and evidence. Record that
+coverage instead of repeating the comparison; recheck when relevant inputs change.
+Explicit review requests remain valid.
 
 ## 1. Establish the Intended Snapshot
 
@@ -68,8 +70,12 @@ same matching to non-crate paths explicitly listed in `tracked_paths`.
   mapping before claiming its documentation review complete. Do not invent an
   association or inspect every subsystem to compensate.
 - Include design documents explicitly changed in the intended commit, even if
-  they have no tracked paths. For changes solely to rules or tooling with no
-  mapping, review their directly affected instructions and links, not all
+  they have no tracked paths. For each changed requirement, use its tracked
+  paths and source links to locate the affected implementation and tests even
+  when no code files changed. Resolve missing ownership from relevant domain
+  references before claiming review complete. Editorial edits alone do not
+  require implementation changes. For changes solely to rules or tooling with
+  no mapping, review their directly affected instructions and links, not all
   emulator specifications.
 - Workspace/dependency changes require the affected crate manifests and
   [General Architecture](../../../Obsidian/Amiga/Design/General%20Architecture.md),
@@ -77,8 +83,11 @@ same matching to non-crate paths explicitly listed in `tracked_paths`.
 
 ## 3. Review the Selected Changes
 
-Read each selected document and inspect only the intended changed files, their
-diff and necessary local context. Evaluate behavior, registers, timing phases,
+Read each selected document and inspect the intended changed files, their
+diff and the implementation and tests affected by changed requirements,
+including files with no diff. Use their versions in the intended snapshot;
+unrelated working-tree edits cannot satisfy a staged requirement change.
+Evaluate behavior, registers, timing phases,
 bus coordination, public contracts and dependency changes described by the
 specification. Compare in both directions within that scope: identify intended
 code behavior missing from the selected specifications, and identify claims in
@@ -87,12 +96,36 @@ does not replace the broader milestone semantic audit. Extend to another subsyst
 only when a concrete shared contract, dependency or interaction requires it;
 record the reason and added scope.
 
-Follow [spec-compliance.md](../../rules/spec-compliance.md) for conflicts. Do not
-rewrite a specification simply to legitimize an implementation divergence.
+Distinguish the approved requirements, any user-approved requirement changes,
+and compatible implementation details. When requirements changed, inspect the
+previous wording and recorded user decision; matching final code and documents
+alone does not establish that a changed contract was authorized.
 
-## 4. Update Only Real Documentation Differences
+Apply [spec-compliance.md](../../rules/spec-compliance.md) to classify each
+difference as compatible enrichment, code failing a requirement, an approved
+requirement change awaiting implementation, or a conflict/unauthorized extension.
+Do not rewrite a specification simply to legitimize implementation divergence.
 
-Correct affected descriptions, register/timing tables and dependency diagrams.
+## 4. Resolve Differences Against Approved Requirements
+
+For each changed requirement, identify the supporting implementation and
+relevant test evidence. If implementation is missing or differs, update code
+and tests within the authorized scope to satisfy the approved specification.
+If the necessary work exceeds that scope, present the requirement, contrary
+code behavior and needed scope, then obtain direction before expanding it.
+Leave the review and commit blocked until the difference is resolved and
+verified in the intended snapshot. Do not weaken or revert an approved
+requirement merely to preserve existing behavior.
+
+Enrich affected descriptions, register/timing tables and dependency diagrams
+only with significant implementation details compatible with the approved
+requirements and authorized scope. Follow
+[compatible documentation enrichment](../../rules/spec-compliance.md#compatible-documentation-enrichment);
+do not require a description of every helper or local algorithm. Missing detail
+alone does not require approval. Conflicts and unauthorized extensions require
+the recorded user decision specified by that rule; do not silently remove a
+requirement, broaden the scope or describe divergent code as accepted behavior.
+
 Prune superseded drafts and copied implementations only within the reviewed
 scope; retain concise links to living source. Update `tracked_paths` if ownership
 changed. Design specifications have no line-count ceiling.
@@ -101,8 +134,9 @@ Apply the class-scope and duplication rules in
 [docs-maintenance.md](../../rules/docs-maintenance.md#living-design-specifications).
 Review does not require a new paragraph for each changed instruction.
 
-If the document already describes the intended code correctly, leave the file
-unchanged, including its `updated` date. Change `updated` only alongside a real
+If no significant compatible detail is missing and the document describes the
+approved behavior correctly, leave the file unchanged, including its `updated`
+date. Change `updated` only alongside a real
 content correction. Never add synchronization hashes/dates, periodic stamps or
 review-only metadata. A successful review can produce no file edits and no
 additional commit.
@@ -112,13 +146,20 @@ additional commit.
 After document edits, follow
 [obsidian-vault-linking](../obsidian-vault-linking/SKILL.md) for metadata and link
 checks. Include only the necessary documentation corrections in the agreed
-atomic commit. Recheck selection if intended code, ownership or the proposed
-snapshot changes. The enclosing workflow runs verification on the final source
+atomic commit together with required implementation and test changes. Recheck
+selection if intended code, ownership or the proposed snapshot changes.
+The enclosing workflow runs verification on the final source
 and stages only authorized paths; do not repeat its gates inside this skill.
+Do not return a passing review while an unresolved requirement conflict,
+significant documentation gap or unverified changed requirement remains.
+Passing mechanical checks does not replace this semantic
+review, including for a commit containing only documentation changes.
 
 ## Report
 
 Record the intended snapshot, changed crates/paths, selected documents, concrete
 corrections or no-change findings, scope extensions, missing/invalid mappings,
-and checks actually run. Do not claim unchanged documents were updated or that
-an unreviewed subsystem was verified.
+approved requirements and decisions, their implementation/test evidence,
+compatible documentation additions, unresolved differences or verification gaps,
+and checks actually run. Do not claim unchanged
+documents were updated or that an unreviewed subsystem was verified.

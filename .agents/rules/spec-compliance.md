@@ -2,10 +2,43 @@
 
 Design specifications and [AGENTS.md](../../AGENTS.md) govern implementation. Never silently contradict or bypass documented behavior, timing, memory semantics, or architectural boundaries.
 
-Consult relevant requirements while implementing and handle concrete conflicts when encountered. This does not trigger a general code/design parity audit; scoped synchronization belongs to the authorized pre-commit review, and broader semantic parity belongs to milestone closure or an explicit request.
+Read the relevant requirements before changing code and follow them throughout implementation. Handle concrete conflicts when encountered; do not defer them to a commit or milestone. This does not trigger a general code/design parity audit; scoped compliance review belongs to the authorized pre-commit workflow, and broader semantic parity belongs to milestone closure or an explicit request.
 
 - When a requirement, test expectation, or reference emulator conflicts with the specification, stop the conflicting change and present the current rule, contrary evidence, and concrete options.
-- Obtain an explicit recorded user decision before deviating or amending the specification. Otherwise implement the documented behavior.
+- Obtain an explicit recorded user decision before changing or waiving an existing requirement or introducing behavior outside the authorized scope. Otherwise implement the documented behavior. Compatible documentation enrichment follows the rule below and does not require separate approval.
+
+## Compatible Documentation Enrichment
+
+The specification governs implementation. It need not describe every implementation
+detail before coding begins. Choose unspecified technical details autonomously
+within the authorized scope and existing requirements.
+
+- Add significant implementation details that explain behavior, timing, state
+  transitions, subsystem interactions or constraints when they agree with the
+  specification and the authorized change. Omission alone is not a conflict.
+- Describe mechanisms needed to understand or verify the system; do not require
+  documentation for every helper, field or local algorithm. Follow the scope and
+  duplication rules in [docs-maintenance.md](docs-maintenance.md#living-design-specifications).
+- Existing code is evidence of implementation, not authority to change a
+  requirement. Do not legitimize a contradiction or an unauthorized feature by
+  documenting it. Present such cases under the conflict procedure above.
+
+## Specification Changes Before Implementation
+
+Record user-approved requirement changes in the specification before implementing
+the changed behavior. That approval authorizes the requirement change; do not ask
+for the same approval again merely because existing code behaves differently.
+
+- When editing requirements, check the affected implementation and tests before
+  declaring the task complete. Editorial changes do not require code changes.
+- Resolve known differences in code and relevant tests as part of the same
+  change. If implementation work exceeds the authorized scope, report the
+  difference and obtain direction before expanding it; leave completion blocked.
+- Before committing, use [verify-spec-compliance](../skills/verify-spec-compliance/SKILL.md)
+  to verify agreement in the intended snapshot, including changed requirements
+  whose implementation files have no diff. Block the commit while differences
+  remain or the affected implementation has not been verified. Do not revert or
+  weaken an approved requirement merely to match existing code.
 
 ## Reference Artifact Integrity
 

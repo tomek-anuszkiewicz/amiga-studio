@@ -15,34 +15,41 @@ Run validation commands explicitly. Do not install, configure, or use lifecycle,
 
 First identify the question and whether existing evidence resolves it. Use scripts for concrete measurement, verification, or data processing; do not repair a tool unless that repair is needed for the task.
 
-During ordinary code work, use relevant specifications as implementation requirements, but defer code-to-design and design-to-code synchronization reviews to the authorized pre-commit workflow. Handle a concrete specification conflict when encountered; direct documentation tasks and explicitly requested reviews remain in scope.
+During ordinary code work, read and follow relevant specifications as implementation requirements. Handle concrete conflicts immediately under [specification compliance](.agents/rules/spec-compliance.md). The authorized pre-commit workflow owns scoped compliance review and compatible documentation enrichment; milestone closure owns broader semantic review. Direct documentation tasks and explicitly requested reviews remain in scope.
 
 ## Development Defaults
 
 This is a private, pre-release project without external users. Prefer the simplest correct implementation. Minimize code, abstractions, dependencies, and defensive behavior for hypothetical requirements; do not build speculative features or extensibility.
 
-- Backward compatibility is not the default for internal APIs, schemas, configuration, or generated formats. Replace obsolete code and update affected callers, fixtures, and tests together. Do not add migrations, legacy parsers, deprecated interfaces, adapters, or parallel implementations without a concrete requirement.
-- Preserve external specifications and explicitly required compatibility. Ask before deleting user data that cannot be recreated or dropping support for existing user data.
-- Add tests for meaningful behavior or identified risks, not merely because code changed. Prefer a few high-value tests over redundant edge cases or elaborate infrastructure. Simplify or remove tests whose original purpose disappears.
-- Favor complete refactoring over compatibility layers. When both approaches are correct, choose simplicity over extensibility.
+Use the nearest relevant implementation and tests as examples for conventions, helpers, structure, and verification commands. Reuse established patterns when they fit the task. Existing code and tests do not override approved specifications or hardware evidence; investigate inconsistencies rather than copying them.
+
+Add tests for meaningful behavior or identified risks, not merely because code changed. Prefer a few high-value tests over redundant edge cases or elaborate infrastructure. Simplify or remove tests whose original purpose disappears.
+
+### Compatibility and Internal Refactoring
+
+Backward compatibility is not the default for internal APIs, schemas, configuration, or generated formats. Internal APIs are maintained together in this workspace; refactor them completely rather than preserving obsolete interfaces for hypothetical consumers. Do not infer a compatibility requirement from existing code, tests, documentation, or possible consumers. When both approaches are correct, choose simplicity over extensibility.
+
+- Update affected callers, imports, tests, and fixtures within the requested change. Review code-driven documentation changes before an authorized commit, unless documentation work was explicitly requested earlier.
+- Migrate affected internal callers and delete replaced implementations, compatibility aliases, forwarding wrappers, obsolete re-exports, duplicate namespaces, and legacy fallback paths in the same change. Do not add migrations, legacy parsers, deprecated interfaces, adapters, or parallel implementations without a concrete requirement. Preserve compatibility only when the user explicitly requests it or a documented external contract requires it.
+- Preserve external specifications. For external contracts or existing user data, including saved snapshots, explain the impact and obtain direction before removing old-format support. Ask before deleting user data that cannot be recreated.
+- Before completion, search active code and tests for replaced symbols and mechanisms, review each remaining reference, and run the required checks and relevant tests. Review documentation and instruction references before an authorized commit.
+- Before an authorized commit, retire active command examples, skill procedures and ownership mappings for a removed mechanism. Retained historical descriptions must state that the capability is unavailable; future plans must identify its prerequisites rather than present retired commands as executable. An explicit user request to preserve documentation takes precedence; report the resulting debt.
 
 ## Task-Specific Rules and Navigation
 
-Read applicable domain rules before editing that domain. Use [Graphify](.agents/skills/graphify/SKILL.md) for source navigation and [amiga-rag.md](.agents/rules/amiga-rag.md) for domain/reference retrieval.
+Read applicable domain rules before editing that domain. Choose direct source inspection, `rg`, or [Graphify](.agents/skills/graphify/SKILL.md) to suit the navigation question. Follow [amiga-rag.md](.agents/rules/amiga-rag.md) for domain/reference retrieval.
 
 | Task | Rules and procedures |
 | --- | --- |
 | Rust workspace code | [Rust practices](.agents/rules/rust-best-practices.md), [performance](.agents/rules/performance-and-readability.md) |
 | Production Rust source under `crates/*/src/` | [File cohesion](.agents/rules/file-size-and-cohesion.md) |
 | Crate boundaries or public re-exports | [Workspace boundaries](.agents/rules/workspace-structure-and-reexports.md) |
-| Internal API refactoring | [Clean refactoring](.agents/rules/clean-break-refactoring.md) |
-| CPU instructions | [Opcode conventions and required implementation procedure](.agents/rules/opcode-naming.md) |
-| M68000 CPU performance tests | [Add M68000 benchmark case](.agents/skills/add-m68k-benchmark/SKILL.md) |
+| M68000 CPU performance tests | [Benchmark catalog and runner](benchmarks/m68k/README.md) |
 | Chip, DMA, or bus behavior | [Hardware topology](.agents/rules/hardware-bus-topology.md), [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md) |
 | Tests or suspected defect investigation/repair | [Testing policy](.agents/rules/unit-testing-policy.md), [defect resolution](.agents/rules/structural-root-cause.md#defect-resolution) |
 | GUI | [egui practices and visual verification](.agents/rules/egui-best-practices.md) |
-| Documentation | [Documentation maintenance and vault links](.agents/rules/docs-maintenance.md), [information hierarchy](.agents/rules/information-hierarchy.md), [writing style](.agents/rules/practitioner-voice-and-tone.md) |
-| Repository skills | [Instruction hierarchy and skill ownership](.agents/rules/information-hierarchy.md) |
+| Documentation | [Documentation maintenance and vault links](.agents/rules/docs-maintenance.md), [document and instruction ownership](.agents/rules/information-hierarchy.md), [writing style](.agents/rules/practitioner-voice-and-tone.md) |
+| Repository skills | [Document and instruction ownership](.agents/rules/information-hierarchy.md) |
 | PowerShell tooling | Use [write-powershell](.agents/skills/write-powershell/SKILL.md) for invocation behavior, parameter descriptions, and validation. |
 | Commit or milestone | [Diary](.agents/rules/diary-maintenance.md), [roadmap](.agents/rules/roadmap-maintenance.md), [design maintenance](.agents/rules/docs-maintenance.md) |
 | Merge or worktree | [Merge policy and required procedures](.agents/rules/git-merge-commits.md) |
@@ -52,7 +59,10 @@ Skill names and descriptions in `.agents/skills/` guide selection. Read the sele
 `SKILL.md` and execute required procedures; discovery alone does not execute a skill.
 
 Roles live in `.codex/agents/*.toml`; delegate only when requested by the user or
-applicable instructions. MCP configuration is `.codex/config.toml`.
+applicable instructions. Every authorized commit requires a separate `code_reviewer`
+with fresh context through [code-review](.agents/skills/code-review/SKILL.md), as
+required by [commit policy](.agents/rules/git-commits.md). MCP configuration is
+`.codex/config.toml`.
 
 ## Machine Invariants
 
@@ -69,7 +79,7 @@ applicable instructions. MCP configuration is `.codex/config.toml`.
 
 Never stage files or otherwise change the Git index unless the user explicitly requests staging or a commit. Editing a file that is already staged does not authorize staging its new version; leave the edit unstaged and preserve the existing index entry. If a required roadmap commit would need staging, ask the user first.
 
-Commits are mandatory when closing a minor roadmap point or major milestone. Otherwise, commit when the user explicitly requests it. Commits are atomic and written in English. **Every commit includes a new DIARY.md Section 10 entry.** At minor roadmap points or milestones, compact settled entries and synchronize affected design specifications and the remaining roadmap.
+Commits are mandatory when closing a minor roadmap point or major milestone. Otherwise, commit when the user explicitly requests it. Commits are atomic and written in English. **Every commit includes a new DIARY.md Section 10 entry.** At minor roadmap points or milestones, compact settled entries, verify specification compliance, enrich compatible documentation details, and update the remaining roadmap.
 
 Per-commit verification:
 ```powershell
@@ -84,7 +94,7 @@ Reference book metadata follows [Reference Book Metadata](.agents/rules/docs-mai
 The canonical commit profile selects standard suites and architecture checks. Run relevant focused tests during development; full SingleStepTests and additional milestone checks are selected by the verification workflow at their required trigger. Do not claim unrun checks passed.
 Do not commit if the commit profile fails for any reason. Resolve the failure and rerun the full profile on the final intended source; milestone completion also requires a passing milestone profile.
 
-Milestone completion requires `python tools/verification/verify.py milestone`, [semantic parity review](.agents/skills/audit-semantic-parity/SKILL.md) of modified subsystems, design synchronization and checkpoint updates, diary compaction, and pruning completed roadmap steps. **Prohibition of Blind Golden Hash Modifications:** Never silently change golden hashes or cycle references; follow the conflict and approval procedure in specification-compliance rules.
+Milestone completion requires `python tools/verification/verify.py milestone`, [semantic parity review](.agents/skills/audit-semantic-parity/SKILL.md) of modified subsystems, specification compliance and compatible documentation enrichment, checkpoint updates, diary compaction, and pruning completed roadmap steps. The broader audit may satisfy the scoped pre-commit review when its coverage and snapshot match. **Prohibition of Blind Golden Hash Modifications:** Never silently change golden hashes or cycle references; follow the conflict and approval procedure in specification-compliance rules.
 
 ## Authoritative References
 

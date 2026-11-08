@@ -102,7 +102,7 @@ prepared sources. The [developer guide](developers.md) explains that setup.
 A skill packages a procedure: when to use it, which steps to execute, and what
 evidence to report. Project rules define obligations; skills explain how to carry
 out specialized work. Browse [`.agents/skills/`](../.agents/skills/) when you need
-a procedure, or name one in your request, such as `$test-runner`.
+a procedure, or name the skill in your request.
 
 For example, CPU instruction work has a dedicated implementation procedure and
 SingleStep verification suite; GUI layout work uses captured frames for visual
@@ -122,6 +122,13 @@ Delegation happens when requested by you or required by an applicable procedure.
 Each helper receives a scoped assignment and reports back to the main session.
 The role configuration contains its current model and permissions.
 
+Every authorized commit requires a separate `code_reviewer` with fresh context.
+It receives the exact patch, approved requirement sources and verification
+artifacts, without the implementation conversation or the author's explanation.
+Ordinary commits receive a focused review; milestones, substantial features and
+changes with significant correctness risks receive an extended review. The
+[code-review skill](../.agents/skills/code-review/SKILL.md) owns the procedure.
+
 ## Review and Record the Result
 
 Routine task completion leaves validated changes available for review. It does
@@ -139,6 +146,9 @@ Despite its name, this command verifies the current working tree; it does not
 create a commit. The [testing guide](testing.md) explains its checks, focused
 diagnostics and additional milestone requirements. Each authorized commit has a
 corresponding `DIARY.md` entry recording the change and observed validation.
+After verification, the independent reviewer checks the final intended snapshot.
+Blocking findings and missing required evidence must be resolved before the
+commit; corrections require renewed verification and review of the final version.
 
 If you are changing the agent infrastructure itself, use
 [Maintaining Agent Tooling](../.agents/references/agent-tooling.md) for script ownership, configuration

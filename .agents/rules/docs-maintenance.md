@@ -1,21 +1,22 @@
 # Documentation Maintenance
 
-Reader-facing documentation under `docs/` explains the project and provides entry points for users and developers. Follow [information hierarchy](information-hierarchy.md) when selecting scope and detail. Keep operational procedures with their owning tools, tests or agent references; update incoming links when moving them.
+Reader-facing documentation under `docs/` explains the project and provides entry points for users and developers. Follow [document and instruction ownership](information-hierarchy.md) when selecting scope and detail. Keep operational procedures with their owning tools, tests or agent references; update incoming links when moving them.
 
 ## Living Design Specifications
 
 The following requirements apply to specifications under `Obsidian/Amiga/Design/`.
 
-- Before every authorized commit, use [sync-design-docs](../skills/sync-design-docs/SKILL.md) to review the intended changes per crate and reconcile only affected specifications. Ordinary implementation/refactoring alone does not trigger synchronization; milestone closure uses its completion commit's review. The review does not authorize a commit.
+- Before every authorized commit, use [verify-spec-compliance](../skills/verify-spec-compliance/SKILL.md) to check the intended changes against approved requirements and enrich only affected specifications with compatible implementation details. Ordinary implementation/refactoring alone does not trigger this review; milestone closure may reuse its broader audit as described by the skill. The review does not authorize a commit.
 - Select documents using repository-relative `tracked_paths` in their frontmatter. Match exact files or directory descendants; include both sides of renames and deletions. Keep the mapping accurate and report missing ownership. Read selected diffs and necessary context, not all repository code or history.
 - Establish the exact intended commit snapshot. If staged, review its index version; otherwise use only agreed paths/hunks and explicitly selected new files. Resolve ambiguous scope before proceeding. Include documentation corrections in the same atomic commit.
 - If specifications already match the intended changes, leave them and their dates untouched. No synchronization hashes, synchronization dates, age/commit-count thresholds or review-only metadata are required.
 - Read the authoritative specification through the [design index](../../Obsidian/Amiga/Design/General%20Architecture.md) and handle conflicts through [spec-compliance.md](spec-compliance.md); do not silently align documentation to incorrect code.
+- Distinguish [compatible documentation enrichment](spec-compliance.md#compatible-documentation-enrichment) from [requirement changes before implementation](spec-compliance.md#specification-changes-before-implementation). Review changed requirements against code and tests even when only documentation changed; unresolved differences block task completion and the commit. Documentation enrichment does not require an exhaustive description of implementation details.
 - Remove superseded proposals and draft code after implementation. Explain mechanisms and link living source rather than copying implemented Rust definitions.
 - Describe shared microcode primitives once. Instruction-class sections contain their ordering, timing parameters and structural exceptions; link to shared phase definitions and the CPU specification for instruction semantics.
 - Correct an existing class description or table before adding another section. Add a variant only when its execution structure differs, not merely because another mnemonic was implemented. Keep repair history, test results and implementation progress in task plans or the diary.
 - Update the dependency graph in General Architecture when crate relationships change. Keep specifications and references complete; they have no line-count ceiling.
-- Follow the vault metadata and link requirements below, [information hierarchy](information-hierarchy.md), and [writing style](practitioner-voice-and-tone.md).
+- Follow the vault metadata and link requirements below, [document and instruction ownership](information-hierarchy.md), and [writing style](practitioner-voice-and-tone.md).
 - At milestones, review bidirectional semantic parity as required by [audit-semantic-parity](../skills/audit-semantic-parity/SKILL.md); mechanical drift checks alone do not prove agreement.
 
 Shared script placement and instruction ownership are governed by [agent tooling maintenance](../references/agent-tooling.md#agent-tooling-maintenance). Specifications may be reached through the design index; neither a direct rule link for every document nor a manual rule audit registry is required.

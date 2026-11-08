@@ -3,9 +3,9 @@ name: audit-docs-quality
 description: Review concise instructions and agent governance on request or at major milestone completion; route conditional checks to their owning skills.
 ---
 
-# Recipe: Documentation & Agent Governance Quality Auditor Playbook
+# Documentation and Agent Governance Review
 
-This skill reviews instruction brevity and audits agent governance. Design synchronization, vault integrity, semantic comparisons and workflow checks belong to the skills linked below and run only at their own triggers; this manual review does not replace those domain checks.
+This skill reviews instruction brevity and audits agent governance. Specification compliance review, vault integrity, semantic comparisons and workflow checks belong to the skills linked below and run only at their own triggers; this manual review does not replace those domain checks.
 
 ---
 
@@ -15,7 +15,7 @@ This skill reviews instruction brevity and audits agent governance. Design synch
 - **Requested Governance Review:** Review script ownership and required procedure routing.
 
 Ordinary code work and specification updates do not invoke this skill. The
-authorized pre-commit workflow owns scoped code/design synchronization;
+authorized pre-commit workflow owns scoped specification compliance review;
 milestone closure owns broader semantic parity.
 
 ---
@@ -23,13 +23,13 @@ milestone closure owns broader semantic parity.
 ## 2. Documentation Quality Checks
 
 ### Pillar 1: Scoped Design Documentation Review (Pre-Commit)
-[sync-design-docs](../sync-design-docs/SKILL.md) owns the pre-commit review of intended changes and documents selected by `tracked_paths`.
+[verify-spec-compliance](../verify-spec-compliance/SKILL.md) owns the pre-commit review against approved requirements and compatible enrichment of documents selected by `tracked_paths`.
 
 ### Pillar 2: Obsidian Vault Linking & Graph Integrity (`--vault-links`)
 [obsidian-vault-linking](../obsidian-vault-linking/SKILL.md) owns link checks.
 
 ### Instruction Brevity and Script Ownership (Manual Review)
-Follow [information hierarchy](../../rules/information-hierarchy.md): keep instructions concise, preserve required routing, and remove duplicated procedures. There are no fixed byte ceilings.
+Follow [document and instruction ownership](../../rules/information-hierarchy.md): keep instructions concise, preserve required routing, and remove duplicated procedures. There are no fixed byte ceilings.
 Review script and function ownership using actual callers and responsibilities, including individual switches in mixed scripts. Follow [agent tooling maintenance](../../references/agent-tooling.md#agent-tooling-maintenance); reference counts alone do not determine placement.
 
 ### Skill and Rule Ownership (Manual Review)
@@ -49,14 +49,12 @@ classification registry or skill-name symmetry check is maintained.
 
 ---
 
-## 3. The Verbal Double-Check Protocol (Heuristic Verification)
+## Manual Review
 
-Automated checks validate their configured patterns and boundaries. They do not establish complete semantic agreement or hardware fidelity; report the inspected scope and follow with manual review where required. Conclude every audit with the **5 Heuristic Questions**:
-1. 🧠 **Procedure Routing Review:** Are scoped code/design synchronization and broader semantic parity assigned to their pre-commit and milestone workflows?
-2. 🚫 **Anti-Nudge Review (`structural-root-cause.md`):** Are all beam coordinates and delays silicon-verified rather than empirical $\pm 1$ / $\pm 2$ symptom patches?
-3. 🔬 **Assertion Density & Genuine Test Review (`unit-testing-policy.md`):** Do unit tests genuinely verify chip behavior and state changes, or do they only assert trivial boilerplate?
-4. 📢 **Spec Conflict Escalation (`spec-compliance.md`):** Were any conflicts between reference test suites and internal design specs escalated to the user before changing code?
-5. 🧹 **Clean-Break Refactoring (`clean-break-refactoring.md`):** Were old methods, legacy aliases, and temporary shims completely deleted rather than left behind?
+Assess the risks relevant to the affected instructions: duplicated or conflicting
+obligations, inaccurate procedure links, and triggers that cause unrelated work.
+Automated checks establish only their configured coverage; use manual review for
+the meaning and scope of instructions.
 
 ---
 
@@ -65,20 +63,12 @@ Automated checks validate their configured patterns and boundaries. They do not 
 When invoked without a narrower scope, inspect the affected governance files,
 their procedure links, and actual script ownership. Use verification results from
 an enclosing commit or milestone workflow when that workflow applies; this audit
-does not start the commit profile, code/design synchronization, semantic parity,
+does not start the commit profile, specification compliance review, semantic parity,
 or RAG indexing on its own. For remediation, follow the owning skill for the
 specific finding.
 
-## 5. Output Contract
-Conclude with the standardized summary report:
-Report observed results; mark checks that were not run instead of copying the example PASS values.
-```markdown
-### 📚 Documentation & Governance Quality Audit Report
-- **Vault Linking & Graph Integrity:** [PASS | <count> broken links] (verified <count> links)
-- **Instruction Brevity and Script Ownership:** <manual review scope and findings; mark unrun>
-- **Skill and Rule Ownership:** <manual routing review scope and findings; mark unrun>
-- **Frontmatter Compliance:** [PASS | <count> missing frontmatter]
-- **Workflow Invariants:** [PASS | <count> issues] (diary structure/timestamps, roadmap file/checkboxes)
-- **Manual Review:** <inspected scope and unresolved questions; mark unrun reviews>
-- **Enclosing Commit or Milestone Results:** <actual results when applicable; otherwise not run>
-```
+## Report
+
+Lead with concrete findings and affected paths. Summarize the inspected scope,
+checks actually run, their results, and material verification gaps. Include
+enclosing commit or milestone results only when that workflow applies.

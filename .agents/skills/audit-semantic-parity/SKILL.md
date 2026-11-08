@@ -1,6 +1,6 @@
 ---
 name: audit-semantic-parity
-description: At minor roadmap point or major milestone completion, audit modified subsystems for bidirectional code/specification parity; combine static checks with inference for blind spots, ghost features, and drift.
+description: At minor roadmap point or major milestone completion, audit modified subsystems and their interactions against approved specifications; identify missing implementation, compatible documentation gaps and conflicts.
 ---
 
 # Recipe: Inference-Driven Bidirectional Semantic Parity Auditor
@@ -15,6 +15,20 @@ Mandatory at completion of a minor roadmap point or major milestone: review the
 modified subsystems before declaring the stage complete. This obligation is
 owned here; ordinary commits alone do not require this semantic review.
 Explicit subsystem audits remain available on request.
+
+Review the modified subsystems and their relevant interactions across the
+completed stage, including code unchanged by the final commit. This scope is
+broader than the pre-commit review of an individual patch. Record the reviewed
+snapshot, requirements and evidence; the same audit may satisfy
+[verify-spec-compliance](../verify-spec-compliance/SKILL.md) for the completion
+commit when it covers that skill's selected scope. Do not repeat the same
+comparison unless relevant inputs change.
+
+Both comparison directions follow
+[spec-compliance.md](../../rules/spec-compliance.md): approved requirements
+govern code, and significant compatible implementation details may enrich the
+documentation. Examine approval evidence for changed requirements; agreement
+between final code and documents alone does not establish authorization.
 
 Start with the workspace-wide deterministic checks, retaining their full scope:
 
@@ -39,6 +53,11 @@ Assess completeness across the owning specification and its linked descriptions.
 Shared mechanisms or instruction semantics documented there are not blind spots
 merely because an archetype section does not repeat it. Apply the scope rules in
 [docs-maintenance.md](../../rules/docs-maintenance.md#living-design-specifications).
+Use signatures and fields to locate significant mechanisms, not as a requirement
+to document every helper or implementation detail. Missing descriptions are
+enrichment candidates only when the behavior is compatible with approved
+requirements and within the authorized scope; classify contradictions and
+unauthorized extensions separately.
 
 ---
 
@@ -125,11 +144,18 @@ When executing an audit:
    - Render the report using the standard template in Section 5.
 5. **Step 5: Propose Actionable Remediation:**
    - Provide concrete Markdown additions or code adjustments to achieve parity.
-   - For `NEEDS_DOCS_ENRICHMENT`, reconcile the specification and use
-     [sync-design-docs](../sync-design-docs/SKILL.md) for scoped pre-commit documentation review and
+   - For `NEEDS_DOCS_ENRICHMENT`, add only significant compatible details under
+     [spec-compliance.md](../../rules/spec-compliance.md#compatible-documentation-enrichment). Use
      [obsidian-vault-linking](../obsidian-vault-linking/SKILL.md) for links and metadata.
-   - For `NEEDS_CODE_ALIGNMENT` or `SPEC_DIVERGENCE`, escalate before changing
-     production code per [`spec-compliance.md`](../../rules/spec-compliance.md).
+   - For `NEEDS_CODE_ALIGNMENT`, implement already approved requirements and
+     verify relevant behavior within the authorized scope. Obtain direction
+     before expanding that scope; do not request the same requirement approval again.
+   - For `SPEC_DIVERGENCE`, present the requirement, contrary evidence and options
+     before changing requirements or accepting divergent behavior, per
+     [spec-compliance.md](../../rules/spec-compliance.md).
+   - Do not declare stage completion while significant documentation gaps,
+     unresolved conflicts or required implementation/verification gaps remain.
+     After remediation, reassess affected findings on the final intended snapshot.
 
 ---
 
@@ -139,6 +165,7 @@ When executing an audit:
 # Semantic Parity Audit: [Subsystem Name]
 
 **Evaluated Scope:**
+- **Snapshot and Approval Evidence:** [revision or intended patch; approved requirement changes]
 - **Code:** `crates/<crate>/src/`
 - **Specification:** `Obsidian/Amiga/Design/<Spec>.md`
 - **Evidence Coverage:** [assessed dimensions and limitations]

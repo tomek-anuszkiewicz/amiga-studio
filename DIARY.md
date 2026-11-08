@@ -916,3 +916,37 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: vault audit of 35 specifications and 691 links
   - PASS: structural frontmatter on 104 local Obsidian Markdown files
   - LIMIT: source validation reported 56 invalid fields in the raw Test Book import
+---
+
+### [2026-11-08 23:41 CET] — Consolidate agent workflows and BLEP regression verification
+- **Affected Subsystems**:
+  - `.agents`
+  - `.codex/agents`
+  - `tools/blep_generator`
+  - `tools/bootstrap/html-to-markdown/tests`
+  - `tools/verification`
+  - `docs`
+  - `benchmarks/m68k`
+  - `Obsidian/Amiga/Design/Verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Consolidate rule and skill ownership and require independent review of every authorized commit
+  - Replace obsolete instruction and test skills with scoped specification compliance and canonical verification routing
+  - Include pinned FPGA references in worktree procedures and link hardware research from topology rules
+  - Preserve accepted BLEP CSV curves with an offline regression test and move eight numerical tests outside production source
+  - Make WinUAE chart generation optional with an explicit source file and retain the existing SVG
+  - Move HTML source attachment tests into their owning tool and include them in verification selection
+  - Restore user-approved metadata in 66 ignored reference chapters in each of two checkouts while preserving all chapter text
+- **Architectural Rationale & Trade-Offs**:
+  - Keep requirements and procedures in their owning locations while preserving reference artifacts
+  - Separate stable numerical regression tests from optional external implementation comparisons
+  - Preserve existing BLEP output while recording that historical FIR conventions reproduce all reference samples exactly
+- **Verification & Test Results**:
+  - PASS: BLEP package tests and Clippy with all targets
+  - PASS: all eight moved test bodies and four production implementations preserved exactly
+  - PASS: all four CSV hashes and the committed SVG unchanged
+  - PASS: verification CLI contracts and HTML conversion contracts
+  - PASS: design vault metadata and links and new skill validation
+  - PASS: approved reference metadata restoration and all 104 local frontmatter files in each active checkout
+  - PASS: one-time WinUAE comparison and optional chart regeneration with identical plotted paths
+  - PASS: Graphify refresh in all three active checkouts and subsequent source refreshes in the current checkout
+  - NOT RUN: milestone profile because no roadmap point or milestone is being closed

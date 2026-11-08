@@ -3,22 +3,11 @@
 Readability principles apply to all project code. Hot-path constraints apply to
 emulation execution, memory access, and interrupt paths.
 
-## Readability and Clean Code
+## Refactoring Execution Logic
 
-- Apply clean-code principles when writing and reviewing code: use names that
-  express domain intent, keep functions focused on one coherent responsibility,
-  and make control flow easy to follow. Avoid speculative abstractions and
-  fragmentation that makes the physical model harder to trace.
-- Evaluate condition readability by meaning and context, not operator counts.
-  Name a predicate or extract a domain helper when it explains a decision;
-  keep a direct condition when it is already clear. Reduce unnecessary nesting
-  where doing so preserves the execution model.
-- Preserve short-circuit evaluation, evaluation order, side effects, and hardware
-  timing. Do not eagerly compute a named boolean when the original branch would
-  skip a call or memory access. Preserve these semantics when extracting helpers.
-- During implementation and review, identify confusing conditions and explain
-  concrete improvements using this rule. Readability is assessed by the agent;
-  no operator-count scanner or automatic threshold enforces it.
+Preserve short-circuit evaluation, evaluation order, side effects, and hardware
+timing. Do not eagerly compute a named boolean when the original branch would
+skip a call or memory access. Preserve these semantics when extracting helpers.
 
 ## Performance and Hardware Traceability
 
@@ -29,4 +18,4 @@ emulation execution, memory access, and interrupt paths.
 - Do not force inline large control-flow functions (over roughly 15-20 lines) or indirect dispatch-table targets. Attribute choices must preserve the project's architecture checks for ALU, CCR, and cold exception handlers; performance conclusions require measurement.
 - Avoid clever optimizations without evidence. Use comparable benchmark measurements for performance claims and [audit-code-quality](../skills/audit-code-quality/SKILL.md) for review.
 
-CPU-only micro-step fusion, dual staging, and idle naming belong to [add-m68k-instruction](../skills/add-m68k-instruction/SKILL.md) and the CPU specifications.
+CPU execution phases and micro-step fusion follow the [CPU Micro-Step State Machine](../../Obsidian/Amiga/Design/CPU%20Micro-Step%20State%20Machine.md) specification.

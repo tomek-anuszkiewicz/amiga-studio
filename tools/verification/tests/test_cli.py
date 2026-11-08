@@ -88,8 +88,8 @@ class SelectionTests(unittest.TestCase):
         cases = (
             ("tools/bootstrap/ensure_qdrant.ps1", {"Bootstrap contracts"}),
             ("tools/bootstrap/tests/test_bootstrap_contract.py", {"Bootstrap contracts"}),
-            ("tools/bootstrap/html-to-markdown/pipeline.py", {"Conversion contracts"}),
-            ("tools/bootstrap/conversion/client.py", {"Conversion contracts", "PDF conversion contracts",
+            ("tools/bootstrap/html-to-markdown/pipeline.py", {"Conversion contracts", "HTML conversion contracts"}),
+            ("tools/bootstrap/conversion/client.py", {"Conversion contracts", "HTML conversion contracts", "PDF conversion contracts",
                                                       "Book review contracts"}),
             ("tools/bootstrap/pdf-to-markdown/pipeline.py", {"Conversion contracts", "PDF conversion contracts",
                                                               "Book review contracts"}),
@@ -159,11 +159,11 @@ class SelectionTests(unittest.TestCase):
         commands = selected("commit", ["tools/bootstrap/book-to-markdown/review/service.py"])
         self.assertTrue(any("llvm-cov" in item[1] for item in commands))
         self.assertTrue(any(any(part.endswith("checks/check_architecture.py") for part in item[1]) for item in commands))
-        self.assertEqual(sum("discover" in item[1] for item in commands), 5)
+        self.assertEqual(sum("discover" in item[1] for item in commands), 6)
         self.assertTrue(any("tools/bootstrap/book-to-markdown/run_tests.py" in item[1] for item in commands))
 
     def test_commit_skips_bootstrap_contracts_without_bootstrap_changes(self):
-        bootstrap = {"Bootstrap contracts", "Conversion contracts",
+        bootstrap = {"Bootstrap contracts", "Conversion contracts", "HTML conversion contracts",
                      "PDF conversion contracts", "Book review contracts"}
         for changes in ([], ["crates/cpu/src/cpu.rs"], ["tools/verification/commands.py"]):
             with self.subTest(changes=changes):

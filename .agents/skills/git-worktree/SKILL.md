@@ -28,7 +28,7 @@ Activate this skill whenever:
 2. **Strict Worktree Isolation & Zero-Junction Invariant:**
    - **Strict Prohibition of NTFS Junctions and Directory Links:** Never use NTFS directory junctions (`New-Item -ItemType Junction`, `mklink /J`) or symbolic links across worktrees or repositories. Every worktree must remain 100% self-contained with independent physical storage.
    - **Independent Physical Copies:** The test suite and documentation rely on files excluded by `.gitignore`:
-     - `ref_src/` (CPU test vectors and reference emulators)
+     - `ref_src/` (CPU test vectors, reference emulators, and the pinned FPGA sources in `minimig/` and `amiga_replacement_project/`, including their `_bootstrap_source.json` manifests)
      - `Obsidian/Amiga/Reference/` (Commodore hardware manuals)
      - `tools/AmigaTestKit/` (test floppy ADFs)
      - `.agent/tmp/singlestep/` & `.agent/tmp/benchmarks/` (local execution snapshots and benchmark outputs)
@@ -44,6 +44,15 @@ Activate this skill whenever:
 ## 3. Operational Workflow
 
 ### Step 1: Create an Isolated Worktree
+
+Before creation or full synchronization, ensure the main repository contains both pinned FPGA sources. Run the following command from the main repository; it verifies existing copies and provisions missing sources:
+
+```powershell
+.\tools\bootstrap\bootstrap_sources.ps1 -MiniMig -AmigaReplacementProject
+```
+
+The worktree script copies the entire `ref_src/` tree from the main repository, so sources present only in another worktree will otherwise be omitted. After copying, run the same bootstrap command from the target worktree to verify its manifests and file hashes.
+
 When the user asks to create a worktree for a branch or feature:
 ```powershell
 .\tools\worktree.ps1 add <branch_name>
@@ -70,6 +79,8 @@ If an existing worktree was created without the script and is missing `.env`, `r
 ```powershell
 .\tools\worktree.ps1 sync
 ```
+
+Apply the FPGA source check from Step 1 before and after synchronization. For a repair limited to missing FPGA sources, physically copy only those missing directories from a validated checkout, including their manifests, and verify them in the target with the bootstrap command above. A full asset synchronization and graph refresh are unnecessary for this limited repair.
 
 ### Step 4: Teardown & Cleanup
 Once the worktree branch has been merged into `master` or is no longer needed:

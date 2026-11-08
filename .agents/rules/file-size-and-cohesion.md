@@ -10,4 +10,4 @@ Applies to production `.rs` files under `crates/*/src/`; documentation and refer
 - CPU instructions remain flat in `crates/cpu/src/instructions/`, one mnemonic per file; no subdirectories or umbrella files combining distinct mnemonics. Oversized instruction exceptions remain flat.
 - Existing grouping exceptions are `move_sr_ccr.rs`, `logic_sr_ccr.rs`, size-based `move_b.rs` / `move_w.rs` / `move_l.rs`, and condition families `bcc.rs` / `dbcc.rs` / `scc.rs`.
 
-Use [refactor-split-module](../skills/refactor-split-module/SKILL.md) for decomposition and its supporting examples. Preserve [workspace boundaries](workspace-structure-and-reexports.md) and [clean refactoring](clean-break-refactoring.md).
+Use [refactor-split-module](../skills/refactor-split-module/SKILL.md) for decomposition and its supporting examples. Preserve [workspace boundaries](workspace-structure-and-reexports.md) and [Compatibility and Internal Refactoring](../../AGENTS.md#compatibility-and-internal-refactoring).

@@ -83,6 +83,13 @@ fn write_rust_module<P: AsRef<Path>>(
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut arguments = std::env::args_os().skip(1);
+    let reference_path = arguments.next();
+    if arguments.next().is_some() {
+        return Err("Usage: blep_generator [path/to/sinctable.cpp]".into());
+    }
+    let reference_tables = reference_path.map(parse_winuae_sinctable).transpose()?;
+
     println!("============================================================");
     println!("     Amiga Paula Audio BLEP Table Generator (Rust Core)     ");
     println!("============================================================\n");
@@ -93,7 +100,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let a500_params = AmigaAudioFilterParams::a500();
     let a1200_params = AmigaAudioFilterParams::a1200();
 
-    println!("[1/4] Generating BLEP tables for Paula audio DAC (PAL clock)...");
+    println!("Generating BLEP tables for Paula audio DAC (PAL clock)...");
 
     // 1. Amiga 500, LED Filter OFF
     let a500_off = generate_blep(&a500_params, TvMode::Pal, LedFilter::Off);
@@ -130,107 +137,102 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     println!("  ✓ Saved Rust module: {}", blep_tables_rs_path.display());
 
-    println!("\n[2/4] Parsing WinUAE reference tables from ref_src/WinUAE-6030/sinctable.cpp...");
-    let sinctable_path = Path::new("ref_src/WinUAE-6030/sinctable.cpp");
-    if !sinctable_path.exists() {
-        eprintln!(
-            "Warning: WinUAE sinctable.cpp not found at: {}",
-            sinctable_path.display()
+    if let Some(winuae_tables) = reference_tables {
+        println!(
+            "  ✓ Successfully parsed {} reference tables (2048 entries each).",
+            winuae_tables.len()
         );
-        return Ok(());
+
+        println!("\nComputing differences vs supplied WinUAE reference...");
+        let m_a500_off = ErrorMetrics::compute(&a500_off, &winuae_tables[0]);
+        let m_a500_on = ErrorMetrics::compute(&a500_on, &winuae_tables[1]);
+        let m_a1200_off = ErrorMetrics::compute(&a1200_off, &winuae_tables[2]);
+        let m_a1200_on = ErrorMetrics::compute(&a1200_on, &winuae_tables[3]);
+
+        println!("---------------------------------------------------------------------------------------------------------");
+        println!("| Target Hardware Model | Max Diff | At Sample | Mean Abs Err | RMSE   | Max Err (% FS) | Mean Err (% FS)|");
+        println!("---------------------------------------------------------------------------------------------------------");
+        println!(
+            "| Amiga 500  (LED Off)  | {:>8} | #{:<8} | {:>12.2} | {:>6.2} | {:>13.4}% | {:>13.4}% |",
+            m_a500_off.max_absolute_error,
+            m_a500_off.max_error_sample_index,
+            m_a500_off.mean_absolute_error,
+            m_a500_off.root_mean_square_error,
+            m_a500_off.max_percentage_error_fs,
+            m_a500_off.mean_percentage_error_fs
+        );
+        println!(
+            "| Amiga 500  (LED On)   | {:>8} | #{:<8} | {:>12.2} | {:>6.2} | {:>13.4}% | {:>13.4}% |",
+            m_a500_on.max_absolute_error,
+            m_a500_on.max_error_sample_index,
+            m_a500_on.mean_absolute_error,
+            m_a500_on.root_mean_square_error,
+            m_a500_on.max_percentage_error_fs,
+            m_a500_on.mean_percentage_error_fs
+        );
+        println!(
+            "| Amiga 1200 (LED Off)  | {:>8} | #{:<8} | {:>12.2} | {:>6.2} | {:>13.4}% | {:>13.4}% |",
+            m_a1200_off.max_absolute_error,
+            m_a1200_off.max_error_sample_index,
+            m_a1200_off.mean_absolute_error,
+            m_a1200_off.root_mean_square_error,
+            m_a1200_off.max_percentage_error_fs,
+            m_a1200_off.mean_percentage_error_fs
+        );
+        println!(
+            "| Amiga 1200 (LED On)   | {:>8} | #{:<8} | {:>12.2} | {:>6.2} | {:>13.4}% | {:>13.4}% |",
+            m_a1200_on.max_absolute_error,
+            m_a1200_on.max_error_sample_index,
+            m_a1200_on.mean_absolute_error,
+            m_a1200_on.root_mean_square_error,
+            m_a1200_on.max_percentage_error_fs,
+            m_a1200_on.mean_percentage_error_fs
+        );
+        println!("---------------------------------------------------------------------------------------------------------");
+        println!(" * Note: Full scale (FS) = 2^17 = 131,072.\n");
+
+        println!("Generating visual SVG comparison chart...");
+        let datasets = [
+            DatasetComparison {
+                name: "A500 (LED Off)",
+                color: "#3b82f6", // Blue
+                generated: &a500_off,
+                reference: &winuae_tables[0],
+                metrics: m_a500_off,
+            },
+            DatasetComparison {
+                name: "A500 (LED On)",
+                color: "#10b981", // Emerald Green
+                generated: &a500_on,
+                reference: &winuae_tables[1],
+                metrics: m_a500_on,
+            },
+            DatasetComparison {
+                name: "A1200 (LED Off)",
+                color: "#f59e0b", // Amber
+                generated: &a1200_off,
+                reference: &winuae_tables[2],
+                metrics: m_a1200_off,
+            },
+            DatasetComparison {
+                name: "A1200 (LED On)",
+                color: "#ec4899", // Pink
+                generated: &a1200_on,
+                reference: &winuae_tables[3],
+                metrics: m_a1200_on,
+            },
+        ];
+
+        let svg_chart = generate_comparison_svg(&datasets);
+        let svg_path = output_dir.join("blep_comparison.svg");
+        fs::write(&svg_path, svg_chart)?;
+        println!("  ✓ Vector chart saved: {}", svg_path.display());
     }
 
-    let winuae_tables = parse_winuae_sinctable(sinctable_path)?;
-    println!(
-        "  ✓ Successfully parsed {} reference tables (2048 entries each).",
-        winuae_tables.len()
-    );
-
-    println!("\n[3/4] Computing accuracy metrics vs WinUAE ground truth...");
-    let m_a500_off = ErrorMetrics::compute(&a500_off, &winuae_tables[0]);
-    let m_a500_on = ErrorMetrics::compute(&a500_on, &winuae_tables[1]);
-    let m_a1200_off = ErrorMetrics::compute(&a1200_off, &winuae_tables[2]);
-    let m_a1200_on = ErrorMetrics::compute(&a1200_on, &winuae_tables[3]);
-
-    println!("---------------------------------------------------------------------------------------------------------");
-    println!("| Target Hardware Model | Max Diff | At Sample | Mean Abs Err | RMSE   | Max Err (% FS) | Mean Err (% FS)|");
-    println!("---------------------------------------------------------------------------------------------------------");
-    println!(
-        "| Amiga 500  (LED Off)  | {:>8} | #{:<8} | {:>12.2} | {:>6.2} | {:>13.4}% | {:>13.4}% |",
-        m_a500_off.max_absolute_error,
-        m_a500_off.max_error_sample_index,
-        m_a500_off.mean_absolute_error,
-        m_a500_off.root_mean_square_error,
-        m_a500_off.max_percentage_error_fs,
-        m_a500_off.mean_percentage_error_fs
-    );
-    println!(
-        "| Amiga 500  (LED On)   | {:>8} | #{:<8} | {:>12.2} | {:>6.2} | {:>13.4}% | {:>13.4}% |",
-        m_a500_on.max_absolute_error,
-        m_a500_on.max_error_sample_index,
-        m_a500_on.mean_absolute_error,
-        m_a500_on.root_mean_square_error,
-        m_a500_on.max_percentage_error_fs,
-        m_a500_on.mean_percentage_error_fs
-    );
-    println!(
-        "| Amiga 1200 (LED Off)  | {:>8} | #{:<8} | {:>12.2} | {:>6.2} | {:>13.4}% | {:>13.4}% |",
-        m_a1200_off.max_absolute_error,
-        m_a1200_off.max_error_sample_index,
-        m_a1200_off.mean_absolute_error,
-        m_a1200_off.root_mean_square_error,
-        m_a1200_off.max_percentage_error_fs,
-        m_a1200_off.mean_percentage_error_fs
-    );
-    println!(
-        "| Amiga 1200 (LED On)   | {:>8} | #{:<8} | {:>12.2} | {:>6.2} | {:>13.4}% | {:>13.4}% |",
-        m_a1200_on.max_absolute_error,
-        m_a1200_on.max_error_sample_index,
-        m_a1200_on.mean_absolute_error,
-        m_a1200_on.root_mean_square_error,
-        m_a1200_on.max_percentage_error_fs,
-        m_a1200_on.mean_percentage_error_fs
-    );
-    println!("---------------------------------------------------------------------------------------------------------");
-    println!(" * Note: Full scale (FS) = 2^17 = 131,072. Max error across all models is < 0.27% of dynamic range.\n");
-
-    println!("[4/4] Generating visual SVG comparison chart...");
-    let datasets = [
-        DatasetComparison {
-            name: "A500 (LED Off)",
-            color: "#3b82f6", // Blue
-            generated: &a500_off,
-            reference: &winuae_tables[0],
-            metrics: m_a500_off,
-        },
-        DatasetComparison {
-            name: "A500 (LED On)",
-            color: "#10b981", // Emerald Green
-            generated: &a500_on,
-            reference: &winuae_tables[1],
-            metrics: m_a500_on,
-        },
-        DatasetComparison {
-            name: "A1200 (LED Off)",
-            color: "#f59e0b", // Amber
-            generated: &a1200_off,
-            reference: &winuae_tables[2],
-            metrics: m_a1200_off,
-        },
-        DatasetComparison {
-            name: "A1200 (LED On)",
-            color: "#ec4899", // Pink
-            generated: &a1200_on,
-            reference: &winuae_tables[3],
-            metrics: m_a1200_on,
-        },
-    ];
-
-    let svg_chart = generate_comparison_svg(&datasets);
-    let svg_path = output_dir.join("blep_comparison.svg");
-    fs::write(&svg_path, svg_chart)?;
-    println!("  ✓ Vector chart saved: {}", svg_path.display());
-
-    println!("\nBLEP generation & validation completed successfully.");
+    println!("\nBLEP generation completed successfully.");
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/mod.rs"]
+mod tests;

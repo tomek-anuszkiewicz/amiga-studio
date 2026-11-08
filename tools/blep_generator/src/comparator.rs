@@ -100,6 +100,16 @@ pub fn parse_winuae_sinctable<P: AsRef<Path>>(path: P) -> Result<Vec<Vec<i32>>, 
             tables.len()
         ));
     }
+    if tables
+        .iter()
+        .take(4)
+        .any(|table| table.len() != crate::generator::BLEP_TABLE_LENGTH)
+    {
+        return Err(format!(
+            "Each reference table must contain {} samples",
+            crate::generator::BLEP_TABLE_LENGTH
+        ));
+    }
 
     Ok(tables)
 }
@@ -168,7 +178,7 @@ pub fn generate_comparison_svg(datasets: &[DatasetComparison]) -> String {
     // Plot 1: BLEP Curves
     // -------------------------------------------------------------
     svg.push_str(&format!(
-        r#"<text x="{margin_left}" y="{}" class="section-title">1. BLEP Step Response Curves (Solid: Rust Port, Dashed White: WinUAE Ground Truth)</text>
+        r#"<text x="{margin_left}" y="{}" class="section-title">1. BLEP Step Response Curves (Solid: Rust Port, Dashed White: WinUAE Reference)</text>
 <line x1="{margin_left}" y1="{plot1_top}" x2="{margin_left}" y2="{plot1_bottom}" class="axis"/>
 <line x1="{margin_left}" y1="{plot1_bottom}" x2="{}" y2="{plot1_bottom}" class="axis"/>
 "#,
@@ -363,7 +373,7 @@ pub fn generate_comparison_svg(datasets: &[DatasetComparison]) -> String {
 
     // Footnote
     svg.push_str(&format!(
-        r#"<text x="{col_name}" y="{}" class="footnote">* Full Scale (FS) = 2^17 = 131,072. All generated profiles achieve > 99.73% fidelity with WinUAE ground truth.</text>
+        r#"<text x="{col_name}" y="{}" class="footnote">* Full Scale (FS) = 2^17 = 131,072. Residuals compare generated curves with the supplied WinUAE reference.</text>
 "#,
         card3_top + card3_height - 18
     ));

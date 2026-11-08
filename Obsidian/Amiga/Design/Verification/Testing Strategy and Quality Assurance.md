@@ -6,16 +6,18 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-10-29
+updated: 2026-11-08
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
   - "tools/verification"
   - "tools/bootstrap/tests"
   - "tools/bootstrap/conversion/tests"
+  - "tools/bootstrap/html-to-markdown/tests"
   - "tools/bootstrap/pdf-to-markdown/tests"
   - "tools/bootstrap/book-to-markdown/tests"
   - "tools/amiga-rag-mcp-server/tests"
+  - "tools/blep_generator/tests"
 ---
 
 # Amiga 500 Testing Strategy and Quality Assurance
@@ -32,7 +34,7 @@ are standard suites. The pilot checks the verifier using selected SingleStep cas
 it does not run the full external suite. If no
 standard suites remain, it schedules no Cargo test command. Python contracts
 for the RAG MCP adapter and verification tooling always run. Bootstrap, shared
-conversion, PDF conversion and book review contracts run when Git reports staged,
+conversion, HTML conversion, PDF conversion and book review contracts run when Git reports staged,
 unstaged or nonignored new paths under `tools/bootstrap/`. The book review suite
 shares one browser process across its browser tests while isolating each test in
 a separate browser context. Commit verification also checks structural frontmatter
@@ -118,6 +120,15 @@ and boundary conditions against HRM-derived expectations in isolated fixtures.
 Production-machine integration tests check the cross-chip interactions they
 assert, but do not establish those isolated behaviors. [Roadmap step 2.5](../../../../ROADMAP.md)
 plans the subsystem coverage.
+
+The [BLEP generator tests](../../../../tools/blep_generator/tests/) cover its
+numerical helpers and regenerate all four PAL curves in an isolated directory.
+Every CSV sample is compared with the accepted files under
+[`tools/blep_generator/output/`](../../../../tools/blep_generator/output/).
+This regression check preserves the accepted curves without network access or
+WinUAE sources; it does not independently establish hardware accuracy. The
+[generator reference](../../../../tools/blep_generator/README.md) describes the
+separate optional comparison chart using an explicitly supplied WinUAE table.
 
 ### Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)
 - **Scope**: Multi-crate interaction, bus routing, and system loop orchestration.
@@ -256,7 +267,6 @@ Select existing checks for the actual change. The following categories describe 
 | [`tools/verification/verify.py`](../../../../tools/verification/verify.py) | Canonical commit/milestone quality gate and diagnostic frontend (`test rust`, `test python`, `test runner`, `check`, `runner`). | Explicit agent/developer command & CI |
 | [`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py) | Python checks validating source constraints, test naming and retained required suite files; passing them does not prove behavioral coverage. | `verify.py check architecture` & commit verification gate |
 | [`tools/verification/checks/audit_code_quality.py`](../../../../tools/verification/checks/audit_code_quality.py) | Checks dead code, test-only code and accessor conventions. Observed-caller visibility suggestions are advisory because external public API use is outside the repository scan. | `verify.py check code` & commit verification gate |
-| [`$test-runner`](../../../../.agents/skills/test-runner/SKILL.md) | Standardized execution runner across tiers, writing snapshots to `.agent/tmp/singlestep/` and diffing regressions. | Codex skill |
 
 ---
 

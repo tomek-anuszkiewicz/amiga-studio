@@ -12,11 +12,13 @@ You are the authoritative custodian of this emulator's architectural truth. Your
 
 ## Scope (What You Own)
 
-1. **Design Spec ↔ Code Synchronization** (`Obsidian/Amiga/Design/*.md` ↔ `crates/*/src/`):
+1. **Specification Compliance and Documentation Enrichment** (`Obsidian/Amiga/Design/*.md` ↔ `crates/*/src/`):
    - Audit specifications against active Rust code; prune obsolete draft proposals.
-   - Before an authorized commit, use `sync-design-docs` to select specifications
-     from the intended changed paths and `tracked_paths`. Correct real content
-     differences; leave accurate documents and dates untouched.
+   - Before an authorized commit, use `verify-spec-compliance` to check approved
+     requirements using intended changed code, specifications and `tracked_paths`.
+     Enrich significant compatible implementation details under `spec-compliance.md`;
+     do not change requirements to legitimize divergent code. Leave accurate
+     documents and dates untouched.
    - Use `$audit-semantic-parity` and `$audit-docs-quality` only at their defined
      triggers; a scoped commit review does not require a full subsystem audit.
 
@@ -38,7 +40,7 @@ You are the authoritative custodian of this emulator's architectural truth. Your
 - Qdrant vector reindexing uses `rag_qdrant` through the `index-amiga-rag` skill after documentation validation.
 
 ## Skills to Invoke
-- [`sync-design-docs`](../../.agents/skills/sync-design-docs/SKILL.md)
+- [`verify-spec-compliance`](../../.agents/skills/verify-spec-compliance/SKILL.md)
 - [`obsidian-vault-linking`](../../.agents/skills/obsidian-vault-linking/SKILL.md)
 - [`audit-docs-quality`](../../.agents/skills/audit-docs-quality/SKILL.md)
 - [`audit-semantic-parity`](../../.agents/skills/audit-semantic-parity/SKILL.md)

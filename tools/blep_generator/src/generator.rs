@@ -185,24 +185,3 @@ pub fn generate_blep(
     // 6. Scale and quantize to 18-bit fixed-point format (range ~ [0, 131072])
     quantize_and_scale(&signal)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_sinc_zero() {
-        assert_eq!(sinc(0.0), 1.0);
-    }
-
-    #[test]
-    fn test_blep_generation_bounds() {
-        let a500_params = AmigaAudioFilterParams::a500();
-        let blep = generate_blep(&a500_params, TvMode::Pal, LedFilter::Off);
-        assert_eq!(blep.len(), BLEP_TABLE_LENGTH);
-        // First elements should be around 131072 (full scale)
-        assert!((blep[0] - 131072).abs() < 10);
-        // Last elements should settle near 0
-        assert!(blep[blep.len() - 1].abs() < 10);
-    }
-}

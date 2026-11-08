@@ -102,6 +102,7 @@ def select_diagnostic_commands(unit=False, integration=False):
 PYTHON_SUITES = (
     ("Bootstrap contracts", "tools/bootstrap/tests"),
     ("Conversion contracts", "tools/bootstrap/conversion/tests"),
+    ("HTML conversion contracts", "tools/bootstrap/html-to-markdown/tests"),
     ("PDF conversion contracts", "tools/bootstrap/pdf-to-markdown/tests"),
     ("Book review contracts", "tools/bootstrap/book-to-markdown/tests"),
     ("RAG MCP contracts", "tools/amiga-rag-mcp-server/tests"),
@@ -118,6 +119,9 @@ PYTHON_INPUTS = {
         "tools/bootstrap/conversion/", "tools/bootstrap/html-to-markdown/",
         "tools/bootstrap/pdf-to-markdown/",
         "tools/bootstrap/bootstrap_documentation.ps1", "tools/bootstrap/bootstrap.ps1",
+    ),
+    "HTML conversion contracts": (
+        "tools/bootstrap/html-to-markdown/", "tools/bootstrap/conversion/",
     ),
     "PDF conversion contracts": (
         "tools/bootstrap/pdf-to-markdown/", "tools/bootstrap/conversion/",

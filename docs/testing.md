@@ -51,7 +51,7 @@ relationships need integration tests. Memory-placement and DMA-schedule
 permutation tests have been removed.
 
 For source and procedure details, start with [test_runner](../crates/test_runner/)
-and the [SingleStep verification skill](../.agents/skills/m68k-singlestep-test/SKILL.md).
+and the [verification command reference](../tools/verification/README.md).
 
 ## Whole-Machine Behavior and Performance
 
