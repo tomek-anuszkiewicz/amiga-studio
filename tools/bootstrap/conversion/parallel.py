@@ -2,7 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
-from threading import Lock
+from threading import Event, Lock
 
 from .client import CodexClient
 
@@ -22,6 +22,7 @@ def convert_parallel(config, *, stage, operation, jobs, convert, accept,
     results = Queue(maxsize=concurrency)
     errors = []
     stopped = False
+    cancelled = Event()
 
     def fail(error):
         nonlocal stopped
@@ -29,6 +30,7 @@ def convert_parallel(config, *, stage, operation, jobs, convert, accept,
             stopped = True
             if not errors:
                 errors.append(error)
+            cancelled.set()
 
     def take():
         with lock:
@@ -41,7 +43,7 @@ def convert_parallel(config, *, stage, operation, jobs, convert, accept,
             job = take()
             if job is None:
                 return
-            with client_factory(config, stage=stage, operation=operation) as client:
+            with client_factory(config, stage=stage, operation=operation, cancelled=cancelled) as client:
                 while job is not None:
                     with lock:
                         if stopped:

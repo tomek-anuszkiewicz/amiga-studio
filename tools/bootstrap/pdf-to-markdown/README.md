@@ -34,8 +34,13 @@ request timeout. `llm.concurrency` limits simultaneous requests within each stag
 Stage 05 runs per table, including tables on the same page. Stages remain
 sequential. Each worker owns a separate Codex transport; one coordinator saves
 page results, preserving source object order. Metrics writes are serialized.
-On failure, workers stop taking new jobs; requests already in progress may finish.
-Capacity-limit notifications abort the affected transport without retrying.
+On failure or Ctrl+C, workers stop taking new jobs and receive a shared
+cancellation signal that interrupts request delays, retry waits and active
+transports. Responses that finish before cancellation may still be saved.
+HTTP 429/503, `rateLimitExceeded` and `serverOverloaded` pause and retry the same
+request with exponential backoff; see the
+[shared client retry policy](../conversion/README.md#execution). Usage and
+session-budget limits still stop the stage.
 The limit applies to one pipeline invocation, not other Codex sessions or
 concurrent pipeline processes. It is a conservative starting value, not a
 provider-guaranteed safe account limit. Edit the attempt's local `config.yaml`
@@ -53,6 +58,14 @@ counts, and completion without requiring this flag.
 For a saved live log, pipe through
 `Tee-Object` in PowerShell (include stderr with `2>&1`).
 Rendering uses `rendering.dpi` (default 300 DPI) in Stages 01 and 02.
+
+On Windows, the pipeline automatically prevents idle system sleep while running
+the selected stages, including request delays and retry backoff. It uses
+[`SetThreadExecutionState`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setthreadexecutionstate)
+with `ES_CONTINUOUS | ES_SYSTEM_REQUIRED` and restores the previous thread state
+on success, failure or Ctrl+C. The display may still turn off, and manual sleep
+remains available. No power plan is changed. Status-only invocations and other
+operating systems do not acquire this request.
 
 ## Stages and outputs
 
@@ -93,9 +106,31 @@ clears its whole workspace directory, while preserving the sibling OCR PDF.
 Retained predecessors must have successful statuses.
 Completed stages are not automatically skipped.
 
-The sibling OCR PDF and request cache survive restart. An existing OCR PDF is
-reused by file existence; remove it explicitly when new OCR is required.
+Preparation caches and the Codex request cache survive restart. Stages 01 and 02
+restore matching preparation results instead of repeating OCR, rendering or text
+extraction. An existing output file alone does not establish a cache hit.
 Attempts using the previous stage numbering require a new named workspace.
+
+### Preparation cache
+
+`tools/bootstrap/.cache/pdf/01_text_layer/<SHA-256>/` stores a completed prepared
+PDF and its provenance JSON. The key hashes the original PDF SHA-256, effective
+OCR profile (including language model hash and DPI), backend/runtime identity and
+preparation contract version. Stage 01 always covers the complete source PDF.
+
+`tools/bootstrap/.cache/pdf/02_preprocess/<SHA-256>/` stores one PNG and positioned
+text JSON per page. Its key hashes the prepared PDF SHA-256, physical page number,
+DPI, geometry schema, backend/runtime identity and preprocessing contract version.
+Page ranges and workspace paths are not part of the key, so attempts with
+overlapping selections share cached pages. PNGs remain separate binary files.
+
+Each entry has a completion manifest with the input identity and output hashes.
+Missing, incomplete or damaged entries are recomputed; only complete results are
+published. Hits copy files into the ordinary output paths and print `[cache]`.
+The first execution with this cache may recompute old outputs, which are not
+imported into it. Deleting a prepared output alone restores it from cache; remove
+the matching cache entry as well to force fresh preparation with unchanged inputs.
+Neither cache reuse nor successful preparation establishes transcription quality.
 
 `stage_status.json` records the last invocation's execution, page range and request
 metrics, not accumulated page coverage. Restart invalidates the selected stage
@@ -136,7 +171,7 @@ program. Run them from the repository root:
 python -m unittest discover -s tools/bootstrap/pdf-to-markdown/tests -q
 ```
 
-Shared conversion transport tests remain in the repository's top-level `tests/`.
+Shared conversion transport tests live in `tools/bootstrap/conversion/tests/`.
 A successful stage confirms execution, not transcription quality.
 Stages 03 and 05 parse JSON without local response-schema enforcement. Stage 08
 validates patch fields and target segment IDs before applying text replacements.

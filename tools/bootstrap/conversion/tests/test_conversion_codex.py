@@ -6,6 +6,7 @@ from io import StringIO
 import json
 import os
 from pathlib import Path
+from queue import Queue
 import sys
 import tempfile
 import threading
@@ -26,7 +27,7 @@ from support.transport import HtmlTransport
 from common.pdf_config import load_config as load_pdf_config
 from conversion.cache import ResponseCache, digest, identity
 from conversion.config import selection
-from conversion.transport import CodexTransport
+from conversion.transport import CodexRetryableError, CodexTransport, _raise_capacity_error
 from conversion.parallel import convert_parallel
 from conversion.metrics import record
 
@@ -231,6 +232,73 @@ class ClientTests(unittest.TestCase):
             self.assertEqual((replay.call_count, replay.cached_call_count), (0, 1))
             self.assertEqual(replay.metrics[-1]["stage"], "renamed_stage")
         self.assertEqual(unused.calls, [])
+
+    def test_capacity_backoff_doubles_and_resets_after_success(self):
+        instances, calls = [], []
+        outcomes = ["rateLimitExceeded", "serverOverloaded",
+                    {"httpConnectionFailed": {"httpStatusCode": 503}},
+                    None, "serverOverloaded", None]
+        image = Path(self.tmp.name) / "image.png"
+        image.write_bytes(b"sample")
+
+        class RetryingTransport(FakeTransport):
+            def __init__(self):
+                super().__init__(text='{"signal":"CCK"}')
+                self.closed = False
+                instances.append(self)
+
+            def run(self, selected, prompt, **options):
+                calls.append((selected, prompt, options))
+                info = outcomes.pop(0)
+                if info is not None:
+                    _raise_capacity_error({"codexErrorInfo": info})
+                return super().run(selected, prompt, **options)
+
+            def close(self):
+                self.closed = True
+
+        def waiting(seconds):
+            self.assertTrue(instances[-1].closed)
+            selected, prompt, options = calls[-1]
+            request = identity(selected, prompt, options["images"], operation="retry")
+            self.assertIsNone(self.cache.load(request))
+
+        output = StringIO()
+        with patch("conversion.client.time.sleep", side_effect=waiting) as sleep, redirect_stderr(output):
+            with CodexClient(config(), stage="html_to_markdown", operation="retry",
+                             transport=RetryingTransport(), cache=self.cache) as client:
+                for prompt in ("first", "first", "second"):
+                    self.assertEqual(client.generate_json(prompt, image_path=image), {"signal": "CCK"})
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [60, 120, 240, 60])
+        self.assertEqual(calls[:4], [calls[0]] * 4)
+        self.assertEqual(calls[4:], [calls[4]] * 2)
+        self.assertEqual(calls[0][2], {"images": [image], "timeout": 180})
+        self.assertEqual((client.call_count, client.cached_call_count), (6, 1))
+        self.assertEqual(len(client.metrics), 7)
+        self.assertEqual(sum(metric.get("status") == "failed" for metric in client.metrics), 4)
+        self.assertEqual(len(instances), 5)
+        self.assertTrue(all(transport.closed for transport in instances))
+        self.assertEqual(output.getvalue().count("retrying the same request"), 4)
+        self.assertIn("Codex rate limit (429)", output.getvalue())
+        self.assertIn("Codex server overloaded (503)", output.getvalue())
+
+    def test_capacity_wait_can_be_cancelled_or_interrupted(self):
+        for use_cancel_event in (True, False):
+            with self.subTest(use_cancel_event=use_cancel_event):
+                cancelled = threading.Event() if use_cancel_event else None
+                transport = FakeTransport(error=CodexRetryableError("serverOverloaded"))
+                output = StringIO()
+                waiter = (patch.object(cancelled, "wait", return_value=True) if cancelled is not None
+                          else patch("conversion.client.time.sleep", side_effect=KeyboardInterrupt))
+                with waiter as wait, redirect_stderr(output):
+                    with CodexClient(config(), stage="html_to_markdown", operation="interrupted-retry",
+                                     transport=transport, cache=self.cache, cancelled=cancelled) as client:
+                        expected = RuntimeError if use_cancel_event else KeyboardInterrupt
+                        with self.assertRaises(expected):
+                            client.generate_json("interrupted")
+                wait.assert_called_once_with(60)
+                self.assertEqual(len(transport.calls), 1)
+                self.assertFalse(self.cache.directory.exists())
 
     def test_request_changes_make_new_calls_and_cache_the_new_response(self):
         images = [Path(self.tmp.name) / name for name in ("a.png", "b.png")]
@@ -538,19 +606,77 @@ class TransportTests(unittest.TestCase):
                 self.transport(wire).run(selection(config(), "html_to_markdown"), "inspect", images=images)
 
     def test_capacity_notification_aborts_runtime_retry(self):
-        for info in ("rateLimitExceeded", "usageLimitExceeded", "serverOverloaded",
-                     {"httpConnectionFailed": {"httpStatusCode": 429}}):
+        for info, expected in (
+                ("rateLimitExceeded", CodexRetryableError),
+                ({"httpConnectionFailed": {"httpStatusCode": 429}}, CodexRetryableError),
+                ("usageLimitExceeded", RuntimeError), ("sessionBudgetExceeded", RuntimeError),
+                ("serverOverloaded", CodexRetryableError),
+                ({"httpConnectionFailed": {"httpStatusCode": 503}}, CodexRetryableError)):
             wire = WireClient()
             payload = {"error": {"message": "Capacity exhausted", "codexErrorInfo": info},
                        "willRetry": True}
             wire.next_turn_notification = lambda _: SimpleNamespace(
                 method="error", payload=SimpleNamespace(model_dump=lambda **_: payload))
-            with self.subTest(info=info), self.assertRaisesRegex(RuntimeError, "without retries"):
-                self.transport(wire).run(selection(config(), "html_to_markdown"), "stop")
-            self.assertTrue(wire.closed.is_set())
+            with self.subTest(info=info):
+                with self.assertRaises(expected) as caught:
+                    self.transport(wire).run(selection(config(), "html_to_markdown"), "stop")
+                self.assertIs(type(caught.exception), expected)
+                self.assertTrue(wire.closed.is_set())
+
+    def test_terminal_capacity_error_is_retryable(self):
+        for info in ("rateLimitExceeded", "serverOverloaded",
+                     {"httpConnectionFailed": {"httpStatusCode": 429}},
+                     {"httpConnectionFailed": {"httpStatusCode": 503}}):
+            wire = WireClient()
+            payload = {"turn": {"status": "failed", "error": {
+                "message": "Temporary capacity failure", "codexErrorInfo": info}}}
+            wire.next_turn_notification = lambda _: SimpleNamespace(
+                method="turn/completed", payload=SimpleNamespace(model_dump=lambda **_: payload))
+            with self.subTest(info=info), self.assertRaises(CodexRetryableError):
+                self.transport(wire).run(selection(config(), "html_to_markdown"), "retry")
 
 
 class ParallelConversionTests(unittest.TestCase):
+    def test_coordinator_interrupt_stops_worker_capacity_retries(self):
+        entered, interrupted = threading.Event(), threading.Event()
+        calls, accepted = [], []
+        get = Queue.get
+
+        class CapacityTransport(FakeTransport):
+            def run(self, selected, prompt, **options):
+                calls.append(prompt)
+                if len(calls) == 1:
+                    entered.set()
+                    raise CodexRetryableError("rateLimitExceeded")
+                return {"text": '{"signal":"CCK"}', "status": "completed"}
+
+        def interrupt(queue, *args, **kwargs):
+            if not interrupted.is_set():
+                self.assertTrue(entered.wait(2), "Worker did not make its first request")
+                interrupted.set()
+                raise KeyboardInterrupt
+            return get(queue, *args, **kwargs)
+
+        def wait(seconds):
+            self.assertTrue(interrupted.wait(2), "Coordinator did not interrupt")
+
+        with tempfile.TemporaryDirectory() as directory:
+            def factory(*args, **kwargs):
+                return CodexClient(*args, **kwargs, transport=CapacityTransport(),
+                                   cache=ResponseCache(Path(directory)))
+
+            configured = config()
+            configured["llm"]["concurrency"] = 2
+            with patch("conversion.parallel.Queue.get", new=interrupt), \
+                    patch("conversion.client.time.sleep", side_effect=wait), \
+                    redirect_stderr(StringIO()):
+                with self.assertRaises(KeyboardInterrupt):
+                    convert_parallel(configured, stage="html_to_markdown", operation="interrupted-retry",
+                                     jobs=[0], convert=lambda client, job: client.generate_json("retry"),
+                                     accept=lambda *result: accepted.append(result), client_factory=factory)
+        self.assertEqual(calls, ["retry"])
+        self.assertEqual(accepted, [])
+
     def test_single_worker_interrupt_runs_on_invoking_thread(self):
         caller = threading.get_ident()
         converted = []

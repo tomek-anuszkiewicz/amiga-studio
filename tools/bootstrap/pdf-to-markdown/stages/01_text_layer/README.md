@@ -2,8 +2,9 @@
 
 Prepare `<source stem>-ocr.pdf` beside the original PDF, preserving every source
 page in its original order. This stage ignores the downstream page selection.
-An existing sibling OCR PDF is reused by file existence; remove it explicitly
-to request new preparation. The original PDF remains unchanged.
+The [preparation cache](../../README.md#preparation-cache) restores a matching
+completed PDF and provenance record before any OCR. Output existence alone does
+not skip preparation. The original PDF remains unchanged.
 
 Retain native text. For textless pages, run local Tesseract through PyMuPDF.
 The [pipeline configuration](../../config.yaml) stores shared `rendering.dpi`
@@ -28,14 +29,15 @@ recipes authored against the previous settings.
 New preparation writes `<source stem>-ocr.json` beside the prepared PDF with
 the effective settings, actual PyMuPDF/MuPDF versions, original/prepared
 SHA-256, pages on which OCR was attempted and Python/platform identity. This is provenance, not transcription validation.
-Existing prepared PDFs still skip all preparation and model checks; a missing
-record remains unknown provenance. A failure to write the record after publishing
-the PDF can also leave a PDF without provenance. No metadata is retroactively
-invented for it. Package version pins do not guarantee byte-identical output
-across platforms or custom builds.
+Cache hits restore the original preparation record without relabeling its
+provenance. They do not need local language data; the cache key includes the
+configured model hash, which is checked against actual bytes when OCR runs.
+Package version pins do not guarantee byte-identical output across platforms or
+custom builds; the cache also distinguishes runtime identities.
 
 Per-page OCR results are not cached or saved separately. Interrupted preparation
-starts again from the source PDF. The completed PDF is saved beside the source
+does not create a completed cache entry and starts again from the source PDF.
+The completed PDF is saved beside the source
 and used by [Stage 02](../02_preprocess/README.md). OCR can miss text; inspect the result.
 
 Run through the [pipeline](../../README.md) with `--from-stage 01 --to-stage 01`,

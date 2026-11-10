@@ -5,6 +5,7 @@ addr
 alloc
 argparse
 args
+argtypes
 argv
 asdict
 asm
@@ -14,6 +15,7 @@ attrib
 attrs
 autocomplete
 autojunk
+backoff
 basename
 bboxes
 bool
@@ -240,7 +242,9 @@ removesuffix
 repr
 rept
 res
+restype
 resultclass
+retryable
 returncode
 rfc
 rfile
@@ -308,6 +312,7 @@ txt
 typeof
 ui
 uif
+uint
 ul
 ulong
 uncheck

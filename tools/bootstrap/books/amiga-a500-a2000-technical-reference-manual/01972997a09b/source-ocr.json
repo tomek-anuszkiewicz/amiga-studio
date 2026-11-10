@@ -1,0 +1,21 @@
+{
+  "profile": {
+    "render_dpi": 300,
+    "traineddata_sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+    "traineddata_url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/eng.traineddata",
+    "language": "eng",
+    "colorspace": "RGB",
+    "alpha": false,
+    "ocr_compress": true,
+    "save_deflate": true,
+    "save_garbage": 4
+  },
+  "source_sha256": "01972997a09bcf4425e74825aad95f27c29bbbd3062d09645ad5915b60d6ce58",
+  "prepared_sha256": "fb8e7ccf4e58facf47dea7dcce623630f21be933e31ae152cb5bf509ef91e51c",
+  "ocr_pages": [],
+  "pymupdf": "1.28.2",
+  "mupdf": "1.28.2",
+  "python": "3.13.15",
+  "platform": "Windows",
+  "machine": "AMD64"
+}

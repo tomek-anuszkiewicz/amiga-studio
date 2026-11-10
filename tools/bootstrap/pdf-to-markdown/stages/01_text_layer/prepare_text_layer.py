@@ -2,22 +2,16 @@
 """Prepare a shared full-document PDF once, adding OCR where text is missing."""
 
 import argparse
-import hashlib
 from pathlib import Path
-import platform
 import sys
 import pymupdf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from common.pdf_config import load_config, preparation_settings
+from common.pdf_cache import PreparationCache, file_digest, runtime_identity
 from common.pdf_artifacts import prepared_pdf_path, write_json
 from common.pdf_geometry import text_blocks
-
-
-def file_digest(path):
-    with Path(path).open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
 def tesseract_settings(profile):
@@ -49,14 +43,19 @@ def insert_ocr_pdf(page, ocr):
 def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
     pdf_path, workspace = Path(pdf_path).resolve(), Path(workspace).resolve()
     stage_dir = workspace / "01_text_layer"
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    output = prepared_pdf_path(pdf_path)
+    profile = preparation_settings(config)
+    runtime = runtime_identity()
+    request = {"contract": "1", "source_sha256": file_digest(pdf_path),
+               "profile": profile, "runtime": runtime}
+    outputs = {"prepared.pdf": output, "provenance.json": output.with_suffix(".json")}
+    cache = PreparationCache("01_text_layer")
+    if cache.restore(request, outputs):
+        print(f"[cache] Stage 01: restored {output.name} and preparation record", flush=True)
+        return output
     with pymupdf.open(pdf_path) as document:
         pages = list(range(1, len(document) + 1))
-        stage_dir.mkdir(parents=True, exist_ok=True)
-        output = prepared_pdf_path(pdf_path)
-        if output.is_file():
-            print(f"[skip] Stage 01: {output.name} already exists; no OCR or PDF rewrite")
-            return output
-        profile = preparation_settings(config)
         dpi = profile["render_dpi"]
         candidate = output.with_suffix(".candidate.pdf")
         candidate.unlink(missing_ok=True)
@@ -85,22 +84,21 @@ def prepare_text_layer(pdf_path, workspace, config, page_ranges=None):
                     page_type = "text_page" if has_text else "pure_graphic"
                     print(f"[{provenance}] {page_id}: {page_type}")
             document.save(candidate, deflate=profile["save_deflate"], garbage=profile["save_garbage"])
-            record = {"profile": profile, "source_sha256": file_digest(pdf_path),
+            record = {"profile": profile, "source_sha256": request["source_sha256"],
                       "prepared_sha256": file_digest(candidate), "ocr_pages": ocr_pages,
-                      "pymupdf": pymupdf.VersionBind, "mupdf": pymupdf.VersionFitz,
-                      "python": platform.python_version(), "platform": platform.system(),
-                      "machine": platform.machine()}
+                      **runtime}
             candidate.replace(output)
             write_json(output.with_suffix(".json"), record)
         except BaseException:
             candidate.unlink(missing_ok=True)
             raise
+    cache.save(request, outputs)
     print(f"[+] Stage 01 published {output.name}; source pages: {pages}")
     return output
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 01: prepare a full-source OCR PDF unless it already exists")
+    parser = argparse.ArgumentParser(description="Stage 01: restore or prepare a full-source OCR PDF")
     parser.add_argument("--pdf", type=Path, required=True)
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)

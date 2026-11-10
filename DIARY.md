@@ -950,3 +950,34 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: one-time WinUAE comparison and optional chart regeneration with identical plotted paths
   - PASS: Graphify refresh in all three active checkouts and subsequent source refreshes in the current checkout
   - NOT RUN: milestone profile because no roadmap point or milestone is being closed
+---
+
+### [2026-11-10 21:37 CET] — Cache PDF preparation and retry temporary conversion failures
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/books`
+  - `.gitignore`
+- **What Was Changed (The Concrete Reality)**:
+  - Cache completed full-source prepared PDFs and per-page PNG/text bundles by input identity and output hashes
+  - Retry temporary Codex capacity failures with fresh transports and exponential backoff while preserving terminal budget errors
+  - Prevent automatic Windows system sleep during selected pipeline stages and restore the previous execution state on exit
+  - Use high reasoning effort for PDF conversion and table transcription defaults
+  - Record current A500/A2000 prepared PDF provenance and ignore local conversion logs
+  - Document cache identities and retry behavior and correct the transport test location
+  - Forward coordinator cancellation to parallel clients so interruption and failures stop active requests and retry waits
+  - Add five user-approved programming terms to the English vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Reuse matching preparation across attempts without trusting output existence alone
+  - Keep long conversions running through temporary capacity failures while retaining source identity and failure reporting
+- **Verification & Test Results**:
+  - PASS: shared conversion contracts - 48 tests
+  - PASS: HTML conversion contracts - 2 tests
+  - PASS: PDF conversion contracts - 48 tests
+  - PASS: Book Review contracts - 192 tests
+  - PASS: verification CLI contracts and full English scan after vocabulary approval
+  - PASS: parallel interruption regression after reproducing an extra request before the fix
+  - Initial commit profile failed only on five vocabulary terms subsequently approved by the user
+  - PASS: current source and prepared PDF SHA-256 match source-ocr.json and the preparation cache
+  - Scoped specification review selected Testing Strategy and Quality Assurance by tracked_paths and found no required specification changes
+  - NOT RUN: a new book conversion or milestone profile

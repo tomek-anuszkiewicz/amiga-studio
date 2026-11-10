@@ -10,7 +10,7 @@ import sys
 import tempfile
 import unittest
 import pymupdf
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools/bootstrap"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools/bootstrap/pdf-to-markdown"))
@@ -90,6 +90,85 @@ class PdfArtifactIdentityTests(unittest.TestCase):
 
 
 class PdfOcrValidationTests(unittest.TestCase):
+    def setUp(self):
+        self.cache = tempfile.TemporaryDirectory()
+        self.addCleanup(self.cache.cleanup)
+        cache = patch("common.pdf_cache.DEFAULT_CACHE", Path(self.cache.name))
+        cache.start()
+        self.addCleanup(cache.stop)
+
+    def test_preprocessing_cache_reuses_pages_and_invalidates_changed_inputs(self):
+        spec = importlib.util.spec_from_file_location(
+            "cached_preprocess", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02_preprocess/preprocess.py")
+        stage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(stage)
+        with tempfile.TemporaryDirectory() as directory:
+            source, workspace = Path(directory) / "prepared.pdf", Path(directory) / "workspace"
+            with pymupdf.open() as document:
+                for number in range(1, 4):
+                    document.new_page(width=100, height=100).insert_text((10, 30), f"Page {number}")
+                document.save(source)
+            stage.preprocess_pdf(source, workspace, dpi=72, page_ranges="1-2")
+            output = workspace / "02_preprocess"
+            saved = [(output / f"page_0002.{suffix}").read_bytes() for suffix in ("json", "png")]
+            original = pymupdf.Page.get_pixmap
+            rendered = []
+
+            def render(page, *args, **kwargs):
+                rendered.append(page.number + 1)
+                return original(page, *args, **kwargs)
+
+            with patch.object(pymupdf.Page, "get_pixmap", new=render):
+                stage.preprocess_pdf(source, workspace, dpi=72, page_ranges="2-3")
+            self.assertEqual(rendered, [3])
+            self.assertTrue((output / "page_0001.json").exists())
+            self.assertEqual([(output / f"page_0002.{suffix}").read_bytes() for suffix in ("json", "png")], saved)
+            other = Path(directory) / "other"
+            with patch.object(pymupdf.Page, "get_pixmap", side_effect=AssertionError("Must use cache")), \
+                    patch.object(stage, "text_blocks", side_effect=AssertionError("Must use cache")):
+                stage.preprocess_pdf(source, other, dpi=72, page_ranges="2")
+            self.assertEqual([(other / "02_preprocess" / f"page_0002.{suffix}").read_bytes()
+                              for suffix in ("json", "png")], saved)
+            rendered.clear()
+            with patch.object(pymupdf.Page, "get_pixmap", new=render):
+                stage.preprocess_pdf(source, workspace, dpi=144, page_ranges="2")
+            self.assertEqual(rendered, [2])
+            self.assertNotEqual((output / "page_0002.png").read_bytes(), saved[1])
+            with pymupdf.open() as document:
+                for number in range(1, 4):
+                    document.new_page(width=100, height=100).insert_text((10, 30), f"Changed {number}")
+                source.write_bytes(document.tobytes())
+            rendered.clear()
+            with patch.object(pymupdf.Page, "get_pixmap", new=render):
+                stage.preprocess_pdf(source, workspace, dpi=144, page_ranges="2")
+            self.assertEqual(rendered, [2])
+            self.assertIn("Changed 2", (output / "page_0002.json").read_text(encoding="utf-8"))
+
+    def test_incomplete_preprocessing_cache_does_not_skip_rendering(self):
+        spec = importlib.util.spec_from_file_location(
+            "interrupted_preprocess", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02_preprocess/preprocess.py")
+        stage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(stage)
+        with tempfile.TemporaryDirectory() as directory:
+            source, workspace = Path(directory) / "prepared.pdf", Path(directory) / "workspace"
+            with pymupdf.open() as document:
+                document.new_page(width=100, height=100).insert_text((10, 30), "Page 1")
+                document.save(source)
+            from common import pdf_cache
+            replace = pdf_cache.os.replace
+
+            def interrupted(source, destination):
+                if Path(destination).name == "manifest.json":
+                    raise OSError("Interrupted cache publication")
+                return replace(source, destination)
+
+            with patch.object(pdf_cache.os, "replace", side_effect=interrupted):
+                with self.assertRaisesRegex(OSError, "Interrupted cache publication"):
+                    stage.preprocess_pdf(source, workspace, dpi=72)
+            with patch.object(stage, "text_blocks", wraps=stage.text_blocks) as extract:
+                stage.preprocess_pdf(source, workspace, dpi=72)
+            self.assertEqual(extract.call_count, 1)
+
     def test_pipeline_directory_reuses_shared_pdf_and_restart_keeps_it(self):
         with tempfile.TemporaryDirectory() as directory:
             book = Path(directory)
@@ -112,7 +191,7 @@ class PdfOcrValidationTests(unittest.TestCase):
                                     "--page-ranges", "2-3", "--from-stage", "01", "--to-stage", "02"],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("[skip] Stage 01", result.stdout)
+            self.assertIn("[cache] Stage 01", result.stdout)
             result = subprocess.run(command + ["--pdf", str(source), "--workspace", str(second), "--from-stage", "02", "--to-stage", "02"],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -184,8 +263,8 @@ class PdfOcrValidationTests(unittest.TestCase):
             self.assertEqual(page_data["prepared_index"], 4)
             original_bytes, original_mtime = prepared.read_bytes(), prepared.stat().st_mtime_ns
             other = Path(directory) / "other-workspace"
-            with patch.object(stage, "text_blocks", side_effect=AssertionError("Existing PDF must skip page processing")), \
-                    patch.object(stage, "tesseract_settings", side_effect=AssertionError("Existing PDF must skip Tesseract setup")):
+            with patch.object(stage, "text_blocks", side_effect=AssertionError("Cache hit must skip page processing")), \
+                    patch.object(stage, "tesseract_settings", side_effect=AssertionError("Cache hit must skip Tesseract setup")):
                 reused = stage.prepare_text_layer(source, other, config, "1-2")
             self.assertEqual(prepared.read_bytes(), original_bytes)
             self.assertEqual(prepared.stat().st_mtime_ns, original_mtime)
@@ -261,6 +340,28 @@ class PdfRestartTests(unittest.TestCase):
         argv.extend(flags)
         with patch.object(sys, "argv", argv), patch.object(self.pipeline, "run_stage", side_effect=worker):
             self.pipeline.main()
+
+    def test_windows_sleep_request_covers_stages_and_is_released_on_exit(self):
+        for outcome in (None, RuntimeError("Worker failed"), KeyboardInterrupt()):
+            with self.subTest(outcome=type(outcome).__name__), \
+                    patch.object(self.pipeline.sys, "platform", "win32"), \
+                    patch.object(self.pipeline.ctypes, "WinDLL", create=True) as library:
+                set_state = library.return_value.SetThreadExecutionState
+                set_state.return_value = 0x80000000
+
+                def worker(*args):
+                    set_state.assert_called_once_with(0x80000001)
+                    if outcome is not None:
+                        raise outcome
+                    return True
+
+                if outcome is None:
+                    self.run_pipeline([], worker)
+                else:
+                    with self.assertRaises(type(outcome)):
+                        self.run_pipeline([], worker)
+                self.assertEqual(set_state.call_args_list,
+                                 [call(0x80000001), call(0x80000000)])
 
     def test_filter_stage_restarts_by_registry_order(self):
         self.assertEqual(self.pipeline.resolve_stage_idx("03"), self.stage_idx("03"))

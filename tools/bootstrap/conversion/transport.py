@@ -22,6 +22,22 @@ OVERRIDES = (
 )
 
 
+class CodexRetryableError(RuntimeError):
+    """The current transport must close before retrying a temporary failure."""
+
+
+def _raise_capacity_error(error):
+    info = error.get("codexErrorInfo")
+    statuses = {detail.get("httpStatusCode") for detail in info.values()
+                if isinstance(detail, dict)} if isinstance(info, dict) else set()
+    if info == "rateLimitExceeded" or 429 in statuses:
+        raise CodexRetryableError(f"Codex rate limit (429): {error}")
+    if info == "serverOverloaded" or 503 in statuses:
+        raise CodexRetryableError(f"Codex server overloaded (503): {error}")
+    if isinstance(info, str) and info in {"usageLimitExceeded", "sessionBudgetExceeded"}:
+        raise RuntimeError(f"Codex capacity limit; conversion stopped: {error}")
+
+
 class CodexTransport:
     def __init__(self):
         from openai_codex import CodexConfig
@@ -112,18 +128,12 @@ class CodexTransport:
                 payload = event.payload.model_dump(mode="json", by_alias=True) if hasattr(event.payload, "model_dump") else {}
                 if event.method == "error":
                     error = payload.get("error") or {}
-                    info = error.get("codexErrorInfo")
-                    if isinstance(info, str):
-                        capacity = info in {"rateLimitExceeded", "usageLimitExceeded",
-                                            "sessionBudgetExceeded", "serverOverloaded"}
-                    else:
-                        capacity = isinstance(info, dict) and any(
-                            isinstance(detail, dict) and detail.get("httpStatusCode") in {429, 503}
-                            for detail in info.values())
-                    if capacity:
-                        # Stop runtime retries before admitting further conversion work.
+                    try:
+                        _raise_capacity_error(error)
+                    except RuntimeError:
+                        # The conversion client owns backoff, not the runtime.
                         self._client.close()
-                        raise RuntimeError(f"Codex capacity limit; conversion stopped without retries: {error}")
+                        raise
                 if event.method == "model/rerouted":
                     raise RuntimeError("Conversion model was rerouted; configured model is required")
                 if event.method == "thread/tokenUsage/updated":
@@ -146,6 +156,7 @@ class CodexTransport:
                 if event.method == "turn/completed":
                     result = payload["turn"]
                     if result["status"] != "completed" or result.get("error"):
+                        _raise_capacity_error(result.get("error") or {})
                         raise RuntimeError(f"Codex conversion failed: {result.get('error') or result['status']}")
                     break
             text = messages[-1] if messages else None
