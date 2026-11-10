@@ -15,6 +15,8 @@ Run validation commands explicitly. Do not install, configure, or use lifecycle,
 
 First identify the question and whether existing evidence resolves it. Use scripts for concrete measurement, verification, or data processing; do not repair a tool unless that repair is needed for the task.
 
+For routine workflow steps, prefer existing tools and direct commands. Create helper scripts or extra evidence files only for a concrete task requirement those tools cannot meet.
+
 During ordinary code work, read and follow relevant specifications as implementation requirements. Handle concrete conflicts immediately under [specification compliance](.agents/rules/spec-compliance.md). The authorized pre-commit workflow owns scoped compliance review and compatible documentation enrichment; milestone closure owns broader semantic review. Direct documentation tasks and explicitly requested reviews remain in scope.
 
 ## Development Defaults

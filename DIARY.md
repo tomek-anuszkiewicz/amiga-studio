@@ -968,3 +968,22 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Round-three screening produced 19 correct task results and one preserved host-fixture arithmetic failure
   - Six approved round-three replacements matched exactly, all 20 checked link targets resolved, and the original index and experiment artifacts were preserved
   - Scoped diff whitespace checks passed
+---
+
+### [2026-11-10 21:50 CET] — Simplify commit evidence and review reporting
+- **Affected Subsystems**:
+  - `AGENTS.md`
+  - `.agents/rules/git-commits.md`
+  - `.agents/skills/code-review`
+  - `.agents/skills/verify-spec-compliance`
+- **What Was Changed (The Concrete Reality)**:
+  - Prefer existing tools and direct commands for routine workflow steps
+  - Reuse original verification logs and allow concise workflow reports
+  - Identify review snapshots with native Git and allow review reading during verification
+- **Architectural Rationale & Trade-Offs**:
+  - Keep mandatory verification and independent approval while avoiding unnecessary scripts and evidence copies
+- **Verification & Test Results**:
+  - PASS: all 58 local link targets in the four changed instruction files resolve
+  - PASS: scoped diff whitespace checks
+  - Scoped compliance review found no affected emulator specification or missing instruction update
+  - NOT RUN: milestone profile because no roadmap point or milestone is being closed

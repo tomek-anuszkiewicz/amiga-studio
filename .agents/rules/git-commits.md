@@ -18,6 +18,11 @@ satisfy this requirement. Use a focused review for ordinary commits and an
 extended review for milestones, substantial features or changes with significant
 correctness risks, following the skill's selection criteria.
 
+Use native Git and the existing verifier for routine commits. Reuse original logs
+and report review/compliance conclusions in workflow messages. Create additional
+scripts, copied logs or manifests only for a concrete isolation or reproducibility
+need, or an explicit task requirement.
+
 Append the required DIARY.md entry with work completed and verification results already observed. Finish source and documentation edits, check the intended paths and generated artifacts, and resolve index or line-ending issues before running the full commit profile. Record the profile's outcome in the commit message and final report; do not edit the diary solely to repeat that outcome. If a later correction changes the intended source, rerun the profile on the corrected source.
 
 Then run the canonical verification entry point on the final intended source.
