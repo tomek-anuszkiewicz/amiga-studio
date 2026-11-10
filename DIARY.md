@@ -950,3 +950,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: one-time WinUAE comparison and optional chart regeneration with identical plotted paths
   - PASS: Graphify refresh in all three active checkouts and subsequent source refreshes in the current checkout
   - NOT RUN: milestone profile because no roadmap point or milestone is being closed
+---
+
+### [2026-11-10 21:29 CET] — Apply approved instruction simplifications
+- **Affected Subsystems**:
+  - `.agents/rules`
+  - `.agents/skills/write-powershell`
+  - `.codex/agents/cpu_verifier.toml`
+- **What Was Changed (The Concrete Reality)**:
+  - Shorten approved Rust organization and API guidance, documentation conventions, test conventions and check repetition
+  - Simplify PowerShell parameter and usage guidance, variable naming and tool failure handling
+  - Preserve accurate-document dates, CPU observation limits and required procedure routing
+- **Architectural Rationale & Trade-Offs**:
+  - Apply user-approved recommendations from three instruction screening rounds. Individual pairs support screening decisions, not full equivalence
+  - combined behavioral validation has not been performed.
+- **Verification & Test Results**:
+  - Round-three screening produced 19 correct task results and one preserved host-fixture arithmetic failure
+  - Six approved round-three replacements matched exactly, all 20 checked link targets resolved, and the original index and experiment artifacts were preserved
+  - Scoped diff whitespace checks passed

@@ -7,5 +7,5 @@ Applies to Rust workspace code; [Rust Guidelines](../../Obsidian/Amiga/Design/Ru
 - Convert guest bytes explicitly as big-endian; never pointer-cast or transmute guest buffers.
 - Keep subsystems directly owned by the machine. Do not introduce circular handles, interior-mutability/shared-threading backchannels, or core thread spawning; follow [hardware topology](hardware-bus-topology.md).
 - Custom `macro_rules!` and const-generic handlers, decoders, or execution functions are prohibited. Use concrete functions, explicit imports, and readable hardware branches.
-- Use the narrowest visibility required by actual callers. Keep worker modules private or crate-visible; expose only the documented public API. Avoid redundant visibility and test-only zombie runtime methods.
+- Follow the visibility conventions of neighboring code and expose only what callers need.
 - Preserve warning-free compilation. Use [file cohesion](file-size-and-cohesion.md), [workspace boundaries](workspace-structure-and-reexports.md), [performance policy](performance-and-readability.md), and [testing policy](unit-testing-policy.md) rather than duplicating those requirements here.

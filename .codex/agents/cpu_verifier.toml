@@ -12,7 +12,7 @@ Investigate a specific Motorola 68000 CPU verification question or failing Singl
 ## Investigation
 
 1. Reproduce the selected case with `python tools/verification/verify.py test runner singlestep case <filter> sample <count>` or `full` when the task requires every vector in that group. An existing isolated failing vector is sufficient reproduction; add a focused test only for a demonstrated behavior gap that the vectors do not cover.
-2. Separate final-state differences, instruction-clock differences, and timed bus-callback differences. Identify the first observable mismatch when possible, including its vector, opcode, addressing mode, expected value, and actual value. Do not invent an exact cycle for a difference visible only in final state.
+2. Report final-state, instruction-clock, and timed bus-callback differences separately. Do not assign an exact cycle to a difference observed only in final state.
 3. Trace the relevant micro-steps, prefetch progression, effective-address updates, and condition codes toward the cause. Check the CPU specification and applicable hardware evidence before treating a particular micro-step layout as required. Distinguish a CPU defect from a harness limitation, an approved vector override, or a specification conflict. Follow the repository's defect and reference-conflict procedures before changing behavior or reference expectations.
 4. For an authorized fix, confirm the reproduction passes and run relevant adjacent regressions. Use the repository's verification profiles for their stated triggers; a targeted run does not establish that the full dataset passes.
 

@@ -14,34 +14,22 @@ Project scope and path requirements remain in [AGENTS.md](../../../AGENTS.md).
   without arguments and returns successfully without executing an action.
 - A simple, single-purpose script with a complete default invocation runs without
   arguments. Do not add a usage-only barrier to that workflow.
-- Do not add custom `-Help` or `-H` switches or aliases. Console usage is reached
-  through the no-argument invocation for tools that need it.
+- Keep usage at no-argument invocation; add no help switches or aliases.
 - Invalid input reports the specific problem and relevant usage, with a nonzero
   exit code. Do not silently run a different action.
 
 ## Design Parameters and Explain Their Effects
 
-Use typed `param(...)` declarations: `[switch]` for actions and toggles, `[string]`
-for text and paths, and appropriate numeric or structured types for other inputs.
-Use PascalCase parameter names. Add `[CmdletBinding()]` when advanced binding or
-common parameters are useful; keep a simple script simple.
+Follow the existing script conventions for parameters and console usage.
 
-For each parameter, console usage explains:
-
-- Its exact name, argument type, and accepted values.
-- What it does and which files, directories, services, or outputs it affects.
-- Its default, whether it is required, and what omission means.
-- Dependencies, incompatible combinations, and any implied actions.
-- Whether it overwrites, deletes, downloads, or otherwise changes existing data.
+Explain parameter effects, defaults, constraints and data changes in console usage.
 
 Include executable examples for the ordinary invocation and meaningful parameter
 combinations. Keep the display aligned and readable without relying on color.
 Choose column widths from the actual option names rather than a fixed project-wide
 width. Avoid descriptions such as "force mode" that omit the concrete effect.
 
-Maintain one console usage implementation, such as `Show-Usage`, beside the owning
-script. Comment-based PowerShell help is optional when useful for introspection;
-do not maintain a second full manual merely to duplicate console usage.
+Keep console usage beside the script in one implementation; optional comment help must not duplicate the manual.
 
 ## Keep Execution Explicit
 
@@ -52,10 +40,8 @@ do not maintain a second full manual merely to duplicate console usage.
 - Quote paths, use `Join-Path` for composition, and use `-LiteralPath` when processing
   supplied filesystem paths. Keep filesystem operations within PowerShell rather
   than constructing deletion commands for another shell.
-- Do not use automatic or environment variables such as `$HOME` as script variables. Use names
-  that express the script's actual responsibility.
-- Report external command failures and return an appropriate exit code. Keep
-  developer-facing scripts separate from core emulation.
+- Use task-specific variables, never automatic or environment variable names.
+- Propagate external tool failures; keep tooling outside emulation.
 
 ## Validate the Changed Behavior
 
