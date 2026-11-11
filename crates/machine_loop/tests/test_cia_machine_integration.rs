@@ -143,10 +143,8 @@ fn test_poll_peripheral_pins_isolation_from_cia_interrupts() {
     assert!(harness.machine.cia_a.irq_pending());
 
     // 3. Clear Paula INTREQ bit 3 to simulate clean state
-    harness
-        .machine
-        .paula
-        .commit_register_write(custom_reg::paula::INTREQ, 0x0008);
+    harness.machine.paula.set_intreq(0x0008);
+    harness.machine.paula.step_cck();
     assert_eq!(harness.machine.paula.interrupts.intreq & 0x0008, 0);
 
     // 4. Calling poll_peripheral_pins() must NOT assert Paula's INT2 pin

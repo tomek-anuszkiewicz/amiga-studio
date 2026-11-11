@@ -330,16 +330,6 @@ impl Audio {
         self.ring_count
     }
 
-    /// Sets sample location pointer for channel
-    #[inline]
-    pub fn set_loc(&mut self, channel: usize, loc: u32) {
-        if channel < 4 {
-            let loc = loc & OCS_DMA_ADDRESS_MASK;
-            self.channels[channel].lc = loc;
-            self.channels[channel].current_pt = loc;
-        }
-    }
-
     /// Sets sample length for channel
     #[inline]
     pub fn set_len(&mut self, channel: usize, len: u16) {

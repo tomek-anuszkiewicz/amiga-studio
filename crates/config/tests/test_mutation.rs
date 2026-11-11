@@ -78,10 +78,10 @@ fn test_stage_and_tick_overwrite_pending_mode() {
 }
 
 #[test]
-fn test_zero_delay_and_overflow_fallback() {
+fn test_zero_delay_and_full_queue_reject_without_commit() {
     let mut buffer: [Option<DelayedMutation>; 2] = [None; 2];
 
-    // Delay 0 should not be staged (requires immediate commit)
+    // Delay zero is rejected; the utility never applies a write
     let staged_zero = stage_mutation(&mut buffer, 0x002, 0x1234, 0, MutationMode::Pipeline);
     assert!(!staged_zero);
 
@@ -101,7 +101,64 @@ fn test_zero_delay_and_overflow_fallback() {
         MutationMode::Pipeline
     ));
 
-    // Third write should overflow and return false for immediate commit fallback
+    // A full queue rejects a new write and retains every accepted entry
     let staged_overflow = stage_mutation(&mut buffer, 0x030, 3, 2, MutationMode::Pipeline);
     assert!(!staged_overflow);
+}
+
+#[test]
+fn reused_slots_and_overwrites_preserve_issue_order() {
+    let mut buffer = [None; 4];
+    assert!(stage_mutation(
+        &mut buffer,
+        1,
+        10,
+        1,
+        MutationMode::Pipeline
+    ));
+    assert!(stage_mutation(
+        &mut buffer,
+        2,
+        20,
+        2,
+        MutationMode::Pipeline
+    ));
+    let mut due = Vec::new();
+    tick_mutations(&mut buffer, |reg, value| due.push((reg, value)));
+    assert_eq!(due, [(1, 10)]);
+    assert!(stage_mutation(
+        &mut buffer,
+        3,
+        30,
+        1,
+        MutationMode::Pipeline
+    ));
+    due.clear();
+    tick_mutations(&mut buffer, |reg, value| due.push((reg, value)));
+    assert_eq!(due, [(2, 20), (3, 30)]);
+
+    assert!(stage_mutation(
+        &mut buffer,
+        4,
+        40,
+        2,
+        MutationMode::OverwritePending
+    ));
+    assert!(stage_mutation(
+        &mut buffer,
+        5,
+        50,
+        1,
+        MutationMode::Pipeline
+    ));
+    assert!(stage_mutation(
+        &mut buffer,
+        4,
+        41,
+        1,
+        MutationMode::OverwritePending
+    ));
+    due.clear();
+    tick_mutations(&mut buffer, |reg, value| due.push((reg, value)));
+    assert_eq!(due, [(5, 50), (4, 41)]);
 }

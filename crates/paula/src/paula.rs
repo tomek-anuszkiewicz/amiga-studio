@@ -9,10 +9,14 @@ pub use interrupts::InterruptController;
 pub mod serial;
 pub use serial::SerialPort;
 
-use config::chip_ram::{OCS_DMA_ADDRESS_MASK, OCS_DMA_HIGH_MASK, OCS_DMA_LOW_MASK};
-use config::custom_reg::{agnus as agnus_reg, paula as reg};
+use config::custom_reg::paula as reg;
 use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
+
+mod registers;
+
+// Interrupt inputs are distinct from CPU writes to INTREQ.
+const INTERRUPT_INPUT: u16 = 0x8000 | reg::INTREQ;
 
 /// Paula custom chip coordinator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -117,7 +121,7 @@ impl Paula {
 
     /// Advances Paula timers and processes in-flight register mutations by 1 Color Clock.
     /// Returns any register writes that matured and committed on this exact cycle.
-    pub fn step_cck(&mut self) -> [Option<(u16, u16)>; 8] {
+    pub fn step_cck(&mut self) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
         self.audio.step_cck();
         for ch in 0..4 {
             if self.audio.poll_channel_irq(ch) {
@@ -126,7 +130,7 @@ impl Paula {
             }
         }
         self.serial_port.step_cck();
-        let mut due = [None; 8];
+        let mut due = [None; Self::MUTATION_CAPACITY];
         let mut due_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {
             if due_count < due.len() {
@@ -135,7 +139,7 @@ impl Paula {
             }
         });
         for item in due.iter().flatten() {
-            self.commit_register_write(item.0, item.1);
+            self.apply_register_write(item.0, item.1);
         }
         due
     }
@@ -158,7 +162,7 @@ impl Paula {
     }
 
     /// Action method: writes DSKLEN register following the 2-write arming sequence
-    pub fn write_dsklen(&mut self, val: u16) {
+    fn apply_dsklen(&mut self, val: u16) {
         self.dsklen = val;
         let dmaen = (val & 0x8000) != 0;
         if !dmaen {
@@ -241,180 +245,30 @@ impl Paula {
         (floppy_dskbytr & DSKBYTR_DATA_MASK) | dmaon | diskwrite
     }
 
-    /// Receives the STRHOR address strobe on RGA. Its effect is not modeled yet.
-    pub fn receive_horizontal_sync_strobe(&mut self) {}
-
-    /// Schedules a staged register write with appropriate propagation delay and overwrite mode.
-    /// Returns `Some((offset, val))` if committed immediately, or `None` if staged in pipeline.
-    pub fn write_register(&mut self, offset: u16, val: u16) -> Option<(u16, u16)> {
-        let offset = offset & 0x1FE;
-        let (delay, mode) = match offset {
-            reg::INTENA | reg::INTREQ => (1, MutationMode::OverwritePending),
-            reg::ADKCON | reg::DMACON => (2, MutationMode::OverwritePending),
-            reg::SERDAT => (1, MutationMode::Pipeline),
-            reg::SERPER | reg::POTGO | reg::DSKLEN | reg::DSKSYNC => {
-                (2, MutationMode::OverwritePending)
-            }
-            agnus_reg::AUD0LCH
-            | agnus_reg::AUD0LCL
-            | agnus_reg::AUD1LCH
-            | agnus_reg::AUD1LCL
-            | agnus_reg::AUD2LCH
-            | agnus_reg::AUD2LCL
-            | agnus_reg::AUD3LCH
-            | agnus_reg::AUD3LCL => (2, MutationMode::OverwritePending),
-            reg::AUD0LEN | reg::AUD1LEN | reg::AUD2LEN | reg::AUD3LEN => {
-                (2, MutationMode::OverwritePending)
-            }
-            reg::AUD0PER | reg::AUD1PER | reg::AUD2PER | reg::AUD3PER => {
-                (2, MutationMode::OverwritePending)
-            }
-            reg::AUD0VOL | reg::AUD1VOL | reg::AUD2VOL | reg::AUD3VOL => {
-                (2, MutationMode::OverwritePending)
-            }
-            reg::AUD0DAT | reg::AUD1DAT | reg::AUD2DAT | reg::AUD3DAT => {
-                (1, MutationMode::Pipeline)
-            }
-            _ => (2, MutationMode::OverwritePending),
-        };
-
-        if !stage_mutation(&mut self.mutations, offset, val, delay, mode) {
-            self.commit_register_write(offset, val);
-            Some((offset, val))
-        } else {
-            None
-        }
-    }
-
-    /// Commits a register write directly into active Paula silicon state
-    pub fn commit_register_write(&mut self, offset: u16, val: u16) {
-        match offset & 0x1FE {
-            reg::INTENA => self.write_intena(val),
-            reg::INTREQ => self.write_intreq(val),
-            reg::ADKCON => {
-                // ADKCON SET/CLR logic
-                if (val & 0x8000) != 0 {
-                    self.adkcon |= val & 0x7FFF;
-                } else {
-                    self.adkcon &= !(val & 0x7FFF);
-                }
-                self.audio.set_adkcon(self.adkcon);
-            }
-            reg::DMACON => {
-                // DMACON broadcast: update Paula's local channel enables (AUD0..3EN, DSKEN, DMAEN)
-                if (val & 0x8000) != 0 {
-                    if (val & 0x0200) != 0 {
-                        self.dma_master = true;
-                    }
-                    self.dma_enables |= val & 0x001F;
-                } else {
-                    if (val & 0x0200) != 0 {
-                        self.dma_master = false;
-                    }
-                    self.dma_enables &= !(val & 0x001F);
-                }
-                self.audio
-                    .set_dma_enables((self.dma_enables & 0x000F) as u8, self.dma_master);
-            }
-            reg::SERDAT => self.serial_port.write_serdat(val),
-            reg::SERPER => self.serial_port.write_serper(val),
-            reg::POTGO => self.potgo = val,
-            reg::DSKLEN => self.write_dsklen(val),
-            reg::DSKDAT => self.dskdat = val,
-            reg::DSKSYNC => self.dsksync = val,
-
-            // Audio channel 0 pointer
-            agnus_reg::AUD0LCH => {
-                let high = u32::from(val & OCS_DMA_HIGH_MASK) << 16;
-                let low = self.audio.channels[0].lc & u32::from(OCS_DMA_LOW_MASK);
-                self.audio.set_loc(0, high | low);
-            }
-            agnus_reg::AUD0LCL => {
-                let high = self.audio.channels[0].lc & (OCS_DMA_ADDRESS_MASK & 0xFFFF_0000);
-                let low = u32::from(val & OCS_DMA_LOW_MASK);
-                self.audio.set_loc(0, high | low);
-            }
-            reg::AUD0LEN => self.audio.set_len(0, val),
-            reg::AUD0PER => self.audio.set_per(0, val),
-            reg::AUD0VOL => self.audio.set_vol(0, (val & 0x007F) as u8),
-            reg::AUD0DAT => self.audio.set_dat(0, val),
-
-            // Audio channel 1 pointer
-            agnus_reg::AUD1LCH => {
-                let high = u32::from(val & OCS_DMA_HIGH_MASK) << 16;
-                let low = self.audio.channels[1].lc & u32::from(OCS_DMA_LOW_MASK);
-                self.audio.set_loc(1, high | low);
-            }
-            agnus_reg::AUD1LCL => {
-                let high = self.audio.channels[1].lc & (OCS_DMA_ADDRESS_MASK & 0xFFFF_0000);
-                let low = u32::from(val & OCS_DMA_LOW_MASK);
-                self.audio.set_loc(1, high | low);
-            }
-            reg::AUD1LEN => self.audio.set_len(1, val),
-            reg::AUD1PER => self.audio.set_per(1, val),
-            reg::AUD1VOL => self.audio.set_vol(1, (val & 0x007F) as u8),
-            reg::AUD1DAT => self.audio.set_dat(1, val),
-
-            // Audio channel 2 pointer
-            agnus_reg::AUD2LCH => {
-                let high = u32::from(val & OCS_DMA_HIGH_MASK) << 16;
-                let low = self.audio.channels[2].lc & u32::from(OCS_DMA_LOW_MASK);
-                self.audio.set_loc(2, high | low);
-            }
-            agnus_reg::AUD2LCL => {
-                let high = self.audio.channels[2].lc & (OCS_DMA_ADDRESS_MASK & 0xFFFF_0000);
-                let low = u32::from(val & OCS_DMA_LOW_MASK);
-                self.audio.set_loc(2, high | low);
-            }
-            reg::AUD2LEN => self.audio.set_len(2, val),
-            reg::AUD2PER => self.audio.set_per(2, val),
-            reg::AUD2VOL => self.audio.set_vol(2, (val & 0x007F) as u8),
-            reg::AUD2DAT => self.audio.set_dat(2, val),
-
-            // Audio channel 3 pointer
-            agnus_reg::AUD3LCH => {
-                let high = u32::from(val & OCS_DMA_HIGH_MASK) << 16;
-                let low = self.audio.channels[3].lc & u32::from(OCS_DMA_LOW_MASK);
-                self.audio.set_loc(3, high | low);
-            }
-            agnus_reg::AUD3LCL => {
-                let high = self.audio.channels[3].lc & (OCS_DMA_ADDRESS_MASK & 0xFFFF_0000);
-                let low = u32::from(val & OCS_DMA_LOW_MASK);
-                self.audio.set_loc(3, high | low);
-            }
-            reg::AUD3LEN => self.audio.set_len(3, val),
-            reg::AUD3PER => self.audio.set_per(3, val),
-            reg::AUD3VOL => self.audio.set_vol(3, (val & 0x007F) as u8),
-            reg::AUD3DAT => self.audio.set_dat(3, val),
-
-            _ => {}
-        }
-    }
-
     /// Writes INTENA register following SET/CLR bit 15 logic
     #[inline]
-    pub fn write_intena(&mut self, val: u16) {
+    fn apply_intena(&mut self, val: u16) {
         self.interrupts.write_intena(val);
     }
 
     /// Writes INTREQ register following SET/CLR bit 15 logic
     #[inline]
-    pub fn write_intreq(&mut self, val: u16) {
+    fn apply_intreq(&mut self, val: u16) {
         self.interrupts.write_intreq(val);
     }
 
     /// Stages an interrupt request bit into the propagation delay pipeline (1 CCK delay).
-    /// If an in-flight SET mutation for INTREQ ($09C) already exists, merges the request bit.
+    /// Merges only interrupt-input events, keeping the earliest input deadline.
     fn stage_interrupt_request(&mut self, mask: u16) {
         // If already latched in INTREQ, no need to restage
         if (self.interrupts.intreq & mask) == mask {
             return;
         }
 
-        // Check if a SET INTREQ write is already pending in the mutation pipeline
+        // CPU writes use a separate destination and cannot replace this pending input.
         for slot in self.mutations.iter_mut() {
             if let Some(m) = slot {
-                if m.reg_offset == reg::INTREQ && (m.value & 0x8000) != 0 {
+                if m.reg_offset == INTERRUPT_INPUT && (m.value & 0x8000) != 0 {
                     // Merge bit into existing pending SET write
                     m.value |= mask & 0x7FFF;
                     return;
@@ -422,17 +276,15 @@ impl Paula {
             }
         }
 
-        // Otherwise stage a new 1-CCK mutation for INTREQ ($09C)
+        // Register setters reserve one slot, and at most one input entry exists.
         let val = 0x8000 | (mask & 0x7FFF);
-        if !stage_mutation(
+        stage_mutation(
             &mut self.mutations,
-            reg::INTREQ,
+            INTERRUPT_INPUT,
             val,
             1,
             MutationMode::Pipeline,
-        ) {
-            self.commit_register_write(reg::INTREQ, val);
-        }
+        );
     }
 
     /// Sets the state of physical pin _INT2 (pin 31, connected to CIA-A /IRQ, active-low).

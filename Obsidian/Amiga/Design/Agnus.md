@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "agnus"
 status: "active"
 created: 2026-09-06
-updated: 2026-10-13
+updated: 2026-11-11
 related: ["[Copper.md](Copper.md)", "[Blitter.md](Blitter.md)", "[DMA.md](DMA.md)", "[Denise.md](Denise.md)"]
 tracked_paths:
   - "crates/agnus"
@@ -52,6 +52,10 @@ The [`agnus` crate](../../../crates/agnus/src/agnus.rs) coordinates the beam cou
 - [`dma`](../../../crates/dma/src/dma.rs) schedules DMA slots. Its behavior is specified in [DMA.md](DMA.md).
 - [`blitter`](../../../crates/blitter/src/blitter.rs) performs block and line operations. Its behavior is specified in [Blitter.md](Blitter.md).
 - [`copper`](../../../crates/copper/src/copper.rs) executes display lists. Its behavior is specified in [Copper.md](Copper.md).
+
+## Register propagation
+
+Custom bus writes enter concrete queued setters in [registers.rs](../../../crates/agnus/src/registers.rs). The private replay method applies DMA set/clear bits, pointer masks and child Copper/Blitter changes only when due. Pending configuration leaves active DMA requests under the existing scheduler contract; commitment changes enables before later engine steps. Autonomous pointer reloads and increments remain engine operations. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) owns the shared propagation contract and provisional delays. The 64-entry queue exceeds two accepted CPU/Copper writes per CCK over the maximum four-CCK delay (eight entries); unsupported bursts are rejected rather than applied early. All matured events are applied and returned without an eight-event truncation.
 
 ## Reference documentation and source
 

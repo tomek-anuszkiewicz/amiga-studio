@@ -6,10 +6,12 @@
 pub use frame_builder;
 pub use sprites;
 
-use config::custom_reg::{denise as reg, paula as paula_reg};
+use config::custom_reg::denise as reg;
 pub use config::DeniseModel;
-use config::{stage_mutation, tick_mutations, BeamPosition, DelayedMutation, MutationMode};
+use config::{tick_mutations, BeamPosition, DelayedMutation};
 use serde::{Deserialize, Serialize};
+
+mod registers;
 
 pub mod decode;
 pub use decode::{decode_dual_playfield, decode_ehb, decode_ham6};
@@ -150,7 +152,10 @@ impl Denise {
     /// Advances Denise pixel pipeline, steps sprites and frame builder,
     /// and processes in-flight mutations by 1 Color Clock.
     /// Returns any register writes that matured and committed on this exact cycle.
-    pub fn step_cck(&mut self, beam: BeamPosition) -> [Option<(u16, u16)>; 8] {
+    pub fn step_cck(
+        &mut self,
+        beam: BeamPosition,
+    ) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
         if beam.hpos == 0 {
             self.last_ham_rgb = self.color[0];
             self.bpl_armed = false;
@@ -368,21 +373,17 @@ impl Denise {
             }
         });
         for item in committed[..committed_count].iter().flatten() {
-            self.commit_register_write(item.0, item.1);
+            self.apply_register_write(item.0, item.1);
         }
 
-        let mut due = [None; 8];
-        for (i, item) in committed[..committed_count.min(8)].iter().enumerate() {
-            due[i] = *item;
-        }
-        due
+        committed
     }
 
     /// Writes a 16-bit word into BPLxDAT ($110 + plane * 2).
     ///
     /// When plane 0 (BPL1DAT) is written, all 6 bpldat latches are transferred into the active shift registers.
     #[inline]
-    pub fn write_bpldat(&mut self, plane: usize, val: u16) {
+    fn apply_bpldat(&mut self, plane: usize, val: u16) {
         if plane < 6 {
             self.bpldat[plane] = val;
             if plane == 0 {
@@ -434,19 +435,19 @@ impl Denise {
 
     /// Action method: sets BPLCON0 and updates active display mode flags
     #[inline]
-    pub fn set_bplcon0(&mut self, val: u16) {
+    fn apply_bplcon0(&mut self, val: u16) {
         self.bplcon0 = val;
     }
 
     /// Action method: sets BPLCON1 horizontal scroll offsets
     #[inline]
-    fn set_bplcon1(&mut self, val: u16) {
+    fn apply_bplcon1(&mut self, val: u16) {
         self.bplcon1 = val;
     }
 
     /// Action method: sets BPLCON2 priority flags
     #[inline]
-    fn set_bplcon2(&mut self, val: u16) {
+    fn apply_bplcon2(&mut self, val: u16) {
         self.bplcon2 = val;
     }
 
@@ -490,216 +491,6 @@ impl Denise {
             reg::JOY1DAT => self.joy1dat,
             reg::CLXDAT => self.read_clxdat(),
             _ => config::OPEN_BUS_WORD,
-        }
-    }
-
-    /// Receives a synchronization address strobe on RGA. Video effects are not modeled yet.
-    pub fn receive_sync_strobe(&mut self, _offset: u16) {}
-
-    /// Schedules a staged register write with appropriate propagation delay and overwrite mode.
-    /// Returns `Some((offset, val))` if committed immediately, or `None` if staged in pipeline.
-    pub fn write_register(&mut self, offset: u16, val: u16) -> Option<(u16, u16)> {
-        let offset = offset & 0x1FE;
-        let (delay, mode) = match offset {
-            reg::BPLCON0 | reg::BPLCON1 | reg::BPLCON2 => (1, MutationMode::OverwritePending),
-            reg::CLXCON | reg::DIWSTRT | reg::DIWSTOP => (1, MutationMode::OverwritePending),
-            reg::COLOR00
-            | reg::COLOR01
-            | reg::COLOR02
-            | reg::COLOR03
-            | reg::COLOR04
-            | reg::COLOR05
-            | reg::COLOR06
-            | reg::COLOR07
-            | reg::COLOR08
-            | reg::COLOR09
-            | reg::COLOR10
-            | reg::COLOR11
-            | reg::COLOR12
-            | reg::COLOR13
-            | reg::COLOR14
-            | reg::COLOR15
-            | reg::COLOR16
-            | reg::COLOR17
-            | reg::COLOR18
-            | reg::COLOR19
-            | reg::COLOR20
-            | reg::COLOR21
-            | reg::COLOR22
-            | reg::COLOR23
-            | reg::COLOR24
-            | reg::COLOR25
-            | reg::COLOR26
-            | reg::COLOR27
-            | reg::COLOR28
-            | reg::COLOR29
-            | reg::COLOR30
-            | reg::COLOR31 => (0, MutationMode::OverwritePending),
-            reg::BPL1DAT
-            | reg::BPL2DAT
-            | reg::BPL3DAT
-            | reg::BPL4DAT
-            | reg::BPL5DAT
-            | reg::BPL6DAT => (1, MutationMode::Pipeline),
-            reg::SPR0POS
-            | reg::SPR0CTL
-            | reg::SPR0DATA
-            | reg::SPR0DATB
-            | reg::SPR1POS
-            | reg::SPR1CTL
-            | reg::SPR1DATA
-            | reg::SPR1DATB
-            | reg::SPR2POS
-            | reg::SPR2CTL
-            | reg::SPR2DATA
-            | reg::SPR2DATB
-            | reg::SPR3POS
-            | reg::SPR3CTL
-            | reg::SPR3DATA
-            | reg::SPR3DATB
-            | reg::SPR4POS
-            | reg::SPR4CTL
-            | reg::SPR4DATA
-            | reg::SPR4DATB
-            | reg::SPR5POS
-            | reg::SPR5CTL
-            | reg::SPR5DATA
-            | reg::SPR5DATB
-            | reg::SPR6POS
-            | reg::SPR6CTL
-            | reg::SPR6DATA
-            | reg::SPR6DATB
-            | reg::SPR7POS
-            | reg::SPR7CTL
-            | reg::SPR7DATA
-            | reg::SPR7DATB => (1, MutationMode::OverwritePending),
-            _ => (1, MutationMode::OverwritePending),
-        };
-
-        if !stage_mutation(&mut self.mutations, offset, val, delay, mode) {
-            self.commit_register_write(offset, val);
-            Some((offset, val))
-        } else {
-            None
-        }
-    }
-
-    /// Commits a register write directly into active Denise silicon state
-    pub fn commit_register_write(&mut self, offset: u16, val: u16) {
-        match offset & 0x1FE {
-            reg::BPLCON0 => self.set_bplcon0(val),
-            reg::BPLCON1 => self.set_bplcon1(val),
-            reg::BPLCON2 => self.set_bplcon2(val),
-            reg::DIWSTRT => self.diwstrt = val,
-            reg::DIWSTOP => self.diwstop = val,
-            reg::CLXCON => self.clxcon = val,
-            paula_reg::POTGO => self.potgo = val,
-
-            // Color palette $180..$1BE
-            reg::COLOR00
-            | reg::COLOR01
-            | reg::COLOR02
-            | reg::COLOR03
-            | reg::COLOR04
-            | reg::COLOR05
-            | reg::COLOR06
-            | reg::COLOR07
-            | reg::COLOR08
-            | reg::COLOR09
-            | reg::COLOR10
-            | reg::COLOR11
-            | reg::COLOR12
-            | reg::COLOR13
-            | reg::COLOR14
-            | reg::COLOR15
-            | reg::COLOR16
-            | reg::COLOR17
-            | reg::COLOR18
-            | reg::COLOR19
-            | reg::COLOR20
-            | reg::COLOR21
-            | reg::COLOR22
-            | reg::COLOR23
-            | reg::COLOR24
-            | reg::COLOR25
-            | reg::COLOR26
-            | reg::COLOR27
-            | reg::COLOR28
-            | reg::COLOR29
-            | reg::COLOR30
-            | reg::COLOR31 => {
-                let idx = ((offset - reg::COLOR00) / 2) as usize;
-                if idx < Self::COLOR_PALETTE_SIZE {
-                    self.color[idx] = val & 0x0FFF;
-                }
-            }
-
-            // Bitplane parallel data latches
-            reg::BPL1DAT
-            | reg::BPL2DAT
-            | reg::BPL3DAT
-            | reg::BPL4DAT
-            | reg::BPL5DAT
-            | reg::BPL6DAT => {
-                let plane = ((offset - reg::BPL1DAT) / 2) as usize;
-                if plane < 6 {
-                    self.bpldat[plane] = val;
-                }
-            }
-
-            // Sprite registers
-            reg::SPR0POS
-            | reg::SPR0CTL
-            | reg::SPR0DATA
-            | reg::SPR0DATB
-            | reg::SPR1POS
-            | reg::SPR1CTL
-            | reg::SPR1DATA
-            | reg::SPR1DATB
-            | reg::SPR2POS
-            | reg::SPR2CTL
-            | reg::SPR2DATA
-            | reg::SPR2DATB
-            | reg::SPR3POS
-            | reg::SPR3CTL
-            | reg::SPR3DATA
-            | reg::SPR3DATB
-            | reg::SPR4POS
-            | reg::SPR4CTL
-            | reg::SPR4DATA
-            | reg::SPR4DATB
-            | reg::SPR5POS
-            | reg::SPR5CTL
-            | reg::SPR5DATA
-            | reg::SPR5DATB
-            | reg::SPR6POS
-            | reg::SPR6CTL
-            | reg::SPR6DATA
-            | reg::SPR6DATB
-            | reg::SPR7POS
-            | reg::SPR7CTL
-            | reg::SPR7DATA
-            | reg::SPR7DATB => {
-                let spr = ((offset - reg::SPR0POS) / 8) as usize;
-                let sub = ((offset - reg::SPR0POS) % 8) / 2;
-                if spr < 8 {
-                    match sub {
-                        0 => self.sprites.channels[spr].pos = val,
-                        1 => {
-                            self.sprites.channels[spr].ctl = val;
-                            self.sprites.channels[spr].is_armed = false;
-                        }
-                        2 => {
-                            self.sprites.channels[spr].data_a = val;
-                            self.sprites.channels[spr].is_armed = true;
-                        }
-                        3 => self.sprites.channels[spr].data_b = val,
-                        _ => {}
-                    }
-                }
-            }
-
-            _ => {}
         }
     }
 

@@ -194,7 +194,8 @@ fn test_cold_reset_full_flow() {
     // 2. Modify custom chip registers
     machine.agnus.dma.write_dmacon(0x8200); // Enable master DMA
     machine.denise.color[0] = 0x0F00; // Red background
-    machine.paula.write_intena(0x8080); // Enable Audio 0 IRQ
+    machine.paula.set_intena(0x8080); // Enable Audio 0 IRQ
+    machine.paula.step_cck();
     machine.cia_a.set_ddra(0x03); // DDRA bits 0-1
     machine.cia_a.set_pra(0x01); // PRA bit 0
 
@@ -295,7 +296,8 @@ fn test_warm_reset_full_flow() {
     // 2. Modify custom chip registers
     machine.agnus.dma.write_dmacon(0x8200);
     machine.denise.color[0] = 0x00F0; // Green background
-    machine.paula.write_intena(0x8080);
+    machine.paula.set_intena(0x8080);
+    machine.paula.step_cck();
 
     // 3. Modify CPU registers
     machine.cpu.state.set_d_long(0, 0xCAFEBABE);
@@ -411,7 +413,8 @@ fn test_cpu_reset_instruction_external_propagation() {
     // Modify custom chip registers
     machine.agnus.dma.write_dmacon(0x8200);
     machine.denise.color[0] = 0x0F00;
-    machine.paula.write_intena(0x8080);
+    machine.paula.set_intena(0x8080);
+    machine.paula.step_cck();
 
     // Modify CPU registers
     machine.cpu.state.set_d_long(0, 0x12345678);

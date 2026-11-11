@@ -15,6 +15,7 @@ use rtc::RtcMsm6242b;
 pub use physical_memory;
 
 mod cia_registers;
+mod custom_writes;
 
 /// Zero-cost stack-allocated router implementing `AddressBus` across all subsystems
 #[derive(Debug)]
@@ -99,222 +100,6 @@ impl<'a> MemoryBus<'a> {
         }
     }
 
-    /// Writes a 16-bit word to custom register space with physical propagation delay.
-    #[inline]
-    pub fn write_custom_word(&mut self, offset: u16, val: u16) {
-        let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
-        match offset {
-            custom_reg::denise::STREQU
-            | custom_reg::denise::STRVBL
-            | custom_reg::denise::STRLONG => self.denise.receive_sync_strobe(offset),
-            custom_reg::denise::STRHOR => {
-                self.denise.receive_sync_strobe(offset);
-                self.paula.receive_horizontal_sync_strobe();
-            }
-            custom_reg::agnus::DMACON => {
-                self.agnus.write_register(custom_reg::agnus::DMACON, val);
-                self.paula.write_register(custom_reg::paula::DMACON, val);
-            }
-            custom_reg::denise::BPLCON0
-            | custom_reg::agnus::DIWSTRT
-            | custom_reg::agnus::DIWSTOP
-            | custom_reg::denise::SPR0POS
-            | custom_reg::denise::SPR0CTL
-            | custom_reg::denise::SPR1POS
-            | custom_reg::denise::SPR1CTL
-            | custom_reg::denise::SPR2POS
-            | custom_reg::denise::SPR2CTL
-            | custom_reg::denise::SPR3POS
-            | custom_reg::denise::SPR3CTL
-            | custom_reg::denise::SPR4POS
-            | custom_reg::denise::SPR4CTL
-            | custom_reg::denise::SPR5POS
-            | custom_reg::denise::SPR5CTL
-            | custom_reg::denise::SPR6POS
-            | custom_reg::denise::SPR6CTL
-            | custom_reg::denise::SPR7POS
-            | custom_reg::denise::SPR7CTL => {
-                self.denise.write_register(offset, val);
-                self.agnus.write_register(offset, val);
-            }
-            custom_reg::denise::BPLCON1
-            | custom_reg::denise::CLXCON
-            | custom_reg::denise::BPLCON2
-            | custom_reg::denise::BPL1DAT
-            | custom_reg::denise::BPL2DAT
-            | custom_reg::denise::BPL3DAT
-            | custom_reg::denise::BPL4DAT
-            | custom_reg::denise::BPL5DAT
-            | custom_reg::denise::BPL6DAT
-            | custom_reg::denise::SPR0DATA
-            | custom_reg::denise::SPR0DATB
-            | custom_reg::denise::SPR1DATA
-            | custom_reg::denise::SPR1DATB
-            | custom_reg::denise::SPR2DATA
-            | custom_reg::denise::SPR2DATB
-            | custom_reg::denise::SPR3DATA
-            | custom_reg::denise::SPR3DATB
-            | custom_reg::denise::SPR4DATA
-            | custom_reg::denise::SPR4DATB
-            | custom_reg::denise::SPR5DATA
-            | custom_reg::denise::SPR5DATB
-            | custom_reg::denise::SPR6DATA
-            | custom_reg::denise::SPR6DATB
-            | custom_reg::denise::SPR7DATA
-            | custom_reg::denise::SPR7DATB
-            | custom_reg::denise::COLOR00
-            | custom_reg::denise::COLOR01
-            | custom_reg::denise::COLOR02
-            | custom_reg::denise::COLOR03
-            | custom_reg::denise::COLOR04
-            | custom_reg::denise::COLOR05
-            | custom_reg::denise::COLOR06
-            | custom_reg::denise::COLOR07
-            | custom_reg::denise::COLOR08
-            | custom_reg::denise::COLOR09
-            | custom_reg::denise::COLOR10
-            | custom_reg::denise::COLOR11
-            | custom_reg::denise::COLOR12
-            | custom_reg::denise::COLOR13
-            | custom_reg::denise::COLOR14
-            | custom_reg::denise::COLOR15
-            | custom_reg::denise::COLOR16
-            | custom_reg::denise::COLOR17
-            | custom_reg::denise::COLOR18
-            | custom_reg::denise::COLOR19
-            | custom_reg::denise::COLOR20
-            | custom_reg::denise::COLOR21
-            | custom_reg::denise::COLOR22
-            | custom_reg::denise::COLOR23
-            | custom_reg::denise::COLOR24
-            | custom_reg::denise::COLOR25
-            | custom_reg::denise::COLOR26
-            | custom_reg::denise::COLOR27
-            | custom_reg::denise::COLOR28
-            | custom_reg::denise::COLOR29
-            | custom_reg::denise::COLOR30
-            | custom_reg::denise::COLOR31
-            | custom_reg::denise::JOYTEST => {
-                self.denise.write_register(offset, val);
-            }
-            custom_reg::paula::INTENA
-            | custom_reg::paula::INTREQ
-            | custom_reg::paula::ADKCON
-            | custom_reg::paula::DSKDAT
-            | custom_reg::paula::DSKLEN
-            | custom_reg::paula::DSKSYNC
-            | custom_reg::paula::SERDAT
-            | custom_reg::paula::SERPER
-            | custom_reg::paula::POTGO
-            | custom_reg::paula::AUD0LEN
-            | custom_reg::paula::AUD0PER
-            | custom_reg::paula::AUD0VOL
-            | custom_reg::paula::AUD0DAT
-            | custom_reg::paula::AUD1LEN
-            | custom_reg::paula::AUD1PER
-            | custom_reg::paula::AUD1VOL
-            | custom_reg::paula::AUD1DAT
-            | custom_reg::paula::AUD2LEN
-            | custom_reg::paula::AUD2PER
-            | custom_reg::paula::AUD2VOL
-            | custom_reg::paula::AUD2DAT
-            | custom_reg::paula::AUD3LEN
-            | custom_reg::paula::AUD3PER
-            | custom_reg::paula::AUD3VOL
-            | custom_reg::paula::AUD3DAT => {
-                self.paula.write_register(offset, val);
-            }
-            custom_reg::agnus::DSKPTH
-            | custom_reg::agnus::DSKPTL
-            | custom_reg::agnus::REFPTR
-            | custom_reg::agnus::VPOSW
-            | custom_reg::agnus::VHPOSW
-            | custom_reg::agnus::COPCON
-            | custom_reg::agnus::BLTCON0
-            | custom_reg::agnus::BLTCON1
-            | custom_reg::agnus::BLTAFWM
-            | custom_reg::agnus::BLTALWM
-            | custom_reg::agnus::BLTCPTH
-            | custom_reg::agnus::BLTCPTL
-            | custom_reg::agnus::BLTBPTH
-            | custom_reg::agnus::BLTBPTL
-            | custom_reg::agnus::BLTAPTH
-            | custom_reg::agnus::BLTAPTL
-            | custom_reg::agnus::BLTDPTH
-            | custom_reg::agnus::BLTDPTL
-            | custom_reg::agnus::BLTSIZE
-            | custom_reg::agnus::BLTCMOD
-            | custom_reg::agnus::BLTBMOD
-            | custom_reg::agnus::BLTAMOD
-            | custom_reg::agnus::BLTDMOD
-            | custom_reg::agnus::BLTCDAT
-            | custom_reg::agnus::BLTBDAT
-            | custom_reg::agnus::BLTADAT
-            | custom_reg::agnus::COP1LCH
-            | custom_reg::agnus::COP1LCL
-            | custom_reg::agnus::COP2LCH
-            | custom_reg::agnus::COP2LCL
-            | custom_reg::agnus::COPJMP1
-            | custom_reg::agnus::COPJMP2
-            | custom_reg::agnus::COPINS
-            | custom_reg::agnus::DDFSTRT
-            | custom_reg::agnus::DDFSTOP
-            | custom_reg::agnus::AUD0LCH
-            | custom_reg::agnus::AUD0LCL
-            | custom_reg::agnus::AUD1LCH
-            | custom_reg::agnus::AUD1LCL
-            | custom_reg::agnus::AUD2LCH
-            | custom_reg::agnus::AUD2LCL
-            | custom_reg::agnus::AUD3LCH
-            | custom_reg::agnus::AUD3LCL
-            | custom_reg::agnus::BPL1PTH
-            | custom_reg::agnus::BPL1PTL
-            | custom_reg::agnus::BPL2PTH
-            | custom_reg::agnus::BPL2PTL
-            | custom_reg::agnus::BPL3PTH
-            | custom_reg::agnus::BPL3PTL
-            | custom_reg::agnus::BPL4PTH
-            | custom_reg::agnus::BPL4PTL
-            | custom_reg::agnus::BPL5PTH
-            | custom_reg::agnus::BPL5PTL
-            | custom_reg::agnus::BPL6PTH
-            | custom_reg::agnus::BPL6PTL
-            | custom_reg::agnus::BPL1MOD
-            | custom_reg::agnus::BPL2MOD
-            | custom_reg::agnus::SPR0PTH
-            | custom_reg::agnus::SPR0PTL
-            | custom_reg::agnus::SPR1PTH
-            | custom_reg::agnus::SPR1PTL
-            | custom_reg::agnus::SPR2PTH
-            | custom_reg::agnus::SPR2PTL
-            | custom_reg::agnus::SPR3PTH
-            | custom_reg::agnus::SPR3PTL
-            | custom_reg::agnus::SPR4PTH
-            | custom_reg::agnus::SPR4PTL
-            | custom_reg::agnus::SPR5PTH
-            | custom_reg::agnus::SPR5PTL
-            | custom_reg::agnus::SPR6PTH
-            | custom_reg::agnus::SPR6PTL
-            | custom_reg::agnus::SPR7PTH
-            | custom_reg::agnus::SPR7PTL => {
-                self.agnus.write_register(offset, val);
-            }
-            _ => {}
-        }
-    }
-
-    /// Writes an 8-bit byte to custom register space ($DF0000..$DFFFFF).
-    ///
-    /// Per M68000 bus reality and custom chip architecture, A0 is disconnected from
-    /// custom chips and UDS/LDS are not gated; the byte is duplicated on both byte lanes
-    /// (D15..D8 and D7..D0) and written as a 16-bit word `(val << 8) | val`.
-    #[inline(always)]
-    pub fn write_custom_byte(&mut self, addr: u32, val: u8) {
-        let offset = (addr & Self::CUSTOM_REG_OFFSET_MASK as u32) as u16;
-        let word_val = ((val as u16) << 8) | (val as u16);
-        self.write_custom_word(offset, word_val);
-    }
-
     /// Writes an arbitrary byte slice directly to physical memory for debugger/test injection
     #[inline(always)]
     pub fn write_bytes_debug(&mut self, addr: u32, data: &[u8]) -> usize {
@@ -393,8 +178,11 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let bank = (addr >> 16) as u8;
         match bank {
             Self::BANK_CUSTOM => {
-                self.write_custom_byte(addr, val);
-                BusResult::Ready(())
+                if self.write_custom_byte(addr, val) {
+                    BusResult::Ready(())
+                } else {
+                    BusResult::WaitState
+                }
             }
             Self::BANK_CIA => self.write_cia_byte(addr, val),
             Self::BANK_RTC => {
@@ -429,8 +217,11 @@ impl<'a> AddressBus for MemoryBus<'a> {
         match bank {
             Self::BANK_CUSTOM => {
                 let offset = (addr & Self::CUSTOM_REG_OFFSET_MASK as u32) as u16;
-                self.write_custom_word(offset, val);
-                BusResult::Ready(())
+                if self.write_custom_word(offset, val) {
+                    BusResult::Ready(())
+                } else {
+                    BusResult::WaitState
+                }
             }
             Self::BANK_CIA => {
                 let bytes = val.to_be_bytes();

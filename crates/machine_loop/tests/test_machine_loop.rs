@@ -62,7 +62,8 @@ fn test_machine_cold_and_warm_reset() {
     machine.step_cycles(500);
     assert_eq!(machine.cck, 500);
     machine.agnus.dma.write_dmacon(0x8200); // Enable DMA
-    machine.paula.write_intena(0x8080); // Enable Audio 0 IRQ
+    machine.paula.set_intena(0x8080); // Enable Audio 0 IRQ
+    machine.paula.step_cck();
     let _ = machine.memory_bus().write_byte(0x001000, 0x42);
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x42);
 

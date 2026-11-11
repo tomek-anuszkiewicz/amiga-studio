@@ -77,8 +77,10 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
     let _ = mb.paula.step_cck();
 
     // 3. Set Paula DSKLEN to write mode: bit 14 (WRITE)
-    mb.paula
-        .commit_register_write(custom_reg::paula::DSKLEN, 0x4000);
+    mb.router()
+        .write_custom_word(custom_reg::paula::DSKLEN, 0x4000);
+    mb.paula.step_cck();
+    mb.paula.step_cck();
 
     // 4. Set Paula DSKBYTR with data byte $A5, WORDEQUAL (bit 12), and DSKBYT (bit 15)
     mb.paula.dskbytr = 0x90A5; // DSKBYT | WORDEQUAL | byte 0xA5
@@ -115,23 +117,28 @@ fn test_open_bus_on_early_dma_and_write_only_registers() {
     let mut mb = TestMotherboard::new();
 
     // Populate various internal registers with non-zero values
-    mb.agnus
-        .commit_register_write(custom_reg::agnus::BLTDDAT, 0x1234); // BLTDDAT
-    mb.agnus
-        .commit_register_write(custom_reg::agnus::BLTCON0, 0x09F0); // BLTCON0
-    mb.agnus
-        .commit_register_write(custom_reg::agnus::COP1LCH, 0x0003); // COP1LCH
-    mb.agnus
-        .commit_register_write(custom_reg::agnus::COP1LCL, 0x8000); // COP1LCL
-    mb.agnus
-        .commit_register_write(custom_reg::agnus::BPL1MOD, 0x0028); // BPL1MOD
-    mb.denise
-        .commit_register_write(custom_reg::denise::COLOR00, 0x0F00); // COLOR00 (Red)
-    mb.paula
-        .commit_register_write(custom_reg::paula::AUD0LEN, 0x0100); // AUD0LEN
-    mb.paula
-        .commit_register_write(custom_reg::paula::AUD0VOL, 0x0040); // AUD0VOL
+    mb.router()
+        .write_custom_word(custom_reg::agnus::BLTDDAT, 0x1234); // BLTDDAT
+    mb.router()
+        .write_custom_word(custom_reg::agnus::BLTCON0, 0x09F0); // BLTCON0
+    mb.router()
+        .write_custom_word(custom_reg::agnus::COP1LCH, 0x0003); // COP1LCH
+    mb.router()
+        .write_custom_word(custom_reg::agnus::COP1LCL, 0x8000); // COP1LCL
+    mb.router()
+        .write_custom_word(custom_reg::agnus::BPL1MOD, 0x0028); // BPL1MOD
+    mb.router()
+        .write_custom_word(custom_reg::denise::COLOR00, 0x0F00); // COLOR00 (Red)
+    mb.router()
+        .write_custom_word(custom_reg::paula::AUD0LEN, 0x0100); // AUD0LEN
+    mb.router()
+        .write_custom_word(custom_reg::paula::AUD0VOL, 0x0040); // AUD0VOL
 
+    for _ in 0..2 {
+        mb.agnus.step_cck();
+        mb.denise.step_cck(mb.agnus.beam());
+        mb.paula.step_cck();
+    }
     let mut bus = mb.router();
 
     // CPU reads of the early DMA read address and write-only registers return $FFFF.
@@ -323,6 +330,8 @@ fn test_custom_byte_write_duplicates_byte_lanes() {
             .write_byte(0xDFF000 + u32::from(custom_reg::denise::COLOR00), 0x42),
         BusResult::Ready(())
     );
+    assert_eq!(mb.denise.color[0], 0);
+    mb.denise.step_cck(mb.agnus.beam());
     // Denise color 0 should now be 0x4242 & 0x0FFF = 0x0242
     assert_eq!(mb.denise.color[0], 0x0242);
 
@@ -332,6 +341,8 @@ fn test_custom_byte_write_duplicates_byte_lanes() {
             .write_byte(0xDFF000 + u32::from(custom_reg::denise::COLOR00) + 1, 0x55),
         BusResult::Ready(())
     );
+    assert_eq!(mb.denise.color[0], 0x0242);
+    mb.denise.step_cck(mb.agnus.beam());
     // Denise color 0 should now be 0x5555 & 0x0FFF = 0x0555
     assert_eq!(mb.denise.color[0], 0x0555);
 }
@@ -401,6 +412,8 @@ fn test_chip_namespaced_custom_register_dispatch() {
     // 2. Denise-specific write: COLOR00
     mb.router()
         .write_custom_word(custom_reg::denise::COLOR00, 0x0ABC);
+    assert_eq!(mb.denise.color[0], 0);
+    mb.denise.step_cck(mb.agnus.beam());
     assert_eq!(mb.denise.color[0], 0x0ABC);
 
     // 3. Paula-specific write: INTENA
@@ -429,6 +442,8 @@ fn test_chip_namespaced_custom_register_dispatch() {
     // 7. Additional custom word dispatch: COLOR01 write and debug readback
     mb.router()
         .write_custom_word(custom_reg::denise::COLOR01, 0x0F00);
+    assert_eq!(mb.denise.color[1], 0);
+    mb.denise.step_cck(mb.agnus.beam());
     assert_eq!(mb.denise.color[1], 0x0F00);
     assert_eq!(
         mb.router()
@@ -495,4 +510,12 @@ fn test_sprite_position_and_control_writes_reach_both_chips() {
             }
         }
     }
+}
+
+#[test]
+fn ocs_reserved_diwhigh_offset_does_not_change_denise_state() {
+    let mut mb = TestMotherboard::new();
+    let untouched = mb.denise.clone();
+    assert!(mb.router().write_custom_word(0x1e4, 0x2020));
+    assert_eq!(mb.denise, untouched, "OCS Denise ignores reserved $1E4");
 }

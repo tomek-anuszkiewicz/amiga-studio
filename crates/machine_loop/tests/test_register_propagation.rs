@@ -153,12 +153,10 @@ fn test_bus_custom_registers_snapshot_sync_and_open_bus() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
 
     // Direct write to DMACON
-    machine
-        .agnus
-        .commit_register_write(custom_reg::agnus::DMACON, 0x8200);
+    machine.agnus.set_dmacon(0x8200);
 
-    // Step CCK syncs state
-    machine.step_cck();
+    // Two CCKs commit the queued DMA control.
+    machine.step_cycles(2);
 
     // Reading DMACONR ($DFF002) from bus returns 0x0200
     let BusResult::Ready(dmaconr) = machine
@@ -187,12 +185,16 @@ fn test_write_custom_word_and_byte_methods() {
     machine
         .memory_bus()
         .write_custom_word(custom_reg::denise::COLOR00, 0x0F00);
+    assert_eq!(machine.denise.color[0], 0);
+    machine.step_cck();
     assert_eq!(machine.denise.color[0], 0x0F00);
 
     // Test write_custom_byte with byte duplication
     machine
         .memory_bus()
         .write_custom_byte(0xDFF000 + u32::from(custom_reg::denise::COLOR01), 0x33);
+    assert_eq!(machine.denise.color[1], 0);
+    machine.step_cck();
     assert_eq!(machine.denise.color[1], 0x0333);
 }
 

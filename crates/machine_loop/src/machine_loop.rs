@@ -205,12 +205,6 @@ impl A500Machine {
 
         // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
         self.agnus.step_cck_ram(&mut self.physical_memory.chip_ram);
-        if let Some((reg, val)) = self.agnus.poll_copper_write() {
-            self.memory_bus().write_custom_word(reg, val);
-        }
-        if let Some((plane, word)) = self.agnus.poll_bpl_dma() {
-            self.denise.write_bpldat(plane as usize, word);
-        }
         if let Some(dskpt) = self.agnus.poll_dsk_dma_slot() {
             let is_write = self.paula.is_dsk_write();
             if !is_write {
@@ -246,6 +240,17 @@ impl A500Machine {
 
         // 3. Step Paula (steps audio, serial_port, and mutation pipeline)
         self.paula.step_cck();
+        // Common register issue boundary: every receiver has completed this CCK.
+        if let Some((reg, val)) = self.agnus.pending_copper_write {
+            if self.memory_bus().write_custom_word(reg, val) {
+                self.agnus.poll_copper_write();
+            }
+        }
+        if let Some((plane, word)) = self.agnus.pending_bpl_dma {
+            if self.denise.set_bpldat(plane as usize, word) {
+                self.agnus.poll_bpl_dma();
+            }
+        }
         self.floppy.step_cck(self.paula.adkcon, self.paula.dsksync);
 
         // Cross-Chip Signal: Disk sync pattern matched -> Paula INTREQ bit 12 (IRQ_DSKSYN)

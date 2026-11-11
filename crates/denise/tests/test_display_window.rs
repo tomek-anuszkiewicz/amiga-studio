@@ -17,7 +17,7 @@ fn test_denise_display_window_uses_horizontal_bits_only() {
 
         for hpos in 0..80 {
             if hpos == 64 {
-                denise.write_bpldat(0, 0xFFFF);
+                assert!(denise.set_bpldat(0, 0xFFFF));
             }
             denise.step_cck(BeamPosition::new(hpos, 150, false));
         }

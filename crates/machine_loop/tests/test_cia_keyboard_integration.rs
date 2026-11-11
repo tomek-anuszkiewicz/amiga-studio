@@ -11,7 +11,8 @@ fn test_keyboard_scancode_delivery_to_cia_and_level2_irq() {
     // Enable CIA-A SDR interrupt in ICR: $80 | 0x08 = $88
     machine.cia_a.set_icr(0x88);
     // Enable Level 2 PORTS interrupt in Paula INTENA: SET(0x8000) | INTEN(0x4000) | PORTS(0x0008) = $C008
-    machine.paula.write_intena(0xC008);
+    machine.paula.set_intena(0xC008);
+    machine.paula.step_cck();
 
     assert_eq!(machine.cpu.state.ipl(), 0);
 

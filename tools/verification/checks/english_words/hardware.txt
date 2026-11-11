@@ -336,3 +336,13 @@ sprctl
 undriven
 cias
 vma
+audlch
+audlcl
+bplpth
+bplptl
+sprpth
+sprptl
+sprdata
+sprdatb
+audper
+audvol

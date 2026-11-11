@@ -114,6 +114,9 @@ fn test_bitplane_contention_scaling() {
 
     // Case 1: LoRes 4 Planes (BPLCON0 = 0x4000)
     machine.agnus.set_bplcon0(0x4000);
+    for _ in 0..4 {
+        machine.agnus.step_cck();
+    }
 
     // Slot 1: Plane 4 fetches -> Chip RAM blocked
     machine.agnus.hpos = base + 1 - 1;
@@ -129,6 +132,9 @@ fn test_bitplane_contention_scaling() {
 
     // Case 2: LoRes 6 Planes (BPLCON0 = 0x6000) -> cycle stealing on slots 6 and 2
     machine.agnus.set_bplcon0(0x6000);
+    for _ in 0..4 {
+        machine.agnus.step_cck();
+    }
 
     // Slot 6: Plane 5 steals cycle -> Chip RAM blocked!
     machine.agnus.hpos = base + 6 - 1;
@@ -150,6 +156,9 @@ fn test_bitplane_contention_scaling() {
 
     // Case 3: HiRes 4 Planes (BPLCON0 = 0xC000) -> 100% CPU lock-out in DDF window
     machine.agnus.set_bplcon0(0xC000);
+    for _ in 0..4 {
+        machine.agnus.step_cck();
+    }
     for phase in 0..8 {
         machine.agnus.hpos = base + phase - 1;
         machine.step_subsystems_cck();

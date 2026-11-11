@@ -108,6 +108,8 @@ fn test_display_window_vertical_bounds_gate_bitplane_dma() {
     harness.machine.agnus.vpos = 100;
     harness.machine.step_cck();
     assert_eq!(harness.machine.agnus.bplpt[0], 0x1002);
+    assert_eq!(harness.machine.denise.bpldat[0], 0);
+    harness.machine.step_cck();
     assert_eq!(harness.machine.denise.bpldat[0], 0xBEEF);
 
     // Denise sees the horizontal window earlier than Agnus updates the DMA boundary.
@@ -239,5 +241,7 @@ fn test_machine_loop_agnus_bpl_dma_routed_to_denise() {
     // Step machine 1 CCK: Agnus reaches slot 0x3F (phase 7) and fetches $BEEF for plane 0, routed to Denise
     harness.machine.step_cck();
 
+    assert_eq!(harness.machine.denise.bpldat[0], 0);
+    harness.machine.step_cck();
     assert_eq!(harness.machine.denise.bpldat[0], 0xBEEF);
 }

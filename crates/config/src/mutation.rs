@@ -1,7 +1,7 @@
 //! Electronic Propagation Delay & Register Mutation Pipeline
 //!
 //! Models physical circuit propagation latencies where register writes do not take
-//! instantaneous effect, but travel down a calibrated delay pipeline before committing
+//! instantaneous effect, but travel down a provisional delay pipeline before committing
 //! to active silicon latches.
 
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,7 @@ pub enum MutationMode {
 /// Staged register write in the physical propagation latency pipeline
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DelayedMutation {
-    /// Chip-local register identifier ($000..$1FE custom offset or $0..$F CIA selector)
+    /// Chip-local queued destination (custom offset, interrupt input or CIA register)
     pub reg_offset: u16,
     /// Staged value to commit
     pub value: u16,
@@ -28,10 +28,12 @@ pub struct DelayedMutation {
     pub mode: MutationMode,
 }
 
-/// Stages a register write into an inline fixed-capacity mutation buffer.
-///
-/// Returns `true` if successfully queued into the delay pipeline, or `false` if
-/// immediate commit is required (when `delay_cck == 0` or upon buffer overflow fallback).
+/// Positive provisional delay for custom writes that previously bypassed the queue.
+/// This setting establishes ordering, not measured silicon timing.
+pub const PROVISIONAL_CUSTOM_WRITE_DELAY_CCK: u8 = 1;
+
+/// Stages a write in issue order; zero delay and full capacity reject it.
+/// Rejection never authorizes immediate application. The caller retains/retries it.
 #[inline]
 pub fn stage_mutation(
     buffer: &mut [Option<DelayedMutation>],
@@ -43,56 +45,47 @@ pub fn stage_mutation(
     if delay_cck == 0 {
         return false;
     }
-
-    // In OverwritePending mode, check if this exact register already has an in-flight mutation
+    // Replacing a pending value is a new issue event, after retained events.
     if mode == MutationMode::OverwritePending {
-        for slot in buffer.iter_mut() {
-            if let Some(m) = slot {
-                if m.reg_offset == reg_offset {
-                    m.value = value;
-                    m.remaining_cck = delay_cck;
-                    return true;
-                }
+        if let Some(index) = buffer
+            .iter()
+            .position(|slot| slot.is_some_and(|m| m.reg_offset == reg_offset && m.mode == mode))
+        {
+            buffer[index..].rotate_left(1);
+            if let Some(last) = buffer.last_mut() {
+                *last = None;
             }
         }
     }
-
-    // Insert into the first available empty slot
-    for slot in buffer.iter_mut() {
-        if slot.is_none() {
-            *slot = Some(DelayedMutation {
-                reg_offset,
-                value,
-                remaining_cck: delay_cck,
-                mode,
-            });
-            return true;
-        }
+    if let Some(slot) = buffer.iter_mut().find(|slot| slot.is_none()) {
+        *slot = Some(DelayedMutation {
+            reg_offset,
+            value,
+            remaining_cck: delay_cck,
+            mode,
+        });
+        true
+    } else {
+        false
     }
-
-    // Overflow protection: buffer capacity exhausted.
-    // Return false so caller falls back to immediate commit, preventing data loss and host panics.
-    false
 }
 
-/// Advances the delay countdown of all in-flight mutations by 1 clock cycle.
-///
-/// For any mutations that reach 0, clears the slot and invokes `commit_fn(reg_offset, value)`.
+/// Advances one clock and commits every due entry in retained issue order.
+/// Compaction prevents reuse of an earlier empty slot from reversing FIFO order.
 #[inline]
 pub fn tick_mutations<F>(buffer: &mut [Option<DelayedMutation>], mut commit_fn: F)
 where
     F: FnMut(u16, u16),
 {
-    for slot in buffer.iter_mut() {
-        if let Some(m) = slot {
-            if m.remaining_cck > 0 {
-                m.remaining_cck -= 1;
-            }
-            if m.remaining_cck == 0 {
-                let reg = m.reg_offset;
-                let val = m.value;
-                *slot = None;
-                commit_fn(reg, val);
+    let mut retained = 0;
+    for index in 0..buffer.len() {
+        if let Some(mut item) = buffer[index].take() {
+            item.remaining_cck = item.remaining_cck.saturating_sub(1);
+            if item.remaining_cck == 0 {
+                commit_fn(item.reg_offset, item.value);
+            } else {
+                buffer[retained] = Some(item);
+                retained += 1;
             }
         }
     }

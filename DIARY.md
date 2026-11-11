@@ -1022,3 +1022,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - vault audit passed 35 design specifications and 715 links
   - full commit profile and independent snapshot review are recorded by the closing workflow
   - full SingleStep, firmware/OS and vAmigaTS were not run for this stage
+---
+
+### [2026-11-11 11:23 CET] — CUSTOM-DIRECT-DISPATCH-20261111: Queue every modeled custom-register write
+- **Affected Subsystems**:
+  - `crates/config`
+  - `crates/agnus`
+  - `crates/denise`
+  - `crates/paula`
+  - `crates/audio`
+  - `crates/memory_bus`
+  - `crates/machine_loop`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace generic public write dispatch with concrete queued register and family setters for all 180 modeled offsets and every required recipient
+  - apply changes through private replay and preserve read-side strobes and open bus
+  - delay palette and sync strobes by an explicitly provisional positive 1 CCK while retaining existing positive delays and no-op placeholders
+  - issue Copper writes and bitplane data after all custom chips step, retaining rejected source outputs
+  - preserve fixed-capacity issue order, reject full queues without immediate fallback, drain and return every matured event, and reserve a merged interrupt-input entry separate from CPU INTREQ
+  - migrate callers and focused fixtures, move audio-pointer coverage to Agnus, retire the obsolete audio location setter and its superseded fixture, and update affected design requirements
+  - record explicit user approval of the ten hardware abbreviations audlch, audlcl, bplpth, bplptl, sprpth, sprptl, sprdata, sprdatb, audper and audvol in the reviewed hardware vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Mandatory propagation must separate accepted transfers from active state and downstream reactions. Original focused reproductions confirmed immediate palette visibility and loss of the ninth matured Paula event. Numerical timing and queue modes remain provisional
+  - no silicon measurement is claimed. Saved-state field shapes and version 2 remain intact. This task contributes to Roadmap 2.1 without closing the whole point. Finish this stage and its closing commit, then stop before stage 3.
+- **Verification & Test Results**:
+  - PASS: focused Rust suites for config, CIA, Agnus, Denise, Paula, MemoryBus and machine_loop
+  - 12 new production-integration checks cover native PAL/NTSC authored CPU byte writes during DMA contention, Copper receiver timing, queue rejection and complete replay, interrupt input versus CPU acknowledgment order, strobes, DMA control boundaries, Blitter restart and serialized continuation. PASS: strict all-targets Clippy, workspace native compilation, machine_loop WASM compilation, formatting, architecture, 35 design frontmatter records and 727 links, and diff whitespace. Initial English scan reported 10 new register-family abbreviations in 82 occurrences; the user explicitly approved all ten. Code and hardware gates identified the obsolete audio location setter and a peer namespace used for STRHOR; the setter and superseded fixture were retired, and Paula now uses its existing own STRHOR constant. Both gates and the full English scan then passed. Strict Clippy and WASM compilation were rerun successfully after this cleanup; the 12 custom-dispatch checks still pass. RAG retrieval failed
+  - targeted local manuals and approved specifications supplied register scope. No firmware or OS integration, vAmigaTS, floppy-media I/O, physical timing calibration or exhaustive final-stage verification was performed. Scoped specification review found no unmapped changed crate paths or unresolved requirement conflict.

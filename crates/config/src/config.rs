@@ -8,7 +8,10 @@ pub mod chip_ram;
 pub mod mutation;
 pub mod registers;
 
-pub use mutation::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
+pub use mutation::{
+    stage_mutation, tick_mutations, DelayedMutation, MutationMode,
+    PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+};
 pub use registers::*;
 
 use serde::{Deserialize, Serialize};

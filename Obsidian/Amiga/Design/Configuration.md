@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "config"
 status: "active"
 created: 2026-09-05
-updated: 2026-10-13
+updated: 2026-11-11
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/config"
@@ -93,6 +93,10 @@ Because the emulator core is system-agnostic and decoupled from the host filesys
 - **Extended Peripherals:** 4-Player Parallel Port Joystick adapter, analog proportional joysticks.
 
 ---
+
+## Shared propagation state
+
+The foundational crate also owns the serializable [mutation utility](../../../crates/config/src/mutation.rs), shared by custom chips and CIA. Its fixed-capacity buffer keeps retained events in issue order. Pipeline entries coexist; OverwritePending removes and replaces only the same destination and mode, at the new issue position. Tick commits every due entry and compacts retained entries without allocation. Full capacity and zero delay reject insertion; callers must retain or retry the event instead of applying it early. CIA retains its separate falling-E capture and bus acceptance contract. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) specifies provisional custom-register delays and recipient routing.
 
 ## 6. Reference Documentation & Upstream Ground Truth
 
