@@ -1,5 +1,6 @@
 """Regression tests for the Amiga RAG MCP command boundary."""
 
+import json
 import os
 import sys
 import tempfile
@@ -83,6 +84,17 @@ class CommandContractTests(unittest.TestCase):
             [RAG_QDRANT_COMMAND, "search", "Copper timing", "--json"],
         )
         self.assertTrue(calls[0][1]["capture_output"])
+        self.assertEqual(calls[0][1]["encoding"], "utf-8")
+
+    def test_path_command_decodes_utf8_cli_output(self):
+        expected = [{"content": "Copper \u2014 DMA \u201cwait\u201d"}]
+        payload = json.dumps(expected, ensure_ascii=False).encode("utf-8")
+        with patch("rag_qdrant_command.RAG_QDRANT_COMMAND", sys.executable):
+            result = run_rag_qdrant_json([
+                "-c", f"import sys; sys.stdout.buffer.write({payload!r})",
+            ])
+
+        self.assertEqual(result, expected)
 
     def test_multisource_search_uses_the_cli_comma_separated_filter(self):
         self.assertEqual(
@@ -150,6 +162,23 @@ class CommandContractTests(unittest.TestCase):
         ]
 
         self.assertIn("No matching sections", server.rag_search_reference("DMA"))
+
+    def test_reference_search_accepts_books_from_another_checkout(self):
+        server = self.load_server()
+        with tempfile.TemporaryDirectory() as directory:
+            reference_root = Path(directory) / "Obsidian" / "Amiga" / "Reference"
+            server.run_rag_qdrant_json = lambda _arguments: [
+                {"source": "amiga", "file_path": str(reference_root / ".." / "Design" / "DMA.md"), "content": "design secret"},
+                {"source": "devnotes", "file_path": str(reference_root / "Other.md"), "content": "other source"},
+                {"source": "amiga", "file_path": str(reference_root.with_name("Reference-backup") / "Manual.md"), "content": "backup secret"},
+                {"source": "amiga", "file_path": str(reference_root / "Manual.md"), "content": "shared reference fact"},
+            ]
+
+            result = server.rag_search_reference("DMA")
+
+        self.assertIn("shared reference fact", result)
+        self.assertNotIn("secret", result)
+        self.assertNotIn("other source", result)
 
     def test_mcp_status_reports_the_cli_json_error(self):
         server = self.load_server()

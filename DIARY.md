@@ -1123,3 +1123,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS configured semantic consistency and 35-note vault metadata with 999 links before closure edits
   - PASS 13 baseline RAG contracts in isolation from the separate staged RAG repair
   - checkpoint and compaction review found no earlier settled entries for this task so unrelated diary history remains intact
+---
+
+### [2026-11-11 23:40 CET] — Repair shared-reference retrieval and CLI decoding in the RAG adapter
+- **Affected Subsystems**:
+  - `Amiga RAG MCP adapter`
+  - `command boundary`
+  - `adapter contracts and README`
+- **What Was Changed (The Concrete Reality)**:
+  - Accept reference hits from another checkout while retaining the Amiga source and reference-directory filters
+  - decode command output explicitly as UTF-8
+  - cover shared-checkout filtering and actual UTF-8 subprocess output in regressions
+- **Architectural Rationale & Trade-Offs**:
+  - The shared index can contain manual paths outside the active checkout
+  - CLI output encoding must not depend on the Windows locale
+- **Verification & Test Results**:
+  - PASS all 15 adapter and launch contracts
+  - full commit verification and independent review are recorded in the closing commit

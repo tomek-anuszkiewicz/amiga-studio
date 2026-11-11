@@ -5,9 +5,13 @@ This project-specific FastMCP server exposes Amiga documentation retrieval and h
 `rag_search_reference` searches the shared `amiga` tag, then returns only hits
 whose resolved file paths are under `Obsidian/Amiga/Reference/`. It scans at
 most the first 100 ranked Amiga hits and reports when none are in scope.
+The reference directory may belong to another checkout recorded in the shared
+index; it need not be under the running server's repository root.
 
 It does not import Qdrant, its cache, or the indexer. It invokes the standalone
 `rag_qdrant` command from `PATH` for query execution and status inspection, so the CLI and its dependencies must be installed independently.
+The adapter decodes CLI output as UTF-8, matching the CLI's output encoding
+regardless of the host's default locale.
 
 ## Installation
 
