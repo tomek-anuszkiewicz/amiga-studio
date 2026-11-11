@@ -13,7 +13,7 @@ use physical_memory::PhysicalMemory;
 use serde::{Deserialize, Serialize};
 
 /// Active schema format version for A500 save states
-pub const SAVE_STATE_VERSION: u32 = 2;
+pub const SAVE_STATE_VERSION: u32 = 1;
 
 /// Metadata header identifying state compatibility, creation time, and display preview
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

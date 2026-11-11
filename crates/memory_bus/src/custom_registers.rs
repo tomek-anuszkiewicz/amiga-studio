@@ -1,9 +1,65 @@
-//! Direct custom-register write routing.
+//! Live, debug and queued custom-register bus access.
 
 use super::MemoryBus;
-use config::custom_reg;
+use config::{custom_reg, OPEN_BUS_WORD};
 
 impl MemoryBus<'_> {
+    /// Reads a 16-bit custom register with live read side-effects (e.g. clearing CLXDAT, DSKBYTR)
+    #[inline]
+    pub fn read_custom_word(&mut self, offset: u16) -> u16 {
+        let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
+        match offset {
+            // Early DMA reads are not ordinary CPU-readable registers.
+            custom_reg::agnus::BLTDDAT | custom_reg::paula::DSKDATR => OPEN_BUS_WORD,
+            custom_reg::agnus::DMACONR => self.agnus.dmaconr(),
+            custom_reg::agnus::VPOSR => self.agnus.vposr(),
+            custom_reg::agnus::VHPOSR => self.agnus.vhposr(),
+            custom_reg::denise::JOY0DAT => self.denise.joy0dat(),
+            custom_reg::denise::JOY1DAT => self.denise.joy1dat(),
+            custom_reg::denise::CLXDAT => self.denise.clxdat(),
+            custom_reg::paula::ADKCONR => self.paula.adkconr(),
+            custom_reg::paula::POT0DAT => self.paula.pot0dat(),
+            custom_reg::paula::POT1DAT => self.paula.pot1dat(),
+            custom_reg::paula::POTGOR => self.paula.potgor(),
+            custom_reg::paula::SERDATR => self.paula.serdatr(),
+            custom_reg::paula::DSKBYTR => self.paula.read_dskbytr(),
+            custom_reg::paula::INTENAR => self.paula.intenar(),
+            custom_reg::paula::INTREQR => self.paula.intreqr(),
+            custom_reg::agnus::COPJMP1 => {
+                self.agnus.strobe_copjmp1();
+                OPEN_BUS_WORD
+            }
+            custom_reg::agnus::COPJMP2 => {
+                self.agnus.strobe_copjmp2();
+                OPEN_BUS_WORD
+            }
+            _ => OPEN_BUS_WORD,
+        }
+    }
+
+    /// Reads a 16-bit custom register without side-effects for debugging inspection
+    #[inline]
+    pub fn read_custom_word_debug(&self, offset: u16) -> u16 {
+        let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
+        match offset {
+            custom_reg::agnus::DMACONR => self.agnus.dmaconr_debug(),
+            custom_reg::agnus::VPOSR => self.agnus.vposr_debug(),
+            custom_reg::agnus::VHPOSR => self.agnus.vhposr_debug(),
+            custom_reg::denise::JOY0DAT => self.denise.joy0dat_debug(),
+            custom_reg::denise::JOY1DAT => self.denise.joy1dat_debug(),
+            custom_reg::denise::CLXDAT => self.denise.clxdat_debug(),
+            custom_reg::paula::ADKCONR => self.paula.adkconr_debug(),
+            custom_reg::paula::POT0DAT => self.paula.pot0dat_debug(),
+            custom_reg::paula::POT1DAT => self.paula.pot1dat_debug(),
+            custom_reg::paula::POTGOR => self.paula.potgor_debug(),
+            custom_reg::paula::SERDATR => self.paula.serdatr_debug(),
+            custom_reg::paula::DSKBYTR => self.paula.peek_dskbytr(),
+            custom_reg::paula::INTENAR => self.paula.intenar_debug(),
+            custom_reg::paula::INTREQR => self.paula.intreqr_debug(),
+            _ => OPEN_BUS_WORD,
+        }
+    }
+
     /// Queues one accepted custom transfer on every modeled receiver.
     /// False means no receiver accepted it; the producer must retry.
     pub fn write_custom_word(&mut self, offset: u16, val: u16) -> bool {

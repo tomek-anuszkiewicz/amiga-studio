@@ -6,7 +6,7 @@
 
 use agnus::Agnus;
 use cia::Cia;
-use config::{custom_reg, OPEN_BUS_BYTE, OPEN_BUS_WORD};
+use config::OPEN_BUS_BYTE;
 use denise::Denise;
 use paula::Paula;
 use physical_memory::{AddressBus, BusResult, MemoryBank, PhysicalMemory};
@@ -15,7 +15,7 @@ use rtc::RtcMsm6242b;
 pub use physical_memory;
 
 mod cia_registers;
-mod custom_writes;
+mod custom_registers;
 
 /// Zero-cost stack-allocated router implementing `AddressBus` across all subsystems
 #[derive(Debug)]
@@ -43,62 +43,6 @@ impl<'a> MemoryBus<'a> {
     pub const CIA_REG_ADDRESS_MASK: u32 = 0xFFFF01;
     pub const CUSTOM_REG_OFFSET_MASK: u16 = 0x01FE;
     const CIAA_PA_OVL: u8 = 0x01;
-
-    /// Reads a 16-bit custom register with live read side-effects (e.g. clearing CLXDAT, DSKBYTR)
-    #[inline]
-    pub fn read_custom_word(&mut self, offset: u16) -> u16 {
-        let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
-        match offset {
-            // Early DMA reads are not ordinary CPU-readable registers.
-            custom_reg::agnus::BLTDDAT | custom_reg::paula::DSKDATR => OPEN_BUS_WORD,
-            custom_reg::agnus::DMACONR => self.agnus.dmaconr(),
-            custom_reg::agnus::VPOSR => self.agnus.vposr(),
-            custom_reg::agnus::VHPOSR => self.agnus.vhposr(),
-            custom_reg::denise::JOY0DAT => self.denise.joy0dat(),
-            custom_reg::denise::JOY1DAT => self.denise.joy1dat(),
-            custom_reg::denise::CLXDAT => self.denise.clxdat(),
-            custom_reg::paula::ADKCONR => self.paula.adkconr(),
-            custom_reg::paula::POT0DAT => self.paula.pot0dat(),
-            custom_reg::paula::POT1DAT => self.paula.pot1dat(),
-            custom_reg::paula::POTGOR => self.paula.potgor(),
-            custom_reg::paula::SERDATR => self.paula.serdatr(),
-            custom_reg::paula::DSKBYTR => self.paula.read_dskbytr(),
-            custom_reg::paula::INTENAR => self.paula.intenar(),
-            custom_reg::paula::INTREQR => self.paula.intreqr(),
-            custom_reg::agnus::COPJMP1 => {
-                self.agnus.strobe_copjmp1();
-                OPEN_BUS_WORD
-            }
-            custom_reg::agnus::COPJMP2 => {
-                self.agnus.strobe_copjmp2();
-                OPEN_BUS_WORD
-            }
-            _ => OPEN_BUS_WORD,
-        }
-    }
-
-    /// Reads a 16-bit custom register without side-effects for debugging inspection
-    #[inline]
-    pub fn read_custom_word_debug(&self, offset: u16) -> u16 {
-        let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
-        match offset {
-            custom_reg::agnus::DMACONR => self.agnus.dmaconr_debug(),
-            custom_reg::agnus::VPOSR => self.agnus.vposr_debug(),
-            custom_reg::agnus::VHPOSR => self.agnus.vhposr_debug(),
-            custom_reg::denise::JOY0DAT => self.denise.joy0dat_debug(),
-            custom_reg::denise::JOY1DAT => self.denise.joy1dat_debug(),
-            custom_reg::denise::CLXDAT => self.denise.clxdat_debug(),
-            custom_reg::paula::ADKCONR => self.paula.adkconr_debug(),
-            custom_reg::paula::POT0DAT => self.paula.pot0dat_debug(),
-            custom_reg::paula::POT1DAT => self.paula.pot1dat_debug(),
-            custom_reg::paula::POTGOR => self.paula.potgor_debug(),
-            custom_reg::paula::SERDATR => self.paula.serdatr_debug(),
-            custom_reg::paula::DSKBYTR => self.paula.peek_dskbytr(),
-            custom_reg::paula::INTENAR => self.paula.intenar_debug(),
-            custom_reg::paula::INTREQR => self.paula.intreqr_debug(),
-            _ => OPEN_BUS_WORD,
-        }
-    }
 
     /// Writes an arbitrary byte slice directly to physical memory for debugger/test injection
     #[inline(always)]

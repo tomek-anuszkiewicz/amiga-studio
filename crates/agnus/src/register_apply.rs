@@ -211,4 +211,11 @@ impl Agnus {
             _ => {}
         }
     }
+
+    /// Action method: sets BPLCON0 and synchronizes Agnus DMA scheduler
+    #[inline]
+    fn apply_bplcon0(&mut self, val: u16) {
+        self.bplcon0 = val;
+        self.dma.set_bplcon0(val);
+    }
 }

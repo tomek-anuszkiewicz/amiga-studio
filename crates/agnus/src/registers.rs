@@ -1,7 +1,8 @@
-//! Queued Agnus register setters and private due-event application.
+//! Agnus register reads and queued control and DMA pointer writes.
 
-use super::Agnus;
+use super::{Agnus, AgnusModel};
 use config::custom_reg::agnus as reg;
+use config::mask::dmacon;
 use config::{stage_mutation, MutationMode};
 
 impl Agnus {
@@ -149,342 +150,6 @@ impl Agnus {
         )
     }
 
-    /// Queues COPCON; active state changes only when due.
-    #[inline]
-    pub fn set_copcon(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::COPCON,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTCON0; active state changes only when due.
-    #[inline]
-    pub fn set_bltcon0(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTCON0,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTCON1; active state changes only when due.
-    #[inline]
-    pub fn set_bltcon1(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTCON1,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTAFWM; active state changes only when due.
-    #[inline]
-    pub fn set_bltafwm(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTAFWM,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTALWM; active state changes only when due.
-    #[inline]
-    pub fn set_bltalwm(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTALWM,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTCPTH; active state changes only when due.
-    #[inline]
-    pub fn set_bltcpth(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTCPTH,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTCPTL; active state changes only when due.
-    #[inline]
-    pub fn set_bltcptl(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTCPTL,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTBPTH; active state changes only when due.
-    #[inline]
-    pub fn set_bltbpth(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTBPTH,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTBPTL; active state changes only when due.
-    #[inline]
-    pub fn set_bltbptl(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTBPTL,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTAPTH; active state changes only when due.
-    #[inline]
-    pub fn set_bltapth(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTAPTH,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTAPTL; active state changes only when due.
-    #[inline]
-    pub fn set_bltaptl(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTAPTL,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTDPTH; active state changes only when due.
-    #[inline]
-    pub fn set_bltdpth(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTDPTH,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTDPTL; active state changes only when due.
-    #[inline]
-    pub fn set_bltdptl(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTDPTL,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTSIZE; active state changes only when due.
-    #[inline]
-    pub fn set_bltsize(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTSIZE,
-            val,
-            1,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTCMOD; active state changes only when due.
-    #[inline]
-    pub fn set_bltcmod(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTCMOD,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTBMOD; active state changes only when due.
-    #[inline]
-    pub fn set_bltbmod(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTBMOD,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTAMOD; active state changes only when due.
-    #[inline]
-    pub fn set_bltamod(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTAMOD,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTDMOD; active state changes only when due.
-    #[inline]
-    pub fn set_bltdmod(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTDMOD,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues BLTCDAT; active state changes only when due.
-    #[inline]
-    pub fn set_bltcdat(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTCDAT,
-            val,
-            1,
-            MutationMode::Pipeline,
-        )
-    }
-
-    /// Queues BLTBDAT; active state changes only when due.
-    #[inline]
-    pub fn set_bltbdat(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTBDAT,
-            val,
-            1,
-            MutationMode::Pipeline,
-        )
-    }
-
-    /// Queues BLTADAT; active state changes only when due.
-    #[inline]
-    pub fn set_bltadat(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::BLTADAT,
-            val,
-            1,
-            MutationMode::Pipeline,
-        )
-    }
-
-    /// Queues COP1LCH; active state changes only when due.
-    #[inline]
-    pub fn set_cop1lch(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::COP1LCH,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues COP1LCL; active state changes only when due.
-    #[inline]
-    pub fn set_cop1lcl(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::COP1LCL,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues COP2LCH; active state changes only when due.
-    #[inline]
-    pub fn set_cop2lch(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::COP2LCH,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues COP2LCL; active state changes only when due.
-    #[inline]
-    pub fn set_cop2lcl(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::COP2LCL,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues COPJMP1; active state changes only when due.
-    #[inline]
-    pub fn set_copjmp1(&mut self) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::COPJMP1,
-            0,
-            1,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues COPJMP2; active state changes only when due.
-    #[inline]
-    pub fn set_copjmp2(&mut self) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::COPJMP2,
-            0,
-            1,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues COPINS; active state changes only when due.
-    #[inline]
-    pub fn set_copins(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::COPINS,
-            val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
     /// Queues DDFSTRT; active state changes only when due.
     #[inline]
     pub fn set_ddfstrt(&mut self, val: u16) -> bool {
@@ -621,5 +286,117 @@ impl Agnus {
             2,
             MutationMode::OverwritePending,
         )
+    }
+
+    /// Returns the pipelined (H, V) beam position as seen by CPU register reads (5 CCKs ahead of display beam).
+    #[inline]
+    fn pipelined_beam_readout(&self) -> (u16, u16) {
+        let max_lines = match self.model {
+            AgnusModel::OcsNtsc8370 => Self::NTSC_FRAME_LINES,
+            _ => Self::PAL_FRAME_LINES,
+        };
+        let line_ccks = match self.model {
+            AgnusModel::OcsNtsc8370 => {
+                if self.lol {
+                    Self::NTSC_LONG_LINE_CCKS
+                } else {
+                    Self::NTSC_SHORT_LINE_CCKS
+                }
+            }
+            _ => Self::PAL_LINE_CCKS,
+        };
+
+        let mut h = self.hpos + Self::VHPOSR_PIPELINE_LEAD_CCKS;
+        let mut v = self.vpos;
+        if h >= line_ccks {
+            h -= line_ccks;
+            v = v.wrapping_add(1);
+            if v >= max_lines {
+                v = 0;
+            }
+        }
+
+        let effective_v = if h <= Self::VHPOSR_VERTICAL_SETTLE_CCKS {
+            self.vpos
+        } else {
+            v
+        };
+        (h as u16, effective_v)
+    }
+
+    /// Reads Vertical & Horizontal beam position (VHPOSR at $DFF006)
+    ///
+    /// The returned beam position reflects internal Agnus pipeline and bus latency (~5 CCKs ahead of display beam).
+    #[inline]
+    pub fn vhposr(&self) -> u16 {
+        let (h, effective_v) = self.pipelined_beam_readout();
+        let v_low = (effective_v & 0xFF) as u16;
+        (v_low << 8) | (h & 0xFF)
+    }
+
+    /// Reads Vertical beam position high bit, chip ID, and LOF (VPOSR at $DFF004)
+    #[inline]
+    pub fn vposr(&self) -> u16 {
+        let mut val = 0u16;
+        if self.lof {
+            val |= 0x8000;
+        }
+        match self.model {
+            AgnusModel::OcsNtsc8370 => val |= 0x1000,
+            AgnusModel::OcsPal8371 => {}
+        }
+
+        let (_h, effective_v) = self.pipelined_beam_readout();
+        val |= (effective_v >> 8) & 0x07;
+        val
+    }
+
+    /// Reads DMA Control and Blitter status (DMACONR at $DFF002)
+    #[inline]
+    pub fn read_dmaconr(&self) -> u16 {
+        let mut val = self.dmacon & 0x07FF;
+        if self.blitter.is_busy {
+            val |= dmacon::BBUSY;
+        }
+        if self.blitter.is_zero {
+            val |= dmacon::BZERO;
+        }
+        val
+    }
+
+    /// Reads an Agnus register by offset ($000..$1FE).
+    /// Write-only registers return floating open bus $FFFF.
+    #[inline]
+    pub fn read_register(&self, offset: u16) -> u16 {
+        match offset & 0x1FE {
+            reg::DMACONR => self.read_dmaconr(),
+            reg::VPOSR => self.vposr(),
+            reg::VHPOSR => self.vhposr(),
+            _ => config::OPEN_BUS_WORD,
+        }
+    }
+
+    /// Reads DMA Control and Blitter status (DMACONR at $DFF002)
+    #[inline(always)]
+    pub fn dmaconr(&self) -> u16 {
+        self.read_dmaconr()
+    }
+
+    /// Reads DMA Control and Blitter status without side-effects for debugging
+    #[inline(always)]
+    pub fn dmaconr_debug(&self) -> u16 {
+        self.read_dmaconr()
+    }
+
+    /// Reads Vertical and Horizontal beam position register without side-effects for debugging
+    #[inline(always)]
+    pub fn vhposr_debug(&self) -> u16 {
+        self.vhposr()
+    }
+
+    /// Reads Vertical position register and chip ID without side-effects for debugging
+    #[inline(always)]
+    pub fn vposr_debug(&self) -> u16 {
+        self.vposr()
     }
 }

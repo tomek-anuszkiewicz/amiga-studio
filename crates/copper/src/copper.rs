@@ -5,9 +5,10 @@
 
 use config::chip_ram::OCS_DMA_ADDRESS_MASK;
 use config::custom_reg;
-use config::mask::copcon;
 use config::BeamPosition;
 use serde::{Deserialize, Serialize};
+
+mod registers;
 
 /// Execution state of the Copper instruction pipeline
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -115,35 +116,10 @@ impl Copper {
         }
     }
 
-    /// Restarts execution using Copper list 1 (COPJMP1 strobe)
-    #[inline]
-    pub fn restart_list1(&mut self) {
-        self.cop_pc = self.cop1lc & OCS_DMA_ADDRESS_MASK;
-        self.is_running = true;
-        self.is_waiting = false;
-        self.state = CopperState::FetchIR1(2);
-    }
-
-    /// Restarts execution using Copper list 2 (COPJMP2 strobe)
-    #[inline]
-    pub fn restart_list2(&mut self) {
-        self.cop_pc = self.cop2lc & OCS_DMA_ADDRESS_MASK;
-        self.is_running = true;
-        self.is_waiting = false;
-        self.state = CopperState::FetchIR1(2);
-    }
-
     /// Returns true if the Copper is actively fetching instructions from Chip RAM (not idle or waiting)
     #[inline]
     pub fn is_active_fetching(&self) -> bool {
         self.dma_enabled && self.is_running && !self.is_waiting
-    }
-
-    /// Writes COPCON control register
-    #[inline]
-    pub fn set_copcon(&mut self, val: u16) {
-        self.copcon = val;
-        self.cdang = (val & copcon::CDANG) != 0;
     }
 
     /// Evaluates the WAIT / SKIP beam position comparator

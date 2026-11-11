@@ -1006,7 +1006,7 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - separate phase-dependent CPU bus acknowledgment from falling-E register capture and same-phase CIA-A OVL routing
   - process every inline queued write without overflow fallback
   - preserve pending bus/TOD/output state through serialization and cancel it on reset
-  - use snapshot version 2 without old-format loading as explicitly approved on 2026-11-11, without deleting user files
+  - the snapshot version bump recorded for this stage was later reverted to version 1 at the user's request; no old-format decoder was added
   - correct demonstrated LOAD and unused-bit readback, TOD middle-write halt, pending ICR enable and one-shot timer-high effects
   - preserve unconsumed output events by removing restore-time peripheral polling
 - **Architectural Rationale & Trade-Offs**:
@@ -1044,8 +1044,39 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - record explicit user approval of the ten hardware abbreviations audlch, audlcl, bplpth, bplptl, sprpth, sprptl, sprdata, sprdatb, audper and audvol in the reviewed hardware vocabulary
 - **Architectural Rationale & Trade-Offs**:
   - Mandatory propagation must separate accepted transfers from active state and downstream reactions. Original focused reproductions confirmed immediate palette visibility and loss of the ninth matured Paula event. Numerical timing and queue modes remain provisional
-  - no silicon measurement is claimed. Saved-state field shapes and version 2 remain intact. This task contributes to Roadmap 2.1 without closing the whole point. Finish this stage and its closing commit, then stop before stage 3.
+  - no silicon measurement is claimed. Saved-state field shapes remain intact. This task contributes to Roadmap 2.1 without closing the whole point. Finish this stage and its closing commit, then stop before stage 3.
 - **Verification & Test Results**:
   - PASS: focused Rust suites for config, CIA, Agnus, Denise, Paula, MemoryBus and machine_loop
   - 12 new production-integration checks cover native PAL/NTSC authored CPU byte writes during DMA contention, Copper receiver timing, queue rejection and complete replay, interrupt input versus CPU acknowledgment order, strobes, DMA control boundaries, Blitter restart and serialized continuation. PASS: strict all-targets Clippy, workspace native compilation, machine_loop WASM compilation, formatting, architecture, 35 design frontmatter records and 727 links, and diff whitespace. Initial English scan reported 10 new register-family abbreviations in 82 occurrences; the user explicitly approved all ten. Code and hardware gates identified the obsolete audio location setter and a peer namespace used for STRHOR; the setter and superseded fixture were retired, and Paula now uses its existing own STRHOR constant. Both gates and the full English scan then passed. Strict Clippy and WASM compilation were rerun successfully after this cleanup; the 12 custom-dispatch checks still pass. RAG retrieval failed
   - targeted local manuals and approved specifications supplied register scope. No firmware or OS integration, vAmigaTS, floppy-media I/O, physical timing calibration or exhaustive final-stage verification was performed. Scoped specification review found no unmapped changed crate paths or unresolved requirement conflict.
+---
+
+### [2026-11-11 12:01 CET] — Separate chipset register access from execution
+- **Affected Subsystems**:
+  - `crates/agnus`
+  - `crates/blitter`
+  - `crates/copper`
+  - `crates/denise`
+  - `crates/memory_bus`
+  - `crates/paula`
+  - `crates/machine_loop/src/save_state.rs`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Collect live and debug custom-register reads and queued writes in custom_registers.rs
+  - Move chip register reads and latch application out of the main execution modules
+  - Separate queued Blitter and Copper register families within Agnus and child register-triggered actions
+  - Keep the shared Agnus propagation queue and all existing register effects and delays
+  - Restore snapshot header version 1 and describe the evolving development format directly
+  - Update source links and correct prior diary references to the snapshot version
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the existing CIA file organization to custom-chip register handling without changing execution behavior or moving queue ownership
+  - Snapshot structures follow current development state without introducing old-format loading
+  - This ordinary refactor does not close a roadmap point
+- **Verification & Test Results**:
+  - PASS: all 221 existing methods in the six refactored crates retain their signatures and bodies
+  - PASS: focused test commands for agnus, denise, paula, blitter, copper, memory_bus and machine_loop
+  - PASS: native workspace compilation and machine_loop WASM compilation
+  - PASS: architecture, workspace formatting and scoped diff whitespace checks
+  - PASS: vault audit of 35 design specifications and 734 links
+  - Scoped specification review found no unmapped changed crate paths or unresolved requirement conflicts
+  - NOT RUN: milestone profile because no roadmap point or milestone is closing

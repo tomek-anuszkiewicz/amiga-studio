@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "blitter"
 status: "active"
 created: 2026-09-19
-updated: 2026-10-12
+updated: 2026-11-11
 related: ["[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/blitter"
@@ -35,6 +35,6 @@ completion status and can request an interrupt through [Paula](Paula.md).
 
 ## Reference documentation and source
 
-- [`blitter.rs`](../../../crates/blitter/src/blitter.rs) implements the Blitter.
+- [`blitter.rs`](../../../crates/blitter/src/blitter.rs) holds Blitter state and advances execution. [`registers.rs`](../../../crates/blitter/src/registers.rs) starts an operation when Agnus commits BLTSIZE.
 - [Amiga Hardware Reference Manual, Chapter 6](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md): Describes word-based block operations, logic, shifts, fill, line mode, and completion.
 - [Agnus.md](Agnus.md) describes Agnus and its components.

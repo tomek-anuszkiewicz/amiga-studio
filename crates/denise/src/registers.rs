@@ -1,4 +1,4 @@
-//! Queued Denise register setters and private due-event application.
+//! Denise register reads, queued writes and private due-event application.
 
 use super::Denise;
 use config::custom_reg::denise as reg;
@@ -350,5 +350,92 @@ impl Denise {
             reg::STREQU | reg::STRVBL | reg::STRHOR | reg::STRLONG | reg::JOYTEST => {}
             _ => {}
         }
+    }
+
+    /// Writes a 16-bit word into BPLxDAT ($110 + plane * 2).
+    ///
+    /// When plane 0 (BPL1DAT) is written, all 6 bpldat latches are transferred into the active shift registers.
+    #[inline]
+    fn apply_bpldat(&mut self, plane: usize, val: u16) {
+        if plane < 6 {
+            self.bpldat[plane] = val;
+            if plane == 0 {
+                self.bpldat_pipe = self.bpldat;
+                self.bpl_armed = true;
+            }
+        }
+    }
+
+    /// Action method: sets BPLCON0 and updates active display mode flags
+    #[inline]
+    fn apply_bplcon0(&mut self, val: u16) {
+        self.bplcon0 = val;
+    }
+
+    /// Action method: sets BPLCON1 horizontal scroll offsets
+    #[inline]
+    fn apply_bplcon1(&mut self, val: u16) {
+        self.bplcon1 = val;
+    }
+
+    /// Action method: sets BPLCON2 priority flags
+    #[inline]
+    fn apply_bplcon2(&mut self, val: u16) {
+        self.bplcon2 = val;
+    }
+
+    /// Reads collision data register (CLXDAT at $DFF00E) and clears it immediately on read
+    #[inline]
+    pub fn read_clxdat(&mut self) -> u16 {
+        let val = self.clxdat;
+        self.clxdat = 0;
+        val
+    }
+
+    /// Reads register with physical read side-effects (e.g. clearing CLXDAT).
+    /// Write-only registers return floating open bus $FFFF.
+    pub fn read_register(&mut self, offset: u16) -> u16 {
+        match offset & 0x1FE {
+            reg::JOY0DAT => self.joy0dat,
+            reg::JOY1DAT => self.joy1dat,
+            reg::CLXDAT => self.read_clxdat(),
+            _ => config::OPEN_BUS_WORD,
+        }
+    }
+
+    /// Reads Joystick/Mouse 0 data register (JOY0DAT at $DFF00A)
+    #[inline(always)]
+    pub fn joy0dat(&self) -> u16 {
+        self.joy0dat
+    }
+
+    /// Reads Joystick/Mouse 0 data register without side-effects for debugging
+    #[inline(always)]
+    pub fn joy0dat_debug(&self) -> u16 {
+        self.joy0dat
+    }
+
+    /// Reads Joystick/Mouse 1 data register (JOY1DAT at $DFF00C)
+    #[inline(always)]
+    pub fn joy1dat(&self) -> u16 {
+        self.joy1dat
+    }
+
+    /// Reads Joystick/Mouse 1 data register without side-effects for debugging
+    #[inline(always)]
+    pub fn joy1dat_debug(&self) -> u16 {
+        self.joy1dat
+    }
+
+    /// Reads Collision Data register with clear-on-read side-effect (CLXDAT at $DFF00E)
+    #[inline(always)]
+    pub fn clxdat(&mut self) -> u16 {
+        self.read_clxdat()
+    }
+
+    /// Reads Collision Data register without clearing for debugging (CLXDAT at $DFF00E)
+    #[inline(always)]
+    pub fn clxdat_debug(&self) -> u16 {
+        self.clxdat
     }
 }

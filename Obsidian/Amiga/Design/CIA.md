@@ -155,8 +155,7 @@ The shared staging helper's immediate-on-overflow fallback is never used here.
 The serialized CIA value contains its divider phase, pending bus countdown,
 chip-local register selectors `0..15`, write values/countdowns/modes, active
 registers, TOD latch operation/value, and unconsumed port-output changes.
-[Snapshot version 2](Application/SaveState.md) adopts this encoding without
-old-format loading by explicit user decision on 2026-11-11. Reset cancels pending
+[Snapshots](Application/SaveState.md) store this encoding directly. Reset cancels pending
 work. Restore preserves these values and resumes effects at their original
 phase rather than polling outputs during loading. Electrical propagation,
 complete timer/serial state-machine reconstruction and silicon calibration

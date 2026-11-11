@@ -8,12 +8,13 @@ pub use copper;
 pub use dma;
 
 use config::chip_ram::OCS_DMA_ADDRESS_MASK;
-use config::custom_reg::agnus as reg;
 use config::mask::dmacon;
 pub use config::AgnusModel;
 use config::{tick_mutations, BeamPosition, DelayedMutation};
 use serde::{Deserialize, Serialize};
 
+mod blitter_registers;
+mod copper_registers;
 mod register_apply;
 mod registers;
 
@@ -343,101 +344,6 @@ impl Agnus {
         self.chip_ram_blocked
     }
 
-    /// Returns the pipelined (H, V) beam position as seen by CPU register reads (5 CCKs ahead of display beam).
-    #[inline]
-    fn pipelined_beam_readout(&self) -> (u16, u16) {
-        let max_lines = match self.model {
-            AgnusModel::OcsNtsc8370 => Self::NTSC_FRAME_LINES,
-            _ => Self::PAL_FRAME_LINES,
-        };
-        let line_ccks = match self.model {
-            AgnusModel::OcsNtsc8370 => {
-                if self.lol {
-                    Self::NTSC_LONG_LINE_CCKS
-                } else {
-                    Self::NTSC_SHORT_LINE_CCKS
-                }
-            }
-            _ => Self::PAL_LINE_CCKS,
-        };
-
-        let mut h = self.hpos + Self::VHPOSR_PIPELINE_LEAD_CCKS;
-        let mut v = self.vpos;
-        if h >= line_ccks {
-            h -= line_ccks;
-            v = v.wrapping_add(1);
-            if v >= max_lines {
-                v = 0;
-            }
-        }
-
-        let effective_v = if h <= Self::VHPOSR_VERTICAL_SETTLE_CCKS {
-            self.vpos
-        } else {
-            v
-        };
-        (h as u16, effective_v)
-    }
-
-    /// Reads Vertical & Horizontal beam position (VHPOSR at $DFF006)
-    ///
-    /// The returned beam position reflects internal Agnus pipeline and bus latency (~5 CCKs ahead of display beam).
-    #[inline]
-    pub fn vhposr(&self) -> u16 {
-        let (h, effective_v) = self.pipelined_beam_readout();
-        let v_low = (effective_v & 0xFF) as u16;
-        (v_low << 8) | (h & 0xFF)
-    }
-
-    /// Reads Vertical beam position high bit, chip ID, and LOF (VPOSR at $DFF004)
-    #[inline]
-    pub fn vposr(&self) -> u16 {
-        let mut val = 0u16;
-        if self.lof {
-            val |= 0x8000;
-        }
-        match self.model {
-            AgnusModel::OcsNtsc8370 => val |= 0x1000,
-            AgnusModel::OcsPal8371 => {}
-        }
-
-        let (_h, effective_v) = self.pipelined_beam_readout();
-        val |= (effective_v >> 8) & 0x07;
-        val
-    }
-
-    /// Reads DMA Control and Blitter status (DMACONR at $DFF002)
-    #[inline]
-    pub fn read_dmaconr(&self) -> u16 {
-        let mut val = self.dmacon & 0x07FF;
-        if self.blitter.is_busy {
-            val |= dmacon::BBUSY;
-        }
-        if self.blitter.is_zero {
-            val |= dmacon::BZERO;
-        }
-        val
-    }
-
-    /// Reads an Agnus register by offset ($000..$1FE).
-    /// Write-only registers return floating open bus $FFFF.
-    #[inline]
-    pub fn read_register(&self, offset: u16) -> u16 {
-        match offset & 0x1FE {
-            reg::DMACONR => self.read_dmaconr(),
-            reg::VPOSR => self.vposr(),
-            reg::VHPOSR => self.vhposr(),
-            _ => config::OPEN_BUS_WORD,
-        }
-    }
-
-    /// Action method: sets BPLCON0 and synchronizes Agnus DMA scheduler
-    #[inline]
-    fn apply_bplcon0(&mut self, val: u16) {
-        self.bplcon0 = val;
-        self.dma.set_bplcon0(val);
-    }
-
     /// Reloads audio DMA pointer from latched start address (AUDxLC) for channel `channel` (0..3)
     #[inline]
     pub fn reload_audio_ptr(&mut self, channel: usize) {
@@ -472,41 +378,5 @@ impl Agnus {
     #[inline]
     pub fn is_blitter_nasty(&self) -> bool {
         (self.dmacon & dmacon::BLTPRI) != 0
-    }
-
-    /// Triggers COPJMP1 strobe: restarts Copper execution at COP1LC
-    #[inline]
-    pub fn strobe_copjmp1(&mut self) {
-        self.copper.restart_list1();
-    }
-
-    /// Triggers COPJMP2 strobe: restarts Copper execution at COP2LC
-    #[inline]
-    pub fn strobe_copjmp2(&mut self) {
-        self.copper.restart_list2();
-    }
-
-    /// Reads DMA Control and Blitter status (DMACONR at $DFF002)
-    #[inline(always)]
-    pub fn dmaconr(&self) -> u16 {
-        self.read_dmaconr()
-    }
-
-    /// Reads DMA Control and Blitter status without side-effects for debugging
-    #[inline(always)]
-    pub fn dmaconr_debug(&self) -> u16 {
-        self.read_dmaconr()
-    }
-
-    /// Reads Vertical and Horizontal beam position register without side-effects for debugging
-    #[inline(always)]
-    pub fn vhposr_debug(&self) -> u16 {
-        self.vhposr()
-    }
-
-    /// Reads Vertical position register and chip ID without side-effects for debugging
-    #[inline(always)]
-    pub fn vposr_debug(&self) -> u16 {
-        self.vposr()
     }
 }

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "copper"
 status: "active"
 created: 2026-09-19
-updated: 2026-10-12
+updated: 2026-11-11
 related: ["[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Blitter.md](Blitter.md)"]
 tracked_paths:
   - "crates/copper"
@@ -36,6 +36,6 @@ accesses share the bus with other channels.
 
 ## Reference documentation and source
 
-- [`copper.rs`](../../../crates/copper/src/copper.rs) implements the Copper.
+- [`copper.rs`](../../../crates/copper/src/copper.rs) holds Copper state and advances execution. [`registers.rs`](../../../crates/copper/src/registers.rs) applies COPCON and list restart strobes.
 - [Amiga Hardware Reference Manual, Chapter 2](../Reference/Hardware%20Reference%20Manual/02%20-%20Chapter%202%20-%20Coprocessor%20Hardware.md): Defines MOVE, WAIT, SKIP, beam comparison, and list restart.
 - [Agnus.md](Agnus.md) describes Agnus and its components.
