@@ -72,6 +72,39 @@ Writes issued after a chip step start counting on its next step. The machine iss
 
 Neither Denise nor Paula owns a `PhysicalMemory` reference. [Agnus](Agnus.md) owns DMA addressing and arbitration. The machine supplies Agnus with Chip RAM during its step, delivers a polled bitplane word to Denise, and handles the currently modeled floppy DMA transfer through physical memory. A pending Copper write goes through `self.memory_bus().write_custom_word(reg, val)`, so Copper and CPU writes share register dispatch. Other cross-chip signals and DMA data movement are coordinated by the machine, not by general CPU address reads through `MemoryBus`.
 
+#### Owner delivery and functional reconstruction
+
+The [existing register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md#modeled-interfaces-and-timing)
+records each offset's named write interface, every recipient, queue mode and
+configured CCK delay. It also identifies the read/debug access classes and
+logical child owners. This is the single address catalog; no separate router
+catalog is required. Agnus's queue is the owning interface for Copper and
+Blitter register requests. A returned due `(offset, value)` proves that the
+owner consumed its event, even if its application arm is still empty.
+
+There are nine such offsets: REFPTR, VPOSW, VHPOSW, COPINS, JOYTEST and the
+four sync strobes. STRHOR reaches both Denise and Paula, making ten pending
+functional recipient paths. Their intended effects remain hardware
+requirements. Roadmap 2.4 owns reconstruction and focused functional tests,
+2.5 owns guest scenarios, and 2.3 additionally owns sync generation and
+motherboard/peripheral signal delivery. CIA PRA/PRB resolved-pin semantics
+have the same 2.4/2.5 ownership; [CIA](CIA.md#named-interfaces-fields-and-functional-limits)
+records the concrete read limitation. Already implemented effects, especially
+CIA-A OVL, retain their regression protection. Expanded address selection is
+2.2 work. These assignments bound owner-delivery verification; they do not
+assert hardware-equivalent register behavior.
+
+All pending custom events live in serializable chip state, along with retained
+Copper/bitplane outputs that have not yet entered a destination queue. Reset
+cancels pending events. Restore resumes the remaining delays without issuing
+another write. The CPU holds the same active micro-step and payload on
+`WaitState`, so a rejected transfer cannot mature; only an accepted transfer
+can later be returned due. Shared preflight can conservatively reject a full
+receiver even when a standalone overwrite could replace its pending slot;
+this costs a retry and prevents partial fan-out. Paula reserves one of its
+32 slots for merged interrupt input, leaving 31 for register writes; Agnus
+and Denise each have 64. All matured entries are returned in retained order.
+
 ### RTC and exceptional access paths
 
 The router forwards addresses `$DC0000-$DC003F` to [`RtcMsm6242b`](../../../crates/rtc/src/rtc.rs). The RTC itself returns `$FF` and ignores writes on even bytes or when its model is `None`; on odd bytes it selects one of 16 four-bit registers using `(addr >> 2) & $0F`. Word operations split into two byte lanes in big-endian order. The machine advances the RTC once per subsystem CCK; the router only handles its mapped accesses.

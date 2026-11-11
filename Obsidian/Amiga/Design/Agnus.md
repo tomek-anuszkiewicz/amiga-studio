@@ -57,9 +57,20 @@ The [`agnus` crate](../../../crates/agnus/src/agnus.rs) coordinates the beam cou
 
 Custom bus writes enter concrete queued setters in [registers.rs](../../../crates/agnus/src/registers.rs), [blitter_registers.rs](../../../crates/agnus/src/blitter_registers.rs) and [copper_registers.rs](../../../crates/agnus/src/copper_registers.rs). These modules share the Agnus queue; the child modules do not own separate propagation queues. Register reads remain in `registers.rs`, while [register_apply.rs](../../../crates/agnus/src/register_apply.rs) applies DMA set/clear bits, pointer masks and child Copper/Blitter changes only when due. Pending configuration leaves active DMA requests under the existing scheduler contract; commitment changes enables before later engine steps. Autonomous pointer reloads and increments remain engine operations. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) owns the shared propagation contract and provisional delays. The 64-entry queue exceeds two accepted CPU/Copper writes per CCK over the maximum four-CCK delay (eight entries); unsupported bursts are rejected rather than applied early. All matured events are applied and returned without an eight-event truncation.
 
+`REFPTR`, `VPOSW`, `VHPOSW` and `COPINS` are accepted and returned as due
+events, but currently fall through the private application match without
+changing refresh, beam or Copper instruction state. This is an implementation
+limit, not harmless hardware behavior. The
+[register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md#state-owners-and-hardware-meaning)
+records their intended meanings and per-offset timing. Roadmap 2.4 owns
+reference-derived internal effects and readback; focused tests there and
+guest scenarios in 2.5 must establish functionality. Agnus refresh sync
+generation and motherboard delivery are separately assigned to 2.3.
+
 ## Reference documentation and source
 
 - [`AgnusModel`](../../../crates/config/src/config.rs) defines the two selectable chip models.
 - [`Agnus`](../../../crates/agnus/src/agnus.rs) owns the DMA scheduler, Blitter, and Copper instances.
 - [A500/A2000 Technical Reference Manual, Fat Agnus](../Reference/A500%20A2000%20Technical%20Reference%20Manual/11%20-%20Section%206%20-%20Fat%20Agnus%20Chip.md): Explains the beam timebase, DMA controllers, and address generation.
 - [DMA.md](DMA.md), [Blitter.md](Blitter.md), and [Copper.md](Copper.md) own the component specifications.
+- [Register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md): Separates hardware register meaning, configured delivery and pending effects.

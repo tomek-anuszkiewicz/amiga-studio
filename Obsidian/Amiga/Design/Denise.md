@@ -65,9 +65,23 @@ The implementation spans three workspace crates:
 
 Concrete queued setters in [registers.rs](../../../crates/denise/src/registers.rs) handle controls, palette, bitplane data, sprite latches and synchronization strobes. Palette and strobes use a positive **1 CCK provisional** delay. Sync effects remain unimplemented after commitment. Both CPU and DMA BPLxDAT writes reach the same private latch application; committing BPL1DAT transfers the holding latches and arms serialization. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) specifies the common issue boundary. The fixed 64-entry queue exceeds CPU/Copper plus one bitplane DMA word per CCK over its one-CCK delay; every due event is applied once. Engine shifter movement and sampled port inputs remain separate operations.
 
+`JOYTEST` also has an empty application arm. Hardware writes should affect the
+upper six bits of both counter bytes for both game ports; the current queue
+only delivers the request. Machine peripheral polling then supplies JOY
+read latches from GamePorts, so assigning only a transient Denise field would
+not establish persistent counter behavior. Roadmap 2.4 owns that state and
+the missing sync reactions, with 2.5 guest checks; 2.3 owns incoming signal
+generation/routing. The
+[register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md#read-interfaces-and-current-limits)
+records all relevant interfaces and limitations. Live `CLXDAT` reads clear
+collision state; `clxdat_debug` inspects it without acknowledgment or queue
+advancement. Already implemented display and collision behavior remains in
+place while the missing functional work is pending.
+
 ## References
 
 - [General Architecture](General%20Architecture.md): Places Denise and its crates in the machine architecture.
 - [Amiga Hardware Reference Manual, Chapter 3](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md): Explains bitplanes, fetch and display windows, resolution, dual playfields, and HAM.
 - [Amiga Hardware Reference Manual, Chapter 7](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): Describes video priority and collision detection.
 - [`crates/denise/src/denise.rs`](../../../crates/denise/src/denise.rs): Living implementation of the Denise coordinator.
+- [Register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md): Register meanings, named accessors, recipient sets and missing effects.

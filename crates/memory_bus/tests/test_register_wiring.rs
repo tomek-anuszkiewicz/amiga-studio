@@ -8,7 +8,7 @@
 use agnus::Agnus;
 use cia::Cia;
 use config::custom_reg;
-use config::{A500Config, RtcModel, VideoStandard};
+use config::{A500Config, DelayedMutation, MutationMode, RtcModel, VideoStandard};
 use denise::{Denise, DeniseModel};
 use memory_bus::MemoryBus;
 use paula::Paula;
@@ -23,6 +23,146 @@ struct TestMotherboard {
     cia_a: Cia,
     cia_b: Cia,
     rtc: RtcMsm6242b,
+}
+
+// Receiver order: Agnus, Denise, Paula. The OCS address families come from the
+// ownership matrix; delays and queue modes are the provisional transport contract.
+fn delivery_contract(offset: u16) -> [(u8, MutationMode); 3] {
+    use MutationMode::{OverwritePending as Replace, Pipeline};
+    let mut receivers = [(0, Replace); 3];
+    match offset {
+        0x020
+        | 0x022
+        | 0x028..=0x02e
+        | 0x040..=0x056
+        | 0x060..=0x066
+        | 0x080..=0x086
+        | 0x08c
+        | 0x108
+        | 0x10a
+        | 0x120..=0x13e => {
+            receivers[0] = (2, Replace);
+        }
+        0x058 | 0x088 | 0x08a => receivers[0] = (1, Replace),
+        0x070..=0x074 => receivers[0] = (1, Pipeline),
+        0x08e | 0x090 | 0x100 => {
+            receivers[0] = (4, Replace);
+            receivers[1] = (1, Replace);
+        }
+        0x092 | 0x094 => receivers[0] = (4, Replace),
+        0x096 => {
+            receivers[0] = (2, Replace);
+            receivers[2] = (2, Replace);
+        }
+        0x036 | 0x038 | 0x03a | 0x03e | 0x098 | 0x102 | 0x104 | 0x180..=0x1be => {
+            receivers[1] = (1, Replace);
+        }
+        0x03c => {
+            receivers[1] = (1, Replace);
+            receivers[2] = (1, Replace);
+        }
+        0x110..=0x11a => receivers[1] = (1, Pipeline),
+        0x024 | 0x026 | 0x032 | 0x034 | 0x07e | 0x09e => receivers[2] = (2, Replace),
+        0x030 => receivers[2] = (1, Pipeline),
+        0x09a | 0x09c => receivers[2] = (1, Replace),
+        0x0a0..=0x0da => match offset & 0xf {
+            0 | 2 => receivers[0] = (2, Replace),
+            4 | 6 | 8 => receivers[2] = (2, Replace),
+            0xa => receivers[2] = (1, Pipeline),
+            _ => {}
+        },
+        0x0e0..=0x0f6 => receivers[0] = (2, Replace),
+        0x140..=0x17e => {
+            receivers[1] = (1, Replace);
+            if offset & 7 < 4 {
+                receivers[0] = (2, Replace);
+            }
+        }
+        _ => {}
+    }
+    receivers
+}
+
+#[test]
+fn every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due() {
+    for video in [VideoStandard::Pal, VideoStandard::Ntsc] {
+        let mut writable = 0;
+        for offset in (0..=0x1fe).step_by(2) {
+            let contract = delivery_contract(offset);
+            writable += usize::from(contract.iter().any(|&(delay, _)| delay != 0));
+            // All aligned slots, including reserved/dummy addresses, and both byte lanes.
+            for lane in 0..3 {
+                let mut mb = TestMotherboard::new();
+                mb.agnus = Agnus::new(A500Config::bare_512k(video).agnus_model());
+                let address = 0xdff000 + u32::from(offset);
+                let result = match lane {
+                    0 => mb.router().write_word(address, 0xa55a),
+                    1 => mb.router().write_byte(address, 0x5a),
+                    _ => mb.router().write_byte(address + 1, 0x5a),
+                };
+                assert_eq!(result, BusResult::Ready(()), "{video:?} {offset:03x}");
+                let value = match offset {
+                    0x038..=0x03e | 0x088 | 0x08a => 0, // Address strobes ignore data.
+                    _ if lane == 0 => 0xa55a,
+                    _ => 0x5a5a,
+                };
+                for (queue, &(delay, mode)) in [
+                    mb.agnus.mutations.as_slice(),
+                    mb.denise.mutations.as_slice(),
+                    mb.paula.mutations.as_slice(),
+                ]
+                .into_iter()
+                .zip(&contract)
+                {
+                    let expected: Vec<_> = if delay == 0 {
+                        vec![]
+                    } else {
+                        vec![DelayedMutation {
+                            reg_offset: offset,
+                            value,
+                            remaining_cck: delay,
+                            mode,
+                        }]
+                    };
+                    assert_eq!(
+                        queue.iter().flatten().copied().collect::<Vec<_>>(),
+                        expected,
+                        "{video:?} {offset:03x} lane {lane}"
+                    );
+                }
+                for elapsed in 1..=5 {
+                    let due = [
+                        mb.agnus
+                            .step_cck()
+                            .into_iter()
+                            .flatten()
+                            .collect::<Vec<_>>(),
+                        mb.denise
+                            .step_cck(mb.agnus.beam())
+                            .into_iter()
+                            .flatten()
+                            .collect(),
+                        mb.paula.step_cck().into_iter().flatten().collect(),
+                    ];
+                    for (events, &(delay, _)) in due.iter().zip(&contract) {
+                        let expected = if delay != 0 && elapsed == delay {
+                            vec![(offset, value)]
+                        } else {
+                            vec![]
+                        };
+                        assert_eq!(
+                            *events, expected,
+                            "{video:?} {offset:03x} lane {lane} elapsed {elapsed}"
+                        );
+                    }
+                }
+                assert!(mb.agnus.mutations.iter().all(Option::is_none));
+                assert!(mb.denise.mutations.iter().all(Option::is_none));
+                assert!(mb.paula.mutations.iter().all(Option::is_none));
+            }
+        }
+        assert_eq!(writable, 180);
+    }
 }
 
 impl TestMotherboard {
@@ -110,6 +250,74 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
         .read_custom_word_debug(custom_reg::paula::DSKBYTR);
     assert_eq!(peeked_again, 0x70A5);
     assert_eq!(mb.paula.dskbytr & 0x8000, 0);
+}
+
+#[test]
+fn custom_live_and_debug_reads_select_the_owner_or_explicit_fallback() {
+    let mut mb = TestMotherboard::new();
+    mb.agnus.dmacon = 0x0123;
+    mb.agnus.lof = true;
+    mb.agnus.step_cck();
+    mb.denise.joy0dat = 0x2345;
+    mb.denise.joy1dat = 0x3456;
+    mb.denise.clxdat = 0x4567;
+    mb.paula.adkcon = 0x5678;
+    mb.paula.pot0dat = 0x6789;
+    mb.paula.pot1dat = 0x789a;
+    mb.paula.potgor = 0x89ab;
+    mb.paula.serial_port.serdatr = 0x9abc;
+    mb.paula.dskbytr = 0x90cd;
+    mb.paula.interrupts.intena = 0x1234;
+    mb.paula.interrupts.intreq = 0x2346;
+    assert!(mb.denise.set_color(0, 0x0abc));
+    // Beam/status computation is delegated to the owner. This test establishes
+    // reader selection; existing owner tests cover computed-value semantics.
+    let readable: [(u16, u16); 14] = [
+        (0x002, mb.agnus.dmaconr()),
+        (0x004, mb.agnus.vposr()),
+        (0x006, mb.agnus.vhposr()),
+        (0x00a, 0x2345),
+        (0x00c, 0x3456),
+        (0x00e, 0x4567),
+        (0x010, 0x5678),
+        (0x012, 0x6789),
+        (0x014, 0x789a),
+        (0x016, 0x89ab),
+        (0x018, 0x9abc),
+        (0x01a, 0x90cd),
+        (0x01c, 0x1234),
+        (0x01e, 0x2346),
+    ];
+    let before = (mb.agnus.clone(), mb.denise.clone(), mb.paula.clone());
+    for offset in (0..=0x1fe).step_by(2) {
+        let expected = readable
+            .iter()
+            .find(|&&(reg, _)| reg == offset)
+            .map_or(0xffff, |&(_, value)| value);
+        assert_eq!(
+            mb.router().read_word_debug(0xdff000 + u32::from(offset)),
+            expected,
+            "debug {offset:03x}"
+        );
+    }
+    assert_eq!(
+        (mb.agnus.clone(), mb.denise.clone(), mb.paula.clone()),
+        before
+    );
+    for offset in (0..=0x1fe).step_by(2) {
+        let expected = readable
+            .iter()
+            .find(|&&(reg, _)| reg == offset)
+            .map_or(0xffff, |&(_, value)| value);
+        assert_eq!(
+            mb.router().read_word(0xdff000 + u32::from(offset)),
+            BusResult::Ready(expected),
+            "live {offset:03x}"
+        );
+    }
+    assert_eq!(mb.denise.clxdat, 0);
+    assert_eq!(mb.paula.dskbytr, 0x10cd);
+    assert_eq!(mb.denise.mutations, before.1.mutations);
 }
 
 #[test]

@@ -93,6 +93,56 @@ The timer addresses read the running counter and write a separate reload latch. 
 | `$BFDE00` | `CRA` control bits | `CRA` control and `LOAD` strobe | RW | Timer A, PB6, serial mode | Unknown | Timer A mode and source; `LOAD` bit reads as zero. |
 | `$BFDF00` | `CRB` control bits | `CRB` control and `LOAD` strobe | RW | Timer B, PB7, TOD | Unknown | Timer B mode; bit 7 selects TOD time or alarm writes. |
 
+## Named interfaces, fields and functional limits
+
+Both supported PAL/NTSC OCS machines use this same pair of 8520 interfaces.
+For each connected row above, lowercase the register name to find the named
+reader in [`registers.rs`](../../../crates/cia/src/registers.rs), and prefix
+`set_` for its queued writer: for example `tahi()` and `set_tahi(value)`.
+[`cia_registers.rs`](../../../crates/memory_bus/src/cia_registers.rs) selects
+the CIA instance and calls those methods. The queue stores the selector
+`0..15`, not a motherboard address. Every connected write uses `Pipeline`
+mode and the next falling-E capture boundary described below. Selector B
+reads `$FF` and ignores writes without a synchronization or capture event.
+
+Debug reads reuse the ordinary readers without side effects for ports, directions,
+timers, SDR and controls. ICR uses `icr_debug`, and TOD uses
+`todlo_debug/todmid_debug/todhi_debug`: they inspect the live time counter,
+without acquiring/releasing or consulting the held TOD read snapshot. Live
+TOD readers use the held value while latched; live high/low reads schedule
+acquire/release for falling E. Live ICR acknowledges only after bus acceptance.
+These access classes do not certify electrical pin or engine correctness.
+
+The register-family sections in
+[Appendix F](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md#register-functional-description)
+define the remaining fields: each bit of a port data or direction register belongs to one pin;
+the timer halves form separate 16-bit reload/counter values; the three TOD
+bytes form a 24-bit count/alarm; SDR transfers eight serial bits. ICR bits 0–4
+identify Timer A, Timer B, alarm, serial and FLAG sources, with bit 7 reporting
+the aggregate interrupt on reads or selecting mask set/clear on writes.
+CRA/CRB bits 0–4 select start, timer output on PB6/PB7, toggle/pulse,
+one-shot/continuous and force-load. CRA bit 5 selects the count input, bit 6
+selects serial direction and bit 7 is unused. CRB bits 6–5 select E, CNT,
+Timer A underflow, or underflow gated by CNT; bit 7 selects time/alarm writes.
+LOAD is an action with no stored readable bit. The port-B `PC` handshake
+interval in the tables is a documented hardware interval, not the configured
+queue delay or an implemented handshake claim.
+
+The current named access and capture paths exist for all thirty connected
+addresses, but port reads do not yet implement the documented separation of
+output latches, external inputs and resolved pins: `pra()` and `prb()` return
+their shared stored fields, and machine polling can replace PRA input bits.
+In particular, CIA-B PRB with DDRB=`$00` and latch=`$00` reads `$00` rather
+than the pulled-high `$FF` expected without an external low driver. The
+output notification already computes released pins using `PRB | !DDRB`;
+that does not repair the read interface. Roadmap 2.4 owns PRA/PRB separation
+and port direction semantics, with focused functional tests and 2.5 guest input/readback
+scenarios. Roadmap 2.3 owns connector and peripheral signal routes. The
+remaining timer, serial, TOD, handshake and read-clear engine details belong
+to 2.4/2.5; existing regressions stay in place. CIA-A OVL capture, mapping,
+polarity, reset and serialized continuation are already implemented and
+must remain protected.
+
 ## Runtime register capture and bus synchronization
 
 [MemoryBus](MemoryBus.md#cia-and-boot-overlay) selects each connected address
@@ -150,7 +200,7 @@ and mature together before slots are reused. Sixteen slots cover legal CPU
 traffic, which accepts at most one transfer per E period. Direct callers can
 fill the buffer and must retry a setter that returns `false`. Processing uses
 a due buffer of the same capacity, so simultaneous commitment loses no writes.
-The shared staging helper's immediate-on-overflow fallback is never used here.
+The shared staging helper rejects overflow without immediate application.
 
 The serialized CIA value contains its divider phase, pending bus countdown,
 chip-local register selectors `0..15`, write values/countdowns/modes, active

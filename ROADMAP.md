@@ -2,49 +2,67 @@
 
 ## Step 2: HRM-Aligned Custom Chipset Reconstruction
 
-- **2.1: Verify Custom Register Paths and Physical Signal Routing**
-  - Inventory every custom-register and CIA-A/CIA-B address decoded by `memory_bus.rs` against the register definitions and [ownership matrix](Obsidian/Amiga/Design/Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md). For each writable register, trace CPU and Copper access where applicable through byte/word decoding, all intended recipients, delayed mutation staging and commit where applicable, and the receiving chip's own state or explicit action. Account for multi-chip fan-out, set/clear semantics, and strobes without requiring a stored field where hardware behavior does not call for one; repair missing routes and missing commit effects for queued writes.
-  - For each readable register, verify that live and debug reads use the correct chip state or computed value, including read side effects, CIA selection and lane behavior, documented dummy addresses, and the modeled open-bus fallback.
-  - Compare A500 wiring and the [cross-chip signals catalog](Obsidian/Amiga/Design/Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md) with `memory_bus.rs` and `machine_loop.rs`. Trace register-bus strobes, DMA requests and grants, interrupts, sync, reset, and peripheral pins from source output through machine routing to recipient input at the required CCK phase; resolve missing, reversed, or direct peer connections against hardware evidence.
-  - **Gate:** Record a register-by-register route, recipient, commit/state or action, and read-result inventory, distinguishing implemented behavior from a decoder branch or queued mutation. Focused chip, bus, and machine integration tests cover each distinct register behavior and signal path, including exceptions and multi-chip writes. No mapped write silently disappears or remains queued without its intended effect; identify hardware behavior that remains unproven rather than inventing it.
+Current execution scope through 2.5 and the final propagation audit excludes
+vAmigaTS execution (including adapted payloads), Kickstart/AmigaOS integration,
+and floppy-media reads/writes. Use directly loaded authored assembly programs
+and deterministic pin/latch inputs. ROM overlay checks use synthetic ROM bytes
+without executing firmware. Later firmware, media, and external-suite work is
+unscheduled and must not start automatically after the current plans.
 
 - **2.2: Model Old Gary Address Decoding on the A500 (`MEM-GARY-01`)**
   - In every supported A500 preset, route banks `$A0-$BF` to the CIA decoder. A13/A12 are active-low selects: `00` selects both CIAs, `01` CIA-B, `10` CIA-A, and `11` neither. A11..A8 select the register; A7..A1 mirror it. `$BFC000` is one address in the `$BFC000-$BFCFFF` selected block, and the same selection pattern repeats in other mapped banks. CIA register selector `B` remains unconnected.
   - With both CIAs selected, an even byte read uses CIA-B and an odd byte read CIA-A; a word read puts CIA-B in the high byte and CIA-A in the low byte. A byte write sends the same value to every selected CIA regardless of parity; a word write sends the high byte to selected CIA-B and the low byte to selected CIA-A. Pass full register identities to the existing CIA recipients and preserve CIA-A Port A overlay effects on every alias. Retain the documented fixed placeholder for an inactive read lane rather than assuming a physical data-bus latch.
   - Route `$DE` and `$DF` through the same custom-register decoder, including its low-offset mirror, byte/word behavior, delayed mutations, side effects, and side-effect-free debug reads. Preserve installed Slow RAM and RTC precedence; evaluate other model-dependent mirrors separately. Update [MemoryBus](Obsidian/Amiga/Design/MemoryBus.md), [Physical Memory](Obsidian/Amiga/Design/Physical%20Memory.md), [CIA](Obsidian/Amiga/Design/CIA.md), and the [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md) together with the code. Recheck the HRM wording; WinUAE `cia.cpp`/`memory.cpp` and `ref_src/vAmiga/Core/Components/Memory/Memory.cpp` corroborate the decode but do not prove physical A500 wiring without schematic or measured evidence.
+  - Verify acceptance and retry behavior separately from address selection and delayed effects. Record common and model-specific coverage for both supported PAL/NTSC OCS models and applicable memory presets.
   - **Gate:** First reproduce failures against the original router and bank table. Focused `memory_bus` and `physical_memory` tests cover dual selection, byte/word lanes and writes, nonzero register selectors, low-bit and `$A0-$BE` aliases, inactive selection, overlay effects, `$DE` reads/writes/debug reads, and Fast/Slow RAM and RTC boundaries. Then pass adjacent bus and machine integration checks.
 
-- **2.3: Strategic Clean-Slate Reset of Custom Chips & Machine Loop (Baseline HRM Spec Alignment)**
-  - **Objective:** Cleanse and reset `crates/machine_loop` and all specialized custom chip subsystems (`agnus`, `denise`, `paula`, `cia`, `copper`, `blitter`, `floppy`) outside the CPU and physical memory to pure HRM architectural specifications, purging accumulated legacy scaffolding.
+- **2.3: Verify Inter-Chip Signal Routing and Propagation**
+  - **Objective:** Verify and repair connections from chip outputs through motherboard routing to recipient inputs at the required CCK phase. Keep rules, skills, workflows, and design documentation consistent with the hardware-supported behavior. Use the register access and commit behavior established in Step 2.1 as the starting point.
+  - **Mandatory order:** First review A500 wiring, hardware books, vAmiga, Minimig, and the Amiga replacement FPGA project, including keyboard, game ports, floppy, serial, parallel, and host/media boundaries. Then implement and verify motherboard signal routing and electrical propagation. Only after that start the book-driven chipset reconstruction in Step 2.4.
   - **Actionable Scope:**
-    - Cleanse register definitions and reset states to align strictly with the official Commodore Amiga Hardware Reference Manual (HRM).
-    - Establish an "idealistic", pure architectural baseline with zero ad-hoc hacks.
-    - **Decision required before implementation:** The proposed removal/deferment of timing and hardware quirks conflicts with the current design invariants. Review it against [specification compliance](.agents/rules/spec-compliance.md) and the [Platform Quirks Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md); preserve documented behavior unless an explicit specification change is approved.
+    - Compare A500 wiring and the [cross-chip signals catalog](Obsidian/Amiga/Design/Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md) with `memory_bus.rs` and `machine_loop.rs`. Trace register-bus strobes, DMA requests and grants, interrupts, sync, reset, and peripheral pins from source output through machine routing to recipient input at the required CCK phase; resolve missing, reversed, or direct peer connections against hardware evidence.
+    - **Transferred from 2.1:** Implement and verify STREQU/STRVBL/STRHOR/STRLONG generation and delivery from Agnus refresh/RGA through Denise and, for STRHOR, Paula. Verify capture phase and recipient sampling; assign absent engine reactions explicitly to 2.4 with functional tests in 2.4/2.5. Verify CIA connector routes/protocols and mouse/joystick signal delivery using existing working interfaces or deterministic endpoints; 2.1 does not supply repaired pin/counter semantics. Review signal-route dependencies of the register effects reconstructed in 2.4. These are pending 2.3 requirements, not prerequisites for 2.1 closure.
+    - **Propagation and ordering:** Verify output polling, recipient input updates, and downstream reactions, including interrupt priority, blitter busy, disk DMA, and Copper WAIT/SKIP. Distinguish the register-write staging and commit checked in Step 2.1 from the resulting signal's delivery to another chip; reuse that evidence instead of repeating the register inventory.
+    - **Propagation substrate:** Implement scheduled output delivery and recipient sampling with explicit phase ordering, serializable pending signals, deterministic resume, and before/due/after boundary checks. Keep register commitment distinct from subsequent signal delivery and avoid double delay. Mark provisional delays separately from measured hardware values.
+    - **Complete transfers and interaction:** Follow each in-scope DMA stream from request or scheduled opportunity through arbitration/grant, address/data transfer, receiving latch, and pointer/count update. Verify applicable bus retries, competing CPU/display/audio/Copper/Blitter activity, active configuration changes, and simultaneous interrupt assertion/acknowledgment. Record state ownership and PAL/NTSC-specific phase behavior. Inspect disk-media architecture as reference evidence only; restrict current disk checks to register/pin propagation with deterministic inputs, without drive/media transfers.
+    - **Documentation:** Verify that `hardware-bus-topology.md`, relevant design specs, and `MachineLoop` documentation describe both register-write propagation (e.g. `COLOR00`, `BPLCON0`, `INTENA`) and inter-chip signal delivery with the established clock-phase ordering. Update affected governance guidance and missing sections. Resolve implementation/documentation conflicts against hardware evidence, and keep unverified timing explicit.
   - **Verification Gate:**
-    - `python tools/verification/verify.py check build`
-    - `python tools/verification/verify.py check architecture`
-
-- **2.4: Signal Propagation Documentation Audit & Hardening**
-  - **Objective:** Ensure that all agent governance files (rules, skills, workflows, design docs) accurately and completely describe the two signal propagation mechanisms so any future agent has zero ambiguity about how to implement them correctly.
-  - **Actionable Scope:**
-    - **Register-write propagation:** Verify that `hardware-bus-topology.md`, relevant design specs, and `MachineLoop` documentation clearly describe what happens clock-phase by clock-phase when a CPU or DMA write lands in a custom chip register (e.g. `COLOR00`, `BPLCON0`, `INTENA`). Update or author missing sections.
-    - **Special inter-chip signal lines:** Verify documentation for DMA request/grant (`RGA` bus), interrupt lines (`_IPL0`–`_IPL2`, `_INTREQ`/`_INTENA` propagation through Paula → CIA → CPU), and any other active signal paths (e.g. blitter busy, disk DMA, copper WAIT/SKIP). Ensure polling methods and timing are documented with cycle-phase precision.
-    - Sync any divergence between documentation and the actual `MachineLoop` poll-and-route implementation.
-  - **Verification Gate:**
+    - Record each signal's source, motherboard route, recipient, delivery phase, and observable effect. Focused machine integration tests cover distinct signal paths and ordering, including missing, reversed, or direct peer connections; reuse Step 2.1 evidence where coverage overlaps.
+    - Explicitly cover all four transferred sync strobes and both STRHOR recipients, CIA/peripheral direction and return paths, and game-port signal delivery. Queue insertion alone does not pass this gate; any missing engine reaction must have a concrete 2.4 handoff rather than being discarded.
+    - Establish transport and phase correctness using working paths or deterministic test endpoints. Record absent in-scope engine/device behavior and hand its full-exchange tests to Step 2.4; keep disk-media and firmware execution deferred; endpoint simulation does not prove that behavior.
     - Run the scoped specification review and [vault link/frontmatter audit](.agents/skills/obsidian-vault-linking/SKILL.md); the milestone command does not execute documentation maintenance. At point closure, run commit and milestone profiles at their existing triggers.
     - The intended commit changes were reviewed against documents selected by `tracked_paths`; real corrections are included, and accurate documents remain untouched.
 
-- **2.5: HRM-Aligned Subsystem Test Suite Authoring**
-  - **Objective:** Write a clean, authoritative test suite for each custom chip subsystem derived strictly from the Amiga Hardware Reference Manual — not from source code inference. Tests must be simple, register-behavioral, and free from cycle-exact timing complexity.
+- **2.4: Reconstruct Custom Chipset Behavior from Book Specifications**
+  - **Objective:** Replace existing behavioral logic in `crates/machine_loop` and the custom chip subsystems (`agnus`, `denise`, `paula`, `cia`, `copper`, `blitter`, `floppy` and their affected children) with behavior derived from the hardware books. Preserve the established CPU/storage boundaries, address decoding, direct register interfaces, clocking, propagation, serialization, and supported hardware invariants.
+  - **Prerequisite:** Complete Step 2.3's three-reference review and implementation/verification of signal propagation before replacing chipset behavioral engines. Reuse that substrate and its phase contracts; complete the device/engine behavior and full-exchange tests handed over by the review.
   - **Actionable Scope:**
-    - One test file per subsystem: `test_agnus.rs`, `test_denise.rs`, `test_paula.rs`, `test_cia.rs`, `test_copper.rs`, `test_blitter.rs`.
-    - Each test: write a register value → advance minimum required clocks → assert observable output or state. No multi-chip timing chains in L1 tests.
-    - Simple inter-subsystem interaction tests (L2): focus on the cleanest signal paths — e.g. CIA timer overflow → Paula `_INT` → CPU IPL change. Prefer to write inter-chip tests and any required implementation changes during horizontal blanking (hblank return) when bus is idle, to minimize contention complexity.
-    - Do **not** target vAmigaTS or silicon-level cycle accuracy in this step — that is Step 2.9 and Step 4.
+    - Establish book-derived behavior contracts with exact source sections, supported models, state transitions, reset behavior, outputs, and explicit timing unknowns. Replace obsolete mechanisms and affected callers coherently; retain useful regression protection.
+    - Identify one authoritative owner for each pointer, counter, latch, and pending event, separating programmed reload values from active engine state. Audit apparent duplicate DMA address state, including audio fields, against Agnus ownership and actual consumers.
+    - **Transferred register behavior:** Reconstruct and verify register-induced actions, side effects and computed read values beyond 2.1's owner-delivery boundary. Explicitly repair CIA PRA/PRB latch versus sampled-pin semantics, JOYTEST counter ownership/effects and persistence through polling, VPOSW/VHPOSW beam changes/readback, and required REFPTR/COPINS internal effects. Complete sync/peripheral engine reactions handed over by 2.3. Preserve documented access/queue contracts and already working effects such as OVL. Acknowledged writes or consumed placeholders do not prove functional behavior; add focused tests here and complete guest write/read/output scenarios in 2.5.
+    - Reconstruct complete in-scope DMA transfers and relevant active-state transitions in dependency order: bus/clocks and arbitration, autonomous DMA/Copper/Blitter, display/sprites, then peripherals/audio/CIA. Verify enable/disable, restart, parameter-update, interrupt acknowledgment, and reset boundaries according to each mechanism's contract.
+    - Resolve conflicts among books, approved specifications, measurements, and existing behavior under [specification compliance](.agents/rules/spec-compliance.md). Preserve documented quirks and invariants unless an explicit change is approved; do not leave required functionality inert or call provisional delays measured hardware timing.
   - **Verification Gate:**
+    - Book-derived behavioral and production-machine integration tests demonstrate actual data, output, state transitions, and reset behavior for reconstructed subsystems, including applicable PAL/NTSC differences. Register assignments and a successful build alone do not establish completion.
+    - The named CIA port, JOYTEST, beam-write, REFPTR/COPINS and 2.3 functional handoffs have reference-supported contracts and executed tests of required behavior, resulting read values and side effects. Any reference-supported non-action must be explained explicitly rather than inferred from the current empty handler.
+    - `python tools/verification/verify.py check build`
+    - `python tools/verification/verify.py check architecture`
+    - Run relevant native/WASM and subsystem checks, plus the existing commit and milestone closure procedures at their required triggers.
+
+- **2.5: Book-Derived Guest Programs and Behavioral Test Suites**
+  - **Objective:** Derive small executable M68000 scenarios from hardware-book descriptions of supported chip behavior. Load the same program/data artifacts through the GUI and automated production-machine tests, with independent expected pixels, digital audio samples, memory, and register/state results.
+  - **Actionable Scope:**
+    - Reuse useful isolated tests and shared test-side helpers. Each authored scenario has its own directory containing `test.rs`, `program.as`, and the compiled `program.bin`, book provenance, documented initial conditions, and bounded direct-load execution; guest code performs the operation under test rather than host code pre-filling its result.
+    - Check sprite/display pixels in the frame buffer, Blitter destination data and completion, digital audio sequences, and relevant registers/memory. Preserve write-only, read-clear, and strobe semantics. Connect the existing GUI viewport to real frame output before claiming manual visual validation.
+    - **Register functional verification transferred from 2.1:** Use guest accesses to verify the reconstructed effects, readable counterparts and side effects, including CIA port direction/input reads, JOYTEST counter writes and later polling/movement, beam writes/readback and applicable Blitter/Copper/sync actions. Include REFPTR/COPINS where their reference-supported access permits such a scenario. Verify what happens inside and after the receiving engine; do not treat 2.1's queue-delivery evidence as proof of these results.
+    - Include complete DMA paths using distinct successive data, applicable `WaitState` retries with exactly-once effects, shared-bus competition, active configuration changes, and simultaneous interrupt assertion/acknowledgment. Exercise the interactions being tested rather than restricting every scenario to an idle bus or hblank.
+    - Record PAL/NTSC OCS and memory-preset applicability, run required common paths on both supported Agnus models, and add model-specific timing/geometry cases. Separate supported-model coverage from default PAL results.
+    - Compare uninterrupted and restored execution for relevant pending/active operations. Keep provisional model timing distinct from unknown silicon calibration; full vAmigaTS capture and lockstep work remain separate.
+  - **Verification Gate:**
+    - Each agreed behavior has independently derived output/state assertions and reproducible GUI/automatic program execution. Nonempty buffers, register assignments, or a few introductory programs alone do not establish complete coverage.
     - `python tools/verification/verify.py commit`
     - `python tools/verification/verify.py check architecture`
-    - Tests verify subsystem behavior, boundary conditions, and relevant failure modes per unit-testing-policy; no assertion-count quota applies.
+    - Run affected program, chip, machine, debugger/GUI and native/WASM checks. Tests cover relevant boundaries, interactions, and failures under the testing policy; apply existing roadmap-point closure gates when the full scope is verified.
 
 - **2.6: Lockstep Differential Tracer vs. vAmiga (Contingency)**
   - **Trigger:** Only if HRM-aligned tests (2.5) fail to isolate a regression — i.e. tests pass but behavior diverges from reference in ways not yet covered by the test suite.
@@ -60,17 +78,18 @@
 
 - **2.7: Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution**
 
-  - **Objective:** Operationalize the authentic floppy disk subsystem and Kickstart ROM overlay bootloader sequence to load and execute genuine Amiga programs from disk images (`.adf`).
+  - **Objective:** When separately scheduled, bring up the native disk/Kickstart/OS path and its boot prerequisites; this work is deferred from the current plans. Load and execute genuine Amiga programs from disk images (`.adf`).
   - **Actionable Scope:**
     - Implement `DF0:` drive mechanics, MFM track deserializer, and DMA track streaming.
     - Wire Kickstart ROM overlay boot sequence ($000000 / $FC0000).
     - Establish end-to-end capability to boot ADF disk images as the foundational prerequisite for native test harnesses.
+    - Verify guest OS startup, required services, program launching, and return behavior. Address firmware/media/model failures without substituting host-simulated OS initialization.
   - **Verification Gate:**
     - Unit tests in `crates/floppy/tests/`
     - Machine loop boot integration tests in `crates/machine_loop/tests/`
 
 - **2.8: vAmigaTS Native Disk-Based Verification & Self-Testing**
-  - **Objective:** Execute native Amiga disk-based test suites validating drive control, floppy DMA, and CPU coordination.
+  - **Objective:** When separately scheduled after 2.7, execute native vAmigaTS using the verified disk/firmware/OS path, validating drive control, floppy DMA, CPU coordination, and required operating-system interactions.
   - **Actionable Scope:**
     - Execute disk-based vAmigaTS tests verifying that the emulator can run native Amiga software to test itself.
     - Leverage unthrottled headless execution (running as fast as the host CPU permits without wall-clock rate limiting) for maximum throughput.

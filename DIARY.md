@@ -989,94 +989,49 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - NOT RUN: milestone profile because no roadmap point or milestone is being closed
 ---
 
-### [2026-11-11 10:46 CET] — Queue direct CIA register access at explicit E-clock phases
-- **Affected Subsystems**:
-  - `crates/cia`
-  - `crates/config`
-  - `crates/memory_bus`
-  - `crates/machine_loop`
-  - `crates/floppy`
-  - `tools/verification`
-  - `Obsidian/Amiga/Design`
-- **What Was Changed (The Concrete Reality)**:
-  - CIA-DIRECT-DISPATCH-20261111: replace CIA motherboard-address APIs with named readers and queued setters and one direct MemoryBus address match per access
-  - Migrate benchmark CIA constructors and remove the unused Denise address-based inspection decoder exposed by CIA API retirement; active named debug readers remain in use
-  - Route effective Port-B levels through DDRB-controlled output drivers and input pull-ups; a focused no-media regression reproduced unintended drive selection from raw latch routing before the fix
-  - Record explicit user approval for the four vocabulary terms enqueuing, unrouted, cias and vma in their software/hardware catalogs
-  - separate phase-dependent CPU bus acknowledgment from falling-E register capture and same-phase CIA-A OVL routing
-  - process every inline queued write without overflow fallback
-  - preserve pending bus/TOD/output state through serialization and cancel it on reset
-  - the snapshot version bump recorded for this stage was later reverted to version 1 at the user's request; no old-format decoder was added
-  - correct demonstrated LOAD and unused-bit readback, TOD middle-write halt, pending ICR enable and one-shot timer-high effects
-  - preserve unconsumed output events by removing restore-time peripheral polling
-- **Architectural Rationale & Trade-Offs**:
-  - Motorola Appendix B defines synchronous E-clock transfer and duty cycle
-  - vAmiga supplies the provisional CCK synchronization table and replacement-project CIA sources distinguish rising counts and falling capture
-  - all CIA writes target the same next edge and drain in enqueue order before slots are reused
-  - these references do not establish calibrated silicon propagation delays
-  - this stage contributes to Roadmap 2.1 and does not close the whole point
-- **Verification & Test Results**:
-  - Focused original-mechanism reproductions failed before the register and restore fixes and pass after them
-  - cargo test -p config -p cia -p memory_bus -p machine_loop passed including all 30 canonical addresses, all five initial E phases, real CPU reads/writes and PAL/NTSC pending-operation continuation
-  - Clippy all-target checks, wasm32 machine_loop check, focused formatting and git diff --check passed
-  - vault audit passed 35 design specifications and 715 links
-  - full commit profile and independent snapshot review are recorded by the closing workflow
-  - full SingleStep, firmware/OS and vAmigaTS were not run for this stage
+### [2026-11-11 12:01 CET] ? Milestone Digest: Direct CIA and Custom Register Delivery
+- **Timestamp & Context**: 2026-11-11 10:46?12:01; settled implementation stages contributing to Roadmap 2.1: CIA-DIRECT-DISPATCH-20261111, CUSTOM-DIRECT-DISPATCH-20261111 and register-module separation.
+- **Affected Subsystems**: Config, CIA, Agnus, Copper, Blitter, Denise, Paula, audio, MemoryBus, machine loop, floppy output routing, snapshot handling and their design specifications.
+- **What Was Changed**:
+  - Replaced generic motherboard-address mutation interfaces with named readers and queued setters for thirty canonical CIA addresses and all 180 modeled custom write offsets. Shared writes preflight all recipients. Agnus retains the single queue for Copper/Blitter children; private application moved into register modules without changing the 221 existing method bodies/signatures during the final refactor.
+  - Separated CPU CIA synchronization/acknowledgment from falling-E capture and same-phase OVL routing. Preserved pending bus/TOD/output continuation, canceled pending work on reset and removed restore-time peripheral polling that consumed unrouted events.
+  - Routed effective Port-B outputs through DDRB/pull-ups after a focused reproduction of unintended drive selection. Corrected existing LOAD/unused-bit readback, TOD middle-write halt, pending ICR mask enable and one-shot timer-high loading. This output repair did not establish resolved-pin PRA/PRB reads.
+  - Delayed palette/sync requests by a positive provisional CCK, retained existing positive delays and empty effects, issued Copper then bitplane data after all receiver steps and retained rejected source outputs. Preserved issue order, rejected full queues without early fallback, replayed every due event instead of truncating the ninth Paula write and reserved a merged interrupt-input destination separate from CPU INTREQ.
+  - Retired the obsolete audio location setter/fixture and unused Denise inspection decoder; audio pointer coverage stays with Agnus. The user restored snapshot header version 1 for the evolving development format, without adding an old-format decoder.
+  - Recorded explicit vocabulary approval: enqueuing, unrouted, cias, vma, audlch, audlcl, bplpth, bplptl, sprpth, sprptl, sprdata, sprdatb, audper and audvol.
+- **Architectural Rationale & Trade-Offs**: Motorola Appendix B defines synchronous E and duty cycle; vAmiga supplies provisional CCK waits; replacement-project CIA sources distinguish rising counts and falling capture. Custom delays/modes and issue order are model settings, not measured silicon timing. Register access/queue ownership remains separate from engine reconstruction and board signal delivery.
+- **Verification & Invariants**: Historical original-mechanism reproductions failed before repairs and passed afterward. Focused config/CIA/custom/bus/machine suites covered all canonical CIA addresses, five E phases, real CPU retries, PAL/NTSC continuation, CPU byte writes during DMA, Copper timing, rejection/replay, interrupts, strobes, DMA and Blitter boundaries. Strict Clippy, native workspace and machine_loop WASM builds, formatting, architecture, whitespace and vault audits passed. The three commits' full commit profiles and independent approvals remain in Git. Earlier English findings were resolved only after user vocabulary approval. RAG retrieval was insufficient; targeted local references supplied evidence. No silicon calibration, firmware/OS, vAmigaTS or exhaustive functional certification was claimed; these stages did not individually close 2.1.
 ---
 
-### [2026-11-11 11:23 CET] — CUSTOM-DIRECT-DISPATCH-20261111: Queue every modeled custom-register write
+### [2026-11-11 13:31 CET] — REGISTER-ACCESS-CLOSE-20261111: Close register documentation and owner delivery
 - **Affected Subsystems**:
-  - `crates/config`
-  - `crates/agnus`
-  - `crates/denise`
-  - `crates/paula`
-  - `crates/audio`
-  - `crates/memory_bus`
-  - `crates/machine_loop`
-  - `Obsidian/Amiga/Design`
+  - `Custom register matrix`
+  - `CIA`
+  - `MemoryBus`
+  - `Agnus`
+  - `Denise`
+  - `Paula`
+  - `register transport tests`
+  - `roadmap and diary`
 - **What Was Changed (The Concrete Reality)**:
-  - Replace generic public write dispatch with concrete queued register and family setters for all 180 modeled offsets and every required recipient
-  - apply changes through private replay and preserve read-side strobes and open bus
-  - delay palette and sync strobes by an explicitly provisional positive 1 CCK while retaining existing positive delays and no-op placeholders
-  - issue Copper writes and bitplane data after all custom chips step, retaining rejected source outputs
-  - preserve fixed-capacity issue order, reject full queues without immediate fallback, drain and return every matured event, and reserve a merged interrupt-input entry separate from CPU INTREQ
-  - migrate callers and focused fixtures, move audio-pointer coverage to Agnus, retire the obsolete audio location setter and its superseded fixture, and update affected design requirements
-  - record explicit user approval of the ten hardware abbreviations audlch, audlcl, bplpth, bplptl, sprpth, sprptl, sprdata, sprdatb, audper and audvol in the reviewed hardware vocabulary
+  - Document all custom/CIA register identities and families, fields, access classes, recipients and logical owners
+  - Record each custom setter, queue mode and configured CCK delay separately from unknown silicon timing and missing functional effects
+  - Add production-router delivery checks for all 256 custom slots, 180 writable offsets, word/both byte lanes and PAL/NTSC, plus complete live/debug reader selection
+  - Preserve all existing engine, strobe, read-side-effect, overlay and continuation protection without production behavior changes
+  - Compact only three settled direct-register entries into their own digest
+  - Prune 2.1 while preserving the approved pending 2.2-2.5 work and replace the incoming temporary-plan link with the permanent evidence record
 - **Architectural Rationale & Trade-Offs**:
-  - Mandatory propagation must separate accepted transfers from active state and downstream reactions. Original focused reproductions confirmed immediate palette visibility and loss of the ninth matured Paula event. Numerical timing and queue modes remain provisional
-  - no silicon measurement is claimed. Saved-state field shapes remain intact. This task contributes to Roadmap 2.1 without closing the whole point. Finish this stage and its closing commit, then stop before stage 3.
+  - The approved 2.1 boundary is documentation and delivery to owning queues/interfaces
+  - Due events do not certify engine effects or electrical pin semantics
+  - Known nine inert offsets and CIA PRA/PRB findings retain their hardware requirements and named 2.3/2.4/2.5 implementation and verification owners
+  - Stop after 2.1 and do not push
 - **Verification & Test Results**:
-  - PASS: focused Rust suites for config, CIA, Agnus, Denise, Paula, MemoryBus and machine_loop
-  - 12 new production-integration checks cover native PAL/NTSC authored CPU byte writes during DMA contention, Copper receiver timing, queue rejection and complete replay, interrupt input versus CPU acknowledgment order, strobes, DMA control boundaries, Blitter restart and serialized continuation. PASS: strict all-targets Clippy, workspace native compilation, machine_loop WASM compilation, formatting, architecture, 35 design frontmatter records and 727 links, and diff whitespace. Initial English scan reported 10 new register-family abbreviations in 82 occurrences; the user explicitly approved all ten. Code and hardware gates identified the obsolete audio location setter and a peer namespace used for STRHOR; the setter and superseded fixture were retired, and Paula now uses its existing own STRHOR constant. Both gates and the full English scan then passed. Strict Clippy and WASM compilation were rerun successfully after this cleanup; the 12 custom-dispatch checks still pass. RAG retrieval failed
-  - targeted local manuals and approved specifications supplied register scope. No firmware or OS integration, vAmigaTS, floppy-media I/O, physical timing calibration or exhaustive final-stage verification was performed. Scoped specification review found no unmapped changed crate paths or unresolved requirement conflict.
----
-
-### [2026-11-11 12:01 CET] — Separate chipset register access from execution
-- **Affected Subsystems**:
-  - `crates/agnus`
-  - `crates/blitter`
-  - `crates/copper`
-  - `crates/denise`
-  - `crates/memory_bus`
-  - `crates/paula`
-  - `crates/machine_loop/src/save_state.rs`
-  - `Obsidian/Amiga/Design`
-- **What Was Changed (The Concrete Reality)**:
-  - Collect live and debug custom-register reads and queued writes in custom_registers.rs
-  - Move chip register reads and latch application out of the main execution modules
-  - Separate queued Blitter and Copper register families within Agnus and child register-triggered actions
-  - Keep the shared Agnus propagation queue and all existing register effects and delays
-  - Restore snapshot header version 1 and describe the evolving development format directly
-  - Update source links and correct prior diary references to the snapshot version
-- **Architectural Rationale & Trade-Offs**:
-  - Apply the existing CIA file organization to custom-chip register handling without changing execution behavior or moving queue ownership
-  - Snapshot structures follow current development state without introducing old-format loading
-  - This ordinary refactor does not close a roadmap point
-- **Verification & Test Results**:
-  - PASS: all 221 existing methods in the six refactored crates retain their signatures and bodies
-  - PASS: focused test commands for agnus, denise, paula, blitter, copper, memory_bus and machine_loop
-  - PASS: native workspace compilation and machine_loop WASM compilation
-  - PASS: architecture, workspace formatting and scoped diff whitespace checks
-  - PASS: vault audit of 35 design specifications and 734 links
-  - Scoped specification review found no unmapped changed crate paths or unresolved requirement conflicts
-  - NOT RUN: milestone profile because no roadmap point or milestone is closing
+  - PASS: focused config/CIA/Agnus/Denise/Paula/MemoryBus/machine_loop suites with 168 tests before the final added read-selection test
+  - PASS: final focused MemoryBus wiring suite with 16 tests, including 1536 write transfers and all 256 live/debug slots
+  - PASS: strict all-target MemoryBus Clippy, machine_loop WASM compilation and workspace formatting
+  - PASS: semantic static check of 196 offsets, 10 memory boundaries and 26 crate relationships, with zero checked signal/quirk items
+  - PASS: design vault metadata and links, and diff whitespace
+  - Scoped semantic review preserves provisional timing, modeled open bus, missing engine effects and future Gary decoding
+  - Commit/milestone profiles and independent exact-snapshot review belong to the closing workflow
+  - Initial commit verification reported 23 unknown-word occurrences; the user explicitly approved nineteen register-family hardware terms and simpler descriptions for the three other terms. The hardware vocabulary contains only those approved additions; all other initial commit checks passed
+  - No firmware, OS, vAmigaTS, media transfer or measured-silicon timing evidence is claimed
