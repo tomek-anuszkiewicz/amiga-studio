@@ -10,8 +10,13 @@ use serde::{Deserialize, Serialize};
 
 /// Number of Color Clocks per Motorola E-Clock tick (5 CCK = 10 CPU cycles)
 const CCK_PER_ECLOCK: u8 = 5;
+/// Falling E edge in the current CCK phase convention.
 const E_WRITE_CAPTURE_PHASE: u8 = 2;
+/// CPU transfer acceptance occurs one CCK before falling E.
 const E_BUS_ACCESS_PHASE: u8 = E_WRITE_CAPTURE_PHASE - 1;
+/// Minimum attempt-to-acceptance interval reproducing vAmiga's even-phase table.
+/// This is a model setting in CCK, not a measured pin propagation delay.
+const MIN_BUS_SYNC_CCK: u8 = 3;
 
 /// Total number of 8520 registers
 const CIA_REGISTER_COUNT: usize = 16;
@@ -97,9 +102,7 @@ impl Cia {
     /// Advances the E-clock phase: rising at 0, falling at 2 (two CCK high).
     pub fn step_cck(&mut self) {
         self.eclock_phase = self.eclock_phase.wrapping_add(1) % CCK_PER_ECLOCK;
-        if let Some(remaining) = &mut self.bus_wait_cck {
-            *remaining = remaining.saturating_sub(1);
-        }
+        self.bus_wait_cck = self.bus_wait_cck.map(|n| n.saturating_sub(1));
         let mut due = [None; CIA_REGISTER_COUNT];
         let mut due_count = 0;
         tick_mutations(&mut self.mutations, |selector, value| {
@@ -122,27 +125,32 @@ impl Cia {
         }
     }
 
-    /// Synchronizes a stable CPU access to the penultimate high E-clock CCK.
+    /// Prepares a stable CPU access for the penultimate high E-clock CCK.
+    /// Readiness is retained until the motherboard accepts the whole transfer.
     /// The five delays are the even CPU-phase entries in vAmiga's E-clock table.
-    pub fn accept_bus_access(&mut self) -> bool {
+    pub fn synchronize_bus_access(&mut self) -> bool {
         match self.bus_wait_cck {
             None => {
-                let wait = match self.eclock_phase {
-                    0 => 6,
-                    1 => 5,
-                    2 => 4,
-                    3 => 3,
-                    _ => 7,
+                let cck_until_access =
+                    (CCK_PER_ECLOCK + E_BUS_ACCESS_PHASE - self.eclock_phase) % CCK_PER_ECLOCK;
+                // If the nearest acceptance window is too close, use the next E period.
+                let wait = if cck_until_access < MIN_BUS_SYNC_CCK {
+                    cck_until_access + CCK_PER_ECLOCK
+                } else {
+                    cck_until_access
                 };
                 self.bus_wait_cck = Some(wait);
                 false
             }
-            Some(0) if self.eclock_phase == E_BUS_ACCESS_PHASE => {
-                self.bus_wait_cck = None;
-                true
-            }
+            Some(0) if self.eclock_phase == E_BUS_ACCESS_PHASE => true,
             Some(_) => false,
         }
+    }
+
+    /// Completes synchronization after every receiving chip is ready.
+    #[inline]
+    pub fn finish_bus_access(&mut self) {
+        self.bus_wait_cck = None;
     }
 
     /// Ticks the existing timer engines on the rising E edge.

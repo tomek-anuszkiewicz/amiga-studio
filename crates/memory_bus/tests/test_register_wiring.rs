@@ -490,8 +490,10 @@ fn test_dmacon_routing_to_agnus_and_paula() {
 
 #[test]
 fn test_memory_bus_canonical_constants() {
-    assert_eq!(memory_bus::MemoryBus::BANK_CUSTOM, 0xDF);
-    assert_eq!(memory_bus::MemoryBus::BANK_CIA, 0xBF);
+    assert_eq!(config::address_map::CUSTOM_BANK_FIRST, 0xDE);
+    assert_eq!(config::address_map::CUSTOM_BANK_LAST, 0xDF);
+    assert_eq!(config::address_map::CIA_BANK_FIRST, 0xA0);
+    assert_eq!(config::address_map::CIA_BANK_LAST, 0xBF);
     assert_eq!(memory_bus::MemoryBus::BANK_RTC, 0xDC);
     assert_eq!(memory_bus::MemoryBus::RTC_START, 0xDC0000);
     assert_eq!(memory_bus::MemoryBus::RTC_END, 0xDC003F);
@@ -596,7 +598,7 @@ fn test_debug_read_and_register_method_conventions() {
 
     // 4. CIA debug byte read does not clear or alter state
     mb.cia_a.pra = 0xAA;
-    let debug_cia = mb.router().read_cia_byte_debug(0xBFE001);
+    let debug_cia = mb.router().read_word_debug(0xBFE000) as u8;
     assert_eq!(debug_cia, mb.cia_a.pra());
     assert_eq!(debug_cia, 0xAA);
 }

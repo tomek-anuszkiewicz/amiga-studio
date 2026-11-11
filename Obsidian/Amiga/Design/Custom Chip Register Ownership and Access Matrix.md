@@ -34,7 +34,8 @@ aligned offset; a byte write on either lane duplicates its byte into both
 halves. Reserved/unlisted writes acknowledge without enqueuing anything.
 Dummy early reads, reads without a modeled response and `NO-OP(NULL)` return the fixed `$FFFF`
 placeholder. These are emulator limits, not safe-access guarantees. Expanded
-Gary bank selection and CIA aliases belong to Roadmap 2.2.
+[MemoryBus](MemoryBus.md#cia-and-boot-overlay) defines Gary bank selection,
+CIA aliases, dual selection and lane behavior.
 
 The final column records the production write interface in
 [`custom_registers.rs`](../../../crates/memory_bus/src/custom_registers.rs).
@@ -383,7 +384,7 @@ The register-delivery boundary is exercised through production interfaces:
 | --- | --- |
 | [`test_register_wiring.rs`](../../../crates/memory_bus/tests/test_register_wiring.rs), `every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due` | All 256 aligned slots, of which 180 enqueue writes; word and both byte writes on PAL and NTSC (1,536 transfers). Checks every recipient's offset, payload, mode and remaining delay, no early due event, exactly one due event and no later duplicate. Uses real router and owner steps, without claiming later engine behavior. |
 | Same suite, `custom_live_and_debug_reads_select_the_owner_or_explicit_fallback` | All 256 slots use the intended reader or fallback; distinct readable data detects wrong selection. Debug traversal preserves complete chip/queue state. Existing dedicated tests establish live collision/disk acknowledgment and Copper read strobes. This is reader selection, not validation of all computed hardware values. |
-| [`test_router.rs`](../../../crates/memory_bus/tests/test_router.rs) | All thirty canonical CIA addresses, selected instance, selector and payload, synchronization before acceptance and falling-edge capture. Five initial E phases, inactive lanes, low-bit mirrors, byte/word lanes and OVL mapping have existing regression protection. Expanded Gary aliases remain 2.2. |
+| [`test_router.rs`](../../../crates/memory_bus/tests/test_router.rs) | All thirty canonical CIA addresses, selected instance, selector and payload, synchronization before acceptance and falling-edge capture. Five initial E phases, inactive lanes, low-bit mirrors, byte/word lanes and OVL mapping have existing regression protection. Gary alias/dual-selection tests cover all banks and memory presets on PAL/NTSC; `test_gary_decoding.rs` exercises CPU transfers and committed OVL through the machine. |
 | [`test_custom_dispatch.rs`](../../../crates/machine_loop/tests/test_custom_dispatch.rs) | Production-machine CPU/Copper issue boundaries, shared rejection/retry, queue order and complete replay, strobe delivery, interrupt-input versus CPU ordering, DMA competition and pending-state serialization. |
 | [`test_cia_propagation.rs`](../../../crates/machine_loop/tests/test_cia_propagation.rs) and [`test_register_propagation.rs`](../../../crates/machine_loop/tests/test_register_propagation.rs) | CPU CIA retries/read acknowledgment, pending capture/output restore, reset cancellation, and committed CIA-A PRA/DDRA polarity and overlay mapping using synthetic ROM bytes. No firmware boot is required. |
 

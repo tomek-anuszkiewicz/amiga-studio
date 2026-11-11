@@ -59,6 +59,17 @@ The [custom-register ownership matrix](Custom%20Chip%20Register%20Ownership%20an
 
 ---
 
+### Gary aliases and inactive CIA lanes
+
+The [motherboard decoder](MemoryBus.md#cia-and-boot-overlay) routes CIA banks
+`$A0-$BF` with independent active-low A12/A13 selects, and both `$DE/$DF`
+custom banks. CIA inactive read lanes and unconnected selector B return fixed
+`$FF`; they do not sample a retained motherboard data word. Byte writes drive
+every selected CIA regardless of address parity. These are address-selection
+rules, separate from accepted-transfer effects and queued register capture.
+Additional model-dependent mirrors, data retention/decay and external bus-error
+behavior remain deferred in [Roadmap 12.1](../../../ROADMAP.md).
+
 ## 4. Reference Documentation & Evidence
 
 - [Motorola 68000 instruction prefetch](../Reference/Instruction%20Prefetch%20on%20the%20Motorola%2068000%20Processor.md): Bus ordering and prefetch context.

@@ -33,24 +33,80 @@ On an A500 motherboard, Gary decodes the CPU address to select RAM, ROM, or a de
 
 A bidirectional, tri-state data latch sits between the CPU and shared data buses. While enabled, a latch passes the input word; when closed, it retains the last sampled word. Its outputs can also be disconnected electrically. Gary controls this path so a granted CPU transfer can move data in the required direction, while an Agnus DMA transfer leaves the CPU side isolated from the shared bus. "Buffer" here means a small, temporary holding and isolation stage, not a second RAM store or a cache. It is also distinct from the holding registers in Denise and Paula, which capture DMA data for display or audio after Agnus selects their register. The emulator models the resulting address routing and CPU wait state; it has no separate Gary chip or motherboard latch state.
 
-Every `MemoryBus` byte or word access masks the address to 24 bits and selects its upper eight bits (`addr >> 16`). Three banks receive live device routing: `$BF` for CIAs, `$DC` for RTC, and `$DF` for custom registers. All other banks delegate to `PhysicalMemory`, including RAM, ROM, and unmapped space. The router does not consult `PhysicalMemory::bank_map` for those three live device cases; their entries in that table serve classification and direct physical-memory access. Within `PhysicalMemory`, the 256-entry table chooses a handler for each 64 KB bank.
+Every `MemoryBus` byte or word access masks the address to 24 bits and selects
+its upper eight bits (`addr >> 16`). Banks `$A0-$BF` route to the CIA decoder,
+`$DC` to RTC, and `$DE-$DF` to the shared custom-register decoder. Other banks
+delegate to `PhysicalMemory`. Shared bank bounds in
+[`address_map.rs`](../../../crates/config/src/address_map.rs) keep production
+routing and physical classification consistent. Device classification in the
+physical bank table provides placeholders, not live chip access.
 
 | Address selected by the implementation | CPU access destination and behavior |
 | --- | --- |
 | `$000000-$07FFFF` | Kickstart ROM while the low-memory overlay is active; otherwise 512 KB Chip RAM. The physical-memory bank handlers make this selection. |
 | `$200000-$5FFFFF` | Optional 4 MB Fast RAM in the expanded preset. Other addresses without configured storage use open bus. |
-| `$BFD000-$BFDF00`, even bytes | CIA-B registers; address bits A7–A1 mirror each register. |
-| `$BFE001-$BFEF01`, odd bytes | CIA-A registers; address bits A7–A1 mirror each register. Other bytes in bank `$BF` read as `$FF` and ignore writes. |
+| `$A00000-$BFFFFF` | CIA selection by active-low A13/A12, register by A11..A8; CIA-B reads on the even/high lane and CIA-A on the odd/low lane. See the selection contract below. |
 | `$C00000-$C7FFFF` | Optional 512 KB Slow RAM in standard and expanded presets. |
 | `$DC0000-$DC003F` | RTC byte interface; its device implementation accepts odd addresses when a clock is installed. Other addresses in bank `$DC` return the fixed `$FF` placeholder on reads and ignore writes. |
-| `$DF0000-$DFFFFF` | Custom-register routing, using the low register-offset bits. These addresses alias the same 512-byte register window in the current router. |
+| `$DE0000-$DFFFFF` | Custom-register routing, using the low register-offset bits. These addresses alias the same 512-byte register window in the current router. |
 | `$F80000-$FFFFFF` | Kickstart ROM. A 256 KB image repeats across this 512 KB range; a 512 KB image fills it. CPU ROM writes are ignored. |
 
 The preset table and installed storage are built in [`presets.rs`](../../../crates/physical_memory/src/presets.rs) and `PhysicalMemory::from_config()`. Unmapped physical-memory reads return the fixed `OPEN_BUS_BYTE` placeholder (`$FF`); word reads return `OPEN_BUS_WORD` (`$FFFF`). CIA inactive lanes and absent RTC responses use the same placeholder. See the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access). The map above describes implemented dispatch rather than every address reserved by Amiga hardware.
 
 ### CIA and boot overlay
 
-Within bank `$BF`, the router uses the named CIA-A and CIA-B register addresses in [`cia_reg`](../../../crates/config/src/registers.rs) as canonical addresses. Address bits A7–A1 do not select a register, so addresses with different values in those bits mirror the same register. Address bits A11–A8 choose the CIA register. Each live-read, debug-read and write operation directly matches the masked address once and calls its named register method on the selected instance; CIA receives no motherboard address. Live accesses first synchronize through the selected CIA. An unaccepted retry returns `WaitState` without reading, acknowledging or queuing a write. Selector `$B` is unconnected. A word access splits into two ordered byte accesses, then combines or separates them in big-endian order; only the connected byte lane reaches a CIA. Other addresses read `$FF` and discard writes.
+Canonical CIA-A addresses are `$BFE001-$BFEF01`; CIA-B uses
+`$BFD000-$BFDF00`. Within banks `$A0-$BF`, A12 low selects CIA-A and A13 low
+selects CIA-B:
+
+| A13/A12 | Receivers | Word read lanes |
+| --- | --- | --- |
+| `00` | Both | CIA-B high, CIA-A low |
+| `01` | CIA-B | CIA-B high, `$FF` low |
+| `10` | CIA-A | `$FF` high, CIA-A low |
+| `11` | Neither | `$FFFF` |
+
+A11..A8 select the register. A20..A14 and A7..A1 are mirrors. The decoder
+normalizes each selected receiver to its full named canonical address in
+[`cia_reg`](../../../crates/config/src/registers.rs), then calls that instance's
+concrete register method. CIA receives no motherboard address. Selector B
+reads `$FF`, ignores writes and does not synchronize. Byte reads reach only
+the selected chip on the addressed lane; inactive lanes use fixed `$FF` without
+read effects. Byte writes reach every selected chip regardless of parity.
+Word writes supply the high byte to CIA-B and the low byte to CIA-A.
+
+Selection, synchronization, acceptance and falling-E capture are separate.
+Before a word read or a write can produce any register effect, all receiving
+CIAs must be synchronized. Each selected receiver starts its countdown on the
+first attempt. The sixteen-slot CIA buffers exceed legal CPU traffic: an
+accepted write commits one CCK later, before the next synchronized transfer.
+CIA bus acceptance has no queue-capacity check; direct setter injection must
+be drained before CPU bus traffic resumes, as specified by [CIA](CIA.md#runtime-register-capture-and-bus-synchronization).
+A refused transfer neither consumes synchronization nor acknowledges a read
+or inserts a write in any receiver. Acceptance consumes all ready receivers
+together, with one event per selected chip; it never splits a word into two
+independently accepted byte operations. Debug reads reuse the same selection
+and canonical identities without clocking, synchronization or read effects.
+
+The A500 Rev. 6A/7 [CIA sheet](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=7)
+shows U37 combining `VMA*` with A12/A13 for the two independent active-low
+selects, A11..A8 feeding RS3..RS0, and CIA-A/B wired to D7..D0/D15..D8.
+The [processor sheet](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=3)
+shows Gary's VPA and the CPU/shared-bus latches. HRM Appendix F's address-decode
+paragraph prescribes canonical software addresses and includes inconsistent
+binary/parity examples; these are not an exhaustive electrical alias table.
+The approved model decodes `$A0-$BF`, consistent with its upper-three-bit `101`
+qualification and the [Minimig CIA equations](../../../ref_src/minimig/software%20and%20firmware/old/source/fpga%20core/Gary.v).
+[vAmiga's memory decoder](../../../ref_src/vAmiga/Core/Components/Memory/Memory.cpp)
+corroborates selection, write fan-out and `$DE/$DF` custom routing. Its inactive
+read lanes sometimes use the CPU instruction register; this emulator retains
+fixed `$FF`. The [replacement Gary](../../../ref_src/amiga_replacement_project/gary/Gary.v)
+at revision `143ad5f1b5acae093ea66186e832a8ab4fb1bc0f` instead qualifies CIA with
+A23..A20=`1011` and also decodes RTC/ROM/custom mirrors outside this task.
+Those differences remain outside the implemented map. These models do not establish measured
+silicon timing or other board revisions. The contract applies to the supported
+OCS 8371 PAL and 8370 NTSC presets, with installed RAM and RTC taking their
+specified ranges; no additional `$C0-$DD` custom mirrors are enabled.
 
 CIA-A pin PA0 drives OVL. When a queued `PRA` or `DDRA` write commits on falling E, CIA-A reports a generic port change. The machine routes it through `MemoryBus::update_ciaa_overlay()` in that same modeled phase, updating the low-memory mapping from `(PRA | !DDRA) & $01`: an input pin is pulled high, while an output pin drives the stored `PRA` bit. OVL high calls `map_kickstart_to_low_memory()`; OVL low calls `map_chip_ram_to_low_memory()`. The pending write leaves the previous mapping intact. CIA-B never drives this helper. This is the effect of the committed CIA pin level, with no additional CCK propagation stage. [CIA](CIA.md#runtime-register-capture-and-bus-synchronization) specifies the separate synchronization, acceptance and capture boundaries. The [8520 port specification](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md#io-ports-pra-prb-ddra-ddrb) defines direction control and pull-ups. [vAmiga](../../../ref_src/vAmiga/Core/Components/CIA/CIA.cpp) updates memory selection when PA0 changes, while the [Minimig Gary decoder](../../../ref_src/minimig/software%20and%20firmware/old/source/fpga%20core/Gary.v) and [Amiga Replacement Project Gary decoder](../../../ref_src/amiga_replacement_project/gary/Gary.v) use OVL directly in their address equations. These models support omitting an additional clocked propagation stage; they do not establish zero physical propagation time.
 
@@ -58,7 +114,7 @@ CIA-A pin PA0 drives OVL. When a queued `PRA` or `DDRA` write commits on falling
 
 ### Custom registers and specialized chips
 
-For bank `$DF`, `addr & $01FE` selects an even register offset. A word operation reaches a single custom register. A byte read takes the high or low byte of that register according to address bit 0. A byte write duplicates its value onto both halves of a 16-bit word before calling `write_custom_word()`. Every modeled write, including address strobes, calls a concrete queued setter on each receiving chip through one offset match. No public register setter applies state immediately. A pending value cannot alter a read, child component, restart action or output before commitment. Unmatched offsets remain ignored.
+For banks `$DE` and `$DF`, `addr & $01FE` selects an even register offset. A word operation reaches a single custom register. A byte read takes the high or low byte of that register according to address bit 0. A byte write duplicates its value onto both halves of a 16-bit word before calling `write_custom_word()`. Every modeled write, including address strobes, calls a concrete queued setter on each receiving chip through one offset match. No public register setter applies state immediately. A pending value cannot alter a read, child component, restart action or output before commitment. Unmatched offsets remain ignored.
 
 `read_custom_word()` dispatches readable registers to Agnus, Denise, or Paula. Examples include Agnus beam and DMA status, Denise joystick and collision status, and Paula interrupt, audio-control, and disk status. A live `CLXDAT` or `DSKBYTR` read may have a chip-defined side effect. Reading `COPJMP1` or `COPJMP2` strobes Agnus's Copper and returns `$FFFF`. Unhandled reads, including most reads of write-only registers, return `$FFFF`; see the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access). `read_custom_word_debug()` uses non-mutating chip inspection methods and does not issue the Copper strobes.
 

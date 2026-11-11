@@ -99,8 +99,9 @@ def check_semantic_memory_map():
     doc_path = REPO_ROOT / "Obsidian" / "Amiga" / "Design" / "MemoryBus.md"
     code_path = REPO_ROOT / "crates" / "memory_bus" / "src" / "memory_bus.rs"
     registers_path = REPO_ROOT / "crates" / "config" / "src" / "registers.rs"
+    banks_path = REPO_ROOT / "crates" / "config" / "src" / "address_map.rs"
 
-    if not doc_path.exists() or not code_path.exists() or not registers_path.exists():
+    if not doc_path.exists() or not code_path.exists() or not registers_path.exists() or not banks_path.exists():
         return {"checked_ranges": 0, "issues": [{"message": "Required memory map files missing"}]}
 
     doc_text = doc_path.read_text(encoding="utf-8")
@@ -108,7 +109,7 @@ def check_semantic_memory_map():
     registers_text = registers_path.read_text(encoding="utf-8")
 
     code_constants = {}
-    for line in code_text.splitlines():
+    for line in (code_text + banks_path.read_text(encoding="utf-8")).splitlines():
         line = line.strip()
         m = re.search(r"pub\s+const\s+([A-Z0-9_]+)\s*:\s*u\d+\s*=\s*(0x[0-9A-Fa-f]+);", line)
         if m:
@@ -129,10 +130,12 @@ def check_semantic_memory_map():
         (r"\$BFE001\s*-\s*\$BFEF01", "CIA_A_END", 0xBFEF01),
         (r"\$DC0000\s*-\s*\$DC003F", "RTC_START", 0xDC0000),
         (r"\$DC0000\s*-\s*\$DC003F", "RTC_END", 0xDC003F),
-        (r"\$BF", "BANK_CIA", 0xBF),
+        (r"\$A0-\$BF", "CIA_BANK_FIRST", 0xA0),
+        (r"\$A0-\$BF", "CIA_BANK_LAST", 0xBF),
         (r"\$DC", "BANK_RTC", 0xDC),
-        (r"\$DF", "BANK_CUSTOM", 0xDF),
-        (r"\$DF0000\s*-\s*\$DFFFFF", "CUSTOM_REG_OFFSET_MASK", 0x01FE),
+        (r"\$DE-\$DF", "CUSTOM_BANK_FIRST", 0xDE),
+        (r"\$DE-\$DF", "CUSTOM_BANK_LAST", 0xDF),
+        (r"\$DE0000\s*-\s*\$DFFFFF", "CUSTOM_REG_OFFSET_MASK", 0x01FE),
     ]
 
     issues = []
@@ -142,7 +145,7 @@ def check_semantic_memory_map():
         if not re.search(pattern, doc_text):
             issues.append({"message": f"MemoryBus.md missing expected pattern: `{pattern}`"})
         if const_name not in code_constants:
-            issues.append({"message": f"memory_bus.rs missing constant: `{const_name}`"})
+            issues.append({"message": f"Memory map source missing constant: `{const_name}`"})
         elif code_constants[const_name] != expected_val:
             issues.append({"message": f"Constant `{const_name}` in code (0x{code_constants[const_name]:X}) != doc (0x{expected_val:X})"})
 

@@ -47,6 +47,14 @@ interrupt sources are combined into one output routed through
 
 The two 8520s have the same 16 register selectors but different byte addresses and port wiring. [Appendix D](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md) places CIA-A on the odd-byte lane at `$BFE001–$BFEF01` and CIA-B on the even-byte lane at `$BFD000–$BFDF00`. Address bits 11–8 select the internal register. These addresses are separate from the [Agnus, Denise, and Paula register block](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md). The tables below follow the [8520 register and port maps in Appendix F](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md); they describe documented hardware behavior, not implementation coverage.
 
+
+These are canonical software addresses. The motherboard's
+[Gary selection contract](MemoryBus.md#cia-and-boot-overlay) also routes
+`$A0-$BF` aliases and dual selection. A word read combines CIA-B high/CIA-A
+low; byte writes reach every selected chip on either parity, while word
+writes send each chip its own lane. Full canonical identities remain in the
+router, with concrete named methods on the selected chip instances.
+
 Each row separates what a read returns from what a write changes. `RW` means both directions are documented, not that they address the same stored value. `COR` identifies a read that clears status. `Unconnected` means Appendix F shows no internal register at selector `B`. `Scope` names the immediate circuit or connected signals, not every downstream effect. `Delay` is `Unknown` unless Appendix F gives a specific interval; no CCK delay is inferred from the E-Clock domain.
 
 The timer addresses read the running counter and write a separate reload latch. Writing a timer high byte may load the counter; in one-shot mode it starts counting. At TOD addresses, reads always return the time counter, while writes target time when `CRB7=0` or the alarm when `CRB7=1`. A write to the TOD clock stops it until its low byte is written. Reading the TOD high byte holds a snapshot until the low byte is read. Reading `ICR` returns and clears pending interrupt status; writing `ICR` sets or clears selected mask bits according to bit 7. The `LOAD` bit in `CRA` and `CRB` is a write strobe and reads back as zero. Timer output can replace PB6 or PB7 when enabled.
@@ -133,8 +141,7 @@ All thirty connected addresses retain their named access/capture paths.
 
 ## Runtime register capture and bus synchronization
 
-[MemoryBus](MemoryBus.md#cia-and-boot-overlay) selects each connected address
-once and calls a named reader or setter on one of two independent `Cia`
+[MemoryBus](MemoryBus.md#cia-and-boot-overlay) selects the connected receiver or receivers for each transaction and calls a named reader or setter on one of two independent `Cia`
 instances. CIA's public register interface has no motherboard address or chip
 identity. [`registers.rs`](../../../crates/cia/src/registers.rs) owns these
 accessors and private application methods. Reads expose active state; each
@@ -155,12 +162,28 @@ This represents the six CPU clocks low/four high duty cycle in
 [Motorola Appendix B, B.1](../Reference/68000%20User's%20Manual/13%20-%20Appendix%20B%20-%20M6800%20Peripheral%20Interface.md).
 The phase origin is a model convention. The CPU invokes reads in CCK1 and
 writes in CCK2; `WaitState` keeps that active micro-step and its inputs stable.
-On the first connected CIA attempt, the receiver records its synchronization
-countdown without reading or enqueuing a write. Retries complete only at phase
-`1`. For initial phases `0..4`, waits are `6, 5, 4, 3, 7` CCK respectively,
+On the first connected CIA attempt, `synchronize_bus_access` records its synchronization
+countdown without reading or enqueuing a write. Retries report readiness only at phase
+`1`. Readiness remains pending until every receiving chip is synchronized.
+The motherboard then calls
+`finish_bus_access` for all receivers before the named accessors; a refused
+dual transfer cannot consume just one chip's synchronization. For initial phases `0..4`, waits are `6, 5, 4, 3, 7` CCK respectively,
 derived from the even CPU-phase entries in
 [vAmiga's `Agnus::syncWithEClock`](../../../ref_src/vAmiga/Core/Components/Agnus/Agnus.cpp).
-This is a reference-emulator timing model, not a measured hardware delay.
+The implementation computes the forward CCK distance to phase `1`. If that
+window is fewer than `MIN_BUS_SYNC_CCK = 3` CCK away, it adds one full
+`CCK_PER_ECLOCK = 5` CCK period. This expresses the same five delays without
+a phase lookup table. The minimum interval is a property of the reproduced
+reference-emulator timing model, not a measured hardware delay or a CPU-clock
+setup-time specification.
+
+Focused regressions verify the wait counts at all five represented CCK phases,
+accepted read effects and falling-edge write capture. They do not establish
+complete production CPU bus-cycle durations against Motorola Figures B-4/B-5,
+nor resolve all ten individual CPU-clock positions within E. The remaining
+[signal and timing review](../../../ROADMAP.md#inter-chip-signal-propagation)
+and [production CPU integration](../../../ROADMAP.md#cpu-memory-gary-verification)
+own that verification; these tests do not certify the hardware 10-19-clock range.
 
 The [replacement-project CIA](../../../ref_src/amiga_replacement_project/cia/cia8520.v)
 (revision `143ad5f1b5acae093ea66186e832a8ab4fb1bc0f`) models timer counting
@@ -184,9 +207,14 @@ model does not claim to calibrate. Debug readers neither acknowledge interrupts
 nor acquire/release TOD latches or advance pending work.
 
 All successful writes target the same next capture edge, retain enqueue order,
-and mature together before slots are reused. Sixteen slots cover legal CPU
-traffic, which accepts at most one transfer per E period. Direct callers can
-fill the buffer and must retry a setter that returns `false`. Processing uses
+and mature together before slots are reused. The sixteen-slot buffer exceeds
+production CPU demand: each CIA accepts at most one transfer per E period,
+and a phase-1 write commits at phase 2, before another transfer can be accepted.
+CPU bus acceptance therefore checks E-clock synchronization without a queue
+capacity check or a queue-related wait state. Direct callers must respect the
+setter's acceptance result and drain injected writes before resuming CPU bus
+traffic; direct writes are not a second concurrent producer on that bus path.
+They can fill the buffer and must retry a setter that returns `false`. Processing uses
 a due buffer of the same capacity, so simultaneous commitment loses no writes.
 The shared staging helper rejects overflow without immediate application.
 

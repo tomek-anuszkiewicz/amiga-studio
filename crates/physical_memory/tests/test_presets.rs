@@ -18,11 +18,11 @@ fn test_bare_512k_preset_topology() {
         assert_eq!(map[b].bank, MemoryBank::ChipRam);
     }
 
-    // Unmapped banks before CIA (0x08..=0xBE)
+    // Unmapped banks before the CIA qualification range (0x08..=0x9F)
     assert_eq!(map[0x08].bank, MemoryBank::OpenBus);
     assert_eq!(map[0x20].bank, MemoryBank::OpenBus); // Fast RAM unmapped in bare 512k
 
-    // CIA at bank 0xBF
+    // CIA classification covers banks 0xA0..=0xBF.
     assert_eq!(map[0xBF].bank, MemoryBank::Cia);
 
     // Slow RAM unmapped in bare 512k (0xC0..=0xC7)
@@ -31,7 +31,7 @@ fn test_bare_512k_preset_topology() {
     // RTC unmapped in bare 512k
     assert_eq!(map[0xDC].bank, MemoryBank::OpenBus);
 
-    // Custom chips at 0xDF
+    // Custom chips at 0xDE..=0xDF
     assert_eq!(map[0xDF].bank, MemoryBank::CustomChips);
 
     // Kickstart ROM at 0xF8..=0xFF (512 KB address space)
@@ -92,4 +92,29 @@ fn test_static_preset_dispatch_references() {
     let config = A500Config::from_preset(A500Preset::Standard1Mb, VideoStandard::Pal);
     let map = build_bank_map(&config);
     assert_eq!(map[0xC0].bank, MemoryBank::SlowRam);
+}
+
+#[test]
+fn gary_device_banks_cover_every_preset() {
+    for preset in [
+        A500Preset::Bare512k,
+        A500Preset::Standard1Mb,
+        A500Preset::ExpandedPowerUser,
+    ] {
+        let map = build_preset_bank_map(preset);
+        for bank in 0xa0..=0xbf {
+            assert_eq!(
+                map[bank].bank,
+                MemoryBank::Cia,
+                "{preset:?} bank {bank:02x}"
+            );
+        }
+        for bank in [0xde, 0xdf] {
+            assert_eq!(
+                map[bank].bank,
+                MemoryBank::CustomChips,
+                "{preset:?} bank {bank:02x}"
+            );
+        }
+    }
 }

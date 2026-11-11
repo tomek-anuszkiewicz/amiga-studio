@@ -1060,3 +1060,38 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: both Rust changes preserve executable content
   - scoped source inspection confirms the documented beam, CIA, UART, debugger and bus-interface limitations
   - NOT RUN: milestone profile because this change reorganizes pending work without closing an implementation stage
+---
+
+### [2026-11-11 16:45 CET] — MEM-GARY-01: Close Roadmap 2.2 Gary address decoding
+- **Affected Subsystems**:
+  - `config`
+  - `physical_memory`
+  - `memory_bus`
+  - `CIA`
+  - `production machine tests`
+  - `affected design specifications`
+  - `roadmap`
+- **What Was Changed (The Concrete Reality)**:
+  - Route CIA banks A0-BF with independent A12/A13 selection and full canonical register identities
+  - preserve CIA-B high and CIA-A low read lanes, byte-write broadcast and word-write lane selection
+  - route DE-DF through the same custom live/debug/queued paths
+  - synchronize selected CIA receivers together and preserve committed PA0 overlay timing
+  - retain sixteen mutation slots and direct-setter overflow rejection while removing the CIA bus capacity preflight by user decision
+  - simplify the optional countdown and express the unchanged wait schedule through named CCK constants
+  - remove the superseded CIA-only debug byte helper and inspect lanes through the production word-debug API
+  - prepare Roadmap 2.2 pruning and repair active handoff links
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve fixed inactive-lane FF and unmapped FFFF values, installed RAM/RTC boundaries and physical DMA storage
+  - distinguish HRM canonical software addresses, A500 Rev. 6A/7 wiring and differing reference-model decode equations
+  - keep extra mirrors and silicon timing calibration deferred
+  - full CIA CPU-cycle timing and the hardware 10-19-clock range remain unverified in the CCK model and are handed to 2.3/2.5
+  - user authorized existing ADF regressions for closure with a stop on errors, superseding the earlier ADF validation block without authorizing firmware or new media work
+- **Verification & Test Results**:
+  - Original-code failures reproduced before implementation for CIA aliases, dual selection, opposite-parity writes, DE routing and physical bank classification
+  - focused checks cover PAL/NTSC and all three memory presets
+  - PASS 47 CIA/MemoryBus tests and 12 production CIA/Gary integration tests on the final runtime source
+  - PASS nine existing production-machine ADF/action tests including disk DMA, while the floppy crate contains zero tests
+  - PASS strict focused Clippy, machine WASM compilation and English checks
+  - PASS configured semantic checks for 196 offsets, 12 map boundaries and 26 crates, with zero signal/quirk sentinels
+  - PASS 35 design notes and 843 links before the final timing caveat
+  - checkpoint and diary compaction review found no earlier settled MEM-GARY-01 entries, so unrelated history remains unchanged and the one pending task entry is consolidated here

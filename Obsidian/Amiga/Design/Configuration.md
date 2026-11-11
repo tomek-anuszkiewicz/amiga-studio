@@ -18,6 +18,12 @@ tracked_paths:
 > Implementation resides in the dedicated foundational crate [`crates/config`](../../../crates/config).
 > Physical memory layout is applied in [Physical Memory.md](Physical%20Memory.md), motherboard routing in [MemoryBus.md](MemoryBus.md), RTC models in [RTC.md](RTC.md), chipset variants in [Agnus.md](Agnus.md) and [Denise.md](Denise.md), and system coordinator setup in [Machine Loop.md](Machine%20Loop.md).
 
+The shared [address bounds](../../../crates/config/src/address_map.rs) define
+CIA banks `$A0-$BF` and custom banks `$DE-$DF` for all presets. Physical-memory
+classification and the production router import these same definitions.
+[MemoryBus](MemoryBus.md#cia-and-boot-overlay) owns register selection and
+transaction acceptance; these constants do not instantiate devices.
+
 ---
 
 ## 1. Focused Scope: 3 Canonical Hardware Presets

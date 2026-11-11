@@ -8,7 +8,7 @@
 use agnus::Agnus;
 use cia::Cia;
 use config::{cia_reg, custom_reg};
-use config::{A500Config, RtcModel, VideoStandard};
+use config::{A500Config, A500Preset, RtcModel, VideoStandard};
 use denise::{Denise, DeniseModel};
 use memory_bus::MemoryBus;
 use paula::Paula;
@@ -22,6 +22,10 @@ fn clock_cias(bus: &mut MemoryBus<'_>) {
     if bus.cia_a.poll_pra_output().is_some() {
         MemoryBus::update_ciaa_overlay(bus.mem, bus.cia_a);
     }
+}
+
+fn read_byte_debug(bus: &MemoryBus<'_>, addr: u32) -> u8 {
+    bus.read_word_debug(addr & !1).to_be_bytes()[(addr & 1) as usize]
 }
 
 fn sync_read_byte(bus: &mut MemoryBus<'_>, addr: u32) -> BusResult<u8> {
@@ -78,16 +82,20 @@ struct TestMotherboard {
 
 impl TestMotherboard {
     fn new() -> Self {
-        let mut mem = PhysicalMemory::new();
+        Self::with_config(A500Config::standard_1mb(VideoStandard::Pal))
+    }
+
+    fn with_config(config: A500Config) -> Self {
+        let mut mem = PhysicalMemory::from_config(config.clone());
         mem.map_chip_ram_to_low_memory();
         Self {
             mem,
-            agnus: Agnus::new(A500Config::standard_1mb(VideoStandard::Pal).agnus_model()),
+            agnus: Agnus::new(config.agnus_model()),
             denise: Denise::new(DeniseModel::Ocs8362),
             paula: Paula::new(),
             cia_a: Cia::new(),
             cia_b: Cia::new(),
-            rtc: RtcMsm6242b::new(RtcModel::Msm6242b),
+            rtc: RtcMsm6242b::new(config.rtc()),
         }
     }
 
@@ -134,7 +142,7 @@ fn cia_acceptance_tracks_each_eclock_phase_without_duplicate_writes() {
             for elapsed in 1..=expected_wait {
                 assert!(bus.cia_a.mutations.iter().all(Option::is_none));
                 assert!(bus.cia_b.mutations.iter().all(Option::is_none));
-                assert_eq!(bus.read_cia_byte_debug(addr), 0);
+                assert_eq!(read_byte_debug(&bus, addr), 0);
                 clock_cias(&mut bus);
                 let expected = if elapsed == expected_wait {
                     BusResult::Ready(())
@@ -154,9 +162,9 @@ fn cia_acceptance_tracks_each_eclock_phase_without_duplicate_writes() {
                     + bus.cia_b.mutations.iter().flatten().count(),
                 1
             );
-            assert_eq!(bus.read_cia_byte_debug(addr), 0);
+            assert_eq!(read_byte_debug(&bus, addr), 0);
             clock_cias(&mut bus);
-            assert_eq!(bus.read_cia_byte_debug(addr), 0x5a);
+            assert_eq!(read_byte_debug(&bus, addr), 0x5a);
             for _ in 0..5 {
                 clock_cias(&mut bus);
             }
@@ -233,7 +241,7 @@ fn each_canonical_cia_write_selects_one_receiver_and_one_capture() {
         assert_eq!(pending[0].reg_offset, ((addr >> 8) & 15) as u16);
         assert_eq!(pending[0].value, 0x5a);
         clock_cias(&mut bus);
-        assert_eq!(bus.read_cia_byte_debug(addr), expected, "{addr:06x}");
+        assert_eq!(read_byte_debug(&bus, addr), expected, "{addr:06x}");
         assert_eq!(
             sync_read_byte(&mut bus, addr),
             BusResult::Ready(expected),
@@ -251,7 +259,7 @@ fn refused_live_icr_reads_have_no_acknowledgment_effect() {
     for _ in 0..5 {
         clock_cias(&mut bus);
         let before_debug = bus.cia_a.clone();
-        assert_eq!(bus.read_cia_byte_debug(cia_reg::cia_a::ICR), 0x81);
+        assert_eq!(read_byte_debug(&bus, cia_reg::cia_a::ICR), 0x81);
         assert_eq!(*bus.cia_a, before_debug);
         assert_eq!(bus.read_byte(cia_reg::cia_a::ICR), BusResult::WaitState);
         assert_eq!(bus.cia_a.icr_debug(), 0x81);
@@ -360,11 +368,7 @@ fn test_all_cia_addresses_select_their_registers() {
         (cia_reg::cia_b::CRA, 0x4E),
         (cia_reg::cia_b::CRB, 0x4F),
     ] {
-        assert_eq!(
-            bus.read_cia_byte_debug(addr),
-            expected,
-            "address {addr:06X}"
-        );
+        assert_eq!(read_byte_debug(&bus, addr), expected, "address {addr:06X}");
     }
 }
 
@@ -385,8 +389,8 @@ fn test_cia_register_addresses_mirror_on_unused_low_bits() {
         sync_read_byte(&mut bus, cia_reg::cia_b::CRA + 2),
         BusResult::Ready(0x2A)
     );
-    assert_eq!(bus.read_cia_byte_debug(cia_reg::cia_a::CRA + 2), 0x45);
-    assert_eq!(bus.read_cia_byte_debug(cia_reg::cia_b::CRA + 2), 0x2A);
+    assert_eq!(read_byte_debug(&bus, cia_reg::cia_a::CRA + 2), 0x45);
+    assert_eq!(read_byte_debug(&bus, cia_reg::cia_b::CRA + 2), 0x2A);
 
     let _ = sync_write_byte(&mut bus, cia_reg::cia_a::CRA + 2, 0x11);
     let _ = sync_write_byte(&mut bus, cia_reg::cia_b::CRA + 2, 0x12);
@@ -599,4 +603,298 @@ fn test_memory_bus_debug_derive() {
     let bus = mb.router();
     let debug_str = format!("{:?}", bus);
     assert!(debug_str.contains("MemoryBus"));
+}
+
+// Roadmap MEM-GARY-01: expected selection follows A500 schematic sheet 6,
+// HRM Appendix F address decode, and the approved Old Gary contract.
+#[test]
+fn gary_cia_banks_selection_lanes_and_byte_write_broadcast() {
+    for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
+        for preset in [
+            A500Preset::Bare512k,
+            A500Preset::Standard1Mb,
+            A500Preset::ExpandedPowerUser,
+        ] {
+            let mut mb = TestMotherboard::with_config(A500Config::from_preset(preset, standard));
+            for bank in 0xa0..=0xbf {
+                for block in 0..16 {
+                    // A15/A14 and A7..A1 are mirrors; selector C is nonzero.
+                    let addr = (bank << 16) | (block << 12) | 0xcfe;
+                    let select_a = block & 1 == 0;
+                    let select_b = block & 2 == 0;
+                    mb.cia_a.sdr = 0x35;
+                    mb.cia_b.sdr = 0xa6;
+                    let high = if select_b { 0xa6 } else { 0xff };
+                    let low = if select_a { 0x35 } else { 0xff };
+                    let mut bus = mb.router();
+                    assert_eq!(
+                        bus.read_word_debug(addr),
+                        u16::from_be_bytes([high, low]),
+                        "{addr:06x}"
+                    );
+                    assert_eq!(
+                        sync_read_word(&mut bus, addr),
+                        BusResult::Ready(u16::from_be_bytes([high, low])),
+                        "{addr:06x}"
+                    );
+                    assert_eq!(sync_read_byte(&mut bus, addr), BusResult::Ready(high));
+                    assert_eq!(sync_read_byte(&mut bus, addr | 1), BusResult::Ready(low));
+                    // Both byte parities drive every selected receiver.
+                    for parity in [0, 1] {
+                        assert_eq!(
+                            sync_write_byte(&mut bus, addr | parity, 0x59 + parity as u8),
+                            BusResult::Ready(())
+                        );
+                        assert_eq!(
+                            bus.cia_a.sdr,
+                            if select_a { 0x59 + parity as u8 } else { 0x35 }
+                        );
+                        assert_eq!(
+                            bus.cia_b.sdr,
+                            if select_b { 0x59 + parity as u8 } else { 0xa6 }
+                        );
+                    }
+                    assert_eq!(
+                        sync_write_word(&mut bus, addr, 0x8765),
+                        BusResult::Ready(())
+                    );
+                    assert_eq!(bus.cia_a.sdr, if select_a { 0x65 } else { 0x35 });
+                    assert_eq!(bus.cia_b.sdr, if select_b { 0x87 } else { 0xa6 });
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn gary_dual_cia_word_acceptance_is_atomic() {
+    let mut mb = TestMotherboard::new();
+    mb.cia_a.icr_data = 0x81;
+    mb.cia_b.icr_data = 0x92;
+    for _ in 0..6 {
+        assert_eq!(mb.router().read_word(0xbfcd00), BusResult::WaitState);
+        assert_eq!((mb.cia_a.icr_data, mb.cia_b.icr_data), (0x81, 0x92));
+        clock_cias(&mut mb.router());
+    }
+    assert_eq!(mb.router().read_word(0xbfcd00), BusResult::Ready(0x9281));
+    assert_eq!((mb.cia_a.icr_data, mb.cia_b.icr_data), (0, 0));
+    assert_eq!((mb.cia_a.bus_wait_cck, mb.cia_b.bus_wait_cck), (None, None));
+}
+
+#[test]
+fn gary_custom_de_bank_shares_live_debug_and_delayed_paths() {
+    for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
+        for preset in [
+            A500Preset::Bare512k,
+            A500Preset::Standard1Mb,
+            A500Preset::ExpandedPowerUser,
+        ] {
+            let mut mb = TestMotherboard::with_config(A500Config::from_preset(preset, standard));
+            mb.agnus.dmacon = 0x0211;
+            assert_eq!(mb.router().read_word(0x01de_f202), BusResult::Ready(0x2211));
+            assert_eq!(mb.router().read_word_debug(0xde0002), 0x2211);
+            assert_eq!(
+                mb.router().write_word(0xde_f096, 0x8002),
+                BusResult::Ready(())
+            );
+            assert_eq!(mb.agnus.dmacon, 0x0211);
+            let _ = mb.agnus.step_cck();
+            assert_eq!(mb.agnus.dmacon, 0x0211);
+            let _ = mb.agnus.step_cck();
+            assert_eq!(mb.agnus.dmacon, 0x0213);
+            mb.denise.clxdat = 0x1234;
+            assert_eq!(mb.router().read_word_debug(0xde000e), 0x1234);
+            assert_eq!(mb.router().read_byte(0xde000f), BusResult::Ready(0x34));
+            assert_eq!(mb.denise.clxdat, 0);
+        }
+    }
+}
+
+#[test]
+fn gary_selected_cia_accepts_byte_writes_on_either_lane() {
+    let mut mb = TestMotherboard::new();
+    assert_eq!(
+        sync_write_byte(&mut mb.router(), 0xbfec00, 0x5a),
+        BusResult::Ready(())
+    );
+    assert_eq!(mb.cia_a.sdr, 0x5a);
+    assert_eq!(mb.cia_b.sdr, 0);
+}
+
+#[test]
+fn gary_dual_writes_wait_for_eclock_and_drain_before_the_next_transfer() {
+    for phase in 0..5 {
+        let mut mb = TestMotherboard::new();
+        for _ in 0..phase {
+            clock_cias(&mut mb.router());
+        }
+        let wait = [6, 5, 4, 3, 7][phase as usize];
+        for _ in 0..wait {
+            assert_eq!(
+                mb.router().write_word(0xa00c00, 0x8765),
+                BusResult::WaitState
+            );
+            assert!(mb.cia_a.mutations.iter().all(Option::is_none));
+            assert!(mb.cia_b.mutations.iter().all(Option::is_none));
+            clock_cias(&mut mb.router());
+        }
+        assert_eq!(
+            mb.router().write_word(0xa00c00, 0x8765),
+            BusResult::Ready(())
+        );
+        for (chip, value) in [(&mb.cia_a, 0x65), (&mb.cia_b, 0x87)] {
+            assert_eq!(chip.eclock_phase, 1);
+            assert_eq!(chip.sdr, 0);
+            let pending: Vec<_> = chip.mutations.iter().flatten().collect();
+            assert_eq!(pending.len(), 1);
+            assert_eq!(pending[0].reg_offset, 0x0c);
+            assert_eq!(pending[0].value, value);
+        }
+        clock_cias(&mut mb.router());
+        assert_eq!((mb.cia_b.sdr, mb.cia_a.sdr), (0x87, 0x65));
+    }
+
+    // Consecutive bus writes drain before the next synchronized acceptance.
+    // Each receiver needs at most one of its sixteen slots for CPU traffic.
+    let mut mb = TestMotherboard::new();
+    for value in 1..=32 {
+        let payload = u16::from_be_bytes([value, value + 32]);
+        let mut accepted = false;
+        for _ in 0..8 {
+            if mb.router().write_word(0xbfcc00, payload) == BusResult::Ready(()) {
+                accepted = true;
+                break;
+            }
+            assert!(mb.cia_a.mutations.iter().all(Option::is_none));
+            assert!(mb.cia_b.mutations.iter().all(Option::is_none));
+            clock_cias(&mut mb.router());
+        }
+        assert!(accepted);
+        assert_eq!(mb.cia_a.mutations.iter().flatten().count(), 1);
+        assert_eq!(mb.cia_b.mutations.iter().flatten().count(), 1);
+        clock_cias(&mut mb.router());
+        assert_eq!((mb.cia_b.sdr, mb.cia_a.sdr), (value, value + 32));
+        assert!(mb.cia_a.mutations.iter().all(Option::is_none));
+        assert!(mb.cia_b.mutations.iter().all(Option::is_none));
+    }
+}
+
+#[test]
+fn gary_inactive_and_unconnected_paths_leave_chips_untouched() {
+    let mut mb = TestMotherboard::new();
+    mb.cia_a.icr_data = 0x81;
+    mb.cia_b.icr_data = 0x92;
+    let before_a = mb.cia_a.clone();
+    let before_b = mb.cia_b.clone();
+    for addr in [0xa03d00, 0xbf3d00, 0xbfcb00, 0xa00bfe] {
+        assert_eq!(mb.router().read_word(addr), BusResult::Ready(0xffff));
+        assert_eq!(mb.router().write_word(addr, 0x1234), BusResult::Ready(()));
+        assert_eq!(mb.router().write_byte(addr | 1, 0x56), BusResult::Ready(()));
+    }
+    assert_eq!(mb.router().read_word_debug(0xbfcd00), 0x9281);
+    assert_eq!(mb.router().read_word_debug(0xa00a00), 0);
+    assert_eq!(mb.cia_a, before_a);
+    assert_eq!(mb.cia_b, before_b);
+
+    // An already ready first receiver must not acknowledge before the second.
+    mb.cia_a.eclock_phase = 1;
+    mb.cia_b.eclock_phase = 1;
+    mb.cia_a.bus_wait_cck = Some(0);
+    for _ in 0..5 {
+        assert_eq!(mb.router().read_word(0xbfcd00), BusResult::WaitState);
+        assert_eq!((mb.cia_a.icr_data, mb.cia_b.icr_data), (0x81, 0x92));
+        assert_eq!(mb.cia_a.bus_wait_cck, Some(0));
+        clock_cias(&mut mb.router());
+    }
+    assert_eq!(mb.router().read_word(0xbfcd00), BusResult::Ready(0x9281));
+}
+
+#[test]
+fn gary_custom_alias_byte_duplication_and_shared_queue_capacity_checks() {
+    let mut mb = TestMotherboard::new();
+    for (addr, value) in [(0xde0180, 0x12), (0x01deff81, 0x34)] {
+        assert_eq!(mb.router().write_byte(addr, value), BusResult::Ready(()));
+        let pending: Vec<_> = mb.denise.mutations.iter().flatten().collect();
+        assert_eq!(pending.len(), 1);
+        assert_eq!(pending[0].value, u16::from_be_bytes([value; 2]));
+        let _ = mb.denise.step_cck(config::BeamPosition::default());
+        assert_eq!(mb.denise.color[0], u16::from_be_bytes([value; 2]) & 0xfff);
+        assert_eq!(mb.router().read_word_debug(addr & !1), 0xffff);
+    }
+    // An alias must use the shared-register preflight before inserting anywhere.
+    for _ in 0..31 {
+        assert!(mb.paula.set_serdat(0));
+    }
+    assert_eq!(
+        mb.router().write_word(0xde0096, 0x8211),
+        BusResult::WaitState
+    );
+    assert!(mb.agnus.mutations.iter().all(Option::is_none));
+    assert_eq!(mb.paula.mutations.iter().flatten().count(), 31);
+    let _ = mb.paula.step_cck();
+    let _ = mb.paula.step_cck();
+    assert_eq!(
+        mb.router().write_word(0xde0096, 0x8211),
+        BusResult::Ready(())
+    );
+    assert_eq!(mb.agnus.mutations.iter().flatten().count(), 1);
+    assert_eq!(mb.paula.mutations.iter().flatten().count(), 1);
+}
+
+#[test]
+fn gary_device_decode_preserves_installed_memory_and_rtc_boundaries() {
+    for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
+        for preset in [
+            A500Preset::Bare512k,
+            A500Preset::Standard1Mb,
+            A500Preset::ExpandedPowerUser,
+        ] {
+            let mut mb = TestMotherboard::with_config(A500Config::from_preset(preset, standard));
+            let fast = preset == A500Preset::ExpandedPowerUser;
+            let slow = preset != A500Preset::Bare512k;
+            for (start, end, present) in [(0x200000, 0x5ffffe, fast), (0xc00000, 0xc7fffe, slow)] {
+                for addr in [start, end] {
+                    assert_eq!(mb.router().write_word(addr, 0x1234), BusResult::Ready(()));
+                    assert_eq!(
+                        mb.router().read_word(addr),
+                        BusResult::Ready(if present { 0x1234 } else { 0xffff })
+                    );
+                }
+            }
+            mb.mem.chip_ram_blocked = true;
+            assert_eq!(
+                mb.router().read_word(0xc00000),
+                if slow {
+                    BusResult::WaitState
+                } else {
+                    BusResult::Ready(0xffff)
+                }
+            );
+            assert_eq!(
+                mb.router().read_word(0x200000),
+                BusResult::Ready(if fast { 0x1234 } else { 0xffff })
+            );
+            mb.mem.chip_ram_blocked = false;
+            // RTC register F and both edges retain their own bank and lane rules.
+            assert_eq!(mb.router().write_byte(0xdc003d, 0x05), BusResult::Ready(()));
+            assert_eq!(
+                mb.router().read_byte(0xdc003d),
+                BusResult::Ready(if slow { 0x05 } else { 0xff })
+            );
+            for addr in [
+                0x1ffffe, 0x600000, 0x9ffffe, 0xc80000, 0xdbfffe, 0xdc0040, 0xdd0000,
+            ] {
+                assert_eq!(
+                    mb.router().read_word(addr),
+                    BusResult::Ready(0xffff),
+                    "{addr:06x}"
+                );
+            }
+            // Physical classification supplies no live register side effects.
+            mb.cia_a.sdr = 0x5a;
+            assert_eq!(mb.mem.read_word(0xa00c00), BusResult::Ready(0xffff));
+            assert_eq!(mb.mem.read_word_debug(0xde0002), 0xffff);
+            assert_eq!(mb.cia_a.sdr, 0x5a);
+        }
+    }
 }

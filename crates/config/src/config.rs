@@ -3,6 +3,7 @@
 //! Encapsulated, read-only configuration model for the Amiga 500 emulator.
 //! State mutation is restricted exclusively to applying canonical hardware presets.
 
+pub mod address_map;
 pub mod big_array;
 pub mod chip_ram;
 pub mod mutation;

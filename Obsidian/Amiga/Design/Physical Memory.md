@@ -24,13 +24,13 @@ The 16 MB CPU address space is classified by a 256-entry table of 64 KB banks. [
 | `$000000-$07FFFF` | 512 KB Chip RAM after overlay removal; Kickstart ROM while overlay is active. |
 | `$080000-$1FFFFF` | Open bus; the current presets do not install extended Chip RAM. |
 | `$200000-$5FFFFF` | 4 MB Fast RAM only in `ExpandedPowerUser`; open bus otherwise. No Chip RAM contention check. |
-| `$600000-$BEFFFF` | Open bus in the current presets. |
-| `$BF0000-$BFFFFF` | CIA classification for direct physical-memory access; `MemoryBus` decodes the live CIA byte lanes. |
+| `$600000-$9FFFFF` | Open bus in the current presets. |
+| `$A00000-$BFFFFF` | CIA classification for direct physical-memory access; `MemoryBus` decodes the live CIA byte lanes. |
 | `$C00000-$C7FFFF` | 512 KB Slow RAM in `Standard1Mb` and `ExpandedPowerUser`; open bus in `Bare512k`. |
 | `$C80000-$DBFFFF` | Open bus. |
 | `$DC0000-$DCFFFF` | RTC classification when installed, otherwise open bus. `MemoryBus` routes only `$DC0000-$DC003F` to the live [RTC](RTC.md). |
-| `$DD0000-$DEFFFF` | Open bus. |
-| `$DF0000-$DFFFFF` | Custom-chip classification; `MemoryBus` routes the live register bank. |
+| `$DD0000-$DDFFFF` | Open bus. |
+| `$DE0000-$DFFFFF` | Custom-chip classification; `MemoryBus` routes the live register bank. |
 | `$E00000-$F7FFFF` | Open bus; expansion and diagnostic ROM regions are not installed by these presets. |
 | `$F80000-$FFFFFF` | Kickstart ROM. A 256 KB image repeats across this 512 KB window; a 512 KB image occupies it once. CPU writes do not modify ROM. |
 
@@ -48,7 +48,7 @@ Chip RAM and installed Slow RAM handlers return `BusResult::WaitState` while `ch
 
 RAM word handlers store the high byte at the lower address and the low byte at the next address. Unmapped reads return the fixed `OPEN_BUS_BYTE` placeholder (`$FF`); word reads return `OPEN_BUS_WORD` (`$FFFF`). See the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access) for the hardware limitation. Unmapped writes complete without storage. ROM writes through the normal CPU path likewise complete without modifying the image.
 
-The debug byte/word handlers bypass contention and device side effects. `write_bytes_debug()` uses them for memory injection, including ROM loading; unlike CPU ROM writes, debug writes to the ROM address range can update the ROM buffer. A direct debug access to `$BF`, `$DC`, or `$DF` sees the physical bank's placeholder behavior, not live peripheral registers. Use the [router's debug interface](MemoryBus.md) when inspection needs device-aware decoding.
+The debug byte/word handlers bypass contention and device side effects. `write_bytes_debug()` uses them for memory injection, including ROM loading; unlike CPU ROM writes, debug writes to the ROM address range can update the ROM buffer. A direct debug access to `$A0-$BF`, `$DC`, or `$DE-$DF` sees the physical bank's placeholder behavior, not live peripheral registers. Use the [router's debug interface](MemoryBus.md) when inspection needs device-aware decoding.
 
 ## Reference Documentation & Upstream Ground Truth
 
