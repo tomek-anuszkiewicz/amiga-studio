@@ -18,7 +18,7 @@ pub enum MutationMode {
 /// Staged register write in the physical propagation latency pipeline
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DelayedMutation {
-    /// Register address offset (e.g. $000..$1FE for custom chips, or the low 16 bits for CIAs)
+    /// Chip-local register identifier ($000..$1FE custom offset or $0..$F CIA selector)
     pub reg_offset: u16,
     /// Staged value to commit
     pub value: u16,

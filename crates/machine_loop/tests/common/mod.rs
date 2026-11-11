@@ -5,6 +5,7 @@
 
 use machine_loop::A500Machine;
 
+pub mod cia;
 pub mod continuation;
 
 /// Fluent test harness wrapping an initialized `A500Machine` in low-memory Chip RAM mode

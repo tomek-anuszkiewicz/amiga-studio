@@ -987,3 +987,38 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: scoped diff whitespace checks
   - Scoped compliance review found no affected emulator specification or missing instruction update
   - NOT RUN: milestone profile because no roadmap point or milestone is being closed
+---
+
+### [2026-11-11 10:46 CET] — Queue direct CIA register access at explicit E-clock phases
+- **Affected Subsystems**:
+  - `crates/cia`
+  - `crates/config`
+  - `crates/memory_bus`
+  - `crates/machine_loop`
+  - `crates/floppy`
+  - `tools/verification`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - CIA-DIRECT-DISPATCH-20261111: replace CIA motherboard-address APIs with named readers and queued setters and one direct MemoryBus address match per access
+  - Migrate benchmark CIA constructors and remove the unused Denise address-based inspection decoder exposed by CIA API retirement; active named debug readers remain in use
+  - Route effective Port-B levels through DDRB-controlled output drivers and input pull-ups; a focused no-media regression reproduced unintended drive selection from raw latch routing before the fix
+  - Record explicit user approval for the four vocabulary terms enqueuing, unrouted, cias and vma in their software/hardware catalogs
+  - separate phase-dependent CPU bus acknowledgment from falling-E register capture and same-phase CIA-A OVL routing
+  - process every inline queued write without overflow fallback
+  - preserve pending bus/TOD/output state through serialization and cancel it on reset
+  - use snapshot version 2 without old-format loading as explicitly approved on 2026-11-11, without deleting user files
+  - correct demonstrated LOAD and unused-bit readback, TOD middle-write halt, pending ICR enable and one-shot timer-high effects
+  - preserve unconsumed output events by removing restore-time peripheral polling
+- **Architectural Rationale & Trade-Offs**:
+  - Motorola Appendix B defines synchronous E-clock transfer and duty cycle
+  - vAmiga supplies the provisional CCK synchronization table and replacement-project CIA sources distinguish rising counts and falling capture
+  - all CIA writes target the same next edge and drain in enqueue order before slots are reused
+  - these references do not establish calibrated silicon propagation delays
+  - this stage contributes to Roadmap 2.1 and does not close the whole point
+- **Verification & Test Results**:
+  - Focused original-mechanism reproductions failed before the register and restore fixes and pass after them
+  - cargo test -p config -p cia -p memory_bus -p machine_loop passed including all 30 canonical addresses, all five initial E phases, real CPU reads/writes and PAL/NTSC pending-operation continuation
+  - Clippy all-target checks, wasm32 machine_loop check, focused formatting and git diff --check passed
+  - vault audit passed 35 design specifications and 715 links
+  - full commit profile and independent snapshot review are recorded by the closing workflow
+  - full SingleStep, firmware/OS and vAmigaTS were not run for this stage

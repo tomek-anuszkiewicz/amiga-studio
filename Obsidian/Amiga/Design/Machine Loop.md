@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "machine_loop"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-12
+updated: 2026-11-11
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[DMA.md](DMA.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/machine_loop"
@@ -35,8 +35,8 @@ The return value says whether the CPU completed an instruction during this step.
 1. It presents the disk DMA request, derived from Paula's active disk DMA and a word available in the floppy controller, to Agnus. Agnus then advances its beam, Copper, Blitter, and DMA against Chip RAM. The loop sends a pending Copper register write through `MemoryBus`, latches a bitplane DMA word into Denise, and handles an available disk read DMA slot by moving a floppy word into Chip RAM. It copies Agnus's Chip RAM blocked state to physical memory for bus accesses. Agnus's Blitter completion and vertical blank outputs request Paula interrupts; vertical blank also ticks CIA-A's time-of-day clock.
 2. It takes Agnus's beam position for Denise's video step. At horizontal position zero, it ticks CIA-B's time-of-day clock.
 3. It advances Paula and the floppy controller. Floppy sync and completed disk blocks request Paula interrupts. An audio channel restart reloads the corresponding Agnus DMA pointer and requests that channel's Paula interrupt.
-4. It advances keyboard transmission into CIA-A, then both CIAs. Pending CIA-A and CIA-B interrupt outputs feed Paula's INT2 and INT6 inputs, respectively.
-5. It advances the RTC. A CIA-A overlay transition changes whether low memory maps to Chip RAM or Kickstart ROM. It then samples peripheral connections and copies Paula's pending interrupt level to the CPU's `ipl` input.
+4. It advances keyboard transmission into CIA-A, then both CIAs. A committed CIA-A port-A or direction change is routed through MemoryBus to apply OVL at the same falling E edge. Pending CIA-A and CIA-B interrupt outputs feed Paula's INT2 and INT6 inputs, respectively.
+5. It advances the RTC, samples peripheral connections, and copies Paula's pending interrupt level to the CPU's `ipl` input. [CIA](CIA.md#runtime-register-capture-and-bus-synchronization) separates CPU bus synchronization, accepted writes and falling-edge capture; pending `PRA`/`DDRA` values do not change OVL.
 
 The peripheral sampling step carries CIA-B drive controls to the floppy controller, floppy status to CIA-A, a floppy byte to Paula, game-port fire inputs to CIA-A, digital position counters to Denise, and potentiometer values to Paula. The machine also samples these connections after construction and resets. See the [cross-chip signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md) for the broader signal inventory; the order above describes what this implementation actually dispatches per CCK.
 
@@ -44,7 +44,7 @@ The peripheral sampling step carries CIA-B drive controls to the floppy controll
 
 Construction creates the components from `A500Config`, resets the CPU against physical memory, samples peripheral inputs, and initializes the CPU interrupt level from Paula. A cold `reset()` resets physical memory, the master counter, chips, and devices before resetting the CPU. `reset_warm()` preserves RAM through the physical-memory warm-reset path and restarts the CPU and devices with the low-memory overlay restored. A CPU `RESET` instruction takes a narrower path: `reset_external_devices()` re-engages the Kickstart overlay and resets external chips and devices without clearing RAM or resetting CPU execution state. These are distinct operations in [`machine_loop.rs`](../../../crates/machine_loop/src/machine_loop.rs).
 
-The machine also owns whole-machine snapshots: `save_state()` captures the clock, configuration, CPU, memory, chips, and peripherals, together with a frame-buffer screenshot; `load_state()` checks the snapshot version, restores those components, and samples peripheral pins again. Snapshot format and persistence are described in [SaveState.md](Application/SaveState.md). Video buffer production belongs to [Denise.md](Denise.md) and [Frame Buffer.md](Frame%20Buffer.md).
+The machine also owns whole-machine snapshots: `save_state()` captures the clock, configuration, CPU, memory, chips, and peripherals, together with a frame-buffer screenshot; `load_state()` checks the snapshot version, restores those components, and retains serialized pin levels and unconsumed output changes. Output routing resumes on the next modeled CCK; loading does not consume an event or synthesize a second one. Snapshot format and persistence are described in [SaveState.md](Application/SaveState.md). Video buffer production belongs to [Denise.md](Denise.md) and [Frame Buffer.md](Frame%20Buffer.md).
 
 ## Reference Documentation & Upstream Ground Truth
 

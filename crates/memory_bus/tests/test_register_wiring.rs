@@ -6,8 +6,8 @@
 //! on write-only registers, and proper routing of DSKPT and AUDxLC.
 
 use agnus::Agnus;
-use cia::{Cia, CiaId};
-use config::{cia_reg, custom_reg};
+use cia::Cia;
+use config::custom_reg;
 use config::{A500Config, RtcModel, VideoStandard};
 use denise::{Denise, DeniseModel};
 use memory_bus::MemoryBus;
@@ -34,8 +34,8 @@ impl TestMotherboard {
             agnus: Agnus::new(A500Config::standard_1mb(VideoStandard::Pal).agnus_model()),
             denise: Denise::new(DeniseModel::Ocs8362),
             paula: Paula::new(),
-            cia_a: Cia::new(CiaId::A),
-            cia_b: Cia::new(CiaId::B),
+            cia_a: Cia::new(),
+            cia_b: Cia::new(),
             rtc: RtcMsm6242b::new(RtcModel::Msm6242b),
         }
     }
@@ -378,7 +378,7 @@ fn test_debug_read_and_register_method_conventions() {
     // 4. CIA debug byte read does not clear or alter state
     mb.cia_a.pra = 0xAA;
     let debug_cia = mb.router().read_cia_byte_debug(0xBFE001);
-    assert_eq!(debug_cia, mb.cia_a.read_register_debug(cia_reg::cia_a::PRA));
+    assert_eq!(debug_cia, mb.cia_a.pra());
     assert_eq!(debug_cia, 0xAA);
 }
 

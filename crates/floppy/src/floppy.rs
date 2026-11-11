@@ -9,6 +9,9 @@ pub use mfm::*;
 
 use serde::{Deserialize, Serialize};
 
+/// CIA-A Port A inputs: _RDY, _TK0, _WPROT, and _CHNG (bits 2..5).
+pub const CIAA_PRA_FLOPPY_SENSE_MASK: u8 = 0x3C;
+
 /// Standard Double Density disk geometry constants
 const CYLINDERS_PER_DISK: u8 = 80;
 const HEADS_PER_DISK: u8 = 2;

@@ -84,8 +84,8 @@ impl A500Machine {
         let agnus = agnus::Agnus::new(config.agnus_model());
         let denise = denise::Denise::new(config.denise_model());
         let paula = paula::Paula::new();
-        let cia_a = cia::Cia::new(cia::CiaId::A);
-        let cia_b = cia::Cia::new(cia::CiaId::B);
+        let cia_a = cia::Cia::new();
+        let cia_b = cia::Cia::new();
         let rtc = rtc::RtcMsm6242b::new(config.rtc());
 
         let floppy = floppy::FloppyController::new();
@@ -174,7 +174,7 @@ impl A500Machine {
         // 2. Floppy disk sensing lines -> CIA-A Port A bits 2..5 (_RDY, _TK0, _WPROT, _CHNG)
         let floppy_inputs = self.floppy.sample_ciaa_port_a_inputs();
         self.cia_a
-            .set_input_pins_a(floppy_inputs, cia::CIAA_PRA_FLOPPY_SENSE_MASK);
+            .set_input_pins_a(floppy_inputs, floppy::CIAA_PRA_FLOPPY_SENSE_MASK);
 
         // 3. Floppy MFM stream / byte ready -> Paula DSKBYTR
         if let Some(floppy_byte) = self.floppy.poll_pending_dskbytr() {
@@ -184,7 +184,7 @@ impl A500Machine {
         // 4. Game ports fire buttons -> CIA-A Port A bits 6..7 (/FIR0, /FIR1, active low)
         let fire_pins = self.game_ports.sample_ciaa_port_a_inputs();
         self.cia_a
-            .set_input_pins_a(fire_pins, cia::CIAA_PRA_FIRE_MASK);
+            .set_input_pins_a(fire_pins, game_ports::CIAA_PRA_FIRE_MASK);
 
         // 5. Mouse/joystick quadrature counters -> Denise JOY0DAT & JOY1DAT
         self.denise.joy0dat = self.game_ports.joy0dat();
@@ -278,6 +278,9 @@ impl A500Machine {
         // 5. Step CIAs
         self.cia_a.step_cck();
         self.cia_b.step_cck();
+        if self.cia_a.poll_pra_output().is_some() {
+            MemoryBus::update_ciaa_overlay(&mut self.physical_memory, &self.cia_a);
+        }
 
         // Cross-Chip Signals: CIA /IRQ pins -> Paula _INT2 & _INT6 pins
         if self.cia_a.irq_pending() {
@@ -290,14 +293,7 @@ impl A500Machine {
         // 6. Step Real-Time Clock
         self.rtc.step_cck(1);
 
-        // 7. Cross-Chip Cascades (Physical Pins)
-        if let Some(chip_ram_engaged) = self.cia_a.ovl_transition() {
-            if chip_ram_engaged {
-                self.physical_memory.map_chip_ram_to_low_memory();
-            } else {
-                self.physical_memory.map_kickstart_to_low_memory();
-            }
-        }
+        // 7. Sample peripheral pins
         self.poll_peripheral_pins();
 
         // 8. Central interrupt priority line (IPL 1-6) arbitration
@@ -459,8 +455,8 @@ impl A500Machine {
         self.keyboard = state.keyboard.clone();
         self.game_ports = state.game_ports.clone();
 
-        // 7. Re-poll peripheral pins to establish consistent signal line levels
-        self.poll_peripheral_pins();
+        // Signal levels and unconsumed output changes are serialized state.
+        // Routing here would consume an event before its next modeled phase.
 
         Ok(())
     }

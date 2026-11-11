@@ -195,8 +195,8 @@ fn test_cold_reset_full_flow() {
     machine.agnus.dma.write_dmacon(0x8200); // Enable master DMA
     machine.denise.color[0] = 0x0F00; // Red background
     machine.paula.write_intena(0x8080); // Enable Audio 0 IRQ
-    machine.cia_a.write_register(cia_reg::cia_a::DDRA, 0x03); // DDRA bits 0-1
-    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x01); // PRA bit 0
+    machine.cia_a.set_ddra(0x03); // DDRA bits 0-1
+    machine.cia_a.set_pra(0x01); // PRA bit 0
 
     // 3. Modify CPU registers and state
     machine.cpu.state.set_d_long(0, 0x12345678);
@@ -657,14 +657,17 @@ fn test_reset_overlay_kickstart_vs_synthetic() {
     );
 
     // Disengage overlay via CIA-A Port A bit 0
-    machine.cia_a.write_register(cia_reg::cia_a::DDRA, 0x01); // DDRA bit 0 output
-    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x01); // PRA bit 0 high (disengage _OVL)
-    for _ in 0..10 {
-        machine.step_cck();
-    }
+    assert_eq!(
+        common::cia::write_byte(&mut machine, cia_reg::cia_a::PRA, 0x00),
+        machine_loop::BusResult::Ready(())
+    );
+    assert_eq!(
+        common::cia::write_byte(&mut machine, cia_reg::cia_a::DDRA, 0x01),
+        machine_loop::BusResult::Ready(())
+    );
     assert!(
         !machine.physical_memory.is_low_memory_overlay_active(),
-        "Overlay must disengage when CIA-A drives PRA bit 0 high"
+        "Overlay must disengage immediately when CIA-A drives PA0 low"
     );
 
     // Warm reset re-engages overlay

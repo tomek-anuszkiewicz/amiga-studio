@@ -493,17 +493,6 @@ impl Denise {
         }
     }
 
-    /// Read-only inspection without side-effects (for debuggers and GUI)
-    #[inline]
-    pub fn peek_register(&self, offset: u16) -> u16 {
-        match offset & 0x1FE {
-            reg::JOY0DAT => self.joy0dat,
-            reg::JOY1DAT => self.joy1dat,
-            reg::CLXDAT => self.clxdat,
-            _ => config::OPEN_BUS_WORD,
-        }
-    }
-
     /// Receives a synchronization address strobe on RGA. Video effects are not modeled yet.
     pub fn receive_sync_strobe(&mut self, _offset: u16) {}
 

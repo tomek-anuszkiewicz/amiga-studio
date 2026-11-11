@@ -1,5 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod common;
+
 use config::custom_reg;
 use config::{A500Config, VideoStandard};
 use machine_loop::BusResult;
@@ -198,6 +200,7 @@ fn test_blitter_size_triggers_busy_and_syncs_pointers() {
 #[test]
 fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+    common::cia::configure_drive_control_outputs(&mut machine);
 
     // Insert formatted disk into DF0
     machine.floppy.drives[0].insert_disk(&[0; 100]);
@@ -211,7 +214,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     //               bit 3 = _SEL0 (0=active), bit 2 = _SIDE (1=lower), bit 1 = _DIR (0=towards higher), bit 0 = _STEP (1=inactive)
     // Value: 0b0111_0101 = 0x75
     assert_eq!(
-        machine.memory_bus().write_byte(0xBFD100, 0x75),
+        common::cia::write_byte(&mut machine, 0xBFD100, 0x75),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -220,14 +223,14 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
 
     // Step 2: Pulse _STEP low (bit 0 = 0 -> 0x74)
     assert_eq!(
-        machine.memory_bus().write_byte(0xBFD100, 0x74),
+        common::cia::write_byte(&mut machine, 0xBFD100, 0x74),
         BusResult::Ready(())
     );
     machine.step_cck();
 
     // Step 3: Return _STEP high (bit 0 = 1 -> 0x75)
     assert_eq!(
-        machine.memory_bus().write_byte(0xBFD100, 0x75),
+        common::cia::write_byte(&mut machine, 0xBFD100, 0x75),
         BusResult::Ready(())
     );
     machine.step_cck();
@@ -240,7 +243,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
 
     // Read CIA-A Port A ($BFE001):
     // Bit 4 is _TK0 (Track 0 sensor, active low). Since head is at cylinder 1, _TK0 should be 1 (inactive).
-    let val = match machine.memory_bus().read_byte(0xBFE001) {
+    let val = match common::cia::read_byte(&mut machine, 0xBFE001) {
         BusResult::Ready(v) => v,
         _ => panic!("Expected ready read"),
     };
@@ -368,18 +371,21 @@ fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
 #[test]
 fn test_floppy_ciab_prb_polling_and_dskbytr_paula_latching() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+    common::cia::configure_drive_control_outputs(&mut machine);
 
     // Initially, DF0 motor is off
     assert!(!machine.floppy.drives[0].motor_on);
 
     // CPU writes to CIA-B PRB ($BFD100) selecting DF0 with motor on: 0x75
     assert_eq!(
-        machine.memory_bus().write_byte(0xBFD100, 0x75),
+        common::cia::accept_write(&mut machine, 0xBFD100, 0x75),
         BusResult::Ready(())
     );
 
-    // Before stepping, CIA-B has prb_mutated = true
-    assert!(machine.cia_b.prb_mutated);
+    // The accepted write is pending; pins and drive control have not changed.
+    assert!(!machine.cia_b.prb_mutated);
+    assert!(!machine.floppy.drives[0].motor_on);
+    assert_eq!(machine.cia_b.mutations.iter().flatten().count(), 1);
 
     // Stepping the machine executes poll_peripheral_pins which polls CIA-B PRB and updates Floppy
     machine.step_cck();
@@ -421,16 +427,16 @@ fn test_game_ports_fire_buttons_ciaa_pra_polling() {
     // Default: both fire pins float high (1)
     machine.poll_peripheral_pins();
     assert_eq!(
-        machine.cia_a.pra & cia::CIAA_PRA_FIRE_MASK,
-        cia::CIAA_PRA_FIRE_MASK
+        machine.cia_a.pra & game_ports::CIAA_PRA_FIRE_MASK,
+        game_ports::CIAA_PRA_FIRE_MASK
     );
 
     // Press mouse left button (Port 1 /FIR0)
     machine.game_ports.set_mouse_buttons(true, false, false);
     machine.poll_peripheral_pins();
     assert_eq!(
-        machine.cia_a.pra & cia::CIAA_PRA_FIRE_MASK,
-        cia::CIAA_PRA_FIRE_MASK & !cia::CIAA_PRA_FIR0
+        machine.cia_a.pra & game_ports::CIAA_PRA_FIRE_MASK,
+        game_ports::CIAA_PRA_FIRE_MASK & !game_ports::CIAA_PRA_FIR0
     );
 
     // Press joystick fire (Port 2 /FIR1)
@@ -438,5 +444,5 @@ fn test_game_ports_fire_buttons_ciaa_pra_polling() {
         .game_ports
         .set_joystick(false, false, false, false, true, false);
     machine.poll_peripheral_pins();
-    assert_eq!(machine.cia_a.pra & cia::CIAA_PRA_FIRE_MASK, 0);
+    assert_eq!(machine.cia_a.pra & game_ports::CIAA_PRA_FIRE_MASK, 0);
 }

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-28
+updated: 2026-11-11
 related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)"]
 tracked_paths:
   - "crates/machine_loop/src/save_state.rs"
@@ -36,13 +36,13 @@ tracked_paths:
 5. **Direct Chip Value Containment:**
    - Unlike `Cpu` which isolates register snapshots in `CpuState` for external test harnesses (SingleStepTests), custom chips (`Copper`, `Blitter`, `Agnus`, `Denise`, `Paula`, `Cia`) are already flat value containers with zero circular pointers. They are themselves the canonical serializable state records, avoiding duplicate wrapper structs.
 
-Snapshot JSON must contain the serialized non-`Option` fields of the current schema; missing fields fail deserialization. `Option` fields may be `null` or absent, while fields skipped by Serde are reconstructed at load time. The header still uses format version 1, but matching that number alone does not guarantee that an older version-1 snapshot has every field required by the current schema.
+Snapshot JSON must contain the serialized non-`Option` fields of the current schema; missing fields fail deserialization. `Option` fields may be `null` or absent, while fields skipped by Serde are reconstructed at load time. The active header format is version 2. The user explicitly approved a new format without old-format loading on 2026-11-11. Version 1 is unsupported; no migration or compatibility decoder is provided. Existing saved files are not deleted. CIA state now stores chip-local queued register identifiers, E-clock phase, the pending bus synchronization countdown and pending TOD latch effects.
 
 ---
 
 ## 2. Full Snapshot Contents
 
-`A500State` contains the master CCK count and the active machine configuration alongside the CPU state, physical memory, RTC, Agnus, Denise, Paula, both CIAs, the floppy controller, keyboard, and game ports. Its `SaveStateHeader` carries the schema version, creation timestamp, and PNG preview. The living field definitions are in [save_state.rs](../../../../crates/machine_loop/src/save_state.rs), with subsystem state described in the linked specifications above.
+`A500State` contains the master CCK count and the active machine configuration alongside the CPU state, physical memory, RTC, Agnus, Denise, Paula, both CIAs, the floppy controller, keyboard, and game ports. Its `SaveStateHeader` carries the schema version, creation timestamp, and PNG preview. Pending write/read effects and unconsumed outputs belong to the chip values. Restoring must retain them without routing output events during loading; their next action occurs at the same modeled phase as uninterrupted execution. The living field definitions are in [save_state.rs](../../../../crates/machine_loop/src/save_state.rs), with subsystem state described in the linked specifications above.
 
 ---
 
@@ -106,7 +106,7 @@ flowchart TD
 
     LOAD_ROM --> RESTORE["4. Commit Subsystem Registers & Buffers"]
     VERIFY_ROM --> RESTORE
-    RESTORE --> ARBITRATE["5. Re-evaluate Interrupt Arbitration (IPL)\nand Memory Bus Wait States"]
+    RESTORE --> ARBITRATE["5. Resume Phase-Driven Arbitration\nand Pending Effects on the Next CCK"]
 ```
 
 ---

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "physical_memory"
 status: "active"
 created: 2026-10-12
-updated: 2026-10-13
+updated: 2026-11-11
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[Machine Loop.md](Machine%20Loop.md)", "[DMA.md](DMA.md)", "[RTC.md](RTC.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/physical_memory"
@@ -38,7 +38,7 @@ This table describes the emulator's installed handlers, not a promise that every
 
 ## Boot overlay and reset
 
-Construction and both reset paths engage the ROM overlay by changing banks `$00-$07` from Chip RAM handlers to Kickstart handlers. CPU reads of the reset vectors at `$000000` and `$000004` therefore see ROM. When CIA-A Port A bit 0 selects Chip RAM, [`MemoryBus`](MemoryBus.md) calls `map_chip_ram_to_low_memory()`; the opposite value restores the ROM handlers. The [machine loop](Machine%20Loop.md) also applies the CIA's reported overlay transition. Switching handlers does not copy or erase Chip RAM. Direct Agnus DMA reads and writes use `read_chip_word()` and `write_chip_word()` on the Chip RAM buffer, so they bypass the CPU overlay.
+Construction and both reset paths engage the ROM overlay by changing banks `$00-$07` from Chip RAM handlers to Kickstart handlers. CPU reads of the reset vectors at `$000000` and `$000004` therefore see ROM. When a queued CIA-A `PRA` or `DDRA` write commits, the [machine loop](Machine%20Loop.md) routes its generic port change through [`MemoryBus`](MemoryBus.md#cia-and-boot-overlay) in that same phase and applies the PA0 output level: OVL high selects Kickstart ROM, and OVL low selects Chip RAM. An input PA0 is pulled high. A pending CIA write leaves the map intact; routing the committed pin introduces no extra propagation stage. Switching handlers does not copy or erase Chip RAM. Direct Agnus DMA reads and writes use `read_chip_word()` and `write_chip_word()` on the Chip RAM buffer, so they bypass the CPU overlay.
 
 `reset()` clears installed Chip, Slow, and Fast RAM to zero, clears `chip_ram_blocked`, and restores the overlay. `reset_warm()` preserves RAM while clearing the contention flag and restoring the overlay. Both retain the ROM image. When no ROM has been injected, construction supplies a 256 KB `$FF` image with synthetic initial stack-pointer and program-counter vectors for headless startup; this is an emulator fallback, not a Kickstart ROM.
 

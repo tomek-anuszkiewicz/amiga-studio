@@ -13,11 +13,11 @@ use config::custom_reg;
 mod common;
 use common::MachineHarness;
 use floppy::{FORMATTED_DISK_BYTES, SECTORS_PER_TRACK, SECTOR_DATA_BYTES};
-use machine_loop::AddressBus;
 
 #[test]
 fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
     let mut harness = MachineHarness::new();
+    common::cia::configure_drive_control_outputs(&mut harness.machine);
 
     // 1. Prepare ADF disk image with recognizable data
     let mut adf_image = vec![0u8; FORMATTED_DISK_BYTES];
@@ -34,7 +34,7 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
 
     // 2. Select DF0: with motor ON via CIA-B PRB ($BFD100) write
     // _SEL0 = bit 3 (0), _MTR = bit 7 (0) -> 0b0111_0111 = 0x77
-    harness.machine.memory_bus().write_byte(0xBFD100, 0x77);
+    common::cia::write_byte(&mut harness.machine, 0xBFD100, 0x77);
     harness.machine.step_cck(); // Propagate CIA-B PRB to Floppy
     assert!(harness.machine.floppy.drives[0].selected);
     assert!(harness.machine.floppy.drives[0].motor_on);

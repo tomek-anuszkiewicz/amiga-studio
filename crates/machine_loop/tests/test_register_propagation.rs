@@ -1,5 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod common;
+
 use config::cia_reg;
 use config::custom_reg;
 use config::{A500Config, VideoStandard};
@@ -64,23 +66,58 @@ fn test_cross_chip_dmacon_broadcast_to_agnus_and_paula() {
 }
 
 #[test]
-fn test_cia_a_ovl_pin_cascade_to_memory_bus() {
+fn test_cia_a_overlay_follows_committed_port_level() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
-
-    // Initially, low memory overlay is disengaged for bare_512k test RAM (or re-engaged on cold reset)
-    machine.physical_memory.map_kickstart_to_low_memory();
-    assert!(machine.physical_memory.is_low_memory_overlay_active());
-
-    // Write CIA-A Port A ($BFE001) bit 0 = 1 (Chip RAM engaged)
-    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x01);
-
-    // Step CCK: machine loop observes CIA-A ovl_transition and disengages overlay
-    machine.step_cck();
-    assert!(!machine.physical_memory.is_low_memory_overlay_active());
-
-    // Write bit 0 = 0 (Kickstart ROM overlay engaged)
-    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x00);
-    machine.step_cck();
+    machine.cpu.state.set_stopped(true);
+    machine
+        .physical_memory
+        .write_bytes_debug(0xf80000, &[0x12, 0x34]);
+    for (addr, value, expected_overlay) in [
+        (cia_reg::cia_a::DDRA, 1, false),
+        (cia_reg::cia_a::PRA, 1, true),
+        (cia_reg::cia_a::PRA, 0, false),
+        (cia_reg::cia_a::DDRA, 0, true),
+    ] {
+        let before = machine.physical_memory.is_low_memory_overlay_active();
+        assert_eq!(
+            machine.memory_bus().write_byte(addr, value),
+            BusResult::WaitState
+        );
+        assert_eq!(
+            machine.physical_memory.is_low_memory_overlay_active(),
+            before
+        );
+        assert!(machine.cia_a.mutations.iter().all(Option::is_none));
+        assert_eq!(
+            common::cia::accept_write(&mut machine, addr, value),
+            BusResult::Ready(())
+        );
+        assert_eq!(machine.cia_a.eclock_phase, 1);
+        assert_eq!(machine.cia_a.mutations.iter().flatten().count(), 1);
+        assert_eq!(
+            machine.physical_memory.is_low_memory_overlay_active(),
+            before
+        );
+        machine.step_cck();
+        assert_eq!(machine.cia_a.eclock_phase, 2);
+        assert_eq!(
+            machine.physical_memory.is_low_memory_overlay_active(),
+            expected_overlay
+        );
+        let expected_word = if expected_overlay { 0x1234 } else { 0 };
+        assert_eq!(
+            machine.memory_bus().read_word(0),
+            BusResult::Ready(expected_word)
+        );
+        machine.step_cycles(5);
+        assert_eq!(
+            machine.physical_memory.is_low_memory_overlay_active(),
+            expected_overlay
+        );
+    }
+    // CIA-B has no OVL connection.
+    common::cia::write_byte(&mut machine, cia_reg::cia_b::DDRA, 1);
+    common::cia::write_byte(&mut machine, cia_reg::cia_b::PRA, 0);
     assert!(machine.physical_memory.is_low_memory_overlay_active());
 }
 

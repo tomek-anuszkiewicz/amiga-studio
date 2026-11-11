@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "cia"
 status: "active"
 created: 2026-09-06
-updated: 2026-10-12
+updated: 2026-11-11
 related: ["[Machine Loop.md](Machine%20Loop.md)", "[MemoryBus.md](MemoryBus.md)", "[Keyboard.md](Keyboard.md)", "[Floppy.md](Floppy.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/cia"
@@ -93,9 +93,81 @@ The timer addresses read the running counter and write a separate reload latch. 
 | `$BFDE00` | `CRA` control bits | `CRA` control and `LOAD` strobe | RW | Timer A, PB6, serial mode | Unknown | Timer A mode and source; `LOAD` bit reads as zero. |
 | `$BFDF00` | `CRB` control bits | `CRB` control and `LOAD` strobe | RW | Timer B, PB7, TOD | Unknown | Timer B mode; bit 7 selects TOD time or alarm writes. |
 
+## Runtime register capture and bus synchronization
+
+[MemoryBus](MemoryBus.md#cia-and-boot-overlay) selects each connected address
+once and calls a named reader or setter on one of two independent `Cia`
+instances. CIA's public register interface has no motherboard address or chip
+identity. [`registers.rs`](../../../crates/cia/src/registers.rs) owns these
+accessors and private application methods. Reads expose active state; each
+setter returns whether its write entered the fixed inline mutation buffer.
+A rejected full-buffer write changes neither the active register nor pending
+work. A successful setter never applies its payload immediately.
+
+The current CCK model separates bus synchronization from register capture:
+
+| Divider phase | Modeled E-clock work |
+| --- | --- |
+| `0` | Rising edge; existing timer engines count here. |
+| `1` | A synchronized CPU transfer can return `Ready`; a write enters its receiver's queue. |
+| `2` | Falling edge; pending register writes and TOD latch acquire/release take effect. |
+| `3`, `4` | Remaining low portion of E. |
+
+This represents the six CPU clocks low/four high duty cycle in
+[Motorola Appendix B, B.1](../Reference/68000%20User's%20Manual/13%20-%20Appendix%20B%20-%20M6800%20Peripheral%20Interface.md).
+The phase origin is a model convention. The CPU invokes reads in CCK1 and
+writes in CCK2; `WaitState` keeps that active micro-step and its inputs stable.
+On the first connected CIA attempt, the receiver records its synchronization
+countdown without reading or enqueuing a write. Retries complete only at phase
+`1`. For initial phases `0..4`, waits are `6, 5, 4, 3, 7` CCK respectively,
+derived from the even CPU-phase entries in
+[vAmiga's `Agnus::syncWithEClock`](../../../ref_src/vAmiga/Core/Components/Agnus/Agnus.cpp).
+This is a reference-emulator timing model, not a measured hardware delay.
+
+The [replacement-project CIA](../../../ref_src/amiga_replacement_project/cia/cia8520.v)
+(revision `143ad5f1b5acae093ea66186e832a8ab4fb1bc0f`) models timer counting
+on rising E and register writes/output changes on falling E. Its
+[TOD helper](../../../ref_src/amiga_replacement_project/cia/cia_tod.v)
+explicitly acquires/releases the read latch at the falling edge. Accordingly,
+a named setter at any phase targets the next falling edge; a production bus
+write accepted at phase `1` commits one CCK later. This is capture alignment,
+not an additional arbitrary E-clock delay assigned to every register.
+
+Writes to ports, directions, timer latches, time/alarm, SDR, ICR masks and
+controls all use that capture path. Port-B output notifications apply
+`PRB | !DDRB`, so an input releases its control line high instead of driving
+the stored latch value. Direction changes use the same committed output path. Timer high-byte writes load stopped timers and load/start one-shot timers
+regardless of START; force-load strobes apply the reload value and do not become
+readable stored bits. CRA also discards its documented unused bit 7. Time writes to the middle/high bytes halt TOD until the low byte
+is written. Enabling a mask for an already pending ICR source asserts the master
+interrupt. Live ICR reads retain clear-on-read at the accepted read phase;
+reference implementations differ on finer acknowledgment timing, which this
+model does not claim to calibrate. Debug readers neither acknowledge interrupts
+nor acquire/release TOD latches or advance pending work.
+
+All successful writes target the same next capture edge, retain enqueue order,
+and mature together before slots are reused. Sixteen slots cover legal CPU
+traffic, which accepts at most one transfer per E period. Direct callers can
+fill the buffer and must retry a setter that returns `false`. Processing uses
+a due buffer of the same capacity, so simultaneous commitment loses no writes.
+The shared staging helper's immediate-on-overflow fallback is never used here.
+
+The serialized CIA value contains its divider phase, pending bus countdown,
+chip-local register selectors `0..15`, write values/countdowns/modes, active
+registers, TOD latch operation/value, and unconsumed port-output changes.
+[Snapshot version 2](Application/SaveState.md) adopts this encoding without
+old-format loading by explicit user decision on 2026-11-11. Reset cancels pending
+work. Restore preserves these values and resumes effects at their original
+phase rather than polling outputs during loading. Electrical propagation,
+complete timer/serial state-machine reconstruction and silicon calibration
+remain separate work; the register-map table's unknown delays remain unknown.
+
 ## Reference documentation and source
 
-- [`cia.rs`](../../../crates/cia/src/cia.rs) implements the shared CIA behavior and E-Clock stepping.
+- [`cia.rs`](../../../crates/cia/src/cia.rs) and [`registers.rs`](../../../crates/cia/src/registers.rs): Serializable chip state, E-clock synchronization, queued named register access and capture.
+- [Motorola M68000 User's Manual, Appendix B](../Reference/68000%20User's%20Manual/13%20-%20Appendix%20B%20-%20M6800%20Peripheral%20Interface.md): Synchronous peripheral transfer, VPA/VMA and E-clock duty cycle.
+- [vAmiga Agnus](../../../ref_src/vAmiga/Core/Components/Agnus/Agnus.cpp): Reference-emulator synchronization countdown used by the CCK model.
+- [Replacement-project CIA](../../../ref_src/amiga_replacement_project/cia/cia8520.v) and [TOD helper](../../../ref_src/amiga_replacement_project/cia/cia_tod.v): Reconstructed edge ordering for writes, timer counts and TOD read latches; not silicon-delay measurements.
 - [Amiga Hardware Reference Manual, Appendix F](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md): Describes timer modes, TOD latching, serial shifting, port pins, and interrupt output.
 - [Amiga Hardware Reference Manual, Appendix D](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md): Separates CIA byte lanes and addresses from the custom register block.
 - [Machine Loop.md](Machine%20Loop.md) describes how the two CIA instances connect to the machine.

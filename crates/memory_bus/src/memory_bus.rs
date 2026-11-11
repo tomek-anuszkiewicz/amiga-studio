@@ -5,14 +5,16 @@
 //! peripheral controllers (`CIA-A`, `CIA-B`), and expansion hardware (`RTC`).
 
 use agnus::Agnus;
-use cia::{Cia, CiaId};
-use config::{cia_reg, custom_reg, OPEN_BUS_BYTE, OPEN_BUS_WORD};
+use cia::Cia;
+use config::{custom_reg, OPEN_BUS_BYTE, OPEN_BUS_WORD};
 use denise::Denise;
 use paula::Paula;
 use physical_memory::{AddressBus, BusResult, MemoryBank, PhysicalMemory};
 use rtc::RtcMsm6242b;
 
 pub use physical_memory;
+
+mod cia_registers;
 
 /// Zero-cost stack-allocated router implementing `AddressBus` across all subsystems
 #[derive(Debug)]
@@ -39,6 +41,7 @@ impl<'a> MemoryBus<'a> {
 
     pub const CIA_REG_ADDRESS_MASK: u32 = 0xFFFF01;
     pub const CUSTOM_REG_OFFSET_MASK: u16 = 0x01FE;
+    const CIAA_PA_OVL: u8 = 0x01;
 
     /// Reads a 16-bit custom register with live read side-effects (e.g. clearing CLXDAT, DSKBYTR)
     #[inline]
@@ -93,84 +96,6 @@ impl<'a> MemoryBus<'a> {
             custom_reg::paula::INTENAR => self.paula.intenar_debug(),
             custom_reg::paula::INTREQR => self.paula.intreqr_debug(),
             _ => OPEN_BUS_WORD,
-        }
-    }
-
-    fn decode_cia_register(addr: u32) -> Option<(CiaId, u32)> {
-        // A7..A1 are not wired to the CIA register selector.
-        let canonical_addr = addr & Self::CIA_REG_ADDRESS_MASK;
-        let (chip, reg) = match canonical_addr {
-            cia_reg::cia_a::PRA => (CiaId::A, cia_reg::cia_a::PRA),
-            cia_reg::cia_a::PRB => (CiaId::A, cia_reg::cia_a::PRB),
-            cia_reg::cia_a::DDRA => (CiaId::A, cia_reg::cia_a::DDRA),
-            cia_reg::cia_a::DDRB => (CiaId::A, cia_reg::cia_a::DDRB),
-            cia_reg::cia_a::TALO => (CiaId::A, cia_reg::cia_a::TALO),
-            cia_reg::cia_a::TAHI => (CiaId::A, cia_reg::cia_a::TAHI),
-            cia_reg::cia_a::TBLO => (CiaId::A, cia_reg::cia_a::TBLO),
-            cia_reg::cia_a::TBHI => (CiaId::A, cia_reg::cia_a::TBHI),
-            cia_reg::cia_a::TODLO => (CiaId::A, cia_reg::cia_a::TODLO),
-            cia_reg::cia_a::TODMID => (CiaId::A, cia_reg::cia_a::TODMID),
-            cia_reg::cia_a::TODHI => (CiaId::A, cia_reg::cia_a::TODHI),
-            cia_reg::cia_a::SDR => (CiaId::A, cia_reg::cia_a::SDR),
-            cia_reg::cia_a::ICR => (CiaId::A, cia_reg::cia_a::ICR),
-            cia_reg::cia_a::CRA => (CiaId::A, cia_reg::cia_a::CRA),
-            cia_reg::cia_a::CRB => (CiaId::A, cia_reg::cia_a::CRB),
-            cia_reg::cia_b::PRA => (CiaId::B, cia_reg::cia_b::PRA),
-            cia_reg::cia_b::PRB => (CiaId::B, cia_reg::cia_b::PRB),
-            cia_reg::cia_b::DDRA => (CiaId::B, cia_reg::cia_b::DDRA),
-            cia_reg::cia_b::DDRB => (CiaId::B, cia_reg::cia_b::DDRB),
-            cia_reg::cia_b::TALO => (CiaId::B, cia_reg::cia_b::TALO),
-            cia_reg::cia_b::TAHI => (CiaId::B, cia_reg::cia_b::TAHI),
-            cia_reg::cia_b::TBLO => (CiaId::B, cia_reg::cia_b::TBLO),
-            cia_reg::cia_b::TBHI => (CiaId::B, cia_reg::cia_b::TBHI),
-            cia_reg::cia_b::TODLO => (CiaId::B, cia_reg::cia_b::TODLO),
-            cia_reg::cia_b::TODMID => (CiaId::B, cia_reg::cia_b::TODMID),
-            cia_reg::cia_b::TODHI => (CiaId::B, cia_reg::cia_b::TODHI),
-            cia_reg::cia_b::SDR => (CiaId::B, cia_reg::cia_b::SDR),
-            cia_reg::cia_b::ICR => (CiaId::B, cia_reg::cia_b::ICR),
-            cia_reg::cia_b::CRA => (CiaId::B, cia_reg::cia_b::CRA),
-            cia_reg::cia_b::CRB => (CiaId::B, cia_reg::cia_b::CRB),
-            _ => return None,
-        };
-        Some((chip, reg))
-    }
-
-    /// Reads an 8-bit byte from CIA register space ($BF0000..$BFFFFF)
-    fn read_cia_byte(&mut self, addr: u32) -> u8 {
-        match Self::decode_cia_register(addr) {
-            Some((CiaId::A, reg)) => self.cia_a.read_register(reg),
-            Some((CiaId::B, reg)) => self.cia_b.read_register(reg),
-            None => OPEN_BUS_BYTE,
-        }
-    }
-
-    /// Reads an 8-bit byte from CIA register space without side-effects for debugging inspection
-    pub fn read_cia_byte_debug(&self, addr: u32) -> u8 {
-        match Self::decode_cia_register(addr) {
-            Some((CiaId::A, reg)) => self.cia_a.read_register_debug(reg),
-            Some((CiaId::B, reg)) => self.cia_b.read_register_debug(reg),
-            None => OPEN_BUS_BYTE,
-        }
-    }
-
-    /// Writes an 8-bit byte to CIA register space ($BF0000..$BFFFFF)
-    fn write_cia_byte(&mut self, addr: u32, val: u8) {
-        match Self::decode_cia_register(addr) {
-            Some((CiaId::B, reg)) => {
-                self.cia_b.write_register(reg, val);
-            }
-            Some((CiaId::A, reg)) => {
-                self.cia_a.write_register(reg, val);
-                // CIA-A bit 0 of Port A ($BFE001) controls the low-memory overlay (_OVL).
-                if reg == cia_reg::cia_a::PRA {
-                    if (val & 0x01) == 0 {
-                        self.mem.map_kickstart_to_low_memory();
-                    } else {
-                        self.mem.map_chip_ram_to_low_memory();
-                    }
-                }
-            }
-            None => {}
         }
     }
 
@@ -413,7 +338,7 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 };
                 BusResult::Ready(byte)
             }
-            Self::BANK_CIA => BusResult::Ready(self.read_cia_byte(addr)),
+            Self::BANK_CIA => self.read_cia_byte(addr),
             Self::BANK_RTC => {
                 if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     BusResult::Ready(self.rtc.read_byte(addr))
@@ -434,8 +359,14 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 self.read_custom_word((addr & Self::CUSTOM_REG_OFFSET_MASK as u32) as u16),
             ),
             Self::BANK_CIA => {
-                let b0 = self.read_cia_byte(addr);
-                let b1 = self.read_cia_byte(addr.wrapping_add(1));
+                let b0 = match self.read_cia_byte(addr) {
+                    BusResult::Ready(value) => value,
+                    BusResult::WaitState => return BusResult::WaitState,
+                };
+                let b1 = match self.read_cia_byte(addr.wrapping_add(1)) {
+                    BusResult::Ready(value) => value,
+                    BusResult::WaitState => return BusResult::WaitState,
+                };
                 BusResult::Ready(u16::from_be_bytes([b0, b1]))
             }
             Self::BANK_RTC => {
@@ -465,10 +396,7 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 self.write_custom_byte(addr, val);
                 BusResult::Ready(())
             }
-            Self::BANK_CIA => {
-                self.write_cia_byte(addr, val);
-                BusResult::Ready(())
-            }
+            Self::BANK_CIA => self.write_cia_byte(addr, val),
             Self::BANK_RTC => {
                 if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     self.rtc.write_byte(addr, val);
@@ -506,9 +434,10 @@ impl<'a> AddressBus for MemoryBus<'a> {
             }
             Self::BANK_CIA => {
                 let bytes = val.to_be_bytes();
-                self.write_cia_byte(addr, bytes[0]);
-                self.write_cia_byte(addr.wrapping_add(1), bytes[1]);
-                BusResult::Ready(())
+                if self.write_cia_byte(addr, bytes[0]).is_wait() {
+                    return BusResult::WaitState;
+                }
+                self.write_cia_byte(addr.wrapping_add(1), bytes[1])
             }
             Self::BANK_RTC => {
                 let bytes = val.to_be_bytes();

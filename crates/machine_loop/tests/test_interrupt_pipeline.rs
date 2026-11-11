@@ -6,7 +6,6 @@
 //! (Paula Audio, CIA-A, Agnus VBlank), through Paula INTREQ/INTENA and
 //! machine arbitration, to M68000 autovector exception processing and RTE.
 
-use config::cia_reg;
 use config::A500Config;
 use machine_loop::A500Machine;
 
@@ -125,10 +124,10 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
     machine.paula.write_intena(0xC008);
 
     // Trigger CIA-A Timer A underflow
-    machine.cia_a.write_register(cia_reg::cia_a::ICR, 0x81); // Enable Timer A IRQ in ICR
-    machine.cia_a.write_register(cia_reg::cia_a::TALO, 1);
-    machine.cia_a.write_register(cia_reg::cia_a::TAHI, 0);
-    machine.cia_a.write_register(cia_reg::cia_a::CRA, 0x01); // Start Timer A
+    machine.cia_a.set_icr(0x81); // Enable Timer A IRQ in ICR
+    machine.cia_a.set_talo(1);
+    machine.cia_a.set_tahi(0);
+    machine.cia_a.set_cra(0x01); // Start Timer A
 
     // Step machine until CIA underflows and asserts IRQ
     let mut cck_count = 0;
@@ -161,7 +160,7 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
     assert_eq!(machine.cpu.state.interrupt_mask(), 2);
 
     // Acknowledge CIA interrupt by reading ICR (clears IRQ line)
-    machine.cia_a.read_register(cia_reg::cia_a::ICR);
+    machine.cia_a.icr();
     machine.paula.write_intreq(0x0008);
 
     // Step through ISR: execute MOVEQ #88, D2

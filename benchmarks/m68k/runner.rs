@@ -226,8 +226,8 @@ impl Peripherals {
             agnus: agnus::Agnus::new(config.agnus_model()),
             denise: denise::Denise::new(config.denise_model()),
             paula: paula::Paula::new(),
-            cia_a: cia::Cia::new(cia::CiaId::A),
-            cia_b: cia::Cia::new(cia::CiaId::B),
+            cia_a: cia::Cia::new(),
+            cia_b: cia::Cia::new(),
             rtc: rtc::RtcMsm6242b::new(config.rtc()),
         }
     }
