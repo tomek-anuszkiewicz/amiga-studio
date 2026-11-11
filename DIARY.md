@@ -1004,3 +1004,40 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: git diff --check
   - Scoped specification review selected Testing Strategy and Quality Assurance by tracked_paths and found no required specification changes
   - NOT RUN: real book conversion or import and milestone profile
+---
+
+### [2026-11-11 23:41 CET] — Record A500/A2000 book recipe and hardware manual OCR provenance
+- **Affected Subsystems**:
+  - `tools/bootstrap/books`
+- **What Was Changed (The Concrete Reality)**:
+  - Track the A500/A2000 variant-root recipe matching the local Accepted and Working copies
+  - Track Hardware Reference Manual OCR preparation provenance
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the existing book recipe and preparation identity without committing local PDFs or generated review bundles
+- **Verification & Test Results**:
+  - PASS: both source PDF hashes match their source.json records
+  - PASS: hardware manual source and prepared PDF hashes match source-ocr.json
+  - PASS: recipe matches Accepted and Working with 2000 elements
+  - PASS: all 60164 audited source references resolve and no private absolute paths were found
+  - LIMIT: optional strict source audit reports 112 fields with literal content or unsupported math commands
+  - Scoped compliance review found no matching design tracked_paths and no required changes to the book recipe or OCR provenance contracts
+  - NOT RUN: conversion or reconstruction or milestone profile
+---
+
+### [2026-11-12 01:45 CET] — Amend accepted technical manual recipe
+- **Affected Subsystems**:
+  - `tools/bootstrap/books`
+- **What Was Changed (The Concrete Reality)**:
+  - Include the current accepted A500/A2000 recipe in the previous book artifact commit
+  - Replace literal text with source references and explicit accepted text in 30 existing element fields
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the accepted recipe together with its original provenance commit
+  - After reviewing the reported attribution errors the user approved amending the current recipe without corrections
+  - This commit accepts known source occurrence mismatches on pages 149 and 150 and 183 and 242 as a specific exception; the general source attribution requirement remains unchanged
+- **Verification & Test Results**:
+  - PASS: recipe matches Accepted and Working with 2000 elements
+  - PASS: source PDF hash matches source.json
+  - PASS: all 60546 source references resolve using the committed implementation and no private absolute paths were found
+  - LIMIT: optional strict source audit reports 107 fields with literal content or unsupported math commands
+  - Scoped compliance review found no matching design tracked_paths and no required contract changes
+  - NOT RUN: conversion or reconstruction or milestone profile
