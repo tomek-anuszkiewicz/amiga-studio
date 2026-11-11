@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-//! Integration tests for Amiga 500 machine-wide reset sequencing (Step 2.5)
+//! Integration tests for Amiga 500 machine-wide reset sequencing
 //!
 //! Validates:
 //! - Cold reset: zeroes all RAM buffers, resets custom chips to power-on defaults,

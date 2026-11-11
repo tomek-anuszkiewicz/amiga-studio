@@ -25,7 +25,7 @@ This guide introduces the Developer Studio for users and developers who want to 
 | **`F12`** | **Toggle Screen Mode** | Switches between Clean Game Screen and Developer Studio. Pauses emulation on entry. |
 | **`F5` / `Space`** | **Run / Pause** | Toggles continuous free-running emulation. |
 | **`F10`** | **Step Instruction** | Executes exactly 1 M68000 instruction, recording trace and history. |
-| **`Shift + F10`** | **Step Backward (Rewind)** | Restores previous execution snapshot from the high-capacity temporal ring buffer. |
+| **`Shift + F10`** | **Step Backward (Rewind)** | Restores a recorded CPU state; full-machine rewind remains pending. |
 | **`F11`** | **Step CCK** | Steps 1 Color Clock phase (2 CPU clocks, CCK1 / CCK2). |
 | **`Alt + T`** | **Toggle Recording** | Activates or pauses temporal execution history recording. |
 | **`Ctrl + O`** | **Load Binary** | Opens file dialog to load compiled machine code at an arbitrary RAM address. |
@@ -37,7 +37,7 @@ This guide introduces the Developer Studio for users and developers who want to 
 ## 3. Core Debugger Subsystems
 
 ### A. Execution History and Rewind
-Recorded execution history lets you inspect earlier states within the retained history:
+Recorded execution history browses CPU states only; full-machine rewind is tracked in the [debugger work](../ROADMAP.md#debugger-execution-control). Within retained history:
 - **Instruction Scrubbing:** Step backward and forward through past instructions to locate bugs or crashes.
 - **Frame Scrubbing:** Jump backward by entire 50 Hz PAL video frames (~70,824 CCK cycles).
 - **Cycle-Exact Timestamps:** Inspect exact Color Clock cycle timestamps and register states at each step.
@@ -61,7 +61,7 @@ Live memory viewer displaying memory banks across Chip RAM, Slow RAM, and Fast R
 
 ### E. Execution Breakpoints & Memory Watchpoints
 - **PC Breakpoints:** Pause emulation when the Program Counter reaches a designated address.
-- **Memory Watchpoints:** Trigger breaks on `Read`, `Write`, or `Any` access across arbitrary memory ranges.
+- **Memory Watchpoints:** Configure `Read`, `Write`, or `Any` ranges; execution stops remain pending. See the [debugger work](../ROADMAP.md#debugger-execution-control).
 
 ---
 

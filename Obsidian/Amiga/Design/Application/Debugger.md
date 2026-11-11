@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "debugger"
 status: "active"
 created: 2026-09-05
-updated: 2026-10-23
+updated: 2026-11-11
 related: ["[General Architecture.md](../General%20Architecture.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[GUI.md](GUI.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)"]
 tracked_paths:
   - "crates/debugger"
@@ -26,7 +26,7 @@ The register view shows the current CPU state. The memory viewer lets the develo
 
 ## Stopping at a location
 
-A breakpoint can be added from a disassembly row or the breakpoint panel. It targets a program-counter address and can optionally require a CPU register condition; the panel can enable, disable, or remove it. The UI also lets developers configure and highlight read/write watchpoint ranges in memory. Watchpoint matching exists in the debugger backend, but guest memory accesses do not currently invoke it to pause execution.
+A breakpoint can be added from a disassembly row or the breakpoint panel. It targets a program-counter address and can optionally require a CPU register condition; the panel can enable, disable, or remove it. The UI also lets developers configure and highlight read/write watchpoint ranges in memory. Watchpoint-triggered stops remain incomplete; see the [debugger work](../../../../ROADMAP.md#debugger-execution-control).
 
 ## Following earlier execution
 

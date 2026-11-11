@@ -127,6 +127,7 @@
       "hardw"
     ],
     ".agents/references/developer-setup.md": [
+      "bookjson",
       "toolsbootstrapbootstrapps",
       "toolsbootstrapbootstrap",
       "sourcesps",

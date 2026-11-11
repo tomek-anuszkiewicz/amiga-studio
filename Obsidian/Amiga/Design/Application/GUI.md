@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-05
-updated: 2026-10-12
+updated: 2026-11-11
 related: ["[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)", "[Keyboard.md](../Keyboard.md)", "[Mouse.md](../Mouse.md)", "[Audio.md](../Audio.md)", "[Denise.md](../Denise.md)"]
 tracked_paths:
   - "crates/gui"
@@ -33,7 +33,7 @@ The Developer Studio has a top bar and three main areas: a left dock for CPU sta
 | Central workspace | The framed Amiga screen, a history bar for recording and browsing CPU snapshots by step, frame, slider, or CCK position, and a disassembly listing. The listing can follow the current PC or jump to an address, set breakpoints, change the PC, and edit an instruction in place. On wide windows, the trace below the screen lists recent execution; the split between code and screen and the split above the trace are draggable. |
 | Right dock | A hex and ASCII memory viewer with address navigation and byte editing. Below it are memory search and controls for PC breakpoints, register conditions, and read/write watchpoint ranges. On narrower windows, the execution trace is also here. |
 
-The execution trace and the optional snapshot history serve different purposes: the trace lists recent instructions, while the history bar browses recorded CPU states. History recording starts disabled, and browsing a snapshot does not rewind memory or the rest of the machine. Watchpoints can be configured and highlighted, but guest memory accesses do not yet pause execution on a match. See [Debugger](Debugger.md) for these behavior limits and the [Debugger Guide](../../../../docs/debugger.md) for user-facing shortcuts.
+The execution trace and the optional snapshot history serve different purposes: the trace lists recent instructions, while the history bar browses recorded CPU states. History recording starts disabled, and browsing a snapshot does not rewind memory or the rest of the machine. Watchpoint stops remain incomplete; see the [debugger work](../../../../ROADMAP.md#debugger-execution-control). See [Debugger](Debugger.md) for these behavior limits and the [Debugger Guide](../../../../docs/debugger.md) for user-facing shortcuts.
 
 ## Input and output
 
@@ -41,7 +41,7 @@ The intended input path maps host keyboard events to the [Amiga keyboard](../Key
 
 For video, [Denise](../Denise.md) builds a rendered frame in the [frame buffer](../Frame%20Buffer.md). The GUI is intended to display that frame, preserve the intended screen proportions as the window changes, and optionally add a CRT-style presentation. For sound, the GUI is intended to deliver samples produced by the [audio subsystem](../Audio.md) to the host playback device. Emulated audio generation remains in the core.
 
-The current GUI has the two views and a framed display area, but the display area still shows a standby image. Host audio playback and host input routing to the emulated keyboard and game ports are design intentions here, not completed GUI paths.
+Live frame output remains incomplete; see [chipset reconstruction](../../../../ROADMAP.md#chipset-reconstruction). Host audio/input remain incomplete; see [native test prerequisites](../../../../ROADMAP.md#native-disk-verification).
 
 ## Scaling and appearance
 

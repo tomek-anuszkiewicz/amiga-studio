@@ -89,8 +89,7 @@ Because the emulator core is system-agnostic and decoupled from the host filesys
 
 ## 5. Deferred Peripheral Extension
 
-*The following peripheral extension is deferred to a subsequent project milestone:*
-- **Extended Peripherals:** 4-Player Parallel Port Joystick adapter, analog proportional joysticks.
+Extended peripherals remain deferred; see the [deferred peripheral work](../../../ROADMAP.md#deferred-bus-and-peripherals).
 
 ---
 

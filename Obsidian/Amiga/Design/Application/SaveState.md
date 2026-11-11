@@ -48,46 +48,9 @@ The snapshot format follows the current state structures and may change during d
 
 ## 3. Differential Save States (`A500DiffState`)
 
-A lightweight differential state model is proposed for continuous rewind, time-travel debugging, and cycle-by-cycle inspection.
-
-### 3.1 Why Diffs Can Be Small
-
-A diff records changed subsystem values and memory writes instead of copying every memory buffer each CCK. Its size depends on the changes made during that interval.
-
-```mermaid
-flowchart LR
-    KEYFRAME["Base Snapshot (A500State)\nFull State"] --> DIFF1["Diff 1 (+1 CCK)"]
-    DIFF1 --> DIFF2["Diff 2 (+1 CCK)"]
-    DIFF2 --> DIFF3["Diff 3 (+1 CCK)\nMemory Write"]
-    DIFF3 --> DIFF_N["... Diff N"]
-```
-
-### 3.2 Proposed Differential State
-
-A differential snapshot would identify its base and target CCKs, mark the subsystems with changes, and carry only their changed values. Each memory-word entry would record its physical address and both the old and new values so the change could be applied in either direction. This model has no implementation in the current machine state API.
-
-### 3.3 Binary Wire Format for Diffs (Compact Packed Stream)
-
-The proposed packed binary format for an `A500DiffState` is:
-
-| Offset | Size | Field | Description |
-| :---: | :---: | :--- | :--- |
-| **`$00`** | 4 B | `magic` | Identifier `b"DIFF"` |
-| **`$04`** | 8 B | `base_cycle` | 64-bit base Color Clock cycle |
-| **`$0C`** | 2 B | `delta_cck` | Cycles elapsed ($target - base$, typically $1$) |
-| **`$0E`** | 1 B | `flags` | Bitflags indicating which subsystems have deltas |
-| **`...`** | Var | Subsystem payloads | Serialized only for flags with bit set to `1` |
-| **`...`** | 2 B | `mem_count` | Number of modified memory words ($N$) |
-| **`...`** | $N \times 7$ B | Memory entries | Array of `[addr: u24, new_val: u16, old_val: u16]` |
-
-- **Illustrative Single-CCK Footprint:**
-  - If no memory write occurred: Header ($14$ B) + Flags ($1$ B) + CPU PC change ($5$ B) + $0$ memory entries ($2$ B) = **$22$ Bytes**.
-  - If a memory write occurred: $22\ \text{Bytes} + 7\ \text{Bytes} = \mathbf{29\ \text{Bytes}}$.
-  - Actual size depends on the number and type of changed subsystem fields.
-
-### 3.4 Forward Application and Rewind
-
-Applying a diff would first require the snapshot's CCK to match the diff's base CCK; rewinding would require a match with its target CCK. Both directions must update every changed subsystem and memory word before setting the destination CCK. A memory-only rollback would not restore the full machine state.
+Differential full-machine rewind remains a design proposal; its pending work
+and proposed format are collected in the
+[debugger work](../../../../ROADMAP.md#debugger-execution-control).
 
 ---
 

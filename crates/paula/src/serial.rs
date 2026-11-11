@@ -62,6 +62,6 @@ impl SerialPort {
     /// Advances the serial port state by 1 Color Clock
     #[inline]
     pub fn step_cck(&mut self) {
-        // Scaffold placeholder: UART shift clock progression
+        // UART shift clock is not implemented; see ROADMAP.md#chipset-reconstruction.
     }
 }

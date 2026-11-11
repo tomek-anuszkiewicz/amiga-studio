@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-08
+updated: 2026-11-11
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -118,7 +118,7 @@ is tested separately. See [CPU wait coverage](CPU%20SingleStepTests.md#8-ordinar
 Custom-chip and peripheral tests should check register behavior, algorithms,
 and boundary conditions against HRM-derived expectations in isolated fixtures.
 Production-machine integration tests check the cross-chip interactions they
-assert, but do not establish those isolated behaviors. [Roadmap step 2.5](../../../../ROADMAP.md)
+assert, but do not establish those isolated behaviors. [chipset reconstruction](../../../../ROADMAP.md#chipset-reconstruction)
 plans the subsystem coverage.
 
 The [BLEP generator tests](../../../../tools/blep_generator/tests/) cover its
@@ -201,9 +201,10 @@ and runs with ordinary CPU tests.
 Whole-machine verification should load an executable hardware workload, run it
 for specified frames, extract the rendered 716 x 285 RGB24 viewport, and compare
 it with the vAmigaTS reference images using a validated comparison method.
-The execution and comparison entry point is still unavailable, so the reference
-assets cannot yet certify current whole-machine output. Neither completion
-profile executes captures or chipset throughput measurements.
+
+Whole-machine capture execution/comparison remains unavailable; see the
+[external hardware verification work](../../../../ROADMAP.md#external-hardware-verification).
+Neither completion profile executes captures or chipset throughput measurements.
 
 A requested integration sweep uses the available production machine tests.
 Classify failures by observed mechanism, repair demonstrated causes, and rerun

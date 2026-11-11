@@ -27,24 +27,20 @@ Paula handles four-channel sound, system interrupts, serial communication, disk 
 
 ## Other responsibilities in `paula`
 
-- It holds serial data and control state. The serial transmit and receive clock is currently a scaffold, so this is not yet a complete working UART.
+- It holds serial data and control state.
 - It holds disk data, synchronization and status registers, controls the disk DMA arming sequence, and reports transfer completion. [Floppy](Floppy.md) describes the drive and disk-stream integration.
 - It exposes the sampled proportional input and button state supplied through [Game Ports](Game%20Ports.md).
 - It coordinates delayed register changes, DMA enable signals, and interrupt requests between these functions and the rest of the machine.
 
 ## Register propagation
 
-Concrete queued setters in [registers.rs](../../../crates/paula/src/registers.rs) delay interrupt, DMA, audio, disk, serial and port register effects until private application. STRHOR uses a positive **1 CCK provisional** delay and retains its no-op receiver. Audio pointer register ownership stays exclusively in [Agnus](Agnus.md); Paula's audio children retain their existing engine state. CPU INTREQ changes and interrupt-input requests occupy distinct queue destinations. Input requests merge their pending SET bits without a second register-write delay; CPU writes cannot replace that input event. The 32-entry queue exceeds two CPU/Copper writes per CCK over two CCK plus one merged interrupt-input event (five entries). Register setters reserve one entry for the single merged interrupt-input event. Input bits merge without resetting the earliest deadline; distinct CPU events retain issue order, so a later clear can acknowledge an earlier input SET and a later input SET can follow a clear. Full register capacity rejects writes without early application, and replay applies and returns all matured entries. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) defines modes, provisional timing and acceptance. Autonomous audio transitions and disk counters retain their separate engine interfaces.
+Concrete queued setters in [registers.rs](../../../crates/paula/src/registers.rs) delay interrupt, DMA, audio, disk, serial and port register effects until private application. STRHOR uses a positive **1 CCK provisional** delay. Audio pointer register ownership stays exclusively in [Agnus](Agnus.md); Paula's audio children retain their existing engine state. CPU INTREQ changes and interrupt-input requests occupy distinct queue destinations. Input requests merge their pending SET bits without a second register-write delay; CPU writes cannot replace that input event. The 32-entry queue exceeds two CPU/Copper writes per CCK over two CCK plus one merged interrupt-input event (five entries). Register setters reserve one entry for the single merged interrupt-input event. Input bits merge without resetting the earliest deadline; distinct CPU events retain issue order, so a later clear can acknowledge an earlier input SET and a later input SET can follow a clear. Full register capacity rejects writes without early application, and replay applies and returns all matured entries. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) defines modes, provisional timing and acceptance. Autonomous audio transitions and disk counters retain their separate engine interfaces.
 
+The UART and STRHOR reaction remain incomplete; see the [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction).
 The [register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md#state-owners-and-hardware-meaning)
-identifies each Paula register family, its logical child and named reader or
-queued setter. STRHOR has transport but no synchronization reaction; 2.3
-owns its source/routing and 2.4/2.5 own receiver behavior. Existing nonempty
-application paths, including interrupt set/clear and disk arming, are not
-claims of complete UART, audio or disk functionality. Live `read_dskbytr`
+identifies the register families, children and accessors. Live `read_dskbytr`
 acknowledges byte availability; `peek_dskbytr` is neutral. Interrupt register
-reads do not clear requests. Functional reconstruction and readback tests
-remain in 2.4/2.5 under the existing hardware contracts.
+reads do not clear requests.
 
 ## References
 

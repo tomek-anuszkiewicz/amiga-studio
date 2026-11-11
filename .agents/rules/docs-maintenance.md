@@ -13,6 +13,7 @@ The following requirements apply to specifications under `Obsidian/Amiga/Design/
 - Read the authoritative specification through the [design index](../../Obsidian/Amiga/Design/General%20Architecture.md) and handle conflicts through [spec-compliance.md](spec-compliance.md); do not silently align documentation to incorrect code.
 - Distinguish [compatible documentation enrichment](spec-compliance.md#compatible-documentation-enrichment) from [requirement changes before implementation](spec-compliance.md#specification-changes-before-implementation). Review changed requirements against code and tests even when only documentation changed; unresolved differences block task completion and the commit. Documentation enrichment does not require an exhaustive description of implementation details.
 - Follow the explanatory style of adjacent specifications and link the implementation.
+- Keep implementation gaps and known defects to brief, truthful caveats linked to their owning [roadmap stage](../../ROADMAP.md). Keep diagnostics, remaining work, ownership and acceptance evidence together in the owning roadmap section; remove verified items there as work completes. Preserve hardware requirements and explanations of active behavior in their owning specifications.
 - Reuse existing specification structure and links for shared behavior.
 - Extend the relevant existing description using nearby conventions.
 - Update the dependency graph in General Architecture when crate relationships change. Keep specifications and references complete; they have no line-count ceiling.

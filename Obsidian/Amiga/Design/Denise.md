@@ -63,20 +63,11 @@ The implementation spans three workspace crates:
 
 ## Register propagation
 
-Concrete queued setters in [registers.rs](../../../crates/denise/src/registers.rs) handle controls, palette, bitplane data, sprite latches and synchronization strobes. Palette and strobes use a positive **1 CCK provisional** delay. Sync effects remain unimplemented after commitment. Both CPU and DMA BPLxDAT writes reach the same private latch application; committing BPL1DAT transfers the holding latches and arms serialization. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) specifies the common issue boundary. The fixed 64-entry queue exceeds CPU/Copper plus one bitplane DMA word per CCK over its one-CCK delay; every due event is applied once. Engine shifter movement and sampled port inputs remain separate operations.
+Concrete queued setters in [registers.rs](../../../crates/denise/src/registers.rs) handle controls, palette, bitplane data, sprite latches and synchronization strobes. Palette and strobes use a positive **1 CCK provisional** delay. Both CPU and DMA BPLxDAT writes reach the same private latch application; committing BPL1DAT transfers the holding latches and arms serialization. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) specifies the common issue boundary. The fixed 64-entry queue exceeds CPU/Copper plus one bitplane DMA word per CCK over its one-CCK delay; every due event is applied once. Engine shifter movement and sampled port inputs remain separate operations.
 
-`JOYTEST` also has an empty application arm. Hardware writes should affect the
-upper six bits of both counter bytes for both game ports; the current queue
-only delivers the request. Machine peripheral polling then supplies JOY
-read latches from GamePorts, so assigning only a transient Denise field would
-not establish persistent counter behavior. Roadmap 2.4 owns that state and
-the missing sync reactions, with 2.5 guest checks; 2.3 owns incoming signal
-generation/routing. The
-[register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md#read-interfaces-and-current-limits)
-records all relevant interfaces and limitations. Live `CLXDAT` reads clear
-collision state; `clxdat_debug` inspects it without acknowledgment or queue
-advancement. Already implemented display and collision behavior remains in
-place while the missing functional work is pending.
+JOYTEST and sync reactions remain incomplete; see the [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction).
+Live `CLXDAT` reads clear collision state; `clxdat_debug` inspects it without
+acknowledgment or queue advancement.
 
 ## References
 

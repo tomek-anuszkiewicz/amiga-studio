@@ -1035,3 +1035,28 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Commit/milestone profiles and independent exact-snapshot review belong to the closing workflow
   - Initial commit verification reported 23 unknown-word occurrences; the user explicitly approved nineteen register-family hardware terms and simpler descriptions for the three other terms. The hardware vocabulary contains only those approved additions; all other initial commit checks passed
   - No firmware, OS, vAmigaTS, media transfer or measured-silicon timing evidence is claimed
+---
+
+### [2026-11-11 15:11 CET] — Consolidate implementation gaps and verification priorities in the roadmap
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `design specifications`
+  - `developer documentation`
+  - `documentation maintenance rules`
+- **What Was Changed (The Concrete Reality)**:
+  - Move implementation diagnostics and pending acceptance work into owning roadmap stages with concise source caveats
+  - clarify DMA protocol review and preservation of the shared beam-position interface
+  - define production CPU/Gary and guest-program verification and live frame prerequisites
+  - track debugger gaps and deferred bus, interrupt and peripheral cases
+  - align native-suite audio and host input prerequisites
+  - refresh accepted-recipe reconstruction guidance and Rust comments without executable changes
+- **Architectural Rationale & Trade-Offs**:
+  - Keep hardware requirements and active mechanisms in specifications while pending work and its evidence remain in one roadmap location
+  - distinguish planned work and provisional timing from completed functionality
+- **Verification & Test Results**:
+  - PASS: 35 design documents with valid frontmatter and 832 resolving links
+  - PASS: roadmap check and diff whitespace
+  - PASS: 21 changed-document roadmap anchor references
+  - PASS: both Rust changes preserve executable content
+  - scoped source inspection confirms the documented beam, CIA, UART, debugger and bus-interface limitations
+  - NOT RUN: milestone profile because this change reorganizes pending work without closing an implementation stage

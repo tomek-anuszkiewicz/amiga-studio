@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "draft"
 created: 2026-09-14
-updated: 2026-10-14
+updated: 2026-11-11
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[DMA.md](DMA.md)", "[Interrupts.md](Interrupts.md)", "[Game Ports.md](Game%20Ports.md)", "[Keyboard.md](Keyboard.md)"]
 ---
 
@@ -77,7 +77,10 @@ For disk reads, a queue with one, two, or three waiting words asserts the last r
 
 The coordinator needs distinct paths for **requests** (`DMAL`, interrupt inputs), **granted transfers** (RAM address, data direction, `RGA` destination), **sampled inputs** (CIA ports, Denise movement, Paula `POT`, disk read data), and **continuous timing** (clocks, sync, TOD). A pending DMA request is not itself a completed word transfer. The [audio state-machine description](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md#state-machine-signal-summary) names per-channel requests such as `AUDxDR` and `AUDxDSR`, while the board drawing shows one Paula-to-Agnus `DMAL` line; those names must not become invented per-channel motherboard wires. An interrupt generated within Paula need not become a synthetic motherboard wire merely because software observes it in `INTREQ`. Shared interrupt lines can have more than one source.
 
-These tables establish connectivity and documented effects, not a complete list of electrical connections. Exact CCK propagation, sampling edges, Gary gate delays, analog thresholds, and differences among board revisions remain unverified. The Rev. 6A/7 schematic's `BLIT*`/`BLISS*` labeling and the older Fat Agnus manual's `DBR*` description need a separate revision-aware reconciliation before assigning one emulated signal to both. The manuals document `VERTB` and refresh-time sync strobes, but the evidence above does not establish a dedicated Agnus-to-Paula vertical-blank wire. Preserve that distinction when specifying its event path. See [Interrupts](Interrupts.md), [CIA](CIA.md), [Floppy](Floppy.md), and [Game Ports](Game%20Ports.md) for behavior inside those components.
+Timing and revision details remain unverified; see the [signal propagation work](../../../ROADMAP.md#inter-chip-signal-propagation).
+This catalog does not establish a dedicated Agnus-to-Paula vertical-blank wire.
+See [Interrupts](Interrupts.md), [CIA](CIA.md), [Floppy](Floppy.md) and
+[Game Ports](Game%20Ports.md) for receiver behavior.
 
 ## Reference Documentation & Upstream Ground Truth
 

@@ -62,11 +62,11 @@ For bank `$DF`, `addr & $01FE` selects an even register offset. A word operation
 
 `read_custom_word()` dispatches readable registers to Agnus, Denise, or Paula. Examples include Agnus beam and DMA status, Denise joystick and collision status, and Paula interrupt, audio-control, and disk status. A live `CLXDAT` or `DSKBYTR` read may have a chip-defined side effect. Reading `COPJMP1` or `COPJMP2` strobes Agnus's Copper and returns `$FFFF`. Unhandled reads, including most reads of write-only registers, return `$FFFF`; see the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access). `read_custom_word_debug()` uses non-mutating chip inspection methods and does not issue the Copper strobes.
 
-`write_custom_word()` routes `DMACON` to both Agnus and Paula. It routes `BPLCON0`, `DIWSTRT`/`DIWSTOP`, and sprite position/control registers to both Denise and Agnus. The chips independently latch the DIW fields used for vertical bitplane DMA and horizontal pixel clipping. The router sends other listed display, sprite data, color, and input registers to Denise; listed interrupt, disk, serial, potentiometer, and audio registers to Paula; and explicitly listed Agnus registers to Agnus. Unmatched offsets are ignored without staging a chip mutation. `REFPTR`, `VPOSW`, `VHPOSW`, and `COPINS` reach Agnus's delayed mutation queue, but currently have no implemented commit effect. The [register ownership matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) gives the broader register context, while this dispatch is the implemented CPU/Copper write path.
+`write_custom_word()` routes `DMACON` to both Agnus and Paula. It routes `BPLCON0`, `DIWSTRT`/`DIWSTOP`, and sprite position/control registers to both Denise and Agnus. The chips independently latch the DIW fields used for vertical bitplane DMA and horizontal pixel clipping. The router sends other listed display, sprite data, color, and input registers to Denise; listed interrupt, disk, serial, potentiometer, and audio registers to Paula; and explicitly listed Agnus registers to Agnus. Unmatched offsets are ignored without staging a chip mutation. The [register ownership matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) gives the broader register context, while this dispatch is the implemented CPU/Copper write path.
 
 The custom chips use fixed-capacity ordered propagation queues. Each setter reports acceptance; a full queue rejects a transfer without applying it. Shared-register arms check every required receiver before inserting any event, so a retry cannot duplicate a partially accepted transfer. The CPU receives `Ready` only after insertion and otherwise receives `WaitState`; acknowledgment does not imply commitment. Pipeline writes coexist in issue order. OverwritePending replaces the same destination's pending event and restarts its delay at the new issue position. These modes and all numerical custom-chip delays are provisional implementation settings, not measured silicon timing.
 
-Palette writes and sync strobes use the explicitly named positive provisional delay of **1 CCK**. Existing positive settings remain: Agnus controls and pointers generally use 2 CCK, display-window/fetch/BPLCON0 controls use 4, and Copper jumps, BLTSIZE and Blitter data use 1; Denise uses 1; Paula uses 1 for interrupt registers and serial/audio data, otherwise 2. Sync receivers remain no-op placeholders after commitment. CPU INTREQ writes and interrupt-input requests are distinct queued destinations so a pending pin request cannot be overwritten by a CPU clear.
+Palette writes and sync strobes use the explicitly named positive provisional delay of **1 CCK**. Existing positive settings remain: Agnus controls and pointers generally use 2 CCK, display-window/fetch/BPLCON0 controls use 4, and Copper jumps, BLTSIZE and Blitter data use 1; Denise uses 1; Paula uses 1 for interrupt registers and serial/audio data, otherwise 2. CPU INTREQ writes and interrupt-input requests are distinct queued destinations so a pending pin request cannot be overwritten by a CPU clear.
 
 Writes issued after a chip step start counting on its next step. The machine issues Copper register writes and bitplane DMA data after all three custom chips have stepped, before the CPU phase, in Copper-then-DMA order; the CPU issues afterward. This deterministic provisional order does not establish physical simultaneous-access priority. All recipients therefore count from the same boundary, independently of host method ordering. CPU CCK1/CCK2 acceptance still follows the CPU's existing bus protocol; an unaccepted transfer inserts nothing. Live COPJMP reads keep their immediate read-side strobe and fixed open-bus result. Autonomous DMA pointer increments, counter changes, pin sampling and interrupt generation remain separate from register-bus writes.
 
@@ -80,19 +80,10 @@ configured CCK delay. It also identifies the read/debug access classes and
 logical child owners. This is the single address catalog; no separate router
 catalog is required. Agnus's queue is the owning interface for Copper and
 Blitter register requests. A returned due `(offset, value)` proves that the
-owner consumed its event, even if its application arm is still empty.
+owner consumed its event; functional correctness needs engine observations.
 
-There are nine such offsets: REFPTR, VPOSW, VHPOSW, COPINS, JOYTEST and the
-four sync strobes. STRHOR reaches both Denise and Paula, making ten pending
-functional recipient paths. Their intended effects remain hardware
-requirements. Roadmap 2.4 owns reconstruction and focused functional tests,
-2.5 owns guest scenarios, and 2.3 additionally owns sync generation and
-motherboard/peripheral signal delivery. CIA PRA/PRB resolved-pin semantics
-have the same 2.4/2.5 ownership; [CIA](CIA.md#named-interfaces-fields-and-functional-limits)
-records the concrete read limitation. Already implemented effects, especially
-CIA-A OVL, retain their regression protection. Expanded address selection is
-2.2 work. These assignments bound owner-delivery verification; they do not
-assert hardware-equivalent register behavior.
+Some register effects and CIA pin reads remain incomplete; see the
+[chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction).
 
 All pending custom events live in serializable chip state, along with retained
 Copper/bitplane outputs that have not yet entered a destination queue. Reset

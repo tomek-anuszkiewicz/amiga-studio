@@ -128,20 +128,8 @@ LOAD is an action with no stored readable bit. The port-B `PC` handshake
 interval in the tables is a documented hardware interval, not the configured
 queue delay or an implemented handshake claim.
 
-The current named access and capture paths exist for all thirty connected
-addresses, but port reads do not yet implement the documented separation of
-output latches, external inputs and resolved pins: `pra()` and `prb()` return
-their shared stored fields, and machine polling can replace PRA input bits.
-In particular, CIA-B PRB with DDRB=`$00` and latch=`$00` reads `$00` rather
-than the pulled-high `$FF` expected without an external low driver. The
-output notification already computes released pins using `PRB | !DDRB`;
-that does not repair the read interface. Roadmap 2.4 owns PRA/PRB separation
-and port direction semantics, with focused functional tests and 2.5 guest input/readback
-scenarios. Roadmap 2.3 owns connector and peripheral signal routes. The
-remaining timer, serial, TOD, handshake and read-clear engine details belong
-to 2.4/2.5; existing regressions stay in place. CIA-A OVL capture, mapping,
-polarity, reset and serialized continuation are already implemented and
-must remain protected.
+Port pin/readback behavior remains incomplete; see the [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction).
+All thirty connected addresses retain their named access/capture paths.
 
 ## Runtime register capture and bus synchronization
 
