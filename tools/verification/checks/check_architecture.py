@@ -1,5 +1,7 @@
 """Repository architecture checks; source inspection requires no Rust build."""
+import json
 from pathlib import Path
+import subprocess
 import sys
 import tomllib
 import unittest
@@ -25,6 +27,44 @@ REQUIRED_MULTI_MODULE_TESTS = {
     "disassembler": ("test_align.rs", "test_alu.rs", "test_branch.rs", "test_data.rs", "test_ea.rs"),
     "config": ("test_config.rs", "test_mutation.rs"),
     "physical_memory": ("test_address_bus.rs", "test_map.rs", "test_physical_memory.rs", "test_presets.rs"),
+}
+
+# Direct workspace dependencies only; omitted kinds allow no dependencies.
+# Keep new permissions explicit rather than deriving them from the manifests.
+APPROVED_CRATE_DEPENDENCIES = {
+    "agnus": {"normal": {"blitter", "config", "copper", "dma"}},
+    "audio": {"normal": {"config"}},
+    "blep_generator": {},
+    "blitter": {"normal": {"config"}},
+    "cia": {"normal": {"config"}},
+    "config": {},
+    "copper": {"normal": {"config"}},
+    "cpu": {"normal": {"physical_memory"}},
+    "debugger": {"normal": {"config", "cpu", "disassembler", "machine_loop", "physical_memory", "save_state"}},
+    "denise": {"normal": {"config", "frame_builder", "sprites"}},
+    "disassembler": {},
+    "dma": {"normal": {"config"}},
+    "floppy": {},
+    "frame_builder": {"normal": {"config"}},
+    "game_ports": {"normal": {"config", "joystick", "mouse"}},
+    "gui": {"normal": {"config", "cpu", "debugger", "physical_memory", "rtc"}},
+    "interrupts": {},
+    "joystick": {},
+    "keyboard": {},
+    "machine_loop": {"normal": {
+        "agnus", "cia", "config", "cpu", "denise", "floppy", "game_ports",
+        "joystick", "keyboard", "memory_bus", "mouse", "paula", "physical_memory", "rtc",
+    }},
+    "memory_bus": {"normal": {"agnus", "cia", "config", "denise", "paula", "physical_memory", "rtc"}},
+    "mouse": {},
+    "paula": {"normal": {"audio", "config", "interrupts"}},
+    "physical_memory": {"normal": {"config", "rtc"}},
+    "rtc": {"normal": {"config"}},
+    "save_state": {"normal": {"machine_loop"}, "dev": {"config"}},
+    "sprites": {"normal": {"config"}},
+    "test_runner": {"dev": {
+        "agnus", "cia", "cpu", "denise", "disassembler", "memory_bus", "paula", "physical_memory", "rtc",
+    }},
 }
 
 
@@ -59,6 +99,36 @@ class ArchitectureChecks(unittest.TestCase):
 
     def no_violations(self, violations, description):
         self.assertFalse(violations, description + "\n" + "\n".join(violations))
+
+    def test_workspace_crate_dependencies_follow_approved_rules(self):
+        result = subprocess.run(
+            ["cargo", "metadata", "--format-version", "1", "--no-deps", "--offline", "--locked"],
+            cwd=self.root, capture_output=True, text=True, encoding="utf-8",
+        )
+        self.assertEqual(result.returncode, 0, "Cargo metadata failed:\n" + result.stderr)
+        metadata = json.loads(result.stdout)
+        members = {
+            package["name"]: package for package in metadata["packages"]
+            if package["id"] in metadata["workspace_members"]
+        }
+        violations = []
+        for name, package in sorted(members.items()):
+            if name not in APPROVED_CRATE_DEPENDENCIES:
+                violations.append(f"{name}: No approved dependency rules for this workspace crate")
+                continue
+            rules = APPROVED_CRATE_DEPENDENCIES[name]
+            for dependency in package["dependencies"]:
+                peer = dependency["name"]  # Cargo resolves inheritance and keeps the original package name for aliases.
+                if peer not in members:
+                    continue
+                kind = dependency["kind"] or "normal"
+                if peer not in rules.get(kind, set()):
+                    target = dependency["target"] or "all targets"
+                    violations.append(f"{name} -> {peer} ({kind}, {target}): Dependency is not approved")
+        self.no_violations(
+            violations, "Architecture Rule Violation: Update APPROVED_CRATE_DEPENDENCIES "
+            "only for an explicitly approved architecture change.",
+        )
 
     def test_file_size_limits(self):
         violations = []

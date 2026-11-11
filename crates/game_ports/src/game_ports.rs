@@ -11,6 +11,9 @@ pub use mouse::{self, Mouse};
 
 use serde::{Deserialize, Serialize};
 
+mod pins;
+pub use pins::{GamePortsInputs, GamePortsPins};
+
 /// CIA-A Port A bit 6: /FIR0 (Port 1 left mouse button, active low)
 pub const CIAA_PRA_FIR0: u8 = 0x40;
 
@@ -107,8 +110,10 @@ impl Default for GamePortsState {
 }
 
 /// Amiga Game Ports Subsystem handle
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GamePorts {
+    /// Motherboard-facing signal state.
+    pub pins: GamePortsPins,
     /// Observable hardware state snapshot
     pub state: GamePortsState,
 }
@@ -121,6 +126,7 @@ impl GamePorts {
 
     /// Resets all plugged devices and registers to initial state
     pub fn reset(&mut self) {
+        self.pins = GamePortsPins::default();
         self.state.port1.reset();
         self.state.port2.reset();
         self.state.pot0dat = 0;
@@ -200,7 +206,7 @@ impl GamePorts {
     /// - Bit 8:  Port 1 Pin 5 (Middle mouse). Active low (0 = pressed, 1 = released).
     #[inline]
     pub fn potgor(&self, potgo_latch: u16) -> u16 {
-        let mut val = potgo_latch | 0x5500; // Pull unused input lines high by default
+        let mut val = potgo_latch | config::mask::game_port::POT_DATA;
 
         // Port 2 pin 9 (Bit 14)
         if self.state.port2.is_fire2_pressed() {

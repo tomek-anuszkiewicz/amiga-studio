@@ -100,3 +100,7 @@ winit
 winnicki
 winuae
 xbox
+joymouse
+reagnus
+tf
+userio

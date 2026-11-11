@@ -1,4 +1,4 @@
-use config::{BeamPosition, DeniseModel};
+use config::DeniseModel;
 use denise::{frame_builder, Denise};
 
 #[test]
@@ -15,11 +15,13 @@ fn test_denise_display_window_uses_horizontal_bits_only() {
         denise.bplcon0 = 0x1000;
         denise.color[1] = 0x00F0;
 
+        denise.sync.vpos = 150;
+        denise.sync.vertical_blank = false;
         for hpos in 0..80 {
             if hpos == 64 {
                 assert!(denise.set_bpldat(0, 0xFFFF));
             }
-            denise.step_cck(BeamPosition::new(hpos, 150, false));
+            denise.step_cck();
         }
     }
 

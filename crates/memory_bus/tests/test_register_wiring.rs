@@ -28,54 +28,45 @@ struct TestMotherboard {
 // Receiver order: Agnus, Denise, Paula. The OCS address families come from the
 // ownership matrix; delays and queue modes are the provisional transport contract.
 fn delivery_contract(offset: u16) -> [(u8, MutationMode); 3] {
-    use MutationMode::{OverwritePending as Replace, Pipeline};
-    let mut receivers = [(0, Replace); 3];
+    use MutationMode::Pipeline;
+    let mut receivers = [(0, Pipeline); 3];
     match offset {
         0x020
         | 0x022
         | 0x028..=0x02e
-        | 0x040..=0x056
+        | 0x040..=0x058
         | 0x060..=0x066
+        | 0x070..=0x074
         | 0x080..=0x086
         | 0x08c
         | 0x108
         | 0x10a
-        | 0x120..=0x13e => {
-            receivers[0] = (2, Replace);
-        }
-        0x058 | 0x088 | 0x08a => receivers[0] = (1, Replace),
-        0x070..=0x074 => receivers[0] = (1, Pipeline),
+        | 0x120..=0x13e
+        | 0x0e0..=0x0f6 => receivers[0] = (1, Pipeline),
         0x08e | 0x090 | 0x100 => {
-            receivers[0] = (4, Replace);
-            receivers[1] = (1, Replace);
+            receivers[0] = (4, Pipeline);
+            receivers[1] = (1, Pipeline);
         }
-        0x092 | 0x094 => receivers[0] = (4, Replace),
+        0x092 | 0x094 => receivers[0] = (4, Pipeline),
         0x096 => {
-            receivers[0] = (2, Replace);
-            receivers[2] = (2, Replace);
+            receivers[0] = (2, Pipeline);
+            receivers[2] = (2, Pipeline);
         }
-        0x036 | 0x038 | 0x03a | 0x03e | 0x098 | 0x102 | 0x104 | 0x180..=0x1be => {
-            receivers[1] = (1, Replace);
+        0x036 | 0x098 | 0x102 | 0x104 | 0x110..=0x11a | 0x180..=0x1be => {
+            receivers[1] = (1, Pipeline);
         }
-        0x03c => {
-            receivers[1] = (1, Replace);
-            receivers[2] = (1, Replace);
+        0x024 | 0x026 | 0x030 | 0x032 | 0x034 | 0x07e | 0x09a..=0x09e => {
+            receivers[2] = (1, Pipeline);
         }
-        0x110..=0x11a => receivers[1] = (1, Pipeline),
-        0x024 | 0x026 | 0x032 | 0x034 | 0x07e | 0x09e => receivers[2] = (2, Replace),
-        0x030 => receivers[2] = (1, Pipeline),
-        0x09a | 0x09c => receivers[2] = (1, Replace),
         0x0a0..=0x0da => match offset & 0xf {
-            0 | 2 => receivers[0] = (2, Replace),
-            4 | 6 | 8 => receivers[2] = (2, Replace),
-            0xa => receivers[2] = (1, Pipeline),
+            0 | 2 => receivers[0] = (1, Pipeline),
+            4 | 6 | 8 | 0xa => receivers[2] = (1, Pipeline),
             _ => {}
         },
-        0x0e0..=0x0f6 => receivers[0] = (2, Replace),
         0x140..=0x17e => {
-            receivers[1] = (1, Replace);
+            receivers[1] = (1, Pipeline);
             if offset & 7 < 4 {
-                receivers[0] = (2, Replace);
+                receivers[0] = (1, Pipeline);
             }
         }
         _ => {}
@@ -89,7 +80,10 @@ fn every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due() {
         let mut writable = 0;
         for offset in (0..=0x1fe).step_by(2) {
             let contract = delivery_contract(offset);
-            writable += usize::from(contract.iter().any(|&(delay, _)| delay != 0));
+            writable += usize::from(
+                contract.iter().any(|&(delay, _)| delay != 0)
+                    || matches!(offset, 0x038..=0x03e | 0x088 | 0x08a),
+            );
             // All aligned slots, including reserved/dummy addresses, and both byte lanes.
             for lane in 0..3 {
                 let mut mb = TestMotherboard::new();
@@ -137,11 +131,7 @@ fn every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due() {
                             .into_iter()
                             .flatten()
                             .collect::<Vec<_>>(),
-                        mb.denise
-                            .step_cck(mb.agnus.beam())
-                            .into_iter()
-                            .flatten()
-                            .collect(),
+                        mb.denise.step_cck().into_iter().flatten().collect(),
                         mb.paula.step_cck().into_iter().flatten().collect(),
                     ];
                     for (events, &(delay, _)) in due.iter().zip(&contract) {
@@ -344,7 +334,7 @@ fn test_open_bus_on_early_dma_and_write_only_registers() {
 
     for _ in 0..2 {
         mb.agnus.step_cck();
-        mb.denise.step_cck(mb.agnus.beam());
+        mb.denise.step_cck();
         mb.paula.step_cck();
     }
     let mut bus = mb.router();
@@ -541,7 +531,7 @@ fn test_custom_byte_write_duplicates_byte_lanes() {
         BusResult::Ready(())
     );
     assert_eq!(mb.denise.color[0], 0);
-    mb.denise.step_cck(mb.agnus.beam());
+    mb.denise.step_cck();
     // Denise color 0 should now be 0x4242 & 0x0FFF = 0x0242
     assert_eq!(mb.denise.color[0], 0x0242);
 
@@ -552,7 +542,7 @@ fn test_custom_byte_write_duplicates_byte_lanes() {
         BusResult::Ready(())
     );
     assert_eq!(mb.denise.color[0], 0x0242);
-    mb.denise.step_cck(mb.agnus.beam());
+    mb.denise.step_cck();
     // Denise color 0 should now be 0x5555 & 0x0FFF = 0x0555
     assert_eq!(mb.denise.color[0], 0x0555);
 }
@@ -598,6 +588,7 @@ fn test_debug_read_and_register_method_conventions() {
 
     // 4. CIA debug byte read does not clear or alter state
     mb.cia_a.pra = 0xAA;
+    mb.cia_a.set_input_pins_a(0xAA, 0xff);
     let debug_cia = mb.router().read_word_debug(0xBFE000) as u8;
     assert_eq!(debug_cia, mb.cia_a.pra());
     assert_eq!(debug_cia, 0xAA);
@@ -623,7 +614,7 @@ fn test_chip_namespaced_custom_register_dispatch() {
     mb.router()
         .write_custom_word(custom_reg::denise::COLOR00, 0x0ABC);
     assert_eq!(mb.denise.color[0], 0);
-    mb.denise.step_cck(mb.agnus.beam());
+    mb.denise.step_cck();
     assert_eq!(mb.denise.color[0], 0x0ABC);
 
     // 3. Paula-specific write: INTENA
@@ -653,7 +644,7 @@ fn test_chip_namespaced_custom_register_dispatch() {
     mb.router()
         .write_custom_word(custom_reg::denise::COLOR01, 0x0F00);
     assert_eq!(mb.denise.color[1], 0);
-    mb.denise.step_cck(mb.agnus.beam());
+    mb.denise.step_cck();
     assert_eq!(mb.denise.color[1], 0x0F00);
     assert_eq!(
         mb.router()
@@ -708,8 +699,7 @@ fn test_sprite_position_and_control_writes_reach_both_chips() {
                 .chain(second)
                 .any(|write| write == Some((offset, value))));
 
-            let beam = mb.agnus.beam();
-            let _ = mb.denise.step_cck(beam);
+            let _ = mb.denise.step_cck();
             let channel = &mb.denise.sprites.channels[usize::from(sprite)];
             if register == 0 {
                 assert_eq!(mb.agnus.sprpos[usize::from(sprite)], value);
@@ -728,4 +718,72 @@ fn ocs_reserved_diwhigh_offset_does_not_change_denise_state() {
     let untouched = mb.denise.clone();
     assert!(mb.router().write_custom_word(0x1e4, 0x2020));
     assert_eq!(mb.denise, untouched, "OCS Denise ignores reserved $1E4");
+}
+
+#[test]
+fn successive_set_clear_writes_preserve_each_accepted_custom_operation() {
+    let mut mb = TestMotherboard::new();
+    for (offset, values) in [
+        (custom_reg::agnus::DMACON, [0x8200, 0x8100]),
+        (custom_reg::paula::ADKCON, [0x8001, 0x8010]),
+    ] {
+        for value in values {
+            assert!(mb.router().write_custom_word(offset, value));
+        }
+    }
+    assert_eq!(mb.agnus.dmacon, 0);
+    assert_eq!(mb.paula.adkcon, 0);
+    mb.agnus.step_cck();
+    mb.paula.step_cck();
+    assert_eq!(
+        mb.agnus.dmacon, 0,
+        "DMACON retains its two-CCK reference delay"
+    );
+    assert_eq!(
+        mb.paula.adkcon, 0x11,
+        "both fallback writes compose after one CCK"
+    );
+    mb.agnus.step_cck();
+    mb.paula.step_cck();
+    assert_eq!(mb.agnus.dmacon & 0x300, 0x300);
+    assert!(mb.paula.dma_master);
+    // This is a synthetic accepted-access test of the chosen model policy.
+}
+
+#[test]
+fn address_strobes_do_not_wait_for_full_data_queues() {
+    let mut mb = TestMotherboard::new();
+    for _ in 0..Agnus::MUTATION_CAPACITY {
+        assert!(mb.agnus.set_bltadat(0));
+    }
+    for _ in 0..Denise::MUTATION_CAPACITY {
+        assert!(mb.denise.set_bpldat(0, 0));
+    }
+    for _ in 0..Paula::MUTATION_CAPACITY {
+        assert!(mb.paula.set_auddat(0, 0));
+    }
+    mb.agnus.copper.cop1lc = 0x2000;
+    mb.agnus.copper.cop2lc = 0x3000;
+    for (offset, expected) in [(0x088, 0x2000), (0x08a, 0x3000)] {
+        assert!(mb.router().write_custom_word(offset, 0xffff));
+        assert_eq!(mb.agnus.copper.cop_pc, expected);
+    }
+    for offset in [0x038, 0x03a, 0x03e, 0x03c] {
+        assert!(mb.router().write_custom_word(offset, 0xffff));
+    }
+    assert!(mb.denise.sync.synchronized);
+    assert!(!mb.denise.sync.vertical_blank);
+    assert_eq!(mb.paula.sync.cck_since_horizontal, 0);
+    assert_eq!(
+        mb.agnus.mutations.iter().flatten().count(),
+        Agnus::MUTATION_CAPACITY
+    );
+    assert_eq!(
+        mb.denise.mutations.iter().flatten().count(),
+        Denise::MUTATION_CAPACITY
+    );
+    assert_eq!(
+        mb.paula.mutations.iter().flatten().count(),
+        Paula::MUTATION_CAPACITY
+    );
 }

@@ -4,8 +4,9 @@
 //! headless execution controller decoupled from GUI frameworks.
 
 use config::A500Config;
-use machine_loop::{A500Machine, A500State, SaveStateError};
+use machine_loop::{A500Machine, A500State};
 use physical_memory::PhysicalMemory;
+use save_state::{SaveState, SaveStateError};
 
 use crate::loader::inject_binary;
 use crate::stepping::Debugger;
@@ -292,8 +293,8 @@ impl DebuggerSession {
     }
 
     /// Restores machine state from an `A500State` snapshot and synchronizes debugger tracking
-    pub fn load_state(&mut self, state: &A500State) -> Result<(), SaveStateError> {
-        self.machine.load_state(state)?;
+    pub fn load_state(&mut self, state: &A500State) {
+        self.machine.load_state(state);
 
         // Synchronize debugger telemetry and execution tracking
         self.debugger.current_cck = self.machine.cck;
@@ -301,19 +302,18 @@ impl DebuggerSession {
         self.capture_memory_snapshot(self.prev_hex_base);
         self.jump_to_live_head();
         self.is_running = false;
-
-        Ok(())
     }
 
     /// Serializes machine state to pretty-printed JSON
     pub fn save_state_to_json(&self) -> Result<String, SaveStateError> {
-        self.save_state().to_json_pretty()
+        SaveState::capture(&self.machine).to_json_pretty()
     }
 
     /// Deserializes machine state from JSON
     pub fn load_state_from_json(&mut self, json_str: &str) -> Result<(), SaveStateError> {
-        let state = A500State::from_json(json_str)?;
-        self.load_state(&state)
+        let saved = SaveState::from_json(json_str)?;
+        self.load_state(&saved.state);
+        Ok(())
     }
 
     /// Saves machine state directly to a file as JSON
@@ -321,7 +321,7 @@ impl DebuggerSession {
         &self,
         path: impl AsRef<std::path::Path>,
     ) -> Result<(), SaveStateError> {
-        self.machine.save_state_to_file(path)
+        SaveState::capture(&self.machine).save_to_file(path)
     }
 
     /// Loads machine state directly from a file
@@ -329,8 +329,9 @@ impl DebuggerSession {
         &mut self,
         path: impl AsRef<std::path::Path>,
     ) -> Result<(), SaveStateError> {
-        let state = A500State::load_from_file(path)?;
-        self.load_state(&state)
+        let saved = SaveState::load_from_file(path)?;
+        self.load_state(&saved.state);
+        Ok(())
     }
 
     /// Saves machine snapshot to an in-memory quick slot (1..=5)
@@ -355,7 +356,8 @@ impl DebuggerSession {
             .as_ref()
             .ok_or_else(|| SaveStateError::CorruptedData(format!("Quick slot {slot} is empty")))?)
         .clone();
-        self.load_state(&state)
+        self.load_state(&state);
+        Ok(())
     }
 
     /// Returns true if the specified quick slot (1..=5) is populated

@@ -9,7 +9,8 @@ created: 2026-08-31
 updated: 2026-11-11
 related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)"]
 tracked_paths:
-  - "crates/machine_loop/src/save_state.rs"
+  - "crates/machine_loop/src/state.rs"
+  - "crates/save_state"
 ---
 # Amiga 500 Save State Architecture & Serialization Specification
 
@@ -20,29 +21,48 @@ tracked_paths:
 
 ---
 
-## 1. Architectural Principles
+## 1. State ownership and persistence
 
-1. **Decoupled Snapshot Structs:**
-   - Save state data structures are pure value containers (`Clone`, `Debug`, `PartialEq`, `Serialize`, `Deserialize`).
-   - They contain zero runtime host handles, window pointers, audio device context handles, or open file descriptors.
-2. **Zero-Allocation Hot Path:**
-   - Regular emulation stepping (`step_cck()`, `step_frame()`) never creates, updates, or allocates save state objects.
-   - Snapshots are synthesized on demand via public machine methods: `a500.save_state() -> A500State` and restored via `a500.load_state(&state) -> Result<(), SaveStateError>`.
-3. **Deterministic Round-Trip Verification:**
-   - Taking a snapshot at cycle $T$, restoring it into a fresh machine instance, and stepping $N$ cycles must produce bit-for-bit identical hardware registers and memory contents as stepping continuously without saving.
-4. **Self-Contained vs. Referenced ROM Modes:**
-   - Because a Kickstart ROM is only 256 KB (or 512 KB) and compresses down to ~150 KB, save states can optionally embed the entire ROM image directly. This provides 100% standalone portability across different computers without requiring external ROM files.
-   - Alternatively, a lightweight reference mode stores the CRC32 checksum of the Kickstart ROM.
-5. **Direct Chip Value Containment:**
-   - Unlike `Cpu` which isolates register snapshots in `CpuState` for external test harnesses (SingleStepTests), custom chips (`Copper`, `Blitter`, `Agnus`, `Denise`, `Paula`, `Cia`) are already flat value containers with zero circular pointers. They are themselves the canonical serializable state records, avoiding duplicate wrapper structs.
+The machine owns a pure serializable `A500State` in
+[state.rs](../../../../crates/machine_loop/src/state.rs). Capturing and restoring
+it performs no file access, JSON encoding or PNG conversion. Chip values,
+CPU state, memory, configuration, master CCK and motherboard deliveries remain
+owned by the machine and their original subsystems. Restoring does not consume
+pending events or synthesize a signal edge. Native and WASM use the same state.
 
-The snapshot format follows the current state structures and may change during development. CIA state includes chip-local queued register identifiers, E-clock phase, the pending bus synchronization countdown and pending TOD latch effects.
+The higher-level [save_state crate](../../../../crates/save_state) depends on
+`machine_loop`, not the reverse. It owns the `SaveState` file envelope, schema
+version, `SaveStateHeader`, JSON conversion, file I/O and PNG preview encoding.
+A decoded file must have the supported schema version before its machine value
+is restored. The envelope contains `header` and a boxed `state` value, keeping large
+serialized payloads off the call stack. JSON contains an ordinary state object;
+old layouts have no
+compatibility parser. Frontends and the debugger use this crate for persistence;
+in-memory quick slots retain only the machine value.
 
----
+Subsystems retain their own Serde implementations. The shared fixed-array
+serializer in `config::big_array` remains below them; it must not depend on
+this high-level save format. Agnus beam counters and field/line state, receiver
+timing state and RGA events are serialized at their respective owners.
 
-## 2. Full Snapshot Contents
+## 2. Full snapshot contents
 
-`A500State` contains the master CCK count and the active machine configuration alongside the CPU state, physical memory, RTC, Agnus, Denise, Paula, both CIAs, the floppy controller, keyboard, and game ports. Its `SaveStateHeader` carries the schema version, creation timestamp, and PNG preview. Pending write/read effects and unconsumed outputs belong to the chip values. Restoring must retain them without routing output events during loading; their next action occurs at the same modeled phase as uninterrupted execution. The living field definitions are in [save_state.rs](../../../../crates/machine_loop/src/save_state.rs), with subsystem state described in the linked specifications above.
+`A500State` includes the CPU's micro-execution state, physical memory and ROM,
+RTC, Agnus, Denise, Paula, both CIAs, floppy, keyboard and game ports. Custom
+chips are already value containers, so no duplicate per-chip snapshot wrappers
+are introduced. Their registers, input levels and pending changes are retained.
+Each receiver stores its incoming inputs alongside sampled levels and local
+synchronization state. This includes IRQ/TOD, disk control/data, game-port drive
+and RGA events. CIA TOD/FLAG history and Paula interrupt levels remain local.
+The machine retains a single pending `keyboard_reset_asserted` boolean;
+CPU IPL is stored by the CPU. There is no shared pending input frame or parallel
+connector model. Pending delivery is state, not a register
+mutation or a list of the last four synchronization values.
+
+A snapshot at CCK T must resume with the same subsequent state as uninterrupted
+execution, including a signal captured but not delivered and an unaccepted
+register word. Construction/reset defines released levels. Current snapshots
+require their complete state fields; there are no legacy defaults or host handles.
 
 ---
 
@@ -54,23 +74,14 @@ and proposed format are collected in the
 
 ---
 
-## 4. Full Snapshot Validation Pipeline
+## 4. File loading and restoration
 
-When restoring a full keyframe snapshot (`A500State`), the emulator executes the following validation steps:
-
-```mermaid
-flowchart TD
-    INPUT["JSON File / Stream"] --> HEADER["1. Verify Schema Version\n(version match)"]
-    HEADER --> CONFIG["2. Adopt Machine Configuration\n(Restore A500Config, RAM buffers & Video Standard)"]
-    CONFIG --> ROM_CHECK{"3. ROM Check:\nEmbedded or Hash Reference?"}
-
-    ROM_CHECK -->|Embedded ROM Present| LOAD_ROM["Inject Embedded ROM directly into MemoryBus\n(100% Self-Contained)"]
-    ROM_CHECK -->|Hash Reference| VERIFY_ROM["Verify SHA-256 / CRC32 against\ncurrently loaded Kickstart"]
-
-    LOAD_ROM --> RESTORE["4. Commit Subsystem Registers & Buffers"]
-    VERIFY_ROM --> RESTORE
-    RESTORE --> ARBITRATE["5. Resume Phase-Driven Arbitration\nand Pending Effects on the Next CCK"]
-```
+The save_state crate decodes the envelope and rejects an unsupported version.
+The frontend then passes its pure `state` value to `A500Machine::load_state`.
+Restoration adopts the saved configuration, RAM/ROM, CPU micro-execution state,
+chip values, receiver-owned incoming inputs and board reset state. It performs no routing during
+loading. Current files embed physical memory, including ROM; alternate ROM
+reference modes and differential rewind remain proposals rather than active APIs.
 
 ---
 
@@ -78,3 +89,6 @@ flowchart TD
 
 - [vAmiga Snapshot Component Implementation](../../../../ref_src/vAmiga/Core/Media/Snapshot.cpp): Snapshot serializer for Amiga hardware state, block headers, and uncompressed RAM payloads.
 - [CPU State Snapshot Implementation Source](../../../../crates/cpu/src/state.rs): Living Rust `CpuState` data structures implementing Serde serialization and deserialization.
+
+- [Pure state](../../../../crates/machine_loop/src/state.rs): Defines the core snapshot schema.
+- [Save format](../../../../crates/save_state/src/save_state.rs): Implements the file envelope, JSON and PNG persistence.

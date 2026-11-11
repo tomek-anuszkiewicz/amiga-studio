@@ -1,8 +1,8 @@
 //! Electronic Propagation Delay & Register Mutation Pipeline
 //!
-//! Models physical circuit propagation latencies where register writes do not take
-//! instantaneous effect, but travel down a provisional delay pipeline before committing
-//! to active silicon latches.
+//! Retains accepted register data until its modeled capture boundary.
+//! Custom chips preserve operations in a pipeline; CIA retains the last pending
+//! value per selector until its next falling E edge.
 
 use serde::{Deserialize, Serialize};
 
@@ -28,9 +28,12 @@ pub struct DelayedMutation {
     pub mode: MutationMode,
 }
 
-/// Positive provisional delay for custom writes that previously bypassed the queue.
-/// This setting establishes ordering, not measured silicon timing.
+/// Fallback delay for custom data writes whose timing remains unresolved.
+/// Concrete reference timings remain separate; address strobes act immediately.
 pub const PROVISIONAL_CUSTOM_WRITE_DELAY_CCK: u8 = 1;
+
+/// Shared Agnus/Paula DMACON capture delay retained from the reference model.
+pub const DMACON_WRITE_DELAY_CCK: u8 = 2;
 
 /// Stages a write in issue order; zero delay and full capacity reject it.
 /// Rejection never authorizes immediate application. The caller retains/retries it.

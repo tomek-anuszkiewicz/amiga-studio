@@ -6,10 +6,10 @@ use machine_loop::{A500Machine, A500State, AddressBus, BusResult};
 mod common;
 
 fn serialized_copy(machine: &A500Machine) -> A500Machine {
-    let json = machine.save_state().to_json().unwrap();
-    let state = A500State::from_json(&json).unwrap();
+    let json = serde_json::to_string(&machine.save_state()).unwrap();
+    let state = serde_json::from_str::<A500State>(&json).unwrap();
     let mut restored = A500Machine::new(machine.config.clone());
-    restored.load_state(&state).unwrap();
+    restored.load_state(&state);
     assert!(
         machine.save_state() == restored.save_state(),
         "serialized continuation differs"
@@ -22,6 +22,9 @@ fn restoration_does_not_consume_unrouted_cia_output() {
     let mut machine = A500Machine::new(A500Config::default());
     machine.cpu.state.set_stopped(true);
     common::cia::configure_drive_control_outputs(&mut machine);
+    common::cia::write_byte(&mut machine, cia_reg::cia_b::PRB, 0x7f);
+    machine.step_cck();
+    assert_eq!(machine.floppy.pins.control_input, 0x7f);
     assert!(machine.cia_b.set_prb(0x75));
     machine.cia_b.step_cck();
     while machine.cia_b.eclock_phase != 2 {
@@ -36,8 +39,12 @@ fn restoration_does_not_consume_unrouted_cia_output() {
         machine.save_state() == restored.save_state(),
         "serialized continuation differs"
     );
-    assert!(restored.floppy.drives[0].motor_on);
+    assert!(!restored.floppy.drives[0].motor_on);
     assert!(!restored.cia_b.prb_mutated);
+    machine.step_cck();
+    restored.step_cck();
+    assert!(machine.save_state() == restored.save_state());
+    assert!(restored.floppy.drives[0].motor_on);
 }
 
 #[test]

@@ -189,7 +189,7 @@ If any answer is **YES**, identify integration protection for that coordination.
 Repository architecture checks are a separate gate, implemented in
 [`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py).
 `verify.py check architecture [case FILTER]` runs source and repository inspection
-without compiling Rust. Commit verification always includes all 17 controls.
+without compiling Rust. Commit verification always includes all 18 controls.
 The compiled opcode descriptor coverage check remains in
 [`crates/cpu/tests/test_visibility.rs`](../../../../crates/cpu/tests/test_visibility.rs)
 and runs with ordinary CPU tests.

@@ -10,8 +10,11 @@ pub use dma;
 use config::chip_ram::OCS_DMA_ADDRESS_MASK;
 use config::mask::dmacon;
 pub use config::AgnusModel;
-use config::{tick_mutations, BeamPosition, DelayedMutation};
+use config::{tick_mutations, DelayedMutation};
 use serde::{Deserialize, Serialize};
+
+mod pins;
+pub use pins::AgnusPins;
 
 mod blitter_registers;
 mod copper_registers;
@@ -21,6 +24,11 @@ mod registers;
 /// Agnus custom chip coordinator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Agnus {
+    /// Motherboard-facing signal state.
+    pub pins: AgnusPins,
+    /// Granted audio/sprite RGA and data output, held until the router accepts it.
+    /// Scheduling and register selection belong to the owning DMA engine.
+    pub pending_dma_write: Option<(u16, u16)>,
     /// Active Agnus chip hardware model (8370 or 8371)
     pub model: AgnusModel,
     /// Agnus Copper coprocessor
@@ -110,6 +118,8 @@ impl Agnus {
     /// Creates a new Agnus instance with specified chip revision
     pub fn new(model: AgnusModel) -> Self {
         Self {
+            pins: AgnusPins::default(),
+            pending_dma_write: None,
             model,
             vblank_irq: false,
             pending_copper_write: None,
@@ -145,6 +155,8 @@ impl Agnus {
 
     /// Resets Agnus registers and beam counters to power-on defaults
     pub fn reset(&mut self) {
+        self.pins = AgnusPins::default();
+        self.pending_dma_write = None;
         self.copper.reset();
         self.blitter.reset();
         self.dma.reset();
@@ -222,15 +234,14 @@ impl Agnus {
         }
 
         // 2. Step embedded coprocessors and schedulers
-        let beam = self.beam();
         self.dma.step_cck();
 
         // Evaluate 8-tier Master DMA Bus Arbitration
         let copper_wants_bus = self.copper.is_active_fetching();
         let blitter_wants_bus = self.blitter.is_busy;
         let owner = self.dma.arbitrate(
-            beam.hpos,
-            beam.vpos,
+            self.hpos,
+            self.vpos,
             self.dsk_dma_req,
             [true, true, true, true],
             copper_wants_bus,
@@ -289,7 +300,9 @@ impl Agnus {
         }
 
         if self.pending_copper_write.is_none() {
-            self.pending_copper_write = self.copper.step_cck(beam, self.blitter.is_busy, chip_ram);
+            self.pending_copper_write =
+                self.copper
+                    .step_cck(self.hpos, self.vpos, self.blitter.is_busy, chip_ram);
         }
 
         // 3. Process and commit due register mutations
@@ -305,6 +318,8 @@ impl Agnus {
             self.apply_register_write(item.0, item.1);
         }
 
+        self.drive_sync_strobe();
+        self.drive_timing_pins(line_ccks, max_lines);
         committed
     }
 
@@ -332,12 +347,6 @@ impl Agnus {
         self.pending_bpl_dma.take()
     }
 
-    /// Returns the current raster beam position snapshot
-    #[inline]
-    pub fn beam(&self) -> BeamPosition {
-        BeamPosition::new(self.hpos, self.vpos, self.lof)
-    }
-
     /// Returns true if Chip RAM is currently locked by custom chip DMA
     #[inline]
     pub fn is_chip_ram_blocked(&self) -> bool {
@@ -350,12 +359,6 @@ impl Agnus {
         if channel < 4 {
             self.audpt[channel] = self.audlc[channel];
         }
-    }
-
-    /// Polls and clears the blitter completion interrupt flag
-    #[inline]
-    pub fn poll_blitter_irq(&mut self) -> bool {
-        self.blitter.poll_blit_irq()
     }
 
     /// Polls and clears the vertical blanking interval interrupt request flag

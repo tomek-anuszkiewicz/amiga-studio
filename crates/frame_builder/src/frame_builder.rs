@@ -3,7 +3,6 @@
 //! Assembles scanline pixel data, applies display window clipping,
 //! and generates 32-bit ARGB frame buffers for host display frontends.
 
-use config::BeamPosition;
 use serde::{Deserialize, Serialize};
 
 /// Maximum overscan width in high-resolution pixels (4 pixels per CCK across 228 CCKs)
@@ -110,10 +109,10 @@ impl FrameBuilder {
 
     /// Advances frame builder by 1 Color Clock observing current beam coordinates
     #[inline]
-    pub fn step_cck(&mut self, beam: BeamPosition) {
-        self.hpos = beam.hpos;
-        self.vpos = beam.vpos;
-        if beam.hpos == 0 && beam.vpos == 0 {
+    pub fn step_cck(&mut self, hpos: u16, vpos: u16) {
+        self.hpos = hpos;
+        self.vpos = vpos;
+        if hpos == 0 && vpos == 0 {
             self.frame_ready = true;
         }
     }

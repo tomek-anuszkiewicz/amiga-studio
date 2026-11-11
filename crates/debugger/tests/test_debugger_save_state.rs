@@ -29,9 +29,7 @@ fn test_debugger_session_save_and_load() {
     assert_eq!(session.debugger.current_cck, 1000);
 
     // Load state back
-    session
-        .load_state(&saved_state)
-        .expect("Failed to load save state into DebuggerSession");
+    session.load_state(&saved_state);
 
     assert_eq!(session.machine.cck, 400);
     assert_eq!(session.debugger.current_cck, 400);
@@ -161,8 +159,6 @@ fn test_debugger_session_save_state_preserves_kickstart_rom() {
         A500Preset::Bare512k,
         VideoStandard::Pal,
     ));
-    new_session
-        .load_state(&saved)
-        .expect("Failed to restore session state");
+    new_session.load_state(&saved);
     assert_eq!(new_session.machine.physical_memory.kickstart_rom, dummy_rom);
 }

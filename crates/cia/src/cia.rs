@@ -3,7 +3,9 @@
 //! Reusable 8520 chip core with 16-bit decrementing Timers A & B,
 //! bidirectional 8-bit Ports A & B, 24-bit TOD clock, SDR, and ICR.
 
+mod pins;
 mod registers;
+pub use pins::{CiaInputs, CiaPins};
 
 use config::{tick_mutations, DelayedMutation};
 use serde::{Deserialize, Serialize};
@@ -24,6 +26,8 @@ const CIA_REGISTER_COUNT: usize = 16;
 /// MOS 8520 CIA chip state
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Cia {
+    /// Input capture and output drive boundary for motherboard serial/handshake lines.
+    pub pins: CiaPins,
     /// Port A Data Register (PRA)
     pub pra: u8,
     /// Port B Data Register (PRB)
@@ -207,35 +211,6 @@ impl Cia {
         (self.icr_data & 0x80) != 0
     }
 
-    /// Injects external peripheral input pin levels into Port A for bits configured as inputs (`!ddra`)
-    #[inline]
-    pub fn set_input_pins_a(&mut self, pins: u8, mask: u8) {
-        let input_mask = mask & !self.ddra;
-        self.pra = (self.pra & !input_mask) | (pins & input_mask);
-    }
-
-    /// Polls whether Port A output data was written, clearing the flag and returning the written byte
-    #[inline]
-    pub fn poll_pra_output(&mut self) -> Option<u8> {
-        if self.pra_mutated {
-            self.pra_mutated = false;
-            Some(self.pra)
-        } else {
-            None
-        }
-    }
-
-    /// Polls a Port B latch/direction change and returns its effective pulled-up pin levels
-    #[inline]
-    pub fn poll_prb_output(&mut self) -> Option<u8> {
-        if self.prb_mutated {
-            self.prb_mutated = false;
-            Some(self.prb | !self.ddrb)
-        } else {
-            None
-        }
-    }
-
     /// Advances the 24-bit Time-of-Day (TOD) counter by 1 tick.
     /// In CIA-A, this is connected to 50/60 Hz VSync ticks.
     /// In CIA-B, this is connected to horizontal scanline HSync ticks.
@@ -267,13 +242,6 @@ impl Cia {
         }
     }
 
-    /// Shifts an 8-bit byte serially into the SDR from an external device (e.g. keyboard),
-    /// latching the byte and asserting the SDR interrupt in ICR (bit 3).
-    pub fn shift_in_sdr(&mut self, val: u8) {
-        self.sdr = val;
-        self.trigger_icr(0x08); // Bit 3: SDR shift complete
-    }
-
     /// Returns true if the SDR is configured in serial output mode (CRA bit 6 = 1)
     #[inline]
     pub fn is_sdr_output(&self) -> bool {
@@ -281,7 +249,7 @@ impl Cia {
     }
 
     /// Triggers the FLAG pin negative edge interrupt (ICR bit 4).
-    /// Connected to parallel port ACK on CIA-A, serial port CD on CIA-B.
+    /// Connected to parallel port ACK on CIA-A and disk INDEX on CIA-B.
     #[inline]
     pub fn trigger_flag_pin(&mut self) {
         self.trigger_icr(0x10); // Bit 4: FLAG pin transition

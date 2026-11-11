@@ -433,16 +433,28 @@ for the observation boundary.
 
 ## 3. Automated Architecture Rules Compliance
 
-[`checks/check_architecture.py`](checks/check_architecture.py) runs 17 source and
+[`checks/check_architecture.py`](checks/check_architecture.py) runs 18 source and
 repository checks: file size limits $\le 800$ lines, forbidden unwrap/expect calls,
 custom macros, path privacy, inlining attributes, instruction layout, test
-organization, instruction file budgets and design-document links. It uses the
-Python standard library and requires no Rust build. Commit and `check all` run
+organization, instruction file budgets, design-document links and approved
+dependencies between workspace crates. It uses the Python standard library
+and Cargo metadata, without compiling Rust. Commit and `check all` run
 the complete set; `case` selects control names by literal substring:
 ```powershell
 python tools/verification/verify.py check architecture
 python tools/verification/verify.py check architecture case test_file_size_limits
+python tools/verification/verify.py check architecture case test_workspace_crate_dependencies
 ```
+
+`APPROVED_CRATE_DEPENDENCIES` in the architecture checker is the explicit table
+of permitted direct workspace dependencies. Production (`normal`), test (`dev`)
+and build dependencies are separate; an omitted kind allows none. Every workspace
+crate needs an entry, including crates with no internal dependencies. The check
+uses `cargo metadata --no-deps --offline --locked` to include inherited, renamed,
+optional and target-specific declarations, even when their features or platforms
+are inactive. New permissions require a deliberate rule change; the checker never
+generates permissions from the current manifests. Removing a dependency is allowed.
+External libraries and indirect paths through re-exports are outside this check.
 
 The opcode micro-step coverage test uses the compiled CPU descriptor table and
 lives in [`crates/cpu/tests/test_visibility.rs`](../../crates/cpu/tests/test_visibility.rs).

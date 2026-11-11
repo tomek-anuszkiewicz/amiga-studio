@@ -47,8 +47,9 @@ fn hardware_resets_execute_boot_beyond_the_initial_queue() {
             1 => machine.reset_warm(),
             _ => {
                 press_reset_keys(&mut machine);
-                assert!(machine.keyboard.reset_line_asserted);
-                assert!(!machine.step_cck());
+                assert!(machine.keyboard.pins.reset_line_asserted);
+                machine.step_cck(); // Capture; CPU may finish an instruction before delivery.
+                assert!(!machine.step_cck()); // Deliver to the reset network.
                 if reset_kind == 2 {
                     for key in [
                         keyboard::SCANCODE_CTRL,
@@ -81,6 +82,7 @@ fn hardware_resets_execute_boot_beyond_the_initial_queue() {
             // New host key-down events are a new request, rather than repetition
             // of the request consumed above.
             press_reset_keys(&mut machine);
+            machine.step_cck(); // Capture the new assertion.
             assert!(!machine.step_cck());
             assert_boot_entry(&machine);
             assert_eq!(machine.denise.color[0], 0);
@@ -111,6 +113,7 @@ fn keyboard_reset_replaces_stopped_and_partial_instruction_state() {
             assert!(!machine.cpu.state.micro().current_steps.is_empty());
         }
         press_reset_keys(&mut machine);
+        machine.step_cck(); // Capture while retaining the pending instruction state.
         assert!(!machine.step_cck());
         assert_boot_entry(&machine);
         execute_boot(&mut machine);
@@ -575,16 +578,18 @@ fn test_keyboard_ctrl_amiga_amiga_warm_reset() {
     machine.keyboard.key_down(keyboard::SCANCODE_R_AMIGA);
 
     assert!(
-        machine.keyboard.reset_line_asserted,
+        machine.keyboard.pins.reset_line_asserted,
         "Keyboard must assert reset_line_asserted on Ctrl-Amiga-Amiga"
     );
 
     // 3. Step 1 Color Clock (machine loop samples keyboard reset line)
     machine.step_cck();
 
+    machine.step_cck(); // Deliver the captured keyboard assertion.
+
     // 4. Verify warm reset executed
     assert!(
-        !machine.keyboard.reset_line_asserted,
+        !machine.keyboard.pins.reset_line_asserted,
         "Keyboard reset line asserted flag must be cleared after handling"
     );
     assert_eq!(machine.cck, 0, "Master CCK must be reset to 0");

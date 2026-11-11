@@ -9,8 +9,8 @@ pub use mfm::*;
 
 use serde::{Deserialize, Serialize};
 
-/// CIA-A Port A inputs: _RDY, _TK0, _WPROT, and _CHNG (bits 2..5).
-pub const CIAA_PRA_FLOPPY_SENSE_MASK: u8 = 0x3C;
+mod pins;
+pub use pins::{FloppyInputs, FloppyPins};
 
 /// Standard Double Density disk geometry constants
 const CYLINDERS_PER_DISK: u8 = 80;
@@ -170,6 +170,8 @@ impl FloppyDrive {
 /// Floppy disk MFM DMA controller & Multi-Chip Bridge (Paula, CIA-A, CIA-B)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FloppyController {
+    /// Motherboard-facing signal state.
+    pub pins: FloppyPins,
     /// 4 floppy drive units (DF0..DF3)
     pub drives: [FloppyDrive; 4],
     /// Previously latched CIA-B Port B state (to detect falling edges of _SEL0..3 and _STEP)
@@ -201,6 +203,7 @@ pub const CCK_PER_MFM_WORD: u16 = 114;
 impl Default for FloppyController {
     fn default() -> Self {
         Self {
+            pins: FloppyPins::default(),
             drives: [
                 FloppyDrive::default(),
                 FloppyDrive::default(),
@@ -229,6 +232,7 @@ impl FloppyController {
 
     /// Resets floppy controller registers and drive units
     pub fn reset(&mut self) {
+        self.pins = FloppyPins::default();
         self.prev_ciab_prb = 0xFF;
         self.dskdat = 0;
         self.dskbytr = 0;
@@ -244,11 +248,15 @@ impl FloppyController {
         }
     }
 
-    /// Action method: handles CIA-B Port B ($BFD100) output writes.
+    /// Receives propagated CIA-B control levels at the drive connector.
     ///
     /// Drives motor latching on `_SELx` falling edge, side selection,
     /// and head stepping pulses across drives DF0: through DF3:.
-    pub fn handle_ciab_port_b_write(&mut self, prb: u8) {
+    pub fn receive_control_pins(&mut self, prb: u8) {
+        if self.pins.control_input == prb {
+            return;
+        }
+        self.pins.control_input = prb;
         let falling_edges = self.prev_ciab_prb & !prb;
         let mtr_on = (prb & 0x80) == 0; // Bit 7: _MTR active low (0 = ON)
         let side = if (prb & 0x04) != 0 { 0 } else { 1 }; // Bit 2: _SIDE (1 = Side 0, 0 = Side 1)

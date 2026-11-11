@@ -38,7 +38,7 @@ graph TD
 
 - **Top-Level Machine (A500)**: Controls stepping (single CCK, multi-cycle, or full video frame), reset lines, and interrupt priority arbitration (IPL 1–6).
 - **Decoupled Modules**: Subsystems do not hold references or callbacks to one another; signals and bus requests are driven in the main machine loop and MemoryBus.
-- **Circuit Simulation & Signal Propagation**: Hardware components model physical circuit delay. Changes to register latches take effect on subsequent clock phases/cycles rather than propagating instantaneously across chips.
+- **Register Timing & Signal Propagation**: [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) defines reference-model delays and the fallback for unresolved data writes, with immediate accepted reads and address strobes. [CIA](CIA.md#runtime-register-capture-and-bus-synchronization) retains its E-clock boundary. Motherboard delivery and downstream engine phases remain separate; these model policies do not establish every physical propagation delay.
 
 ### 1.1 Physical Bus Topology & Inter-Chip Isolation Invariant
 
@@ -86,16 +86,30 @@ flowchart TD
 3. **Specialized Custom Chips as Passive Bus Latchers (Zero Direct Memory Reads):**
    - Neither **Denise** nor **Paula** possesses DMA address generation circuits, and neither holds pointers to `PhysicalMemory`.
    - Specialized chips **never initiate autonomous memory reads**. During an assigned DMA slot, the memory system reads the 16-bit word from Chip RAM onto the shared data bus, and the receiving chip passively latches the word into its internal holding register (`BPLxDAT`, `SPRxDAT`, `AUDxDAT`, `DSKDAT`) upon matching its `RGA` strobe.
-4. **`MachineLoop` as Motherboard PCB Simulator & Post-CCK `poll_*` Dispatch:**
-   - The top-level machine struct (`MachineLoop` / `A500Machine`) acts as the physical motherboard simulator.
-   - After each Color Clock cycle, the motherboard interrogates subsystem output pins via explicit `poll_*` methods (e.g. `agnus.poll_blitter_irq()`, `agnus.poll_copper_write()`, `agnus.poll_bpl_dma()`, `paula.poll_audio_restart()`, `floppy.poll_dskblk_irq()`, `cia_a.irq_pending()`).
-   - The motherboard routes these events to the target subsystem inputs (e.g. `paula.set_interrupt_request()`, `denise.set_bpldat()`, `agnus.reload_audio_ptr()`). No chip ever notifies or mutates a peer chip directly.
+4. **`MachineLoop` as Motherboard PCB Simulator:**
+   - The top-level `A500Machine` resolves wiring after producer work. Each recipient owns incoming inputs and samples them at the explicit [Machine Loop phases](Machine%20Loop.md#connections-advanced-within-the-step).
+   - CIA IRQ, Agnus INT3, TOD, connector controls/status and RGA synchronization pass through that boundary. The receiver owns edge detection or input sampling; motherboard delivery does not substitute a register write for a physical pin.
+   - Granted RGA/data words use the existing MemoryBus and register queues, retaining an output until acceptance. Legacy decoded disk/audio bridges remain separately identified until engine reconstruction. No chip notifies or mutates a peer directly.
 
 ---
 
 ## 2. Workspace Crate Architecture & Dependencies
 
 The codebase is organized as a Cargo workspace with decoupled, single-responsibility crates located under crates/:
+
+Direct dependencies between workspace crates must follow the explicit rules in
+[`APPROVED_CRATE_DEPENDENCIES`](../../../tools/verification/checks/check_architecture.py).
+Production, test and build dependencies have separate permissions. The architecture
+test checks Cargo metadata, including aliases, optional dependencies and every
+target platform. A new crate or dependency requires an explicit rule before it
+can pass verification. Re-exports count as dependencies; removing an unused
+dependency does not require keeping its declaration.
+
+The [save format](Application/SaveState.md) is a higher-level consumer of the
+[Machine Loop](Machine%20Loop.md). It owns JSON, file access and PNG previews;
+the core owns pure snapshots and signal transport. No subsystem depends on the
+save format. Beam counters belong to Agnus; receiver synchronization travels
+as RGA events rather than an Agnus counter projection.
 
 ```mermaid
 graph TD
@@ -146,9 +160,13 @@ graph TD
     subgraph Diagnostics["Diagnostics, Debugger & GUI"]
         DIS["disassembler<br/><code>crates/disassembler</code>"]:::tool
         DBG["debugger<br/><code>crates/debugger</code>"]:::tool
+        SAVE["save_state<br/><code>crates/save_state</code>"]:::tool
         GUI["gui<br/><code>crates/gui</code>"]:::tool
         TR["test_runner<br/><code>crates/test_runner</code>"]:::tool
     end
+
+    SAVE --> ML
+    DBG --> SAVE
 
     %% Chassis Ownership & Routing
     ML --> CPU
@@ -268,5 +286,3 @@ link does not establish that every described hardware path is implemented.
 - [Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md): Closed silicon signal space, inter-chip bus propagation latencies, conflict resolution, and action dispatch matrix.
 - [Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md): Column definitions and table format for documenting custom register ownership, access, propagation, and timing.
 - [Testing Strategy and Quality Assurance.md](Verification/Testing%20Strategy%20and%20Quality%20Assurance.md): 3-Tier Testing Architecture, external tests/ architecture, and verification tooling.
-
-

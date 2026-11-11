@@ -39,16 +39,7 @@ CIA aliases, dual selection and lane behavior.
 
 The final column records the production write interface in
 [`custom_registers.rs`](../../../crates/memory_bus/src/custom_registers.rs).
-`A`, `D`, `P` name Agnus, Denise and Paula. A method name followed by `2 O`,
-for example, means two subsequent owner steps and `OverwritePending` mode.
-`O` replaces the same pending destination, moves it to the latest issue position
-and restarts its delay; `P` means `Pipeline`, retaining successive values.
-Entries containing two recipients require both queues to accept atomically.
-The delay is in **CCK**, counted from the next receiver step after issue; every
-number and queue mode is provisional. The hardware `Delay` column remains
-unknown. Neither an acknowledgment nor a returned due event proves the later
-engine effect. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips)
-owns acceptance, retry, order and CPU/Copper issue boundaries.
+`A`, `D`, `P` name Agnus, Denise and Paula. A number followed by `P` is the delay in subsequent owner CCK steps and `Pipeline` mode, preserving each accepted data operation. Concrete reference timings recorded in the timing research are retained; unresolved custom data writes use a one-CCK fallback. Address strobes act immediately at accepted selection and allocate no queue entry. Shared data writes require every recipient to accept atomically. This is the user-approved model policy of 2026-11-11; the hardware `Delay` column remains unknown. A committed write can still wait for a later engine consumer. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) owns acceptance, retry and issue boundaries.
 
 The named setters live in [Agnus registers](../../../crates/agnus/src/registers.rs),
 [Blitter register staging](../../../crates/agnus/src/blitter_registers.rs),
@@ -57,9 +48,9 @@ The named setters live in [Agnus registers](../../../crates/agnus/src/registers.
 [Paula registers](../../../crates/paula/src/registers.rs). Indexed methods use
 zero-based channel indices; bitplane names 1–6 therefore use indices 0–5.
 `set_color` covers indices 0–31 and sprite methods indices 0–7. Register-half
-methods preserve separate high/low event identities. Strobe setters carry
-zero rather than the bus data. Agnus owns one queue for its Copper and Blitter
-children; the motherboard never bypasses it to mutate those children.
+methods preserve separate high/low event identities. Address strobes ignore
+bus data and act immediately. Agnus owns the data-write queue for its Copper
+and Blitter children and handles their address strobes through named interfaces.
 
 CPU writes and legal Copper MOVE destinations use the same setters. The
 [Copper](Copper.md) applies the manual's address restrictions before emitting
@@ -97,7 +88,7 @@ hardware effects; the delivery column describes the current access mechanism.
 | `DSKPT`, `DSKLEN`, `DSKDAT/DSKDATR`, `DSKSYNC/DSKBYTR` | Agnus owns the disk pointer pair. Paula owns length/direction/arming, disk data, sync comparison, byte availability and DMA/write/sync status; live DSKBYTR acknowledges byte availability. DSKDATR is an early-read dummy. [Floppy](Floppy.md) owns the drive-side stream; media transfers are outside the current closure. | [`dskpth / dskptl`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#dskpth-dskptl), [`dsklen`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#dsklen), [`dskdat / dskdatr`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#dskdat-dskdatr), [`dsksync`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#dsksync), [`dskbytr`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#dskbytr) |
 | `AUD0LC` through `AUD3LC`, `AUD0LEN/PER/VOL/DAT` through `AUD3LEN/PER/VOL/DAT` | Agnus owns four location pairs. Paula's [Audio](Audio.md) children own length reload, period, six-bit volume plus full-volume selection and two signed sample bytes per data word. Transport does not certify playback or the relation between programmed reload and active counters. | [`audxlch / audxlcl`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#audxlch-audxlcl), [`audxlen`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#audxlen), [`audxper`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#audxper), [`audxvol`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#audxvol), [`audxdat`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#audxdat) |
 | `ADKCON/ADKCONR` | Paula owns audio modulation and disk/UART control; bit 15 selects set/clear on writes. The separate readable address returns active controls. | [`adkcon / adkconr`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#adkcon-adkconr) |
-| `INTENA/INTENAR`, `INTREQ/INTREQR` | Paula's [Interrupts](Interrupts.md) child owns source enables, master enable and pending requests. Bit 15 selects set/clear on writes. Read addresses expose active enable/request bits; they do not acknowledge by reading. Input requests have a separate queue destination from CPU INTREQ writes. | [`intena / intenar`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#intena-intenar), [`intreq / intreqr`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#intreq-intreqr) |
+| `INTENA/INTENAR`, `INTREQ/INTREQR` | Paula's [Interrupts](Interrupts.md) child owns source enables, master enable and pending requests. Bit 15 selects set/clear on writes. Read addresses expose active enable/request bits; they do not acknowledge by reading. Delivered INT2/INT3/INT6 levels are sampled after due register writes without a queue entry. | [`intena / intenar`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#intena-intenar), [`intreq / intreqr`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#intreq-intreqr) |
 | `SERDAT/SERDATR`, `SERPER` | Paula serial child owns transmit data/stop bits, receive data and status, period and long-word selection. | [`serdat`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#serdat), [`serdatr`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#serdatr), [`serper`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#serper) |
 | `POT0DAT/POT1DAT`, `POTGO/POTGOR` | Paula owns proportional counters and port control/sampled inputs. POTGO supplies start, output enables and output levels; POTGOR reads pins, and POTDAT pairs read counter bytes. | [`pot0dat / pot1dat`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#pot0dat-pot1dat), [`potgo / potgor`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#potgo-potgor) |
 ### Read interfaces and current limits
@@ -135,42 +126,42 @@ see the [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction
 | `$01A` | `DSKBYTR` (Paula) | — | RO | Not established | Unknown | Disk data byte and status read. Copper write prohibited. | Ignored write; no queue |
 | `$01C` | `INTENAR` (Paula) | — | RO | Not established | Unknown | Interrupt enable bits read. Copper write prohibited. | Ignored write; no queue |
 | `$01E` | `INTREQR` (Paula) | — | RO | Not established | Unknown | Interrupt request bits read. Copper write prohibited. | Ignored write; no queue |
-| `$020` | — | `DSKPTH` + (Agnus) | WO | Not established | Unknown | Disk pointer (high 3 bits). Copper write prohibited. | `A.set_dskpth(value)` 2 O |
-| `$022` | — | `DSKPTL` + (Agnus) | WO | Not established | Unknown | Disk pointer (low 15 bits). Copper write prohibited. | `A.set_dskptl(value)` 2 O |
-| `$024` | — | `DSKLEN` (Paula) | WO | Not established | Unknown | Disk length. Copper write prohibited. | `P.set_dsklen(value)` 2 O |
-| `$026` | — | `DSKDAT` & (Paula) | WO | Not established | Unknown | Disk DMA data write. Copper write prohibited. | `P.set_dskdat(value)` 2 O |
-| `$028` | — | `REFPTR` & (Agnus) | WO | Not established | Unknown | Refresh pointer. Copper write prohibited. | `A.set_refptr(value)` 2 O; pending effect |
-| `$02A` | — | `VPOSW` (Agnus) | WO | Not established | Unknown | Write vertical most significant bit (and frame flop). Copper write prohibited. | `A.set_vposw(value)` 2 O; pending effect |
-| `$02C` | — | `VHPOSW` (Agnus) | WO | Not established | Unknown | Write vertical and horizontal position of beam. Copper write prohibited. | `A.set_vhposw(value)` 2 O; pending effect |
-| `$02E` | — | `COPCON` (Agnus) | WO | Not established | Unknown | Coprocessor control register (CDANG). Copper write prohibited. | `A.set_copcon(value)` 2 O |
+| `$020` | — | `DSKPTH` + (Agnus) | WO | Not established | Unknown | Disk pointer (high 3 bits). Copper write prohibited. | `A.set_dskpth(value)` 1 P |
+| `$022` | — | `DSKPTL` + (Agnus) | WO | Not established | Unknown | Disk pointer (low 15 bits). Copper write prohibited. | `A.set_dskptl(value)` 1 P |
+| `$024` | — | `DSKLEN` (Paula) | WO | Not established | Unknown | Disk length. Copper write prohibited. | `P.set_dsklen(value)` 1 P |
+| `$026` | — | `DSKDAT` & (Paula) | WO | Not established | Unknown | Disk DMA data write. Copper write prohibited. | `P.set_dskdat(value)` 1 P |
+| `$028` | — | `REFPTR` & (Agnus) | WO | Not established | Unknown | Refresh pointer. Copper write prohibited. | `A.set_refptr(value)` 1 P; pending effect |
+| `$02A` | — | `VPOSW` (Agnus) | WO | Not established | Unknown | Write vertical most significant bit (and frame flop). Copper write prohibited. | `A.set_vposw(value)` 1 P; pending effect |
+| `$02C` | — | `VHPOSW` (Agnus) | WO | Not established | Unknown | Write vertical and horizontal position of beam. Copper write prohibited. | `A.set_vhposw(value)` 1 P; pending effect |
+| `$02E` | — | `COPCON` (Agnus) | WO | Not established | Unknown | Coprocessor control register (CDANG). Copper write prohibited. | `A.set_copcon(value)` 1 P |
 | `$030` | — | `SERDAT` (Paula) | WO | Not established | Unknown | Serial port data and stop bits write. Copper write prohibited. | `P.set_serdat(value)` 1 P |
-| `$032` | — | `SERPER` (Paula) | WO | Not established | Unknown | Serial port period and control. Copper write prohibited. | `P.set_serper(value)` 2 O |
-| `$034` | — | `POTGO` (Paula) | WO | Not established | Unknown | Pot port data write and start. Copper write prohibited. | `P.set_potgo(value)` 2 O |
-| `$036` | — | `JOYTEST` (Denise) | WO | Not established | Unknown | Write to all 4 joystick-mouse counters at once. Copper write prohibited. | `D.set_joytest(value)` 1 O; pending effect |
-| `$038` | — | `STREQU` & (Denise) | STROBE | Not established | Unknown | Write-address strobe for horizontal sync with vertical blank and equalization; Agnus emits it during refresh. Copper write prohibited. | `D.set_strequ()` 1 O; pending effect |
-| `$03A` | — | `STRVBL` & (Denise) | STROBE | Not established | Unknown | Write-address strobe for horizontal sync with vertical blank; Agnus emits it during refresh. Copper write prohibited. | `D.set_strvbl()` 1 O; pending effect |
-| `$03C` | — | `STRHOR` & (Denise, Paula) | STROBE | Multiple chips listed | Unknown | Write-address strobe for horizontal sync; Agnus emits it during refresh. Copper write prohibited. | `D.set_strhor()` 1 O; `P.set_strhor()` 1 O; pending effect |
-| `$03E` | — | `STRLONG` & (Denise) | STROBE | Not established | Unknown | Write-address strobe identifying a long horizontal line; Agnus emits it during refresh. Copper write prohibited. | `D.set_strlong()` 1 O; pending effect |
-| `$040` | — | `BLTCON0` (Agnus) | WO | Not established | Unknown | Blitter control register 0. Copper write requires `COPCON.CDANG`. | `A.set_bltcon0(value)` 2 O |
-| `$042` | — | `BLTCON1` (Agnus) | WO | Not established | Unknown | Blitter control register 1. Copper write requires `COPCON.CDANG`. | `A.set_bltcon1(value)` 2 O |
-| `$044` | — | `BLTAFWM` (Agnus) | WO | Not established | Unknown | Blitter first word mask for source A. Copper write requires `COPCON.CDANG`. | `A.set_bltafwm(value)` 2 O |
-| `$046` | — | `BLTALWM` (Agnus) | WO | Not established | Unknown | Blitter last word mask for source A. Copper write requires `COPCON.CDANG`. | `A.set_bltalwm(value)` 2 O |
-| `$048` | — | `BLTCPTH` + (Agnus) | WO | Not established | Unknown | Blitter pointer to source C (high 3 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltcpth(value)` 2 O |
-| `$04A` | — | `BLTCPTL` + (Agnus) | WO | Not established | Unknown | Blitter pointer to source C (low 15 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltcptl(value)` 2 O |
-| `$04C` | — | `BLTBPTH` + (Agnus) | WO | Not established | Unknown | Blitter pointer to source B (high 3 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltbpth(value)` 2 O |
-| `$04E` | — | `BLTBPTL` + (Agnus) | WO | Not established | Unknown | Blitter pointer to source B (low 15 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltbptl(value)` 2 O |
-| `$050` | — | `BLTAPTH` + (Agnus) | WO | Not established | Unknown | Blitter pointer to source A (high 3 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltapth(value)` 2 O |
-| `$052` | — | `BLTAPTL` + (Agnus) | WO | Not established | Unknown | Blitter pointer to source A (low 15 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltaptl(value)` 2 O |
-| `$054` | — | `BLTDPTH` + (Agnus) | WO | Not established | Unknown | Blitter pointer to destination D (high 3 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltdpth(value)` 2 O |
-| `$056` | — | `BLTDPTL` + (Agnus) | WO | Not established | Unknown | Blitter pointer to destination D (low 15 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltdptl(value)` 2 O |
-| `$058` | — | `BLTSIZE` (Agnus) | WO | Not established | Unknown | Blitter start and size (window width, height). Copper write requires `COPCON.CDANG`. | `A.set_bltsize(value)` 1 O |
+| `$032` | — | `SERPER` (Paula) | WO | Not established | Unknown | Serial port period and control. Copper write prohibited. | `P.set_serper(value)` 1 P |
+| `$034` | — | `POTGO` (Paula) | WO | Not established | Unknown | Pot port data write and start. Copper write prohibited. | `P.set_potgo(value)` 1 P |
+| `$036` | — | `JOYTEST` (Denise) | WO | Not established | Unknown | Write to all 4 joystick-mouse counters at once. Copper write prohibited. | `D.set_joytest(value)` 1 P; pending effect |
+| `$038` | — | `STREQU` & (Denise) | STROBE | Not established | Unknown | Write-address strobe for horizontal sync with vertical blank and equalization; Agnus emits it during refresh. Copper write prohibited. | `D.strobe_strequ()` immediate; local sync; detailed timing pending |
+| `$03A` | — | `STRVBL` & (Denise) | STROBE | Not established | Unknown | Write-address strobe for horizontal sync with vertical blank; Agnus emits it during refresh. Copper write prohibited. | `D.strobe_strvbl()` immediate; local sync; detailed timing pending |
+| `$03C` | — | `STRHOR` & (Denise, Paula) | STROBE | Multiple chips listed | Unknown | Write-address strobe for horizontal sync; Agnus emits it during refresh. Copper write prohibited. | `D.strobe_strhor()` immediate; `P.strobe_strhor()` immediate; local sync; detailed timing pending |
+| `$03E` | — | `STRLONG` & (Denise) | STROBE | Not established | Unknown | Write-address strobe identifying a long horizontal line; Agnus emits it during refresh. Copper write prohibited. | `D.strobe_strlong()` immediate; local sync; detailed timing pending |
+| `$040` | — | `BLTCON0` (Agnus) | WO | Not established | Unknown | Blitter control register 0. Copper write requires `COPCON.CDANG`. | `A.set_bltcon0(value)` 1 P |
+| `$042` | — | `BLTCON1` (Agnus) | WO | Not established | Unknown | Blitter control register 1. Copper write requires `COPCON.CDANG`. | `A.set_bltcon1(value)` 1 P |
+| `$044` | — | `BLTAFWM` (Agnus) | WO | Not established | Unknown | Blitter first word mask for source A. Copper write requires `COPCON.CDANG`. | `A.set_bltafwm(value)` 1 P |
+| `$046` | — | `BLTALWM` (Agnus) | WO | Not established | Unknown | Blitter last word mask for source A. Copper write requires `COPCON.CDANG`. | `A.set_bltalwm(value)` 1 P |
+| `$048` | — | `BLTCPTH` + (Agnus) | WO | Not established | Unknown | Blitter pointer to source C (high 3 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltcpth(value)` 1 P |
+| `$04A` | — | `BLTCPTL` + (Agnus) | WO | Not established | Unknown | Blitter pointer to source C (low 15 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltcptl(value)` 1 P |
+| `$04C` | — | `BLTBPTH` + (Agnus) | WO | Not established | Unknown | Blitter pointer to source B (high 3 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltbpth(value)` 1 P |
+| `$04E` | — | `BLTBPTL` + (Agnus) | WO | Not established | Unknown | Blitter pointer to source B (low 15 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltbptl(value)` 1 P |
+| `$050` | — | `BLTAPTH` + (Agnus) | WO | Not established | Unknown | Blitter pointer to source A (high 3 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltapth(value)` 1 P |
+| `$052` | — | `BLTAPTL` + (Agnus) | WO | Not established | Unknown | Blitter pointer to source A (low 15 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltaptl(value)` 1 P |
+| `$054` | — | `BLTDPTH` + (Agnus) | WO | Not established | Unknown | Blitter pointer to destination D (high 3 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltdpth(value)` 1 P |
+| `$056` | — | `BLTDPTL` + (Agnus) | WO | Not established | Unknown | Blitter pointer to destination D (low 15 bits). Copper write requires `COPCON.CDANG`. | `A.set_bltdptl(value)` 1 P |
+| `$058` | — | `BLTSIZE` (Agnus) | WO | Not established | Unknown | Blitter start and size (window width, height). Copper write requires `COPCON.CDANG`. | `A.set_bltsize(value)` 1 P |
 | `$05A` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$05C` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$05E` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
-| `$060` | — | `BLTCMOD` (Agnus) | WO | Not established | Unknown | Blitter modulo for source C. Copper write requires `COPCON.CDANG`. | `A.set_bltcmod(value)` 2 O |
-| `$062` | — | `BLTBMOD` (Agnus) | WO | Not established | Unknown | Blitter modulo for source B. Copper write requires `COPCON.CDANG`. | `A.set_bltbmod(value)` 2 O |
-| `$064` | — | `BLTAMOD` (Agnus) | WO | Not established | Unknown | Blitter modulo for source A. Copper write requires `COPCON.CDANG`. | `A.set_bltamod(value)` 2 O |
-| `$066` | — | `BLTDMOD` (Agnus) | WO | Not established | Unknown | Blitter modulo for destination D. Copper write requires `COPCON.CDANG`. | `A.set_bltdmod(value)` 2 O |
+| `$060` | — | `BLTCMOD` (Agnus) | WO | Not established | Unknown | Blitter modulo for source C. Copper write requires `COPCON.CDANG`. | `A.set_bltcmod(value)` 1 P |
+| `$062` | — | `BLTBMOD` (Agnus) | WO | Not established | Unknown | Blitter modulo for source B. Copper write requires `COPCON.CDANG`. | `A.set_bltbmod(value)` 1 P |
+| `$064` | — | `BLTAMOD` (Agnus) | WO | Not established | Unknown | Blitter modulo for source A. Copper write requires `COPCON.CDANG`. | `A.set_bltamod(value)` 1 P |
+| `$066` | — | `BLTDMOD` (Agnus) | WO | Not established | Unknown | Blitter modulo for destination D. Copper write requires `COPCON.CDANG`. | `A.set_bltdmod(value)` 1 P |
 | `$068` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$06A` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$06C` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
@@ -182,77 +173,77 @@ see the [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction
 | `$078` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$07A` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$07C` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
-| `$07E` | — | `DSKSYNC` (Paula) | WO | Not established | Unknown | Disk sync pattern register for disk read. Copper write requires `COPCON.CDANG`. | `P.set_dsksync(value)` 2 O |
-| `$080` | — | `COP1LCH` + (Agnus) | WO | Not established | Unknown | Coprocessor first location register (high 3 bits). | `A.set_cop1lch(value)` 2 O |
-| `$082` | — | `COP1LCL` + (Agnus) | WO | Not established | Unknown | Coprocessor first location register (low 15 bits). | `A.set_cop1lcl(value)` 2 O |
-| `$084` | — | `COP2LCH` + (Agnus) | WO | Not established | Unknown | Coprocessor second location register (high 3 bits). | `A.set_cop2lch(value)` 2 O |
-| `$086` | — | `COP2LCL` + (Agnus) | WO | Not established | Unknown | Coprocessor second location register (low 15 bits). | `A.set_cop2lcl(value)` 2 O |
-| `$088` | `COPJMP1` (Agnus) | `COPJMP1` (Agnus) | STROBE | Not established | Unknown | CPU read or write restarts the Copper at the first location; the manual demonstrates a read. Avoid read-modify-write. | `A.set_copjmp1()` 1 O |
-| `$08A` | `COPJMP2` (Agnus) | `COPJMP2` (Agnus) | STROBE | Not established | Unknown | CPU read or write restarts the Copper at the second location; Appendix A explicitly identifies both triggers. Avoid read-modify-write. | `A.set_copjmp2()` 1 O |
-| `$08C` | — | `COPINS` (Agnus) | WO | Not established | Unknown | Coprocessor instruction fetch identify. | `A.set_copins(value)` 2 O; pending effect |
-| `$08E` | — | `DIWSTRT` (Agnus) | WO | Not established | Unknown | Display window start (upper left vertical-horizontal position). Design model: Agnus uses `VSTART` to begin bitplane DMA on whole lines; Denise uses `HSTART` to begin displaying pixels within a line, at low-resolution pixel granularity. The [Denise IC specification](https://www.amigawiki.org/lib/exe/fetch.php?media=de%3Aparts%3Adenise_specs.pdf) assigns the horizontal bits to Denise although Appendix B lists only Agnus. | `A.set_diwstrt(value)` 4 O; `D.set_diwstrt(value)` 1 O |
-| `$090` | — | `DIWSTOP` (Agnus) | WO | Not established | Unknown | Display window stop (lower right vertical and horizontal position). Design model: Agnus uses `VSTOP` to end bitplane DMA on whole lines; Denise uses `HSTOP` to end visible pixels within a line, at low-resolution pixel granularity. | `A.set_diwstop(value)` 4 O; `D.set_diwstop(value)` 1 O |
-| `$092` | — | `DDFSTRT` (Agnus) | WO | Not established | Unknown | Display bitplane data fetch start (horizontal position). Agnus starts fetching 16-bit bitplane words here; bitplane pointers select their Chip RAM addresses. Fetching begins before the pixels can appear at the `DIWSTRT` edge. | `A.set_ddfstrt(value)` 4 O |
-| `$094` | — | `DDFSTOP` (Agnus) | WO | Not established | Unknown | Display bitplane data fetch stop (horizontal position). Agnus marks the final bitplane fetch block of each line here; transfers within that block can continue beyond this position. Together with `DDFSTRT`, this interval must supply the data needed for the visible playfield and any scrolling margin; its boundaries need not match the pixel-level display window. | `A.set_ddfstop(value)` 4 O |
-| `$096` | — | `DMACON` (Agnus, Denise, Paula) | WO | Multiple chips listed | Unknown | DMA control write (clear or set). Agnus latches the DMA enables; Paula reads the write value from the shared register bus. Denise takes no action. See [DMA](DMA.md). | `A.set_dmacon(value)` 2 O; `P.set_dmacon(value)` 2 O |
-| `$098` | — | `CLXCON` (Denise) | WO | Not established | Unknown | Collision control. | `D.set_clxcon(value)` 1 O |
-| `$09A` | — | `INTENA` (Paula) | WO | Not established | Unknown | Interrupt enable bits (clear or set bits). | `P.set_intena(value)` 1 O |
-| `$09C` | — | `INTREQ` (Paula) | WO | Not established | Unknown | Interrupt request bits (clear or set bits). | `P.set_intreq(value)` 1 O |
-| `$09E` | — | `ADKCON` (Paula) | WO | Not established | Unknown | Audio, disk, UART control. | `P.set_adkcon(value)` 2 O |
-| `$0A0` | — | `AUD0LCH` + (Agnus) | WO | Not established | Unknown | Audio channel 0 location (high 3 bits). | `A.set_audlch(0, value)` 2 O |
-| `$0A2` | — | `AUD0LCL` + (Agnus) | WO | Not established | Unknown | Audio channel 0 location (low 15 bits). | `A.set_audlcl(0, value)` 2 O |
-| `$0A4` | — | `AUD0LEN` (Paula) | WO | Not established | Unknown | Audio channel 0 length. | `P.set_audlen(0, value)` 2 O |
-| `$0A6` | — | `AUD0PER` (Paula) | WO | Not established | Unknown | Audio channel 0 period. | `P.set_audper(0, value)` 2 O |
-| `$0A8` | — | `AUD0VOL` (Paula) | WO | Not established | Unknown | Audio channel 0 volume. | `P.set_audvol(0, value)` 2 O |
+| `$07E` | — | `DSKSYNC` (Paula) | WO | Not established | Unknown | Disk sync pattern register for disk read. Copper write requires `COPCON.CDANG`. | `P.set_dsksync(value)` 1 P |
+| `$080` | — | `COP1LCH` + (Agnus) | WO | Not established | Unknown | Coprocessor first location register (high 3 bits). | `A.set_cop1lch(value)` 1 P |
+| `$082` | — | `COP1LCL` + (Agnus) | WO | Not established | Unknown | Coprocessor first location register (low 15 bits). | `A.set_cop1lcl(value)` 1 P |
+| `$084` | — | `COP2LCH` + (Agnus) | WO | Not established | Unknown | Coprocessor second location register (high 3 bits). | `A.set_cop2lch(value)` 1 P |
+| `$086` | — | `COP2LCL` + (Agnus) | WO | Not established | Unknown | Coprocessor second location register (low 15 bits). | `A.set_cop2lcl(value)` 1 P |
+| `$088` | `COPJMP1` (Agnus) | `COPJMP1` (Agnus) | STROBE | Not established | Unknown | CPU read or write restarts the Copper at the first location; the manual demonstrates a read. Avoid read-modify-write. | `A.strobe_copjmp1()` immediate |
+| `$08A` | `COPJMP2` (Agnus) | `COPJMP2` (Agnus) | STROBE | Not established | Unknown | CPU read or write restarts the Copper at the second location; Appendix A explicitly identifies both triggers. Avoid read-modify-write. | `A.strobe_copjmp2()` immediate |
+| `$08C` | — | `COPINS` (Agnus) | WO | Not established | Unknown | Coprocessor instruction fetch identify. | `A.set_copins(value)` 1 P; pending effect |
+| `$08E` | — | `DIWSTRT` (Agnus) | WO | Not established | Unknown | Display window start (upper left vertical-horizontal position). Design model: Agnus uses `VSTART` to begin bitplane DMA on whole lines; Denise uses `HSTART` to begin displaying pixels within a line, at low-resolution pixel granularity. The [Denise IC specification](https://www.amigawiki.org/lib/exe/fetch.php?media=de%3Aparts%3Adenise_specs.pdf) assigns the horizontal bits to Denise although Appendix B lists only Agnus. | `A.set_diwstrt(value)` 4 P; `D.set_diwstrt(value)` 1 P |
+| `$090` | — | `DIWSTOP` (Agnus) | WO | Not established | Unknown | Display window stop (lower right vertical and horizontal position). Design model: Agnus uses `VSTOP` to end bitplane DMA on whole lines; Denise uses `HSTOP` to end visible pixels within a line, at low-resolution pixel granularity. | `A.set_diwstop(value)` 4 P; `D.set_diwstop(value)` 1 P |
+| `$092` | — | `DDFSTRT` (Agnus) | WO | Not established | Unknown | Display bitplane data fetch start (horizontal position). Agnus starts fetching 16-bit bitplane words here; bitplane pointers select their Chip RAM addresses. Fetching begins before the pixels can appear at the `DIWSTRT` edge. | `A.set_ddfstrt(value)` 4 P |
+| `$094` | — | `DDFSTOP` (Agnus) | WO | Not established | Unknown | Display bitplane data fetch stop (horizontal position). Agnus marks the final bitplane fetch block of each line here; transfers within that block can continue beyond this position. Together with `DDFSTRT`, this interval must supply the data needed for the visible playfield and any scrolling margin; its boundaries need not match the pixel-level display window. | `A.set_ddfstop(value)` 4 P |
+| `$096` | — | `DMACON` (Agnus, Denise, Paula) | WO | Multiple chips listed | Unknown | DMA control write (clear or set). Agnus latches the DMA enables; Paula reads the write value from the shared register bus. Denise takes no action. See [DMA](DMA.md). | `A.set_dmacon(value)` 2 P; `P.set_dmacon(value)` 2 P |
+| `$098` | — | `CLXCON` (Denise) | WO | Not established | Unknown | Collision control. | `D.set_clxcon(value)` 1 P |
+| `$09A` | — | `INTENA` (Paula) | WO | Not established | Unknown | Interrupt enable bits (clear or set bits). | `P.set_intena(value)` 1 P |
+| `$09C` | — | `INTREQ` (Paula) | WO | Not established | Unknown | Interrupt request bits (clear or set bits). | `P.set_intreq(value)` 1 P |
+| `$09E` | — | `ADKCON` (Paula) | WO | Not established | Unknown | Audio, disk, UART control. | `P.set_adkcon(value)` 1 P |
+| `$0A0` | — | `AUD0LCH` + (Agnus) | WO | Not established | Unknown | Audio channel 0 location (high 3 bits). | `A.set_audlch(0, value)` 1 P |
+| `$0A2` | — | `AUD0LCL` + (Agnus) | WO | Not established | Unknown | Audio channel 0 location (low 15 bits). | `A.set_audlcl(0, value)` 1 P |
+| `$0A4` | — | `AUD0LEN` (Paula) | WO | Not established | Unknown | Audio channel 0 length. | `P.set_audlen(0, value)` 1 P |
+| `$0A6` | — | `AUD0PER` (Paula) | WO | Not established | Unknown | Audio channel 0 period. | `P.set_audper(0, value)` 1 P |
+| `$0A8` | — | `AUD0VOL` (Paula) | WO | Not established | Unknown | Audio channel 0 volume. | `P.set_audvol(0, value)` 1 P |
 | `$0AA` | — | `AUD0DAT` & (Paula) | WO | Not established | Unknown | Audio channel 0 data. | `P.set_auddat(0, value)` 1 P |
 | `$0AC` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$0AE` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
-| `$0B0` | — | `AUD1LCH` + (Agnus) | WO | Not established | Unknown | Audio channel 1 location (high 3 bits). | `A.set_audlch(1, value)` 2 O |
-| `$0B2` | — | `AUD1LCL` + (Agnus) | WO | Not established | Unknown | Audio channel 1 location (low 15 bits). | `A.set_audlcl(1, value)` 2 O |
-| `$0B4` | — | `AUD1LEN` (Paula) | WO | Not established | Unknown | Audio channel 1 length. | `P.set_audlen(1, value)` 2 O |
-| `$0B6` | — | `AUD1PER` (Paula) | WO | Not established | Unknown | Audio channel 1 period. | `P.set_audper(1, value)` 2 O |
-| `$0B8` | — | `AUD1VOL` (Paula) | WO | Not established | Unknown | Audio channel 1 volume. | `P.set_audvol(1, value)` 2 O |
+| `$0B0` | — | `AUD1LCH` + (Agnus) | WO | Not established | Unknown | Audio channel 1 location (high 3 bits). | `A.set_audlch(1, value)` 1 P |
+| `$0B2` | — | `AUD1LCL` + (Agnus) | WO | Not established | Unknown | Audio channel 1 location (low 15 bits). | `A.set_audlcl(1, value)` 1 P |
+| `$0B4` | — | `AUD1LEN` (Paula) | WO | Not established | Unknown | Audio channel 1 length. | `P.set_audlen(1, value)` 1 P |
+| `$0B6` | — | `AUD1PER` (Paula) | WO | Not established | Unknown | Audio channel 1 period. | `P.set_audper(1, value)` 1 P |
+| `$0B8` | — | `AUD1VOL` (Paula) | WO | Not established | Unknown | Audio channel 1 volume. | `P.set_audvol(1, value)` 1 P |
 | `$0BA` | — | `AUD1DAT` & (Paula) | WO | Not established | Unknown | Audio channel 1 data. | `P.set_auddat(1, value)` 1 P |
 | `$0BC` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$0BE` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
-| `$0C0` | — | `AUD2LCH` + (Agnus) | WO | Not established | Unknown | Audio channel 2 location (high 3 bits). | `A.set_audlch(2, value)` 2 O |
-| `$0C2` | — | `AUD2LCL` + (Agnus) | WO | Not established | Unknown | Audio channel 2 location (low 15 bits). | `A.set_audlcl(2, value)` 2 O |
-| `$0C4` | — | `AUD2LEN` (Paula) | WO | Not established | Unknown | Audio channel 2 length. | `P.set_audlen(2, value)` 2 O |
-| `$0C6` | — | `AUD2PER` (Paula) | WO | Not established | Unknown | Audio channel 2 period. | `P.set_audper(2, value)` 2 O |
-| `$0C8` | — | `AUD2VOL` (Paula) | WO | Not established | Unknown | Audio channel 2 volume. | `P.set_audvol(2, value)` 2 O |
+| `$0C0` | — | `AUD2LCH` + (Agnus) | WO | Not established | Unknown | Audio channel 2 location (high 3 bits). | `A.set_audlch(2, value)` 1 P |
+| `$0C2` | — | `AUD2LCL` + (Agnus) | WO | Not established | Unknown | Audio channel 2 location (low 15 bits). | `A.set_audlcl(2, value)` 1 P |
+| `$0C4` | — | `AUD2LEN` (Paula) | WO | Not established | Unknown | Audio channel 2 length. | `P.set_audlen(2, value)` 1 P |
+| `$0C6` | — | `AUD2PER` (Paula) | WO | Not established | Unknown | Audio channel 2 period. | `P.set_audper(2, value)` 1 P |
+| `$0C8` | — | `AUD2VOL` (Paula) | WO | Not established | Unknown | Audio channel 2 volume. | `P.set_audvol(2, value)` 1 P |
 | `$0CA` | — | `AUD2DAT` & (Paula) | WO | Not established | Unknown | Audio channel 2 data. | `P.set_auddat(2, value)` 1 P |
 | `$0CC` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$0CE` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
-| `$0D0` | — | `AUD3LCH` + (Agnus) | WO | Not established | Unknown | Audio channel 3 location (high 3 bits). | `A.set_audlch(3, value)` 2 O |
-| `$0D2` | — | `AUD3LCL` + (Agnus) | WO | Not established | Unknown | Audio channel 3 location (low 15 bits). | `A.set_audlcl(3, value)` 2 O |
-| `$0D4` | — | `AUD3LEN` (Paula) | WO | Not established | Unknown | Audio channel 3 length. | `P.set_audlen(3, value)` 2 O |
-| `$0D6` | — | `AUD3PER` (Paula) | WO | Not established | Unknown | Audio channel 3 period. | `P.set_audper(3, value)` 2 O |
-| `$0D8` | — | `AUD3VOL` (Paula) | WO | Not established | Unknown | Audio channel 3 volume. | `P.set_audvol(3, value)` 2 O |
+| `$0D0` | — | `AUD3LCH` + (Agnus) | WO | Not established | Unknown | Audio channel 3 location (high 3 bits). | `A.set_audlch(3, value)` 1 P |
+| `$0D2` | — | `AUD3LCL` + (Agnus) | WO | Not established | Unknown | Audio channel 3 location (low 15 bits). | `A.set_audlcl(3, value)` 1 P |
+| `$0D4` | — | `AUD3LEN` (Paula) | WO | Not established | Unknown | Audio channel 3 length. | `P.set_audlen(3, value)` 1 P |
+| `$0D6` | — | `AUD3PER` (Paula) | WO | Not established | Unknown | Audio channel 3 period. | `P.set_audper(3, value)` 1 P |
+| `$0D8` | — | `AUD3VOL` (Paula) | WO | Not established | Unknown | Audio channel 3 volume. | `P.set_audvol(3, value)` 1 P |
 | `$0DA` | — | `AUD3DAT` & (Paula) | WO | Not established | Unknown | Audio channel 3 data. | `P.set_auddat(3, value)` 1 P |
 | `$0DC` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$0DE` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
-| `$0E0` | — | `BPL1PTH` + (Agnus) | WO | Not established | Unknown | Bitplane 1 pointer (high 3 bits). | `A.set_bplpth(0, value)` 2 O |
-| `$0E2` | — | `BPL1PTL` + (Agnus) | WO | Not established | Unknown | Bitplane 1 pointer (low 15 bits). | `A.set_bplptl(0, value)` 2 O |
-| `$0E4` | — | `BPL2PTH` + (Agnus) | WO | Not established | Unknown | Bitplane 2 pointer (high 3 bits). | `A.set_bplpth(1, value)` 2 O |
-| `$0E6` | — | `BPL2PTL` + (Agnus) | WO | Not established | Unknown | Bitplane 2 pointer (low 15 bits). | `A.set_bplptl(1, value)` 2 O |
-| `$0E8` | — | `BPL3PTH` + (Agnus) | WO | Not established | Unknown | Bitplane 3 pointer (high 3 bits). | `A.set_bplpth(2, value)` 2 O |
-| `$0EA` | — | `BPL3PTL` + (Agnus) | WO | Not established | Unknown | Bitplane 3 pointer (low 15 bits). | `A.set_bplptl(2, value)` 2 O |
-| `$0EC` | — | `BPL4PTH` + (Agnus) | WO | Not established | Unknown | Bitplane 4 pointer (high 3 bits). | `A.set_bplpth(3, value)` 2 O |
-| `$0EE` | — | `BPL4PTL` + (Agnus) | WO | Not established | Unknown | Bitplane 4 pointer (low 15 bits). | `A.set_bplptl(3, value)` 2 O |
-| `$0F0` | — | `BPL5PTH` + (Agnus) | WO | Not established | Unknown | Bitplane 5 pointer (high 3 bits). | `A.set_bplpth(4, value)` 2 O |
-| `$0F2` | — | `BPL5PTL` + (Agnus) | WO | Not established | Unknown | Bitplane 5 pointer (low 15 bits). | `A.set_bplptl(4, value)` 2 O |
-| `$0F4` | — | `BPL6PTH` + (Agnus) | WO | Not established | Unknown | Bitplane 6 pointer (high 3 bits). | `A.set_bplpth(5, value)` 2 O |
-| `$0F6` | — | `BPL6PTL` + (Agnus) | WO | Not established | Unknown | Bitplane 6 pointer (low 15 bits). | `A.set_bplptl(5, value)` 2 O |
+| `$0E0` | — | `BPL1PTH` + (Agnus) | WO | Not established | Unknown | Bitplane 1 pointer (high 3 bits). | `A.set_bplpth(0, value)` 1 P |
+| `$0E2` | — | `BPL1PTL` + (Agnus) | WO | Not established | Unknown | Bitplane 1 pointer (low 15 bits). | `A.set_bplptl(0, value)` 1 P |
+| `$0E4` | — | `BPL2PTH` + (Agnus) | WO | Not established | Unknown | Bitplane 2 pointer (high 3 bits). | `A.set_bplpth(1, value)` 1 P |
+| `$0E6` | — | `BPL2PTL` + (Agnus) | WO | Not established | Unknown | Bitplane 2 pointer (low 15 bits). | `A.set_bplptl(1, value)` 1 P |
+| `$0E8` | — | `BPL3PTH` + (Agnus) | WO | Not established | Unknown | Bitplane 3 pointer (high 3 bits). | `A.set_bplpth(2, value)` 1 P |
+| `$0EA` | — | `BPL3PTL` + (Agnus) | WO | Not established | Unknown | Bitplane 3 pointer (low 15 bits). | `A.set_bplptl(2, value)` 1 P |
+| `$0EC` | — | `BPL4PTH` + (Agnus) | WO | Not established | Unknown | Bitplane 4 pointer (high 3 bits). | `A.set_bplpth(3, value)` 1 P |
+| `$0EE` | — | `BPL4PTL` + (Agnus) | WO | Not established | Unknown | Bitplane 4 pointer (low 15 bits). | `A.set_bplptl(3, value)` 1 P |
+| `$0F0` | — | `BPL5PTH` + (Agnus) | WO | Not established | Unknown | Bitplane 5 pointer (high 3 bits). | `A.set_bplpth(4, value)` 1 P |
+| `$0F2` | — | `BPL5PTL` + (Agnus) | WO | Not established | Unknown | Bitplane 5 pointer (low 15 bits). | `A.set_bplptl(4, value)` 1 P |
+| `$0F4` | — | `BPL6PTH` + (Agnus) | WO | Not established | Unknown | Bitplane 6 pointer (high 3 bits). | `A.set_bplpth(5, value)` 1 P |
+| `$0F6` | — | `BPL6PTL` + (Agnus) | WO | Not established | Unknown | Bitplane 6 pointer (low 15 bits). | `A.set_bplptl(5, value)` 1 P |
 | `$0F8` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$0FA` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$0FC` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$0FE` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
-| `$100` | — | `BPLCON0` (Agnus, Denise) | WO | Multiple chips listed | Unknown | Bitplane control register (misc. control bits). | `A.set_bplcon0(value)` 4 O; `D.set_bplcon0(value)` 1 O |
-| `$102` | — | `BPLCON1` (Denise) | WO | Not established | Unknown | Bitplane control reg. (scroll value PF1, PF2). | `D.set_bplcon1(value)` 1 O |
-| `$104` | — | `BPLCON2` (Denise) | WO | Not established | Unknown | Bitplane control reg. (priority control). | `D.set_bplcon2(value)` 1 O |
+| `$100` | — | `BPLCON0` (Agnus, Denise) | WO | Multiple chips listed | Unknown | Bitplane control register (misc. control bits). | `A.set_bplcon0(value)` 4 P; `D.set_bplcon0(value)` 1 P |
+| `$102` | — | `BPLCON1` (Denise) | WO | Not established | Unknown | Bitplane control reg. (scroll value PF1, PF2). | `D.set_bplcon1(value)` 1 P |
+| `$104` | — | `BPLCON2` (Denise) | WO | Not established | Unknown | Bitplane control reg. (priority control). | `D.set_bplcon2(value)` 1 P |
 | `$106` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
-| `$108` | — | `BPL1MOD` (Agnus) | WO | Not established | Unknown | Bitplane modulo (odd planes). | `A.set_bpl1mod(value)` 2 O |
-| `$10A` | — | `BPL2MOD` (Agnus) | WO | Not established | Unknown | Bitplane modulo (even planes). | `A.set_bpl2mod(value)` 2 O |
+| `$108` | — | `BPL1MOD` (Agnus) | WO | Not established | Unknown | Bitplane modulo (odd planes). | `A.set_bpl1mod(value)` 1 P |
+| `$10A` | — | `BPL2MOD` (Agnus) | WO | Not established | Unknown | Bitplane modulo (even planes). | `A.set_bpl2mod(value)` 1 P |
 | `$10C` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$10E` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$110` | — | `BPL1DAT` & (Denise) | WO | Not established | Unknown | Bitplane 1 data (parallel-to-serial convert). | `D.set_bpldat(0, value)` 1 P |
@@ -263,86 +254,86 @@ see the [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction
 | `$11A` | — | `BPL6DAT` & (Denise) | WO | Not established | Unknown | Bitplane 6 data (parallel-to-serial convert). | `D.set_bpldat(5, value)` 1 P |
 | `$11C` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
 | `$11E` | — | — | Reserved | Not specified | Unknown | Appendix B labels this offset reserved. | Ignored write; no queue |
-| `$120` | — | `SPR0PTH` + (Agnus) | WO | Not established | Unknown | Sprite 0 pointer (high 3 bits). | `A.set_sprpth(0, value)` 2 O |
-| `$122` | — | `SPR0PTL` + (Agnus) | WO | Not established | Unknown | Sprite 0 pointer (low 15 bits). | `A.set_sprptl(0, value)` 2 O |
-| `$124` | — | `SPR1PTH` + (Agnus) | WO | Not established | Unknown | Sprite 1 pointer (high 3 bits). | `A.set_sprpth(1, value)` 2 O |
-| `$126` | — | `SPR1PTL` + (Agnus) | WO | Not established | Unknown | Sprite 1 pointer (low 15 bits). | `A.set_sprptl(1, value)` 2 O |
-| `$128` | — | `SPR2PTH` + (Agnus) | WO | Not established | Unknown | Sprite 2 pointer (high 3 bits). | `A.set_sprpth(2, value)` 2 O |
-| `$12A` | — | `SPR2PTL` + (Agnus) | WO | Not established | Unknown | Sprite 2 pointer (low 15 bits). | `A.set_sprptl(2, value)` 2 O |
-| `$12C` | — | `SPR3PTH` + (Agnus) | WO | Not established | Unknown | Sprite 3 pointer (high 3 bits). | `A.set_sprpth(3, value)` 2 O |
-| `$12E` | — | `SPR3PTL` + (Agnus) | WO | Not established | Unknown | Sprite 3 pointer (low 15 bits). | `A.set_sprptl(3, value)` 2 O |
-| `$130` | — | `SPR4PTH` + (Agnus) | WO | Not established | Unknown | Sprite 4 pointer (high 3 bits). | `A.set_sprpth(4, value)` 2 O |
-| `$132` | — | `SPR4PTL` + (Agnus) | WO | Not established | Unknown | Sprite 4 pointer (low 15 bits). | `A.set_sprptl(4, value)` 2 O |
-| `$134` | — | `SPR5PTH` + (Agnus) | WO | Not established | Unknown | Sprite 5 pointer (high 3 bits). | `A.set_sprpth(5, value)` 2 O |
-| `$136` | — | `SPR5PTL` + (Agnus) | WO | Not established | Unknown | Sprite 5 pointer (low 15 bits). | `A.set_sprptl(5, value)` 2 O |
-| `$138` | — | `SPR6PTH` + (Agnus) | WO | Not established | Unknown | Sprite 6 pointer (high 3 bits). | `A.set_sprpth(6, value)` 2 O |
-| `$13A` | — | `SPR6PTL` + (Agnus) | WO | Not established | Unknown | Sprite 6 pointer (low 15 bits). | `A.set_sprptl(6, value)` 2 O |
-| `$13C` | — | `SPR7PTH` + (Agnus) | WO | Not established | Unknown | Sprite 7 pointer (high 3 bits). | `A.set_sprpth(7, value)` 2 O |
-| `$13E` | — | `SPR7PTL` + (Agnus) | WO | Not established | Unknown | Sprite 7 pointer (low 15 bits). | `A.set_sprptl(7, value)` 2 O |
-| `$140` | — | `SPR0POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 0 vertical-horizontal start position data. | `A.set_sprpos(0, value)` 2 O; `D.set_sprpos(0, value)` 1 O |
-| `$142` | — | `SPR0CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 0 vertical stop position and control data. | `A.set_sprctl(0, value)` 2 O; `D.set_sprctl(0, value)` 1 O |
-| `$144` | — | `SPR0DATA` % (Denise) | WO | Not established | Unknown | Sprite 0 image data register A. | `D.set_sprdata(0, value)` 1 O |
-| `$146` | — | `SPR0DATB` % (Denise) | WO | Not established | Unknown | Sprite 0 image data register B. | `D.set_sprdatb(0, value)` 1 O |
-| `$148` | — | `SPR1POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 1 vertical-horizontal start position data. | `A.set_sprpos(1, value)` 2 O; `D.set_sprpos(1, value)` 1 O |
-| `$14A` | — | `SPR1CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 1 vertical stop position and control data. | `A.set_sprctl(1, value)` 2 O; `D.set_sprctl(1, value)` 1 O |
-| `$14C` | — | `SPR1DATA` % (Denise) | WO | Not established | Unknown | Sprite 1 image data register A. | `D.set_sprdata(1, value)` 1 O |
-| `$14E` | — | `SPR1DATB` % (Denise) | WO | Not established | Unknown | Sprite 1 image data register B. | `D.set_sprdatb(1, value)` 1 O |
-| `$150` | — | `SPR2POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 2 vertical-horizontal start position data. | `A.set_sprpos(2, value)` 2 O; `D.set_sprpos(2, value)` 1 O |
-| `$152` | — | `SPR2CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 2 vertical stop position and control data. | `A.set_sprctl(2, value)` 2 O; `D.set_sprctl(2, value)` 1 O |
-| `$154` | — | `SPR2DATA` % (Denise) | WO | Not established | Unknown | Sprite 2 image data register A. | `D.set_sprdata(2, value)` 1 O |
-| `$156` | — | `SPR2DATB` % (Denise) | WO | Not established | Unknown | Sprite 2 image data register B. | `D.set_sprdatb(2, value)` 1 O |
-| `$158` | — | `SPR3POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 3 vertical-horizontal start position data. | `A.set_sprpos(3, value)` 2 O; `D.set_sprpos(3, value)` 1 O |
-| `$15A` | — | `SPR3CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 3 vertical stop position and control data. | `A.set_sprctl(3, value)` 2 O; `D.set_sprctl(3, value)` 1 O |
-| `$15C` | — | `SPR3DATA` % (Denise) | WO | Not established | Unknown | Sprite 3 image data register A. | `D.set_sprdata(3, value)` 1 O |
-| `$15E` | — | `SPR3DATB` % (Denise) | WO | Not established | Unknown | Sprite 3 image data register B. | `D.set_sprdatb(3, value)` 1 O |
-| `$160` | — | `SPR4POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 4 vertical-horizontal start position data. | `A.set_sprpos(4, value)` 2 O; `D.set_sprpos(4, value)` 1 O |
-| `$162` | — | `SPR4CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 4 vertical stop position and control data. | `A.set_sprctl(4, value)` 2 O; `D.set_sprctl(4, value)` 1 O |
-| `$164` | — | `SPR4DATA` % (Denise) | WO | Not established | Unknown | Sprite 4 image data register A. | `D.set_sprdata(4, value)` 1 O |
-| `$166` | — | `SPR4DATB` % (Denise) | WO | Not established | Unknown | Sprite 4 image data register B. | `D.set_sprdatb(4, value)` 1 O |
-| `$168` | — | `SPR5POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 5 vertical-horizontal start position data. | `A.set_sprpos(5, value)` 2 O; `D.set_sprpos(5, value)` 1 O |
-| `$16A` | — | `SPR5CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 5 vertical stop position and control data. | `A.set_sprctl(5, value)` 2 O; `D.set_sprctl(5, value)` 1 O |
-| `$16C` | — | `SPR5DATA` % (Denise) | WO | Not established | Unknown | Sprite 5 image data register A. | `D.set_sprdata(5, value)` 1 O |
-| `$16E` | — | `SPR5DATB` % (Denise) | WO | Not established | Unknown | Sprite 5 image data register B. | `D.set_sprdatb(5, value)` 1 O |
-| `$170` | — | `SPR6POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 6 vertical-horizontal start position data. | `A.set_sprpos(6, value)` 2 O; `D.set_sprpos(6, value)` 1 O |
-| `$172` | — | `SPR6CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 6 vertical stop position and control data. | `A.set_sprctl(6, value)` 2 O; `D.set_sprctl(6, value)` 1 O |
-| `$174` | — | `SPR6DATA` % (Denise) | WO | Not established | Unknown | Sprite 6 image data register A. | `D.set_sprdata(6, value)` 1 O |
-| `$176` | — | `SPR6DATB` % (Denise) | WO | Not established | Unknown | Sprite 6 image data register B. | `D.set_sprdatb(6, value)` 1 O |
-| `$178` | — | `SPR7POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 7 vertical-horizontal start position data. | `A.set_sprpos(7, value)` 2 O; `D.set_sprpos(7, value)` 1 O |
-| `$17A` | — | `SPR7CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 7 vertical stop position and control data. | `A.set_sprctl(7, value)` 2 O; `D.set_sprctl(7, value)` 1 O |
-| `$17C` | — | `SPR7DATA` % (Denise) | WO | Not established | Unknown | Sprite 7 image data register A. | `D.set_sprdata(7, value)` 1 O |
-| `$17E` | — | `SPR7DATB` % (Denise) | WO | Not established | Unknown | Sprite 7 image data register B. | `D.set_sprdatb(7, value)` 1 O |
-| `$180` | — | `COLOR00` (Denise) | WO | Not established | Unknown | Color table 00. | `D.set_color(0, value)` 1 O |
-| `$182` | — | `COLOR01` (Denise) | WO | Not established | Unknown | Color table 01. | `D.set_color(1, value)` 1 O |
-| `$184` | — | `COLOR02` (Denise) | WO | Not established | Unknown | Color table 02. | `D.set_color(2, value)` 1 O |
-| `$186` | — | `COLOR03` (Denise) | WO | Not established | Unknown | Color table 03. | `D.set_color(3, value)` 1 O |
-| `$188` | — | `COLOR04` (Denise) | WO | Not established | Unknown | Color table 04. | `D.set_color(4, value)` 1 O |
-| `$18A` | — | `COLOR05` (Denise) | WO | Not established | Unknown | Color table 05. | `D.set_color(5, value)` 1 O |
-| `$18C` | — | `COLOR06` (Denise) | WO | Not established | Unknown | Color table 06. | `D.set_color(6, value)` 1 O |
-| `$18E` | — | `COLOR07` (Denise) | WO | Not established | Unknown | Color table 07. | `D.set_color(7, value)` 1 O |
-| `$190` | — | `COLOR08` (Denise) | WO | Not established | Unknown | Color table 08. | `D.set_color(8, value)` 1 O |
-| `$192` | — | `COLOR09` (Denise) | WO | Not established | Unknown | Color table 09. | `D.set_color(9, value)` 1 O |
-| `$194` | — | `COLOR10` (Denise) | WO | Not established | Unknown | Color table 10. | `D.set_color(10, value)` 1 O |
-| `$196` | — | `COLOR11` (Denise) | WO | Not established | Unknown | Color table 11. | `D.set_color(11, value)` 1 O |
-| `$198` | — | `COLOR12` (Denise) | WO | Not established | Unknown | Color table 12. | `D.set_color(12, value)` 1 O |
-| `$19A` | — | `COLOR13` (Denise) | WO | Not established | Unknown | Color table 13. | `D.set_color(13, value)` 1 O |
-| `$19C` | — | `COLOR14` (Denise) | WO | Not established | Unknown | Color table 14. | `D.set_color(14, value)` 1 O |
-| `$19E` | — | `COLOR15` (Denise) | WO | Not established | Unknown | Color table 15. | `D.set_color(15, value)` 1 O |
-| `$1A0` | — | `COLOR16` (Denise) | WO | Not established | Unknown | Color table 16. | `D.set_color(16, value)` 1 O |
-| `$1A2` | — | `COLOR17` (Denise) | WO | Not established | Unknown | Color table 17. | `D.set_color(17, value)` 1 O |
-| `$1A4` | — | `COLOR18` (Denise) | WO | Not established | Unknown | Color table 18. | `D.set_color(18, value)` 1 O |
-| `$1A6` | — | `COLOR19` (Denise) | WO | Not established | Unknown | Color table 19. | `D.set_color(19, value)` 1 O |
-| `$1A8` | — | `COLOR20` (Denise) | WO | Not established | Unknown | Color table 20. | `D.set_color(20, value)` 1 O |
-| `$1AA` | — | `COLOR21` (Denise) | WO | Not established | Unknown | Color table 21. | `D.set_color(21, value)` 1 O |
-| `$1AC` | — | `COLOR22` (Denise) | WO | Not established | Unknown | Color table 22. | `D.set_color(22, value)` 1 O |
-| `$1AE` | — | `COLOR23` (Denise) | WO | Not established | Unknown | Color table 23. | `D.set_color(23, value)` 1 O |
-| `$1B0` | — | `COLOR24` (Denise) | WO | Not established | Unknown | Color table 24. | `D.set_color(24, value)` 1 O |
-| `$1B2` | — | `COLOR25` (Denise) | WO | Not established | Unknown | Color table 25. | `D.set_color(25, value)` 1 O |
-| `$1B4` | — | `COLOR26` (Denise) | WO | Not established | Unknown | Color table 26. | `D.set_color(26, value)` 1 O |
-| `$1B6` | — | `COLOR27` (Denise) | WO | Not established | Unknown | Color table 27. | `D.set_color(27, value)` 1 O |
-| `$1B8` | — | `COLOR28` (Denise) | WO | Not established | Unknown | Color table 28. | `D.set_color(28, value)` 1 O |
-| `$1BA` | — | `COLOR29` (Denise) | WO | Not established | Unknown | Color table 29. | `D.set_color(29, value)` 1 O |
-| `$1BC` | — | `COLOR30` (Denise) | WO | Not established | Unknown | Color table 30. | `D.set_color(30, value)` 1 O |
-| `$1BE` | — | `COLOR31` (Denise) | WO | Not established | Unknown | Color table 31. | `D.set_color(31, value)` 1 O |
+| `$120` | — | `SPR0PTH` + (Agnus) | WO | Not established | Unknown | Sprite 0 pointer (high 3 bits). | `A.set_sprpth(0, value)` 1 P |
+| `$122` | — | `SPR0PTL` + (Agnus) | WO | Not established | Unknown | Sprite 0 pointer (low 15 bits). | `A.set_sprptl(0, value)` 1 P |
+| `$124` | — | `SPR1PTH` + (Agnus) | WO | Not established | Unknown | Sprite 1 pointer (high 3 bits). | `A.set_sprpth(1, value)` 1 P |
+| `$126` | — | `SPR1PTL` + (Agnus) | WO | Not established | Unknown | Sprite 1 pointer (low 15 bits). | `A.set_sprptl(1, value)` 1 P |
+| `$128` | — | `SPR2PTH` + (Agnus) | WO | Not established | Unknown | Sprite 2 pointer (high 3 bits). | `A.set_sprpth(2, value)` 1 P |
+| `$12A` | — | `SPR2PTL` + (Agnus) | WO | Not established | Unknown | Sprite 2 pointer (low 15 bits). | `A.set_sprptl(2, value)` 1 P |
+| `$12C` | — | `SPR3PTH` + (Agnus) | WO | Not established | Unknown | Sprite 3 pointer (high 3 bits). | `A.set_sprpth(3, value)` 1 P |
+| `$12E` | — | `SPR3PTL` + (Agnus) | WO | Not established | Unknown | Sprite 3 pointer (low 15 bits). | `A.set_sprptl(3, value)` 1 P |
+| `$130` | — | `SPR4PTH` + (Agnus) | WO | Not established | Unknown | Sprite 4 pointer (high 3 bits). | `A.set_sprpth(4, value)` 1 P |
+| `$132` | — | `SPR4PTL` + (Agnus) | WO | Not established | Unknown | Sprite 4 pointer (low 15 bits). | `A.set_sprptl(4, value)` 1 P |
+| `$134` | — | `SPR5PTH` + (Agnus) | WO | Not established | Unknown | Sprite 5 pointer (high 3 bits). | `A.set_sprpth(5, value)` 1 P |
+| `$136` | — | `SPR5PTL` + (Agnus) | WO | Not established | Unknown | Sprite 5 pointer (low 15 bits). | `A.set_sprptl(5, value)` 1 P |
+| `$138` | — | `SPR6PTH` + (Agnus) | WO | Not established | Unknown | Sprite 6 pointer (high 3 bits). | `A.set_sprpth(6, value)` 1 P |
+| `$13A` | — | `SPR6PTL` + (Agnus) | WO | Not established | Unknown | Sprite 6 pointer (low 15 bits). | `A.set_sprptl(6, value)` 1 P |
+| `$13C` | — | `SPR7PTH` + (Agnus) | WO | Not established | Unknown | Sprite 7 pointer (high 3 bits). | `A.set_sprpth(7, value)` 1 P |
+| `$13E` | — | `SPR7PTL` + (Agnus) | WO | Not established | Unknown | Sprite 7 pointer (low 15 bits). | `A.set_sprptl(7, value)` 1 P |
+| `$140` | — | `SPR0POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 0 vertical-horizontal start position data. | `A.set_sprpos(0, value)` 1 P; `D.set_sprpos(0, value)` 1 P |
+| `$142` | — | `SPR0CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 0 vertical stop position and control data. | `A.set_sprctl(0, value)` 1 P; `D.set_sprctl(0, value)` 1 P |
+| `$144` | — | `SPR0DATA` % (Denise) | WO | Not established | Unknown | Sprite 0 image data register A. | `D.set_sprdata(0, value)` 1 P |
+| `$146` | — | `SPR0DATB` % (Denise) | WO | Not established | Unknown | Sprite 0 image data register B. | `D.set_sprdatb(0, value)` 1 P |
+| `$148` | — | `SPR1POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 1 vertical-horizontal start position data. | `A.set_sprpos(1, value)` 1 P; `D.set_sprpos(1, value)` 1 P |
+| `$14A` | — | `SPR1CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 1 vertical stop position and control data. | `A.set_sprctl(1, value)` 1 P; `D.set_sprctl(1, value)` 1 P |
+| `$14C` | — | `SPR1DATA` % (Denise) | WO | Not established | Unknown | Sprite 1 image data register A. | `D.set_sprdata(1, value)` 1 P |
+| `$14E` | — | `SPR1DATB` % (Denise) | WO | Not established | Unknown | Sprite 1 image data register B. | `D.set_sprdatb(1, value)` 1 P |
+| `$150` | — | `SPR2POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 2 vertical-horizontal start position data. | `A.set_sprpos(2, value)` 1 P; `D.set_sprpos(2, value)` 1 P |
+| `$152` | — | `SPR2CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 2 vertical stop position and control data. | `A.set_sprctl(2, value)` 1 P; `D.set_sprctl(2, value)` 1 P |
+| `$154` | — | `SPR2DATA` % (Denise) | WO | Not established | Unknown | Sprite 2 image data register A. | `D.set_sprdata(2, value)` 1 P |
+| `$156` | — | `SPR2DATB` % (Denise) | WO | Not established | Unknown | Sprite 2 image data register B. | `D.set_sprdatb(2, value)` 1 P |
+| `$158` | — | `SPR3POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 3 vertical-horizontal start position data. | `A.set_sprpos(3, value)` 1 P; `D.set_sprpos(3, value)` 1 P |
+| `$15A` | — | `SPR3CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 3 vertical stop position and control data. | `A.set_sprctl(3, value)` 1 P; `D.set_sprctl(3, value)` 1 P |
+| `$15C` | — | `SPR3DATA` % (Denise) | WO | Not established | Unknown | Sprite 3 image data register A. | `D.set_sprdata(3, value)` 1 P |
+| `$15E` | — | `SPR3DATB` % (Denise) | WO | Not established | Unknown | Sprite 3 image data register B. | `D.set_sprdatb(3, value)` 1 P |
+| `$160` | — | `SPR4POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 4 vertical-horizontal start position data. | `A.set_sprpos(4, value)` 1 P; `D.set_sprpos(4, value)` 1 P |
+| `$162` | — | `SPR4CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 4 vertical stop position and control data. | `A.set_sprctl(4, value)` 1 P; `D.set_sprctl(4, value)` 1 P |
+| `$164` | — | `SPR4DATA` % (Denise) | WO | Not established | Unknown | Sprite 4 image data register A. | `D.set_sprdata(4, value)` 1 P |
+| `$166` | — | `SPR4DATB` % (Denise) | WO | Not established | Unknown | Sprite 4 image data register B. | `D.set_sprdatb(4, value)` 1 P |
+| `$168` | — | `SPR5POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 5 vertical-horizontal start position data. | `A.set_sprpos(5, value)` 1 P; `D.set_sprpos(5, value)` 1 P |
+| `$16A` | — | `SPR5CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 5 vertical stop position and control data. | `A.set_sprctl(5, value)` 1 P; `D.set_sprctl(5, value)` 1 P |
+| `$16C` | — | `SPR5DATA` % (Denise) | WO | Not established | Unknown | Sprite 5 image data register A. | `D.set_sprdata(5, value)` 1 P |
+| `$16E` | — | `SPR5DATB` % (Denise) | WO | Not established | Unknown | Sprite 5 image data register B. | `D.set_sprdatb(5, value)` 1 P |
+| `$170` | — | `SPR6POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 6 vertical-horizontal start position data. | `A.set_sprpos(6, value)` 1 P; `D.set_sprpos(6, value)` 1 P |
+| `$172` | — | `SPR6CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 6 vertical stop position and control data. | `A.set_sprctl(6, value)` 1 P; `D.set_sprctl(6, value)` 1 P |
+| `$174` | — | `SPR6DATA` % (Denise) | WO | Not established | Unknown | Sprite 6 image data register A. | `D.set_sprdata(6, value)` 1 P |
+| `$176` | — | `SPR6DATB` % (Denise) | WO | Not established | Unknown | Sprite 6 image data register B. | `D.set_sprdatb(6, value)` 1 P |
+| `$178` | — | `SPR7POS` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 7 vertical-horizontal start position data. | `A.set_sprpos(7, value)` 1 P; `D.set_sprpos(7, value)` 1 P |
+| `$17A` | — | `SPR7CTL` % (Agnus, Denise) | WO | Multiple chips listed | Unknown | Sprite 7 vertical stop position and control data. | `A.set_sprctl(7, value)` 1 P; `D.set_sprctl(7, value)` 1 P |
+| `$17C` | — | `SPR7DATA` % (Denise) | WO | Not established | Unknown | Sprite 7 image data register A. | `D.set_sprdata(7, value)` 1 P |
+| `$17E` | — | `SPR7DATB` % (Denise) | WO | Not established | Unknown | Sprite 7 image data register B. | `D.set_sprdatb(7, value)` 1 P |
+| `$180` | — | `COLOR00` (Denise) | WO | Not established | Unknown | Color table 00. | `D.set_color(0, value)` 1 P |
+| `$182` | — | `COLOR01` (Denise) | WO | Not established | Unknown | Color table 01. | `D.set_color(1, value)` 1 P |
+| `$184` | — | `COLOR02` (Denise) | WO | Not established | Unknown | Color table 02. | `D.set_color(2, value)` 1 P |
+| `$186` | — | `COLOR03` (Denise) | WO | Not established | Unknown | Color table 03. | `D.set_color(3, value)` 1 P |
+| `$188` | — | `COLOR04` (Denise) | WO | Not established | Unknown | Color table 04. | `D.set_color(4, value)` 1 P |
+| `$18A` | — | `COLOR05` (Denise) | WO | Not established | Unknown | Color table 05. | `D.set_color(5, value)` 1 P |
+| `$18C` | — | `COLOR06` (Denise) | WO | Not established | Unknown | Color table 06. | `D.set_color(6, value)` 1 P |
+| `$18E` | — | `COLOR07` (Denise) | WO | Not established | Unknown | Color table 07. | `D.set_color(7, value)` 1 P |
+| `$190` | — | `COLOR08` (Denise) | WO | Not established | Unknown | Color table 08. | `D.set_color(8, value)` 1 P |
+| `$192` | — | `COLOR09` (Denise) | WO | Not established | Unknown | Color table 09. | `D.set_color(9, value)` 1 P |
+| `$194` | — | `COLOR10` (Denise) | WO | Not established | Unknown | Color table 10. | `D.set_color(10, value)` 1 P |
+| `$196` | — | `COLOR11` (Denise) | WO | Not established | Unknown | Color table 11. | `D.set_color(11, value)` 1 P |
+| `$198` | — | `COLOR12` (Denise) | WO | Not established | Unknown | Color table 12. | `D.set_color(12, value)` 1 P |
+| `$19A` | — | `COLOR13` (Denise) | WO | Not established | Unknown | Color table 13. | `D.set_color(13, value)` 1 P |
+| `$19C` | — | `COLOR14` (Denise) | WO | Not established | Unknown | Color table 14. | `D.set_color(14, value)` 1 P |
+| `$19E` | — | `COLOR15` (Denise) | WO | Not established | Unknown | Color table 15. | `D.set_color(15, value)` 1 P |
+| `$1A0` | — | `COLOR16` (Denise) | WO | Not established | Unknown | Color table 16. | `D.set_color(16, value)` 1 P |
+| `$1A2` | — | `COLOR17` (Denise) | WO | Not established | Unknown | Color table 17. | `D.set_color(17, value)` 1 P |
+| `$1A4` | — | `COLOR18` (Denise) | WO | Not established | Unknown | Color table 18. | `D.set_color(18, value)` 1 P |
+| `$1A6` | — | `COLOR19` (Denise) | WO | Not established | Unknown | Color table 19. | `D.set_color(19, value)` 1 P |
+| `$1A8` | — | `COLOR20` (Denise) | WO | Not established | Unknown | Color table 20. | `D.set_color(20, value)` 1 P |
+| `$1AA` | — | `COLOR21` (Denise) | WO | Not established | Unknown | Color table 21. | `D.set_color(21, value)` 1 P |
+| `$1AC` | — | `COLOR22` (Denise) | WO | Not established | Unknown | Color table 22. | `D.set_color(22, value)` 1 P |
+| `$1AE` | — | `COLOR23` (Denise) | WO | Not established | Unknown | Color table 23. | `D.set_color(23, value)` 1 P |
+| `$1B0` | — | `COLOR24` (Denise) | WO | Not established | Unknown | Color table 24. | `D.set_color(24, value)` 1 P |
+| `$1B2` | — | `COLOR25` (Denise) | WO | Not established | Unknown | Color table 25. | `D.set_color(25, value)` 1 P |
+| `$1B4` | — | `COLOR26` (Denise) | WO | Not established | Unknown | Color table 26. | `D.set_color(26, value)` 1 P |
+| `$1B6` | — | `COLOR27` (Denise) | WO | Not established | Unknown | Color table 27. | `D.set_color(27, value)` 1 P |
+| `$1B8` | — | `COLOR28` (Denise) | WO | Not established | Unknown | Color table 28. | `D.set_color(28, value)` 1 P |
+| `$1BA` | — | `COLOR29` (Denise) | WO | Not established | Unknown | Color table 29. | `D.set_color(29, value)` 1 P |
+| `$1BC` | — | `COLOR30` (Denise) | WO | Not established | Unknown | Color table 30. | `D.set_color(30, value)` 1 P |
+| `$1BE` | — | `COLOR31` (Denise) | WO | Not established | Unknown | Color table 31. | `D.set_color(31, value)` 1 P |
 | `$1C0` | — | — | Unlisted | Not specified | Unknown | No entry in Appendix B; its status is not stated there. | Ignored write; no queue |
 | `$1C2` | — | — | Unlisted | Not specified | Unknown | No entry in Appendix B; its status is not stated there. | Ignored write; no queue |
 | `$1C4` | — | — | Unlisted | Not specified | Unknown | No entry in Appendix B; its status is not stated there. | Ignored write; no queue |
@@ -382,7 +373,7 @@ The register-delivery boundary is exercised through production interfaces:
 
 | Evidence | Established boundary and limits |
 | --- | --- |
-| [`test_register_wiring.rs`](../../../crates/memory_bus/tests/test_register_wiring.rs), `every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due` | All 256 aligned slots, of which 180 enqueue writes; word and both byte writes on PAL and NTSC (1,536 transfers). Checks every recipient's offset, payload, mode and remaining delay, no early due event, exactly one due event and no later duplicate. Uses real router and owner steps, without claiming later engine behavior. |
+| [`test_register_wiring.rs`](../../../crates/memory_bus/tests/test_register_wiring.rs), `every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due` | All 256 aligned slots, including 174 queued data-write offsets and six immediate address strobes; word and both byte writes on PAL and NTSC (1,536 transfers). Checks every recipient's offset, payload, mode and remaining delay, no early due event, exactly one due event and no later duplicate. Uses real router and owner steps, without claiming later engine behavior. |
 | Same suite, `custom_live_and_debug_reads_select_the_owner_or_explicit_fallback` | All 256 slots use the intended reader or fallback; distinct readable data detects wrong selection. Debug traversal preserves complete chip/queue state. Existing dedicated tests establish live collision/disk acknowledgment and Copper read strobes. This is reader selection, not validation of all computed hardware values. |
 | [`test_router.rs`](../../../crates/memory_bus/tests/test_router.rs) | All thirty canonical CIA addresses, selected instance, selector and payload, synchronization before acceptance and falling-edge capture. Five initial E phases, inactive lanes, low-bit mirrors, byte/word lanes and OVL mapping have existing regression protection. Gary alias/dual-selection tests cover all banks and memory presets on PAL/NTSC; `test_gary_decoding.rs` exercises CPU transfers and committed OVL through the machine. |
 | [`test_custom_dispatch.rs`](../../../crates/machine_loop/tests/test_custom_dispatch.rs) | Production-machine CPU/Copper issue boundaries, shared rejection/retry, queue order and complete replay, strobe delivery, interrupt-input versus CPU ordering, DMA competition and pending-state serialization. |

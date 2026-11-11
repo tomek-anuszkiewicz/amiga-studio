@@ -109,8 +109,7 @@ reader in [`registers.rs`](../../../crates/cia/src/registers.rs), and prefix
 `set_` for its queued writer: for example `tahi()` and `set_tahi(value)`.
 [`cia_registers.rs`](../../../crates/memory_bus/src/cia_registers.rs) selects
 the CIA instance and calls those methods. The queue stores the selector
-`0..15`, not a motherboard address. Every connected write uses `Pipeline`
-mode and the next falling-E capture boundary described below. Selector B
+`0..15`, not a motherboard address. Every connected write uses `OverwritePending` mode until the next falling-E capture boundary described below. A later write to the same selector replaces only its pending operation, including ICR masks and LOAD actions; captured effects are not undone. Selector B
 reads `$FF` and ignores writes without a synchronization or capture event.
 
 Debug reads reuse the ordinary readers without side effects for ports, directions,
@@ -136,8 +135,56 @@ LOAD is an action with no stored readable bit. The port-B `PC` handshake
 interval in the tables is a documented hardware interval, not the configured
 queue delay or an implemented handshake claim.
 
-Port pin/readback behavior remains incomplete; see the [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction).
+Port reads merge the committed output latch on output-configured bits with
+delivered external levels on input-configured bits. External sampling updates
+`pins.port_a_input`/`port_b_input`, not PRA/PRB's output latches; changing a
+direction therefore exposes the retained output byte rather than a value
+overwritten by the attached device. Timer overrides and finer electrical pin
+behavior remain [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction).
 All thirty connected addresses retain their named access/capture paths.
+
+## Motherboard pin boundary
+
+[`pins.rs`](../../../crates/cia/src/pins.rs) separates SP/CNT input levels,
+released/driven output levels, PC, FLAG and the last delivered TOD clock level
+from the unfinished serial engine.
+The [machine input phase](Machine%20Loop.md#captured-connector-transport-and-pending-bus-words)
+asks each CIA to sample its retained `pins.incoming` before engines step.
+CIA-A SP/CNT connect to keyboard KDAT/KCLK. On the physical board its PC and
+FLAG connect to parallel strobe and ACK; the emulator currently has no parallel
+connector model. CIA-A PB and FLAG and CIA-B external PA0..5 stay released high;
+the serial connector is also unconnected, leaving CTS/DSR/CD inactive,
+while PRA/PRB, direction registers and output drivers remain available.
+Complete chip-side port, PC strobe and FLAG interrupt logic with these
+disconnected inputs belongs to [2.4](../../../ROADMAP.md#chipset-reconstruction).
+An attached device's ACK/status responses and full serial/parallel exchanges
+remain deferred to [12.4](../../../ROADMAP.md#serial-parallel-device-support).
+CIA-B FLAG receives disk INDEX, not serial carrier detect. CIA-B PA0/PA1 also
+share the BUSY/POUT lines with its SP/CNT pins. The coordinator resolves committed
+Port A drivers and enabled serial output drivers together; a driven low reaches
+both the serial input and Port A input readback at the next input phase. Serial
+input mode releases its drivers. No attached parallel device is required for
+these motherboard connections. A delivered FLAG falling edge uses the existing ICR
+input; a held low level does not become repeated interrupts. The exact physical
+FLAG synchronizer latency is not calibrated by this CCK capture contract.
+
+CIA-A receives the captured vertical timing source at TOD; CIA-B receives the
+horizontal source. A delivered low-to-high transition counts once in the CIA,
+and a held high level does not count again. The retained input level prevents a
+snapshot restore from inventing another edge. Source pulse widths are provisional
+CCK markers described in [Agnus](Agnus.md#motherboard-transport-boundary).
+The active-low CIA IRQ output is routed from pending ICR status into Paula-owned incoming INT2 or INT6
+and sampled before its next step. Drive status reaches CIA-A input latches
+through capture/delivery. Independent FIRE levels are sampled directly at the
+current CCK input phase, after the retained inputs arrive. Both paths remain
+independent of PRA and DDRA; direct FIRE sampling preserves the captured drive
+status on PA5-PA2 and does not change CIA bus synchronization or register timing.
+
+PC/serial output generation, eight-bit reception, acknowledgment and timer/CNT
+reaction are 2.4 receiver/engine work. Tests can drive those chip outputs
+deterministically to verify wiring without bypassing the recipient pins. The
+[catalog's E-clock section](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md#cpu-gary-and-cia-the-synchronous-e-clock-transaction)
+also distinguishes actual VPA/VMA wiring from the bus wait calculation below.
 
 ## Runtime register capture and bus synchronization
 
@@ -181,8 +228,7 @@ Focused regressions verify the wait counts at all five represented CCK phases,
 accepted read effects and falling-edge write capture. They do not establish
 complete production CPU bus-cycle durations against Motorola Figures B-4/B-5,
 nor resolve all ten individual CPU-clock positions within E. The remaining
-[signal and timing review](../../../ROADMAP.md#inter-chip-signal-propagation)
-and [production CPU integration](../../../ROADMAP.md#cpu-memory-gary-verification)
+[production CPU integration](../../../ROADMAP.md#cpu-memory-gary-verification)
 own that verification; these tests do not certify the hardware 10-19-clock range.
 
 The [replacement-project CIA](../../../ref_src/amiga_replacement_project/cia/cia8520.v)
@@ -206,16 +252,14 @@ reference implementations differ on finer acknowledgment timing, which this
 model does not claim to calibrate. Debug readers neither acknowledge interrupts
 nor acquire/release TOD latches or advance pending work.
 
-All successful writes target the same next capture edge, retain enqueue order,
-and mature together before slots are reused. The sixteen-slot buffer exceeds
+Under the user-approved policy of 2026-11-11, pending writes retain the last value per selector until the next capture edge. Replacement recomputes the remaining time to that same edge rather than postponing capture. Writes to different selectors remain ordered; once captured, effects are not canceled by a later write. The sixteen-slot buffer exceeds
 production CPU demand: each CIA accepts at most one transfer per E period,
 and a phase-1 write commits at phase 2, before another transfer can be accepted.
 CPU bus acceptance therefore checks E-clock synchronization without a queue
 capacity check or a queue-related wait state. Direct callers must respect the
 setter's acceptance result and drain injected writes before resuming CPU bus
 traffic; direct writes are not a second concurrent producer on that bus path.
-They can fill the buffer and must retry a setter that returns `false`. Processing uses
-a due buffer of the same capacity, so simultaneous commitment loses no writes.
+Valid direct setters retain at most one pending operation per connected selector. A due buffer of the same capacity applies all retained operations at capture; an operation replaced before capture has no effect.
 The shared staging helper rejects overflow without immediate application.
 
 The serialized CIA value contains its divider phase, pending bus countdown,

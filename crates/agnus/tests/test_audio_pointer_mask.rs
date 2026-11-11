@@ -9,8 +9,6 @@ fn queued_audio_locations_discard_unused_address_bits() {
         assert_eq!(agnus.audlc[channel], 0);
     }
     agnus.step_cck();
-    assert_eq!(agnus.audlc, [0; 4]);
-    agnus.step_cck();
     assert_eq!(agnus.audlc, [0x0005_2344; 4]);
     assert_eq!(agnus.audpt, [0x0005_2344; 4]);
 }

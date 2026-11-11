@@ -211,6 +211,14 @@ fn each_canonical_cia_write_selects_one_receiver_and_one_capture() {
     ];
     for (addr, expected) in rows {
         let mut motherboard = TestMotherboard::new();
+        // Port readback observes pins; this test drives the written latch outward.
+        for cia in [&mut motherboard.cia_a, &mut motherboard.cia_b] {
+            if addr & 0x0f00 == 0 {
+                cia.ddra = 0xff;
+            } else if addr & 0x0f00 == 0x0100 {
+                cia.ddrb = 0xff;
+            }
+        }
         let mut bus = motherboard.router();
         assert_eq!(
             bus.write_byte(addr, 0x5a),
@@ -324,6 +332,8 @@ fn test_all_cia_addresses_select_their_registers() {
     for (cia, base) in [(&mut mb.cia_a, 0x20u8), (&mut mb.cia_b, 0x40u8)] {
         cia.pra = base;
         cia.prb = base + 1;
+        cia.set_input_pins_a(base, 0xff);
+        cia.pins.port_b_input = base + 1;
         cia.ddra = base + 2;
         cia.ddrb = base + 3;
         cia.ta_counter = u16::from_be_bytes([base + 5, base + 4]);
@@ -516,7 +526,7 @@ fn test_direct_custom_and_cia_register_writes() {
     }
 
     assert_eq!(mb.denise.color[0], 0);
-    mb.denise.step_cck(mb.agnus.beam());
+    mb.denise.step_cck();
     assert_eq!(mb.denise.color[0], 0x0F00);
     // Step Paula 1 CCK so staged INTENA write matures
     let _ = mb.paula.step_cck();
@@ -817,12 +827,12 @@ fn gary_custom_alias_byte_duplication_and_shared_queue_capacity_checks() {
         let pending: Vec<_> = mb.denise.mutations.iter().flatten().collect();
         assert_eq!(pending.len(), 1);
         assert_eq!(pending[0].value, u16::from_be_bytes([value; 2]));
-        let _ = mb.denise.step_cck(config::BeamPosition::default());
+        let _ = mb.denise.step_cck();
         assert_eq!(mb.denise.color[0], u16::from_be_bytes([value; 2]) & 0xfff);
         assert_eq!(mb.router().read_word_debug(addr & !1), 0xffff);
     }
     // An alias must use the shared-register preflight before inserting anywhere.
-    for _ in 0..31 {
+    for _ in 0..32 {
         assert!(mb.paula.set_serdat(0));
     }
     assert_eq!(
@@ -830,7 +840,7 @@ fn gary_custom_alias_byte_duplication_and_shared_queue_capacity_checks() {
         BusResult::WaitState
     );
     assert!(mb.agnus.mutations.iter().all(Option::is_none));
-    assert_eq!(mb.paula.mutations.iter().flatten().count(), 31);
+    assert_eq!(mb.paula.mutations.iter().flatten().count(), 32);
     let _ = mb.paula.step_cck();
     let _ = mb.paula.step_cck();
     assert_eq!(

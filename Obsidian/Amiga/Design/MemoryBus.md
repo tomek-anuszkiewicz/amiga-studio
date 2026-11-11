@@ -114,15 +114,17 @@ CIA-A pin PA0 drives OVL. When a queued `PRA` or `DDRA` write commits on falling
 
 ### Custom registers and specialized chips
 
-For banks `$DE` and `$DF`, `addr & $01FE` selects an even register offset. A word operation reaches a single custom register. A byte read takes the high or low byte of that register according to address bit 0. A byte write duplicates its value onto both halves of a 16-bit word before calling `write_custom_word()`. Every modeled write, including address strobes, calls a concrete queued setter on each receiving chip through one offset match. No public register setter applies state immediately. A pending value cannot alter a read, child component, restart action or output before commitment. Unmatched offsets remain ignored.
+For banks `$DE` and `$DF`, `addr & $01FE` selects an even register offset. A word operation reaches a single custom register. A byte read takes the high or low byte of that register according to address bit 0. A byte write duplicates its value onto both halves of a 16-bit word before calling `write_custom_word()`. Every modeled data write calls a concrete queued setter on each receiving chip through one offset match. Address strobes act immediately at accepted selection and allocate no queue entry. A pending value cannot alter a read, child component, restart action or output before commitment. Unmatched offsets remain ignored.
 
 `read_custom_word()` dispatches readable registers to Agnus, Denise, or Paula. Examples include Agnus beam and DMA status, Denise joystick and collision status, and Paula interrupt, audio-control, and disk status. A live `CLXDAT` or `DSKBYTR` read may have a chip-defined side effect. Reading `COPJMP1` or `COPJMP2` strobes Agnus's Copper and returns `$FFFF`. Unhandled reads, including most reads of write-only registers, return `$FFFF`; see the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access). `read_custom_word_debug()` uses non-mutating chip inspection methods and does not issue the Copper strobes.
 
 `write_custom_word()` routes `DMACON` to both Agnus and Paula. It routes `BPLCON0`, `DIWSTRT`/`DIWSTOP`, and sprite position/control registers to both Denise and Agnus. The chips independently latch the DIW fields used for vertical bitplane DMA and horizontal pixel clipping. The router sends other listed display, sprite data, color, and input registers to Denise; listed interrupt, disk, serial, potentiometer, and audio registers to Paula; and explicitly listed Agnus registers to Agnus. Unmatched offsets are ignored without staging a chip mutation. The [register ownership matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) gives the broader register context, while this dispatch is the implemented CPU/Copper write path.
 
-The custom chips use fixed-capacity ordered propagation queues. Each setter reports acceptance; a full queue rejects a transfer without applying it. Shared-register arms check every required receiver before inserting any event, so a retry cannot duplicate a partially accepted transfer. The CPU receives `Ready` only after insertion and otherwise receives `WaitState`; acknowledgment does not imply commitment. Pipeline writes coexist in issue order. OverwritePending replaces the same destination's pending event and restarts its delay at the new issue position. These modes and all numerical custom-chip delays are provisional implementation settings, not measured silicon timing.
+The custom chips use fixed-capacity ordered propagation queues. Each setter reports acceptance; a full queue rejects a transfer without applying it. Shared-register arms check every required receiver before inserting any event, so a retry cannot duplicate a partially accepted transfer. The CPU receives `Ready` only after insertion and otherwise receives `WaitState`; acknowledgment does not imply commitment. All custom data writes currently use `Pipeline`, preserving every accepted operation. The current model retains concrete reference timings recorded in the timing research and uses **1 CCK** where timing remains unresolved. Reference-model timing and the fallback are not universal silicon measurements. Reads observe current state at accepted selection without flushing pending writes. CIA capture and RTC accesses retain their separate contracts.
 
-Palette writes and sync strobes use the explicitly named positive provisional delay of **1 CCK**. Existing positive settings remain: Agnus controls and pointers generally use 2 CCK, display-window/fetch/BPLCON0 controls use 4, and Copper jumps, BLTSIZE and Blitter data use 1; Denise uses 1; Paula uses 1 for interrupt registers and serial/audio data, otherwise 2. CPU INTREQ writes and interrupt-input requests are distinct queued destinations so a pending pin request cannot be overwritten by a CPU clear.
+DMACON retains **2 CCK** for Agnus and Paula. BPLCON0 and DIWSTRT/STOP retain **4 CCK** for Agnus and **1 CCK** for Denise; DDFSTRT/STOP retain **4 CCK** for Agnus. INTENA/INTREQ retain **1 CCK**. Remaining custom data writes use the **1 CCK** fallback, including pointers, palette, audio data and controls, and Blitter/Copper data registers. Address strobes COPJMP1/2 and STREQU/STRVBL/STRHOR/STRLONG act immediately without queue capacity checks. Data-bearing triggers such as BLTSIZE and BPL1DAT act when their queued data commits; downstream engine scheduling remains separate. Electrical INT2/INT3/INT6 levels are sampled by [Paula](Paula.md#register-propagation) after due writes and consume no register queue slot.
+
+These `delay_cck` values and per-register `MutationMode` choices describe the current implementation and remain provisional under the [register mutation parameter policy](../../../.agents/rules/spec-compliance.md#provisional-register-mutation-parameters). Both the one-CCK fallback and the concrete reference-model delays share this status.
 
 Writes issued after a chip step start counting on its next step. The machine issues Copper register writes and bitplane DMA data after all three custom chips have stepped, before the CPU phase, in Copper-then-DMA order; the CPU issues afterward. This deterministic provisional order does not establish physical simultaneous-access priority. All recipients therefore count from the same boundary, independently of host method ordering. CPU CCK1/CCK2 acceptance still follows the CPU's existing bus protocol; an unaccepted transfer inserts nothing. Live COPJMP reads keep their immediate read-side strobe and fixed open-bus result. Autonomous DMA pointer increments, counter changes, pin sampling and interrupt generation remain separate from register-bus writes.
 
@@ -138,7 +140,7 @@ catalog is required. Agnus's queue is the owning interface for Copper and
 Blitter register requests. A returned due `(offset, value)` proves that the
 owner consumed its event; functional correctness needs engine observations.
 
-Some register effects and CIA pin reads remain incomplete; see the
+Some register and receiver effects remain incomplete; see the
 [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction).
 
 All pending custom events live in serializable chip state, along with retained
@@ -146,11 +148,10 @@ Copper/bitplane outputs that have not yet entered a destination queue. Reset
 cancels pending events. Restore resumes the remaining delays without issuing
 another write. The CPU holds the same active micro-step and payload on
 `WaitState`, so a rejected transfer cannot mature; only an accepted transfer
-can later be returned due. Shared preflight can conservatively reject a full
-receiver even when a standalone overwrite could replace its pending slot;
-this costs a retry and prevents partial fan-out. Paula reserves one of its
-32 slots for merged interrupt input, leaving 31 for register writes; Agnus
-and Denise each have 64. All matured entries are returned in retained order.
+can later be returned due. Shared preflight rejects a full receiver before
+any destination accepts the write. Paula has 32 register-write slots; Agnus
+and Denise each have 64. Interrupt input levels use no register slot.
+All matured entries are returned in retained order.
 
 ### RTC and exceptional access paths
 

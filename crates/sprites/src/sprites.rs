@@ -3,7 +3,6 @@
 //! 16-pixel wide hardware sprites, vertical start/stop comparators,
 //! sprite pairing for 15-color mode, multiplexing, and collision detection.
 
-use config::BeamPosition;
 use serde::{Deserialize, Serialize};
 
 /// Output pixel from the sprite mixer
@@ -135,10 +134,10 @@ impl Sprites {
 
     /// Advances Sprite engine state by 1 Color Clock observing beam coordinates
     #[inline]
-    pub fn step_cck(&mut self, beam: BeamPosition) {
-        if beam.hpos == 0 {
+    pub fn step_cck(&mut self, hpos: u16, vpos: u16) {
+        if hpos == 0 {
             for ch in &mut self.channels {
-                ch.update_scanline(beam.vpos);
+                ch.update_scanline(vpos);
             }
         }
     }

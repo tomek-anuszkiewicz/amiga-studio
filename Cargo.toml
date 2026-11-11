@@ -18,6 +18,7 @@ members = [
     "crates/keyboard",
     "crates/cia",
     "crates/machine_loop",
+    "crates/save_state",
     "crates/rtc",
     "crates/physical_memory",
     "crates/memory_bus",
@@ -61,6 +62,7 @@ paula = { path = "crates/paula" }
 keyboard = { path = "crates/keyboard" }
 cia = { path = "crates/cia" }
 machine_loop = { path = "crates/machine_loop" }
+save_state = { path = "crates/save_state" }
 rtc = { path = "crates/rtc" }
 physical_memory = { path = "crates/physical_memory" }
 memory_bus = { path = "crates/memory_bus" }

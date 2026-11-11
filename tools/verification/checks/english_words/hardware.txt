@@ -365,3 +365,17 @@ xtal
 β
 δ
 δmode
+ackdma
+auddma
+beamcounter
+busen
+cpuok
+dmareq
+dmas
+dmaspc
+ecpu
+pll
+reqdma
+sof
+spi
+ttl

@@ -2,7 +2,7 @@
 
 use super::Agnus;
 use config::custom_reg::agnus as reg;
-use config::{stage_mutation, MutationMode};
+use config::{stage_mutation, MutationMode, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK};
 
 impl Agnus {
     /// Queues BLTCON0; active state changes only when due.
@@ -12,8 +12,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTCON0,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -24,8 +24,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTCON1,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -36,8 +36,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTAFWM,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -48,8 +48,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTALWM,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -60,8 +60,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTCPTH,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -72,8 +72,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTCPTL,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -84,8 +84,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTBPTH,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -96,8 +96,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTBPTL,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -108,8 +108,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTAPTH,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -120,8 +120,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTAPTL,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -132,8 +132,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTDPTH,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -144,8 +144,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTDPTL,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -156,8 +156,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTSIZE,
             val,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -168,8 +168,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTCMOD,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -180,8 +180,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTBMOD,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -192,8 +192,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTAMOD,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -204,8 +204,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTDMOD,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -216,7 +216,7 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTCDAT,
             val,
-            1,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
         )
     }
@@ -228,7 +228,7 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTBDAT,
             val,
-            1,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
         )
     }
@@ -240,7 +240,7 @@ impl Agnus {
             &mut self.mutations,
             reg::BLTADAT,
             val,
-            1,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
         )
     }

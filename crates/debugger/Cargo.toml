@@ -12,6 +12,7 @@ config = { workspace = true }
 disassembler = { workspace = true }
 cpu = { workspace = true }
 machine_loop = { workspace = true }
+save_state = { workspace = true }
 physical_memory = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

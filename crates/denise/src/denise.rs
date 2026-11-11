@@ -7,10 +7,15 @@ pub use frame_builder;
 pub use sprites;
 
 pub use config::DeniseModel;
-use config::{tick_mutations, BeamPosition, DelayedMutation};
+use config::{tick_mutations, DelayedMutation};
 use serde::{Deserialize, Serialize};
 
+mod pins;
+pub use pins::{DeniseInputs, DenisePins, DeniseSync};
+
 mod registers;
+
+const HORIZONTAL_CURSOR_MASK: u16 = 0xff;
 
 pub mod decode;
 pub use decode::{decode_dual_playfield, decode_ehb, decode_ham6};
@@ -18,6 +23,10 @@ pub use decode::{decode_dual_playfield, decode_ehb, decode_ham6};
 /// Denise video display processor state
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Denise {
+    /// Motherboard-facing signal state.
+    pub pins: DenisePins,
+    /// Receiver-owned synchronization and rendering cursor.
+    pub sync: DeniseSync,
     /// Active Denise chip hardware model (8362 OCS, 8373 ECS)
     pub model: DeniseModel,
     /// Denise 8 hardware sprite engines
@@ -88,6 +97,8 @@ impl Denise {
     /// Creates a new Denise instance with the specified hardware model
     pub fn new(model: DeniseModel) -> Self {
         Self {
+            pins: DenisePins::default(),
+            sync: DeniseSync::default(),
             model,
             sprites: sprites::Sprites::new(),
             frame_builder: frame_builder::FrameBuilder::new(),
@@ -120,6 +131,8 @@ impl Denise {
 
     /// Resets Denise registers to power-on defaults
     pub fn reset(&mut self) {
+        self.pins = DenisePins::default();
+        self.sync = DeniseSync::default();
         self.sprites.reset();
         self.frame_builder.reset();
         self.bplcon0 = 0;
@@ -151,11 +164,14 @@ impl Denise {
     /// Advances Denise pixel pipeline, steps sprites and frame builder,
     /// and processes in-flight mutations by 1 Color Clock.
     /// Returns any register writes that matured and committed on this exact cycle.
-    pub fn step_cck(
-        &mut self,
-        beam: BeamPosition,
-    ) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
-        if beam.hpos == 0 {
+    pub fn step_cck(&mut self) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
+        if let Some(address) = self.pins.rga_strobe.take() {
+            self.sync.receive_strobe(address);
+        }
+        let hpos = self.sync.hpos;
+        let vpos = self.sync.vpos;
+        self.sync.hpos = self.sync.hpos.wrapping_add(1) & HORIZONTAL_CURSOR_MASK;
+        if hpos == 0 {
             self.last_ham_rgb = self.color[0];
             self.bpl_armed = false;
             self.shifters = [0; 6];
@@ -163,20 +179,20 @@ impl Denise {
             self.pipeline_pixels_valid = [false; 2];
         }
 
-        self.sprites.step_cck(beam);
-        self.frame_builder.step_cck(beam);
+        self.sprites.step_cck(hpos, vpos);
+        self.frame_builder.step_cck(hpos, vpos);
 
         // Check vertical and horizontal blanking
         // PAL: scanlines 0..25 and >= 311 are vertical blanking
-        let in_vblank = beam.vpos <= 25 || beam.vpos >= 311;
+        let in_vblank = self.sync.vertical_blank;
         // Horizontal blanking occupies CCKs 0x12..0x23 (18..35)
-        let in_hblank = beam.hpos >= 18 && beam.hpos <= 35;
+        let in_hblank = hpos >= 18 && hpos <= 35;
 
         // Denise decodes the horizontal DIW bits; Agnus gates bitplane DMA by line.
         let hstrt = (self.diwstrt & 0xFF) | 1;
         let hstop = (self.diwstop & 0xFF) | 1 | 0x100;
 
-        let c0 = beam.hpos * 2 + 2;
+        let c0 = hpos * 2 + 2;
         if c0 == hstrt {
             self.hflop = true;
         }
@@ -185,7 +201,7 @@ impl Denise {
             self.hflop = false;
         }
 
-        let c1 = beam.hpos * 2 + 3;
+        let c1 = hpos * 2 + 3;
         if c1 == hstrt {
             self.hflop = true;
         }
@@ -196,24 +212,22 @@ impl Denise {
 
         if self.bitplane_count() > 0 && self.bpl_armed {
             let period = if self.is_hires() { 4 } else { 8 };
-            if beam.hpos % period == 0 {
+            if hpos % period == 0 {
                 self.shifters = self.bpldat_pipe;
             }
         }
 
         if in_vblank || in_hblank {
             // Analog video output DACs are pulled to blanking level (pure black)
-            self.frame_builder
-                .set_cck_pixels(beam.hpos, beam.vpos, 0xFF00_0000);
-            if beam.hpos == 226 {
-                self.frame_builder
-                    .set_cck_pixels(227, beam.vpos, 0xFF00_0000);
+            self.frame_builder.set_cck_pixels(hpos, vpos, 0xFF00_0000);
+            if hpos == 226 {
+                self.frame_builder.set_cck_pixels(227, vpos, 0xFF00_0000);
             }
         } else {
             let plane_count = self.bitplane_count();
             let backdrop = frame_builder::rgb444_to_argb32(self.color[0]);
-            let y = beam.vpos as usize;
-            let cck_base_x = (beam.hpos as usize) * 4;
+            let y = vpos as usize;
+            let cck_base_x = (hpos as usize) * 4;
 
             if plane_count > 0 && self.bpl_armed {
                 let hires = self.is_hires();
@@ -308,7 +322,7 @@ impl Denise {
                     }
                 }
 
-                if beam.hpos == 226 {
+                if hpos == 226 {
                     let px4 = if self.pipeline_pixels_valid[0] {
                         self.pipeline_pixels[0]
                     } else {
@@ -355,10 +369,9 @@ impl Denise {
                 }
             } else {
                 self.pipeline_pixels_valid = [false, false];
-                self.frame_builder
-                    .set_cck_pixels(beam.hpos, beam.vpos, backdrop);
-                if beam.hpos == 226 {
-                    self.frame_builder.set_cck_pixels(227, beam.vpos, backdrop);
+                self.frame_builder.set_cck_pixels(hpos, vpos, backdrop);
+                if hpos == 226 {
+                    self.frame_builder.set_cck_pixels(227, vpos, backdrop);
                 }
             }
         }

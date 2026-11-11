@@ -24,6 +24,12 @@ classification and the production router import these same definitions.
 [MemoryBus](MemoryBus.md#cia-and-boot-overlay) owns register selection and
 transaction acceptance; these constants do not instantiate devices.
 
+Beam position remains in [Agnus](Agnus.md#motherboard-transport-boundary)
+as its `hpos`/`vpos` counters and field/line state. Configuration retains hardware presets,
+register definitions, the shared mutation helper and `big_array` Serde support.
+The array helper is below subsystem crates and has no dependency on the
+high-level [save format](Application/SaveState.md).
+
 ---
 
 ## 1. Focused Scope: 3 Canonical Hardware Presets

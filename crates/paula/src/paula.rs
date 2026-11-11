@@ -9,18 +9,21 @@ pub use interrupts::InterruptController;
 pub mod serial;
 pub use serial::SerialPort;
 
-use config::custom_reg::paula as reg;
-use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
+use config::{tick_mutations, DelayedMutation};
 use serde::{Deserialize, Serialize};
 
-mod registers;
+mod pins;
+pub use pins::{PaulaInputs, PaulaPins, PaulaSync};
 
-// Interrupt inputs are distinct from CPU writes to INTREQ.
-const INTERRUPT_INPUT: u16 = 0x8000 | reg::INTREQ;
+mod registers;
 
 /// Paula custom chip coordinator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Paula {
+    /// Motherboard-facing signal state.
+    pub pins: PaulaPins,
+    /// Local phase since the last received horizontal synchronization strobe.
+    pub sync: PaulaSync,
     /// 4-channel DMA audio subsystem
     pub audio: audio::Audio,
     /// RS-232 serial UART transceiver
@@ -78,13 +81,15 @@ impl Paula {
     /// Creates a new Paula instance
     pub fn new() -> Self {
         Self {
+            pins: PaulaPins::default(),
+            sync: PaulaSync::default(),
             audio: audio::Audio::new(),
             serial_port: serial::SerialPort::new(),
             interrupts: interrupts::InterruptController::new(),
             adkcon: 0,
             pot0dat: 0,
             pot1dat: 0,
-            potgor: 0,
+            potgor: config::mask::game_port::POT_DATA,
             potgo: 0,
             dskbytr: 0,
             dsklen: 0,
@@ -100,13 +105,15 @@ impl Paula {
 
     /// Resets Paula interrupt and audio registers to power-on defaults
     pub fn reset(&mut self) {
+        self.pins = PaulaPins::default();
+        self.sync = PaulaSync::default();
         self.audio.reset();
         self.serial_port.reset();
         self.interrupts.reset();
         self.adkcon = 0;
         self.pot0dat = 0;
         self.pot1dat = 0;
-        self.potgor = 0;
+        self.potgor = config::mask::game_port::POT_DATA;
         self.potgo = 0;
         self.dskbytr = 0;
         self.dsklen = 0;
@@ -122,6 +129,10 @@ impl Paula {
     /// Advances Paula timers and processes in-flight register mutations by 1 Color Clock.
     /// Returns any register writes that matured and committed on this exact cycle.
     pub fn step_cck(&mut self) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
+        self.sync.cck_since_horizontal = self.sync.cck_since_horizontal.wrapping_add(1);
+        if self.pins.rga_strobe.take() == Some(config::custom_reg::paula::STRHOR) {
+            self.sync.cck_since_horizontal = 0;
+        }
         self.audio.step_cck();
         for ch in 0..4 {
             if self.audio.poll_channel_irq(ch) {
@@ -141,6 +152,7 @@ impl Paula {
         for item in due.iter().flatten() {
             self.apply_register_write(item.0, item.1);
         }
+        self.sample_interrupt_pins();
         due
     }
 
@@ -182,54 +194,6 @@ impl Paula {
     pub fn set_disk_byte(&mut self, byte: u8, sync_matched: bool) {
         let sync_bit = if sync_matched { DSKBYTR_WORDEQUAL } else { 0 };
         self.dskbytr = DSKBYTR_DSKBYT | sync_bit | (byte as u16);
-    }
-
-    /// Stages an interrupt request bit into the propagation delay pipeline (1 CCK delay).
-    /// Merges only interrupt-input events, keeping the earliest input deadline.
-    fn stage_interrupt_request(&mut self, mask: u16) {
-        // If already latched in INTREQ, no need to restage
-        if (self.interrupts.intreq & mask) == mask {
-            return;
-        }
-
-        // CPU writes use a separate destination and cannot replace this pending input.
-        for slot in self.mutations.iter_mut() {
-            if let Some(m) = slot {
-                if m.reg_offset == INTERRUPT_INPUT && (m.value & 0x8000) != 0 {
-                    // Merge bit into existing pending SET write
-                    m.value |= mask & 0x7FFF;
-                    return;
-                }
-            }
-        }
-
-        // Register setters reserve one slot, and at most one input entry exists.
-        let val = 0x8000 | (mask & 0x7FFF);
-        stage_mutation(
-            &mut self.mutations,
-            INTERRUPT_INPUT,
-            val,
-            1,
-            MutationMode::Pipeline,
-        );
-    }
-
-    /// Sets the state of physical pin _INT2 (pin 31, connected to CIA-A /IRQ, active-low).
-    /// When active (true), stages a request for INTREQ bit 3 (PORTS) with 1 CCK propagation delay.
-    #[inline]
-    pub fn set_int2_pin(&mut self, active: bool) {
-        if active {
-            self.stage_interrupt_request(0x0008);
-        }
-    }
-
-    /// Sets the state of physical pin _INT6 (pin 30, connected to CIA-B /IRQ, active-low).
-    /// When active (true), stages a request for INTREQ bit 13 (EXTER) with 1 CCK propagation delay.
-    #[inline]
-    pub fn set_int6_pin(&mut self, active: bool) {
-        if active {
-            self.stage_interrupt_request(0x2000);
-        }
     }
 
     /// Asserts interrupt request bits immediately

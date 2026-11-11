@@ -3,7 +3,11 @@
 use super::{Agnus, AgnusModel};
 use config::custom_reg::agnus as reg;
 use config::mask::dmacon;
-use config::{stage_mutation, MutationMode};
+use config::{
+    stage_mutation, MutationMode, DMACON_WRITE_DELAY_CCK, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+};
+
+const DISPLAY_CONTROL_WRITE_DELAY_CCK: u8 = 4;
 
 impl Agnus {
     /// Capacity preflight for an atomic transfer with multiple receivers.
@@ -19,8 +23,8 @@ impl Agnus {
             &mut self.mutations,
             reg::DMACON,
             val,
-            2,
-            MutationMode::OverwritePending,
+            DMACON_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -31,8 +35,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BPLCON0,
             val,
-            4,
-            MutationMode::OverwritePending,
+            DISPLAY_CONTROL_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -43,8 +47,8 @@ impl Agnus {
             &mut self.mutations,
             reg::DIWSTRT,
             val,
-            4,
-            MutationMode::OverwritePending,
+            DISPLAY_CONTROL_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -55,8 +59,8 @@ impl Agnus {
             &mut self.mutations,
             reg::DIWSTOP,
             val,
-            4,
-            MutationMode::OverwritePending,
+            DISPLAY_CONTROL_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -70,8 +74,8 @@ impl Agnus {
             &mut self.mutations,
             reg::SPR0POS + (index as u16) * 8,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -85,8 +89,8 @@ impl Agnus {
             &mut self.mutations,
             reg::SPR0CTL + (index as u16) * 8,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -97,8 +101,8 @@ impl Agnus {
             &mut self.mutations,
             reg::DSKPTH,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -109,8 +113,8 @@ impl Agnus {
             &mut self.mutations,
             reg::DSKPTL,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -121,8 +125,8 @@ impl Agnus {
             &mut self.mutations,
             reg::REFPTR,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -133,8 +137,8 @@ impl Agnus {
             &mut self.mutations,
             reg::VPOSW,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -145,8 +149,8 @@ impl Agnus {
             &mut self.mutations,
             reg::VHPOSW,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -157,8 +161,8 @@ impl Agnus {
             &mut self.mutations,
             reg::DDFSTRT,
             val,
-            4,
-            MutationMode::OverwritePending,
+            DISPLAY_CONTROL_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -169,8 +173,8 @@ impl Agnus {
             &mut self.mutations,
             reg::DDFSTOP,
             val,
-            4,
-            MutationMode::OverwritePending,
+            DISPLAY_CONTROL_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -184,8 +188,8 @@ impl Agnus {
             &mut self.mutations,
             reg::AUD0LCH + (index as u16) * 16,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -199,8 +203,8 @@ impl Agnus {
             &mut self.mutations,
             reg::AUD0LCL + (index as u16) * 16,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -214,8 +218,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BPL1PTH + (index as u16) * 4,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -229,8 +233,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BPL1PTL + (index as u16) * 4,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -241,8 +245,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BPL1MOD,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -253,8 +257,8 @@ impl Agnus {
             &mut self.mutations,
             reg::BPL2MOD,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -268,8 +272,8 @@ impl Agnus {
             &mut self.mutations,
             reg::SPR0PTH + (index as u16) * 4,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -283,8 +287,8 @@ impl Agnus {
             &mut self.mutations,
             reg::SPR0PTL + (index as u16) * 4,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 

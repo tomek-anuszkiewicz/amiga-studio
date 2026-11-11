@@ -2,19 +2,20 @@
 
 use super::{
     Paula, DSKBYTR_DATA_MASK, DSKBYTR_DISKWRITE, DSKBYTR_DMAON, DSKBYTR_DSKBYT, DSKBYTR_DSKEN,
-    DSKLEN_WRITE_FLAG, INTERRUPT_INPUT,
+    DSKLEN_WRITE_FLAG,
 };
 use config::custom_reg::paula as reg;
-use config::{stage_mutation, MutationMode, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK};
+use config::{
+    stage_mutation, MutationMode, DMACON_WRITE_DELAY_CCK, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+};
 
 impl Paula {
     /// Capacity preflight for an atomic transfer with multiple receivers.
     #[inline]
     pub fn can_accept_register_write(&self) -> bool {
-        self.mutations.iter().flatten().count() < Self::MUTATION_CAPACITY - 1
+        self.mutations.iter().flatten().count() < Self::MUTATION_CAPACITY
     }
 
-    // Reserve one entry for the single merged interrupt-input event.
     fn schedule_register(
         &mut self,
         offset: u16,
@@ -26,75 +27,120 @@ impl Paula {
             && stage_mutation(&mut self.mutations, offset, value, delay, mode)
     }
 
-    /// Queues STRHOR; active state changes only when due.
+    /// Applies STRHOR at accepted selection.
     #[inline]
-    pub fn set_strhor(&mut self) -> bool {
-        self.schedule_register(
-            reg::STRHOR,
-            0,
-            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
-            MutationMode::OverwritePending,
-        )
+    pub fn strobe_strhor(&mut self) {
+        self.sync.cck_since_horizontal = 0;
     }
 
     /// Queues DMACON; active state changes only when due.
     #[inline]
     pub fn set_dmacon(&mut self, val: u16) -> bool {
-        self.schedule_register(reg::DMACON, val, 2, MutationMode::OverwritePending)
+        self.schedule_register(
+            reg::DMACON,
+            val,
+            DMACON_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
+        )
     }
 
     /// Queues INTENA; active state changes only when due.
     #[inline]
     pub fn set_intena(&mut self, val: u16) -> bool {
-        self.schedule_register(reg::INTENA, val, 1, MutationMode::OverwritePending)
+        self.schedule_register(
+            reg::INTENA,
+            val,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
+        )
     }
 
     /// Queues INTREQ; active state changes only when due.
     #[inline]
     pub fn set_intreq(&mut self, val: u16) -> bool {
-        self.schedule_register(reg::INTREQ, val, 1, MutationMode::OverwritePending)
+        self.schedule_register(
+            reg::INTREQ,
+            val,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
+        )
     }
 
     /// Queues ADKCON; active state changes only when due.
     #[inline]
     pub fn set_adkcon(&mut self, val: u16) -> bool {
-        self.schedule_register(reg::ADKCON, val, 2, MutationMode::OverwritePending)
+        self.schedule_register(
+            reg::ADKCON,
+            val,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
+        )
     }
 
     /// Queues DSKDAT; active state changes only when due.
     #[inline]
     pub fn set_dskdat(&mut self, val: u16) -> bool {
-        self.schedule_register(reg::DSKDAT, val, 2, MutationMode::OverwritePending)
+        self.schedule_register(
+            reg::DSKDAT,
+            val,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
+        )
     }
 
     /// Queues DSKLEN; active state changes only when due.
     #[inline]
     pub fn set_dsklen(&mut self, val: u16) -> bool {
-        self.schedule_register(reg::DSKLEN, val, 2, MutationMode::OverwritePending)
+        self.schedule_register(
+            reg::DSKLEN,
+            val,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
+        )
     }
 
     /// Queues DSKSYNC; active state changes only when due.
     #[inline]
     pub fn set_dsksync(&mut self, val: u16) -> bool {
-        self.schedule_register(reg::DSKSYNC, val, 2, MutationMode::OverwritePending)
+        self.schedule_register(
+            reg::DSKSYNC,
+            val,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
+        )
     }
 
     /// Queues SERDAT; active state changes only when due.
     #[inline]
     pub fn set_serdat(&mut self, val: u16) -> bool {
-        self.schedule_register(reg::SERDAT, val, 1, MutationMode::Pipeline)
+        self.schedule_register(
+            reg::SERDAT,
+            val,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
+        )
     }
 
     /// Queues SERPER; active state changes only when due.
     #[inline]
     pub fn set_serper(&mut self, val: u16) -> bool {
-        self.schedule_register(reg::SERPER, val, 2, MutationMode::OverwritePending)
+        self.schedule_register(
+            reg::SERPER,
+            val,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
+        )
     }
 
     /// Queues POTGO; active state changes only when due.
     #[inline]
     pub fn set_potgo(&mut self, val: u16) -> bool {
-        self.schedule_register(reg::POTGO, val, 2, MutationMode::OverwritePending)
+        self.schedule_register(
+            reg::POTGO,
+            val,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
+        )
     }
 
     /// Queues the audlen family; active state changes only when due.
@@ -106,8 +152,8 @@ impl Paula {
         self.schedule_register(
             reg::AUD0LEN + (index as u16) * 16,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -120,8 +166,8 @@ impl Paula {
         self.schedule_register(
             reg::AUD0PER + (index as u16) * 16,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -134,8 +180,8 @@ impl Paula {
         self.schedule_register(
             reg::AUD0VOL + (index as u16) * 16,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -148,7 +194,7 @@ impl Paula {
         self.schedule_register(
             reg::AUD0DAT + (index as u16) * 16,
             val,
-            1,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
         )
     }
@@ -157,7 +203,7 @@ impl Paula {
     pub(super) fn apply_register_write(&mut self, offset: u16, val: u16) {
         match offset & 0x1FE {
             reg::INTENA => self.apply_intena(val),
-            reg::INTREQ | INTERRUPT_INPUT => self.apply_intreq(val),
+            reg::INTREQ => self.apply_intreq(val),
             reg::ADKCON => {
                 // ADKCON SET/CLR logic
                 if (val & 0x8000) != 0 {
@@ -210,7 +256,7 @@ impl Paula {
             reg::AUD3VOL => self.audio.set_vol(3, (val & 0x007F) as u8),
             reg::AUD3DAT => self.audio.set_dat(3, val),
 
-            reg::STRHOR => {}
+            reg::STRHOR => self.sync.cck_since_horizontal = 0,
             _ => {}
         }
     }

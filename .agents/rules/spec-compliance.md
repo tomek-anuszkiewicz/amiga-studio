@@ -4,8 +4,19 @@ Design specifications and [AGENTS.md](../../AGENTS.md) govern implementation. Ne
 
 Read the relevant requirements before changing code and follow them throughout implementation. Handle concrete conflicts when encountered; do not defer them to a commit or milestone. This does not trigger a general code/design parity audit; scoped compliance review belongs to the authorized pre-commit workflow, and broader semantic parity belongs to milestone closure or an explicit request.
 
-- When a requirement, test expectation, or reference emulator conflicts with the specification, stop the conflicting change and present the current rule, contrary evidence, and concrete options.
+- When a requirement, test expectation, or reference emulator conflicts with the specification, stop the conflicting change and present the current rule, contrary evidence, and concrete options. Provisional register mutation parameters follow the [exception below](#provisional-register-mutation-parameters).
 - Obtain an explicit recorded user decision before changing or waiving an existing requirement or introducing behavior outside the authorized scope. Otherwise implement the documented behavior. Compatible documentation enrichment follows the rule below and does not require separate approval.
+
+## Provisional Register Mutation Parameters
+
+Per-register `delay_cck` values and `MutationMode` choices are provisional modeling
+decisions, including those adopted from reference emulators. They may be revised
+during authorized implementation or debugging when test results, execution traces,
+or timing analysis justify a correction. Existing code, documentation, and
+implementation-level tests do not make these choices immutable; revising them does
+not require separate requirement-change approval. Update affected code, tests,
+and design descriptions together. Hardware requirements and protected reference
+artifacts remain subject to the existing compliance rules.
 
 ## Compatible Documentation Enrichment
 

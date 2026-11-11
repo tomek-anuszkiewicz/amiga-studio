@@ -7,13 +7,13 @@ impl Cia {
     /// Returns the visible PRA value.
     #[inline]
     pub fn pra(&self) -> u8 {
-        self.pra
+        (self.pra & self.ddra) | (self.pins.port_a_input & !self.ddra)
     }
 
     /// Returns the visible PRB value.
     #[inline]
     pub fn prb(&self) -> u8 {
-        self.prb
+        (self.prb & self.ddrb) | (self.pins.port_b_input & !self.ddrb)
     }
 
     /// Returns the visible DDRA value.
@@ -129,7 +129,8 @@ impl Cia {
         (self.tod >> 16) as u8
     }
 
-    /// Queues a write for the next falling E edge. Full queues reject the write.
+    /// Retains the last pending write per selector until the next falling E edge.
+    /// Recomputing the remaining interval preserves the original capture boundary.
     fn schedule_register(&mut self, selector: u16, value: u8) -> bool {
         let delay = if self.eclock_phase < E_WRITE_CAPTURE_PHASE {
             E_WRITE_CAPTURE_PHASE - self.eclock_phase
@@ -141,7 +142,7 @@ impl Cia {
             selector,
             u16::from(value),
             delay,
-            MutationMode::Pipeline,
+            MutationMode::OverwritePending,
         )
     }
 

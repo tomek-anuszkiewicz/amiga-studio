@@ -519,6 +519,16 @@ pub mod cia_reg {
 
 /// Bitfield masks for custom chip control and status registers
 pub mod mask {
+    /// Shared digital game-port encodings used by receivers and motherboard routing.
+    pub mod game_port {
+        /// Connector direction/quadrature contacts 1 through 4.
+        pub const DIRECTION_INPUTS: u8 = 0x0f;
+        /// Digital POT data bits in POTGO/POTGOR.
+        pub const POT_DATA: u16 = 0x5500;
+        /// Each POT output-enable bit sits one bit above its data bit.
+        pub const POT_OUTPUT_ENABLE_SHIFT: u16 = 1;
+    }
+
     /// Bit masks for DMACON ($096) and DMACONR ($002)
     pub mod dmacon {
         /// Bit 15: Set/Clear control bit (1 = set specified bits, 0 = clear specified bits)

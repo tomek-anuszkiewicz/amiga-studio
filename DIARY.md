@@ -1095,3 +1095,31 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS configured semantic checks for 196 offsets, 12 map boundaries and 26 crates, with zero signal/quirk sentinels
   - PASS 35 design notes and 843 links before the final timing caveat
   - checkpoint and diary compaction review found no earlier settled MEM-GARY-01 entries, so unrelated history remains unchanged and the one pending task entry is consolidated here
+---
+
+### [2026-11-11 23:31 CET] — SIGNAL-THREE-REFERENCE-20261111: Close Roadmap 2.3 signal transport
+- **Affected Subsystems**:
+  - `machine_loop and chip pins`
+  - `CIA and peripheral connections`
+  - `register transport`
+  - `save_state and debugger`
+  - `design specifications and verification rules`
+- **What Was Changed (The Concrete Reality)**:
+  - Establish captured receiver-owned input delivery and explicit CCK phases for interrupts and peripheral pins
+  - retain Agnus counters and deliver RGA synchronization events to receiver-owned state
+  - separate pure machine snapshots from the higher-level save file and preview format
+  - complete both directions of CIA-B PA0/SP and PA1/CNT wiring with current-format continuation protection
+  - retire obsolete direct SDR byte injection and unused pin helpers after replacing their callers
+  - align active descriptions with immediate address strobes and queued data writes
+  - prune Roadmap 2.3 and replace incoming plan links with permanent contracts
+- **Architectural Rationale & Trade-Offs**:
+  - Transport checks establish connections and ordering while device engines and full exchanges remain in 2.4 and guest verification in 2.5
+  - preserve disconnected serial and parallel ports and deferred firmware and media scope
+  - retain provisional timing limits without reopening the separately closed timing research
+- **Verification & Test Results**:
+  - Reproduced the missing CIA-B reverse route before repair and passed the same regression after repair
+  - PASS 20 machine transport and pin propagation tests covering PAL and NTSC paths
+  - PASS workspace all-target Clippy with denied warnings and machine_loop plus save_state WASM checks
+  - PASS configured semantic consistency and 35-note vault metadata with 999 links before closure edits
+  - PASS 13 baseline RAG contracts in isolation from the separate staged RAG repair
+  - checkpoint and compaction review found no earlier settled entries for this task so unrelated diary history remains intact

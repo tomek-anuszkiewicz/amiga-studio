@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use cia::Cia;
 
 #[test]
@@ -38,27 +40,49 @@ fn named_setters_capture_only_on_the_falling_edge() {
 }
 
 #[test]
-fn full_queue_rejects_without_early_application_and_drains_every_write() {
-    let mut cia = Cia::new();
-    for value in 1..=16 {
-        assert!(cia.set_pra(value));
+fn last_pending_value_is_captured_at_the_same_falling_edge() {
+    for phase in 0..5 {
+        let mut cia = Cia::new();
+        for _ in 0..phase {
+            cia.step_cck();
+        }
+        assert!(cia.set_pra(0x11));
+        let delay = cia.mutations.iter().flatten().next().unwrap().remaining_cck;
+        if delay > 1 {
+            cia.step_cck();
+        }
+        assert!(cia.set_pra(0x22));
+        assert!(cia.set_prb(0x33));
+        assert_eq!(cia.mutations.iter().flatten().count(), 2);
+        let remaining = delay - u8::from(delay > 1);
+        for _ in 1..remaining {
+            cia.step_cck();
+            assert_eq!(cia.pra, 0);
+        }
+        cia.step_cck();
+        assert_eq!((cia.pra, cia.prev_pra, cia.prb), (0x22, 0, 0x33));
+        assert!(cia.mutations.iter().all(Option::is_none));
+        assert!(cia.set_pra(0x44));
+        assert_eq!(cia.pra, 0x22, "captured state survives a new pending write");
     }
-    assert!(!cia.set_pra(0xee));
-    assert_eq!(cia.pra(), 0);
-    cia.step_cck();
-    assert_eq!(cia.pra(), 0);
-    cia.step_cck();
-    assert_eq!(cia.pra(), 16);
-    assert_eq!(cia.prev_pra, 15);
-    assert!(cia.mutations.iter().all(Option::is_none));
-    assert_eq!(cia.poll_pra_output(), Some(16));
-    assert_eq!(cia.poll_pra_output(), None);
+}
+
+#[test]
+fn cia_replaces_pending_mask_operations_but_preserves_captured_effects() {
+    let mut cia = Cia::new();
     assert!(cia.set_icr(0x81));
-    assert!(cia.set_icr(0x01));
+    assert!(cia.set_icr(0x82));
+    cia.step_cck();
+    cia.step_cck();
+    assert_eq!(cia.icr_mask, 2, "only the last pre-capture operation acts");
+    assert!(cia.set_icr(0x84));
     for _ in 0..5 {
         cia.step_cck();
     }
-    assert_eq!(cia.icr_mask, 0);
+    assert_eq!(
+        cia.icr_mask, 6,
+        "a captured SET remains composed with later SETs"
+    );
 }
 
 #[test]

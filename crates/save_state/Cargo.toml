@@ -1,0 +1,20 @@
+[package]
+name = "save_state"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/save_state.rs"
+
+[dependencies]
+machine_loop = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+image = { workspace = true }
+
+[dev-dependencies]
+config = { workspace = true }
+
+[lints]
+workspace = true

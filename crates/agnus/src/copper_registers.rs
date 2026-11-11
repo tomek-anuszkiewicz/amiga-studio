@@ -2,7 +2,7 @@
 
 use super::Agnus;
 use config::custom_reg::agnus as reg;
-use config::{stage_mutation, MutationMode};
+use config::{stage_mutation, MutationMode, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK};
 
 impl Agnus {
     /// Queues COPCON; active state changes only when due.
@@ -12,8 +12,8 @@ impl Agnus {
             &mut self.mutations,
             reg::COPCON,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -24,8 +24,8 @@ impl Agnus {
             &mut self.mutations,
             reg::COP1LCH,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -36,8 +36,8 @@ impl Agnus {
             &mut self.mutations,
             reg::COP1LCL,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -48,8 +48,8 @@ impl Agnus {
             &mut self.mutations,
             reg::COP2LCH,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -60,32 +60,8 @@ impl Agnus {
             &mut self.mutations,
             reg::COP2LCL,
             val,
-            2,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues COPJMP1; active state changes only when due.
-    #[inline]
-    pub fn set_copjmp1(&mut self) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::COPJMP1,
-            0,
-            1,
-            MutationMode::OverwritePending,
-        )
-    }
-
-    /// Queues COPJMP2; active state changes only when due.
-    #[inline]
-    pub fn set_copjmp2(&mut self) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::COPJMP2,
-            0,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -96,8 +72,8 @@ impl Agnus {
             &mut self.mutations,
             reg::COPINS,
             val,
-            2,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 

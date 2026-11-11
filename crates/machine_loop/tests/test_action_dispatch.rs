@@ -317,8 +317,16 @@ fn test_blitter_finish_asserts_blitint_and_escalates_ipl() {
     machine.agnus.blitter.finish_blit();
     assert!(!machine.agnus.blitter.is_busy);
 
-    // Step 1 CCK: machine loop polls Agnus blitter IRQ, sets Paula INTREQ bit 6, arbitrates IPL to 3
+    // TRM Fat Agnus: INT3* reports completion to Paula. vAmiga SlowBlitter
+    // schedules BLIT after one DMA cycle; our capture boundary is a model phase,
+    // not a measured electrical delay. Capture must not mutate the recipient.
     machine.step_cck();
+    assert!(!machine.agnus.pins.int3_high);
+    assert!(machine.paula.pins.int3_high);
+    assert_eq!(machine.paula.interrupts.intreq & 0x0040, 0);
+    assert_eq!(machine.cpu.state.ipl(), 0);
+    machine.step_cck();
+    assert!(!machine.paula.pins.int3_high);
     assert_eq!(machine.paula.interrupts.intreq & 0x0040, 0x0040);
     assert_eq!(machine.cpu.state.ipl(), 3);
 }
@@ -373,8 +381,18 @@ fn test_floppy_ciab_prb_polling_and_dskbytr_paula_latching() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
     common::cia::configure_drive_control_outputs(&mut machine);
 
-    // Initially, DF0 motor is off
-    assert!(!machine.floppy.drives[0].motor_on);
+    // HRM Table 8-5 requires motor data before drive selection. Hold MTR low
+    // with every SEL released, then make a separate write to select DF0.
+    assert_eq!(
+        common::cia::write_byte(&mut machine, 0xBFD100, 0x7f),
+        BusResult::Ready(())
+    );
+    machine.step_cck();
+    assert_eq!(machine.floppy.pins.control_input, 0x7f);
+    assert!(
+        !machine.floppy.drives[0].motor_on,
+        "no select edge has latched the motor"
+    );
 
     // CPU writes to CIA-B PRB ($BFD100) selecting DF0 with motor on: 0x75
     assert_eq!(
@@ -387,15 +405,20 @@ fn test_floppy_ciab_prb_polling_and_dskbytr_paula_latching() {
     assert!(!machine.floppy.drives[0].motor_on);
     assert_eq!(machine.cia_b.mutations.iter().flatten().count(), 1);
 
-    // Stepping the machine executes poll_peripheral_pins which polls CIA-B PRB and updates Floppy
+    // CIA capture changes the source latch first. The retained connector frame
+    // is delivered at our next input phase, not during that register commitment.
     machine.step_cck();
     assert!(!machine.cia_b.prb_mutated);
+    assert_eq!(machine.floppy.pins.control_input, 0x7f);
+    assert!(!machine.floppy.drives[0].motor_on);
+    machine.step_cck();
+    assert_eq!(machine.floppy.pins.control_input, 0x75);
     assert!(machine.floppy.drives[0].motor_on);
 
     // Simulate floppy controller shifting in MFM byte 0x42 with sync match (bit 12) and byte ready (bit 15)
     machine.floppy.dskbytr = floppy::DSKBYTR_DSKBYT | floppy::DSKBYTR_WORDEQUAL | 0x42;
 
-    // Step machine: poll_peripheral_pins transfers byte into Paula and clears bit 15 in floppy
+    // Step machine: the retained decoded disk-status bridge transfers a byte into Paula and clears bit 15 in floppy
     machine.step_cck();
     assert_eq!(machine.floppy.dskbytr & floppy::DSKBYTR_DSKBYT, 0);
     assert_eq!(
@@ -425,17 +448,17 @@ fn test_game_ports_fire_buttons_ciaa_pra_polling() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
 
     // Default: both fire pins float high (1)
-    machine.poll_peripheral_pins();
+    machine.step_cycles(2);
     assert_eq!(
-        machine.cia_a.pra & game_ports::CIAA_PRA_FIRE_MASK,
+        machine.cia_a.pra() & game_ports::CIAA_PRA_FIRE_MASK,
         game_ports::CIAA_PRA_FIRE_MASK
     );
 
     // Press mouse left button (Port 1 /FIR0)
     machine.game_ports.set_mouse_buttons(true, false, false);
-    machine.poll_peripheral_pins();
+    machine.step_cycles(2);
     assert_eq!(
-        machine.cia_a.pra & game_ports::CIAA_PRA_FIRE_MASK,
+        machine.cia_a.pra() & game_ports::CIAA_PRA_FIRE_MASK,
         game_ports::CIAA_PRA_FIRE_MASK & !game_ports::CIAA_PRA_FIR0
     );
 
@@ -443,6 +466,6 @@ fn test_game_ports_fire_buttons_ciaa_pra_polling() {
     machine
         .game_ports
         .set_joystick(false, false, false, false, true, false);
-    machine.poll_peripheral_pins();
-    assert_eq!(machine.cia_a.pra & game_ports::CIAA_PRA_FIRE_MASK, 0);
+    machine.step_cycles(2);
+    assert_eq!(machine.cia_a.pra() & game_ports::CIAA_PRA_FIRE_MASK, 0);
 }

@@ -11,52 +11,28 @@ impl Denise {
         self.mutations.iter().any(Option::is_none)
     }
 
-    /// Queues STREQU; active state changes only when due.
+    /// Applies STREQU at accepted selection.
     #[inline]
-    pub fn set_strequ(&mut self) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::STREQU,
-            0,
-            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
-            MutationMode::OverwritePending,
-        )
+    pub fn strobe_strequ(&mut self) {
+        self.sync.receive_strobe(reg::STREQU);
     }
 
-    /// Queues STRVBL; active state changes only when due.
+    /// Applies STRVBL at accepted selection.
     #[inline]
-    pub fn set_strvbl(&mut self) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::STRVBL,
-            0,
-            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
-            MutationMode::OverwritePending,
-        )
+    pub fn strobe_strvbl(&mut self) {
+        self.sync.receive_strobe(reg::STRVBL);
     }
 
-    /// Queues STRLONG; active state changes only when due.
+    /// Applies STRLONG at accepted selection.
     #[inline]
-    pub fn set_strlong(&mut self) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::STRLONG,
-            0,
-            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
-            MutationMode::OverwritePending,
-        )
+    pub fn strobe_strlong(&mut self) {
+        self.sync.receive_strobe(reg::STRLONG);
     }
 
-    /// Queues STRHOR; active state changes only when due.
+    /// Applies STRHOR at accepted selection.
     #[inline]
-    pub fn set_strhor(&mut self) -> bool {
-        stage_mutation(
-            &mut self.mutations,
-            reg::STRHOR,
-            0,
-            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
-            MutationMode::OverwritePending,
-        )
+    pub fn strobe_strhor(&mut self) {
+        self.sync.receive_strobe(reg::STRHOR);
     }
 
     /// Queues BPLCON0; active state changes only when due.
@@ -66,8 +42,8 @@ impl Denise {
             &mut self.mutations,
             reg::BPLCON0,
             val,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -78,8 +54,8 @@ impl Denise {
             &mut self.mutations,
             reg::DIWSTRT,
             val,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -90,8 +66,8 @@ impl Denise {
             &mut self.mutations,
             reg::DIWSTOP,
             val,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -105,8 +81,8 @@ impl Denise {
             &mut self.mutations,
             reg::SPR0POS + (index as u16) * 8,
             val,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -120,8 +96,8 @@ impl Denise {
             &mut self.mutations,
             reg::SPR0CTL + (index as u16) * 8,
             val,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -132,8 +108,8 @@ impl Denise {
             &mut self.mutations,
             reg::BPLCON1,
             val,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -144,8 +120,8 @@ impl Denise {
             &mut self.mutations,
             reg::CLXCON,
             val,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -156,8 +132,8 @@ impl Denise {
             &mut self.mutations,
             reg::BPLCON2,
             val,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -171,7 +147,7 @@ impl Denise {
             &mut self.mutations,
             reg::BPL1DAT + (index as u16) * 2,
             val,
-            1,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
         )
     }
@@ -186,8 +162,8 @@ impl Denise {
             &mut self.mutations,
             reg::SPR0DATA + (index as u16) * 8,
             val,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -201,8 +177,8 @@ impl Denise {
             &mut self.mutations,
             reg::SPR0DATB + (index as u16) * 8,
             val,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -217,7 +193,7 @@ impl Denise {
             reg::COLOR00 + (index as u16) * 2,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
-            MutationMode::OverwritePending,
+            MutationMode::Pipeline,
         )
     }
 
@@ -228,8 +204,8 @@ impl Denise {
             &mut self.mutations,
             reg::JOYTEST,
             val,
-            1,
-            MutationMode::OverwritePending,
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+            MutationMode::Pipeline,
         )
     }
 
@@ -347,7 +323,10 @@ impl Denise {
                 }
             }
 
-            reg::STREQU | reg::STRVBL | reg::STRHOR | reg::STRLONG | reg::JOYTEST => {}
+            reg::STREQU | reg::STRVBL | reg::STRHOR | reg::STRLONG => {
+                self.sync.receive_strobe(offset)
+            }
+            reg::JOYTEST => {}
             _ => {}
         }
     }

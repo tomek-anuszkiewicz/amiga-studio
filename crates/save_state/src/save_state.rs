@@ -1,19 +1,12 @@
-//! Amiga 500 Save State Architecture & Serialization Specification
-//!
-//! Provides decoupled, serde-compatible state snapshots (`A500State`),
-//! metadata headers (`SaveStateHeader`), compatibility verification, and
-//! round-trip serialization (formatted JSON).
+//! Save file format, JSON persistence and PNG preview encoding.
 
+use machine_loop::{A500Machine, A500State};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::Path;
 
-use config::A500Config;
-use cpu::CpuState;
-use physical_memory::PhysicalMemory;
-use serde::{Deserialize, Serialize};
-
 /// Active schema format version for A500 save states
-pub const SAVE_STATE_VERSION: u32 = 1;
+pub const SAVE_STATE_VERSION: u32 = 2;
 
 /// Metadata header identifying state compatibility, creation time, and display preview
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -26,37 +19,11 @@ pub struct SaveStateHeader {
     pub screenshot_png: Vec<u8>,
 }
 
-/// Master state container representing a full Amiga 500 machine snapshot
+/// File metadata and pure machine state are separate values.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct A500State {
-    /// Compatibility header and metadata
+pub struct SaveState {
     pub header: SaveStateHeader,
-    /// Master monotonic Color Clock counter
-    pub cck: u64,
-    /// Active hardware configuration model
-    pub config: A500Config,
-    /// Motorola 68000 CPU register and micro-execution state
-    pub cpu: CpuState,
-    /// 24-bit physical memory buffers and overlay flag
-    pub physical_memory: PhysicalMemory,
-    /// OKI MSM6242B Real-Time Clock
-    pub rtc: rtc::RtcMsm6242b,
-    /// Agnus (beam counters, copper, blitter, dma, chip RAM bus lock)
-    pub agnus: agnus::Agnus,
-    /// Denise (video control, sprites, frame builder, color palette, collisions)
-    pub denise: denise::Denise,
-    /// Paula (audio channels, serial UART, interrupt multiplexer)
-    pub paula: paula::Paula,
-    /// MOS 8520 CIA-A
-    pub cia_a: cia::Cia,
-    /// MOS 8520 CIA-B
-    pub cia_b: cia::Cia,
-    /// 3.5" DD Floppy controller and drive units
-    pub floppy: floppy::FloppyController,
-    /// MOS 6500/1 keyboard microcontroller
-    pub keyboard: keyboard::Keyboard,
-    /// Dual Atari 9-pin controller game ports
-    pub game_ports: game_ports::GamePorts,
+    pub state: Box<A500State>,
 }
 
 /// Errors that can occur during save state serialization, deserialization, or verification
@@ -95,32 +62,63 @@ impl fmt::Display for SaveStateError {
 
 impl std::error::Error for SaveStateError {}
 
-impl A500State {
-    /// Serializes the complete machine state to a JSON string
+impl SaveState {
+    /// Captures the file envelope and preview outside the machine stepping core.
+    pub fn capture(machine: &A500Machine) -> Self {
+        let frame = &machine.denise.frame_builder;
+        Self {
+            header: SaveStateHeader {
+                version: SAVE_STATE_VERSION,
+                timestamp: 0,
+                screenshot_png: encode_screenshot_png(
+                    frame.frame_buffer(),
+                    frame.width,
+                    frame.height,
+                ),
+            },
+            state: Box::new(machine.save_state()),
+        }
+    }
+
+    fn validate_version(&self) -> Result<(), SaveStateError> {
+        if self.header.version != SAVE_STATE_VERSION {
+            return Err(SaveStateError::IncompatibleVersion {
+                found: self.header.version,
+                supported: SAVE_STATE_VERSION,
+            });
+        }
+        Ok(())
+    }
+
+    /// Serializes the complete save file to a JSON string
     pub fn to_json(&self) -> Result<String, SaveStateError> {
         serde_json::to_string(self).map_err(|e| SaveStateError::SerializationFailed(e.to_string()))
     }
 
-    /// Serializes the complete machine state to a pretty-printed JSON string
+    /// Serializes the complete save file to a pretty-printed JSON string
     pub fn to_json_pretty(&self) -> Result<String, SaveStateError> {
         serde_json::to_string_pretty(self)
             .map_err(|e| SaveStateError::SerializationFailed(e.to_string()))
     }
 
-    /// Deserializes an A500State snapshot from a JSON string
+    /// Deserializes a save file from a JSON string
     pub fn from_json(json_str: &str) -> Result<Self, SaveStateError> {
-        serde_json::from_str(json_str)
-            .map_err(|e| SaveStateError::DeserializationFailed(e.to_string()))
+        let saved: Self = serde_json::from_str(json_str)
+            .map_err(|e| SaveStateError::DeserializationFailed(e.to_string()))?;
+        saved.validate_version()?;
+        Ok(saved)
     }
 
-    /// Deserializes an A500State snapshot from raw JSON bytes
+    /// Deserializes a save file from raw JSON bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, SaveStateError> {
-        serde_json::from_slice(bytes)
-            .map_err(|e| SaveStateError::DeserializationFailed(e.to_string()))
+        let saved: Self = serde_json::from_slice(bytes)
+            .map_err(|e| SaveStateError::DeserializationFailed(e.to_string()))?;
+        saved.validate_version()?;
+        Ok(saved)
     }
 
     /// Saves the snapshot to a JSON file
-    pub(crate) fn save_to_file(&self, path: impl AsRef<Path>) -> Result<(), SaveStateError> {
+    pub fn save_to_file(&self, path: impl AsRef<Path>) -> Result<(), SaveStateError> {
         let path = path.as_ref();
         let json_pretty = self.to_json_pretty()?;
         std::fs::write(path, json_pretty).map_err(|e| SaveStateError::IoError(e.to_string()))
@@ -135,7 +133,7 @@ impl A500State {
 }
 
 /// Encodes an ARGB (0xAARRGGBB) pixel buffer into PNG bytes.
-pub(crate) fn encode_screenshot_png(frame_buffer: &[u32], width: u32, height: u32) -> Vec<u8> {
+fn encode_screenshot_png(frame_buffer: &[u32], width: u32, height: u32) -> Vec<u8> {
     use image::ImageEncoder;
     let total_pixels = (width as usize).saturating_mul(height as usize);
     if total_pixels == 0 || frame_buffer.len() < total_pixels {

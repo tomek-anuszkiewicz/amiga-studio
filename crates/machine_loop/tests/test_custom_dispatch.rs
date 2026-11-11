@@ -108,15 +108,13 @@ fn concrete_setters_delay_controls_and_reads_do_not_flush_pending_changes() {
 }
 
 #[test]
-fn queued_write_strobes_keep_live_read_strobes_separate() {
+fn address_strobes_act_immediately_without_register_queue_entries() {
     let mut machine = idle_machine();
     machine.agnus.copper.cop1lc = 0x2000;
     machine.agnus.copper.cop2lc = 0x3000;
     assert!(machine
         .memory_bus()
         .write_custom_word(custom_reg::agnus::COPJMP1, 0xffff));
-    assert_eq!(machine.agnus.copper.cop_pc, 0);
-    machine.step_cck();
     assert_eq!(machine.agnus.copper.cop_pc, 0x2000);
     assert_eq!(
         machine
@@ -135,18 +133,10 @@ fn queued_write_strobes_keep_live_read_strobes_separate() {
     ] {
         assert!(machine.memory_bus().write_custom_word(offset, 0x1234));
     }
-    assert_eq!(machine.denise.mutations.iter().flatten().count(), 4);
-    assert_eq!(machine.paula.mutations.iter().flatten().count(), 1);
-    assert_eq!(
-        machine
-            .denise
-            .step_cck(machine.agnus.beam())
-            .iter()
-            .flatten()
-            .count(),
-        4
-    );
-    assert_eq!(machine.paula.step_cck().iter().flatten().count(), 1);
+    assert!(machine.denise.mutations.iter().all(Option::is_none));
+    assert!(machine.paula.mutations.iter().all(Option::is_none));
+    assert!(machine.denise.sync.long_line);
+    assert_eq!(machine.paula.sync.cck_since_horizontal, 0);
     assert_eq!(machine.denise.bplcon0, 0);
     assert_eq!(machine.paula.dma_enables, 0);
 }
@@ -188,14 +178,14 @@ fn full_receiver_rejects_shared_transfer_atomically_without_blocking_unrelated_c
 }
 
 #[test]
-fn full_capacity_replay_returns_every_event_and_reserves_interrupt_input() {
+fn full_capacity_register_replay_does_not_block_interrupt_pins() {
     let mut machine = idle_machine();
     for value in 0..agnus::Agnus::MUTATION_CAPACITY as u16 {
         assert!(machine.agnus.set_bltadat(value));
         assert!(machine.denise.set_bpldat(0, value));
     }
     let agnus_due = machine.agnus.step_cck();
-    let denise_due = machine.denise.step_cck(machine.agnus.beam());
+    let denise_due = machine.denise.step_cck();
     assert_eq!(
         agnus_due.iter().flatten().count(),
         agnus::Agnus::MUTATION_CAPACITY
@@ -212,12 +202,12 @@ fn full_capacity_replay_returns_every_event_and_reserves_interrupt_input() {
     assert!(machine.denise.bpl_armed);
     // One CPU clear plus data events fill all register-write capacity.
     assert!(machine.paula.set_intreq(0x2008));
-    for value in 0..paula::Paula::MUTATION_CAPACITY as u16 - 2 {
+    for value in 0..paula::Paula::MUTATION_CAPACITY as u16 - 1 {
         assert!(machine.paula.set_auddat(0, value));
     }
     assert!(!machine.paula.set_serdat(0x1234));
-    machine.paula.set_int2_pin(true);
-    machine.paula.set_int6_pin(true);
+    machine.paula.pins.int2_high = false;
+    machine.paula.pins.int6_high = false;
     assert_eq!(
         machine.paula.mutations.iter().flatten().count(),
         paula::Paula::MUTATION_CAPACITY
@@ -231,32 +221,39 @@ fn full_capacity_replay_returns_every_event_and_reserves_interrupt_input() {
     assert_eq!(
         machine.paula.intreqr(),
         0x2008,
-        "later input SET follows CPU clear in issue order"
+        "delivered input sampling follows due register commitment"
     );
     assert!(machine.paula.mutations.iter().all(Option::is_none));
     assert_eq!(machine.paula.step_cck().iter().flatten().count(), 0);
 }
 
 #[test]
-fn interrupt_inputs_keep_their_deadline_and_cpu_acknowledgment_order() {
+fn interrupt_input_levels_are_sampled_after_cpu_acknowledgments() {
     let mut machine = idle_machine();
-    machine.paula.set_int2_pin(true);
-    machine.paula.set_int6_pin(true);
+    machine.paula.receive_interrupt_pins(false, true, false);
     assert!(machine.paula.set_intreq(0x0008));
-    assert_eq!(machine.paula.mutations.iter().flatten().count(), 2);
-    machine.paula.step_cck();
+    assert_eq!(machine.paula.mutations.iter().flatten().count(), 1);
     assert_eq!(
         machine.paula.intreqr(),
-        0x2000,
-        "later CPU clear acknowledges only PORTS"
+        0,
+        "pin capture is not register commitment"
     );
-    machine.paula.set_int2_pin(true);
     machine.paula.step_cck();
     assert_eq!(
         machine.paula.intreqr(),
         0x2008,
-        "asserted input requests again after acknowledgment"
+        "held inputs win this CCK sampling phase"
     );
+    machine.paula.receive_interrupt_pins(true, true, true);
+    machine.paula.step_cck();
+    assert_eq!(
+        machine.paula.intreqr(),
+        0x2008,
+        "release does not acknowledge the latch"
+    );
+    assert!(machine.paula.set_intreq(0x0008));
+    machine.paula.step_cck();
+    assert_eq!(machine.paula.intreqr(), 0x2000);
 }
 
 #[test]
@@ -273,7 +270,7 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
         .memory_bus()
         .write_custom_word(custom_reg::agnus::DMACON, 0x8280));
     copper.step_cycles(2);
-    assert!(copper.agnus.set_copjmp1());
+    copper.agnus.strobe_copjmp1();
     let mut issued = false;
     for _ in 0..24 {
         copper.step_cck();
@@ -322,13 +319,13 @@ fn pending_registers_and_unconsumed_bus_outputs_resume_after_serialization() {
         .write_custom_word(custom_reg::agnus::DMACON, 0x8200));
     assert!(machine.denise.set_color(2, 0x0abc));
     assert!(machine.paula.set_adkcon(0x8001));
-    machine.paula.set_int2_pin(true);
+    machine.paula.pins.int2_high = false;
     machine.agnus.pending_copper_write = Some((custom_reg::denise::COLOR03, 0x123));
     machine.agnus.pending_bpl_dma = Some((0, 0x4567));
-    let json = machine.save_state().to_json().unwrap();
-    let state = A500State::from_json(&json).unwrap();
+    let json = serde_json::to_string(&machine.save_state()).unwrap();
+    let state = serde_json::from_str::<A500State>(&json).unwrap();
     let mut restored = idle_machine();
-    restored.load_state(&state).unwrap();
+    restored.load_state(&state);
     assert!(machine.save_state() == restored.save_state());
     for step in 1..=5 {
         machine.step_cck();
@@ -461,7 +458,7 @@ fn blitter_restart_and_control_data_changes_apply_at_their_own_commit_boundaries
     machine.step_cck();
     assert!(machine.agnus.blitter.is_busy);
     assert_eq!(machine.agnus.blitter.bltadat, 0x1234);
-    assert_eq!(machine.agnus.blitter.bltcon0, 0);
+    assert_eq!(machine.agnus.blitter.bltcon0, 0x09f0);
     assert!(machine.agnus.set_bltadat(0x5678));
     machine.step_cck();
     assert_eq!(machine.agnus.blitter.bltcon0, 0x09f0);

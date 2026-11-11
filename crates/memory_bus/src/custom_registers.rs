@@ -60,21 +60,27 @@ impl MemoryBus<'_> {
         }
     }
 
-    /// Queues one accepted custom transfer on every modeled receiver.
+    /// Applies address strobes immediately and queues accepted data transfers.
     /// False means no receiver accepted it; the producer must retry.
     pub fn write_custom_word(&mut self, offset: u16, val: u16) -> bool {
         let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
         match offset {
-            custom_reg::denise::STREQU => self.denise.set_strequ(),
-            custom_reg::denise::STRVBL => self.denise.set_strvbl(),
-            custom_reg::denise::STRLONG => self.denise.set_strlong(),
+            custom_reg::denise::STREQU => {
+                self.denise.strobe_strequ();
+                true
+            }
+            custom_reg::denise::STRVBL => {
+                self.denise.strobe_strvbl();
+                true
+            }
+            custom_reg::denise::STRLONG => {
+                self.denise.strobe_strlong();
+                true
+            }
             custom_reg::denise::STRHOR => {
-                if !self.denise.can_accept_register_write()
-                    || !self.paula.can_accept_register_write()
-                {
-                    return false;
-                }
-                self.denise.set_strhor() && self.paula.set_strhor()
+                self.denise.strobe_strhor();
+                self.paula.strobe_strhor();
+                true
             }
             custom_reg::agnus::DMACON => {
                 if !self.agnus.can_accept_register_write()
@@ -349,8 +355,14 @@ impl MemoryBus<'_> {
             custom_reg::agnus::COP1LCL => self.agnus.set_cop1lcl(val),
             custom_reg::agnus::COP2LCH => self.agnus.set_cop2lch(val),
             custom_reg::agnus::COP2LCL => self.agnus.set_cop2lcl(val),
-            custom_reg::agnus::COPJMP1 => self.agnus.set_copjmp1(),
-            custom_reg::agnus::COPJMP2 => self.agnus.set_copjmp2(),
+            custom_reg::agnus::COPJMP1 => {
+                self.agnus.strobe_copjmp1();
+                true
+            }
+            custom_reg::agnus::COPJMP2 => {
+                self.agnus.strobe_copjmp2();
+                true
+            }
             custom_reg::agnus::COPINS => self.agnus.set_copins(val),
             custom_reg::agnus::DDFSTRT => self.agnus.set_ddfstrt(val),
             custom_reg::agnus::DDFSTOP => self.agnus.set_ddfstop(val),
