@@ -48,7 +48,15 @@ instead, run `python -m playwright install chromium` and pass `--channel ""`
 to `book_review.py`.
 
 Prepare the selected PDF pages through Stage 08 and check that Stages 02, 06, 07
-and 08 succeeded. Then start a fresh review:
+and 08 succeeded.
+
+Import selects each page's latest available JSON in this order: Stage 08, 07, 05,
+04, then 03. Stages 04, 05, 07 and 08 contain only changed pages; an empty directory
+does not mean that preparation failed. An empty `segments` list in the latest
+page JSON excludes that page. Import keeps physical-page order and uses all
+retained pages, regardless of the last invocation's page range.
+
+Then start a fresh review:
 
 ```powershell
 $Book = "tools/bootstrap/books/test-book-example-4567/78e52f075e17"
@@ -257,7 +265,7 @@ Formatting around references remains literal Markdown or HTML.
 `resolved_md_text` is derived display text, not authored recipe content.
 The [element vocabulary](elements.md) lists supported types and roles.
 
-Import aligns Stage 08 text with Stage 02 PDF text, but OCR and repeated
+Import aligns the latest prepared page text with Stage 02 PDF text, but OCR and repeated
 phrases can produce uncertain or incorrect source attribution. The reviewer
 must check the actual PDF. The recipe stores reviewed decisions so later
 reconstruction can avoid repeating model inference through `import-book`.

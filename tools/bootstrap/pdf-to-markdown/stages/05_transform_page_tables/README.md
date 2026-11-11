@@ -1,6 +1,7 @@
 # Stage 05: Transform Page Tables
 
-Read selected Stage 04 page JSONs and original Stage 02 PNGs. For each `table`,
+Read selected Stage 04 page JSONs, falling back to Stage 03 for unchanged pages,
+and original Stage 02 PNGs. Omit pages with empty `segments`. For each `table`,
 make one Codex request using its exact, unpadded pixel crop and the
 [table prompt](prompt.md). Replace table `md_text` and record `table_format`.
 The prompt is the sole source of transcription instructions and response format;
@@ -11,7 +12,7 @@ such as `<br>`, remain markup when they are absent from the PDF text.
 An `unconverted` result retains the original table content.
 
 Save a full page JSON to `05_transform_page_tables/` only when its data changes.
-Pages without tables and unchanged pages remain in Stage 04. Preserve other
+Pages without tables and unchanged pages remain in Stage 04 or Stage 03. Preserve other
 source objects, their IDs, geometry and order. Remove temporary request crops
 after execution. Console progress reports each table's start, format and elapsed
 time, followed by the page's save/skip outcome.
@@ -24,6 +25,6 @@ after successful Stages 02 and 04. The configured model/effort and shared respon
 cache apply. The status entry records this invocation's page range.
 
 [Stage 06](../06_extract_crops/README.md) overlays these replacement pages on
-Stage 04 and extracts graphic assets. [Stage 07](../07_repair_callouts/README.md)
+Stages 04 and 03 and extracts graphic assets. [Stage 07](../07_repair_callouts/README.md)
 uses the same overlay to assemble callouts before [Stage 08](../08_proofreading/README.md)
 proofreads the final page objects for book import.

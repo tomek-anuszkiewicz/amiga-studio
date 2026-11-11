@@ -160,7 +160,7 @@ def new_chapter(elements, chapter_id, existing_files=(TOC_DEFAULTS['markdown_fil
 
 
 def import_book(root):
-    """Replace book outputs with final Stage 08 objects and Stage 06 assets."""
+    """Replace book outputs with the latest page objects through Stage 08 and Stage 06 assets."""
     working = root / "working"
     workspace = root / "pdf-to-markdown"
     status = read_json(workspace / "stage_status.json")

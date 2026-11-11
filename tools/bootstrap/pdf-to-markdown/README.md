@@ -74,20 +74,22 @@ operating systems do not acquire this request.
 | [01: Text layer](stages/01_text_layer/README.md) | Full-source `<source stem>-ocr.pdf` beside the original PDF; local Tesseract when needed |
 | [02: Preprocess](stages/02_preprocess/README.md) | Selected-page PNGs and positioned-text JSON in `02_preprocess/` |
 | [03: Page conversion](stages/03_page_conversion/README.md) | Ordered page objects, Markdown text and pixel boxes in `03_page_conversion/` |
-| [04: Filter](stages/04_filter_page_content/README.md) | Page objects with headers, footers and thumb indexes removed in `04_filter_page_content/` |
+| [04: Filter](stages/04_filter_page_content/README.md) | Only pages changed by removing headers, footers and thumb indexes in `04_filter_page_content/` |
 | [05: Tables](stages/05_transform_page_tables/README.md) | Only pages changed by table transcription in `05_transform_page_tables/` |
 | [06: Crops](stages/06_extract_crops/README.md) | All `graphic` bbox crops in `06_extract_crops/assets/<segment_id>.png` |
-| [07: Callouts](stages/07_repair_callouts/README.md) | Complete page objects with adjacent advisory labels/bodies assembled as Markdown callouts in `07_repair_callouts/` |
-| [08: Proofreading](stages/08_proofreading/README.md) | Source-supported text corrections in complete retained page objects under `08_proofreading/` |
+| [07: Callouts](stages/07_repair_callouts/README.md) | Only pages changed by assembling adjacent advisory labels/bodies as Markdown callouts in `07_repair_callouts/` |
+| [08: Proofreading](stages/08_proofreading/README.md) | Only pages changed by source-supported text corrections in `08_proofreading/` |
 
-Stage 05 replacements overlay Stage 04 pages; unchanged pages remain in Stage 04.
-An empty Stage 05 directory is valid. Its status entry records the selected range.
-Stage 06 overlays Stage 05 pages on Stage 04 and extracts graphic crops from
-Stage 02 PNGs. Stage 07 applies that same page overlay and repairs callouts.
-Stage 08 reads retained Stage 07 pages, reviews text-only ambiguities against
-Stage 02 page images when needed, and writes complete proofread pages.
-The book-processing handoff consists of Stage 02 images/text, Stage 06 graphic
-assets and all retained Stage 08 final page objects.
+Stage 03 supplies the base page objects. Stages 04, 05, 07 and 08 save full-page
+replacements only when their data changes; an empty directory is valid for each
+of these stages. Stage 04 saves an empty `segments` list when filtering empties a
+page, so later readers omit it instead of restoring excluded objects.
+Each reader chooses the latest available JSON up to its input stage.
+Stage 06 reads Stages 05, 04 and 03 and extracts graphic crops from Stage 02 PNGs.
+Stage 07 uses the same page collection to repair callouts. Stage 08 reads
+Stages 07, 05, 04 and 03 and reviews text-only ambiguities against Stage 02 page
+images when needed. The book-processing handoff consists of Stage 02 images/text,
+Stage 06 graphic assets and pages resolved in order from Stages 08, 07, 05, 04 and 03.
 
 ### Physical-page selection
 
@@ -106,9 +108,9 @@ clears its whole workspace directory, while preserving the sibling OCR PDF.
 Retained predecessors must have successful statuses.
 Completed stages are not automatically skipped.
 
-Preparation caches and the Codex request cache survive restart. Stages 01 and 02
-restore matching preparation results instead of repeating OCR, rendering or text
-extraction. An existing output file alone does not establish a cache hit.
+Preparation caches and the Codex request cache survive restart. Stages 01, 02 and 06
+restore matching preparation results instead of repeating OCR, rendering, text
+extraction or graphic cropping. An existing output file alone does not establish a cache hit.
 Attempts using the previous stage numbering require a new named workspace.
 
 ### Preparation cache
@@ -124,6 +126,12 @@ DPI, geometry schema, backend/runtime identity and preprocessing contract versio
 Page ranges and workspace paths are not part of the key, so attempts with
 overlapping selections share cached pages. PNGs remain separate binary files.
 
+`tools/bootstrap/.cache/pdf/06_extract_crops/<SHA-256>/` stores one graphic crop
+PNG per entry. Its key hashes the Stage 02 page PNG SHA-256, crop `bbox`, runtime
+identity including Pillow, and crop contract version. Workspace paths, page
+ranges and segment IDs are excluded; the same source crop can be restored under
+the current segment filename without repeating extraction.
+
 Each entry has a completion manifest with the input identity and output hashes.
 Missing, incomplete or damaged entries are recomputed; only complete results are
 published. Hits copy files into the ordinary output paths and print `[cache]`.
@@ -135,7 +143,7 @@ Neither cache reuse nor successful preparation establishes transcription quality
 `stage_status.json` records the last invocation's execution, page range and request
 metrics, not accumulated page coverage. Restart invalidates the selected stage
 and all later completion statuses before cleanup, including partial restarts.
-Book import reads all retained Stage 08 pages rather
+Book import reads all retained pages across Stages 03 through 08 rather
 than restricting the book to the last invocation's range. Inspect status with:
 
 ```powershell

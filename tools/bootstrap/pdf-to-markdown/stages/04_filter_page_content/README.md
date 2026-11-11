@@ -5,10 +5,12 @@ Read selected Stage 03 page JSONs and remove objects whose type is exactly
 Covers, contents, indexes and other source roles remain for later manual editing.
 No model request, image inspection or further role inference is performed.
 
-Write retained pages to `04_filter_page_content/` using their original filenames.
-Omit pages emptied by filtering; an empty result is valid. Console output reports
-page/object counts and the number of emptied pages.
+Write a full page JSON to `04_filter_page_content/` only when filtering changes
+its objects, using the original filename. Unchanged pages remain in Stage 03.
+Save an empty `segments` list when filtering removes every object; this overrides
+Stage 03 so later readers omit the page instead of restoring excluded content.
+Console output reports retained page/object counts and the number of emptied pages.
 
 Run through the [pipeline](../../README.md) with `--from-stage 04 --to-stage 04`
 after successful Stages 02 and 03. [Stage 05](../05_transform_page_tables/README.md)
-uses only this filtered dataset; removed pages are not recovered from Stage 03.
+reads this filtered dataset with Stage 03 as the source of unchanged pages.

@@ -316,6 +316,63 @@ class TextRecipeTest(unittest.TestCase):
             self.assertEqual((heading['type'], heading['heading_level']), ('heading', 3))
 
 
+    def test_import_resolves_changed_pages_without_losing_unchanged_or_restoring_filtered_pages(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace = root / 'pdf-to-markdown'
+            write_json(workspace / 'stage_status.json',
+                       {stage: {'status': 'success', 'page_ranges': '5'}
+                        for stage in ('02', '04', '05', '06', '07', '08')})
+            for number, text in enumerate(('One', 'Two', 'Three', 'Four', 'Five', 'Header'), 1):
+                page_id = f'page_{number:04d}'
+                source = 'NOTE Four' if number == 4 else text
+                write_json(workspace / '02_preprocess' / f'{page_id}.json',
+                           {'page': number, 'page_id': page_id,
+                            'raster': {'display_to_pixels': [1, 0, 0, 1, 0, 0]},
+                            'blocks': [{'block_id': 0, 'text': source, 'bbox': [0, 0, 100, 10],
+                                        'char_bboxes': [[0, 0, 100, 10]] * len(source)}]})
+                segment = {'segment_id': f'{page_id}_seg_001', 'type': 'prose', 'role': None,
+                           'bbox': [0, 0, 100, 10], 'md_text': text}
+                segments = [segment]
+                if number == 2:
+                    segments.insert(0, {**segment, 'segment_id': f'{page_id}_header', 'type': 'header'})
+                elif number == 4:
+                    segments = [{**segment, 'type': 'callout', 'md_text': 'NOTE'},
+                                {**segment, 'segment_id': f'{page_id}_seg_002', 'type': 'callout_text'}]
+                elif number == 6:
+                    segment['type'] = 'header'
+                page = {'page': number, 'segments': segments}
+                write_json(workspace / '03_page_conversion' / f'{page_id}_segments.json', page)
+                if number == 3:
+                    write_json(workspace / '05_transform_page_tables' / f'{page_id}_segments.json',
+                               {**page, 'segments': [{**segment, 'md_text': '**Three**'}]})
+            stages = Path(__file__).resolve().parents[4] / 'tools/bootstrap/pdf-to-markdown/stages'
+            for name, script, operation in (
+                    ('04_filter_page_content', 'filter_page_content.py', 'filter_page_content'),
+                    ('07_repair_callouts', 'repair_callouts.py', 'repair_callouts')):
+                spec = importlib.util.spec_from_file_location(operation, stages / name / script)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                getattr(module, operation)(workspace)
+            self.assertEqual({path.name for path in (workspace / '04_filter_page_content').glob('*.json')},
+                             {'page_0002_segments.json', 'page_0006_segments.json'})
+            self.assertEqual(read_json(workspace / '04_filter_page_content/page_0006_segments.json')['segments'], [])
+            self.assertEqual({path.name for path in (workspace / '07_repair_callouts').glob('*.json')},
+                             {'page_0004_segments.json'})
+            # Newer replacements must win over every older version of this page.
+            page = read_json(workspace / '03_page_conversion/page_0005_segments.json')
+            for stage_name, text in (('04_filter_page_content', '*Five*'),
+                                     ('05_transform_page_tables', '**Five**'),
+                                     ('07_repair_callouts', '`Five`'),
+                                     ('08_proofreading', '_Five_')):
+                write_json(workspace / stage_name / 'page_0005_segments.json',
+                           {**page, 'segments': [{**page['segments'][0], 'md_text': text}]})
+            imported = import_book(root)['chapters'][0]['elements']
+            self.assertEqual([element['id'] for element in imported],
+                             [f'page_{number:04d}_seg_001' for number in range(1, 6)])
+            self.assertEqual([element['resolved_md_text'] for element in imported],
+                             ['One', 'Two', '**Three**', '> [!NOTE] NOTE\n>\n> Four', '_Five_'])
+
     def test_import_preserves_prepared_markdown_without_literal_transcription(self):
         prepared = ['**Operation:** Source + Dest ination',
                     '```asm\nADD <ea>,Dn\nADD Dn,<ea>\n```',

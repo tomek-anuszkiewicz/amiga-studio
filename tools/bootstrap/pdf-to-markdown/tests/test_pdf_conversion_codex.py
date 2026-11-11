@@ -144,6 +144,53 @@ class PdfOcrValidationTests(unittest.TestCase):
             self.assertEqual(rendered, [2])
             self.assertIn("Changed 2", (output / "page_0002.json").read_text(encoding="utf-8"))
 
+    def test_crop_cache_restores_outputs_and_rejects_changed_or_damaged_entries(self):
+        spec = importlib.util.spec_from_file_location(
+            "cached_crops", ROOT / "tools/bootstrap/pdf-to-markdown/stages/06_extract_crops/extract_crops.py")
+        stage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(stage)
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            source = workspace / "02_preprocess/page_0001.png"
+            source.parent.mkdir()
+            write_json(source.with_suffix(".json"), {"page": 1, "page_id": "page_0001"})
+            with stage.Image.new("RGB", (10, 10), "white") as image:
+                image.save(source)
+            page_file = workspace / "03_page_conversion/page_0001_segments.json"
+            page_file.parent.mkdir()
+            graphic = {"segment_id": "page_0001_seg_001", "type": "graphic", "role": None,
+                       "bbox": [0, 0, 5, 5]}
+            page = {"page": 1, "segments": [graphic]}
+            write_json(page_file, page)
+            stage.extract_crops(workspace, pages=[1])
+            asset = workspace / "06_extract_crops/assets/page_0001_seg_001.png"
+            saved = asset.read_bytes()
+            asset.unlink()
+            with patch.object(stage.Image.Image, "crop", side_effect=AssertionError("Must use cache")):
+                stage.extract_crops(workspace, pages=[1])
+            self.assertEqual(asset.read_bytes(), saved)
+
+            original = stage.Image.Image.crop
+            extracted = []
+
+            def crop(image, box, *args, **kwargs):
+                extracted.append(box)
+                return original(image, box, *args, **kwargs)
+
+            with patch.object(stage.Image.Image, "crop", new=crop):
+                graphic["bbox"] = [1, 1, 6, 6]
+                write_json(page_file, page)
+                stage.extract_crops(workspace, pages=[1])
+                self.assertEqual(len(extracted), 1)
+                with stage.Image.new("RGB", (10, 10), "black") as image:
+                    image.save(source)
+                stage.extract_crops(workspace, pages=[1])
+                self.assertEqual(len(extracted), 2)
+                for cached in (Path(self.cache.name) / "06_extract_crops").glob("*/crop.png"):
+                    cached.write_bytes(b"damaged cache entry")
+                stage.extract_crops(workspace, pages=[1])
+                self.assertEqual(len(extracted), 3)
+
     def test_incomplete_preprocessing_cache_does_not_skip_rendering(self):
         spec = importlib.util.spec_from_file_location(
             "interrupted_preprocess", ROOT / "tools/bootstrap/pdf-to-markdown/stages/02_preprocess/preprocess.py")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage 08: proofread retained Stage 07 page text without changing page structure."""
+"""Stage 08: proofread retained page text without changing page structure."""
 
 import argparse
 from copy import deepcopy
@@ -164,8 +164,9 @@ def proofread(workspace, config, pages=None, client_factory=CodexClient):
         return candidate
 
     def accept(job, result):
-        entry, _, _, _ = job
-        write_json(output / f"{entry['page_id']}_segments.json", result)
+        entry, page, _, _ = job
+        if result != page:
+            write_json(output / f"{entry['page_id']}_segments.json", result)
         print(f"[proofreading] {entry['page_id']}: done", flush=True)
 
     convert_parallel(config, stage=STAGE, operation="pdf_page_proofreading", jobs=jobs,

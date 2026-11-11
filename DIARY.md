@@ -981,3 +981,26 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS: current source and prepared PDF SHA-256 match source-ocr.json and the preparation cache
   - Scoped specification review selected Testing Strategy and Quality Assurance by tracked_paths and found no required specification changes
   - NOT RUN: a new book conversion or milestone profile
+---
+
+### [2026-11-11 10:40 CET] — Save changed PDF pages and cache graphic crops
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Save Stage 04 and Stage 07 and Stage 08 page JSON only when page data changes
+  - Resolve pages through Stage 08 using the latest available replacement from Stages 07 and 05 and 04 and 03
+  - Preserve empty filtered pages as explicit replacements so excluded content does not return
+  - Reuse the shared preparation cache for Stage 06 crops keyed by source PNG and bounding box and runtime
+  - Update pipeline and book import documentation and focused regression coverage
+- **Architectural Rationale & Trade-Offs**:
+  - Avoid duplicate page JSON and repeated crop extraction while preserving retained page order and filtered exclusions
+  - Reuse existing cache integrity checks without changing source books or running inference
+- **Verification & Test Results**:
+  - PASS: PDF execution and cache contracts - 31 tests
+  - PASS: proofreading contracts - 6 tests
+  - PASS: parallel table contracts - 2 tests
+  - PASS: focused book import contracts - 4 tests
+  - PASS: git diff --check
+  - Scoped specification review selected Testing Strategy and Quality Assurance by tracked_paths and found no required specification changes
+  - NOT RUN: real book conversion or import and milestone profile
